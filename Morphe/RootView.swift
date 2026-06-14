@@ -15,14 +15,15 @@ struct RootView: View {
                 } else {
                     AppShell {
                         Group {
-                            switch store.selectedRole {
-                            case .client:
-                                ClientLayout {
-                                    ClientExperienceShell()
-                                }
-                            case .coach:
+                            // Coach mode is a v2 (multi-user) surface — force the
+                            // client experience until it ships.
+                            if FeatureFlags.multiUserEnabled && store.selectedRole == .coach {
                                 CoachLayout {
                                     CoachDashboardView()
+                                }
+                            } else {
+                                ClientLayout {
+                                    ClientExperienceShell()
                                 }
                             }
                         }
@@ -328,8 +329,11 @@ private struct ClientPinnedHeader: View {
                 store.openQuickAdd()
             }
 
-            HeaderCircleButton(systemImage: "bubble.left.and.bubble.right.fill") {
-                store.openCommunity(.contact)
+            // Messaging is a v2 (multi-user) surface, hidden in v1.
+            if FeatureFlags.multiUserEnabled {
+                HeaderCircleButton(systemImage: "bubble.left.and.bubble.right.fill") {
+                    store.openCommunity(.contact)
+                }
             }
         }
         .padding(.horizontal, 14)

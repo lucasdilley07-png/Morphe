@@ -47,26 +47,31 @@ struct OnboardingFlowView: View {
     @State private var stepIndex = 0
     @State private var isGeneratingPlan = false
 
-    private let steps: [OnboardingStep] = [
-        .welcome,
-        .name,
-        .gender,
-        .accountType,
-        .goal,
-        .equipment,
-        .sport,
-        .trainingStyle,
-        .motivationStyle,
-        .experience,
-        .bodyInfo,
-        .injuryPain,
-        .schedule,
-        .confidence,
-        .obstacle,
-        .theme,
-        .avatar,
-        .review
-    ]
+    private var steps: [OnboardingStep] {
+        let all: [OnboardingStep] = [
+            .welcome,
+            .name,
+            .gender,
+            .accountType,
+            .goal,
+            .equipment,
+            .sport,
+            .trainingStyle,
+            .motivationStyle,
+            .experience,
+            .bodyInfo,
+            .injuryPain,
+            .schedule,
+            .confidence,
+            .obstacle,
+            .theme,
+            .avatar,
+            .review
+        ]
+        // Account-type selection (athlete vs coach) is a v2 surface; v1 is
+        // athlete-only, so skip that step.
+        return FeatureFlags.multiUserEnabled ? all : all.filter { $0 != .accountType }
+    }
 
     private var currentStep: OnboardingStep {
         steps[stepIndex]
