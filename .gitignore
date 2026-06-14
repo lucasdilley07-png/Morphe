@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+
+# Xcode build artifacts & derived data
+DerivedData/
+DerivedData*/
+build/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Swift module / build caches
+.swift-module-cache*/
+BuildData/
+*.swiftmodule
+*.swiftdoc
+*.swiftsourceinfo
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Xcode user state
+*.xcuserstate
+*.xcuserdatad/
+xcschememanagement.plist
+
+# Misc
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
