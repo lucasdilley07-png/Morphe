@@ -1251,7 +1251,19 @@ enum MorpheDemoContent {
     static let lessons: [LessonCard] = [
         LessonCard(title: "Recovery Basics", subtitle: "Why your plan changes", detail: "Sleep, soreness, mood, pain, and previous session difficulty all help Morphe decide whether to push or protect the day."),
         LessonCard(title: "Protein First", subtitle: "Simple nutrition win", detail: "Start with protein, calories, water, and one or two repeatable meals instead of perfect macro tracking."),
-        LessonCard(title: "Match Readiness", subtitle: "Sport-specific focus", detail: "Skill, freshness, and recovery matter more than random extra fatigue close to game day.")
+        LessonCard(title: "Match Readiness", subtitle: "Sport-specific focus", detail: "Skill, freshness, and recovery matter more than random extra fatigue close to game day."),
+        LessonCard(title: "The RPE Scale", subtitle: "Rate your effort 1–10", detail: "RPE means Rate of Perceived Exertion. A 6 feels easy with several reps left in the tank; a 9 means only one hard rep remained; a 10 is all-out. Most working sets should sit around RPE 7–8 — hard but clean."),
+        LessonCard(title: "Reps In Reserve", subtitle: "Leave a little in the tank", detail: "RIR is how many more reps you could have done. Stopping with 1–3 reps in reserve builds strength while keeping your form sharp and your joints happy. Going to failure every set just slows recovery."),
+        LessonCard(title: "Progressive Overload", subtitle: "How you actually grow", detail: "Muscles adapt when you ask a little more over time — slightly more weight, one more rep, or one more set. Small, steady increases beat random hard days. Track your sets so you know what 'a little more' looks like."),
+        LessonCard(title: "Light, Moderate, Hard", subtitle: "Reading intensity", detail: "Light days (RPE 4–6) build skill and aid recovery. Moderate days (RPE 6–7) are your bread and butter. Hard days (RPE 8–9) push adaptation but cost more recovery, so you only earn a few each week."),
+        LessonCard(title: "Push, Pull, Legs", subtitle: "Anatomy made simple", detail: "Most training splits into pushing muscles (chest, shoulders, triceps), pulling muscles (back and biceps), and legs (quads, hamstrings, glutes, calves). Balancing all three keeps your body strong and even."),
+        LessonCard(title: "Your Core Is Deeper Than Abs", subtitle: "Anatomy made simple", detail: "Your core wraps all the way around — the front abs, the side obliques, and the deep muscles that brace your spine. Planks and anti-rotation work train the bracing job your core actually does in real life."),
+        LessonCard(title: "Warm-Ups That Work", subtitle: "Move better, safer", detail: "A good warm-up raises your heart rate, then rehearses the day's movement with lighter sets. Five focused minutes beats a long stretch routine for getting ready to train safely."),
+        LessonCard(title: "Soreness Is Not A Score", subtitle: "Recovery truth", detail: "Being sore doesn't mean a workout 'worked,' and not being sore doesn't mean it failed. Progress on your logged sets is the real signal. Sharp or joint pain is different — that's a stop sign, not soreness."),
+        LessonCard(title: "Sleep Is Training", subtitle: "Recovery truth", detail: "Most of your adaptation happens during sleep. Seven to nine hours does more for strength and mood than any supplement. When sleep is short, Morphe will often dial the intensity back for you."),
+        LessonCard(title: "Tempo And Time Under Tension", subtitle: "Control the rep", detail: "Lowering the weight for two to three seconds keeps tension on the muscle and protects your joints. Slower, controlled reps often beat heavier, sloppy ones for building muscle."),
+        LessonCard(title: "Rest Periods Matter", subtitle: "How long to wait", detail: "For heavy strength work, rest two to three minutes so you can hit your reps. For lighter accessory work, one minute is plenty. Resting too little quietly turns a strength set into a cardio set."),
+        LessonCard(title: "Deload When You Need It", subtitle: "Plan the easy week", detail: "Every few weeks, taking an easier week — less weight or fewer sets — lets your body catch up and come back stronger. Backing off on purpose is part of the plan, not a setback.")
     ]
 
     static let quizzes: [MiniQuiz] = [
@@ -1310,6 +1322,62 @@ enum MorpheDemoContent {
             correctIndex: 1,
             explanation: "Warm-ups prepare the joints, breathing, and nervous system so the session starts cleaner.",
             rewardXP: 10
+        ),
+        MiniQuiz(
+            question: "On the RPE scale, what does an RPE of 8 mean?",
+            options: ["You could do many more reps", "You had about 2 hard reps left", "You failed the rep", "You were resting"],
+            correctIndex: 1,
+            explanation: "RPE 8 means roughly 2 reps in reserve — hard but still clean. Most working sets live around RPE 7–8.",
+            rewardXP: 12
+        ),
+        MiniQuiz(
+            question: "What does 'Reps In Reserve' (RIR) describe?",
+            options: ["How long you rest", "How many more reps you could have done", "How much you sweat", "Your heart rate"],
+            correctIndex: 1,
+            explanation: "RIR is how many reps you left in the tank. Stopping with 1–3 RIR builds strength while keeping form sharp.",
+            rewardXP: 12
+        ),
+        MiniQuiz(
+            question: "What is progressive overload?",
+            options: ["Training to failure daily", "Gradually asking a little more over time", "Only lifting heavy", "Skipping rest days"],
+            correctIndex: 1,
+            explanation: "Muscles grow when you add a little — more weight, a rep, or a set — over time. Small, steady increases win.",
+            rewardXP: 12
+        ),
+        MiniQuiz(
+            question: "Which muscles are the main 'pulling' muscles?",
+            options: ["Chest and triceps", "Back and biceps", "Quads and calves", "Abs and obliques"],
+            correctIndex: 1,
+            explanation: "Pulling movements like rows and pull-ups are driven by the back and biceps.",
+            rewardXP: 10
+        ),
+        MiniQuiz(
+            question: "You only slept five hours and feel drained. What's the smart call?",
+            options: ["Push a hard max-effort day", "Train at a lighter intensity", "Skip warming up", "Double the workout"],
+            correctIndex: 1,
+            explanation: "Short sleep blunts recovery. Dialing the intensity back keeps momentum without digging a hole.",
+            rewardXP: 12
+        ),
+        MiniQuiz(
+            question: "How long should you rest between heavy strength sets?",
+            options: ["No rest", "10–20 seconds", "About 2–3 minutes", "15 minutes"],
+            correctIndex: 2,
+            explanation: "Heavy sets need 2–3 minutes so you can actually hit your target reps with good form.",
+            rewardXP: 10
+        ),
+        MiniQuiz(
+            question: "Why slow down the lowering (eccentric) part of a rep?",
+            options: ["To finish faster", "To keep tension on the muscle and protect joints", "To lift more weight", "It doesn't matter"],
+            correctIndex: 1,
+            explanation: "A controlled 2–3 second lower keeps tension on the muscle and is easier on your joints.",
+            rewardXP: 10
+        ),
+        MiniQuiz(
+            question: "What is the purpose of a deload week?",
+            options: ["Quit training", "Let the body recover so it comes back stronger", "Max out every day", "Only do cardio"],
+            correctIndex: 1,
+            explanation: "An easier week every few weeks lets fatigue clear so you rebound stronger. It's planned, not a setback.",
+            rewardXP: 12
         )
     ]
 
