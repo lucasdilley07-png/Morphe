@@ -257,8 +257,10 @@ private struct ClientExperienceShell: View {
             WorkoutView()
                 .tag(ClientTab.train)
 
-            CommunityView()
-                .tag(ClientTab.community)
+            if FeatureFlags.multiUserEnabled {
+                CommunityView()
+                    .tag(ClientTab.community)
+            }
 
             ProgressView()
                 .tag(ClientTab.hub)
@@ -288,7 +290,7 @@ private struct ClientExperienceShell: View {
                 )
         }
         .safeAreaInset(edge: .bottom) {
-            BottomTabNavigation(items: ClientTab.allCases, selected: store.selectedClientTab) { tab in
+            BottomTabNavigation(items: ClientTab.visibleCases, selected: store.selectedClientTab) { tab in
                 store.selectedClientTab = tab
             }
             .padding(.horizontal, 16)

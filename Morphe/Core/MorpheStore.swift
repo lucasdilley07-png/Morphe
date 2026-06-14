@@ -1712,6 +1712,8 @@ final class MorpheAppStore: ObservableObject {
     }
 
     func openCommunity(_ section: ClientCommunitySection = .forYou) {
+        // Networking is a v2 (multi-user) surface, hidden in v1.
+        guard FeatureFlags.multiUserEnabled else { return }
         selectedCommunitySection = section
         selectedClientTab = .community
         Haptics.impact(.light)

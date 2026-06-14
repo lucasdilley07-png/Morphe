@@ -88,8 +88,8 @@ struct MoreView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
-                    title: "More",
-                    subtitle: "Scores, quick tools, exercise help, nutrition basics, and learning in one clean place."
+                    title: "Learn",
+                    subtitle: "Anatomy, exercise help, recovery, nutrition basics, and short lessons in one clean place."
                 )
 
                 GlassCard {

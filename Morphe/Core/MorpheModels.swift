@@ -46,6 +46,13 @@ enum GenderOption: String, CaseIterable, Identifiable {
     }
 }
 
+/// Feature gating for the solo-first v1 launch. The multi-user surfaces
+/// (coach tools, networking, chat, payments) are built but hidden until the
+/// v2 backend exists. Flip this to `true` to re-enable them everywhere.
+enum FeatureFlags {
+    static let multiUserEnabled = false
+}
+
 enum ClientTab: String, CaseIterable, MorpheTabItem {
     case today
     case train
@@ -55,13 +62,19 @@ enum ClientTab: String, CaseIterable, MorpheTabItem {
 
     var id: String { rawValue }
 
+    /// Tabs shown in the bottom navigation. v1 is Today · Train · Progress · Learn;
+    /// the Network (community) tab returns when multi-user ships.
+    static var visibleCases: [ClientTab] {
+        FeatureFlags.multiUserEnabled ? allCases : [.today, .train, .hub, .more]
+    }
+
     var title: String {
         switch self {
-        case .today: return "Home"
+        case .today: return "Today"
         case .train: return "Train"
         case .community: return "Network"
         case .hub: return "Progress"
-        case .more: return "More"
+        case .more: return "Learn"
         }
     }
 
@@ -71,7 +84,7 @@ enum ClientTab: String, CaseIterable, MorpheTabItem {
         case .train: return "figure.run"
         case .community: return "person.3.sequence.fill"
         case .hub: return "chart.line.uptrend.xyaxis"
-        case .more: return "square.grid.2x2.fill"
+        case .more: return "book.fill"
         }
     }
 }
