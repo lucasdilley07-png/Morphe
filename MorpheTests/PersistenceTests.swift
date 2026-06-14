@@ -1,0 +1,147 @@
+import XCTest
+@testable import Morphe
+
+/// Tests for the on-device persistence layer (the first real seam added for v1).
+/// These protect the workout-log and local-profile round-trips that the app now
+/// depends on to survive relaunches.
+final class PersistenceTests: XCTestCase {
+
+    // Each test uses a unique directory so runs are isolated and don't touch
+    // the real on-device store.
+    private func makeWorkoutStore(_ name: String) -> WorkoutFilePersistence {
+        WorkoutFilePersistence(directoryName: "MorpheTests-\(name)")
+    }
+
+    private func makeProfileStore(_ name: String) -> ProfileFilePersistence {
+        ProfileFilePersistence(directoryName: "MorpheTests-\(name)")
+    }
+
+    private func sampleLog(title: String) -> WorkoutLog {
+        WorkoutLog(
+            athleteID: UUID(),
+            athleteName: "Tester",
+            workoutTemplateID: nil,
+            workoutTitle: title,
+            sport: .strength,
+            completedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            durationMinutes: 42,
+            exercises: [
+                LoggedExercise(name: "Goblet Squat", sets: "3", reps: "10", weight: "40 lb", note: "clean")
+            ],
+            notes: "test log",
+            source: .athleteManual,
+            enteredByUserID: UUID(),
+            enteredByRole: .client,
+            enteredByName: "Tester",
+            verificationStatus: .athleteSubmitted
+        )
+    }
+
+    // MARK: - Workout logs
+
+    func testWorkoutLogsRoundTrip() {
+        let store = makeWorkoutStore(#function)
+        defer { store.clear() }
+
+        let logs = [sampleLog(title: "A"), sampleLog(title: "B")]
+        store.saveLogs(logs)
+
+        let loaded = store.loadLogs()
+        XCTAssertEqual(loaded?.count, 2)
+        XCTAssertEqual(loaded?.map(\.workoutTitle), ["A", "B"])
+        XCTAssertEqual(loaded?.first?.durationMinutes, 42)
+        XCTAssertEqual(loaded?.first?.exercises.first?.name, "Goblet Squat")
+        XCTAssertEqual(loaded?.first?.source, .athleteManual)
+    }
+
+    func testLoadLogsReturnsNilWhenEmpty() {
+        let store = makeWorkoutStore(#function)
+        defer { store.clear() }
+        XCTAssertNil(store.loadLogs())
+    }
+
+    func testClearRemovesLogs() {
+        let store = makeWorkoutStore(#function)
+        store.saveLogs([sampleLog(title: "A")])
+        XCTAssertNotNil(store.loadLogs())
+        store.clear()
+        XCTAssertNil(store.loadLogs())
+    }
+
+    // MARK: - Session snapshot
+
+    func testSessionSnapshotRoundTrip() {
+        let store = makeWorkoutStore(#function)
+        defer { store.clear() }
+
+        let id = UUID()
+        let snapshot = WorkoutSessionSnapshot(
+            currentWorkoutID: id,
+            isWorkoutSessionActive: true,
+            hasStartedWorkoutFlow: true,
+            hasCompletedWorkoutFlow: false,
+            activeWorkoutExerciseIndex: 2,
+            completedWorkoutSets: ["goblet-squat": 3],
+            trackedSetReps: ["goblet-squat": [10, 9, 8]],
+            isWorkoutLoggedToday: false
+        )
+        store.saveSession(snapshot)
+
+        let loaded = store.loadSession()
+        XCTAssertEqual(loaded, snapshot)
+        XCTAssertEqual(loaded?.currentWorkoutID, id)
+        XCTAssertEqual(loaded?.trackedSetReps["goblet-squat"], [10, 9, 8])
+    }
+
+    // MARK: - Local profile
+
+    func testProfileRoundTrip() {
+        let store = makeProfileStore(#function)
+        defer { store.clear() }
+
+        let snapshot = LocalProfileSnapshot(
+            hasCompletedOnboarding: true,
+            name: "Alex",
+            gender: "Male",
+            accountRole: "Athlete",
+            sportMode: "Boxing",
+            selectedSports: ["Boxing"],
+            selectedTrainingStyles: ["Conditioning"],
+            selectedGoals: ["Improve conditioning"],
+            goal: "Improve conditioning",
+            physicalGoalTarget: "Move better",
+            weightGoalTarget: "205 lbs",
+            goalDeadline: "12 weeks",
+            fitnessLevel: "Beginner",
+            equipment: "Dumbbells",
+            injuries: "None",
+            theme: "",
+            accentPalette: "",
+            coachingTone: "",
+            avatarStyle: "",
+            displayName: "Alex",
+            username: "alex"
+        )
+        store.saveProfile(snapshot)
+
+        let loaded = store.loadProfile()
+        XCTAssertEqual(loaded, snapshot)
+        XCTAssertEqual(loaded?.name, "Alex")
+        XCTAssertTrue(loaded?.hasCompletedOnboarding ?? false)
+    }
+
+    func testLoadProfileReturnsNilWhenEmpty() {
+        let store = makeProfileStore(#function)
+        defer { store.clear() }
+        XCTAssertNil(store.loadProfile())
+    }
+
+    // MARK: - Codable conformance
+
+    func testWorkoutLogCodableIsStable() throws {
+        let log = sampleLog(title: "Codable")
+        let data = try JSONEncoder().encode(log)
+        let decoded = try JSONDecoder().decode(WorkoutLog.self, from: data)
+        XCTAssertEqual(decoded, log)
+    }
+}
