@@ -68,9 +68,11 @@ struct OnboardingFlowView: View {
             .avatar,
             .review
         ]
-        // Account-type selection (athlete vs coach) is a v2 surface; v1 is
-        // athlete-only, so skip that step.
-        return FeatureFlags.multiUserEnabled ? all : all.filter { $0 != .accountType }
+        // The brand is single-accent (locked MORPHE yellow), so the theme/accent
+        // step changes nothing — drop it. Account-type (athlete vs coach) is a v2
+        // surface, skipped in v1.
+        let withoutTheme = all.filter { $0 != .theme }
+        return FeatureFlags.multiUserEnabled ? withoutTheme : withoutTheme.filter { $0 != .accountType }
     }
 
     private var currentStep: OnboardingStep {
@@ -874,12 +876,9 @@ private struct ProfileReviewStep: View {
                         Text("Starting level: \(store.onboardingDraft.experienceLevel.rawValue)")
                             .font(.headline)
                             .foregroundStyle(.white)
-                        Text("Theme: \(store.onboardingDraft.theme.rawValue)")
+                        Text("Primary focus: \(store.onboardingDraft.sport.rawValue)")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
-                        Text("Accent: \(store.onboardingDraft.accentPalette.rawValue)")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentAlt)
                     }
                 }
 

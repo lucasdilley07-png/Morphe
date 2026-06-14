@@ -452,10 +452,10 @@ final class MorpheAppStore {
         }
         MorpheTheme.apply(accentPalette: profileShowcase.accentPalette)
 
-        // Don't show the seeded "low sleep / soreness" recovery to a returning
-        // user — reset to the neutral baseline until they check in.
-        recovery = Self.neutralRecovery
-        didCompleteQuickCheckIn = false
+        // A returning user must also start clean of seeded demo content (fake
+        // wins, records, recovery, and "other people") — only their own persisted
+        // logs and custom workouts survive.
+        clearSeededDemoData()
 
         // History/consistency/score/streak were derived in init against the seeded
         // id; rebuild them now that the user's real identity is restored.
@@ -852,8 +852,9 @@ final class MorpheAppStore {
         exerciseDatabase.filter { $0.muscleGroup == selectedMuscleGroup }
     }
 
-    var currentPatternInsight: FrictionInsight {
-        patternInsights[activePatternIndex % max(patternInsights.count, 1)]
+    var currentPatternInsight: FrictionInsight? {
+        guard !patternInsights.isEmpty else { return nil }
+        return patternInsights[activePatternIndex % patternInsights.count]
     }
 
     var currentAthleteWorkoutLogs: [WorkoutLog] {
@@ -1187,32 +1188,34 @@ final class MorpheAppStore {
         // user inherited the seeded demo athlete's UUID and therefore his logs.
         clientProfile.id = UUID()
 
-        // No activity yet — everything the user "earns" starts empty.
+        // No activity yet — clear logs, history, and any custom workouts.
         workoutLogs = []
         workoutHistory = []
         workoutConsistency = []
-        healthTrend = []
-        strengthTrend = []
-        weightTrend = []
+        workoutTemplates.removeAll { customWorkoutIDs.contains($0.id) }
+        customWorkoutIDs = []
+        customExercises = []
+
+        clearSeededDemoData()
+        // Derive starting metrics (score 0, streak 0) from the now-empty logs.
+        refreshWorkoutLogDerivedState(for: clientProfile.id)
+
+        workoutPersistence.saveLogs(workoutLogs)
+        persistWorkoutLibrary()
+    }
+
+    /// Clears every piece of seeded demo content that is NOT the user's own
+    /// persisted data (logs/custom workouts/identity). Run on onboarding AND on
+    /// every launch for a returning user, so no demo "other people", fake wins,
+    /// records, or seeded recovery ever resurface.
+    private func clearSeededDemoData() {
         recentWins = []
         patternInsights = []
         notifications = []
         quickCaptureNotes = []
-
-        // Clean starting metrics (made fully log-driven in a later pass).
-        clientProfile.health = HealthScoreSummary(
-            score: 0,
-            headline: "Getting started",
-            detail: "Log your first workout to start building your Morphe Score.",
-            tier: .resetMode
-        )
-        clientProfile.level = LevelProgress(
-            currentTitle: "Day One",
-            nextTitle: "Consistent",
-            currentXP: 0,
-            targetXP: 100,
-            streak: 0
-        )
+        healthTrend = []
+        strengthTrend = []
+        weightTrend = []
         clientProfile.adherence = 0
         didCompleteQuickCheckIn = false
         recovery = Self.neutralRecovery
@@ -1268,15 +1271,6 @@ final class MorpheAppStore {
         athleteMessageThreads = []
         clientConversation = []
         savedPartnerSessionRecaps = []
-
-        // Clear any custom workouts/exercises so a fresh account starts clean.
-        workoutTemplates.removeAll { customWorkoutIDs.contains($0.id) }
-        customWorkoutIDs = []
-        customExercises = []
-
-        // Persist the now-empty workout store under the new identity.
-        workoutPersistence.saveLogs(workoutLogs)
-        persistWorkoutLibrary()
     }
 
     func selectSportMode(_ sport: SportFocus) {
@@ -3839,7 +3833,8 @@ final class MorpheAppStore {
             }
 
             if lowercasedPrompt.contains("pattern") || lowercasedPrompt.contains("fix") {
-                return "\(currentPatternInsight.summary) Start by solving the smallest friction point first, then let the rest of the week stay lighter and more repeatable."
+                let lead = currentPatternInsight.map { "\($0.summary) " } ?? ""
+                return "\(lead)Start by solving the smallest friction point first, then let the rest of the week stay lighter and more repeatable."
             }
         case .more:
             if lowercasedPrompt.contains("nutrition") || lowercasedPrompt.contains("eat") || lowercasedPrompt.contains("meal") {

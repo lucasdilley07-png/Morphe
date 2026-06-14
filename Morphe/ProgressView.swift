@@ -298,8 +298,10 @@ struct ProgressView: View {
 
             TransformationRoadmapCard(phases: store.roadmap)
             PhotoProgressAIScanCard(snapshot: store.photoProgress)
-            FrictionInsightCard(insight: store.currentPatternInsight) {
-                store.cyclePatternInsight()
+            if let pattern = store.currentPatternInsight {
+                FrictionInsightCard(insight: pattern) {
+                    store.cyclePatternInsight()
+                }
             }
             BadgeGridCard(badges: store.profileShowcase.badges)
             RecentWinsCard(wins: store.recentWins)

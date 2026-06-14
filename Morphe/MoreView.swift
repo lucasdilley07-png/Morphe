@@ -219,11 +219,6 @@ struct MoreView: View {
                         }
                         .padding(.vertical, 4)
                     }
-
-                    Button("Add exercise to today's plan") {
-                        store.notify("Exercise added to your quick list.")
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
                 }
             }
 
@@ -246,14 +241,13 @@ struct MoreView: View {
                         .foregroundStyle(.white)
 
                     ForEach(mobilityLibrary, id: \.self) { item in
-                        HStack {
+                        HStack(spacing: 10) {
+                            Image(systemName: "figure.flexibility")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.accent)
                             Text(item)
                                 .foregroundStyle(.white)
                             Spacer()
-                            Button("Add") {
-                                store.notify("\(item) added to your mobility list.")
-                            }
-                            .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
                         }
                     }
                 }

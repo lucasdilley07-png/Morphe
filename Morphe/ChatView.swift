@@ -1,11 +1,5 @@
 import SwiftUI
 
-struct ChatView: View {
-    var body: some View {
-        CommunityView()
-    }
-}
-
 struct CommunityView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var selectedStory: CommunityStoryPreview?

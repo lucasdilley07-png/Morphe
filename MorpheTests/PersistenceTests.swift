@@ -201,6 +201,23 @@ final class OnboardingIdentityTests: XCTestCase {
                       "the user's logs must be attributed to the user, not the demo athlete")
     }
 
+    func testReturningUserStartsCleanAndKeepsIdentity() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        let id = store.clientProfile.id
+
+        // Simulate a relaunch.
+        let reloaded = MorpheAppStore()
+
+        XCTAssertEqual(reloaded.clientProfile.id, id, "identity must persist across launches")
+        XCTAssertTrue(reloaded.recentWins.isEmpty, "no seeded wins should resurface")
+        XCTAssertTrue(reloaded.workoutPartners.isEmpty, "no seeded buddies should resurface")
+        XCTAssertTrue(reloaded.friendsActivity.isEmpty)
+        XCTAssertTrue(reloaded.profileShowcase.personalRecords.isEmpty)
+        XCTAssertEqual(reloaded.clientProfile.health.score, 0)
+    }
+
     func testLoggingCapturesRealWeightNotPlaceholder() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"

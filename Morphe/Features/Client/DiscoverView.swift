@@ -216,17 +216,6 @@ private struct CoachSettingsSection: View {
                 store.selectBannerPreset(preset)
             }
 
-            ThemeSelectorCard(selected: store.profileShowcase.theme, themes: store.availableThemes) { theme in
-                store.selectThemePreset(theme)
-            }
-
-            AccentPaletteSelectorCard(
-                selected: store.profileShowcase.accentPalette,
-                palettes: store.availableAccentPalettes
-            ) { palette in
-                store.selectAccentPalette(palette)
-            }
-
             CoachingToneSelectorCard(selected: store.profileShowcase.coachingTone) { tone in
                 store.selectCoachingTone(tone)
             }
@@ -331,17 +320,6 @@ private struct AthleteSettingsSection: View {
 
             BannerCustomizerCard(selected: store.profileShowcase.banner.preset, banners: store.availableBanners) { preset in
                 store.selectBannerPreset(preset)
-            }
-
-            ThemeSelectorCard(selected: store.profileShowcase.theme, themes: store.availableThemes) { theme in
-                store.selectThemePreset(theme)
-            }
-
-            AccentPaletteSelectorCard(
-                selected: store.profileShowcase.accentPalette,
-                palettes: store.availableAccentPalettes
-            ) { palette in
-                store.selectAccentPalette(palette)
             }
 
             CoachingToneSelectorCard(selected: store.profileShowcase.coachingTone) { tone in
