@@ -2,21 +2,22 @@ import SwiftUI
 import UIKit
 
 enum MorpheTheme {
-    static let ink = Color(red: 0.02, green: 0.03, blue: 0.05)
-    static let inkAlt = Color(red: 0.05, green: 0.08, blue: 0.12)
-    static let panel = Color(red: 0.07, green: 0.10, blue: 0.14).opacity(0.92)
-    static let panelStrong = Color(red: 0.10, green: 0.14, blue: 0.20).opacity(0.96)
-    static let panelRaised = Color(red: 0.12, green: 0.17, blue: 0.24).opacity(0.98)
-    static let panelInteractive = Color(red: 0.14, green: 0.20, blue: 0.28).opacity(0.96)
+    // MORPHE brand palette — black + #FFD600 yellow.
+    static let ink = Color(red: 0.043, green: 0.043, blue: 0.047)          // near-black base
+    static let inkAlt = Color(red: 0.067, green: 0.067, blue: 0.067)       // #111111
+    static let panel = Color(red: 0.118, green: 0.118, blue: 0.118).opacity(0.96)        // #1E1E1E
+    static let panelStrong = Color(red: 0.150, green: 0.150, blue: 0.150).opacity(0.97)  // #262626
+    static let panelRaised = Color(red: 0.173, green: 0.173, blue: 0.173).opacity(0.98)  // #2C2C2C
+    static let panelInteractive = Color(red: 0.215, green: 0.215, blue: 0.215).opacity(0.98) // #373737
     static let textPrimary = Color.white
-    static let textSecondary = Color.white.opacity(0.68)
-    static let textMuted = Color.white.opacity(0.48)
+    static let textSecondary = Color.white.opacity(0.66)
+    static let textMuted = Color.white.opacity(0.44)
     static let stroke = Color.white.opacity(0.10)
-    static let strokeSubtle = Color.white.opacity(0.05)
-    static let warning = Color(red: 0.98, green: 0.76, blue: 0.38)
-    static let danger = Color(red: 0.98, green: 0.48, blue: 0.48)
-    static let lavender = Color(red: 0.70, green: 0.68, blue: 0.98)
-    private static var currentAccentPalette: AccentPalette = .electricBlue
+    static let strokeSubtle = Color.white.opacity(0.06)
+    static let warning = Color(red: 0.98, green: 0.70, blue: 0.25)         // amber, distinct from accent
+    static let danger = Color(red: 0.95, green: 0.36, blue: 0.36)
+    static let lavender = Color(red: 0.72, green: 0.72, blue: 0.74)        // neutral (no off-brand purple)
+    private static var currentAccentPalette: AccentPalette = .gold
 
     static var glow: Color {
         accent.opacity(0.22)
@@ -38,13 +39,14 @@ enum MorpheTheme {
         )
     }
 
-    static var accent: Color {
-        colors(for: currentAccentPalette).primary
-    }
+    /// MORPHE signature yellow (#FFD600). The brand is single-accent, so this is
+    /// locked rather than driven by the legacy accent-palette picker.
+    static let brandYellow = Color(red: 1.0, green: 0.839, blue: 0.0)      // #FFD600
+    static let brandGold = Color(red: 0.95, green: 0.72, blue: 0.0)        // deeper gold for gradients
 
-    static var accentAlt: Color {
-        colors(for: currentAccentPalette).secondary
-    }
+    static var accent: Color { brandYellow }
+
+    static var accentAlt: Color { brandGold }
 
     static func apply(accentPalette: AccentPalette) {
         currentAccentPalette = accentPalette
