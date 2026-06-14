@@ -270,7 +270,7 @@ enum WorkoutAdjustmentOption: String, CaseIterable, Identifiable {
 enum TodayQuickAction: String, CaseIterable, Identifiable {
     case logWorkout = "Log Workout"
     case swapExercise = "Swap Exercise"
-    case askAI = "Ask AI Coach"
+    case askAI = "Ask Morphe"
     case messageTrainer = "Message Trainer"
 
     var id: String { rawValue }

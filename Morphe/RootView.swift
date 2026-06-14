@@ -1213,16 +1213,12 @@ private struct QuickAddSheet: View {
                             }
                             dismissQuickAdd()
                         },
-                        QuickAddItem(title: "Share Win", subtitle: "Post today's momentum", systemImage: "sparkles") {
-                            store.shareDailyWin()
+                        QuickAddItem(title: "Browse Exercises", subtitle: "Open the exercise library", systemImage: "books.vertical.fill") {
+                            store.selectedClientTab = .more
                             dismissQuickAdd()
                         },
-                        QuickAddItem(title: "Invite Partner", subtitle: "Turn today's plan social", systemImage: "person.2.fill") {
-                            store.quickAddInvitePartner()
-                            dismissQuickAdd()
-                        },
-                        QuickAddItem(title: "Ask Coach", subtitle: "Open support fast", systemImage: "bubble.left.and.bubble.right.fill") {
-                            store.openCommunity(.contact)
+                        QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {
+                            store.openAIAgent()
                             dismissQuickAdd()
                         }
                     ])

@@ -198,7 +198,7 @@ final class MorpheAppStore {
     var completedWorkoutSets: [String: Int] = [:] { didSet { persistWorkoutSession() } }
     var trackedSetReps: [String: [Int]] = [:] { didSet { persistWorkoutSession() } }
     var trackedSetWeights: [String: [Double]] = [:] { didSet { persistWorkoutSession() } }
-    var weightUnit: WeightUnit = .pounds
+    var weightUnit: WeightUnit = .pounds { didSet { persistLocalProfile() } }
 
     var coachProfile: CoachProfile
     var coachOverview: CoachOverview
@@ -255,6 +255,8 @@ final class MorpheAppStore {
     /// Guards `persistWorkoutSession()` so session `didSet`s triggered while we
     /// restore a saved snapshot in `init` don't immediately re-save it.
     private var isRestoringWorkoutSession = false
+    /// Guards profile persistence while a saved profile is being applied at launch.
+    private var isApplyingProfile = false
 
     init() {
         let templates = MorpheDemoContent.workoutTemplates
@@ -395,6 +397,8 @@ final class MorpheAppStore {
     /// Applies a saved local-profile snapshot over the seeded demo profile.
     private func applyPersistedProfile(_ snapshot: LocalProfileSnapshot) {
         guard snapshot.hasCompletedOnboarding else { return }
+        isApplyingProfile = true
+        defer { isApplyingProfile = false }
         hasCompletedOnboarding = true
 
         // Restore the user's own identity so they are never the seeded demo
@@ -444,6 +448,12 @@ final class MorpheAppStore {
         if let unit = WeightUnit(rawValue: snapshot.weightUnit) {
             weightUnit = unit
         }
+        if !snapshot.currentProgram.isEmpty {
+            clientProfile.currentProgram = snapshot.currentProgram
+        }
+        if !snapshot.currentPhase.isEmpty {
+            profileShowcase.currentPhase = snapshot.currentPhase
+        }
 
         onboardingDraft.name = snapshot.name
         if let sport = SportFocus(rawValue: snapshot.sportMode) {
@@ -464,6 +474,7 @@ final class MorpheAppStore {
 
     /// Persists the current local profile snapshot to disk.
     private func persistLocalProfile() {
+        guard !isApplyingProfile else { return }
         profilePersistence.saveProfile(
             LocalProfileSnapshot(
                 hasCompletedOnboarding: hasCompletedOnboarding,
@@ -488,7 +499,9 @@ final class MorpheAppStore {
                 avatarStyle: profileShowcase.avatar.style.rawValue,
                 displayName: profileShowcase.displayName,
                 username: profileShowcase.username,
-                weightUnit: weightUnit.rawValue
+                weightUnit: weightUnit.rawValue,
+                currentProgram: clientProfile.currentProgram,
+                currentPhase: profileShowcase.currentPhase
             )
         )
     }
@@ -1216,7 +1229,9 @@ final class MorpheAppStore {
         healthTrend = []
         strengthTrend = []
         weightTrend = []
+        roadmap = []                    // no fabricated "Assessment — Done" phases
         clientProfile.adherence = 0
+        clientProfile.coachName = ""    // no seeded "Coach Marcus" in solo v1
         didCompleteQuickCheckIn = false
         recovery = Self.neutralRecovery
 
@@ -1291,6 +1306,7 @@ final class MorpheAppStore {
 
         clientProfile.goal = clientProfile.selectedGoals.first ?? defaultGoal(for: sport)
         goalTranslation = MorpheDemoContent.goalTranslation(for: clientProfile.goal, sport: sport)
+        persistLocalProfile()
         showToast("\(sport.rawValue) mode loaded.")
     }
 
@@ -1739,9 +1755,9 @@ final class MorpheAppStore {
                 selectedClientTab = .train
             }
         case .askAI:
-            sendClientPrompt("Can I get a simple plan for today?")
+            openAIAgent()
         case .messageTrainer:
-            sendTrainerMessage()
+            openAIAgent()
         }
     }
 
@@ -2460,16 +2476,19 @@ final class MorpheAppStore {
 
     func selectAvatarStyle(_ style: AvatarStyle) {
         profileShowcase.avatar.style = style
+        persistLocalProfile()
         showCelebration(title: "Avatar updated", detail: style.rawValue, symbol: "person.crop.circle")
     }
 
     func selectBannerPreset(_ preset: BannerPreset) {
         profileShowcase.banner = BannerProfile(preset: preset, title: bannerTitle(for: preset), subtitle: profileShowcase.currentPhase)
+        persistLocalProfile()
         showToast("\(preset.rawValue) banner applied.")
     }
 
     func selectCoachingTone(_ tone: CoachingTone) {
         profileShowcase.coachingTone = tone
+        persistLocalProfile()
         showToast("\(tone.rawValue) coaching tone selected.")
     }
 
@@ -2543,6 +2562,7 @@ final class MorpheAppStore {
 
         clientProfile.goal = clientProfile.selectedGoals.first ?? goal.rawValue
         goalTranslation = MorpheDemoContent.goalTranslation(for: clientProfile.goal, sport: selectedSportMode)
+        persistLocalProfile()
         showToast("Goals updated.")
     }
 

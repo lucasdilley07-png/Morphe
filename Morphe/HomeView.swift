@@ -38,7 +38,6 @@ struct HomeView: View {
                 if store.isWorkoutLoggedToday {
                     DoneForTodayCard(
                         workoutName: store.currentWorkout.name,
-                        onShareWin: { store.shareDailyWin() },
                         onRecoveryReset: { store.logRecoveryReset() },
                         onViewProgress: { store.openProgress() }
                     )
@@ -125,16 +124,18 @@ struct HomeView: View {
                         phase: store.profileShowcase.currentPhase
                     )
 
-                    PartnerWorkoutCard(
-                        partners: store.workoutPartners,
-                        selectedPartner: store.selectedWorkoutPartner,
-                        selectedMode: store.selectedPartnerWorkoutMode,
-                        isEnabled: store.partnerWorkoutEnabled,
-                        plan: store.currentPartnerWorkoutPlan,
-                        onSelectPartner: { store.selectWorkoutPartner($0) },
-                        onSelectMode: { store.selectPartnerWorkoutMode($0) },
-                        onToggleEnabled: { store.togglePartnerWorkout($0) }
-                    )
+                    if FeatureFlags.multiUserEnabled {
+                        PartnerWorkoutCard(
+                            partners: store.workoutPartners,
+                            selectedPartner: store.selectedWorkoutPartner,
+                            selectedMode: store.selectedPartnerWorkoutMode,
+                            isEnabled: store.partnerWorkoutEnabled,
+                            plan: store.currentPartnerWorkoutPlan,
+                            onSelectPartner: { store.selectWorkoutPartner($0) },
+                            onSelectMode: { store.selectPartnerWorkoutMode($0) },
+                            onToggleEnabled: { store.togglePartnerWorkout($0) }
+                        )
+                    }
 
                     if store.minimumWinModeEnabled || store.selectedPlanBReason != nil || store.streakProtected {
                         StreakProtectionCard(
@@ -499,7 +500,6 @@ private struct TodayNextMoveCard: View {
 
 private struct DoneForTodayCard: View {
     let workoutName: String
-    let onShareWin: () -> Void
     let onRecoveryReset: () -> Void
     let onViewProgress: () -> Void
 
@@ -513,8 +513,11 @@ private struct DoneForTodayCard: View {
                     .foregroundStyle(MorpheTheme.textSecondary)
 
                 HStack(spacing: 10) {
-                    Button("Share Win", action: onShareWin)
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    ShareLink(item: "I just finished \(workoutName) on Morphe. Small wins, real transformation. 💪") {
+                        Text("Share Win")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     Button("Recovery Reset", action: onRecoveryReset)
                         .buttonStyle(SecondaryCTAButtonStyle())
                 }

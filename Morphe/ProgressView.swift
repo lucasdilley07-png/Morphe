@@ -244,13 +244,17 @@ struct ProgressView: View {
             AthletePatternInsightsCard(insights: athletePatternInsights)
             TrainingPatternInsightCard(insight: trainingPatternInsight)
             SessionMixCard(insight: sessionMixInsight)
-            SoloVsBuddyProgressCard(
-                insight: partnerInsight,
-                trend: soloBuddyTrend,
-                trendSummary: soloBuddyTrendSummary
-            )
-            WorkoutSourceMixCard(summary: logSummary)
-            SourceTrendCard(insight: sourceTrendInsight)
+            // Buddy comparison and workout-source breakdowns (coach/AI imports)
+            // are multi-user concepts — hidden in solo v1.
+            if FeatureFlags.multiUserEnabled {
+                SoloVsBuddyProgressCard(
+                    insight: partnerInsight,
+                    trend: soloBuddyTrend,
+                    trendSummary: soloBuddyTrendSummary
+                )
+                WorkoutSourceMixCard(summary: logSummary)
+                SourceTrendCard(insight: sourceTrendInsight)
+            }
             RecoveryBalanceCard(insight: recoveryBalanceInsight)
 
             if let report = athleteReport {
@@ -296,15 +300,20 @@ struct ProgressView: View {
                 )
             }
 
-            TransformationRoadmapCard(phases: store.roadmap)
-            PhotoProgressAIScanCard(snapshot: store.photoProgress)
+            if !store.roadmap.isEmpty {
+                TransformationRoadmapCard(phases: store.roadmap)
+            }
             if let pattern = store.currentPatternInsight {
                 FrictionInsightCard(insight: pattern) {
                     store.cyclePatternInsight()
                 }
             }
-            BadgeGridCard(badges: store.profileShowcase.badges)
-            RecentWinsCard(wins: store.recentWins)
+            if !store.profileShowcase.badges.isEmpty {
+                BadgeGridCard(badges: store.profileShowcase.badges)
+            }
+            if !store.recentWins.isEmpty {
+                RecentWinsCard(wins: store.recentWins)
+            }
         }
     }
 

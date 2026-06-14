@@ -123,7 +123,9 @@ final class PersistenceTests: XCTestCase {
             avatarStyle: "",
             displayName: "Alex",
             username: "alex",
-            weightUnit: "lb"
+            weightUnit: "lb",
+            currentProgram: "Starter Strength",
+            currentPhase: "Build Consistency"
         )
         store.saveProfile(snapshot)
 
@@ -216,6 +218,18 @@ final class OnboardingIdentityTests: XCTestCase {
         XCTAssertTrue(reloaded.friendsActivity.isEmpty)
         XCTAssertTrue(reloaded.profileShowcase.personalRecords.isEmpty)
         XCTAssertEqual(reloaded.clientProfile.health.score, 0)
+    }
+
+    func testProfileEditsPersistAcrossLaunch() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.weightUnit = .kilograms
+        store.selectSportMode(.strength)
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.weightUnit, .kilograms, "weight-unit change must persist")
+        XCTAssertEqual(reloaded.clientProfile.sportMode, .strength, "sport change must persist")
     }
 
     func testLoggingCapturesRealWeightNotPlaceholder() {

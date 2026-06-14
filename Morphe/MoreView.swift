@@ -75,8 +75,7 @@ struct MoreView: View {
     private let quickActions: [(TodayQuickAction, String)] = [
         (.logWorkout, "checkmark.circle"),
         (.swapExercise, "arrow.triangle.2.circlepath"),
-        (.askAI, "sparkles"),
-        (.messageTrainer, "message")
+        (.askAI, "sparkles")
     ]
 
     private let quickActionColumns = [
@@ -432,7 +431,9 @@ private struct HubScoreboardCard: View {
                     MetricPill(label: "Streak", value: "\(streak) days")
                 }
 
-                Text("Recovery is \(recovery.status.rawValue.lowercased()) today. Adherence is \(adherence)% and the streak is still alive.")
+                Text(streak > 0
+                    ? "Recovery is \(recovery.status.rawValue.lowercased()) today. You're on a \(streak)-day streak — keep it going."
+                    : "Recovery is \(recovery.status.rawValue.lowercased()) today. Log a workout to start your streak.")
                     .foregroundStyle(MorpheTheme.textSecondary)
             }
         }
