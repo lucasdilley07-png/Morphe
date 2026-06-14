@@ -2,7 +2,7 @@ import Charts
 import SwiftUI
 
 struct ProgressView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     private var athleteReport: AthleteReport? {
         store.clientAthleteProfile?.reportCard

@@ -1,7 +1,9 @@
 import SwiftUI
+import Observation
 
 @MainActor
-final class MorpheAppStore: ObservableObject {
+@Observable
+final class MorpheAppStore {
     private enum CoachOutreachKind: String, CaseIterable, Hashable {
         case praise
         case missedSessionNudge
@@ -97,134 +99,134 @@ final class MorpheAppStore: ObservableObject {
         var reboundWindowIsOpen: Bool
     }
 
-    @Published var selectedRole: AppRole = .client
-    @Published var selectedClientTab: ClientTab = .today
-    @Published var selectedCoachTab: CoachTab = .dashboard
-    @Published var selectedAppearance: ColorScheme? = .dark
-    @Published var toastMessage: String?
-    @Published var celebration: CelebrationMoment?
+    var selectedRole: AppRole = .client
+    var selectedClientTab: ClientTab = .today
+    var selectedCoachTab: CoachTab = .dashboard
+    var selectedAppearance: ColorScheme? = .dark
+    var toastMessage: String?
+    var celebration: CelebrationMoment?
 
-    @Published var isShowingLaunchSequence = true
-    @Published var hasCompletedOnboarding = false
-    @Published var onboardingDraft = OnboardingDraft()
-    @Published var showWelcomeExperience = false
-    @Published var showClientProfile = false
-    @Published var showUniversalSearch = false
-    @Published var showQuickAdd = false
-    @Published var showAIAgent = false
-    @Published var selectedNetworkProfile: NetworkProfilePreview?
-    @Published var selectedHubFeature: ClientHubFeature? = .scores
-    @Published var selectedCommunitySection: ClientCommunitySection = .forYou
-    @Published var selectedCoachBuildSection: CoachBuildSection = .builder
-    @Published var athleteProfileIsPublic = true
-    @Published var coachProfileIsPublic = true
-    @Published var quickCaptureNotes: [String] = []
+    var isShowingLaunchSequence = true
+    var hasCompletedOnboarding = false
+    var onboardingDraft = OnboardingDraft()
+    var showWelcomeExperience = false
+    var showClientProfile = false
+    var showUniversalSearch = false
+    var showQuickAdd = false
+    var showAIAgent = false
+    var selectedNetworkProfile: NetworkProfilePreview?
+    var selectedHubFeature: ClientHubFeature? = .scores
+    var selectedCommunitySection: ClientCommunitySection = .forYou
+    var selectedCoachBuildSection: CoachBuildSection = .builder
+    var athleteProfileIsPublic = true
+    var coachProfileIsPublic = true
+    var quickCaptureNotes: [String] = []
 
-    @Published var clientProfile: ClientProfile
-    @Published var profileShowcase: ProfileShowcase
-    @Published var todayTasks: [TaskItem]
-    @Published var minimumWinTasks: [TaskItem]
-    @Published var minimumWinModeEnabled = false
-    @Published var minimumWinMessage = "Today does not need to be perfect. Complete one small win to keep momentum."
-    @Published var streakProtected = false
-    @Published var selectedConfidence: ConfidenceLevel? = .maybe
-    @Published var didCompleteQuickCheckIn = false
-    @Published var recovery: RecoverySnapshot
-    @Published var currentPlanAdjustment: PlanAdjustment
-    @Published var selectedPlanBReason: PlanBReason?
-    @Published var selectedWorkoutFeedback: WorkoutFeedbackOption?
-    @Published var workoutFeedbackResponse = ""
-    @Published var painArea = "Knee"
-    @Published var painSeverity = 4
-    @Published var painTriggerExercise = "Walking Lunge"
-    @Published var painReports: [PainReport] = []
-    @Published var goalTranslation: GoalTranslation
-    @Published var personalRules: [PersonalRule]
-    @Published var roadmap: [RoadmapPhase]
-    @Published var patternInsights: [FrictionInsight]
-    @Published var activePatternIndex = 0
-    @Published var notifications: [SmartNotificationItem]
-    @Published var photoProgress: PhotoProgressSnapshot
-    @Published var whyThisMatters: [WhyThisMatters]
-    @Published var lessons: [LessonCard]
-    @Published var quizzes: [MiniQuiz]
-    @Published var quizSelections: [UUID: Int] = [:]
-    @Published var completedQuizIDs: Set<UUID> = []
-    @Published var selectedSportMode: SportFocus
-    @Published var sportMetrics: [SportMetric]
+    var clientProfile: ClientProfile
+    var profileShowcase: ProfileShowcase
+    var todayTasks: [TaskItem]
+    var minimumWinTasks: [TaskItem]
+    var minimumWinModeEnabled = false
+    var minimumWinMessage = "Today does not need to be perfect. Complete one small win to keep momentum."
+    var streakProtected = false
+    var selectedConfidence: ConfidenceLevel? = .maybe
+    var didCompleteQuickCheckIn = false
+    var recovery: RecoverySnapshot
+    var currentPlanAdjustment: PlanAdjustment
+    var selectedPlanBReason: PlanBReason?
+    var selectedWorkoutFeedback: WorkoutFeedbackOption?
+    var workoutFeedbackResponse = ""
+    var painArea = "Knee"
+    var painSeverity = 4
+    var painTriggerExercise = "Walking Lunge"
+    var painReports: [PainReport] = []
+    var goalTranslation: GoalTranslation
+    var personalRules: [PersonalRule]
+    var roadmap: [RoadmapPhase]
+    var patternInsights: [FrictionInsight]
+    var activePatternIndex = 0
+    var notifications: [SmartNotificationItem]
+    var photoProgress: PhotoProgressSnapshot
+    var whyThisMatters: [WhyThisMatters]
+    var lessons: [LessonCard]
+    var quizzes: [MiniQuiz]
+    var quizSelections: [UUID: Int] = [:]
+    var completedQuizIDs: Set<UUID> = []
+    var selectedSportMode: SportFocus
+    var sportMetrics: [SportMetric]
 
-    @Published var workoutTemplates: [WorkoutTemplate]
-    @Published var savedWorkouts: [SavedWorkoutLibraryItem]
-    @Published var currentWorkoutID: UUID { didSet { persistWorkoutSession() } }
-    @Published var workoutLogs: [WorkoutLog] {
+    var workoutTemplates: [WorkoutTemplate]
+    var savedWorkouts: [SavedWorkoutLibraryItem]
+    var currentWorkoutID: UUID { didSet { persistWorkoutSession() } }
+    var workoutLogs: [WorkoutLog] {
         didSet { workoutPersistence.saveLogs(workoutLogs) }
     }
-    @Published var workoutAccessGrants: [AthleteAccessGrant]
-    @Published var workoutHistory: [WorkoutHistoryEntry]
-    @Published var healthTrend: [DayScore]
-    @Published var workoutConsistency: [WeeklyWorkoutCount]
-    @Published var strengthTrend: [StrengthPoint]
-    @Published var weightTrend: [WeightPoint]
-    @Published var recentWins: [String]
-    @Published var nutrition: NutritionSnapshot
-    @Published var friendsActivity: [FriendActivity]
-    @Published var challenges: [Challenge]
-    @Published var communityPosts: [ProgressPost]
-    @Published var pendingPartnerSessionPost: PartnerSessionPostDraft?
-    @Published var savedPartnerSessionRecaps: [PartnerSessionPostDraft]
-    @Published var networkSuggestions: [NetworkConnectionSuggestion]
-    @Published var trainingGroups: [TrainingGroupPreview]
-    @Published var leaderboards: [LeaderboardEntry]
-    @Published var workoutPartners: [WorkoutPartner]
-    @Published var selectedWorkoutPartnerID: UUID?
-    @Published var selectedPartnerWorkoutMode: PartnerWorkoutMode = .live
-    @Published var partnerWorkoutEnabled = false
-    @Published var prefersCompactExerciseView = false
-    @Published var athleteMessageThreads: [MessageThread]
-    @Published var selectedAthleteThreadID: UUID?
-    @Published var athleteThreadDraftSeed: String?
-    @Published var clientConversation: [ThreadMessage]
-    @Published var athleteAIAgentConversation: [ThreadMessage]
-    @Published var selectedMuscleGroup: MuscleGroup = .legs
-    @Published var selectedExercise: ExerciseReference?
-    @Published var workoutReminder = "Log this workout within 24 hours so Morphe can adjust your next plan accurately."
-    @Published var isWorkoutLoggedToday = false { didSet { persistWorkoutSession() } }
-    @Published var isWorkoutSessionActive = false { didSet { persistWorkoutSession() } }
-    @Published var hasStartedWorkoutFlow = false { didSet { persistWorkoutSession() } }
-    @Published var hasCompletedWorkoutFlow = false { didSet { persistWorkoutSession() } }
-    @Published var activeWorkoutExerciseIndex = 0 { didSet { persistWorkoutSession() } }
-    @Published var completedWorkoutSets: [String: Int] = [:] { didSet { persistWorkoutSession() } }
-    @Published var trackedSetReps: [String: [Int]] = [:] { didSet { persistWorkoutSession() } }
+    var workoutAccessGrants: [AthleteAccessGrant]
+    var workoutHistory: [WorkoutHistoryEntry]
+    var healthTrend: [DayScore]
+    var workoutConsistency: [WeeklyWorkoutCount]
+    var strengthTrend: [StrengthPoint]
+    var weightTrend: [WeightPoint]
+    var recentWins: [String]
+    var nutrition: NutritionSnapshot
+    var friendsActivity: [FriendActivity]
+    var challenges: [Challenge]
+    var communityPosts: [ProgressPost]
+    var pendingPartnerSessionPost: PartnerSessionPostDraft?
+    var savedPartnerSessionRecaps: [PartnerSessionPostDraft]
+    var networkSuggestions: [NetworkConnectionSuggestion]
+    var trainingGroups: [TrainingGroupPreview]
+    var leaderboards: [LeaderboardEntry]
+    var workoutPartners: [WorkoutPartner]
+    var selectedWorkoutPartnerID: UUID?
+    var selectedPartnerWorkoutMode: PartnerWorkoutMode = .live
+    var partnerWorkoutEnabled = false
+    var prefersCompactExerciseView = false
+    var athleteMessageThreads: [MessageThread]
+    var selectedAthleteThreadID: UUID?
+    var athleteThreadDraftSeed: String?
+    var clientConversation: [ThreadMessage]
+    var athleteAIAgentConversation: [ThreadMessage]
+    var selectedMuscleGroup: MuscleGroup = .legs
+    var selectedExercise: ExerciseReference?
+    var workoutReminder = "Log this workout within 24 hours so Morphe can adjust your next plan accurately."
+    var isWorkoutLoggedToday = false { didSet { persistWorkoutSession() } }
+    var isWorkoutSessionActive = false { didSet { persistWorkoutSession() } }
+    var hasStartedWorkoutFlow = false { didSet { persistWorkoutSession() } }
+    var hasCompletedWorkoutFlow = false { didSet { persistWorkoutSession() } }
+    var activeWorkoutExerciseIndex = 0 { didSet { persistWorkoutSession() } }
+    var completedWorkoutSets: [String: Int] = [:] { didSet { persistWorkoutSession() } }
+    var trackedSetReps: [String: [Int]] = [:] { didSet { persistWorkoutSession() } }
 
-    @Published var coachProfile: CoachProfile
-    @Published var coachOverview: CoachOverview
-    @Published var coachClients: [CoachClient]
-    @Published private var coachOutreachEvents: [CoachOutreachEvent]
-    @Published var selectedClientID: UUID?
-    @Published var coachSportFilter: SportFocus?
-    @Published var messageThreads: [MessageThread]
-    @Published var selectedThreadID: UUID?
-    @Published var coachThreadDraftSeed: String?
-    @Published var coachAIAgentConversation: [ThreadMessage]
-    @Published var outreachSuggestions: [OutreachSuggestion]
-    @Published var messageTemplates: [MessageTemplate]
-    @Published var upcomingSessions: [CalendarEvent]
-    @Published var selectedProgramTemplateID: UUID?
-    @Published var coachBroadcastText = "Team check-in: reply with your biggest win and biggest blocker."
-    @Published var coachInterventions: [CoachIntervention]
-    @Published var sportSessions: [SportSession]
-    @Published var selectedSessionID: UUID?
-    @Published var drills: [DrillReference]
-    @Published var teamGroups: [TeamGroup]
-    @Published var selectedGroupID: UUID?
-    @Published var playbooks: [CoachPlaybook]
-    @Published var leadRecords: [LeadRecord]
-    @Published var coachAnalytics: CoachAnalytics
+    var coachProfile: CoachProfile
+    var coachOverview: CoachOverview
+    var coachClients: [CoachClient]
+    private var coachOutreachEvents: [CoachOutreachEvent]
+    var selectedClientID: UUID?
+    var coachSportFilter: SportFocus?
+    var messageThreads: [MessageThread]
+    var selectedThreadID: UUID?
+    var coachThreadDraftSeed: String?
+    var coachAIAgentConversation: [ThreadMessage]
+    var outreachSuggestions: [OutreachSuggestion]
+    var messageTemplates: [MessageTemplate]
+    var upcomingSessions: [CalendarEvent]
+    var selectedProgramTemplateID: UUID?
+    var coachBroadcastText = "Team check-in: reply with your biggest win and biggest blocker."
+    var coachInterventions: [CoachIntervention]
+    var sportSessions: [SportSession]
+    var selectedSessionID: UUID?
+    var drills: [DrillReference]
+    var teamGroups: [TeamGroup]
+    var selectedGroupID: UUID?
+    var playbooks: [CoachPlaybook]
+    var leadRecords: [LeadRecord]
+    var coachAnalytics: CoachAnalytics
 
-    @Published var subscriptionPlans: [SubscriptionPlan]
-    @Published var subscriptionStatus: SubscriptionStatus
-    @Published var unlockableItems: [UnlockableItem]
-    @Published var showPaywall = false
+    var subscriptionPlans: [SubscriptionPlan]
+    var subscriptionStatus: SubscriptionStatus
+    var unlockableItems: [UnlockableItem]
+    var showPaywall = false
 
     let exerciseDatabase: [ExerciseReference]
     let availableThemes: [ThemePreset]

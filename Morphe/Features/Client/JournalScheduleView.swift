@@ -91,7 +91,7 @@ struct ExerciseDetailView: View {
 
 struct AthleteProfileView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let athlete: CoachClient
     @State private var notesDraft = ""
     @State private var manualWorkoutTitle = ""
@@ -382,18 +382,18 @@ struct AthleteProfileView: View {
             }
             .sheet(item: $sessionRequest) { request in
                 CoachStartSessionSheet(request: request)
-                    .environmentObject(store)
+                    .environment(store)
             }
             .sheet(isPresented: $showingAssignWorkoutSheet) {
                 CoachAthleteAssignWorkoutSheet(
                     athlete: currentAthlete,
                     availableTemplates: availableTemplates
                 )
-                .environmentObject(store)
+                .environment(store)
             }
             .sheet(item: $coachPraiseDraft) { draft in
                 CoachPublicPraiseSheet(draft: draft)
-                    .environmentObject(store)
+                    .environment(store)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -757,7 +757,7 @@ private struct CoachOutreachShortcutStrip: View {
 }
 
 private struct CoachAthleteAssignWorkoutSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     let athlete: CoachClient
@@ -878,7 +878,7 @@ private struct CoachAthleteAssignWorkoutSheet: View {
 }
 
 struct CoachPublicPraiseSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     let draft: CoachPublicPraiseDraft

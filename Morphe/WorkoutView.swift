@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WorkoutView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     @State private var workoutFinished = false
     @State private var restSeconds = 180
@@ -37,7 +37,7 @@ struct WorkoutView: View {
         }
         .sheet(item: $swapTarget) { exercise in
             ExerciseSwapFlowSheet(exercise: exercise)
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(isPresented: $isShowingRepLogger) {
             SetRepLoggingSheet(reps: $pendingRepCount) {
@@ -49,7 +49,8 @@ struct WorkoutView: View {
     }
 
     private var activeWorkoutMode: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        @Bindable var store = store
+        return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 14) {
                 LiveWorkoutConsoleCard(
                     workout: store.currentWorkout,
@@ -150,7 +151,8 @@ struct WorkoutView: View {
     }
 
     private var workoutPlanningMode: some View {
-        ScrollView(showsIndicators: false) {
+        @Bindable var store = store
+        return ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Train",
@@ -898,7 +900,7 @@ private struct FocusedWorkoutQueueCard: View {
 }
 
 private struct LiveWorkoutSupportToolsCard: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let workout: WorkoutTemplate
     let exercise: WorkoutExercise
     let completedSets: Int
@@ -1999,7 +2001,7 @@ private struct ExerciseCompactRow: View {
 
 private struct ExerciseSwapFlowSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let exercise: WorkoutExercise
     @State private var selectedReason: ExerciseSwapReason?
 

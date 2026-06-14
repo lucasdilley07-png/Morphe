@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LaunchSequenceView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var message = "Reading your recovery..."
     @State private var hasStarted = false
 
@@ -43,7 +43,7 @@ struct LaunchSequenceView: View {
 }
 
 struct OnboardingFlowView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var stepIndex = 0
     @State private var isGeneratingPlan = false
 
@@ -156,6 +156,7 @@ struct OnboardingFlowView: View {
 
     @ViewBuilder
     private func stepView(for step: OnboardingStep) -> some View {
+        @Bindable var store = store
         switch step {
         case .welcome:
             WelcomeLandingStep()
@@ -318,7 +319,7 @@ private struct GenderSelectionStep: View {
 }
 
 private struct AccountTypeStep: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
         OnboardingCard(
@@ -347,14 +348,15 @@ private struct AccountTypeStep: View {
 }
 
 private struct GoalSelectionStep: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     private var detailTitle: String {
         store.onboardingDraft.accountType == .coach ? "What outcome are you coaching toward first?" : "What result feels realistic right now?"
     }
 
     var body: some View {
-        OnboardingCard(
+        @Bindable var store = store
+        return OnboardingCard(
             title: "What are you working toward?",
             subtitle: "Pick up to 5 goals. Morphe will use the first one as your primary focus and keep the rest in view."
         ) {
@@ -410,7 +412,7 @@ private struct GoalSelectionStep: View {
 }
 
 private struct SportSelectionStep: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
         OnboardingCard(
@@ -441,7 +443,7 @@ private struct SportSelectionStep: View {
 }
 
 private struct TrainingStyleSelectionStep: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
         OnboardingCard(
@@ -678,7 +680,7 @@ private struct ObstacleStep: View {
 }
 
 private struct ThemeSelectionStep: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
         OnboardingCard(
@@ -830,7 +832,7 @@ private struct AvatarStarterStep: View {
 }
 
 private struct ProfileReviewStep: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     private var generatedPlan: (phase: String, goalTranslation: GoalTranslation, firstTask: String, message: String) {
         MorpheDemoContent.generatedPlan(from: store.onboardingDraft)
@@ -910,7 +912,7 @@ private struct ProfileReviewStep: View {
 }
 
 private struct PersonalizedPlanLoadingView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var message = "Reading your goals..."
     @State private var hasStarted = false
 

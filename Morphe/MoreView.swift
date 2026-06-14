@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MoreView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     private var activeFeature: ClientHubFeature {
         let selected = store.selectedHubFeature ?? .scores

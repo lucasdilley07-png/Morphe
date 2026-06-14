@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ProfileView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var paymentExpanded = true
     @State private var attributesExpanded = true
     @State private var settingsExpanded = true
@@ -151,7 +151,7 @@ private struct CoachPaymentSection: View {
 }
 
 private struct CoachAttributesSection: View {
-    @ObservedObject var store: MorpheAppStore
+    var store: MorpheAppStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -204,7 +204,7 @@ private struct CoachAttributesSection: View {
 }
 
 private struct CoachSettingsSection: View {
-    @ObservedObject var store: MorpheAppStore
+    var store: MorpheAppStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -268,7 +268,7 @@ private struct AthletePaymentSection: View {
 }
 
 private struct AthleteAttributesSection: View {
-    @ObservedObject var store: MorpheAppStore
+    var store: MorpheAppStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -321,7 +321,7 @@ private struct AthleteAttributesSection: View {
 }
 
 private struct AthleteSettingsSection: View {
-    @ObservedObject var store: MorpheAppStore
+    var store: MorpheAppStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -373,7 +373,7 @@ private struct AthleteSettingsSection: View {
 }
 
 struct PaywallPreviewScreen: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -639,7 +639,7 @@ private struct ProfileSocialResumeCard: View {
 }
 
 private struct AthleticProfileCard: View {
-    @ObservedObject var store: MorpheAppStore
+    var store: MorpheAppStore
 
     var body: some View {
         GlassCard {
@@ -1380,7 +1380,7 @@ private struct NutritionSummarySection: View {
 }
 
 private struct LearningSection: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let lessons: [LessonCard]
     let quizzes: [MiniQuiz]
 

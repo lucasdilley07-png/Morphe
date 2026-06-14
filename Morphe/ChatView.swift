@@ -7,7 +7,7 @@ struct ChatView: View {
 }
 
 struct CommunityView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var selectedStory: CommunityStoryPreview?
     @State private var showNetworkExtras = false
 
@@ -72,7 +72,8 @@ struct CommunityView: View {
     }
 
     private var communityHeaderControls: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        @Bindable var store = store
+        return VStack(alignment: .leading, spacing: 14) {
             NetworkStoriesRail { story in
                 selectedStory = story
             }
@@ -145,10 +146,11 @@ private struct NetworkDisclosureSection<Content: View>: View {
 }
 
 private struct ContactSectionSwitcher: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
-        Picker("Community Section", selection: $store.selectedCommunitySection) {
+        @Bindable var store = store
+        return Picker("Community Section", selection: $store.selectedCommunitySection) {
             ForEach(ClientCommunitySection.allCases) { section in
                 Text(section.rawValue).tag(section)
             }
@@ -158,7 +160,7 @@ private struct ContactSectionSwitcher: View {
 }
 
 private struct NetworkStoriesRail: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let onSelectStory: (CommunityStoryPreview) -> Void
 
     var body: some View {
@@ -326,7 +328,7 @@ private struct StoryHighlightSheet: View {
 }
 
 private struct AthleteContactInbox: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var draft = ""
     @State private var searchText = ""
 
@@ -630,7 +632,7 @@ private struct AthleteContactRow: View {
 }
 
 struct CommunityNetworkFeed: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let perspective: AppRole
 
     private var rankedPosts: [ProgressPost] {
@@ -722,7 +724,7 @@ private struct TrainingHappeningNowCard: View {
 }
 
 struct NetworkSummaryCard: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
         GlassCard {
@@ -746,7 +748,7 @@ struct NetworkSummaryCard: View {
 }
 
 struct NetworkComposerCard: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let perspective: AppRole
     @State private var draft = ""
 
@@ -1038,7 +1040,7 @@ private struct TrainingGroupCard: View {
 }
 
 struct NetworkSuggestionsCard: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
         GlassCard {

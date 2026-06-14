@@ -1,10 +1,11 @@
 import SwiftUI
 
 struct CoachDashboardView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
-        TabView(selection: $store.selectedCoachTab) {
+        @Bindable var store = store
+        return TabView(selection: $store.selectedCoachTab) {
             CoachCommandCenterScreen()
                 .tag(CoachTab.dashboard)
 
@@ -59,7 +60,7 @@ struct CoachDashboardView: View {
 }
 
 private struct CoachPinnedHeader: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     private var coachAvatarSymbol: String {
         if store.coachProfile.specialty.localizedCaseInsensitiveContains("boxing") {
@@ -216,7 +217,7 @@ private struct CoachCommandDisclosureSection<Content: View>: View {
 }
 
 private struct CoachCommandCenterScreen: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var showOverview = false
     @State private var showTeamView = false
     @State private var showSignals = false
@@ -379,11 +380,11 @@ private struct CoachCommandCenterScreen: View {
         }
         .sheet(item: $sessionRequest) { request in
             CoachStartSessionSheet(request: request)
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(item: $coachPraiseDraft) { draft in
             CoachPublicPraiseSheet(draft: draft)
-                .environmentObject(store)
+                .environment(store)
         }
     }
 
@@ -426,7 +427,7 @@ private struct CoachCommandCenterScreen: View {
 }
 
 private struct CoachAthletesScreen: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -464,7 +465,7 @@ private struct CoachAthletesScreen: View {
 }
 
 private struct CoachProgramsScreen: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var draft = ProgramBuilderDraft()
     @State private var selectedTemplateForAssignment: WorkoutTemplate?
     @State private var selectedSavedWorkoutForAssignment: SavedWorkoutLibraryItem?
@@ -486,7 +487,8 @@ private struct CoachProgramsScreen: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
+        @Bindable var store = store
+        return ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Build",
@@ -818,11 +820,11 @@ private struct CoachProgramsScreen: View {
         }
         .sheet(item: $selectedTemplateForAssignment) { template in
             AssignWorkoutSheet(template: template)
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(item: $selectedSavedWorkoutForAssignment) { item in
             AssignSavedWorkoutSheet(item: item)
-                .environmentObject(store)
+                .environment(store)
         }
     }
 
@@ -1032,7 +1034,7 @@ private struct CoachLibraryDisclosureSection<Content: View>: View {
 }
 
 private struct CoachBuildLibraryPanel: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let onAssignSavedWorkout: (SavedWorkoutLibraryItem) -> Void
     @State private var showSavedLibrary = true
     @State private var showPlaybooks = false
@@ -1170,7 +1172,7 @@ private struct CoachBuildLibraryPanel: View {
 }
 
 private struct CoachNetworkScreen: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var section: CoachNetworkSection = .forYou
 
     var body: some View {
@@ -1219,7 +1221,7 @@ private struct CoachNetworkScreen: View {
 }
 
 private struct CoachFilteredNetworkFeed: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let title: String
     let subtitle: String
     let posts: [ProgressPost]
@@ -1284,7 +1286,7 @@ private struct CoachRescheduleSheet: View {
 }
 
 private struct InterventionTemplateSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let intervention: CoachIntervention
 
@@ -1328,7 +1330,7 @@ private struct InterventionTemplateSheet: View {
 }
 
 private struct InterventionAssignSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let intervention: CoachIntervention
 
@@ -1372,7 +1374,7 @@ private struct InterventionAssignSheet: View {
 }
 
 private struct AssignWorkoutSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let template: WorkoutTemplate
     @State private var selectedClientID: UUID?
@@ -1420,7 +1422,7 @@ private struct AssignWorkoutSheet: View {
 }
 
 private struct AssignSavedWorkoutSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let item: SavedWorkoutLibraryItem
     @State private var selectedClientID: UUID?
@@ -1487,7 +1489,7 @@ private struct AssignSavedWorkoutSheet: View {
 }
 
 struct CoachStartSessionSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     let request: CoachSessionLaunchRequest
@@ -1600,7 +1602,7 @@ struct CoachStartSessionSheet: View {
 }
 
 private struct CoachUpcomingSessionsCard: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let events: [CalendarEvent]
     @State private var selectedEvent: CalendarEvent?
     @State private var rescheduleDate = Date()
@@ -1651,7 +1653,7 @@ private struct CoachUpcomingSessionsCard: View {
         }
         .sheet(item: $sessionRequest) { request in
             CoachStartSessionSheet(request: request)
-                .environmentObject(store)
+                .environment(store)
         }
     }
 }
@@ -1771,7 +1773,7 @@ private struct CoachNetworkPresenceCard: View {
 }
 
 private struct CoachNetworkHighlightsRail: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -1807,7 +1809,7 @@ private struct CoachNetworkHighlightsRail: View {
 }
 
 private struct CoachPerformanceScreen: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     private var focusedAthlete: CoachClient? {
         store.selectedCoachClient ?? store.filteredCoachClients.first ?? store.coachClients.first
@@ -1849,7 +1851,7 @@ private struct CoachPerformanceScreen: View {
 }
 
 private struct CoachMessagesScreen: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var draftMessage = ""
     @State private var searchText = ""
     @State private var showAIAgentThread = false
@@ -1937,7 +1939,7 @@ private struct CoachMessagesScreen: View {
         }
         .sheet(item: $coachPraiseDraft) { draft in
             CoachPublicPraiseSheet(draft: draft)
-                .environmentObject(store)
+                .environment(store)
         }
     }
 
@@ -2994,7 +2996,7 @@ private struct MultiSportCoachFilter: View {
 }
 
 private struct CoachInterventionQueueCard: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let interventions: [CoachIntervention]
     @State private var selectedInterventionForMessage: CoachIntervention?
     @State private var selectedInterventionForAssignment: CoachIntervention?
@@ -3046,11 +3048,11 @@ private struct CoachInterventionQueueCard: View {
         }
         .sheet(item: $selectedInterventionForMessage) { intervention in
             InterventionTemplateSheet(intervention: intervention)
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(item: $selectedInterventionForAssignment) { intervention in
             InterventionAssignSheet(intervention: intervention)
-                .environmentObject(store)
+                .environment(store)
         }
     }
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @State private var showAdjustments = false
     @State private var showSupport = false
 
@@ -415,7 +415,7 @@ private struct TodayOverviewCard: View {
 }
 
 private struct TodayNextMoveCard: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     let workout: WorkoutTemplate
     let minimumWinModeEnabled: Bool
     let onStart: () -> Void

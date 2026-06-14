@@ -1,10 +1,11 @@
 import SwiftUI
 
 struct RootView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
-        ZStack {
+        @Bindable var store = store
+        return ZStack {
             PremiumBackground()
 
             Group {
@@ -41,7 +42,7 @@ struct RootView: View {
         }) { draft in
             NavigationStack {
                 PartnerSessionPostSheet(draft: draft)
-                    .environmentObject(store)
+                    .environment(store)
             }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -52,7 +53,7 @@ struct RootView: View {
         }) { profile in
             NavigationStack {
                 NetworkProfilePreviewSheet(profile: profile)
-                    .environmentObject(store)
+                    .environment(store)
             }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -63,7 +64,7 @@ struct RootView: View {
         }) {
             NavigationStack {
                 ProfileView()
-                    .environmentObject(store)
+                    .environment(store)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Done") {
@@ -77,26 +78,26 @@ struct RootView: View {
         }
         .sheet(isPresented: $store.showPaywall) {
             PaywallPreviewScreen()
-                .environmentObject(store)
+                .environment(store)
         }
         .sheet(isPresented: $store.showUniversalSearch) {
             NavigationStack {
                 UniversalSearchSheet()
-                    .environmentObject(store)
+                    .environment(store)
             }
             .background(PremiumBackground())
         }
         .sheet(isPresented: $store.showQuickAdd) {
             NavigationStack {
                 QuickAddSheet()
-                    .environmentObject(store)
+                    .environment(store)
             }
             .background(PremiumBackground())
         }
         .sheet(isPresented: $store.showAIAgent) {
             NavigationStack {
                 MorpheAIAgentSheet()
-                    .environmentObject(store)
+                    .environment(store)
             }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -104,7 +105,7 @@ struct RootView: View {
         }
         .sheet(isPresented: $store.showWelcomeExperience) {
             WelcomeExperienceView()
-                .environmentObject(store)
+                .environment(store)
         }
         .overlay(alignment: .top) {
             VStack(spacing: 10) {
@@ -138,7 +139,7 @@ struct RootView: View {
 }
 
 private struct PartnerSessionPostSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     let draft: PartnerSessionPostDraft
@@ -248,10 +249,11 @@ private struct PartnerSessionPostSheet: View {
 }
 
 private struct ClientExperienceShell: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
-        TabView(selection: $store.selectedClientTab) {
+        @Bindable var store = store
+        return TabView(selection: $store.selectedClientTab) {
             HomeView()
                 .tag(ClientTab.today)
 
@@ -301,7 +303,7 @@ private struct ClientExperienceShell: View {
 }
 
 private struct ClientPinnedHeader: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
         HStack(spacing: 12) {
@@ -351,7 +353,7 @@ private struct ClientPinnedHeader: View {
 }
 
 struct DemoBrandHeader: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     private var role: AppRole { store.selectedRole }
 
@@ -494,7 +496,7 @@ private struct HeaderCircleButton: View {
 }
 
 private struct FloatingAIAgentButton: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
 
     private var label: String {
         store.selectedRole == .coach ? "Coach AI" : "Morphe AI"
@@ -575,7 +577,7 @@ private struct FloatingAIAgentButton: View {
 }
 
 private struct MorpheAIAgentSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var prompt = ""
 
@@ -699,7 +701,7 @@ private struct AIAgentMessageRow: View {
 }
 
 private struct NetworkProfilePreviewSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     let profile: NetworkProfilePreview
@@ -843,7 +845,7 @@ private enum UniversalSearchCategory: String, CaseIterable, Identifiable {
 }
 
 private struct UniversalSearchSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var category: UniversalSearchCategory = .accounts
@@ -1164,7 +1166,7 @@ private struct UniversalSearchSheet: View {
 }
 
 private struct QuickAddSheet: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var quickNote = ""
 
@@ -1363,7 +1365,7 @@ private struct SearchResultRow: View {
 }
 
 private struct WelcomeExperienceView: View {
-    @EnvironmentObject private var store: MorpheAppStore
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     private var isCoach: Bool {
