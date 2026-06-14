@@ -214,7 +214,7 @@ enum HealthTier: String, Identifiable {
     case strong = "Strong"
     case building = "Building"
     case atRisk = "At Risk"
-    case resetMode = "Reset Mode"
+    case resetMode = "Rebuilding"
 
     var id: String { rawValue }
 
@@ -1294,18 +1294,18 @@ struct OnboardingDraft: Hashable {
     var accountType: AppRole = .client
     var name: String = ""
     var gender: GenderOption = .male
-    var age: Int = 29
-    var height: String = "5'11\""
-    var weight: String = "216 lbs"
+    var age: Int = 25
+    var height: String = ""
+    var weight: String = ""
     var selectedGoals: [FitnessGoalOption] = [.improveConditioning]
-    var physicalGoalTarget: String = "Get leaner, move better, and build real conditioning."
-    var weightGoalTarget: String = "Reach 205 lbs"
-    var goalDeadline: String = "Within 12 weeks"
+    var physicalGoalTarget: String = ""
+    var weightGoalTarget: String = ""
+    var goalDeadline: String = ""
     var experienceLevel: ExperienceLevelOption = .beginner
-    var selectedSports: [SportFocus] = [.boxing]
+    var selectedSports: [SportFocus] = [.generalFitness]
     var selectedTrainingStyles: [TrainingStyleOption] = [.conditioning]
-    var injuries: String = "Knee discomfort during deep lunges"
-    var equipment: String = "Home dumbbells, jump rope, gym twice a week"
+    var injuries: String = ""
+    var equipment: String = ""
     var trainingDaysPerWeek: Int = 3
     var preferredWorkoutLength: Int = 30
     var coachingTone: CoachingTone = .direct

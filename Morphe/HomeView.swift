@@ -11,7 +11,8 @@ struct HomeView: View {
         case 75...89: return "Strong"
         case 60...74: return "Momentum"
         case 40...59: return "Building"
-        default: return "Reset Mode"
+        case 1...39: return "Rebuilding"
+        default: return "Getting Started"
         }
     }
 

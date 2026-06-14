@@ -298,7 +298,7 @@ private struct GenderSelectionStep: View {
     var body: some View {
         OnboardingCard(
             title: "What's your gender?",
-            subtitle: "This helps personalize the demo profile and starting plan context."
+            subtitle: "This helps personalize your profile and starting plan context."
         ) {
             HStack(spacing: 10) {
                 ForEach(GenderOption.allCases) { gender in
@@ -503,16 +503,16 @@ private struct BodyInfoStep: View {
     var body: some View {
         OnboardingCard(
             title: "A quick starting snapshot",
-            subtitle: "This is mock-demo personalization only. It helps the plan feel grounded."
+            subtitle: "Optional — it helps your plan and progress feel grounded. You can skip or change it later."
         ) {
             VStack(spacing: 12) {
                 Stepper("Age: \(age)", value: $age, in: 13...80)
                     .foregroundStyle(.white)
 
-                TextField("Height", text: $height)
+                TextField("Height (e.g. 5'10\")", text: $height)
                     .textFieldStyle(MorpheFieldStyle())
 
-                TextField("Weight", text: $weight)
+                TextField("Weight (e.g. 170 lb)", text: $weight)
                     .textFieldStyle(MorpheFieldStyle())
             }
         }
@@ -551,7 +551,7 @@ private struct EquipmentStep: View {
     var body: some View {
         OnboardingCard(
             title: "What equipment do you have access to?",
-            subtitle: "Pick the setup that feels most real. Morphe can use gym access and a mock equipment database to make better swaps."
+            subtitle: "Pick the setup closest to yours so Morphe can suggest better exercise swaps."
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Quick access")
@@ -570,7 +570,7 @@ private struct EquipmentStep: View {
                 if let selectedAccess {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("AI equipment view")
+                            Text("Equipment view")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.white)
 
@@ -901,8 +901,8 @@ private struct ProfileReviewStep: View {
                 ProfileLine(title: "Deadline", value: store.onboardingDraft.goalDeadline)
                 ProfileLine(title: isCoach ? "Suggested structure" : "Suggested schedule", value: "\(store.onboardingDraft.trainingDaysPerWeek) training days, \(store.onboardingDraft.preferredWorkoutLength)-minute sessions")
                 ProfileLine(title: isCoach ? "First action" : "Today's first task", value: generatedPlan.firstTask)
-                ProfileLine(title: isCoach ? "AI workspace summary" : "AI coach summary", value: generatedPlan.message)
-                Text("Tap Create My Plan and Morphe AI will turn this profile into your first personalized starting system.")
+                ProfileLine(title: isCoach ? "Workspace summary" : "Plan summary", value: generatedPlan.message)
+                Text("Tap Create My Plan and Morphe will turn this into your first starting plan.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
             }
@@ -939,7 +939,7 @@ private struct PersonalizedPlanLoadingView: View {
             )
             .shadow(color: MorpheTheme.accentAlt.opacity(0.28), radius: 18)
 
-            Text("Morphe AI")
+            Text("Morphe")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
@@ -955,7 +955,7 @@ private struct PersonalizedPlanLoadingView: View {
             ProgressView()
                 .tint(MorpheTheme.accent)
 
-            Text("This is a demo AI handoff using your goal, equipment, training style, and coaching preferences.")
+            Text("Morphe is shaping your starting plan from your goal, equipment, training style, and coaching preferences.")
                 .font(.caption)
                 .foregroundStyle(MorpheTheme.textMuted)
                 .multilineTextAlignment(.center)
@@ -1009,13 +1009,16 @@ private struct ProfileLine: View {
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(MorpheTheme.textMuted)
-            Text(value)
-                .font(.subheadline)
-                .foregroundStyle(.white)
+        // Optional fields the user left blank are simply omitted.
+        if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Text(value)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+            }
         }
     }
 }
