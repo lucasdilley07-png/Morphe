@@ -46,6 +46,6 @@ Add the 4 screenshots, finalize the description, set age rating 4+ and category 
 ---
 
 ## Known follow-ups worth fixing before public release (not blockers for TestFlight)
-- The **Train → "Good for Today"** card shows **"Source: Lucas"** and a **"With Buddy"** option — leftover demo/multi-user leaks that should be cleaned for a solo v1.
 - Replace the placeholder **app icon** (a plain "M") with real branding.
 - A full **accessibility** pass (only core nav is labeled so far).
+- ~~Train "Good for Today" leaked "Source: Lucas" / "With Buddy"~~ — fixed.
