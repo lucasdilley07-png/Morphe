@@ -101,6 +101,7 @@ final class PersistenceTests: XCTestCase {
 
         let snapshot = LocalProfileSnapshot(
             hasCompletedOnboarding: true,
+            id: UUID().uuidString,
             name: "Alex",
             gender: "Male",
             accountRole: "Athlete",
@@ -143,5 +144,51 @@ final class PersistenceTests: XCTestCase {
         let data = try JSONEncoder().encode(log)
         let decoded = try JSONDecoder().decode(WorkoutLog.self, from: data)
         XCTAssertEqual(decoded, log)
+    }
+}
+
+/// Verifies that completing onboarding gives the user their OWN empty account
+/// instead of inheriting the seeded demo athlete ("Lucas") and his data.
+@MainActor
+final class OnboardingIdentityTests: XCTestCase {
+
+    func testOnboardingMintsFreshIdentity() {
+        let store = MorpheAppStore()
+        let beforeID = store.clientProfile.id
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertNotEqual(store.clientProfile.id, beforeID,
+                          "onboarding must mint a brand-new identity")
+        XCTAssertEqual(store.clientProfile.name, "Sarah")
+    }
+
+    func testNewUserStartsEmpty() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertTrue(store.workoutLogs.isEmpty, "no inherited workout logs")
+        XCTAssertTrue(store.workoutHistory.isEmpty, "no inherited history")
+        XCTAssertTrue(store.recentWins.isEmpty, "no fabricated wins")
+        XCTAssertTrue(store.workoutPartners.isEmpty, "no seeded buddies")
+        XCTAssertTrue(store.friendsActivity.isEmpty, "no stranger activity")
+        XCTAssertEqual(store.clientProfile.level.streak, 0, "streak starts at zero")
+        XCTAssertEqual(store.clientProfile.health.score, 0, "score starts at zero")
+    }
+
+    func testLoggedWorkoutBelongsToTheUser() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        let userID = store.clientProfile.id
+
+        store.startTodayWorkout()
+        store.hasCompletedWorkoutFlow = true
+        store.logWorkout()
+
+        XCTAssertFalse(store.workoutLogs.isEmpty, "logging adds a real log")
+        XCTAssertTrue(store.workoutLogs.allSatisfy { $0.athleteID == userID },
+                      "the user's logs must be attributed to the user, not the demo athlete")
     }
 }

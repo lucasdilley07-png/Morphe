@@ -16,6 +16,9 @@ import Foundation
 /// Codable snapshot of the user's locally-saved identity and preferences.
 struct LocalProfileSnapshot: Codable, Equatable {
     var hasCompletedOnboarding: Bool
+    /// The user's own stable identity (UUID string), minted at onboarding so a
+    /// real user is never the seeded demo athlete.
+    var id: String
     var name: String
     var gender: String
     var accountRole: String

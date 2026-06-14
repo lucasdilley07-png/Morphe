@@ -364,11 +364,10 @@ final class MorpheAppStore {
 
         MorpheTheme.apply(accentPalette: profileShowcase.accentPalette)
 
-        // First launch: persist the seeded logs so they become the on-device
-        // source of truth. On later launches we loaded the user's own logs above.
-        if persistedWorkoutLogs == nil {
-            workoutPersistence.saveLogs(initialWorkoutLogs)
-        }
+        // NOTE: demo logs are intentionally NOT persisted on first launch. A
+        // brand-new user starts empty after onboarding (see resetToFreshUser);
+        // the in-memory seed is never shown because onboarding gates the app.
+
         // Restore an in-progress workout session, if one was saved.
         if let snapshot = workoutPersistence.loadSession() {
             restoreWorkoutSession(from: snapshot)
@@ -384,6 +383,12 @@ final class MorpheAppStore {
     private func applyPersistedProfile(_ snapshot: LocalProfileSnapshot) {
         guard snapshot.hasCompletedOnboarding else { return }
         hasCompletedOnboarding = true
+
+        // Restore the user's own identity so they are never the seeded demo
+        // athlete, then recompute history/consistency against that id.
+        if let id = UUID(uuidString: snapshot.id) {
+            clientProfile.id = id
+        }
 
         clientProfile.name = snapshot.name
         if let gender = GenderOption(rawValue: snapshot.gender) {
@@ -429,6 +434,10 @@ final class MorpheAppStore {
             applyPrimarySport(sport)
         }
         MorpheTheme.apply(accentPalette: profileShowcase.accentPalette)
+
+        // History/consistency were derived in init against the seeded id; rebuild
+        // them now that the user's real identity is restored.
+        refreshWorkoutLogDerivedState(for: clientProfile.id)
     }
 
     /// Persists the current local profile snapshot to disk.
@@ -436,6 +445,7 @@ final class MorpheAppStore {
         profilePersistence.saveProfile(
             LocalProfileSnapshot(
                 hasCompletedOnboarding: hasCompletedOnboarding,
+                id: clientProfile.id.uuidString,
                 name: clientProfile.name,
                 gender: clientProfile.gender.rawValue,
                 accountRole: selectedRole.rawValue,
@@ -972,9 +982,95 @@ final class MorpheAppStore {
         currentPlanAdjustment = MorpheDemoContent.defaultPlanAdjustment
         goalTranslation = generatedPlan.goalTranslation
         MorpheTheme.apply(accentPalette: onboardingDraft.accentPalette)
+
+        // Mint a fresh identity and clear all seeded demo data so the user
+        // starts in THEIR OWN empty account, not the demo athlete's.
+        resetToFreshUser()
+
         showWelcomeExperience = true
-        showCelebration(title: "Plan ready", detail: generatedPlan.phase, symbol: "sparkles")
+        showCelebration(title: "You're all set", detail: "Log your first workout to get going.", symbol: "sparkles")
         persistLocalProfile()
+    }
+
+    /// Resets the signed-in user to a clean, empty account: a brand-new identity
+    /// and no seeded demo activity, metrics, history, or "other people" data.
+    /// Called when onboarding completes.
+    private func resetToFreshUser() {
+        // The critical fix: give the user their own stable id. Until now every
+        // user inherited the seeded demo athlete's UUID and therefore his logs.
+        clientProfile.id = UUID()
+
+        // No activity yet — everything the user "earns" starts empty.
+        workoutLogs = []
+        workoutHistory = []
+        workoutConsistency = []
+        healthTrend = []
+        strengthTrend = []
+        weightTrend = []
+        recentWins = []
+        patternInsights = []
+        notifications = []
+        quickCaptureNotes = []
+
+        // Clean starting metrics (made fully log-driven in a later pass).
+        clientProfile.health = HealthScoreSummary(
+            score: 0,
+            headline: "Getting started",
+            detail: "Log your first workout to start building your Morphe Score.",
+            tier: .resetMode
+        )
+        clientProfile.level = LevelProgress(
+            currentTitle: "Day One",
+            nextTitle: "Consistent",
+            currentXP: 0,
+            targetXP: 100,
+            streak: 0
+        )
+        clientProfile.adherence = 0
+        didCompleteQuickCheckIn = false
+        recovery = RecoverySnapshot(
+            score: 0,
+            status: .moderate,
+            reason: "Do a quick check-in to personalize today.",
+            sleepHours: 0,
+            energy: 5,
+            soreness: 3,
+            mood: 5,
+            pain: false,
+            previousSessionFeedback: nil
+        )
+
+        // Clear the demo nutrition log (keep the generic goal targets).
+        nutrition.caloriesConsumed = 0
+        nutrition.proteinConsumed = 0
+        nutrition.waterConsumed = 0
+        nutrition.meals = []
+        nutrition.weeklyProteinTrend = []
+
+        // Clear demo profile showcase content (records/badges "Lucas" earned).
+        profileShowcase.personalRecords = []
+        profileShowcase.milestones = []
+        profileShowcase.badges = []
+        profileShowcase.communityStats = []
+        profileShowcase.featuredWorkouts = []
+        profileShowcase.featuredVideos = []
+
+        // Remove all seeded "other people": buddies, friends, community, network.
+        workoutPartners = []
+        selectedWorkoutPartnerID = nil
+        partnerWorkoutEnabled = false
+        friendsActivity = []
+        communityPosts = []
+        challenges = []
+        networkSuggestions = []
+        trainingGroups = []
+        leaderboards = []
+        athleteMessageThreads = []
+        clientConversation = []
+        savedPartnerSessionRecaps = []
+
+        // Persist the now-empty workout store under the new identity.
+        workoutPersistence.saveLogs(workoutLogs)
     }
 
     func selectSportMode(_ sport: SportFocus) {
