@@ -1311,6 +1311,51 @@ final class MorpheAppStore {
         showToast("Quick check-in saved.")
     }
 
+    /// Computes a real readiness snapshot from the user's recovery check-in
+    /// inputs (instead of showing a seeded/neutral baseline).
+    func submitRecoveryCheckIn(sleepHours: Double, energy: Int, soreness: Int, mood: Int, pain: Bool) {
+        let sleepScore = min(1.0, max(0.0, sleepHours / 8.0))      // ~8h = full marks
+        let energyScore = Double(energy) / 10.0
+        let freshnessScore = Double(10 - soreness) / 10.0          // less sore is better
+        let moodScore = Double(mood) / 10.0
+        var score = Int(((sleepScore + energyScore + freshnessScore + moodScore) / 4.0) * 100)
+        if pain { score = max(0, score - 25) }
+
+        let status: RecoveryStatus
+        switch score {
+        case 80...100: status = .ready
+        case 60...79: status = .moderate
+        case 40...59: status = .takeItEasy
+        default: status = .recoveryRecommended
+        }
+
+        let reason: String
+        if pain {
+            reason = "You flagged pain — keep it light and pick safe, pain-free movements today."
+        } else if score >= 80 {
+            reason = "Sleep and energy look strong. A good day to push a little."
+        } else if score >= 60 {
+            reason = "Solid but not peak. Train at a moderate, repeatable effort."
+        } else {
+            reason = "Recovery is low. Keep today light and protect tomorrow."
+        }
+
+        recovery = RecoverySnapshot(
+            score: score,
+            status: status,
+            reason: reason,
+            sleepHours: sleepHours,
+            energy: energy,
+            soreness: soreness,
+            mood: mood,
+            pain: pain,
+            previousSessionFeedback: recovery.previousSessionFeedback
+        )
+        didCompleteQuickCheckIn = true
+        Haptics.success()
+        showToast("Recovery check-in saved.")
+    }
+
     func activateMinimumWinMode() {
         minimumWinModeEnabled = true
         minimumWinMessage = "Today does not need to be perfect. Complete one small win to keep momentum."

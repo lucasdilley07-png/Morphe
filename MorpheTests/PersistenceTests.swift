@@ -313,6 +313,25 @@ final class MetricsTests: XCTestCase {
         ProfileFilePersistence().clear()
     }
 
+    func testRecoveryCheckInComputesFromInput() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        // Strong recovery.
+        store.submitRecoveryCheckIn(sleepHours: 8, energy: 9, soreness: 1, mood: 9, pain: false)
+        XCTAssertTrue(store.didCompleteQuickCheckIn)
+        XCTAssertGreaterThanOrEqual(store.recovery.score, 80)
+        XCTAssertEqual(store.recovery.status, .ready)
+        XCTAssertEqual(store.recovery.sleepHours, 8)
+
+        // Poor recovery with pain should drop readiness and not read as "ready".
+        store.submitRecoveryCheckIn(sleepHours: 4, energy: 3, soreness: 8, mood: 3, pain: true)
+        XCTAssertLessThan(store.recovery.score, 50)
+        XCTAssertNotEqual(store.recovery.status, .ready)
+        XCTAssertTrue(store.recovery.pain)
+    }
+
     func testScoreAndStreakAreDerivedFromLogs() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"

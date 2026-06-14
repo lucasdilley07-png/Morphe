@@ -103,7 +103,6 @@ struct HomeView: View {
                             isComplete: store.didCompleteQuickCheckIn,
                             selectedConfidence: store.selectedConfidence,
                             selectedReason: store.selectedPlanBReason,
-                            onCompleteCheckIn: { store.completeQuickCheckIn() },
                             onSelectConfidence: { store.selectConfidence($0) },
                             onSelectPlanB: { reason in
                                 store.choosePlanB(reason)
@@ -705,10 +704,10 @@ private struct UpcomingGoalCard: View {
 }
 
 private struct DailyCheckInPlannerCard: View {
+    @Environment(MorpheAppStore.self) private var store
     let isComplete: Bool
     let selectedConfidence: ConfidenceLevel?
     let selectedReason: PlanBReason?
-    let onCompleteCheckIn: () -> Void
     let onSelectConfidence: (ConfidenceLevel) -> Void
     let onSelectPlanB: (PlanBReason) -> Void
     let onMinimumWin: () -> Void
@@ -716,6 +715,7 @@ private struct DailyCheckInPlannerCard: View {
     let onRecoveryWorkout: () -> Void
     let onReschedule: () -> Void
     @State private var showPlanBOptions = false
+    @State private var showCheckIn = false
 
     private var shouldShowFallbacks: Bool {
         showPlanBOptions || selectedConfidence == .notConfident || selectedReason != nil
@@ -728,12 +728,13 @@ private struct DailyCheckInPlannerCard: View {
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text(isComplete ? "Check-in saved. Morphe kept today's plan grounded." : "A 10-second check-in helps Morphe adjust your day before it gets noisy.")
+                Text(isComplete ? "Readiness \(store.recovery.score) • \(store.recovery.status.rawValue). \(store.recovery.reason)" : "A quick check-in lets Morphe read your recovery and adjust today.")
                     .foregroundStyle(MorpheTheme.textSecondary)
 
-                Button(isComplete ? "Check-In Saved" : "Save Quick Check-In", action: onCompleteCheckIn)
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: isComplete ? MorpheTheme.accentAlt : MorpheTheme.accent))
-                    .disabled(isComplete)
+                Button(isComplete ? "Update Check-In" : "Do Recovery Check-In") {
+                    showCheckIn = true
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: isComplete ? MorpheTheme.accentAlt : MorpheTheme.accent))
 
                 Divider()
                     .overlay(Color.white.opacity(0.08))
@@ -797,6 +798,100 @@ private struct DailyCheckInPlannerCard: View {
                         .buttonStyle(SecondaryCTAButtonStyle())
                 }
             }
+        }
+        .sheet(isPresented: $showCheckIn) {
+            RecoveryCheckInSheet(recovery: store.recovery)
+                .environment(store)
+        }
+    }
+}
+
+private struct RecoveryCheckInSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(MorpheAppStore.self) private var store
+
+    @State private var sleepHours: Double
+    @State private var energy: Int
+    @State private var soreness: Int
+    @State private var mood: Int
+    @State private var pain: Bool
+
+    init(recovery: RecoverySnapshot) {
+        _sleepHours = State(initialValue: recovery.sleepHours > 0 ? recovery.sleepHours : 7)
+        _energy = State(initialValue: max(1, recovery.energy))
+        _soreness = State(initialValue: recovery.soreness)
+        _mood = State(initialValue: max(1, recovery.mood))
+        _pain = State(initialValue: recovery.pain)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("How recovered do you feel today? Morphe uses this to set your readiness and adjust the plan.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Sleep last night")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Spacer()
+                            Text(String(format: "%.1f hr", sleepHours))
+                                .foregroundStyle(MorpheTheme.accent)
+                        }
+                        Slider(value: $sleepHours, in: 0...12, step: 0.5)
+                            .tint(MorpheTheme.accent)
+                    }
+
+                    ratingRow("Energy", value: $energy, range: 1...10)
+                    ratingRow("Soreness", value: $soreness, range: 0...10)
+                    ratingRow("Mood", value: $mood, range: 1...10)
+
+                    Toggle(isOn: $pain) {
+                        Text("Any pain or sharp discomfort?")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                    }
+                    .tint(MorpheTheme.danger)
+
+                    Button("Save Check-In") {
+                        store.submitRecoveryCheckIn(
+                            sleepHours: sleepHours,
+                            energy: energy,
+                            soreness: soreness,
+                            mood: mood,
+                            pain: pain
+                        )
+                        dismiss()
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .navigationTitle("Recovery check-in")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func ratingRow(_ title: String, value: Binding<Int>, range: ClosedRange<Int>) -> some View {
+        HStack {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+            Spacer()
+            Stepper("\(value.wrappedValue)/\(range.upperBound)", value: value, in: range)
+                .labelsHidden()
+            Text("\(value.wrappedValue)/\(range.upperBound)")
+                .foregroundStyle(MorpheTheme.accent)
+                .frame(width: 48, alignment: .trailing)
         }
     }
 }
