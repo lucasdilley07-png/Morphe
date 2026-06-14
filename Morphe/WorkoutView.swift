@@ -113,7 +113,7 @@ struct WorkoutView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     TrainExpandableSection(
                         title: "Session tools",
-                        subtitle: "Queue, swaps, pain-safe adjustments, and AI help stay here without pulling focus off the active set.",
+                        subtitle: "Queue, swaps, pain-safe adjustments, and quick tips stay here without pulling focus off the active set.",
                         isExpanded: $showSessionQueue
                     ) {
                         if let activeExercise = store.activeWorkoutExercise {

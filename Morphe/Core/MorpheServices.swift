@@ -1908,9 +1908,9 @@ enum MorpheDemoContent {
 
     static let clientCoachConversation: [ThreadMessage] = [
         ThreadMessage(sender: .coach, senderName: "Coach Marcus", text: "Good morning. Stay moderate today and tell me how the first round feels.", timestamp: "8:02 AM"),
-        ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "You completed 3 workouts this week. Today's goal is simple: finish your full-body workout and hit your protein target.", timestamp: "8:05 AM"),
+        ThreadMessage(sender: .ai, senderName: "Morphe Tips", text: "You completed 3 workouts this week. Today's goal is simple: finish your full-body workout and hit your protein target.", timestamp: "8:05 AM"),
         ThreadMessage(sender: .user, senderName: "Lucas", text: "If I feel tired after work, should I still train?", timestamp: "8:07 AM"),
-        ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "Yes, but make the goal smaller. Minimum Win counts when life is loud.", timestamp: "8:07 AM")
+        ThreadMessage(sender: .ai, senderName: "Morphe Tips", text: "Yes, but make the goal smaller. Minimum Win counts when life is loud.", timestamp: "8:07 AM")
     ]
 
     static let athleteMessageThreads: [MessageThread] = [
@@ -1925,12 +1925,12 @@ enum MorpheDemoContent {
             ]
         ),
         MessageThread(
-            participant: "Morphe AI",
+            participant: "Morphe Tips",
             sport: .generalFitness,
             preview: "I can help with plans, swaps, nutrition, and recovery.",
             isUnread: true,
             messages: [
-                ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "I’m here for workout swaps, recovery calls, food questions, and quick summaries when you need them.", timestamp: "Now")
+                ThreadMessage(sender: .ai, senderName: "Morphe Tips", text: "I’m here for workout swaps, recovery calls, food questions, and quick summaries when you need them.", timestamp: "Now")
             ]
         ),
         MessageThread(
@@ -2001,7 +2001,7 @@ enum MorpheDemoContent {
         limitations: "Knee can get cranky when lunges get sloppy.",
         equipment: "Home dumbbells, heavy bag, gym access twice a week",
         currentProgram: "Boxing Base Builder",
-        planCreatedBy: "Morphe AI",
+        planCreatedBy: "Morphe Tips",
         aiTodayInsight: AIInsight(
             title: "AI Coach Message",
             summary: "You do not need to train like a champion today. You just need to build the habits that create one.",

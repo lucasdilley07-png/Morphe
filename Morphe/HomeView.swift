@@ -475,7 +475,7 @@ private struct TodayNextMoveCard: View {
                         }
                         .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
 
-                        Button("Adjust with AI") {
+                        Button("Adjust my day") {
                             inlineReply = store.previewAIAgentReply(for: "Adjust today's plan for me")
                         }
                         .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))

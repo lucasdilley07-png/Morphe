@@ -342,7 +342,7 @@ final class MorpheAppStore {
         self.athleteThreadDraftSeed = nil
         self.clientConversation = MorpheDemoContent.clientCoachConversation
         self.athleteAIAgentConversation = [
-            ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "I’m here to help with today’s plan, swaps, recovery, and quick answers when you need them.", timestamp: "Now")
+            ThreadMessage(sender: .ai, senderName: "Morphe Tips", text: "I’m here to help with today’s plan, swaps, recovery, and quick answers when you need them.", timestamp: "Now")
         ]
 
         self.coachProfile = MorpheDemoContent.coachProfile
@@ -353,7 +353,7 @@ final class MorpheAppStore {
         self.messageThreads = threads
         self.selectedThreadID = threads.first?.id
         self.coachAIAgentConversation = [
-            ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "I can summarize athlete risk, draft outreach, and suggest lighter plans from your coaching data.", timestamp: "Now")
+            ThreadMessage(sender: .ai, senderName: "Morphe Tips", text: "I can summarize athlete risk, draft outreach, and suggest lighter plans from your coaching data.", timestamp: "Now")
         ]
         self.outreachSuggestions = MorpheDemoContent.outreachSuggestions
         self.messageTemplates = MorpheDemoContent.messageTemplates
@@ -1006,7 +1006,7 @@ final class MorpheAppStore {
                 quickActions: [.reply, .shareWorkout]
             )
 
-        case "Morphe AI":
+        case "Morphe Tips":
             if justFinishedSession {
                 return AthleteInboxThreadContext(
                     badge: "AI reviewed",
@@ -1102,7 +1102,7 @@ final class MorpheAppStore {
         }
 
         return AIInsight(
-            title: "AI Meal Feedback",
+            title: "Nutrition feedback",
             summary: "Protein is on track and hydration is improving. Keep dinner simple and consistent.",
             risk: .low,
             recommendation: "Repeat the same easy structure tonight.",
@@ -1216,6 +1216,29 @@ final class MorpheAppStore {
         clientProfile.adherence = 0
         didCompleteQuickCheckIn = false
         recovery = Self.neutralRecovery
+
+        // Honest guidance tips (no fabricated "improved 25%" claims, no "AI" label).
+        clientProfile.aiTodayInsight = AIInsight(
+            title: "Today's tip",
+            summary: "You don't need a perfect session — you need a consistent one. Show up and log it.",
+            risk: .low,
+            recommendation: "Start moderate, protect your sleep tonight, and add some protein.",
+            suggestedAction: "Start today's workout"
+        )
+        clientProfile.aiProgressInsight = AIInsight(
+            title: "Progress tip",
+            summary: "Your progress lives in your logged sessions. Stack a few and the trend follows.",
+            risk: .low,
+            recommendation: "Aim for steady, repeatable workouts over perfect ones.",
+            suggestedAction: "Review your progress"
+        )
+        clientProfile.aiNutritionInsight = AIInsight(
+            title: "Nutrition tip",
+            summary: "Hit protein and water first — the basics drive most of the result.",
+            risk: .low,
+            recommendation: "Aim for a protein source at each meal.",
+            suggestedAction: "Plan a protein-forward meal"
+        )
 
         // Clear the demo nutrition log (keep the generic goal targets).
         nutrition.caloriesConsumed = 0
@@ -1650,7 +1673,7 @@ final class MorpheAppStore {
             painTriggerExercise = currentWorkout.exercises.first?.name ?? "Walking Lunge"
         }
 
-        clientConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: workoutFeedbackResponse, timestamp: "Now"))
+        clientConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe Tips", text: workoutFeedbackResponse, timestamp: "Now"))
         Haptics.impact(.medium)
     }
 
@@ -1835,20 +1858,20 @@ final class MorpheAppStore {
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanText.isEmpty else { return }
 
-        if let threadIndex = athleteMessageThreads.firstIndex(where: { $0.participant == "Morphe AI" }) {
+        if let threadIndex = athleteMessageThreads.firstIndex(where: { $0.participant == "Morphe Tips" }) {
             athleteMessageThreads[threadIndex].messages.append(
                 ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now")
             )
             let reply = MorpheDemoContent.aiCoachReply(to: cleanText, tone: profileShowcase.coachingTone)
             athleteMessageThreads[threadIndex].messages.append(
-                ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now")
+                ThreadMessage(sender: .ai, senderName: "Morphe Tips", text: reply, timestamp: "Now")
             )
             athleteMessageThreads[threadIndex].preview = reply
             selectedAthleteThreadID = athleteMessageThreads[threadIndex].id
         }
 
         openCommunity(.contact)
-        showToast("Morphe AI replied.")
+        showToast("Morphe Tips replied.")
     }
 
     func sendTrainerMessage() {
@@ -1962,13 +1985,13 @@ final class MorpheAppStore {
 
         if selectedRole == .coach {
             coachAIAgentConversation.append(ThreadMessage(sender: .user, senderName: coachProfile.name, text: cleanText, timestamp: "Now"))
-            coachAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: coachAgentReply(to: cleanText), timestamp: "Now"))
+            coachAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe Tips", text: coachAgentReply(to: cleanText), timestamp: "Now"))
         } else {
             athleteAIAgentConversation.append(ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now"))
-            athleteAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: athleteAgentReply(to: cleanText), timestamp: "Now"))
+            athleteAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe Tips", text: athleteAgentReply(to: cleanText), timestamp: "Now"))
         }
 
-        showToast("Morphe AI replied.")
+        showToast("Morphe Tips replied.")
     }
 
     func previewAIAgentReply(for text: String) -> String {
@@ -2797,12 +2820,12 @@ final class MorpheAppStore {
             durationMinutes: template?.durationMinutes ?? 35,
             exercises: parsedExercises,
             notes: cleanLabel.isEmpty
-                ? "Morphe AI parsed a workout photo. Review the sets, reps, and notes before saving."
-                : "Morphe AI parsed \(cleanLabel). Review the sets, reps, and notes before saving.",
+                ? "Morphe Tips parsed a workout photo. Review the sets, reps, and notes before saving."
+                : "Morphe Tips parsed \(cleanLabel). Review the sets, reps, and notes before saving.",
             source: .aiPhotoParsed,
             enteredByUserID: coachProfile.id,
             enteredByRole: .coach,
-            enteredByName: "Morphe AI",
+            enteredByName: "Morphe Tips",
             verificationStatus: .aiPendingReview
         )
     }
@@ -2817,7 +2840,7 @@ final class MorpheAppStore {
         log.verificationStatus = .coachApproved
         log.enteredByUserID = coachProfile.id
         log.enteredByRole = .coach
-        log.enteredByName = "Morphe AI + \(coachProfile.name)"
+        log.enteredByName = "Morphe Tips + \(coachProfile.name)"
 
         appendWorkoutLog(log)
         addCoachTrainingActivityPost(
@@ -2854,12 +2877,12 @@ final class MorpheAppStore {
         if workoutLogs[index].source == .aiPhotoParsed {
             workoutLogs[index].enteredByUserID = coachProfile.id
             workoutLogs[index].enteredByRole = .coach
-            workoutLogs[index].enteredByName = "Morphe AI + \(coachProfile.name)"
+            workoutLogs[index].enteredByName = "Morphe Tips + \(coachProfile.name)"
 
             if log.athleteID == clientProfile.id {
                 addAthleteActivityPost(
                     title: "AI workout import approved",
-                    detail: "Morphe AI and \(coachProfile.name) reviewed \(workoutLogs[index].workoutTitle) and saved it to your progress.",
+                    detail: "Morphe Tips and \(coachProfile.name) reviewed \(workoutLogs[index].workoutTitle) and saved it to your progress.",
                     tags: [workoutLogs[index].sport.shortTitle, "AI Review"]
                 )
             }
@@ -3955,10 +3978,10 @@ final class MorpheAppStore {
         let lowercasedPrompt = prompt.lowercased()
 
         switch participant {
-        case "Morphe AI":
+        case "Morphe Tips":
             return (
                 .ai,
-                "Morphe AI",
+                "Morphe Tips",
                 MorpheDemoContent.aiCoachReply(to: prompt, tone: profileShowcase.coachingTone)
             )
         case clientProfile.coachName:
@@ -4961,7 +4984,7 @@ final class MorpheAppStore {
             return "Wanted to share a quick training update: \(currentWorkout.name) is the session I’m working around today."
         case .askForSwap:
             let targetExercise = activeWorkoutExercise?.name ?? currentWorkout.exercises.first?.name ?? "today's first movement"
-            if thread.participant == "Morphe AI" {
+            if thread.participant == "Morphe Tips" {
                 return "Can you help me swap \(targetExercise) for something that fits better today?"
             }
             return "Can we swap \(targetExercise) for something that fits better today?"
