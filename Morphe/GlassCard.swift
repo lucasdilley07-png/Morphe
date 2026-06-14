@@ -1362,6 +1362,9 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(item.title))
+                .accessibilityAddTraits(selected == item ? [.isButton, .isSelected] : .isButton)
             }
         }
         .padding(6)

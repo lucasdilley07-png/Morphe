@@ -325,13 +325,13 @@ private struct ClientPinnedHeader: View {
 
             Spacer()
 
-            HeaderCircleButton(systemImage: "plus") {
+            HeaderCircleButton(systemImage: "plus", label: "Quick add") {
                 store.openQuickAdd()
             }
 
             // Messaging is a v2 (multi-user) surface, hidden in v1.
             if FeatureFlags.multiUserEnabled {
-                HeaderCircleButton(systemImage: "bubble.left.and.bubble.right.fill") {
+                HeaderCircleButton(systemImage: "bubble.left.and.bubble.right.fill", label: "Messages") {
                     store.openCommunity(.contact)
                 }
             }
@@ -393,11 +393,11 @@ struct DemoBrandHeader: View {
 
                 Spacer()
 
-                HeaderCircleButton(systemImage: "plus") {
+                HeaderCircleButton(systemImage: "plus", label: "Quick add") {
                     store.openQuickAdd()
                 }
 
-                HeaderCircleButton(systemImage: role == .coach ? "bubble.left.and.bubble.right.fill" : "bell.fill") {
+                HeaderCircleButton(systemImage: role == .coach ? "bubble.left.and.bubble.right.fill" : "bell.fill", label: role == .coach ? "Messages" : "Notifications") {
                     if role == .coach {
                         store.selectedCoachTab = .messages
                     } else {
@@ -469,6 +469,7 @@ struct DemoBrandHeader: View {
 
 private struct HeaderCircleButton: View {
     let systemImage: String
+    let label: String
     let action: () -> Void
 
     var body: some View {
@@ -488,6 +489,7 @@ private struct HeaderCircleButton: View {
                 .shadow(color: MorpheTheme.glow.opacity(0.12), radius: 10, x: 0, y: 6)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text(label))
     }
 }
 
@@ -528,6 +530,7 @@ private struct FloatingAIAgentButton: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text("Open \(label)"))
         .contextMenu {
             ForEach(store.aiAgentQuickPrompts.prefix(4), id: \.self) { prompt in
                 Button(prompt) {
