@@ -83,6 +83,7 @@ final class PersistenceTests: XCTestCase {
             activeWorkoutExerciseIndex: 2,
             completedWorkoutSets: ["goblet-squat": 3],
             trackedSetReps: ["goblet-squat": [10, 9, 8]],
+            trackedSetWeights: ["goblet-squat": [135, 135, 130]],
             isWorkoutLoggedToday: false
         )
         store.saveSession(snapshot)
@@ -121,7 +122,8 @@ final class PersistenceTests: XCTestCase {
             coachingTone: "",
             avatarStyle: "",
             displayName: "Alex",
-            username: "alex"
+            username: "alex",
+            weightUnit: "lb"
         )
         store.saveProfile(snapshot)
 
@@ -151,6 +153,13 @@ final class PersistenceTests: XCTestCase {
 /// instead of inheriting the seeded demo athlete ("Lucas") and his data.
 @MainActor
 final class OnboardingIdentityTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        // Isolate from any state a previous run left in the shared app container.
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
 
     func testOnboardingMintsFreshIdentity() {
         let store = MorpheAppStore()
@@ -190,5 +199,22 @@ final class OnboardingIdentityTests: XCTestCase {
         XCTAssertFalse(store.workoutLogs.isEmpty, "logging adds a real log")
         XCTAssertTrue(store.workoutLogs.allSatisfy { $0.athleteID == userID },
                       "the user's logs must be attributed to the user, not the demo athlete")
+    }
+
+    func testLoggingCapturesRealWeightNotPlaceholder() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.startTodayWorkout()
+        store.completeTrackedSet(reps: 8, weight: 135)
+        store.hasCompletedWorkoutFlow = true
+        store.logWorkout()
+
+        let weights = store.workoutLogs.first?.exercises.map(\.weight) ?? []
+        XCTAssertFalse(weights.isEmpty)
+        XCTAssertFalse(weights.contains("As logged"),
+                       "the 'As logged' placeholder must be gone — got \(weights)")
+        XCTAssertTrue(weights.contains { $0.contains("135") },
+                      "the logged weight must reflect what the user entered — got \(weights)")
     }
 }

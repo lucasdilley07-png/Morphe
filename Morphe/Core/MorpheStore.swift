@@ -197,6 +197,8 @@ final class MorpheAppStore {
     var activeWorkoutExerciseIndex = 0 { didSet { persistWorkoutSession() } }
     var completedWorkoutSets: [String: Int] = [:] { didSet { persistWorkoutSession() } }
     var trackedSetReps: [String: [Int]] = [:] { didSet { persistWorkoutSession() } }
+    var trackedSetWeights: [String: [Double]] = [:] { didSet { persistWorkoutSession() } }
+    var weightUnit: WeightUnit = .pounds
 
     var coachProfile: CoachProfile
     var coachOverview: CoachOverview
@@ -428,6 +430,10 @@ final class MorpheAppStore {
             profileShowcase.avatar.style = avatar
         }
 
+        if let unit = WeightUnit(rawValue: snapshot.weightUnit) {
+            weightUnit = unit
+        }
+
         onboardingDraft.name = snapshot.name
         if let sport = SportFocus(rawValue: snapshot.sportMode) {
             clientProfile.sportMode = sport
@@ -465,7 +471,8 @@ final class MorpheAppStore {
                 coachingTone: profileShowcase.coachingTone.rawValue,
                 avatarStyle: profileShowcase.avatar.style.rawValue,
                 displayName: profileShowcase.displayName,
-                username: profileShowcase.username
+                username: profileShowcase.username,
+                weightUnit: weightUnit.rawValue
             )
         )
     }
@@ -487,6 +494,7 @@ final class MorpheAppStore {
         activeWorkoutExerciseIndex = snapshot.activeWorkoutExerciseIndex
         completedWorkoutSets = snapshot.completedWorkoutSets
         trackedSetReps = snapshot.trackedSetReps
+        trackedSetWeights = snapshot.trackedSetWeights
     }
 
     /// Persists the current in-progress session snapshot to disk.
@@ -501,6 +509,7 @@ final class MorpheAppStore {
                 activeWorkoutExerciseIndex: activeWorkoutExerciseIndex,
                 completedWorkoutSets: completedWorkoutSets,
                 trackedSetReps: trackedSetReps,
+                trackedSetWeights: trackedSetWeights,
                 isWorkoutLoggedToday: isWorkoutLoggedToday
             )
         )
@@ -1248,6 +1257,7 @@ final class MorpheAppStore {
         activeWorkoutExerciseIndex = 0
         completedWorkoutSets = [:]
         trackedSetReps = [:]
+        trackedSetWeights = [:]
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         selectedClientTab = .train
@@ -1258,7 +1268,7 @@ final class MorpheAppStore {
         }
     }
 
-    func completeTrackedSet(reps: Int) {
+    func completeTrackedSet(reps: Int, weight: Double? = nil) {
         guard let exercise = activeWorkoutExercise else { return }
         let targetSets = targetSetCount(for: exercise)
         let currentCount = completedWorkoutSets[exercise.id, default: 0]
@@ -1271,6 +1281,8 @@ final class MorpheAppStore {
         let updatedCount = currentCount + 1
         completedWorkoutSets[exercise.id] = updatedCount
         trackedSetReps[exercise.id, default: []].append(reps)
+        // Record weight per set (0 = bodyweight) so logs carry real load, not "As logged".
+        trackedSetWeights[exercise.id, default: []].append(max(0, weight ?? 0))
         Haptics.impact(.light)
 
         if updatedCount == targetSets {
@@ -1826,6 +1838,7 @@ final class MorpheAppStore {
         activeWorkoutExerciseIndex = 0
         completedWorkoutSets = [:]
         trackedSetReps = [:]
+        trackedSetWeights = [:]
         selectedClientTab = .train
         showToast("\(template.name) ready in Train.")
     }
@@ -4431,14 +4444,21 @@ final class MorpheAppStore {
     private func makeLoggedExercisesFromCurrentWorkout() -> [LoggedExercise] {
         currentWorkout.exercises.map { exercise in
             let repsLogged = trackedSetReps[exercise.id, default: []]
+            let weightsLogged = trackedSetWeights[exercise.id, default: []]
             let repSummary = repsLogged.isEmpty
                 ? exercise.reps
                 : repsLogged.map(String.init).joined(separator: ", ")
+            let setSummary = repsLogged.isEmpty
+                ? exercise.sets
+                : "\(repsLogged.count) sets"
+            // Real load: the top working weight the user entered, or Bodyweight.
+            let topWeight = weightsLogged.max() ?? 0
+            let weightSummary = topWeight > 0 ? weightUnit.format(topWeight) : "Bodyweight"
             return LoggedExercise(
                 name: exercise.name,
-                sets: exercise.sets,
+                sets: setSummary,
                 reps: repSummary,
-                weight: "As logged",
+                weight: weightSummary,
                 note: exercise.formCue
             )
         }

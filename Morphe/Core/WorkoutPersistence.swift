@@ -22,6 +22,7 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
     var activeWorkoutExerciseIndex: Int
     var completedWorkoutSets: [String: Int]
     var trackedSetReps: [String: [Int]]
+    var trackedSetWeights: [String: [Double]]
     var isWorkoutLoggedToday: Bool
 }
 

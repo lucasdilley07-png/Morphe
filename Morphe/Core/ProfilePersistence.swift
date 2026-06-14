@@ -39,6 +39,7 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var avatarStyle: String
     var displayName: String
     var username: String
+    var weightUnit: String
 }
 
 /// Abstraction over where the local profile is stored.

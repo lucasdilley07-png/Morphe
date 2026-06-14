@@ -780,6 +780,24 @@ enum WorkoutVerificationStatus: String, CaseIterable, Identifiable, Codable {
     var id: String { rawValue }
 }
 
+enum WeightUnit: String, CaseIterable, Identifiable, Codable {
+    case pounds = "lb"
+    case kilograms = "kg"
+
+    var id: String { rawValue }
+    var label: String { rawValue }
+
+    /// Formats a stored weight value (always kept in this unit) for display.
+    func format(_ value: Double) -> String {
+        if value <= 0 { return "Bodyweight" }
+        let rounded = (value * 10).rounded() / 10
+        let text = rounded.truncatingRemainder(dividingBy: 1) == 0
+            ? String(Int(rounded))
+            : String(rounded)
+        return "\(text) \(rawValue)"
+    }
+}
+
 struct LoggedExercise: Identifiable, Hashable, Codable {
     var id = UUID()
     var name: String

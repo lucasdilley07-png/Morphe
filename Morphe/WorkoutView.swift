@@ -10,6 +10,7 @@ struct WorkoutView: View {
     @State private var isShowingPainFlow = false
     @State private var isShowingRepLogger = false
     @State private var pendingRepCount = 10
+    @State private var pendingWeight: Double = 0
     @State private var showCurrentPlan = false
     @State private var showProgramDetails = false
     @State private var showExerciseList = false
@@ -40,11 +41,12 @@ struct WorkoutView: View {
                 .environment(store)
         }
         .sheet(isPresented: $isShowingRepLogger) {
-            SetRepLoggingSheet(reps: $pendingRepCount) {
-                store.completeTrackedSet(reps: pendingRepCount)
+            SetRepLoggingSheet(reps: $pendingRepCount, weight: $pendingWeight) {
+                store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight)
                 isShowingRepLogger = false
             }
-            .presentationDetents([.height(280)])
+            .environment(store)
+            .presentationDetents([.height(460)])
         }
     }
 
@@ -1396,25 +1398,61 @@ private struct PainFlaggingCard: View {
 
 private struct SetRepLoggingSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(MorpheAppStore.self) private var store
     @Binding var reps: Int
+    @Binding var weight: Double
     let onSave: () -> Void
 
+    @State private var weightText = ""
+
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("How many reps did you complete?")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
-
-                Stepper("Reps: \(reps)", value: $reps, in: 1...30)
-                    .foregroundStyle(.white)
-
-                HStack(spacing: 8) {
-                    ForEach([4, 6, 8, 10, 12, 15], id: \.self) { preset in
-                        Button("\(preset)") {
-                            reps = preset
+        @Bindable var store = store
+        return NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack {
+                    Text("Log your set")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Picker("Unit", selection: $store.weightUnit) {
+                        ForEach(WeightUnit.allCases) { unit in
+                            Text(unit.label).tag(unit)
                         }
-                        .buttonStyle(FilterChipStyle(isSelected: reps == preset, selectedColor: MorpheTheme.accentAlt))
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 110)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Weight (\(store.weightUnit.label))")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    HStack(spacing: 10) {
+                        TextField("0", text: $weightText)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(MorpheFieldStyle())
+                        Text(store.weightUnit.label)
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    Text("Leave at 0 for bodyweight.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Reps")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    Stepper("\(reps) reps", value: $reps, in: 1...50)
+                        .foregroundStyle(.white)
+                    HStack(spacing: 8) {
+                        ForEach([4, 6, 8, 10, 12, 15], id: \.self) { preset in
+                            Button("\(preset)") {
+                                reps = preset
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: reps == preset, selectedColor: MorpheTheme.accentAlt))
+                        }
                     }
                 }
 
@@ -1425,6 +1463,7 @@ private struct SetRepLoggingSheet: View {
                     .buttonStyle(SecondaryCTAButtonStyle())
 
                     Button("Log Set") {
+                        weight = Double(weightText.trimmingCharacters(in: .whitespaces)) ?? 0
                         onSave()
                         dismiss()
                     }
@@ -1435,6 +1474,7 @@ private struct SetRepLoggingSheet: View {
             }
             .padding(20)
             .background(PremiumBackground())
+            .onAppear { weightText = weight > 0 ? String(weight) : "" }
         }
     }
 }
