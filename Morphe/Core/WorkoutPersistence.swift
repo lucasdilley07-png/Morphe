@@ -26,12 +26,44 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
     var isWorkoutLoggedToday: Bool
 }
 
+// MARK: - User-built workout library (custom workouts + custom exercises)
+
+struct CustomExerciseSnapshot: Codable, Equatable {
+    var id: String
+    var name: String
+    var muscleGroup: String
+}
+
+struct CustomWorkoutExerciseSnapshot: Codable, Equatable {
+    var libraryID: String
+    var name: String
+    var muscleGroup: String
+    var sets: String
+    var reps: String
+    var formCue: String
+}
+
+struct CustomWorkoutSnapshot: Codable, Equatable {
+    var id: String
+    var name: String
+    var sport: String
+    var durationMinutes: Int
+    var exercises: [CustomWorkoutExerciseSnapshot]
+}
+
+struct WorkoutLibrarySnapshot: Codable, Equatable {
+    var customExercises: [CustomExerciseSnapshot]
+    var customWorkouts: [CustomWorkoutSnapshot]
+}
+
 /// Abstraction over where workout data is stored.
 protocol WorkoutPersisting: AnyObject {
     func loadLogs() -> [WorkoutLog]?
     func saveLogs(_ logs: [WorkoutLog])
     func loadSession() -> WorkoutSessionSnapshot?
     func saveSession(_ snapshot: WorkoutSessionSnapshot)
+    func loadLibrary() -> WorkoutLibrarySnapshot?
+    func saveLibrary(_ snapshot: WorkoutLibrarySnapshot)
     /// Remove all persisted workout data (used by tests / sign-out later).
     func clear()
 }
@@ -41,6 +73,7 @@ protocol WorkoutPersisting: AnyObject {
 final class WorkoutFilePersistence: WorkoutPersisting {
     private let logsURL: URL
     private let sessionURL: URL
+    private let libraryURL: URL
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
@@ -65,6 +98,7 @@ final class WorkoutFilePersistence: WorkoutPersisting {
 
         self.logsURL = directory.appendingPathComponent("workout-logs.json")
         self.sessionURL = directory.appendingPathComponent("workout-session.json")
+        self.libraryURL = directory.appendingPathComponent("workout-library.json")
     }
 
     func loadLogs() -> [WorkoutLog]? {
@@ -87,8 +121,19 @@ final class WorkoutFilePersistence: WorkoutPersisting {
         try? data.write(to: sessionURL, options: [.atomic])
     }
 
+    func loadLibrary() -> WorkoutLibrarySnapshot? {
+        guard let data = try? Data(contentsOf: libraryURL) else { return nil }
+        return try? decoder.decode(WorkoutLibrarySnapshot.self, from: data)
+    }
+
+    func saveLibrary(_ snapshot: WorkoutLibrarySnapshot) {
+        guard let data = try? encoder.encode(snapshot) else { return }
+        try? data.write(to: libraryURL, options: [.atomic])
+    }
+
     func clear() {
         try? FileManager.default.removeItem(at: logsURL)
         try? FileManager.default.removeItem(at: sessionURL)
+        try? FileManager.default.removeItem(at: libraryURL)
     }
 }

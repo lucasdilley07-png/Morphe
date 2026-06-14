@@ -17,6 +17,7 @@ struct WorkoutView: View {
     @State private var showAdjustments = false
     @State private var showSessionQueue = false
     @State private var showHistory = false
+    @State private var showBuilder = false
 
     private let painAreas = ["Knee", "Shoulder", "Back", "Hip", "Ankle", "Neck"]
     private var goodForTodayRecommendation: GoodForTodayWorkoutRecommendation {
@@ -47,6 +48,10 @@ struct WorkoutView: View {
             }
             .environment(store)
             .presentationDetents([.height(460)])
+        }
+        .sheet(isPresented: $showBuilder) {
+            WorkoutBuilderSheet()
+                .environment(store)
         }
     }
 
@@ -160,6 +165,29 @@ struct WorkoutView: View {
                     title: "Train",
                     subtitle: "Start, track, finish, rate the session, then let Morphe adjust the next move."
                 )
+
+                Button {
+                    showBuilder = true
+                } label: {
+                    Label("Build your own workout", systemImage: "plus.circle.fill")
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+
+                let myWorkouts = store.workoutTemplates.filter { store.isCustomWorkout($0.id) }
+                if !myWorkouts.isEmpty {
+                    YourWorkoutsCard(
+                        workouts: myWorkouts,
+                        onStart: { template in
+                            store.openWorkoutTemplate(template)
+                            workoutFinished = false
+                            isShowingPainFlow = false
+                            store.startTodayWorkout()
+                        },
+                        onDelete: { template in
+                            store.deleteCustomWorkout(template.id)
+                        }
+                    )
+                }
 
                 GoodForTodayWorkoutCard(
                     recommendation: goodForTodayRecommendation,
@@ -2137,4 +2165,254 @@ private enum ExerciseSwapReason: String, CaseIterable, Identifiable {
     case wantHomeVersion = "Want home version"
 
     var id: String { rawValue }
+}
+
+// MARK: - Workout builder
+
+private struct YourWorkoutsCard: View {
+    let workouts: [WorkoutTemplate]
+    let onStart: (WorkoutTemplate) -> Void
+    let onDelete: (WorkoutTemplate) -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Your workouts")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                ForEach(workouts) { workout in
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(workout.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Text("\(workout.exercises.count) exercises • \(workout.durationMinutes) min")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                        Spacer()
+                        Button("Start") { onStart(workout) }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                            .frame(width: 92)
+                        Button {
+                            onDelete(workout)
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundStyle(MorpheTheme.danger)
+                        }
+                        .accessibilityLabel("Delete \(workout.name)")
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+}
+
+private struct WorkoutBuilderSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(MorpheAppStore.self) private var store
+
+    @State private var name = ""
+    @State private var sport: SportFocus = .generalFitness
+    @State private var items: [CustomWorkoutItem] = []
+    @State private var showExercisePicker = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Workout name")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                        TextField("e.g. Push Day", text: $name)
+                            .textFieldStyle(MorpheFieldStyle())
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Focus")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                        Picker("Focus", selection: $sport) {
+                            ForEach(SportFocus.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .tint(MorpheTheme.accent)
+                    }
+
+                    HStack {
+                        Text("Exercises (\(items.count))")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Button {
+                            showExercisePicker = true
+                        } label: {
+                            Label("Add", systemImage: "plus")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.accent)
+                    }
+
+                    if items.isEmpty {
+                        Text("Add exercises from the library or create your own.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+
+                    ForEach($items) { $item in
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(item.exercise.name)
+                                            .font(.subheadline.weight(.bold))
+                                            .foregroundStyle(.white)
+                                        Text(item.exercise.muscleGroup.rawValue)
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.textMuted)
+                                    }
+                                    Spacer()
+                                    Button {
+                                        items.removeAll { $0.id == item.id }
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .foregroundStyle(MorpheTheme.danger)
+                                    }
+                                    .accessibilityLabel("Remove \(item.exercise.name)")
+                                }
+                                Stepper("Sets: \(item.sets)", value: $item.sets, in: 1...10)
+                                    .foregroundStyle(.white)
+                                Stepper("Reps: \(item.reps)", value: $item.reps, in: 1...50)
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                    }
+
+                    Button("Create Workout") {
+                        store.createCustomWorkout(name: name, sport: sport, items: items)
+                        dismiss()
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(items.isEmpty)
+                    .opacity(items.isEmpty ? 0.5 : 1)
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .navigationTitle("Build a workout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showExercisePicker) {
+                ExercisePickerSheet { exercise in
+                    items.append(CustomWorkoutItem(exercise: exercise))
+                }
+                .environment(store)
+            }
+        }
+    }
+}
+
+private struct ExercisePickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(MorpheAppStore.self) private var store
+    let onPick: (ExerciseReference) -> Void
+
+    @State private var query = ""
+    @State private var showCustomForm = false
+    @State private var customName = ""
+    @State private var customMuscle: MuscleGroup = .core
+
+    private var filtered: [ExerciseReference] {
+        let all = store.allExercises
+        guard !query.isEmpty else { return all }
+        return all.filter {
+            $0.name.localizedCaseInsensitiveContains(query)
+                || $0.muscleGroup.rawValue.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Button {
+                        withAnimation { showCustomForm.toggle() }
+                    } label: {
+                        Label("Create custom exercise", systemImage: "plus.circle")
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+
+                    if showCustomForm {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                TextField("Exercise name", text: $customName)
+                                    .textFieldStyle(MorpheFieldStyle())
+                                Picker("Muscle group", selection: $customMuscle) {
+                                    ForEach(MuscleGroup.allCases) { group in
+                                        Text(group.rawValue).tag(group)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .tint(MorpheTheme.accent)
+                                Button("Add custom exercise") {
+                                    let created = store.addCustomExercise(name: customName, muscleGroup: customMuscle)
+                                    onPick(created)
+                                    dismiss()
+                                }
+                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                                .disabled(customName.trimmingCharacters(in: .whitespaces).isEmpty)
+                            }
+                        }
+                    }
+
+                    ForEach(filtered) { exercise in
+                        Button {
+                            onPick(exercise)
+                            dismiss()
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(exercise.name)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                    Text(exercise.muscleGroup.rawValue)
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                }
+                                Spacer()
+                                Image(systemName: "plus")
+                                    .foregroundStyle(MorpheTheme.accent)
+                            }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(MorpheTheme.panel)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .navigationTitle("Add exercise")
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $query)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
 }

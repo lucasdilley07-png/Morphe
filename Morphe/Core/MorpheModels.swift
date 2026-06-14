@@ -667,6 +667,14 @@ struct ExerciseReference: Identifiable, Hashable {
     var whyThisMatters: String
 }
 
+/// One line in the workout builder: a chosen exercise with target sets/reps.
+struct CustomWorkoutItem: Identifiable, Hashable {
+    var id = UUID()
+    var exercise: ExerciseReference
+    var sets: Int = 3
+    var reps: Int = 10
+}
+
 struct WorkoutExercise: Identifiable, Hashable {
     var id: String
     var exerciseLibraryID: String

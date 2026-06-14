@@ -218,3 +218,70 @@ final class OnboardingIdentityTests: XCTestCase {
                       "the logged weight must reflect what the user entered — got \(weights)")
     }
 }
+
+/// Verifies the user can build their own workouts and custom exercises, and
+/// that they persist across launches.
+@MainActor
+final class WorkoutBuilderTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    func testCreateCustomWorkoutMakesItCurrentAndRunnable() {
+        let store = freshStore()
+        let exercise = store.allExercises.first!
+        store.createCustomWorkout(
+            name: "Push Day",
+            sport: .strength,
+            items: [CustomWorkoutItem(exercise: exercise, sets: 4, reps: 8)]
+        )
+
+        XCTAssertTrue(store.workoutTemplates.contains { $0.name == "Push Day" && store.isCustomWorkout($0.id) })
+        XCTAssertEqual(store.currentWorkout.name, "Push Day")
+        XCTAssertEqual(store.currentWorkout.exercises.count, 1)
+    }
+
+    func testCustomWorkoutPersistsAcrossLaunch() {
+        let store = freshStore()
+        let exercise = store.allExercises.first!
+        store.createCustomWorkout(
+            name: "Leg Day",
+            sport: .strength,
+            items: [CustomWorkoutItem(exercise: exercise, sets: 3, reps: 12)]
+        )
+
+        let reloaded = MorpheAppStore()
+        XCTAssertTrue(reloaded.workoutTemplates.contains { $0.name == "Leg Day" },
+                      "a built workout must survive a relaunch")
+    }
+
+    func testAddCustomExerciseExtendsLibrary() {
+        let store = freshStore()
+        let before = store.allExercises.count
+        let created = store.addCustomExercise(name: "Sled Push", muscleGroup: .legs)
+
+        XCTAssertEqual(store.allExercises.count, before + 1)
+        XCTAssertTrue(store.allExercises.contains { $0.id == created.id && $0.name == "Sled Push" })
+    }
+
+    func testDeleteCustomWorkoutRemovesIt() {
+        let store = freshStore()
+        let exercise = store.allExercises.first!
+        store.createCustomWorkout(name: "Temp", sport: .strength,
+                                  items: [CustomWorkoutItem(exercise: exercise, sets: 3, reps: 10)])
+        let id = store.workoutTemplates.first { $0.name == "Temp" }!.id
+        store.deleteCustomWorkout(id)
+
+        XCTAssertFalse(store.workoutTemplates.contains { $0.id == id })
+    }
+}

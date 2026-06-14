@@ -231,6 +231,15 @@ final class MorpheAppStore {
     var showPaywall = false
 
     let exerciseDatabase: [ExerciseReference]
+    /// Exercises the user created themselves (merged with the built-in library).
+    var customExercises: [ExerciseReference] = []
+    /// Template ids the user built, so we know which to persist as their library.
+    private var customWorkoutIDs: Set<UUID> = []
+
+    /// The full exercise library available to the builder: built-in + custom.
+    var allExercises: [ExerciseReference] {
+        exerciseDatabase + customExercises
+    }
     let availableThemes: [ThemePreset]
     let availableAccentPalettes: [AccentPalette]
     let availableAvatars: [AvatarStyle]
@@ -374,6 +383,8 @@ final class MorpheAppStore {
         if let snapshot = workoutPersistence.loadSession() {
             restoreWorkoutSession(from: snapshot)
         }
+        // Rebuild the user's custom exercises and workouts.
+        loadCustomWorkoutLibrary()
         // Apply the user's saved local profile so the app greets them by name
         // and a returning user skips onboarding.
         if let persistedProfile {
@@ -475,6 +486,168 @@ final class MorpheAppStore {
                 weightUnit: weightUnit.rawValue
             )
         )
+    }
+
+    // MARK: - User-built workouts
+
+    /// Creates a custom exercise the user defines, available alongside the
+    /// built-in library, and persists it.
+    @discardableResult
+    func addCustomExercise(name: String, muscleGroup: MuscleGroup) -> ExerciseReference {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let exercise = ExerciseReference(
+            id: "custom-\(UUID().uuidString.prefix(8))",
+            name: trimmed.isEmpty ? "Custom exercise" : trimmed,
+            muscleGroup: muscleGroup,
+            movementPattern: "Custom",
+            musclesWorked: muscleGroup.rawValue,
+            equipment: "Your choice",
+            difficulty: .moderate,
+            videoPlaceholder: "",
+            instructions: ["Perform with controlled form."],
+            formCue: "Move with control through a full range of motion.",
+            commonMistakes: "Rushing the reps or using momentum.",
+            beginnerModification: "Reduce the load or range until it feels solid.",
+            alternatives: [],
+            whyThisMatters: "A movement you added to fit your own training."
+        )
+        customExercises.append(exercise)
+        persistWorkoutLibrary()
+        return exercise
+    }
+
+    /// Builds a new workout from chosen exercises, makes it the current plan,
+    /// and persists it so it survives relaunches.
+    func createCustomWorkout(name: String, sport: SportFocus, items: [CustomWorkoutItem]) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let exercises = items.map { item in
+            WorkoutExercise(
+                id: "\(item.exercise.id)-\(UUID().uuidString.prefix(6))",
+                exerciseLibraryID: item.exercise.id,
+                name: item.exercise.name,
+                muscleGroup: item.exercise.muscleGroup,
+                sets: "\(item.sets) sets",
+                reps: "\(item.reps) reps",
+                difficulty: item.exercise.difficulty,
+                formCue: item.exercise.formCue
+            )
+        }
+        let template = WorkoutTemplate(
+            name: trimmed.isEmpty ? "My Workout" : trimmed,
+            type: "Custom workout",
+            sport: sport,
+            goal: "Your custom session",
+            difficulty: .moderate,
+            durationMinutes: max(15, items.count * 8),
+            equipment: "Your choice",
+            exercises: exercises,
+            notes: "You built this workout.",
+            coachNote: ""
+        )
+        workoutTemplates.insert(template, at: 0)
+        customWorkoutIDs.insert(template.id)
+        currentWorkoutID = template.id
+        persistWorkoutLibrary()
+        showToast("\(template.name) created. Start it from Current plan.")
+    }
+
+    /// Deletes one of the user's custom workouts.
+    func deleteCustomWorkout(_ id: UUID) {
+        guard customWorkoutIDs.contains(id) else { return }
+        workoutTemplates.removeAll { $0.id == id }
+        customWorkoutIDs.remove(id)
+        if currentWorkoutID == id {
+            currentWorkoutID = workoutTemplates.first?.id ?? currentWorkoutID
+        }
+        persistWorkoutLibrary()
+    }
+
+    /// True if a template was built by the user (vs a built-in starter).
+    func isCustomWorkout(_ id: UUID) -> Bool {
+        customWorkoutIDs.contains(id)
+    }
+
+    private func persistWorkoutLibrary() {
+        let exerciseSnaps = customExercises.map {
+            CustomExerciseSnapshot(id: $0.id, name: $0.name, muscleGroup: $0.muscleGroup.rawValue)
+        }
+        let workoutSnaps = workoutTemplates
+            .filter { customWorkoutIDs.contains($0.id) }
+            .map { template in
+                CustomWorkoutSnapshot(
+                    id: template.id.uuidString,
+                    name: template.name,
+                    sport: template.sport.rawValue,
+                    durationMinutes: template.durationMinutes,
+                    exercises: template.exercises.map {
+                        CustomWorkoutExerciseSnapshot(
+                            libraryID: $0.exerciseLibraryID,
+                            name: $0.name,
+                            muscleGroup: $0.muscleGroup.rawValue,
+                            sets: $0.sets,
+                            reps: $0.reps,
+                            formCue: $0.formCue
+                        )
+                    }
+                )
+            }
+        workoutPersistence.saveLibrary(
+            WorkoutLibrarySnapshot(customExercises: exerciseSnaps, customWorkouts: workoutSnaps)
+        )
+    }
+
+    /// Rebuilds the user's custom exercises and workouts from disk at launch.
+    private func loadCustomWorkoutLibrary() {
+        guard let snapshot = workoutPersistence.loadLibrary() else { return }
+        customExercises = snapshot.customExercises.map { snap in
+            ExerciseReference(
+                id: snap.id,
+                name: snap.name,
+                muscleGroup: MuscleGroup(rawValue: snap.muscleGroup) ?? .core,
+                movementPattern: "Custom",
+                musclesWorked: snap.muscleGroup,
+                equipment: "Your choice",
+                difficulty: .moderate,
+                videoPlaceholder: "",
+                instructions: ["Perform with controlled form."],
+                formCue: "Move with control through a full range of motion.",
+                commonMistakes: "Rushing the reps or using momentum.",
+                beginnerModification: "Reduce the load or range until it feels solid.",
+                alternatives: [],
+                whyThisMatters: "A movement you added to fit your own training."
+            )
+        }
+        for snap in snapshot.customWorkouts {
+            let id = UUID(uuidString: snap.id) ?? UUID()
+            guard !workoutTemplates.contains(where: { $0.id == id }) else { continue }
+            let exercises = snap.exercises.map {
+                WorkoutExercise(
+                    id: "\($0.libraryID)-\(UUID().uuidString.prefix(6))",
+                    exerciseLibraryID: $0.libraryID,
+                    name: $0.name,
+                    muscleGroup: MuscleGroup(rawValue: $0.muscleGroup) ?? .core,
+                    sets: $0.sets,
+                    reps: $0.reps,
+                    difficulty: .moderate,
+                    formCue: $0.formCue
+                )
+            }
+            let template = WorkoutTemplate(
+                id: id,
+                name: snap.name,
+                type: "Custom workout",
+                sport: SportFocus(rawValue: snap.sport) ?? .generalFitness,
+                goal: "Your custom session",
+                difficulty: .moderate,
+                durationMinutes: snap.durationMinutes,
+                equipment: "Your choice",
+                exercises: exercises,
+                notes: "You built this workout.",
+                coachNote: ""
+            )
+            customWorkoutIDs.insert(id)
+            workoutTemplates.insert(template, at: 0)
+        }
     }
 
     /// Re-applies a saved in-progress session snapshot. Guarded so the property
@@ -1078,8 +1251,14 @@ final class MorpheAppStore {
         clientConversation = []
         savedPartnerSessionRecaps = []
 
+        // Clear any custom workouts/exercises so a fresh account starts clean.
+        workoutTemplates.removeAll { customWorkoutIDs.contains($0.id) }
+        customWorkoutIDs = []
+        customExercises = []
+
         // Persist the now-empty workout store under the new identity.
         workoutPersistence.saveLogs(workoutLogs)
+        persistWorkoutLibrary()
     }
 
     func selectSportMode(_ sport: SportFocus) {
