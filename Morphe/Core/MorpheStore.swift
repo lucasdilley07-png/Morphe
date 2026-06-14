@@ -237,6 +237,8 @@ final class MorpheAppStore: ObservableObject {
 
     /// On-device persistence for the workout-tracking domain. Set once in `init`.
     private let workoutPersistence: WorkoutPersisting
+    /// On-device persistence for the user's local profile. Set once in `init`.
+    private let profilePersistence: ProfilePersisting
     /// Guards `persistWorkoutSession()` so session `didSet`s triggered while we
     /// restore a saved snapshot in `init` don't immediately re-save it.
     private var isRestoringWorkoutSession = false
@@ -258,6 +260,11 @@ final class MorpheAppStore: ObservableObject {
         let persistedWorkoutLogs = workoutPersistence.loadLogs()
         let initialWorkoutLogs = persistedWorkoutLogs ?? seededWorkoutLogs
         self.workoutPersistence = workoutPersistence
+
+        // Local profile persistence: load the user's saved identity, if any.
+        let profilePersistence = ProfileFilePersistence()
+        let persistedProfile = profilePersistence.loadProfile()
+        self.profilePersistence = profilePersistence
 
         self.exerciseDatabase = MorpheDemoContent.exerciseDatabase
         self.availableThemes = MorpheDemoContent.themePresets
@@ -364,6 +371,91 @@ final class MorpheAppStore: ObservableObject {
         if let snapshot = workoutPersistence.loadSession() {
             restoreWorkoutSession(from: snapshot)
         }
+        // Apply the user's saved local profile so the app greets them by name
+        // and a returning user skips onboarding.
+        if let persistedProfile {
+            applyPersistedProfile(persistedProfile)
+        }
+    }
+
+    /// Applies a saved local-profile snapshot over the seeded demo profile.
+    private func applyPersistedProfile(_ snapshot: LocalProfileSnapshot) {
+        guard snapshot.hasCompletedOnboarding else { return }
+        hasCompletedOnboarding = true
+
+        clientProfile.name = snapshot.name
+        if let gender = GenderOption(rawValue: snapshot.gender) {
+            clientProfile.gender = gender
+        }
+        if !snapshot.selectedSports.isEmpty {
+            clientProfile.selectedSports = snapshot.selectedSports.compactMap { SportFocus(rawValue: $0) }
+        }
+        if !snapshot.selectedTrainingStyles.isEmpty {
+            clientProfile.selectedTrainingStyles = snapshot.selectedTrainingStyles.compactMap { TrainingStyleOption(rawValue: $0) }
+        }
+        if !snapshot.selectedGoals.isEmpty {
+            clientProfile.selectedGoals = snapshot.selectedGoals
+        }
+        clientProfile.goal = snapshot.goal
+        clientProfile.physicalGoalTarget = snapshot.physicalGoalTarget
+        clientProfile.weightGoalTarget = snapshot.weightGoalTarget
+        clientProfile.goalDeadline = snapshot.goalDeadline
+        clientProfile.fitnessLevel = snapshot.fitnessLevel
+        clientProfile.equipment = snapshot.equipment
+        clientProfile.limitations = snapshot.injuries
+
+        profileShowcase.displayName = snapshot.displayName.isEmpty ? snapshot.name : snapshot.displayName
+        if !snapshot.username.isEmpty {
+            profileShowcase.username = snapshot.username
+        }
+        if let theme = ThemePreset(rawValue: snapshot.theme) {
+            profileShowcase.theme = theme
+        }
+        if let accent = AccentPalette(rawValue: snapshot.accentPalette) {
+            profileShowcase.accentPalette = accent
+        }
+        if let tone = CoachingTone(rawValue: snapshot.coachingTone) {
+            profileShowcase.coachingTone = tone
+        }
+        if let avatar = AvatarStyle(rawValue: snapshot.avatarStyle) {
+            profileShowcase.avatar.style = avatar
+        }
+
+        onboardingDraft.name = snapshot.name
+        if let sport = SportFocus(rawValue: snapshot.sportMode) {
+            clientProfile.sportMode = sport
+            applyPrimarySport(sport)
+        }
+        MorpheTheme.apply(accentPalette: profileShowcase.accentPalette)
+    }
+
+    /// Persists the current local profile snapshot to disk.
+    private func persistLocalProfile() {
+        profilePersistence.saveProfile(
+            LocalProfileSnapshot(
+                hasCompletedOnboarding: hasCompletedOnboarding,
+                name: clientProfile.name,
+                gender: clientProfile.gender.rawValue,
+                accountRole: selectedRole.rawValue,
+                sportMode: clientProfile.sportMode.rawValue,
+                selectedSports: clientProfile.selectedSports.map(\.rawValue),
+                selectedTrainingStyles: clientProfile.selectedTrainingStyles.map(\.rawValue),
+                selectedGoals: clientProfile.selectedGoals,
+                goal: clientProfile.goal,
+                physicalGoalTarget: clientProfile.physicalGoalTarget,
+                weightGoalTarget: clientProfile.weightGoalTarget,
+                goalDeadline: clientProfile.goalDeadline,
+                fitnessLevel: clientProfile.fitnessLevel,
+                equipment: clientProfile.equipment,
+                injuries: clientProfile.limitations,
+                theme: profileShowcase.theme.rawValue,
+                accentPalette: profileShowcase.accentPalette.rawValue,
+                coachingTone: profileShowcase.coachingTone.rawValue,
+                avatarStyle: profileShowcase.avatar.style.rawValue,
+                displayName: profileShowcase.displayName,
+                username: profileShowcase.username
+            )
+        )
     }
 
     /// Re-applies a saved in-progress session snapshot. Guarded so the property
@@ -843,8 +935,17 @@ final class MorpheAppStore: ObservableObject {
         let primarySport = onboardingDraft.selectedSports.first ?? .boxing
         let selectedGoals = onboardingDraft.selectedGoals.map(\.rawValue)
 
+        let trimmedName = onboardingDraft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedName = trimmedName.isEmpty ? clientProfile.name : trimmedName
+
         hasCompletedOnboarding = true
         selectedRole = onboardingDraft.accountType
+        clientProfile.name = resolvedName
+        profileShowcase.displayName = resolvedName
+        let handle = resolvedName.lowercased().filter { $0.isLetter || $0.isNumber }
+        if !handle.isEmpty {
+            profileShowcase.username = handle
+        }
         selectedClientTab = .today
         selectedCoachTab = .dashboard
         selectedCommunitySection = .forYou
@@ -871,6 +972,7 @@ final class MorpheAppStore: ObservableObject {
         MorpheTheme.apply(accentPalette: onboardingDraft.accentPalette)
         showWelcomeExperience = true
         showCelebration(title: "Plan ready", detail: generatedPlan.phase, symbol: "sparkles")
+        persistLocalProfile()
     }
 
     func selectSportMode(_ sport: SportFocus) {

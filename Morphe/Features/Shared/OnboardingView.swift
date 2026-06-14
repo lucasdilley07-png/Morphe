@@ -49,6 +49,7 @@ struct OnboardingFlowView: View {
 
     private let steps: [OnboardingStep] = [
         .welcome,
+        .name,
         .gender,
         .accountType,
         .goal,
@@ -69,6 +70,13 @@ struct OnboardingFlowView: View {
 
     private var currentStep: OnboardingStep {
         steps[stepIndex]
+    }
+
+    private var canAdvance: Bool {
+        if currentStep == .name {
+            return !store.onboardingDraft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        return true
     }
 
     private var nextButtonTitle: String {
@@ -130,6 +138,8 @@ struct OnboardingFlowView: View {
                                 }
                             }
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                            .disabled(!canAdvance)
+                            .opacity(canAdvance ? 1 : 0.5)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -144,6 +154,8 @@ struct OnboardingFlowView: View {
         switch step {
         case .welcome:
             WelcomeLandingStep()
+        case .name:
+            NameStep(name: $store.onboardingDraft.name)
         case .gender:
             GenderSelectionStep(selection: $store.onboardingDraft.gender)
         case .accountType:
@@ -182,6 +194,7 @@ struct OnboardingFlowView: View {
 
 private enum OnboardingStep {
     case welcome
+    case name
     case gender
     case accountType
     case goal
@@ -244,6 +257,29 @@ private struct LandingPoint: View {
                 .foregroundStyle(MorpheTheme.accent)
             Text(text)
                 .foregroundStyle(.white)
+        }
+    }
+}
+
+private struct NameStep: View {
+    @Binding var name: String
+
+    var body: some View {
+        OnboardingCard(
+            title: "What should Morphe call you?",
+            subtitle: "Your name is how Morphe greets you and signs your progress. It stays on your device."
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                TextField("Your first name", text: $name)
+                    .textFieldStyle(MorpheFieldStyle())
+                    .textContentType(.givenName)
+                    .submitLabel(.done)
+                    .autocorrectionDisabled()
+
+                Text("Example: Alex")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
         }
     }
 }

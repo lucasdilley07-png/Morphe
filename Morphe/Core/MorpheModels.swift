@@ -1253,6 +1253,7 @@ struct ProfileShowcase: Hashable {
 
 struct OnboardingDraft: Hashable {
     var accountType: AppRole = .client
+    var name: String = ""
     var gender: GenderOption = .male
     var age: Int = 29
     var height: String = "5'11\""
