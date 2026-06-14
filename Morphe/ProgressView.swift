@@ -223,9 +223,9 @@ struct ProgressView: View {
                 ProgressHeroStrip(
                     score: store.clientProfile.health.score,
                     consistency: logSummary.workoutsThisWeek,
-                    streak: logSummary.currentStreakDays == 0 ? store.clientProfile.level.streak : logSummary.currentStreakDays,
+                    streak: logSummary.currentStreakDays,
                     latestWin: logSummary.totalLogs == 0
-                        ? (store.recentWins.first ?? "You protected your streak this month.")
+                        ? "Log your first workout to start your story."
                         : "\(logSummary.latestWorkoutTitle) is your latest logged session."
                 )
 
@@ -263,16 +263,18 @@ struct ProgressView: View {
 
             SharedWorkoutLogsCard(logs: Array(store.currentAthleteWorkoutLogs.prefix(5)))
 
-            SimpleChartCard(title: "Morphe Score Trend") {
-                Chart(store.healthTrend) { point in
-                    LineMark(
-                        x: .value("Day", point.day),
-                        y: .value("Score", point.value)
-                    )
-                    .foregroundStyle(MorpheTheme.accent)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+            if !store.healthTrend.isEmpty {
+                SimpleChartCard(title: "Activity (last 7 days)") {
+                    Chart(store.healthTrend) { point in
+                        LineMark(
+                            x: .value("Day", point.day),
+                            y: .value("Score", point.value)
+                        )
+                        .foregroundStyle(MorpheTheme.accent)
+                        .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+                    }
+                    .frame(height: 170)
                 }
-                .frame(height: 170)
             }
 
             SimpleChartCard(title: "Weekly Consistency") {
@@ -286,11 +288,13 @@ struct ProgressView: View {
                 .frame(height: 160)
             }
 
-            StatCard(
-                title: "Weight Trend",
-                value: "\(store.weightTrend.last?.value ?? 216) lbs",
-                detail: "Start: \(store.weightTrend.first?.value ?? 220) lbs  •  Change: \(weightChange) lbs"
-            )
+            if !store.weightTrend.isEmpty {
+                StatCard(
+                    title: "Weight Trend",
+                    value: "\(store.weightTrend.last?.value ?? 0) \(store.weightUnit.label)",
+                    detail: "Start: \(store.weightTrend.first?.value ?? 0) \(store.weightUnit.label)  •  Change: \(weightChange) \(store.weightUnit.label)"
+                )
+            }
 
             TransformationRoadmapCard(phases: store.roadmap)
             PhotoProgressAIScanCard(snapshot: store.photoProgress)

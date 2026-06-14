@@ -452,8 +452,13 @@ final class MorpheAppStore {
         }
         MorpheTheme.apply(accentPalette: profileShowcase.accentPalette)
 
-        // History/consistency were derived in init against the seeded id; rebuild
-        // them now that the user's real identity is restored.
+        // Don't show the seeded "low sleep / soreness" recovery to a returning
+        // user — reset to the neutral baseline until they check in.
+        recovery = Self.neutralRecovery
+        didCompleteQuickCheckIn = false
+
+        // History/consistency/score/streak were derived in init against the seeded
+        // id; rebuild them now that the user's real identity is restored.
         refreshWorkoutLogDerivedState(for: clientProfile.id)
     }
 
@@ -1210,17 +1215,7 @@ final class MorpheAppStore {
         )
         clientProfile.adherence = 0
         didCompleteQuickCheckIn = false
-        recovery = RecoverySnapshot(
-            score: 0,
-            status: .moderate,
-            reason: "Do a quick check-in to personalize today.",
-            sleepHours: 0,
-            energy: 5,
-            soreness: 3,
-            mood: 5,
-            pain: false,
-            previousSessionFeedback: nil
-        )
+        recovery = Self.neutralRecovery
 
         // Clear the demo nutrition log (keep the generic goal targets).
         nutrition.caloriesConsumed = 0
@@ -1702,12 +1697,8 @@ final class MorpheAppStore {
         markTaskCompleted(named: "Complete today's workout")
         markTaskCompleted(named: "Log your workout within 24 hours")
         updateXP(for: 50, add: true)
-        clientProfile.health.score = min(clientProfile.health.score + 2, 100)
-        clientProfile.health.tier = HealthTier.from(score: clientProfile.health.score)
-        clientProfile.health.headline = "Strong"
-        clientProfile.health.detail = "You completed the plan and updated your weekly Morphe Score."
-        recentWins.insert("You completed your first full week of momentum this month.", at: 0)
-        clientConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "Nice work. You reinforced the habit loop today. Now close the day with protein and water.", timestamp: "Now"))
+        // Morphe Score, streak, and trend are recomputed from logs in
+        // appendWorkoutLog -> refreshWorkoutLogDerivedState; no manual edits here.
         let loggedExercises = makeLoggedExercisesFromCurrentWorkout()
         let isBuddySession = partnerWorkoutEnabled && selectedWorkoutPartner != nil
         let sessionNotes = partnerWorkoutSessionNote()
@@ -4702,6 +4693,67 @@ final class MorpheAppStore {
         workoutConsistency = updatedWorkoutConsistencyFromCurrentLogs()
         isWorkoutLoggedToday = logs.contains {
             ($0.source == .athleteManual || $0.source == .partnerShared) && Calendar.current.isDateInToday($0.completedAt)
+        }
+        recomputeClientMetrics(from: logs)
+    }
+
+    /// A neutral recovery baseline shown until the user does a check-in — clearly
+    /// a default, not a fabricated measurement.
+    static let neutralRecovery = RecoverySnapshot(
+        score: 60,
+        status: .moderate,
+        reason: "Default starting point — do a quick check-in to personalize today.",
+        sleepHours: 7.0,
+        energy: 6,
+        soreness: 3,
+        mood: 6,
+        pain: false,
+        previousSessionFeedback: nil
+    )
+
+    /// Derives the user's Morphe Score, streak, and activity trend from their
+    /// real logged workouts — no seeded numbers, no fake growth.
+    private func recomputeClientMetrics(from logs: [WorkoutLog]) {
+        let streak = Self.currentWorkoutStreak(from: logs)
+        clientProfile.level.streak = streak
+
+        if logs.isEmpty {
+            clientProfile.health = HealthScoreSummary(
+                score: 0,
+                headline: "Getting started",
+                detail: "Log your first workout to start building your Morphe Score.",
+                tier: .resetMode
+            )
+            healthTrend = []
+            return
+        }
+
+        let summary = workoutLogSummary(from: logs)
+        let weekCount = summary.workoutsThisWeek
+        // Score reflects recent consistency + streak, bounded 10–100.
+        let score = min(100, max(10, 35 + weekCount * 10 + min(streak, 7) * 3))
+        let tier = HealthTier.from(score: score)
+        clientProfile.health = HealthScoreSummary(
+            score: score,
+            headline: tier.rawValue,
+            detail: weekCount == 0
+                ? "No sessions yet this week. One workout restarts your momentum."
+                : "\(weekCount) session\(weekCount == 1 ? "" : "s") logged this week — keep it going.",
+            tier: tier
+        )
+        healthTrend = Self.recentActivityTrend(from: logs)
+    }
+
+    /// A 7-day activity trend: higher on days a workout was logged.
+    private static func recentActivityTrend(from logs: [WorkoutLog]) -> [DayScore] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return (0..<7).reversed().map { offset in
+            let day = calendar.date(byAdding: .day, value: -offset, to: today) ?? today
+            let trained = logs.contains { calendar.isDate($0.completedAt, inSameDayAs: day) }
+            return DayScore(day: formatter.string(from: day), value: trained ? 80 : 25)
         }
     }
 

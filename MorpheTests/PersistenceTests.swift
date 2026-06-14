@@ -285,3 +285,32 @@ final class WorkoutBuilderTests: XCTestCase {
         XCTAssertFalse(store.workoutTemplates.contains { $0.id == id })
     }
 }
+
+/// Verifies the Morphe Score and streak are derived from real logs, not seeded.
+@MainActor
+final class MetricsTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    func testScoreAndStreakAreDerivedFromLogs() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertEqual(store.clientProfile.health.score, 0, "a new user starts at zero, not the seeded 76")
+        XCTAssertEqual(store.clientProfile.level.streak, 0)
+
+        store.startTodayWorkout()
+        store.hasCompletedWorkoutFlow = true
+        store.logWorkout()
+
+        XCTAssertGreaterThan(store.clientProfile.health.score, 0, "logging should raise the derived score")
+        XCTAssertNotEqual(store.clientProfile.health.score, 76, "must not be the seeded demo score")
+        XCTAssertGreaterThanOrEqual(store.clientProfile.level.streak, 1, "today's log starts a streak")
+        XCTAssertFalse(store.healthTrend.isEmpty, "activity trend reflects real logs")
+    }
+}
