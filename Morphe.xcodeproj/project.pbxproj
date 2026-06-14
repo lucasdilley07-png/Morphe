@@ -16,6 +16,7 @@
 		1B20F6002C40000100100007 /* ProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100017 /* ProgressView.swift */; };
 		1B20F6002C40000100100008 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100018 /* ChatView.swift */; };
 		1B20F6002C40000100100009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100019 /* Assets.xcassets */; };
+		1B20F6002C4000010010004A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */; };
 		1B20F6002C40000100100040 /* MorpheModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100050 /* MorpheModels.swift */; };
 		1B20F6002C40000100100041 /* MorpheServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100051 /* MorpheServices.swift */; };
 		1B20F6002C40000100100042 /* MorpheStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100052 /* MorpheStore.swift */; };
@@ -39,6 +40,7 @@
 		1B20F6002C40000100100017 /* ProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100018 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100019 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		1B20F6002C40000100100050 /* MorpheModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheModels.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100051 /* MorpheServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheServices.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100052 /* MorpheStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheStore.swift; sourceTree = "<group>"; };
@@ -85,6 +87,7 @@
 				1B20F6002C40000100100062 /* MoreView.swift */,
 				1B20F6002C40000100100018 /* ChatView.swift */,
 				1B20F6002C40000100100019 /* Assets.xcassets */,
+				1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Morphe;
 			sourceTree = "<group>";
@@ -203,6 +206,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1B20F6002C40000100100009 /* Assets.xcassets in Resources */,
+				1B20F6002C4000010010004A /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
