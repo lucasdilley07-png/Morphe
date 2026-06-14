@@ -3983,7 +3983,8 @@ final class MorpheAppStore: ObservableObject {
             )
         }
 
-        if behavior.buddyLiftIsReal || partnerInsight.buddyShareLast30Days >= 30 {
+        if FeatureFlags.multiUserEnabled,
+           behavior.buddyLiftIsReal || partnerInsight.buddyShareLast30Days >= 30 {
             appendInsight(
                 title: "Buddy sessions help you follow through",
                 detail: partnerInsight.lastPartnerName.map {
@@ -3994,7 +3995,7 @@ final class MorpheAppStore: ObservableObject {
             )
         }
 
-        if let outreachEffectiveness {
+        if FeatureFlags.multiUserEnabled, let outreachEffectiveness {
             appendInsight(
                 title: athleteFacingOutreachTitle(for: outreachEffectiveness.kind),
                 detail: athleteFacingOutreachDetail(for: outreachEffectiveness),

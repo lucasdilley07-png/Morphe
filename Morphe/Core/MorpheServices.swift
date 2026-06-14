@@ -1193,7 +1193,7 @@ enum MorpheDemoContent {
         limitations: "Knee can get cranky when lunges get sloppy.",
         equipment: "Home dumbbells, heavy bag, gym access twice a week",
         currentProgram: "Boxing Base Builder",
-        planCreatedBy: "Coach Marcus",
+        planCreatedBy: "Morphe AI",
         aiTodayInsight: AIInsight(
             title: "AI Coach Message",
             summary: "You do not need to train like a champion today. You just need to build the habits that create one.",

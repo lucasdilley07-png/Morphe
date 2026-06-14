@@ -1325,7 +1325,7 @@ struct ClientProfile: Hashable {
     var limitations: String
     var equipment: String
     var currentProgram: String
-    var planCreatedBy: String = "Coach Marcus"
+    var planCreatedBy: String = "Morphe AI"
     var aiTodayInsight: AIInsight
     var aiProgressInsight: AIInsight
     var aiNutritionInsight: AIInsight
