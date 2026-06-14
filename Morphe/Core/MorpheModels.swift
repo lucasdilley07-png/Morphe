@@ -959,6 +959,14 @@ struct FrictionInsight: Identifiable, Hashable {
     var recommendation: String
 }
 
+struct AthletePatternInsight: Identifiable, Hashable {
+    var id = UUID()
+    var title: String
+    var detail: String
+    var badge: String
+    var systemImage: String
+}
+
 struct PainReport: Identifiable, Hashable {
     var id = UUID()
     var area: String

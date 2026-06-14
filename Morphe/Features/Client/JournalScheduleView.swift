@@ -170,7 +170,7 @@ struct AthleteProfileView: View {
                             }
                         )
 
-                        CoachOutreachShortcutStrip { shortcut in
+                        CoachOutreachShortcutStrip(insight: store.coachOutreachInsight(for: currentAthlete.id)) { shortcut in
                             store.openCoachOutreachShortcut(shortcut, for: currentAthlete.id)
                             dismiss()
                         }
@@ -440,9 +440,9 @@ struct AthleteProfileView: View {
             store.openCoachOutreachShortcut(.partner, for: currentAthlete.id)
             dismiss()
         case .askPainUpdate:
-            store.openCoachThread(
+            store.openCoachFollowUpThread(
                 for: currentAthlete.id,
-                draft: store.coachDraftMessage(for: .askPainUpdate, athleteID: currentAthlete.id),
+                action: .askPainUpdate,
                 toast: "Pain check-in ready for \(currentAthlete.name)."
             )
             dismiss()
@@ -701,6 +701,7 @@ private struct CoachAthleteActionButton: View {
 }
 
 private struct CoachOutreachShortcutStrip: View {
+    let insight: String?
     let onSelect: (CoachOutreachShortcut) -> Void
 
     var body: some View {
@@ -713,6 +714,12 @@ private struct CoachOutreachShortcutStrip: View {
                 Text("Draft the right message without leaving the coaching flow.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
+
+                if let insight {
+                    Text(insight)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentAlt)
+                }
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {

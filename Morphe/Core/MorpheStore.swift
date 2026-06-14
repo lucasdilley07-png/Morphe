@@ -2,6 +2,78 @@ import SwiftUI
 
 @MainActor
 final class MorpheAppStore: ObservableObject {
+    private enum CoachOutreachKind: String, CaseIterable, Hashable {
+        case praise
+        case missedSessionNudge
+        case partnerPrompt
+        case recoveryReminder
+        case painCheckIn
+        case generalCheckIn
+
+        var title: String {
+            switch self {
+            case .praise:
+                return "Praise"
+            case .missedSessionNudge:
+                return "Nudges"
+            case .partnerPrompt:
+                return "Partner prompts"
+            case .recoveryReminder:
+                return "Recovery reminders"
+            case .painCheckIn:
+                return "Pain check-ins"
+            case .generalCheckIn:
+                return "Check-ins"
+            }
+        }
+
+        var insightLine: String {
+            switch self {
+            case .praise:
+                return "Praise usually helps the next session get logged"
+            case .missedSessionNudge:
+                return "Nudges usually restart momentum"
+            case .partnerPrompt:
+                return "Partner prompts usually get the next session logged"
+            case .recoveryReminder:
+                return "Recovery reminders usually protect follow-through"
+            case .painCheckIn:
+                return "Pain check-ins usually keep the record moving"
+            case .generalCheckIn:
+                return "Check-ins usually get the next session logged"
+            }
+        }
+    }
+
+    private struct CoachOutreachEvent: Identifiable, Hashable {
+        var id = UUID()
+        var athleteID: UUID
+        var athleteName: String
+        var kind: CoachOutreachKind
+        var sentAt: Date
+        var sourceLabel: String
+    }
+
+    private struct CoachOutreachEffectiveness: Hashable {
+        var kind: CoachOutreachKind
+        var sentCount: Int
+        var followThroughCount: Int
+
+        var successRate: Int {
+            guard sentCount > 0 else { return 0 }
+            return Int((Double(followThroughCount) / Double(sentCount) * 100).rounded())
+        }
+
+        var insightLine: String {
+            "\(kind.insightLine) \(followThroughCount) of \(sentCount) times lately."
+        }
+    }
+
+    private struct PendingCoachOutreachContext: Hashable {
+        var athleteID: UUID
+        var kind: CoachOutreachKind
+    }
+
     private struct WorkoutTemplateCompletionInsight {
         var completionCount: Int
         var recentCompletionCount: Int
@@ -125,6 +197,7 @@ final class MorpheAppStore: ObservableObject {
     @Published var coachProfile: CoachProfile
     @Published var coachOverview: CoachOverview
     @Published var coachClients: [CoachClient]
+    @Published private var coachOutreachEvents: [CoachOutreachEvent]
     @Published var selectedClientID: UUID?
     @Published var coachSportFilter: SportFocus?
     @Published var messageThreads: [MessageThread]
@@ -158,6 +231,7 @@ final class MorpheAppStore: ObservableObject {
     let availableBanners: [BannerPreset]
     private let personalizationSelectionLimit = 5
     private var didShareCurrentWorkoutHighlight = false
+    private var pendingCoachOutreachContext: PendingCoachOutreachContext?
 
     init() {
         let templates = MorpheDemoContent.workoutTemplates
@@ -168,6 +242,7 @@ final class MorpheAppStore: ObservableObject {
         let seededSavedWorkouts = MorpheDemoContent.savedWorkouts
         let seededWorkoutLogs = MorpheDemoContent.workoutLogs.sorted { $0.completedAt > $1.completedAt }
         let seededWorkoutPartners = MorpheDemoContent.workoutPartners
+        let seededCoachOutreachEvents = Self.seededCoachOutreachEvents(clients: clients, logs: seededWorkoutLogs)
 
         self.exerciseDatabase = MorpheDemoContent.exerciseDatabase
         self.availableThemes = MorpheDemoContent.themePresets
@@ -238,6 +313,7 @@ final class MorpheAppStore: ObservableObject {
         self.coachProfile = MorpheDemoContent.coachProfile
         self.coachOverview = MorpheDemoContent.coachOverview
         self.coachClients = clients
+        self.coachOutreachEvents = seededCoachOutreachEvents
         self.selectedClientID = clients.first?.id
         self.messageThreads = threads
         self.selectedThreadID = threads.first?.id
@@ -450,6 +526,14 @@ final class MorpheAppStore: ObservableObject {
 
     var currentGoodForTodayRecommendation: GoodForTodayWorkoutRecommendation {
         goodForTodayRecommendation()
+    }
+
+    var athletePatternInsights: [AthletePatternInsight] {
+        buildAthletePatternInsights()
+    }
+
+    var primaryAthletePatternInsight: AthletePatternInsight? {
+        athletePatternInsights.first
     }
 
     var selectedCoachClient: CoachClient? {
@@ -2381,6 +2465,7 @@ final class MorpheAppStore: ObservableObject {
     }
 
     func selectThread(_ thread: MessageThread) {
+        pendingCoachOutreachContext = nil
         selectedThreadID = thread.id
     }
 
@@ -2398,9 +2483,21 @@ final class MorpheAppStore: ObservableObject {
         selectedCoachTab = .messages
         selectedThreadID = thread.id
         coachThreadDraftSeed = draft
+        pendingCoachOutreachContext = nil
 
         if let toast {
             showToast(toast)
+        }
+    }
+
+    func openCoachFollowUpThread(for athleteID: UUID, action: CoachNextActionType, toast: String? = nil) {
+        openCoachThread(
+            for: athleteID,
+            draft: coachDraftMessage(for: action, athleteID: athleteID),
+            toast: toast
+        )
+        if let kind = coachOutreachKind(for: action) {
+            pendingCoachOutreachContext = PendingCoachOutreachContext(athleteID: athleteID, kind: kind)
         }
     }
 
@@ -2432,6 +2529,10 @@ final class MorpheAppStore: ObservableObject {
         selectedCoachTab = .messages
         selectedThreadID = thread.id
         coachThreadDraftSeed = coachDraftMessage(for: shortcut, athlete: athlete)
+        pendingCoachOutreachContext = PendingCoachOutreachContext(
+            athleteID: athleteID,
+            kind: coachOutreachKind(for: shortcut)
+        )
         showToast("\(shortcut.rawValue) ready for \(athlete.name).")
     }
 
@@ -2505,6 +2606,12 @@ final class MorpheAppStore: ObservableObject {
             at: 0
         )
 
+        trackCoachOutreach(
+            .praise,
+            athleteID: draft.athleteID,
+            athleteName: draft.athleteName,
+            sourceLabel: "Coach Praise"
+        )
         showCelebration(title: "Coach praise shared", detail: draft.athleteName, symbol: "hands.clap.fill")
         showToast("Public praise shared.")
     }
@@ -2765,6 +2872,14 @@ final class MorpheAppStore: ObservableObject {
         messageThreads[threadIndex].preview = suggestion.suggestedMessage
         messageThreads[threadIndex].isUnread = false
         selectedThreadID = messageThreads[threadIndex].id
+        if let athlete = coachClients.first(where: { $0.name == suggestion.clientName }) {
+            trackCoachOutreach(
+                .generalCheckIn,
+                athleteID: athlete.id,
+                athleteName: athlete.name,
+                sourceLabel: "Outreach Suggestion"
+            )
+        }
         showToast("Outreach sent to \(suggestion.clientName).")
     }
 
@@ -2779,6 +2894,17 @@ final class MorpheAppStore: ObservableObject {
         messageThreads[threadIndex].messages.append(message)
         messageThreads[threadIndex].preview = cleanText
         messageThreads[threadIndex].isUnread = false
+        if let context = pendingCoachOutreachContext,
+           let athlete = coachClients.first(where: { $0.id == context.athleteID }),
+           messageThreads[threadIndex].participant == athlete.name {
+            trackCoachOutreach(
+                context.kind,
+                athleteID: athlete.id,
+                athleteName: athlete.name,
+                sourceLabel: "Coach Inbox"
+            )
+        }
+        pendingCoachOutreachContext = nil
         coachThreadDraftSeed = nil
         showToast("Message sent.")
     }
@@ -2845,6 +2971,7 @@ final class MorpheAppStore: ObservableObject {
         messageThreads[threadIndex].messages.append(message)
         messageThreads[threadIndex].preview = template.body
         messageThreads[threadIndex].isUnread = false
+        pendingCoachOutreachContext = nil
         showToast("Template sent.")
     }
 
@@ -2968,6 +3095,19 @@ final class MorpheAppStore: ObservableObject {
             return "Partner sessions look like a good adherence lever for you right now. Let’s get one on the calendar \(partnerLine) this week and use it to keep momentum steady."
         case .recovery:
             return "Today is a recovery-minded day. Keep the work honest, lighter, and easy to finish so you are ready for the next real push instead of forcing extra fatigue."
+        }
+    }
+
+    private func coachOutreachKind(for shortcut: CoachOutreachShortcut) -> CoachOutreachKind {
+        switch shortcut {
+        case .praise:
+            return .praise
+        case .missedSession:
+            return .missedSessionNudge
+        case .partner:
+            return .partnerPrompt
+        case .recovery:
+            return .recoveryReminder
         }
     }
 
@@ -3415,6 +3555,13 @@ final class MorpheAppStore: ObservableObject {
         }
         let openIntervention = coachInterventions.first { $0.athleteID == athleteID && $0.status != "Handled" }
         let latestLogIsRecent = latestLog.map { calendar.dateComponents([.day], from: $0.completedAt, to: .now).day ?? 99 <= 3 } ?? false
+        let bestRestartOutreach = bestCoachOutreachEffectiveness(
+            for: athleteID,
+            among: [.missedSessionNudge, .partnerPrompt, .generalCheckIn]
+        )
+        let painCheckEffectiveness = coachOutreachEffectiveness(for: athleteID, kind: .painCheckIn)
+        let recoveryEffectiveness = coachOutreachEffectiveness(for: athleteID, kind: .recoveryReminder)
+        let praiseEffectiveness = coachOutreachEffectiveness(for: athleteID, kind: .praise)
 
         if aiPendingCount > 0 {
             return CoachFollowUpRecommendation(
@@ -3435,7 +3582,10 @@ final class MorpheAppStore: ObservableObject {
                 athleteID: athleteID,
                 athleteName: athleteName,
                 title: "Queue a lighter training day",
-                detail: "\(athleteName) is trending toward a lower-readiness day. A recovery-focused session is the cleanest next move.",
+                detail: [ "\(athleteName) is trending toward a lower-readiness day. A recovery-focused session is the cleanest next move.",
+                          recoveryEffectiveness?.insightLine ]
+                    .compactMap { $0 }
+                    .joined(separator: " "),
                 actionLabel: "Load Recovery Plan",
                 type: .assignRecovery,
                 priority: 95
@@ -3447,7 +3597,10 @@ final class MorpheAppStore: ObservableObject {
                 athleteID: athleteID,
                 athleteName: athleteName,
                 title: "Ask for a pain update",
-                detail: "\(painIntervention.reason) A fast pain check-in is the cleanest way to decide whether to swap, lighten, or keep moving.",
+                detail: [ "\(painIntervention.reason) A fast pain check-in is the cleanest way to decide whether to swap, lighten, or keep moving.",
+                          painCheckEffectiveness?.insightLine ]
+                    .compactMap { $0 }
+                    .joined(separator: " "),
                 actionLabel: "Draft Pain Check-In",
                 type: .askPainUpdate,
                 priority: 93
@@ -3455,11 +3608,41 @@ final class MorpheAppStore: ObservableObject {
         }
 
         if athleteThisWeek == 0 && coachThisWeek == 0 {
+            if let bestRestartOutreach {
+                switch bestRestartOutreach.kind {
+                case .partnerPrompt:
+                    return CoachFollowUpRecommendation(
+                        athleteID: athleteID,
+                        athleteName: athleteName,
+                        title: "Use the accountability lever that lands",
+                        detail: "There are no logged sessions yet this week. \(bestRestartOutreach.insightLine)",
+                        actionLabel: "Draft Partner Prompt",
+                        type: .partnerPrompt,
+                        priority: 90
+                    )
+                case .generalCheckIn:
+                    return CoachFollowUpRecommendation(
+                        athleteID: athleteID,
+                        athleteName: athleteName,
+                        title: "Open the fastest line back in",
+                        detail: "There are no logged sessions yet this week. \(bestRestartOutreach.insightLine)",
+                        actionLabel: "Open Message Thread",
+                        type: .messageAthlete,
+                        priority: 90
+                    )
+                default:
+                    break
+                }
+            }
+
             return CoachFollowUpRecommendation(
                 athleteID: athleteID,
                 athleteName: athleteName,
                 title: "Nudge the week back into motion",
-                detail: "There are no logged sessions yet this week. A quick missed-session nudge is the fastest way to restart momentum.",
+                detail: [ "There are no logged sessions yet this week. A quick missed-session nudge is the fastest way to restart momentum.",
+                          coachOutreachEffectiveness(for: athleteID, kind: .missedSessionNudge)?.insightLine ]
+                    .compactMap { $0 }
+                    .joined(separator: " "),
                 actionLabel: "Draft Nudge",
                 type: .missedSessionNudge,
                 priority: 90
@@ -3467,11 +3650,26 @@ final class MorpheAppStore: ObservableObject {
         }
 
         if athleteThisWeek == 0 && coachThisWeek > 0 {
+            if let bestRestartOutreach, bestRestartOutreach.kind == .partnerPrompt {
+                return CoachFollowUpRecommendation(
+                    athleteID: athleteID,
+                    athleteName: athleteName,
+                    title: "Restart athlete ownership with a partner prompt",
+                    detail: "\(athleteName) has coach-entered sessions this week, but no athlete-submitted logs yet. \(bestRestartOutreach.insightLine)",
+                    actionLabel: "Draft Partner Prompt",
+                    type: .partnerPrompt,
+                    priority: 86
+                )
+            }
+
             return CoachFollowUpRecommendation(
                 athleteID: athleteID,
                 athleteName: athleteName,
                 title: "Prompt athlete self-logging",
-                detail: "\(athleteName) has coach-entered sessions this week, but no athlete-submitted logs yet.",
+                detail: [ "\(athleteName) has coach-entered sessions this week, but no athlete-submitted logs yet.",
+                          coachOutreachEffectiveness(for: athleteID, kind: .generalCheckIn)?.insightLine ]
+                    .compactMap { $0 }
+                    .joined(separator: " "),
                 actionLabel: "Open Message Thread",
                 type: .messageAthlete,
                 priority: 86
@@ -3485,7 +3683,10 @@ final class MorpheAppStore: ObservableObject {
                 athleteID: athleteID,
                 athleteName: athleteName,
                 title: "Push partner accountability",
-                detail: "Buddy sessions are not showing up much lately, and adherence could use an easier accountability lever.",
+                detail: [ "Buddy sessions are not showing up much lately, and adherence could use an easier accountability lever.",
+                          coachOutreachEffectiveness(for: athleteID, kind: .partnerPrompt)?.insightLine ]
+                    .compactMap { $0 }
+                    .joined(separator: " "),
                 actionLabel: "Draft Partner Prompt",
                 type: .partnerPrompt,
                 priority: 82
@@ -3509,9 +3710,14 @@ final class MorpheAppStore: ObservableObject {
                 athleteID: athleteID,
                 athleteName: athleteName,
                 title: "Reinforce the latest win",
-                detail: latestLog.map {
-                    "\(athleteName) just logged \($0.workoutTitle). Use that momentum while the session still feels recent."
-                } ?? "Use the most recent workout as a conversation opener while momentum is still warm.",
+                detail: [
+                    latestLog.map {
+                        "\(athleteName) just logged \($0.workoutTitle). Use that momentum while the session still feels recent."
+                    } ?? "Use the most recent workout as a conversation opener while momentum is still warm.",
+                    praiseEffectiveness?.insightLine
+                ]
+                .compactMap { $0 }
+                .joined(separator: " "),
                 actionLabel: "Praise Publicly",
                 type: .praisePublicly,
                 priority: 70
@@ -3544,6 +3750,122 @@ final class MorpheAppStore: ObservableObject {
         case .assignRecovery, .reviewAI, .reviewBuddy, .praisePublicly:
             return nil
         }
+    }
+
+    func coachOutreachInsight(for athleteID: UUID) -> String? {
+        bestCoachOutreachEffectiveness(
+            for: athleteID,
+            among: CoachOutreachKind.allCases
+        )?.insightLine
+    }
+
+    private func buildAthletePatternInsights() -> [AthletePatternInsight] {
+        let behavior = goodForTodayBehaviorSnapshot()
+        let partnerInsight = currentAthletePartnerTrainingInsight
+        let outreachEffectiveness = bestCoachOutreachEffectiveness(
+            for: clientProfile.id,
+            among: CoachOutreachKind.allCases
+        )
+        let needsRecovery = recovery.status == .recoveryRecommended
+            || recovery.status == .takeItEasy
+            || currentPlanAdjustment.reasons.contains(.lowRecovery)
+            || currentPlanAdjustment.reasons.contains(.painReported)
+        let needsFallback = minimumWinModeEnabled
+            || selectedConfidence == .notConfident
+            || currentPlanAdjustment.reasons.contains(.notEnoughTime)
+
+        var insights: [AthletePatternInsight] = []
+
+        func appendInsight(
+            title: String,
+            detail: String,
+            badge: String,
+            systemImage: String
+        ) {
+            guard !insights.contains(where: { $0.title == title }) else { return }
+            insights.append(
+                AthletePatternInsight(
+                    title: title,
+                    detail: detail,
+                    badge: badge,
+                    systemImage: systemImage
+                )
+            )
+        }
+
+        if needsRecovery && behavior.recoveryDaysLeadToMomentum {
+            appendInsight(
+                title: "Reset days work for you",
+                detail: "When you let a recovery-minded day do its job, you usually come back and finish the next real session more cleanly.",
+                badge: "Recovery works",
+                systemImage: "heart.text.square.fill"
+            )
+        }
+
+        if needsFallback && behavior.coachPlanWorksAfterFallback {
+            appendInsight(
+                title: "Short reset days set up the plan",
+                detail: "When the week gets crowded, a smaller fallback session is often what gets you back into the main coach-led work instead of drifting.",
+                badge: "Rebound pattern",
+                systemImage: "arrow.trianglehead.clockwise"
+            )
+        } else if needsFallback && behavior.fallbackDaysSaveMomentum {
+            appendInsight(
+                title: "Small wins keep you moving",
+                detail: "You finish shorter fallback sessions more often than you skip them, and that usually keeps the week from slipping away.",
+                badge: "Momentum saver",
+                systemImage: "figure.walk.motion"
+            )
+        }
+
+        if behavior.buddyLiftIsReal || partnerInsight.buddyShareLast30Days >= 30 {
+            appendInsight(
+                title: "Buddy sessions help you follow through",
+                detail: partnerInsight.lastPartnerName.map {
+                    "Shared sessions with \($0) are doing real work for your consistency lately, especially when the week starts getting heavy."
+                } ?? "Shared sessions are doing real work for your consistency lately, especially when the week starts getting heavy.",
+                badge: "Partner proven",
+                systemImage: "person.2.fill"
+            )
+        }
+
+        if let outreachEffectiveness {
+            appendInsight(
+                title: athleteFacingOutreachTitle(for: outreachEffectiveness.kind),
+                detail: athleteFacingOutreachDetail(for: outreachEffectiveness),
+                badge: "Coach support",
+                systemImage: athleteFacingOutreachSymbol(for: outreachEffectiveness.kind)
+            )
+        }
+
+        if behavior.reboundWindowIsOpen && behavior.currentPlanInsight.recentCompletionCount > 0 {
+            appendInsight(
+                title: "You rebound well after lighter days",
+                detail: "Morphe is seeing a real pattern: once you take the pressure down for a day, you usually step back into a full session pretty quickly.",
+                badge: "Bounce-back read",
+                systemImage: "figure.run"
+            )
+        }
+
+        if behavior.currentPlanInsight.recentCompletionCount >= 2 || behavior.coachLedSessionsAreLanding {
+            appendInsight(
+                title: "You do better when the plan stays simple",
+                detail: "Your coach-backed sessions have been landing more reliably than random picks lately, which is a good sign that staying on the rails is working.",
+                badge: "Plan lands",
+                systemImage: "checkmark.circle.fill"
+            )
+        }
+
+        if insights.isEmpty {
+            appendInsight(
+                title: "Your pattern is still taking shape",
+                detail: "Every logged session teaches Morphe what actually works for you. A few more honest check-ins will sharpen the next recommendations fast.",
+                badge: "Still learning",
+                systemImage: "sparkles"
+            )
+        }
+
+        return Array(insights.prefix(3))
     }
 
     private func communityAvatar(for sport: SportFocus) -> String {
@@ -3613,6 +3935,205 @@ final class MorpheAppStore: ObservableObject {
             )
             recentWins.insert("Partner session saved with \(selectedWorkoutPartner?.name ?? "your workout buddy").", at: 0)
         }
+    }
+
+    private func trackCoachOutreach(
+        _ kind: CoachOutreachKind,
+        athleteID: UUID,
+        athleteName: String,
+        sourceLabel: String
+    ) {
+        coachOutreachEvents.insert(
+            CoachOutreachEvent(
+                athleteID: athleteID,
+                athleteName: athleteName,
+                kind: kind,
+                sentAt: .now,
+                sourceLabel: sourceLabel
+            ),
+            at: 0
+        )
+        coachOutreachEvents.sort { $0.sentAt > $1.sentAt }
+    }
+
+    private func coachOutreachKind(for action: CoachNextActionType) -> CoachOutreachKind? {
+        switch action {
+        case .missedSessionNudge:
+            return .missedSessionNudge
+        case .partnerPrompt:
+            return .partnerPrompt
+        case .askPainUpdate:
+            return .painCheckIn
+        case .messageAthlete:
+            return .generalCheckIn
+        case .praisePublicly:
+            return .praise
+        case .assignRecovery, .reviewAI, .reviewBuddy:
+            return nil
+        }
+    }
+
+    private func coachOutreachEffectiveness(for athleteID: UUID, kind: CoachOutreachKind) -> CoachOutreachEffectiveness? {
+        let events = coachOutreachEvents.filter { $0.athleteID == athleteID && $0.kind == kind }
+        guard !events.isEmpty else { return nil }
+        let logs = workoutLogs(for: athleteID)
+        let followThroughCount = events.filter { event in
+            didCoachOutreachLeadToWorkout(event, logs: logs)
+        }.count
+        return CoachOutreachEffectiveness(
+            kind: kind,
+            sentCount: events.count,
+            followThroughCount: followThroughCount
+        )
+    }
+
+    private func bestCoachOutreachEffectiveness(
+        for athleteID: UUID,
+        among kinds: [CoachOutreachKind],
+        minimumSentCount: Int = 2
+    ) -> CoachOutreachEffectiveness? {
+        kinds
+            .compactMap { coachOutreachEffectiveness(for: athleteID, kind: $0) }
+            .filter { $0.sentCount >= minimumSentCount && $0.followThroughCount > 0 }
+            .sorted { lhs, rhs in
+                if lhs.successRate == rhs.successRate {
+                    if lhs.followThroughCount == rhs.followThroughCount {
+                        return lhs.sentCount > rhs.sentCount
+                    }
+                    return lhs.followThroughCount > rhs.followThroughCount
+                }
+                return lhs.successRate > rhs.successRate
+            }
+            .first
+    }
+
+    private func athleteFacingOutreachTitle(for kind: CoachOutreachKind) -> String {
+        switch kind {
+        case .praise:
+            return "Recognition helps you stay engaged"
+        case .missedSessionNudge:
+            return "Coach nudges help you reset quickly"
+        case .partnerPrompt:
+            return "Partner prompts get you moving again"
+        case .recoveryReminder:
+            return "Recovery reminders help you stay on track"
+        case .painCheckIn:
+            return "Fast pain check-ins keep the week honest"
+        case .generalCheckIn:
+            return "Coach check-ins help the next session happen"
+        }
+    }
+
+    private func athleteFacingOutreachDetail(for effectiveness: CoachOutreachEffectiveness) -> String {
+        switch effectiveness.kind {
+        case .praise:
+            return "When your coach reinforces a good session, you usually log another workout soon after. That positive signal is doing real work for your consistency."
+        case .missedSessionNudge:
+            return "When the week starts to slip, a simple coach nudge tends to get you back into motion instead of letting the gap stretch."
+        case .partnerPrompt:
+            return "When your coach points you toward partner accountability, you are more likely to get the next session logged instead of postponing it."
+        case .recoveryReminder:
+            return "Recovery-minded reminders are helping you keep the week moving without turning lighter days into missed days."
+        case .painCheckIn:
+            return "Checking pain quickly instead of pushing through it tends to keep your training record alive and the next decision clearer."
+        case .generalCheckIn:
+            return "A simple coach check-in is often enough to turn intention into a real logged session for you."
+        }
+    }
+
+    private func athleteFacingOutreachSymbol(for kind: CoachOutreachKind) -> String {
+        switch kind {
+        case .praise:
+            return "hands.clap.fill"
+        case .missedSessionNudge:
+            return "message.badge.filled.fill"
+        case .partnerPrompt:
+            return "person.2.wave.2.fill"
+        case .recoveryReminder:
+            return "heart.text.square.fill"
+        case .painCheckIn:
+            return "cross.case.fill"
+        case .generalCheckIn:
+            return "bubble.left.and.bubble.right.fill"
+        }
+    }
+
+    private func didCoachOutreachLeadToWorkout(_ event: CoachOutreachEvent, logs: [WorkoutLog], withinDays: Int = 3) -> Bool {
+        guard let deadline = Calendar.current.date(byAdding: .day, value: withinDays, to: event.sentAt) else {
+            return false
+        }
+
+        return logs.contains { log in
+            log.completedAt > event.sentAt && log.completedAt <= deadline
+        }
+    }
+
+    private static func seededCoachOutreachEvents(
+        clients: [CoachClient],
+        logs: [WorkoutLog]
+    ) -> [CoachOutreachEvent] {
+        let coachAthleteIDs = Set(clients.map(\.id))
+        let athleteLogs = Dictionary(
+            grouping: logs
+                .filter { coachAthleteIDs.contains($0.athleteID) }
+                .sorted { $0.completedAt < $1.completedAt },
+            by: \.athleteID
+        )
+        let calendar = Calendar.current
+
+        var events: [CoachOutreachEvent] = []
+
+        for athlete in clients {
+            let logs = athleteLogs[athlete.id] ?? []
+            guard !logs.isEmpty else { continue }
+
+            for log in logs.prefix(4) {
+                let kind: CoachOutreachKind
+                if log.source == .partnerShared {
+                    kind = .partnerPrompt
+                } else if log.workoutTitle.lowercased().contains("recovery") || log.notes.lowercased().contains("recovery") {
+                    kind = .recoveryReminder
+                } else {
+                    kind = .missedSessionNudge
+                }
+
+                events.append(
+                    CoachOutreachEvent(
+                        athleteID: athlete.id,
+                        athleteName: athlete.name,
+                        kind: kind,
+                        sentAt: calendar.date(byAdding: .hour, value: -30, to: log.completedAt) ?? log.completedAt,
+                        sourceLabel: "Seeded Follow-Up"
+                    )
+                )
+            }
+
+            if let praiseTarget = logs.dropFirst().first {
+                events.append(
+                    CoachOutreachEvent(
+                        athleteID: athlete.id,
+                        athleteName: athlete.name,
+                        kind: .praise,
+                        sentAt: calendar.date(byAdding: .hour, value: -18, to: praiseTarget.completedAt) ?? praiseTarget.completedAt,
+                        sourceLabel: "Seeded Praise"
+                    )
+                )
+            }
+
+            if let checkInTarget = logs.last {
+                events.append(
+                    CoachOutreachEvent(
+                        athleteID: athlete.id,
+                        athleteName: athlete.name,
+                        kind: .generalCheckIn,
+                        sentAt: calendar.date(byAdding: .hour, value: -20, to: checkInTarget.completedAt) ?? checkInTarget.completedAt,
+                        sourceLabel: "Seeded Check-In"
+                    )
+                )
+            }
+        }
+
+        return events.sorted { $0.sentAt > $1.sentAt }
     }
 
     private func refreshCurrentAthleteWorkoutHistory() {

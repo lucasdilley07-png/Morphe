@@ -402,9 +402,9 @@ private struct CoachCommandCenterScreen: View {
                 store.announce("Opened \(athlete.name)'s buddy-session logs.")
             }
         case .messageAthlete:
-            store.openCoachThread(
+            store.openCoachFollowUpThread(
                 for: recommendation.athleteID,
-                draft: store.coachDraftMessage(for: .messageAthlete, athleteID: recommendation.athleteID),
+                action: .messageAthlete,
                 toast: "Message thread ready for \(recommendation.athleteName)."
             )
         case .assignRecovery:
@@ -414,9 +414,9 @@ private struct CoachCommandCenterScreen: View {
         case .partnerPrompt:
             store.openCoachOutreachShortcut(.partner, for: recommendation.athleteID)
         case .askPainUpdate:
-            store.openCoachThread(
+            store.openCoachFollowUpThread(
                 for: recommendation.athleteID,
-                draft: store.coachDraftMessage(for: .askPainUpdate, athleteID: recommendation.athleteID),
+                action: .askPainUpdate,
                 toast: "Pain check-in ready for \(recommendation.athleteName)."
             )
         case .praisePublicly:
