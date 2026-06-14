@@ -330,6 +330,746 @@ enum MorpheDemoContent {
             beginnerModification: "Use a flat treadmill or outdoor walk.",
             alternatives: ["Outdoor Walk", "Bike"],
             whyThisMatters: "Recovery cardio protects consistency on low-energy days."
+        ),
+        ExerciseReference(
+            id: "barbell-back-squat",
+            name: "Barbell Back Squat",
+            muscleGroup: .legs,
+            movementPattern: "Squat",
+            musclesWorked: "Quads, glutes, and lower back",
+            equipment: "Barbell and rack",
+            difficulty: .moderate,
+            videoPlaceholder: "Back squat demo placeholder",
+            instructions: [
+                "Set the bar across your upper back, not your neck.",
+                "Brace your core and sit your hips down and back.",
+                "Drive through mid-foot to stand tall."
+            ],
+            formCue: "Spread the floor with your feet as you stand.",
+            commonMistakes: "Heels lifting or knees caving in.",
+            beginnerModification: "Use a goblet squat until depth feels easy.",
+            alternatives: ["Goblet Squat", "Leg Press"],
+            whyThisMatters: "The back squat is the most direct way to build total-body lower strength."
+        ),
+        ExerciseReference(
+            id: "front-squat",
+            name: "Front Squat",
+            muscleGroup: .legs,
+            movementPattern: "Squat",
+            musclesWorked: "Quads, glutes, and upper back",
+            equipment: "Barbell and rack",
+            difficulty: .advanced,
+            videoPlaceholder: "Front squat demo placeholder",
+            instructions: [
+                "Rest the bar on your front delts with elbows high.",
+                "Sit straight down keeping your torso upright.",
+                "Stand without letting the elbows drop."
+            ],
+            formCue: "Elbows up, chest proud the whole rep.",
+            commonMistakes: "Elbows dropping and rounding forward.",
+            beginnerModification: "Use a goblet squat to learn the upright torso.",
+            alternatives: ["Goblet Squat", "Barbell Back Squat"],
+            whyThisMatters: "Front squats build quad strength and a strong, upright posture."
+        ),
+        ExerciseReference(
+            id: "leg-press",
+            name: "Leg Press",
+            muscleGroup: .legs,
+            movementPattern: "Squat",
+            musclesWorked: "Quads and glutes",
+            equipment: "Leg press machine",
+            difficulty: .beginner,
+            videoPlaceholder: "Leg press demo placeholder",
+            instructions: [
+                "Set feet shoulder-width on the platform.",
+                "Lower until your knees reach about 90 degrees.",
+                "Press back without locking the knees hard."
+            ],
+            formCue: "Control the weight down, then push the platform away.",
+            commonMistakes: "Letting the lower back round off the pad.",
+            beginnerModification: "Use a lighter load and a smaller range.",
+            alternatives: ["Goblet Squat", "Barbell Back Squat"],
+            whyThisMatters: "The leg press lets beginners load the legs safely with back support."
+        ),
+        ExerciseReference(
+            id: "bulgarian-split-squat",
+            name: "Bulgarian Split Squat",
+            muscleGroup: .legs,
+            movementPattern: "Split stance",
+            musclesWorked: "Quads, glutes, and hips",
+            equipment: "Bench and optional dumbbells",
+            difficulty: .moderate,
+            videoPlaceholder: "Split squat demo placeholder",
+            instructions: [
+                "Rest your back foot on a bench behind you.",
+                "Lower straight down on the front leg.",
+                "Drive through the front heel to stand."
+            ],
+            formCue: "Stack your weight over the front heel.",
+            commonMistakes: "Leaning so the back leg does the work.",
+            beginnerModification: "Hold a rail and use bodyweight only.",
+            alternatives: ["Walking Lunge", "Reverse Lunge"],
+            whyThisMatters: "Single-leg work fixes side-to-side imbalances and protects the knees."
+        ),
+        ExerciseReference(
+            id: "reverse-lunge",
+            name: "Reverse Lunge",
+            muscleGroup: .legs,
+            movementPattern: "Split stance",
+            musclesWorked: "Quads, glutes, and hamstrings",
+            equipment: "None or dumbbells",
+            difficulty: .beginner,
+            videoPlaceholder: "Reverse lunge demo placeholder",
+            instructions: [
+                "Step one foot straight back.",
+                "Lower the back knee toward the floor.",
+                "Push through the front heel to return."
+            ],
+            formCue: "Step back softly and stay tall.",
+            commonMistakes: "Short steps that crowd the knee.",
+            beginnerModification: "Hold a wall or rail for balance.",
+            alternatives: ["Walking Lunge", "Step-Up"],
+            whyThisMatters: "Reverse lunges are an easier-on-the-knees way to train each leg."
+        ),
+        ExerciseReference(
+            id: "step-up",
+            name: "Step-Up",
+            muscleGroup: .legs,
+            movementPattern: "Split stance",
+            musclesWorked: "Quads and glutes",
+            equipment: "Box or bench",
+            difficulty: .beginner,
+            videoPlaceholder: "Step-up demo placeholder",
+            instructions: [
+                "Place one full foot on a sturdy box.",
+                "Drive through that heel to stand on top.",
+                "Lower with control, don't hop down."
+            ],
+            formCue: "Let the top leg do the work, not the push-off foot.",
+            commonMistakes: "Bouncing off the back foot.",
+            beginnerModification: "Use a lower step.",
+            alternatives: ["Reverse Lunge", "Walking Lunge"],
+            whyThisMatters: "Step-ups build single-leg power that carries into stairs and sport."
+        ),
+        ExerciseReference(
+            id: "leg-extension",
+            name: "Leg Extension",
+            muscleGroup: .legs,
+            movementPattern: "Accessory",
+            musclesWorked: "Quadriceps",
+            equipment: "Leg extension machine",
+            difficulty: .beginner,
+            videoPlaceholder: "Leg extension demo placeholder",
+            instructions: [
+                "Set the pad just above your ankles.",
+                "Straighten your knees smoothly.",
+                "Lower with control to the start."
+            ],
+            formCue: "Squeeze the quads at the top for a beat.",
+            commonMistakes: "Swinging the weight up with momentum.",
+            beginnerModification: "Use a light plate and slow tempo.",
+            alternatives: ["Goblet Squat", "Leg Press"],
+            whyThisMatters: "Isolating the quads helps knee stability and balanced leg shape."
+        ),
+        ExerciseReference(
+            id: "hamstring-curl",
+            name: "Hamstring Curl",
+            muscleGroup: .legs,
+            movementPattern: "Accessory",
+            musclesWorked: "Hamstrings",
+            equipment: "Leg curl machine",
+            difficulty: .beginner,
+            videoPlaceholder: "Hamstring curl demo placeholder",
+            instructions: [
+                "Set the pad just above your heels.",
+                "Curl your heels toward your glutes.",
+                "Lower slowly under control."
+            ],
+            formCue: "Pull with the back of the legs, not your back.",
+            commonMistakes: "Hips lifting off the pad.",
+            beginnerModification: "Use a lighter load and pause at the top.",
+            alternatives: ["Romanian Deadlift", "Glute Bridge"],
+            whyThisMatters: "Strong hamstrings balance the quads and protect the knees."
+        ),
+        ExerciseReference(
+            id: "calf-raise",
+            name: "Standing Calf Raise",
+            muscleGroup: .legs,
+            movementPattern: "Accessory",
+            musclesWorked: "Calves",
+            equipment: "None or dumbbells",
+            difficulty: .beginner,
+            videoPlaceholder: "Calf raise demo placeholder",
+            instructions: [
+                "Stand tall with the balls of your feet on an edge.",
+                "Rise onto your toes as high as possible.",
+                "Lower the heels below the step for a stretch."
+            ],
+            formCue: "Pause at the top, full range at the bottom.",
+            commonMistakes: "Bouncing through tiny reps.",
+            beginnerModification: "Do them flat on the floor.",
+            alternatives: ["Jump Rope", "Treadmill Walk"],
+            whyThisMatters: "Calf strength supports running, jumping, and ankle health."
+        ),
+        ExerciseReference(
+            id: "conventional-deadlift",
+            name: "Conventional Deadlift",
+            muscleGroup: .back,
+            movementPattern: "Hinge",
+            musclesWorked: "Posterior chain, back, and grip",
+            equipment: "Barbell",
+            difficulty: .advanced,
+            videoPlaceholder: "Deadlift demo placeholder",
+            instructions: [
+                "Set the bar over mid-foot and grip just outside the legs.",
+                "Brace, take the slack out, and push the floor away.",
+                "Stand tall, then return the bar along your legs."
+            ],
+            formCue: "Push the floor down rather than pulling the bar up.",
+            commonMistakes: "Rounding the lower back or jerking the bar.",
+            beginnerModification: "Start with a Romanian deadlift or trap-bar pull.",
+            alternatives: ["Romanian Deadlift", "Glute Bridge"],
+            whyThisMatters: "The deadlift trains the whole posterior chain and teaches a safe hinge."
+        ),
+        ExerciseReference(
+            id: "pull-up",
+            name: "Pull-Up",
+            muscleGroup: .back,
+            movementPattern: "Pull",
+            musclesWorked: "Lats, upper back, and biceps",
+            equipment: "Pull-up bar",
+            difficulty: .advanced,
+            videoPlaceholder: "Pull-up demo placeholder",
+            instructions: [
+                "Hang from the bar with palms facing away.",
+                "Pull your chest toward the bar, leading with the elbows.",
+                "Lower all the way down with control."
+            ],
+            formCue: "Drive the elbows down toward your ribs.",
+            commonMistakes: "Kipping or cutting the range short.",
+            beginnerModification: "Use a band or the lat pulldown machine.",
+            alternatives: ["Lat Pulldown", "Inverted Row"],
+            whyThisMatters: "Pull-ups build serious upper-back and arm strength with just a bar."
+        ),
+        ExerciseReference(
+            id: "inverted-row",
+            name: "Inverted Row",
+            muscleGroup: .back,
+            movementPattern: "Pull",
+            musclesWorked: "Upper back, lats, and biceps",
+            equipment: "Bar or rings",
+            difficulty: .beginner,
+            videoPlaceholder: "Inverted row demo placeholder",
+            instructions: [
+                "Set a bar at hip height and hang underneath it.",
+                "Keep a straight line from head to heels.",
+                "Pull your chest to the bar, then lower slowly."
+            ],
+            formCue: "Squeeze the shoulder blades together at the top.",
+            commonMistakes: "Hips sagging or chin poking forward.",
+            beginnerModification: "Raise the bar higher to make it easier.",
+            alternatives: ["Dumbbell Row", "Lat Pulldown"],
+            whyThisMatters: "Inverted rows are a scalable path toward your first pull-up."
+        ),
+        ExerciseReference(
+            id: "bent-over-row",
+            name: "Bent-Over Barbell Row",
+            muscleGroup: .back,
+            movementPattern: "Pull",
+            musclesWorked: "Mid-back, lats, and biceps",
+            equipment: "Barbell",
+            difficulty: .moderate,
+            videoPlaceholder: "Barbell row demo placeholder",
+            instructions: [
+                "Hinge forward with a flat back, bar hanging down.",
+                "Pull the bar to your lower ribs.",
+                "Lower under control without standing up."
+            ],
+            formCue: "Lead with the elbows, keep the torso still.",
+            commonMistakes: "Standing up or using momentum.",
+            beginnerModification: "Use a single-arm dumbbell row with bench support.",
+            alternatives: ["Dumbbell Row", "Seated Cable Row"],
+            whyThisMatters: "Heavy rows build the thick, strong mid-back that balances pressing."
+        ),
+        ExerciseReference(
+            id: "seated-cable-row",
+            name: "Seated Cable Row",
+            muscleGroup: .back,
+            movementPattern: "Pull",
+            musclesWorked: "Mid-back, lats, and biceps",
+            equipment: "Cable machine",
+            difficulty: .beginner,
+            videoPlaceholder: "Cable row demo placeholder",
+            instructions: [
+                "Sit tall with a slight knee bend.",
+                "Pull the handle to your stomach, elbows close.",
+                "Return forward with control and a tall chest."
+            ],
+            formCue: "Lead with the elbows and squeeze the back.",
+            commonMistakes: "Rocking the torso for momentum.",
+            beginnerModification: "Lighten the stack and slow the return.",
+            alternatives: ["Dumbbell Row", "Lat Pulldown"],
+            whyThisMatters: "Cable rows build the back safely with constant, smooth tension."
+        ),
+        ExerciseReference(
+            id: "face-pull",
+            name: "Face Pull",
+            muscleGroup: .back,
+            movementPattern: "Pull",
+            musclesWorked: "Rear delts and upper back",
+            equipment: "Cable and rope",
+            difficulty: .beginner,
+            videoPlaceholder: "Face pull demo placeholder",
+            instructions: [
+                "Set a rope at face height.",
+                "Pull the rope to your forehead, splitting the ends.",
+                "Return slowly with tall posture."
+            ],
+            formCue: "Aim to make a double-biceps pose at the end.",
+            commonMistakes: "Using too much weight and shrugging.",
+            beginnerModification: "Use a band anchored at head height.",
+            alternatives: ["Rear Delt Fly", "Lateral Raise"],
+            whyThisMatters: "Face pulls balance the shoulders and undo desk-posture rounding."
+        ),
+        ExerciseReference(
+            id: "barbell-bench-press",
+            name: "Barbell Bench Press",
+            muscleGroup: .chest,
+            movementPattern: "Push",
+            musclesWorked: "Chest, shoulders, and triceps",
+            equipment: "Barbell and bench",
+            difficulty: .moderate,
+            videoPlaceholder: "Bench press demo placeholder",
+            instructions: [
+                "Set your shoulder blades down and back on the bench.",
+                "Lower the bar to mid-chest with control.",
+                "Press up and slightly back over the shoulders."
+            ],
+            formCue: "Bend the bar and keep the elbows tucked slightly.",
+            commonMistakes: "Bouncing the bar or flaring the elbows wide.",
+            beginnerModification: "Use dumbbells or a machine press first.",
+            alternatives: ["Dumbbell Bench Press", "Push-Up"],
+            whyThisMatters: "The bench press is the benchmark lift for upper-body pushing strength."
+        ),
+        ExerciseReference(
+            id: "push-up",
+            name: "Push-Up",
+            muscleGroup: .chest,
+            movementPattern: "Push",
+            musclesWorked: "Chest, shoulders, triceps, and core",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "Push-up demo placeholder",
+            instructions: [
+                "Set hands just wider than your shoulders.",
+                "Keep a straight line from head to heels.",
+                "Lower your chest to the floor, then press up."
+            ],
+            formCue: "Squeeze your glutes so the hips don't sag.",
+            commonMistakes: "Hips dropping or flaring the elbows out.",
+            beginnerModification: "Do them with hands on a bench.",
+            alternatives: ["Incline Push-Up", "Dumbbell Bench Press"],
+            whyThisMatters: "Push-ups build pressing strength and core control anywhere."
+        ),
+        ExerciseReference(
+            id: "dumbbell-chest-fly",
+            name: "Dumbbell Chest Fly",
+            muscleGroup: .chest,
+            movementPattern: "Accessory",
+            musclesWorked: "Chest and front delts",
+            equipment: "Dumbbells and bench",
+            difficulty: .moderate,
+            videoPlaceholder: "Chest fly demo placeholder",
+            instructions: [
+                "Lie back holding dumbbells over your chest.",
+                "Open your arms in a wide arc with a soft elbow.",
+                "Hug the weights back together over the chest."
+            ],
+            formCue: "Think about hugging a big tree.",
+            commonMistakes: "Bending the elbows into a press.",
+            beginnerModification: "Use lighter dumbbells and a smaller arc.",
+            alternatives: ["Dumbbell Bench Press", "Push-Up"],
+            whyThisMatters: "Flys stretch and shape the chest through a wide range."
+        ),
+        ExerciseReference(
+            id: "overhead-press",
+            name: "Overhead Barbell Press",
+            muscleGroup: .shoulders,
+            movementPattern: "Push",
+            musclesWorked: "Shoulders, triceps, and upper chest",
+            equipment: "Barbell",
+            difficulty: .moderate,
+            videoPlaceholder: "Overhead press demo placeholder",
+            instructions: [
+                "Hold the bar at your collarbone, elbows under the bar.",
+                "Brace your core and press straight overhead.",
+                "Lower with control back to the shoulders."
+            ],
+            formCue: "Squeeze your glutes so you don't lean back.",
+            commonMistakes: "Arching the lower back to press.",
+            beginnerModification: "Use the seated dumbbell shoulder press.",
+            alternatives: ["Shoulder Press", "Arnold Press"],
+            whyThisMatters: "Pressing overhead builds strong, healthy shoulders and a braced core."
+        ),
+        ExerciseReference(
+            id: "lateral-raise",
+            name: "Lateral Raise",
+            muscleGroup: .shoulders,
+            movementPattern: "Accessory",
+            musclesWorked: "Side delts",
+            equipment: "Dumbbells",
+            difficulty: .beginner,
+            videoPlaceholder: "Lateral raise demo placeholder",
+            instructions: [
+                "Hold dumbbells at your sides with a soft elbow.",
+                "Raise your arms out to shoulder height.",
+                "Lower slowly under control."
+            ],
+            formCue: "Lead with the elbows, not the hands.",
+            commonMistakes: "Swinging the weight up with the body.",
+            beginnerModification: "Use very light dumbbells or water bottles.",
+            alternatives: ["Front Raise", "Shoulder Press"],
+            whyThisMatters: "Lateral raises build the rounded shoulder caps that widen your frame."
+        ),
+        ExerciseReference(
+            id: "rear-delt-fly",
+            name: "Rear Delt Fly",
+            muscleGroup: .shoulders,
+            movementPattern: "Accessory",
+            musclesWorked: "Rear delts and upper back",
+            equipment: "Dumbbells",
+            difficulty: .beginner,
+            videoPlaceholder: "Rear delt fly demo placeholder",
+            instructions: [
+                "Hinge forward with a flat back.",
+                "Raise the dumbbells out to the sides.",
+                "Squeeze the rear shoulders, then lower."
+            ],
+            formCue: "Pinch the shoulder blades at the top.",
+            commonMistakes: "Turning it into a row with the lats.",
+            beginnerModification: "Use light weights and pause at the top.",
+            alternatives: ["Face Pull", "Lateral Raise"],
+            whyThisMatters: "Rear delts balance the shoulders and improve posture."
+        ),
+        ExerciseReference(
+            id: "arnold-press",
+            name: "Arnold Press",
+            muscleGroup: .shoulders,
+            movementPattern: "Push",
+            musclesWorked: "Shoulders and triceps",
+            equipment: "Dumbbells",
+            difficulty: .moderate,
+            videoPlaceholder: "Arnold press demo placeholder",
+            instructions: [
+                "Start with dumbbells in front, palms toward you.",
+                "Rotate and press overhead in one motion.",
+                "Reverse the path back to the start."
+            ],
+            formCue: "Rotate smoothly, finish with palms forward.",
+            commonMistakes: "Rushing the rotation and using the back.",
+            beginnerModification: "Use a standard seated shoulder press.",
+            alternatives: ["Shoulder Press", "Overhead Barbell Press"],
+            whyThisMatters: "The rotation hits all three shoulder heads in one move."
+        ),
+        ExerciseReference(
+            id: "hammer-curl",
+            name: "Hammer Curl",
+            muscleGroup: .arms,
+            movementPattern: "Accessory",
+            musclesWorked: "Biceps and forearms",
+            equipment: "Dumbbells",
+            difficulty: .beginner,
+            videoPlaceholder: "Hammer curl demo placeholder",
+            instructions: [
+                "Hold dumbbells with palms facing each other.",
+                "Curl up keeping the thumbs on top.",
+                "Lower slowly under control."
+            ],
+            formCue: "Keep the elbows pinned to your sides.",
+            commonMistakes: "Swinging the weights with the body.",
+            beginnerModification: "Use lighter dumbbells and slow tempo.",
+            alternatives: ["Bicep Curl", "Seated Cable Row"],
+            whyThisMatters: "Hammer curls build the biceps and the forearm for stronger grip."
+        ),
+        ExerciseReference(
+            id: "preacher-curl",
+            name: "Preacher Curl",
+            muscleGroup: .arms,
+            movementPattern: "Accessory",
+            musclesWorked: "Biceps",
+            equipment: "Preacher bench and bar",
+            difficulty: .moderate,
+            videoPlaceholder: "Preacher curl demo placeholder",
+            instructions: [
+                "Rest your arms over the angled pad.",
+                "Curl the bar up with control.",
+                "Lower all the way without bouncing."
+            ],
+            formCue: "Keep the back of the arms on the pad.",
+            commonMistakes: "Dropping the weight fast at the bottom.",
+            beginnerModification: "Use a light bar or single dumbbell.",
+            alternatives: ["Bicep Curl", "Hammer Curl"],
+            whyThisMatters: "The pad removes momentum so the biceps do all the work."
+        ),
+        ExerciseReference(
+            id: "skullcrusher",
+            name: "Skullcrusher",
+            muscleGroup: .arms,
+            movementPattern: "Accessory",
+            musclesWorked: "Triceps",
+            equipment: "EZ bar or dumbbells",
+            difficulty: .moderate,
+            videoPlaceholder: "Skullcrusher demo placeholder",
+            instructions: [
+                "Lie back holding the bar over your chest.",
+                "Bend the elbows to lower toward your forehead.",
+                "Extend back up without moving the upper arms."
+            ],
+            formCue: "Keep the upper arms still and vertical.",
+            commonMistakes: "Letting the elbows drift and flare.",
+            beginnerModification: "Use the tricep pushdown instead.",
+            alternatives: ["Tricep Pushdown", "Overhead Tricep Extension"],
+            whyThisMatters: "Skullcrushers build the long head of the triceps for stronger pressing."
+        ),
+        ExerciseReference(
+            id: "overhead-tricep-extension",
+            name: "Overhead Tricep Extension",
+            muscleGroup: .arms,
+            movementPattern: "Accessory",
+            musclesWorked: "Triceps",
+            equipment: "Dumbbell or cable",
+            difficulty: .beginner,
+            videoPlaceholder: "Overhead extension demo placeholder",
+            instructions: [
+                "Hold one dumbbell overhead with both hands.",
+                "Lower it behind your head by bending the elbows.",
+                "Extend back up to the top."
+            ],
+            formCue: "Keep the elbows pointing forward and close.",
+            commonMistakes: "Elbows flaring wide.",
+            beginnerModification: "Use a lighter dumbbell and smaller range.",
+            alternatives: ["Tricep Pushdown", "Skullcrusher"],
+            whyThisMatters: "Overhead work stretches and strengthens the triceps fully."
+        ),
+        ExerciseReference(
+            id: "dip",
+            name: "Triceps Dip",
+            muscleGroup: .arms,
+            movementPattern: "Push",
+            musclesWorked: "Triceps, chest, and shoulders",
+            equipment: "Parallel bars or bench",
+            difficulty: .moderate,
+            videoPlaceholder: "Dip demo placeholder",
+            instructions: [
+                "Support yourself on parallel bars, arms straight.",
+                "Lower until the elbows reach about 90 degrees.",
+                "Press back up to the top."
+            ],
+            formCue: "Stay tall and lower with control.",
+            commonMistakes: "Dropping too deep and stressing the shoulders.",
+            beginnerModification: "Do bench dips with feet on the floor.",
+            alternatives: ["Tricep Pushdown", "Push-Up"],
+            whyThisMatters: "Dips build pressing strength and triceps size with bodyweight."
+        ),
+        ExerciseReference(
+            id: "hanging-knee-raise",
+            name: "Hanging Knee Raise",
+            muscleGroup: .core,
+            movementPattern: "Brace",
+            musclesWorked: "Lower abs and hip flexors",
+            equipment: "Pull-up bar",
+            difficulty: .moderate,
+            videoPlaceholder: "Hanging knee raise demo placeholder",
+            instructions: [
+                "Hang from a bar with a steady grip.",
+                "Curl your knees up toward your chest.",
+                "Lower slowly without swinging."
+            ],
+            formCue: "Curl the pelvis up, don't just lift the legs.",
+            commonMistakes: "Swinging for momentum.",
+            beginnerModification: "Do lying knee tucks on the floor.",
+            alternatives: ["Dead Bug", "Plank"],
+            whyThisMatters: "Hanging work trains the deep abs and a strong grip together."
+        ),
+        ExerciseReference(
+            id: "russian-twist",
+            name: "Russian Twist",
+            muscleGroup: .core,
+            movementPattern: "Brace",
+            musclesWorked: "Obliques and abs",
+            equipment: "None or a weight",
+            difficulty: .beginner,
+            videoPlaceholder: "Russian twist demo placeholder",
+            instructions: [
+                "Sit with knees bent and lean back slightly.",
+                "Rotate your torso to tap each side.",
+                "Keep the chest tall throughout."
+            ],
+            formCue: "Turn from the ribs, not just the arms.",
+            commonMistakes: "Rounding the back and rushing.",
+            beginnerModification: "Keep heels down and skip the weight.",
+            alternatives: ["Bicycle Crunch", "Side Plank"],
+            whyThisMatters: "Rotation strength protects the spine and powers sport movements."
+        ),
+        ExerciseReference(
+            id: "side-plank",
+            name: "Side Plank",
+            muscleGroup: .core,
+            movementPattern: "Brace",
+            musclesWorked: "Obliques and deep core",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "Side plank demo placeholder",
+            instructions: [
+                "Stack your feet and prop up on one forearm.",
+                "Lift your hips into a straight line.",
+                "Hold steady, then switch sides."
+            ],
+            formCue: "Push the floor away and stay long.",
+            commonMistakes: "Hips sagging toward the floor.",
+            beginnerModification: "Drop the bottom knee for support.",
+            alternatives: ["Plank", "Dead Bug"],
+            whyThisMatters: "Side planks build the obliques that stabilize your spine."
+        ),
+        ExerciseReference(
+            id: "bicycle-crunch",
+            name: "Bicycle Crunch",
+            muscleGroup: .core,
+            movementPattern: "Brace",
+            musclesWorked: "Abs and obliques",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "Bicycle crunch demo placeholder",
+            instructions: [
+                "Lie back with hands lightly behind your head.",
+                "Bring one elbow toward the opposite knee.",
+                "Switch sides in a slow pedaling motion."
+            ],
+            formCue: "Rotate the rib toward the knee, slowly.",
+            commonMistakes: "Yanking the neck and rushing.",
+            beginnerModification: "Slow the tempo and keep feet higher.",
+            alternatives: ["Russian Twist", "Dead Bug"],
+            whyThisMatters: "Bicycle crunches train the abs and obliques through full rotation."
+        ),
+        ExerciseReference(
+            id: "mountain-climber",
+            name: "Mountain Climber",
+            muscleGroup: .core,
+            movementPattern: "Conditioning",
+            musclesWorked: "Core, shoulders, and hip flexors",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "Mountain climber demo placeholder",
+            instructions: [
+                "Start in a strong push-up position.",
+                "Drive one knee toward your chest.",
+                "Switch legs quickly while keeping hips low."
+            ],
+            formCue: "Keep the hips level, like a moving plank.",
+            commonMistakes: "Hips bouncing high with each rep.",
+            beginnerModification: "Slow the pace or drive knees to a bench.",
+            alternatives: ["Plank", "Jump Rope"],
+            whyThisMatters: "Mountain climbers blend core control with a cardio bump."
+        ),
+        ExerciseReference(
+            id: "jump-rope",
+            name: "Jump Rope",
+            muscleGroup: .conditioning,
+            movementPattern: "Conditioning",
+            musclesWorked: "Calves, shoulders, and heart",
+            equipment: "Jump rope",
+            difficulty: .beginner,
+            videoPlaceholder: "Jump rope demo placeholder",
+            instructions: [
+                "Turn the rope with the wrists, not the arms.",
+                "Stay on the balls of your feet with small hops.",
+                "Find a steady, repeatable rhythm."
+            ],
+            formCue: "Small, quiet bounces close to the floor.",
+            commonMistakes: "Jumping too high and swinging the arms.",
+            beginnerModification: "Practice the bounce with no rope first.",
+            alternatives: ["Jumping Jacks", "Treadmill Walk"],
+            whyThisMatters: "Jump rope builds footwork, coordination, and conditioning fast."
+        ),
+        ExerciseReference(
+            id: "kettlebell-swing",
+            name: "Kettlebell Swing",
+            muscleGroup: .conditioning,
+            movementPattern: "Hinge",
+            musclesWorked: "Glutes, hamstrings, and core",
+            equipment: "Kettlebell",
+            difficulty: .moderate,
+            videoPlaceholder: "Kettlebell swing demo placeholder",
+            instructions: [
+                "Hinge at the hips and hike the bell back.",
+                "Snap your hips forward to float the bell up.",
+                "Let it fall and load the next hinge."
+            ],
+            formCue: "Power comes from the hips, not the arms.",
+            commonMistakes: "Squatting instead of hinging.",
+            beginnerModification: "Practice the hip hinge with no weight first.",
+            alternatives: ["Romanian Deadlift", "Glute Bridge"],
+            whyThisMatters: "Swings build explosive hips and conditioning at the same time."
+        ),
+        ExerciseReference(
+            id: "rowing-machine",
+            name: "Rowing Machine",
+            muscleGroup: .conditioning,
+            movementPattern: "Conditioning",
+            musclesWorked: "Legs, back, and heart",
+            equipment: "Rowing erg",
+            difficulty: .beginner,
+            videoPlaceholder: "Rowing machine demo placeholder",
+            instructions: [
+                "Drive with the legs first.",
+                "Then lean back slightly and pull the handle to your ribs.",
+                "Return arms, body, then legs in order."
+            ],
+            formCue: "Legs, body, arms — then reverse it.",
+            commonMistakes: "Yanking with the arms before the legs drive.",
+            beginnerModification: "Row at an easy pace and focus on order.",
+            alternatives: ["Stationary Bike", "Treadmill Walk"],
+            whyThisMatters: "Rowing is full-body cardio that is easy on the joints."
+        ),
+        ExerciseReference(
+            id: "stationary-bike",
+            name: "Stationary Bike",
+            muscleGroup: .conditioning,
+            movementPattern: "Conditioning",
+            musclesWorked: "Legs and heart",
+            equipment: "Stationary bike",
+            difficulty: .recovery,
+            videoPlaceholder: "Stationary bike demo placeholder",
+            instructions: [
+                "Set the seat so your knee has a slight bend at the bottom.",
+                "Pedal at a smooth, steady cadence.",
+                "Adjust resistance to keep effort easy."
+            ],
+            formCue: "Smooth circles, relaxed upper body.",
+            commonMistakes: "Seat too low, knees aching.",
+            beginnerModification: "Keep resistance light and time short.",
+            alternatives: ["Treadmill Walk", "Rowing Machine"],
+            whyThisMatters: "The bike is low-impact cardio that's great for recovery days."
+        ),
+        ExerciseReference(
+            id: "burpee",
+            name: "Burpee",
+            muscleGroup: .conditioning,
+            movementPattern: "Conditioning",
+            musclesWorked: "Full body and heart",
+            equipment: "None",
+            difficulty: .advanced,
+            videoPlaceholder: "Burpee demo placeholder",
+            instructions: [
+                "Drop your hands down and kick your feet back.",
+                "Do a push-up or lower your chest.",
+                "Jump your feet in and stand or hop up."
+            ],
+            formCue: "Move smoothly; sloppy reps cause aches.",
+            commonMistakes: "Letting the hips sag in the plank.",
+            beginnerModification: "Step back instead of jumping and skip the hop.",
+            alternatives: ["Mountain Climber", "Jump Rope"],
+            whyThisMatters: "Burpees deliver strength and cardio in one demanding move."
         )
     ]
 
