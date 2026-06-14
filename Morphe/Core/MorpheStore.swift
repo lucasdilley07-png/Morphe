@@ -1258,6 +1258,9 @@ final class MorpheAppStore {
         profileShowcase.featuredWorkouts = []
         profileShowcase.featuredVideos = []
 
+        // Seeded saved workouts carry demo/coach source names — clear them.
+        savedWorkouts = []
+
         // Remove all seeded "other people": buddies, friends, community, network.
         workoutPartners = []
         selectedWorkoutPartnerID = nil

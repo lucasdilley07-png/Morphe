@@ -1121,19 +1121,14 @@ private struct GoodForTodayWorkoutCard: View {
                     Spacer()
 
                     StatusBadge(
-                        text: recommendation.prefersBuddy ? "Buddy friendly" : "Best fit",
-                        color: recommendation.prefersBuddy ? MorpheTheme.warning : MorpheTheme.accent
+                        text: showBuddy ? "Buddy friendly" : "Best fit",
+                        color: showBuddy ? MorpheTheme.warning : MorpheTheme.accent
                     )
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(recommendation.workoutName)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
-                    Text("Source: \(recommendation.sourceName)")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                }
+                Text(recommendation.workoutName)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
 
                 Text(recommendation.reasonDetail)
                     .font(.subheadline)
@@ -1155,8 +1150,8 @@ private struct GoodForTodayWorkoutCard: View {
 
                 HStack(spacing: 8) {
                     MetricPill(label: "Best for", value: recommendation.bestFor.rawValue)
-                    MetricPill(label: "Mode", value: recommendation.prefersBuddy ? "Buddy" : "Solo")
-                    if let selectedPartnerName, recommendation.prefersBuddy {
+                    MetricPill(label: "Mode", value: showBuddy ? "Buddy" : "Solo")
+                    if let selectedPartnerName, showBuddy {
                         MetricPill(label: "Partner", value: selectedPartnerName)
                     }
                 }
@@ -1167,10 +1162,12 @@ private struct GoodForTodayWorkoutCard: View {
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
-                    Button("With Buddy") {
-                        onWithBuddy()
+                    if showBuddy {
+                        Button("With Buddy") {
+                            onWithBuddy()
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
                     }
-                    .buttonStyle(SecondaryCTAButtonStyle())
 
                     Button("Save for Later") {
                         onSaveForLater()
@@ -1179,6 +1176,11 @@ private struct GoodForTodayWorkoutCard: View {
                 }
             }
         }
+    }
+
+    /// Buddy/partner UI is a v2 (multi-user) surface, hidden in v1.
+    private var showBuddy: Bool {
+        FeatureFlags.multiUserEnabled && recommendation.prefersBuddy
     }
 
     private func chipColor(for chip: String) -> Color {
@@ -1608,10 +1610,12 @@ private struct SavedWorkoutsLibraryCard: View {
                                     }
                                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
-                                    Button("With Buddy") {
-                                        onWithBuddy(item)
+                                    if FeatureFlags.multiUserEnabled {
+                                        Button("With Buddy") {
+                                            onWithBuddy(item)
+                                        }
+                                        .buttonStyle(SecondaryCTAButtonStyle())
                                     }
-                                    .buttonStyle(SecondaryCTAButtonStyle())
                                 }
 
                                 Button("Unpin") {
@@ -1720,10 +1724,12 @@ private struct SavedWorkoutsLibraryCard: View {
                                 }
                                 .buttonStyle(SecondaryCTAButtonStyle())
 
-                                Button("With Buddy") {
-                                    onWithBuddy(item)
+                                if FeatureFlags.multiUserEnabled {
+                                    Button("With Buddy") {
+                                        onWithBuddy(item)
+                                    }
+                                    .buttonStyle(SecondaryCTAButtonStyle())
                                 }
-                                .buttonStyle(SecondaryCTAButtonStyle())
 
                                 Button("Duplicate") {
                                     onDuplicate(item)
@@ -1917,10 +1923,12 @@ private struct ShortcutWorkoutSection: View {
                         }
                         .buttonStyle(SecondaryCTAButtonStyle())
 
-                        Button("With Buddy") {
-                            onWithBuddy(item)
+                        if FeatureFlags.multiUserEnabled {
+                            Button("With Buddy") {
+                                onWithBuddy(item)
+                            }
+                            .buttonStyle(SecondaryCTAButtonStyle())
                         }
-                        .buttonStyle(SecondaryCTAButtonStyle())
                     }
                 }
                 .padding(12)
