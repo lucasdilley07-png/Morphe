@@ -155,8 +155,10 @@ final class MorpheAppStore: ObservableObject {
 
     @Published var workoutTemplates: [WorkoutTemplate]
     @Published var savedWorkouts: [SavedWorkoutLibraryItem]
-    @Published var currentWorkoutID: UUID
-    @Published var workoutLogs: [WorkoutLog]
+    @Published var currentWorkoutID: UUID { didSet { persistWorkoutSession() } }
+    @Published var workoutLogs: [WorkoutLog] {
+        didSet { workoutPersistence.saveLogs(workoutLogs) }
+    }
     @Published var workoutAccessGrants: [AthleteAccessGrant]
     @Published var workoutHistory: [WorkoutHistoryEntry]
     @Published var healthTrend: [DayScore]
@@ -186,13 +188,13 @@ final class MorpheAppStore: ObservableObject {
     @Published var selectedMuscleGroup: MuscleGroup = .legs
     @Published var selectedExercise: ExerciseReference?
     @Published var workoutReminder = "Log this workout within 24 hours so Morphe can adjust your next plan accurately."
-    @Published var isWorkoutLoggedToday = false
-    @Published var isWorkoutSessionActive = false
-    @Published var hasStartedWorkoutFlow = false
-    @Published var hasCompletedWorkoutFlow = false
-    @Published var activeWorkoutExerciseIndex = 0
-    @Published var completedWorkoutSets: [String: Int] = [:]
-    @Published var trackedSetReps: [String: [Int]] = [:]
+    @Published var isWorkoutLoggedToday = false { didSet { persistWorkoutSession() } }
+    @Published var isWorkoutSessionActive = false { didSet { persistWorkoutSession() } }
+    @Published var hasStartedWorkoutFlow = false { didSet { persistWorkoutSession() } }
+    @Published var hasCompletedWorkoutFlow = false { didSet { persistWorkoutSession() } }
+    @Published var activeWorkoutExerciseIndex = 0 { didSet { persistWorkoutSession() } }
+    @Published var completedWorkoutSets: [String: Int] = [:] { didSet { persistWorkoutSession() } }
+    @Published var trackedSetReps: [String: [Int]] = [:] { didSet { persistWorkoutSession() } }
 
     @Published var coachProfile: CoachProfile
     @Published var coachOverview: CoachOverview
@@ -233,6 +235,12 @@ final class MorpheAppStore: ObservableObject {
     private var didShareCurrentWorkoutHighlight = false
     private var pendingCoachOutreachContext: PendingCoachOutreachContext?
 
+    /// On-device persistence for the workout-tracking domain. Set once in `init`.
+    private let workoutPersistence: WorkoutPersisting
+    /// Guards `persistWorkoutSession()` so session `didSet`s triggered while we
+    /// restore a saved snapshot in `init` don't immediately re-save it.
+    private var isRestoringWorkoutSession = false
+
     init() {
         let templates = MorpheDemoContent.workoutTemplates
         let clients = MorpheDemoContent.coachClients
@@ -243,6 +251,13 @@ final class MorpheAppStore: ObservableObject {
         let seededWorkoutLogs = MorpheDemoContent.workoutLogs.sorted { $0.completedAt > $1.completedAt }
         let seededWorkoutPartners = MorpheDemoContent.workoutPartners
         let seededCoachOutreachEvents = Self.seededCoachOutreachEvents(clients: clients, logs: seededWorkoutLogs)
+
+        // Workout persistence: load the user's saved logs if they exist,
+        // otherwise fall back to the seeded demo logs (first launch only).
+        let workoutPersistence = WorkoutFilePersistence()
+        let persistedWorkoutLogs = workoutPersistence.loadLogs()
+        let initialWorkoutLogs = persistedWorkoutLogs ?? seededWorkoutLogs
+        self.workoutPersistence = workoutPersistence
 
         self.exerciseDatabase = MorpheDemoContent.exerciseDatabase
         self.availableThemes = MorpheDemoContent.themePresets
@@ -271,9 +286,9 @@ final class MorpheAppStore: ObservableObject {
         self.workoutTemplates = templates
         self.savedWorkouts = seededSavedWorkouts
         self.currentWorkoutID = templates.first?.id ?? UUID()
-        self.workoutLogs = seededWorkoutLogs
+        self.workoutLogs = initialWorkoutLogs
         self.workoutAccessGrants = MorpheDemoContent.workoutAccessGrants
-        self.workoutHistory = seededWorkoutLogs
+        self.workoutHistory = initialWorkoutLogs
             .filter { $0.athleteID == seededClientProfile.id }
             .map {
                 WorkoutHistoryEntry(
@@ -285,7 +300,7 @@ final class MorpheAppStore: ObservableObject {
             }
         self.healthTrend = MorpheDemoContent.healthTrend
         self.workoutConsistency = Self.rebuiltWorkoutConsistency(
-            from: seededWorkoutLogs,
+            from: initialWorkoutLogs,
             athleteID: seededClientProfile.id
         )
         self.strengthTrend = MorpheDemoContent.strengthTrend
@@ -339,6 +354,52 @@ final class MorpheAppStore: ObservableObject {
         self.unlockableItems = MorpheDemoContent.unlockableItems
 
         MorpheTheme.apply(accentPalette: profileShowcase.accentPalette)
+
+        // First launch: persist the seeded logs so they become the on-device
+        // source of truth. On later launches we loaded the user's own logs above.
+        if persistedWorkoutLogs == nil {
+            workoutPersistence.saveLogs(initialWorkoutLogs)
+        }
+        // Restore an in-progress workout session, if one was saved.
+        if let snapshot = workoutPersistence.loadSession() {
+            restoreWorkoutSession(from: snapshot)
+        }
+    }
+
+    /// Re-applies a saved in-progress session snapshot. Guarded so the property
+    /// `didSet`s it triggers don't immediately re-persist the same snapshot.
+    private func restoreWorkoutSession(from snapshot: WorkoutSessionSnapshot) {
+        isRestoringWorkoutSession = true
+        defer { isRestoringWorkoutSession = false }
+
+        if let id = snapshot.currentWorkoutID,
+           workoutTemplates.contains(where: { $0.id == id }) {
+            currentWorkoutID = id
+        }
+        isWorkoutLoggedToday = snapshot.isWorkoutLoggedToday
+        isWorkoutSessionActive = snapshot.isWorkoutSessionActive
+        hasStartedWorkoutFlow = snapshot.hasStartedWorkoutFlow
+        hasCompletedWorkoutFlow = snapshot.hasCompletedWorkoutFlow
+        activeWorkoutExerciseIndex = snapshot.activeWorkoutExerciseIndex
+        completedWorkoutSets = snapshot.completedWorkoutSets
+        trackedSetReps = snapshot.trackedSetReps
+    }
+
+    /// Persists the current in-progress session snapshot to disk.
+    private func persistWorkoutSession() {
+        guard !isRestoringWorkoutSession else { return }
+        workoutPersistence.saveSession(
+            WorkoutSessionSnapshot(
+                currentWorkoutID: currentWorkoutID,
+                isWorkoutSessionActive: isWorkoutSessionActive,
+                hasStartedWorkoutFlow: hasStartedWorkoutFlow,
+                hasCompletedWorkoutFlow: hasCompletedWorkoutFlow,
+                activeWorkoutExerciseIndex: activeWorkoutExerciseIndex,
+                completedWorkoutSets: completedWorkoutSets,
+                trackedSetReps: trackedSetReps,
+                isWorkoutLoggedToday: isWorkoutLoggedToday
+            )
+        )
     }
 
     var currentWorkout: WorkoutTemplate {

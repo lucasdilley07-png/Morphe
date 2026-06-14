@@ -5,7 +5,7 @@ protocol MorpheTabItem: Hashable, Identifiable {
     var systemImage: String { get }
 }
 
-enum AppRole: String, CaseIterable, Identifiable {
+enum AppRole: String, CaseIterable, Identifiable, Codable {
     case client
     case coach
 
@@ -273,7 +273,7 @@ enum ChatSender: String, Identifiable {
     var id: String { rawValue }
 }
 
-enum SportFocus: String, CaseIterable, Identifiable {
+enum SportFocus: String, CaseIterable, Identifiable, Codable {
     case generalFitness = "General Fitness"
     case weightLoss = "Weight Loss"
     case strength = "Strength"
@@ -736,7 +736,7 @@ struct GoodForTodayWorkoutRecommendation: Hashable {
     var existingSavedWorkoutID: UUID?
 }
 
-enum WorkoutLogSource: String, CaseIterable, Identifiable {
+enum WorkoutLogSource: String, CaseIterable, Identifiable, Codable {
     case athleteManual = "Athlete manual"
     case coachManual = "Coach manual"
     case aiPhotoParsed = "AI photo parsed"
@@ -758,7 +758,7 @@ enum WorkoutLogSource: String, CaseIterable, Identifiable {
     }
 }
 
-enum WorkoutVerificationStatus: String, CaseIterable, Identifiable {
+enum WorkoutVerificationStatus: String, CaseIterable, Identifiable, Codable {
     case athleteSubmitted = "Athlete submitted"
     case coachSubmitted = "Coach submitted"
     case aiPendingReview = "AI pending review"
@@ -767,7 +767,7 @@ enum WorkoutVerificationStatus: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-struct LoggedExercise: Identifiable, Hashable {
+struct LoggedExercise: Identifiable, Hashable, Codable {
     var id = UUID()
     var name: String
     var sets: String
@@ -776,7 +776,7 @@ struct LoggedExercise: Identifiable, Hashable {
     var note: String
 }
 
-struct WorkoutLog: Identifiable, Hashable {
+struct WorkoutLog: Identifiable, Hashable, Codable {
     var id = UUID()
     var athleteID: UUID
     var athleteName: String
