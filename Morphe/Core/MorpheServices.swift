@@ -2305,41 +2305,41 @@ enum MorpheDemoContent {
             athleteID: lucasAthleteID,
             athleteName: "Lucas",
             workoutTemplateID: workoutTemplates.first(where: { $0.name == "Beginner Full Body Strength" })?.id,
-            workoutTitle: "Coach Added Strength Session",
+            workoutTitle: "Full Body Strength Session",
             sport: .strength,
             completedAt: daysAgo(3),
             durationMinutes: 38,
             exercises: [
-                LoggedExercise(name: "Goblet Squat", sets: "3", reps: "10", weight: "40 lb", note: "Coach entered from in-person session."),
+                LoggedExercise(name: "Goblet Squat", sets: "3", reps: "10", weight: "40 lb", note: "Felt strong and controlled."),
                 LoggedExercise(name: "Incline Push-Up", sets: "3", reps: "12", weight: "Bodyweight", note: "Used bench height adjustment."),
-                LoggedExercise(name: "Romanian Deadlift", sets: "3", reps: "8", weight: "50 lb", note: "Tempo looked controlled.")
+                LoggedExercise(name: "Romanian Deadlift", sets: "3", reps: "8", weight: "50 lb", note: "Tempo stayed controlled.")
             ],
-            notes: "Coach Marcus manually entered the session after a floor coaching block.",
-            source: .coachManual,
-            enteredByUserID: coachMarcusID,
-            enteredByRole: .coach,
-            enteredByName: "Coach Marcus",
-            verificationStatus: .coachSubmitted
+            notes: "Solid full-body strength day. Logged after the session.",
+            source: .athleteManual,
+            enteredByUserID: lucasAthleteID,
+            enteredByRole: .client,
+            enteredByName: "Lucas",
+            verificationStatus: .athleteSubmitted
         ),
         WorkoutLog(
             athleteID: lucasAthleteID,
             athleteName: "Lucas",
             workoutTemplateID: nil,
-            workoutTitle: "Heavy Bag Intervals Photo Import",
+            workoutTitle: "Heavy Bag Intervals",
             sport: .boxing,
             completedAt: daysAgo(5),
             durationMinutes: 30,
             exercises: [
-                LoggedExercise(name: "Shadowboxing Rounds", sets: "3", reps: "3 min", weight: "Bodyweight", note: "AI parsed from whiteboard photo."),
-                LoggedExercise(name: "Heavy Bag Intervals", sets: "4", reps: "2 min", weight: "Bodyweight", note: "Detected from gym screenshot."),
-                LoggedExercise(name: "Plank", sets: "2", reps: "45 sec", weight: "Bodyweight", note: "Auto-filled core finisher.")
+                LoggedExercise(name: "Shadowboxing Rounds", sets: "3", reps: "3 min", weight: "Bodyweight", note: "Stayed light on the feet."),
+                LoggedExercise(name: "Heavy Bag Intervals", sets: "4", reps: "2 min", weight: "Bodyweight", note: "Kept the pace honest."),
+                LoggedExercise(name: "Plank", sets: "2", reps: "45 sec", weight: "Bodyweight", note: "Core finisher.")
             ],
-            notes: "Parsed from a gym whiteboard photo and confirmed by Coach Marcus.",
-            source: .aiPhotoParsed,
-            enteredByUserID: coachMarcusID,
-            enteredByRole: .coach,
-            enteredByName: "Morphe AI + Coach Marcus",
-            verificationStatus: .coachApproved
+            notes: "Conditioning round on the bag. Logged right after.",
+            source: .athleteManual,
+            enteredByUserID: lucasAthleteID,
+            enteredByRole: .client,
+            enteredByName: "Lucas",
+            verificationStatus: .athleteSubmitted
         ),
         WorkoutLog(
             athleteID: mayaAthleteID,
