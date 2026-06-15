@@ -896,6 +896,16 @@ private struct RecoveryCheckInSheet: View {
                 .foregroundStyle(MorpheTheme.accent)
                 .frame(width: 48, alignment: .trailing)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(Text("\(value.wrappedValue) out of \(range.upperBound)"))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: if value.wrappedValue < range.upperBound { value.wrappedValue += 1 }
+            case .decrement: if value.wrappedValue > range.lowerBound { value.wrappedValue -= 1 }
+            default: break
+            }
+        }
     }
 }
 

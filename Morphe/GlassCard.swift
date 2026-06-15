@@ -137,6 +137,8 @@ struct SectionTitleView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -166,6 +168,8 @@ struct MetricPill: View {
                         .stroke(MorpheTheme.strokeStrong.opacity(0.20), lineWidth: 1)
                 )
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(label): \(value)"))
     }
 }
 
@@ -215,6 +219,8 @@ struct ProgressBarView: View {
         }
         .frame(height: 10)
         .animation(.easeInOut(duration: 0.35), value: progress)
+        .accessibilityElement()
+        .accessibilityValue(Text("\(Int((progress * 100).rounded())) percent"))
     }
 }
 
@@ -321,6 +327,7 @@ struct MorpheAvatarView: View {
             Circle()
                 .stroke(Color.white.opacity(0.12), lineWidth: 1)
         )
+        .accessibilityHidden(true)
     }
 
     private var shortTitle: String {
@@ -590,6 +597,9 @@ struct ScoreRing: View {
             Circle()
                 .stroke(MorpheTheme.strokeStrong.opacity(0.22), lineWidth: 1)
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Morphe Score"))
+        .accessibilityValue(Text("\(score) out of 100"))
     }
 }
 
@@ -1282,6 +1292,7 @@ struct QuickActionButton: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text(title))
     }
 }
 

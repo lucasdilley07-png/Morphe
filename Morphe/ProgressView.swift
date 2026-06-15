@@ -278,6 +278,7 @@ struct ProgressView: View {
                         .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
                     }
                     .frame(height: 170)
+                    .accessibilityLabel(Text("Activity over the last 7 days"))
                 }
             }
 
@@ -290,6 +291,7 @@ struct ProgressView: View {
                     .foregroundStyle(MorpheTheme.accentAlt)
                 }
                 .frame(height: 160)
+                .accessibilityLabel(Text("Workouts logged per week"))
             }
 
             if !store.weightTrend.isEmpty {
