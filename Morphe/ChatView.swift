@@ -282,7 +282,7 @@ private struct StoryHighlightSheet: View {
                         VStack(alignment: .leading, spacing: 14) {
                             HStack(spacing: 12) {
                                 Text(story.symbol)
-                                    .font(.system(size: 34))
+                                    .font(.system(.largeTitle))
                                     .frame(width: 64, height: 64)
                                     .background(
                                         Circle()

@@ -142,7 +142,7 @@ private struct CoachHeaderCircleButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(.subheadline).weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(width: 38, height: 38)
                 .background(
@@ -2963,7 +2963,7 @@ private struct CoachMetricCard: View {
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
                 Text(value)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(.title, design: .rounded).weight(.bold))
                     .foregroundStyle(.white)
             }
             .frame(width: 170, alignment: .leading)

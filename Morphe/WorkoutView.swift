@@ -1278,7 +1278,7 @@ private struct WorkoutRestControlBar: View {
                     .foregroundStyle(.white)
                 Spacer()
                 Text(timeString)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(.title, design: .rounded).weight(.bold))
                     .foregroundStyle(.white)
             }
 

@@ -116,7 +116,7 @@ struct SectionTitleView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .font(.system(.title, design: .rounded).weight(.bold))
                 .foregroundStyle(MorpheTheme.textPrimary)
                 .overlay(alignment: .bottomLeading) {
                     Capsule(style: .continuous)
@@ -149,7 +149,7 @@ struct MetricPill: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label.uppercased())
-                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .font(.system(.caption2, design: .rounded).weight(.bold))
                 .tracking(0.8)
                 .foregroundStyle(MorpheTheme.textMuted)
             Text(value)
@@ -385,7 +385,7 @@ struct ProfileBannerView: View {
                 )
                 .overlay(alignment: .topTrailing) {
                     Image(systemName: bannerSymbol(for: banner.preset))
-                        .font(.system(size: 42, weight: .semibold))
+                        .font(.system(.largeTitle).weight(.semibold))
                         .foregroundStyle(Color.white.opacity(0.12))
                         .padding(18)
                 }
@@ -420,7 +420,7 @@ struct ProfileBannerView: View {
                     )
 
                 Text(banner.title)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(.title, design: .rounded).weight(.bold))
                     .foregroundStyle(.white)
                     .shadow(color: Color.black.opacity(0.35), radius: 16, x: 0, y: 10)
 
@@ -584,10 +584,10 @@ struct ScoreRing: View {
 
             VStack(spacing: 2) {
                 Text("\(score)")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .font(.system(.title, design: .rounded).weight(.bold))
                     .foregroundStyle(.white)
                 Text("score")
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .font(.system(.caption2, design: .rounded).weight(.semibold))
                     .tracking(0.7)
                     .foregroundStyle(MorpheTheme.textMuted)
             }
@@ -1355,7 +1355,7 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                 } label: {
                     VStack(spacing: 5) {
                         Image(systemName: item.systemImage)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(.subheadline).weight(.semibold))
                         Text(item.title)
                             .font(.caption2.weight(.bold))
                             .lineLimit(1)

@@ -13,7 +13,7 @@ struct LaunchSequenceView: View {
                 .shadow(color: MorpheTheme.accentAlt.opacity(0.28), radius: 18)
 
             Text("Morphe")
-                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .font(.system(.largeTitle, design: .rounded).weight(.bold))
                 .foregroundStyle(.white)
 
             Text(message)
@@ -108,7 +108,7 @@ struct OnboardingFlowView: View {
                             GlassCard {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("Create your profile")
-                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .font(.system(.title, design: .rounded).weight(.bold))
                                         .foregroundStyle(.white)
 
                                     Text("A few simple choices make the plan feel personal without turning setup into homework.")
@@ -236,7 +236,7 @@ private struct WelcomeLandingStep: View {
             GlassCard {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Welcome to Morphe")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
                         .foregroundStyle(.white)
 
                     Text("Morphe helps beginners, athletes, and coaches know what to do today, why it matters, and how to keep going when life gets noisy.")
@@ -307,7 +307,7 @@ private struct GenderSelectionStep: View {
                     } label: {
                         VStack(spacing: 8) {
                             Text(gender.shortTitle)
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .font(.system(.title, design: .rounded).weight(.bold))
                             Text(gender.rawValue)
                                 .font(.subheadline.weight(.semibold))
                         }
@@ -940,7 +940,7 @@ private struct PersonalizedPlanLoadingView: View {
             .shadow(color: MorpheTheme.accentAlt.opacity(0.28), radius: 18)
 
             Text("Morphe")
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.system(.largeTitle, design: .rounded).weight(.bold))
                 .foregroundStyle(.white)
 
             Text(store.onboardingDraft.accountType == .coach ? "Building your coach workspace..." : "Building your personalized plan...")

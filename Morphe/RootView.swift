@@ -410,7 +410,7 @@ struct DemoBrandHeader: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Morphe")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(.title, design: .rounded).weight(.bold))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [.white, MorpheTheme.accent.opacity(0.92)],
@@ -477,7 +477,7 @@ private struct HeaderCircleButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(.subheadline).weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(width: 38, height: 38)
                 .background(
@@ -713,7 +713,7 @@ private struct NetworkProfilePreviewSheet: View {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack(spacing: 14) {
                             Text(profile.avatar)
-                                .font(.system(size: 36))
+                                .font(.system(.largeTitle))
                                 .frame(width: 62, height: 62)
                                 .background(
                                     Circle()
