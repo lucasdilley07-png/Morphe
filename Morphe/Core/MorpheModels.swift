@@ -51,6 +51,9 @@ enum GenderOption: String, CaseIterable, Identifiable {
 /// v2 backend exists. Flip this to `true` to re-enable them everywhere.
 enum FeatureFlags {
     static let multiUserEnabled = false
+    /// Gates the new account/sign-in flow (v2 backend foundation). Off until the
+    /// Firebase project is connected, so the current app is unaffected.
+    static let accountsEnabled = false
 }
 
 enum ClientTab: String, CaseIterable, MorpheTabItem {

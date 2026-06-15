@@ -252,6 +252,14 @@ final class MorpheAppStore {
     private let workoutPersistence: WorkoutPersisting
     /// On-device persistence for the user's local profile. Set once in `init`.
     private let profilePersistence: ProfilePersisting
+
+    // MARK: - Accounts (v2 backend foundation)
+    /// Auth provider. LocalAuthService now; FirebaseAuthService once connected.
+    private let authService: AuthService = LocalAuthService()
+    /// The signed-in account, or nil when signed out.
+    var authUser: AppUser?
+    var authErrorMessage: String?
+    var isAuthBusy = false
     /// Guards `persistWorkoutSession()` so session `didSet`s triggered while we
     /// restore a saved snapshot in `init` don't immediately re-save it.
     private var isRestoringWorkoutSession = false
@@ -391,6 +399,48 @@ final class MorpheAppStore {
         // and a returning user skips onboarding.
         if let persistedProfile {
             applyPersistedProfile(persistedProfile)
+        }
+
+        authUser = authService.currentUser
+        if let authUser { selectedRole = authUser.role.appRole }
+    }
+
+    // MARK: - Auth actions
+
+    func signUp(email: String, password: String, role: UserRole, name: String) async {
+        isAuthBusy = true
+        authErrorMessage = nil
+        defer { isAuthBusy = false }
+        do {
+            let user = try await authService.signUp(email: email, password: password, role: role, displayName: name)
+            applySignedIn(user)
+        } catch {
+            authErrorMessage = (error as? AuthError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    func signIn(email: String, password: String) async {
+        isAuthBusy = true
+        authErrorMessage = nil
+        defer { isAuthBusy = false }
+        do {
+            let user = try await authService.signIn(email: email, password: password)
+            applySignedIn(user)
+        } catch {
+            authErrorMessage = (error as? AuthError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    func signOut() {
+        authService.signOut()
+        authUser = nil
+    }
+
+    private func applySignedIn(_ user: AppUser) {
+        authUser = user
+        selectedRole = user.role.appRole
+        if !hasCompletedOnboarding, !user.displayName.isEmpty {
+            onboardingDraft.name = user.displayName
         }
     }
 

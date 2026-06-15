@@ -21,12 +21,14 @@
 		1B20F6002C40000100100041 /* MorpheServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100051 /* MorpheServices.swift */; };
 		1B20F6002C40000100100042 /* MorpheStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100052 /* MorpheStore.swift */; };
 		1B20F6002C40000100100043 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100053 /* OnboardingView.swift */; };
+		1B20F6002C4000010010004C /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100067 /* AuthView.swift */; };
 		1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100054 /* JournalScheduleView.swift */; };
 		1B20F6002C40000100100045 /* CoachDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100055 /* CoachDashboardView.swift */; };
 		1B20F6002C40000100100046 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100061 /* DiscoverView.swift */; };
 		1B20F6002C40000100100047 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100062 /* MoreView.swift */; };
 		1B20F6002C40000100100048 /* WorkoutPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100063 /* WorkoutPersistence.swift */; };
 		1B20F6002C40000100100049 /* ProfilePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100064 /* ProfilePersistence.swift */; };
+		1B20F6002C4000010010004B /* Accounts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100066 /* Accounts.swift */; };
 		1B20F6002C400001001000AA /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000A9 /* PersistenceTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -64,12 +66,14 @@
 		1B20F6002C40000100100051 /* MorpheServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheServices.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100052 /* MorpheStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheStore.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100053 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		1B20F6002C40000100100067 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100054 /* JournalScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalScheduleView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100055 /* CoachDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachDashboardView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100061 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100062 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100063 /* WorkoutPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPersistence.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100064 /* ProfilePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistence.swift; sourceTree = "<group>"; };
+		1B20F6002C40000100100066 /* Accounts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Accounts.swift; sourceTree = "<group>"; };
 		1B20F6002C400001001000A1 /* MorpheTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MorpheTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B20F6002C400001001000A9 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -138,6 +142,7 @@
 				1B20F6002C40000100100052 /* MorpheStore.swift */,
 				1B20F6002C40000100100063 /* WorkoutPersistence.swift */,
 				1B20F6002C40000100100064 /* ProfilePersistence.swift */,
+				1B20F6002C40000100100066 /* Accounts.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -173,6 +178,7 @@
 			isa = PBXGroup;
 			children = (
 				1B20F6002C40000100100053 /* OnboardingView.swift */,
+				1B20F6002C40000100100067 /* AuthView.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -289,12 +295,14 @@
 				1B20F6002C40000100100041 /* MorpheServices.swift in Sources */,
 				1B20F6002C40000100100042 /* MorpheStore.swift in Sources */,
 				1B20F6002C40000100100043 /* OnboardingView.swift in Sources */,
+				1B20F6002C4000010010004C /* AuthView.swift in Sources */,
 				1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */,
 				1B20F6002C40000100100045 /* CoachDashboardView.swift in Sources */,
 				1B20F6002C40000100100046 /* DiscoverView.swift in Sources */,
 				1B20F6002C40000100100047 /* MoreView.swift in Sources */,
 				1B20F6002C40000100100048 /* WorkoutPersistence.swift in Sources */,
 				1B20F6002C40000100100049 /* ProfilePersistence.swift in Sources */,
+				1B20F6002C4000010010004B /* Accounts.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

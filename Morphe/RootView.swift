@@ -11,6 +11,8 @@ struct RootView: View {
             Group {
                 if store.isShowingLaunchSequence {
                     LaunchSequenceView()
+                } else if FeatureFlags.accountsEnabled && store.authUser == nil {
+                    AuthView()
                 } else if !store.hasCompletedOnboarding {
                     OnboardingFlowView()
                 } else {

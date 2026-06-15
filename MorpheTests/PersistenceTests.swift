@@ -317,6 +317,52 @@ final class WorkoutBuilderTests: XCTestCase {
     }
 }
 
+/// Verifies the account/auth seam (the foundation the Firebase backend plugs into).
+final class AuthTests: XCTestCase {
+    private func freshAuth() -> LocalAuthService {
+        let auth = LocalAuthService(fileName: "account-test.json")
+        auth.reset()
+        return auth
+    }
+
+    func testSignUpCreatesAccountWithRole() async throws {
+        let auth = freshAuth()
+        let user = try await auth.signUp(email: "Coach@Morphe.app", password: "secret123",
+                                         role: .coach, displayName: "Coach Sam")
+        XCTAssertEqual(user.role, .coach)
+        XCTAssertEqual(user.email, "coach@morphe.app", "email is normalized")
+        XCTAssertFalse(user.id.isEmpty)
+        XCTAssertEqual(auth.currentUser?.id, user.id, "sign-up signs the user in")
+        auth.reset()
+    }
+
+    func testSignUpRejectsInvalidInput() async {
+        let auth = freshAuth()
+        await XCTAssertThrowsErrorAsync(try await auth.signUp(email: "nope", password: "secret1",
+                                                             role: .athlete, displayName: "X"))
+        await XCTAssertThrowsErrorAsync(try await auth.signUp(email: "ok@ok.com", password: "123",
+                                                             role: .athlete, displayName: "X"))
+        auth.reset()
+    }
+
+    func testSignInThenSignOut() async throws {
+        let auth = freshAuth()
+        _ = try await auth.signUp(email: "a@b.com", password: "secret1", role: .athlete, displayName: "A")
+        let again = LocalAuthService(fileName: "account-test.json")
+        let user = try await again.signIn(email: "a@b.com", password: "secret1")
+        XCTAssertEqual(user.role, .athlete)
+        again.signOut()
+        XCTAssertNil(again.currentUser)
+        again.reset()
+    }
+}
+
+private func XCTAssertThrowsErrorAsync(_ expression: @autoclosure () async throws -> some Any,
+                                       file: StaticString = #filePath, line: UInt = #line) async {
+    do { _ = try await expression(); XCTFail("Expected an error", file: file, line: line) }
+    catch { /* expected */ }
+}
+
 /// Verifies the Morphe Score and streak are derived from real logs, not seeded.
 @MainActor
 final class MetricsTests: XCTestCase {
