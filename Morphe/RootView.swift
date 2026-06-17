@@ -18,9 +18,11 @@ struct RootView: View {
                 } else {
                     AppShell {
                         Group {
-                            // Coach mode is a v2 (multi-user) surface — force the
-                            // client experience until it ships.
-                            if FeatureFlags.multiUserEnabled && store.selectedRole == .coach {
+                            // A coach account lands in the coach workspace; everyone
+                            // else gets the athlete experience. (Role comes from the
+                            // signed-in account once accounts are enabled.)
+                            if (FeatureFlags.accountsEnabled || FeatureFlags.multiUserEnabled),
+                               store.selectedRole == .coach {
                                 CoachLayout {
                                     CoachDashboardView()
                                 }

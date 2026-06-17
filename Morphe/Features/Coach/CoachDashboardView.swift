@@ -15,8 +15,10 @@ struct CoachDashboardView: View {
             CoachProgramsScreen()
                 .tag(CoachTab.programs)
 
-            CoachNetworkScreen()
-                .tag(CoachTab.network)
+            if FeatureFlags.multiUserEnabled {
+                CoachNetworkScreen()
+                    .tag(CoachTab.network)
+            }
 
             CoachMessagesScreen()
                 .tag(CoachTab.messages)
@@ -43,7 +45,7 @@ struct CoachDashboardView: View {
                 )
         }
         .safeAreaInset(edge: .bottom) {
-            BottomTabNavigation(items: CoachTab.allCases, selected: store.selectedCoachTab) { tab in
+            BottomTabNavigation(items: CoachTab.visibleCases, selected: store.selectedCoachTab) { tab in
                 store.selectedCoachTab = tab
             }
             .padding(.horizontal, 16)

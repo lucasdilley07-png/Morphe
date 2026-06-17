@@ -108,6 +108,12 @@ enum CoachTab: String, CaseIterable, MorpheTabItem {
 
     var id: String { rawValue }
 
+    /// Coach tabs shown in the bottom nav. The Network (social) tab returns with
+    /// the multi-user networking feature.
+    static var visibleCases: [CoachTab] {
+        FeatureFlags.multiUserEnabled ? allCases : [.dashboard, .athletes, .programs, .messages]
+    }
+
     var title: String {
         switch self {
         case .dashboard: return "Home"
