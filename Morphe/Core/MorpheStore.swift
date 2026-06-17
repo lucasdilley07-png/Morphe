@@ -2524,6 +2524,14 @@ final class MorpheAppStore {
         showToast("\(palette.rawValue) accents applied.")
     }
 
+    func updateDisplayName(_ newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        clientProfile.name = trimmed
+        profileShowcase.displayName = trimmed
+        persistLocalProfile()
+    }
+
     func selectAvatarStyle(_ style: AvatarStyle) {
         profileShowcase.avatar.style = style
         persistLocalProfile()

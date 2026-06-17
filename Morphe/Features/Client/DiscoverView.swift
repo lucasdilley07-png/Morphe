@@ -2,9 +2,8 @@ import SwiftUI
 
 struct ProfileView: View {
     @Environment(MorpheAppStore.self) private var store
-    @State private var paymentExpanded = true
-    @State private var attributesExpanded = true
-    @State private var settingsExpanded = true
+    @State private var isEditingName = false
+    @State private var nameDraft = ""
 
     private var isCoach: Bool {
         store.selectedRole == .coach
@@ -13,126 +12,218 @@ struct ProfileView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                SectionTitleView(
-                    title: isCoach ? "Coach Profile" : "Athlete Profile",
-                    subtitle: "Switch account type, shape your identity, and keep the workspace feeling personal, credible, and easy to manage."
-                )
-
-                AccountTypeSwitcherProfileCard(selectedRole: store.selectedRole) { role in
-                    store.selectRole(role)
-                }
-
-                ProfileBannerView(banner: store.profileShowcase.banner, theme: store.profileShowcase.theme)
-
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 14) {
-                        HStack(spacing: 12) {
-                            MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 84)
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(isCoach ? store.coachProfile.name : store.profileShowcase.displayName)
-                                    .font(.title3.weight(.bold))
-                                    .foregroundStyle(.white)
-                                Text("@\(isCoach ? store.coachProfile.username : store.profileShowcase.username)")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(MorpheTheme.accentAlt)
-                                Text(isCoach ? store.coachProfile.headline : store.profileShowcase.bio)
-                                    .font(.subheadline)
-                                    .foregroundStyle(MorpheTheme.textSecondary)
-                            }
-                        }
-
-                        HStack(spacing: 8) {
-                            MetricPill(label: "Account", value: isCoach ? "Coach" : "Athlete")
-                            MetricPill(
-                                label: "Primary Sport",
-                                value: isCoach
-                                    ? (store.coachProfile.sports.first?.rawValue ?? "Coach")
-                                    : store.clientProfile.sportMode.rawValue
-                            )
-                            MetricPill(
-                                label: isCoach ? "Primary Goal" : "Primary Goal",
-                                value: isCoach
-                                    ? (store.coachProfile.selectedGoals.first ?? store.coachProfile.specialty)
-                                    : store.clientProfile.goal
-                            )
-                        }
-
-                        WrapStack(spacing: 8) {
-                            ForEach(isCoach ? store.coachProfile.sports : store.clientProfile.selectedSports) { sport in
-                                SelectionToken(text: sport.shortTitle, color: MorpheTheme.color(for: sport))
-                            }
-
-                            ForEach(isCoach ? store.coachProfile.selectedTrainingStyles : store.clientProfile.selectedTrainingStyles) { style in
-                                SelectionToken(text: style.rawValue, color: MorpheTheme.warning)
-                            }
-
-                            ForEach(isCoach ? store.coachProfile.selectedGoals : store.clientProfile.selectedGoals, id: \.self) { goal in
-                                SelectionToken(text: goal, color: MorpheTheme.accentAlt)
-                            }
-                        }
-                    }
-                }
-
+                identityCard
                 if isCoach {
-                    ProfileDisclosureSection(
-                        title: "Payment",
-                        subtitle: "Subscription, bank details, and premium coach tools.",
-                        isExpanded: $paymentExpanded
-                    ) {
-                        CoachPaymentSection(
-                            status: store.subscriptionStatus,
-                            onPreviewPlans: { store.openPaywall() }
-                        )
-                    }
-
-                    ProfileDisclosureSection(
-                        title: "Attributes",
-                        subtitle: "Identity, CRM, network presence, and coaching proof.",
-                        isExpanded: $attributesExpanded
-                    ) {
-                        CoachAttributesSection(store: store)
-                    }
-
-                    ProfileDisclosureSection(
-                        title: "Settings",
-                        subtitle: "Personalization, privacy, support, and account actions.",
-                        isExpanded: $settingsExpanded
-                    ) {
-                        CoachSettingsSection(store: store)
-                    }
+                    CoachProfileBody(store: store)
                 } else {
-                    ProfileDisclosureSection(
-                        title: "Payment",
-                        subtitle: "Subscription, bank details, and premium athlete preview.",
-                        isExpanded: $paymentExpanded
-                    ) {
-                        AthletePaymentSection(
-                            status: store.subscriptionStatus,
-                            onPreviewPlans: { store.openPaywall() }
-                        )
-                    }
-
-                    ProfileDisclosureSection(
-                        title: "Attributes",
-                        subtitle: "Athletic identity, coach plan, badges, and progress proof.",
-                        isExpanded: $attributesExpanded
-                    ) {
-                        AthleteAttributesSection(store: store)
-                    }
-
-                    ProfileDisclosureSection(
-                        title: "Settings",
-                        subtitle: "Personalization, privacy, support, and account actions.",
-                        isExpanded: $settingsExpanded
-                    ) {
-                        AthleteSettingsSection(store: store)
-                    }
+                    AthleteProfileBody(store: store)
                 }
+                settingsCard
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 120)
+        }
+    }
+
+    private var identityCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 14) {
+                    MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 72)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(isCoach ? store.coachProfile.name : store.profileShowcase.displayName)
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(.white)
+                        Text("@\(isCoach ? store.coachProfile.username : store.profileShowcase.username)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accent)
+                        Text(isCoach
+                            ? "Coach"
+                            : "\(store.clientProfile.sportMode.rawValue) • \(store.clientProfile.fitnessLevel)")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    Spacer()
+                    StatusBadge(text: isCoach ? "Coach" : "Athlete", color: MorpheTheme.accent)
+                }
+            }
+        }
+    }
+
+    private var settingsCard: some View {
+        @Bindable var store = store
+        return GlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Settings")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                if isEditingName {
+                    HStack(spacing: 8) {
+                        TextField("Your name", text: $nameDraft)
+                            .textFieldStyle(MorpheFieldStyle())
+                        Button("Save") {
+                            store.updateDisplayName(nameDraft)
+                            isEditingName = false
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.accent)
+                    }
+                } else {
+                    settingsRow(
+                        "Name",
+                        value: isCoach ? store.coachProfile.name : store.profileShowcase.displayName,
+                        showEdit: !isCoach
+                    ) {
+                        nameDraft = store.profileShowcase.displayName
+                        isEditingName = true
+                    }
+                }
+
+                Divider().overlay(Color.white.opacity(0.08))
+
+                HStack {
+                    Text("Weight unit")
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Picker("Weight unit", selection: $store.weightUnit) {
+                        ForEach(WeightUnit.allCases) { unit in
+                            Text(unit.label).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 110)
+                }
+
+                Divider().overlay(Color.white.opacity(0.08))
+
+                if FeatureFlags.accountsEnabled {
+                    Button("Sign Out") {
+                        store.signOut()
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                }
+            }
+        }
+    }
+
+    private func settingsRow(_ title: String, value: String, showEdit: Bool = true, onEdit: @escaping () -> Void) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Text(value)
+                    .foregroundStyle(.white)
+            }
+            Spacer()
+            if showEdit {
+                Button("Edit", action: onEdit)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.accent)
+            }
+        }
+    }
+}
+
+/// Athlete profile = strictly training: snapshot, focus, recent work, records.
+private struct AthleteProfileBody: View {
+    let store: MorpheAppStore
+
+    var body: some View {
+        let summary = store.workoutLogSummary(for: store.clientProfile.id)
+        Group {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Training snapshot")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    HStack(spacing: 8) {
+                        MetricPill(label: "Morphe Score", value: "\(store.clientProfile.health.score)")
+                        MetricPill(label: "Streak", value: "\(store.clientProfile.level.streak) days")
+                        MetricPill(label: "This week", value: "\(summary.workoutsThisWeek)")
+                    }
+                }
+            }
+
+            GlassCard {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Focus")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text(store.clientProfile.goal)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    WrapStack(spacing: 8) {
+                        ForEach(store.clientProfile.selectedSports) { sport in
+                            SelectionToken(text: sport.shortTitle, color: MorpheTheme.color(for: sport))
+                        }
+                        ForEach(store.clientProfile.selectedTrainingStyles) { style in
+                            SelectionToken(text: style.rawValue, color: MorpheTheme.warning)
+                        }
+                    }
+                }
+            }
+
+            AthleteRecentLogsCard(logs: Array(store.currentAthleteWorkoutLogs.prefix(5)))
+
+            if !store.profileShowcase.personalRecords.isEmpty {
+                PersonalRecordsListCard(records: store.profileShowcase.personalRecords)
+            }
+        }
+    }
+}
+
+/// Coach profile = coaching identity + client/outreach snapshot (real once the
+/// backend connects; sample data for now).
+private struct CoachProfileBody: View {
+    let store: MorpheAppStore
+
+    var body: some View {
+        Group {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Coaching snapshot")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    HStack(spacing: 8) {
+                        MetricPill(label: "Clients", value: "\(store.coachClients.count)")
+                        MetricPill(label: "Need check-in",
+                                   value: "\(store.coachClients.filter { $0.risk == .high }.count)")
+                        MetricPill(label: "Specialty", value: store.coachProfile.specialty)
+                    }
+                    Text(store.coachProfile.headline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
+
+            GlassCard {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Specialties")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    WrapStack(spacing: 8) {
+                        ForEach(store.coachProfile.sports) { sport in
+                            SelectionToken(text: sport.shortTitle, color: MorpheTheme.color(for: sport))
+                        }
+                        ForEach(store.coachProfile.selectedTrainingStyles) { style in
+                            SelectionToken(text: style.rawValue, color: MorpheTheme.warning)
+                        }
+                    }
+                }
+            }
+
+            GlassCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your coaching tools")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text("Build programs, track clients, and run outreach from the coach tabs. Connecting real clients turns on with your account backend.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
         }
     }
 }
