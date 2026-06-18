@@ -14,13 +14,6 @@ struct ExerciseDetailView: View {
                             Text(exercise.name)
                                 .font(.title2.weight(.bold))
                                 .foregroundStyle(.white)
-                            HStack(spacing: 8) {
-                                Image(systemName: "play.rectangle")
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                                Text("Video demo coming soon")
-                                    .font(.subheadline)
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                            }
 
                             HStack(spacing: 8) {
                                 MetricPill(label: "Muscles", value: exercise.musclesWorked)
