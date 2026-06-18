@@ -1266,6 +1266,77 @@ struct UnlockableItem: Identifiable, Hashable {
     var detail: String
 }
 
+// MARK: - Coach ↔ client training commerce (v2)
+
+/// A paid training offering a coach sells — one session or a multi-session pack.
+/// `priceValue` is the source of truth for earnings math; `price` is the display
+/// string. Becomes a Firestore document under the coach once payments ship.
+struct TrainingPackage: Identifiable, Hashable {
+    var id = UUID()
+    var title: String
+    var summary: String
+    var priceValue: Double
+    var sessionCount: Int
+    var minutesPerSession: Int
+    var isPopular: Bool = false
+
+    var price: String {
+        let whole = priceValue.rounded()
+        let text = whole == priceValue ? String(Int(whole)) : String(format: "%.2f", priceValue)
+        return "$\(text)"
+    }
+
+    var perSessionLabel: String {
+        guard sessionCount > 1 else { return "\(minutesPerSession) min session" }
+        let each = priceValue / Double(sessionCount)
+        return "\(sessionCount) sessions · $\(Int(each.rounded())) each"
+    }
+}
+
+enum BookingStatus: String, Codable, CaseIterable, Identifiable {
+    case requested = "Requested"
+    case confirmed = "Confirmed"
+    case completed = "Completed"
+    case cancelled = "Cancelled"
+
+    var id: String { rawValue }
+}
+
+enum PaymentStatus: String, Codable, CaseIterable, Identifiable {
+    case unpaid = "Unpaid"
+    case pending = "Pending"
+    case paid = "Paid"
+    case refunded = "Refunded"
+
+    var id: String { rawValue }
+}
+
+/// A client's booked training appointment with a coach. The payment side stays
+/// `pending` until the real Stripe/Apple Pay flow lands; the booking itself is
+/// real so the schedule and earnings views have something true to render.
+struct SessionBooking: Identifiable, Hashable {
+    var id = UUID()
+    var coachName: String
+    var packageTitle: String
+    var day: String
+    var time: String
+    var priceValue: Double
+    var status: BookingStatus = .requested
+    var paymentStatus: PaymentStatus = .pending
+
+    var price: String {
+        "$\(Int(priceValue.rounded()))"
+    }
+}
+
+/// One bookable time on a coach's calendar. `isOpen == false` once taken.
+struct AvailabilitySlot: Identifiable, Hashable {
+    var id = UUID()
+    var day: String
+    var time: String
+    var isOpen: Bool = true
+}
+
 struct CelebrationMoment: Identifiable, Hashable {
     var id = UUID()
     var title: String

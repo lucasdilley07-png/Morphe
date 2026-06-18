@@ -707,8 +707,14 @@ private struct AIAgentMessageRow: View {
 private struct NetworkProfilePreviewSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @State private var showBooking = false
 
     let profile: NetworkProfilePreview
+
+    /// A client can book a coach (not another athlete, and not themselves).
+    private var canBookThisCoach: Bool {
+        profile.role == .coach && store.selectedRole != .coach
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -763,6 +769,26 @@ private struct NetworkProfilePreviewSheet: View {
                     }
                 }
 
+                if canBookThisCoach {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Train with \(profile.name)")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                            Text("Book a 1-on-1 session and work directly with this coach.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button {
+                                showBooking = true
+                            } label: {
+                                Label("Book a session", systemImage: "calendar.badge.plus")
+                            }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        }
+                    }
+                }
+
                 GlassCard {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Quick actions")
@@ -800,6 +826,9 @@ private struct NetworkProfilePreviewSheet: View {
                 }
                 .foregroundStyle(.white)
             }
+        }
+        .sheet(isPresented: $showBooking) {
+            CoachBookingSheet(coachName: profile.name)
         }
     }
 

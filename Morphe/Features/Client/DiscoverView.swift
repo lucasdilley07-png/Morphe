@@ -179,6 +179,7 @@ private struct AthleteProfileBody: View {
 /// backend connects; sample data for now).
 private struct CoachProfileBody: View {
     let store: MorpheAppStore
+    @State private var showBusiness = false
 
     var body: some View {
         Group {
@@ -223,6 +224,47 @@ private struct CoachProfileBody: View {
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
+            }
+
+            if FeatureFlags.multiUserEnabled {
+                Button {
+                    showBusiness = true
+                } label: {
+                    GlassCard {
+                        HStack(spacing: 12) {
+                            Image(systemName: "banknote")
+                                .font(.headline)
+                                .foregroundStyle(MorpheTheme.accent)
+                                .frame(width: 44, height: 44)
+                                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(MorpheTheme.panelStrong))
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Training Business")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                Text("Set rates, take bookings, track earnings.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .sheet(isPresented: $showBusiness) {
+            NavigationStack {
+                CoachBusinessView()
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { showBusiness = false }
+                                .foregroundStyle(.white)
+                        }
+                    }
             }
         }
     }

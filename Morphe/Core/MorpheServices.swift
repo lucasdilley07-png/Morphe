@@ -2584,6 +2584,49 @@ enum MorpheDemoContent {
         )
     ]
 
+    // Coach training offerings a client can buy. Cleared for a fresh user;
+    // a real coach defines these in the business surface.
+    static let trainingPackages: [TrainingPackage] = [
+        TrainingPackage(
+            title: "Single Session",
+            summary: "One focused 1-on-1 session — technique, a hard workout, and a plan for the week.",
+            priceValue: 60,
+            sessionCount: 1,
+            minutesPerSession: 60
+        ),
+        TrainingPackage(
+            title: "4-Session Pack",
+            summary: "A month of weekly coaching. Best for building a habit and seeing real change.",
+            priceValue: 200,
+            sessionCount: 4,
+            minutesPerSession: 60,
+            isPopular: true
+        ),
+        TrainingPackage(
+            title: "Form Check",
+            summary: "Quick 30-minute lift review — send your goals, get your form dialed in.",
+            priceValue: 35,
+            sessionCount: 1,
+            minutesPerSession: 30
+        )
+    ]
+
+    static let availabilitySlots: [AvailabilitySlot] = [
+        AvailabilitySlot(day: "Mon", time: "7:00 AM"),
+        AvailabilitySlot(day: "Mon", time: "5:30 PM"),
+        AvailabilitySlot(day: "Wed", time: "6:00 AM"),
+        AvailabilitySlot(day: "Wed", time: "12:00 PM"),
+        AvailabilitySlot(day: "Fri", time: "7:00 AM"),
+        AvailabilitySlot(day: "Sat", time: "9:00 AM"),
+        AvailabilitySlot(day: "Sat", time: "10:30 AM")
+    ]
+
+    // Incoming bookings from a coach's perspective (drives schedule + earnings).
+    static let sessionBookings: [SessionBooking] = [
+        SessionBooking(coachName: "Maya R.", packageTitle: "4-Session Pack", day: "Mon", time: "5:30 PM", priceValue: 200, status: .confirmed, paymentStatus: .paid),
+        SessionBooking(coachName: "Alex T.", packageTitle: "Single Session", day: "Wed", time: "6:00 AM", priceValue: 60, status: .requested, paymentStatus: .pending)
+    ]
+
     static let sportMetrics: [SportFocus: [SportMetric]] = [
         .boxing: [
             SportMetric(label: "Rounds completed", value: "8"),

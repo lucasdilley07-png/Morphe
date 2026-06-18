@@ -22,6 +22,7 @@
 		1B20F6002C40000100100042 /* MorpheStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100052 /* MorpheStore.swift */; };
 		1B20F6002C40000100100043 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100053 /* OnboardingView.swift */; };
 		1B20F6002C4000010010004C /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100067 /* AuthView.swift */; };
+		1B20F6002C4000010010004D /* BookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100068 /* BookingView.swift */; };
 		1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100054 /* JournalScheduleView.swift */; };
 		1B20F6002C40000100100045 /* CoachDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100055 /* CoachDashboardView.swift */; };
 		1B20F6002C40000100100046 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100061 /* DiscoverView.swift */; };
@@ -67,6 +68,7 @@
 		1B20F6002C40000100100052 /* MorpheStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheStore.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100053 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100067 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		1B20F6002C40000100100068 /* BookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100054 /* JournalScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalScheduleView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100055 /* CoachDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachDashboardView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100061 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
@@ -179,6 +181,7 @@
 			children = (
 				1B20F6002C40000100100053 /* OnboardingView.swift */,
 				1B20F6002C40000100100067 /* AuthView.swift */,
+				1B20F6002C40000100100068 /* BookingView.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -296,6 +299,7 @@
 				1B20F6002C40000100100042 /* MorpheStore.swift in Sources */,
 				1B20F6002C40000100100043 /* OnboardingView.swift in Sources */,
 				1B20F6002C4000010010004C /* AuthView.swift in Sources */,
+				1B20F6002C4000010010004D /* BookingView.swift in Sources */,
 				1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */,
 				1B20F6002C40000100100045 /* CoachDashboardView.swift in Sources */,
 				1B20F6002C40000100100046 /* DiscoverView.swift in Sources */,

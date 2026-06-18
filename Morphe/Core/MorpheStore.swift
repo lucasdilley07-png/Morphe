@@ -213,6 +213,9 @@ final class MorpheAppStore {
     var outreachSuggestions: [OutreachSuggestion]
     var messageTemplates: [MessageTemplate]
     var upcomingSessions: [CalendarEvent]
+    var trainingPackages: [TrainingPackage]
+    var availabilitySlots: [AvailabilitySlot]
+    var sessionBookings: [SessionBooking]
     var selectedProgramTemplateID: UUID?
     var coachBroadcastText = "Team check-in: reply with your biggest win and biggest blocker."
     var coachInterventions: [CoachIntervention]
@@ -368,6 +371,9 @@ final class MorpheAppStore {
         self.outreachSuggestions = MorpheDemoContent.outreachSuggestions
         self.messageTemplates = MorpheDemoContent.messageTemplates
         self.upcomingSessions = MorpheDemoContent.upcomingSessions
+        self.trainingPackages = MorpheDemoContent.trainingPackages
+        self.availabilitySlots = MorpheDemoContent.availabilitySlots
+        self.sessionBookings = MorpheDemoContent.sessionBookings
         self.selectedProgramTemplateID = templates.first?.id
         self.coachInterventions = MorpheDemoContent.coachInterventions
         self.sportSessions = MorpheDemoContent.sportSessions
@@ -1339,6 +1345,12 @@ final class MorpheAppStore {
         athleteMessageThreads = []
         clientConversation = []
         savedPartnerSessionRecaps = []
+
+        // No purchased sessions or coach offerings for a brand-new account.
+        // A coach defines packages/availability; a client books from a coach.
+        sessionBookings = []
+        trainingPackages = []
+        availabilitySlots = []
     }
 
     func selectSportMode(_ sport: SportFocus) {
@@ -2708,6 +2720,80 @@ final class MorpheAppStore {
     /// the empty-state CTA is honest about being network-backed.
     func findAthletesNearby() {
         announce("Finding athletes near you… we'll surface matches as people join your area.")
+    }
+
+    // MARK: - Coach ↔ client training commerce
+
+    /// Real payment processing (Stripe Connect / Apple Pay) lands with the
+    /// backend. Until then the checkout records a real booking but the charge
+    /// is deferred, so the UI is honest about money not having moved yet.
+    var paymentsEnabled: Bool { false }
+
+    /// Open bookable slots for the booking picker.
+    var openAvailabilitySlots: [AvailabilitySlot] {
+        availabilitySlots.filter(\.isOpen)
+    }
+
+    /// The signed-in client's booked sessions, newest intent first.
+    var myUpcomingBookings: [SessionBooking] {
+        sessionBookings.filter { $0.status != .cancelled && $0.status != .completed }
+    }
+
+    /// Books a session: records the appointment as `requested`/`pending` and
+    /// marks the chosen slot taken. The coach confirms and the real charge runs
+    /// once payments are connected.
+    @discardableResult
+    func requestSessionBooking(package: TrainingPackage, slot: AvailabilitySlot, coachName: String) -> SessionBooking {
+        if let index = availabilitySlots.firstIndex(where: { $0.id == slot.id }) {
+            availabilitySlots[index].isOpen = false
+        }
+
+        let booking = SessionBooking(
+            coachName: coachName,
+            packageTitle: package.title,
+            day: slot.day,
+            time: slot.time,
+            priceValue: package.priceValue
+        )
+        sessionBookings.insert(booking, at: 0)
+        showCelebration(
+            title: "Session requested",
+            detail: "\(package.title) · \(slot.day) \(slot.time)",
+            symbol: "calendar.badge.checkmark"
+        )
+        return booking
+    }
+
+    func cancelBooking(_ booking: SessionBooking) {
+        guard let index = sessionBookings.firstIndex(where: { $0.id == booking.id }) else { return }
+        sessionBookings[index].status = .cancelled
+        // Reopen the slot so it can be booked again.
+        if let slotIndex = availabilitySlots.firstIndex(where: { $0.day == booking.day && $0.time == booking.time }) {
+            availabilitySlots[slotIndex].isOpen = true
+        }
+        announce("Booking cancelled.")
+    }
+
+    /// Coach earnings rolled up from bookings, for the business surface.
+    var coachPaidEarnings: Double {
+        sessionBookings.filter { $0.paymentStatus == .paid }.reduce(0) { $0 + $1.priceValue }
+    }
+
+    var coachPendingEarnings: Double {
+        sessionBookings
+            .filter { $0.paymentStatus == .pending && $0.status != .cancelled }
+            .reduce(0) { $0 + $1.priceValue }
+    }
+
+    /// Incoming bookings a coach needs to confirm.
+    var coachBookingRequests: [SessionBooking] {
+        sessionBookings.filter { $0.status == .requested }
+    }
+
+    func confirmBooking(_ booking: SessionBooking) {
+        guard let index = sessionBookings.firstIndex(where: { $0.id == booking.id }) else { return }
+        sessionBookings[index].status = .confirmed
+        announce("Confirmed \(booking.coachName)'s \(booking.packageTitle).")
     }
 
     func shareCommunityPost(_ text: String, as role: AppRole) {

@@ -317,6 +317,63 @@ final class WorkoutBuilderTests: XCTestCase {
     }
 }
 
+/// Verifies the coach↔client training-commerce logic (booking + earnings).
+@MainActor
+final class BookingTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    func testRequestBookingCreatesPendingAndTakesSlot() {
+        let store = MorpheAppStore() // demo-seeded: has packages + slots
+        let package = store.trainingPackages.first!
+        let slot = store.openAvailabilitySlots.first!
+        let openBefore = store.openAvailabilitySlots.count
+
+        let booking = store.requestSessionBooking(package: package, slot: slot, coachName: "Coach K")
+
+        XCTAssertEqual(booking.status, .requested)
+        XCTAssertEqual(booking.paymentStatus, .pending)
+        XCTAssertEqual(booking.priceValue, package.priceValue)
+        XCTAssertTrue(store.sessionBookings.contains { $0.id == booking.id })
+        XCTAssertEqual(store.openAvailabilitySlots.count, openBefore - 1,
+                       "booking a slot must remove it from availability")
+    }
+
+    func testCancelBookingReopensSlot() {
+        let store = MorpheAppStore()
+        let package = store.trainingPackages.first!
+        let slot = store.openAvailabilitySlots.first!
+        let openBefore = store.openAvailabilitySlots.count
+
+        let booking = store.requestSessionBooking(package: package, slot: slot, coachName: "Coach K")
+        store.cancelBooking(booking)
+
+        XCTAssertEqual(store.sessionBookings.first { $0.id == booking.id }?.status, .cancelled)
+        XCTAssertEqual(store.openAvailabilitySlots.count, openBefore,
+                       "cancelling must reopen the freed slot")
+    }
+
+    func testEarningsRollUpPaidVsPending() {
+        let store = MorpheAppStore() // demo bookings: $200 paid, $60 pending
+        XCTAssertEqual(store.coachPaidEarnings, 200, accuracy: 0.001)
+        XCTAssertEqual(store.coachPendingEarnings, 60, accuracy: 0.001)
+    }
+
+    func testFreshUserHasNoBookingsOrPackages() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Riley"
+        store.completeOnboarding()
+
+        XCTAssertTrue(store.sessionBookings.isEmpty, "a new account starts with no purchased sessions")
+        XCTAssertTrue(store.trainingPackages.isEmpty, "a new account has no seeded coach offerings")
+        XCTAssertEqual(store.coachPaidEarnings, 0)
+    }
+}
+
 /// Verifies the account/auth seam (the foundation the Firebase backend plugs into).
 final class AuthTests: XCTestCase {
     private func freshAuth() -> LocalAuthService {
