@@ -407,7 +407,7 @@ struct CoachBusinessView: View {
                 ForEach(store.coachBookingRequests) { booking in
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("\(booking.coachName) · \(booking.packageTitle)")
+                            Text("\(booking.clientName) · \(booking.packageTitle)")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.white)
                             Text("\(booking.day) \(booking.time) · \(booking.price)")

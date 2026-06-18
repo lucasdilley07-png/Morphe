@@ -358,9 +358,27 @@ final class BookingTests: XCTestCase {
     }
 
     func testEarningsRollUpPaidVsPending() {
-        let store = MorpheAppStore() // demo bookings: $200 paid, $60 pending
+        let store = MorpheAppStore() // demo incoming bookings: $200 paid, $60 pending
         XCTAssertEqual(store.coachPaidEarnings, 200, accuracy: 0.001)
         XCTAssertEqual(store.coachPendingEarnings, 60, accuracy: 0.001)
+    }
+
+    func testClientBookingDoesNotCountAsCoachRevenue() {
+        let store = MorpheAppStore()
+        let paidBefore = store.coachPaidEarnings
+        let pendingBefore = store.coachPendingEarnings
+        let requestsBefore = store.coachBookingRequests.count
+
+        let package = store.trainingPackages.first!
+        let slot = store.openAvailabilitySlots.first!
+        let booking = store.requestSessionBooking(package: package, slot: slot, coachName: "Coach K")
+
+        // My own outgoing booking shows in My Sessions...
+        XCTAssertTrue(store.myUpcomingBookings.contains { $0.id == booking.id })
+        // ...and must NOT appear as the coach's own incoming revenue or requests.
+        XCTAssertEqual(store.coachPaidEarnings, paidBefore, accuracy: 0.001)
+        XCTAssertEqual(store.coachPendingEarnings, pendingBefore, accuracy: 0.001)
+        XCTAssertEqual(store.coachBookingRequests.count, requestsBefore)
     }
 
     func testFreshUserHasNoBookingsOrPackages() {
@@ -371,6 +389,44 @@ final class BookingTests: XCTestCase {
         XCTAssertTrue(store.sessionBookings.isEmpty, "a new account starts with no purchased sessions")
         XCTAssertTrue(store.trainingPackages.isEmpty, "a new account has no seeded coach offerings")
         XCTAssertEqual(store.coachPaidEarnings, 0)
+    }
+
+    func testFreshCoachHasNoSeededRoster() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Riley"
+        store.completeOnboarding()
+
+        // The coach side must not inherit the demo roster (the "every user is
+        // Lucas" bug class, coach edition).
+        XCTAssertTrue(store.coachClients.isEmpty, "a new coach must not inherit demo clients")
+        XCTAssertTrue(store.messageThreads.isEmpty)
+        XCTAssertTrue(store.upcomingSessions.isEmpty)
+        XCTAssertEqual(store.coachOverview.atRiskClients, 0)
+    }
+}
+
+/// Locks in the tolerant profile decode — a schema change must never demote a
+/// returning user back into onboarding (which would wipe their logs).
+final class ProfileSnapshotDecodeTests: XCTestCase {
+    func testDecodeToleratesMissingFields() throws {
+        // Old-schema JSON written before `id`/`weightUnit`/`currentProgram` existed.
+        let json = """
+        {"hasCompletedOnboarding": true, "name": "Jordan", "gender": "", \
+        "accountRole": "coach", "sportMode": "", "selectedSports": [], \
+        "selectedTrainingStyles": [], "selectedGoals": [], "goal": "", \
+        "physicalGoalTarget": "", "weightGoalTarget": "", "goalDeadline": "", \
+        "fitnessLevel": "", "equipment": "", "injuries": "", "theme": "", \
+        "accentPalette": "", "coachingTone": "", "avatarStyle": "", \
+        "displayName": "", "username": ""}
+        """.data(using: .utf8)!
+
+        let snap = try JSONDecoder().decode(LocalProfileSnapshot.self, from: json)
+
+        XCTAssertTrue(snap.hasCompletedOnboarding, "a returning user must not be demoted to onboarding by a schema gap")
+        XCTAssertFalse(snap.id.isEmpty, "a missing id is minted, not a decode failure")
+        XCTAssertEqual(snap.name, "Jordan")
+        XCTAssertEqual(snap.accountRole, "coach")
+        XCTAssertEqual(snap.weightUnit, "pounds", "a missing field falls back to its default")
     }
 }
 

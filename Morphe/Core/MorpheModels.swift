@@ -1316,10 +1316,17 @@ enum PaymentStatus: String, Codable, CaseIterable, Identifiable {
 /// real so the schedule and earnings views have something true to render.
 struct SessionBooking: Identifiable, Hashable {
     var id = UUID()
+    /// Who is being booked (shown on the client's "My Sessions").
     var coachName: String
+    /// Who booked it (shown on the coach's incoming requests). Empty for a
+    /// booking the current user made themselves.
+    var clientName: String = ""
     var packageTitle: String
     var day: String
     var time: String
+    /// The availability slot this booking reserved, so cancelling reopens
+    /// exactly that slot (not a same-day/time collision).
+    var slotID: UUID? = nil
     var priceValue: Double
     var status: BookingStatus = .requested
     var paymentStatus: PaymentStatus = .pending

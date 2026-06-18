@@ -2611,20 +2611,23 @@ enum MorpheDemoContent {
         )
     ]
 
+    // The two booked slots below (Mon 5:30 PM, Wed 6:00 AM) are reserved to
+    // match the seed bookings, so the picker never offers a taken time.
     static let availabilitySlots: [AvailabilitySlot] = [
         AvailabilitySlot(day: "Mon", time: "7:00 AM"),
-        AvailabilitySlot(day: "Mon", time: "5:30 PM"),
-        AvailabilitySlot(day: "Wed", time: "6:00 AM"),
+        AvailabilitySlot(day: "Mon", time: "5:30 PM", isOpen: false),
+        AvailabilitySlot(day: "Wed", time: "6:00 AM", isOpen: false),
         AvailabilitySlot(day: "Wed", time: "12:00 PM"),
         AvailabilitySlot(day: "Fri", time: "7:00 AM"),
         AvailabilitySlot(day: "Sat", time: "9:00 AM"),
         AvailabilitySlot(day: "Sat", time: "10:30 AM")
     ]
 
-    // Incoming bookings from a coach's perspective (drives schedule + earnings).
+    // Incoming bookings from the coach's perspective — clients who booked them
+    // (drives the coach's requests + earnings, not the client's "My Sessions").
     static let sessionBookings: [SessionBooking] = [
-        SessionBooking(coachName: "Maya R.", packageTitle: "4-Session Pack", day: "Mon", time: "5:30 PM", priceValue: 200, status: .confirmed, paymentStatus: .paid),
-        SessionBooking(coachName: "Alex T.", packageTitle: "Single Session", day: "Wed", time: "6:00 AM", priceValue: 60, status: .requested, paymentStatus: .pending)
+        SessionBooking(coachName: "", clientName: "Maya R.", packageTitle: "4-Session Pack", day: "Mon", time: "5:30 PM", priceValue: 200, status: .confirmed, paymentStatus: .paid),
+        SessionBooking(coachName: "", clientName: "Alex T.", packageTitle: "Single Session", day: "Wed", time: "6:00 AM", priceValue: 60, status: .requested, paymentStatus: .pending)
     ]
 
     static let sportMetrics: [SportFocus: [SportMetric]] = [

@@ -44,6 +44,52 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var currentPhase: String
 }
 
+extension LocalProfileSnapshot {
+    /// Tolerant decode. Older saved profiles may predate fields added later
+    /// (e.g. `id`, `weightUnit`). With the synthesized decoder a single missing
+    /// key throws, `loadProfile()` returns nil, and the app re-runs onboarding —
+    /// which calls `resetToFreshUser()` and wipes the user's real logs. Decoding
+    /// every field with `decodeIfPresent` + a safe default makes a schema change
+    /// non-destructive: a returning user keeps their session and data.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func str(_ key: CodingKeys, _ fallback: String = "") -> String {
+            ((try? c.decodeIfPresent(String.self, forKey: key)) ?? nil) ?? fallback
+        }
+        func arr(_ key: CodingKeys) -> [String] {
+            ((try? c.decodeIfPresent([String].self, forKey: key)) ?? nil) ?? []
+        }
+
+        hasCompletedOnboarding = ((try? c.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding)) ?? nil) ?? false
+        // A missing id mints a fresh one but preserves onboarding state, so a
+        // schema gap never demotes a real user back to the seeded demo identity.
+        id = str(.id, UUID().uuidString)
+        name = str(.name)
+        gender = str(.gender)
+        accountRole = str(.accountRole, "client")
+        sportMode = str(.sportMode)
+        selectedSports = arr(.selectedSports)
+        selectedTrainingStyles = arr(.selectedTrainingStyles)
+        selectedGoals = arr(.selectedGoals)
+        goal = str(.goal)
+        physicalGoalTarget = str(.physicalGoalTarget)
+        weightGoalTarget = str(.weightGoalTarget)
+        goalDeadline = str(.goalDeadline)
+        fitnessLevel = str(.fitnessLevel)
+        equipment = str(.equipment)
+        injuries = str(.injuries)
+        theme = str(.theme)
+        accentPalette = str(.accentPalette)
+        coachingTone = str(.coachingTone)
+        avatarStyle = str(.avatarStyle)
+        displayName = str(.displayName)
+        username = str(.username)
+        weightUnit = str(.weightUnit, "pounds")
+        currentProgram = str(.currentProgram)
+        currentPhase = str(.currentPhase)
+    }
+}
+
 /// Abstraction over where the local profile is stored.
 protocol ProfilePersisting: AnyObject {
     func loadProfile() -> LocalProfileSnapshot?

@@ -463,6 +463,12 @@ final class MorpheAppStore {
             clientProfile.id = id
         }
 
+        // Restore the chosen account role unless a signed-in account already
+        // dictates it (auth wins once accounts are connected).
+        if authUser == nil, let role = AppRole(rawValue: snapshot.accountRole) {
+            selectedRole = role
+        }
+
         clientProfile.name = snapshot.name
         if let gender = GenderOption(rawValue: snapshot.gender) {
             clientProfile.gender = gender
@@ -1351,6 +1357,36 @@ final class MorpheAppStore {
         sessionBookings = []
         trainingPackages = []
         availabilitySlots = []
+
+        // A brand-new COACH must not inherit the seeded demo roster (clients,
+        // threads, sessions, leads). Same "inherited demo data" class as the
+        // athlete identity fix — clear every "other people" collection and the
+        // selections/counters that hang off them.
+        coachClients = []
+        messageThreads = []
+        selectedClientID = nil
+        selectedThreadID = nil
+        upcomingSessions = []
+        coachInterventions = []
+        outreachSuggestions = []
+        leadRecords = []
+        teamGroups = []
+        selectedGroupID = nil
+        sportSessions = []
+        selectedSessionID = nil
+        coachOverview = CoachOverview(
+            activeClients: 0, atRiskClients: 0, checkInsNeeded: 0,
+            sessionsToday: 0, painFlags: 0, messagesNeedingResponse: 0,
+            alerts: [], wins: [], todaySessions: [], sportAlerts: [],
+            weeklySummary: "Add your first client to start coaching.",
+            insight: AIInsight(
+                title: "Getting started",
+                summary: "Connect your first athlete and your coaching dashboard fills in from their real activity.",
+                risk: .low,
+                recommendation: "Invite an athlete or share your coach profile.",
+                suggestedAction: "Add a client"
+            )
+        )
     }
 
     func selectSportMode(_ sport: SportFocus) {
@@ -2734,9 +2770,17 @@ final class MorpheAppStore {
         availabilitySlots.filter(\.isOpen)
     }
 
-    /// The signed-in client's booked sessions, newest intent first.
+    /// Bookings the current user made themselves (their "My Sessions").
+    /// Distinguished from incoming-as-coach by an empty `clientName`.
     var myUpcomingBookings: [SessionBooking] {
-        sessionBookings.filter { $0.status != .cancelled && $0.status != .completed }
+        sessionBookings.filter {
+            $0.clientName.isEmpty && $0.status != .cancelled && $0.status != .completed
+        }
+    }
+
+    /// Bookings the current user RECEIVES as a coach (a client booked them).
+    private var incomingBookings: [SessionBooking] {
+        sessionBookings.filter { !$0.clientName.isEmpty }
     }
 
     /// Books a session: records the appointment as `requested`/`pending` and
@@ -2753,6 +2797,7 @@ final class MorpheAppStore {
             packageTitle: package.title,
             day: slot.day,
             time: slot.time,
+            slotID: slot.id,
             priceValue: package.priceValue
         )
         sessionBookings.insert(booking, at: 0)
@@ -2767,33 +2812,37 @@ final class MorpheAppStore {
     func cancelBooking(_ booking: SessionBooking) {
         guard let index = sessionBookings.firstIndex(where: { $0.id == booking.id }) else { return }
         sessionBookings[index].status = .cancelled
-        // Reopen the slot so it can be booked again.
-        if let slotIndex = availabilitySlots.firstIndex(where: { $0.day == booking.day && $0.time == booking.time }) {
+        // Reopen exactly the slot this booking reserved (by id, not day/time,
+        // which could collide with another slot at the same time).
+        if let slotID = booking.slotID,
+           let slotIndex = availabilitySlots.firstIndex(where: { $0.id == slotID }) {
             availabilitySlots[slotIndex].isOpen = true
         }
         announce("Booking cancelled.")
     }
 
-    /// Coach earnings rolled up from bookings, for the business surface.
+    /// Coach earnings rolled up from INCOMING bookings only (a client's own
+    /// outgoing request must never count as the coach's revenue).
     var coachPaidEarnings: Double {
-        sessionBookings.filter { $0.paymentStatus == .paid }.reduce(0) { $0 + $1.priceValue }
+        incomingBookings.filter { $0.paymentStatus == .paid }.reduce(0) { $0 + $1.priceValue }
     }
 
     var coachPendingEarnings: Double {
-        sessionBookings
+        incomingBookings
             .filter { $0.paymentStatus == .pending && $0.status != .cancelled }
             .reduce(0) { $0 + $1.priceValue }
     }
 
     /// Incoming bookings a coach needs to confirm.
     var coachBookingRequests: [SessionBooking] {
-        sessionBookings.filter { $0.status == .requested }
+        incomingBookings.filter { $0.status == .requested }
     }
 
     func confirmBooking(_ booking: SessionBooking) {
         guard let index = sessionBookings.firstIndex(where: { $0.id == booking.id }) else { return }
         sessionBookings[index].status = .confirmed
-        announce("Confirmed \(booking.coachName)'s \(booking.packageTitle).")
+        let who = booking.clientName.isEmpty ? booking.coachName : booking.clientName
+        announce("Confirmed \(who)'s \(booking.packageTitle).")
     }
 
     func shareCommunityPost(_ text: String, as role: AppRole) {
