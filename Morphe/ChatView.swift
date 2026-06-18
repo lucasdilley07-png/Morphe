@@ -27,28 +27,32 @@ struct CommunityView: View {
                     subtitle: "For You keeps the training feed useful. Contact keeps coaches, partners, and support close."
                 )
 
-                communityHeaderControls
+                if store.hasNetworkActivity {
+                    communityHeaderControls
 
-                CommunityNetworkFeed(perspective: .client)
+                    CommunityNetworkFeed(perspective: .client)
 
-                NetworkDisclosureSection(
-                    title: "Grow & explore",
-                    subtitle: "Suggestions, discovery, and privacy live lower so the feed can start doing its job sooner.",
-                    isExpanded: $showNetworkExtras
-                ) {
-                    NetworkSummaryCard()
-                    NetworkSuggestionsCard()
-                    CommunityDiscoveryCard(groups: store.trainingGroups, challenges: store.challenges, leaderboard: store.leaderboards)
+                    NetworkDisclosureSection(
+                        title: "Grow & explore",
+                        subtitle: "Suggestions, discovery, and privacy live lower so the feed can start doing its job sooner.",
+                        isExpanded: $showNetworkExtras
+                    ) {
+                        NetworkSummaryCard()
+                        NetworkSuggestionsCard()
+                        CommunityDiscoveryCard(groups: store.trainingGroups, challenges: store.challenges, leaderboard: store.leaderboards)
 
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Privacy")
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                            Text("You control what friends can see. Weight and progress photos are private by default.")
-                                .foregroundStyle(MorpheTheme.textSecondary)
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Privacy")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+                                Text("You control what friends can see. Weight and progress photos are private by default.")
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
                         }
                     }
+                } else {
+                    NetworkEmptyState()
                 }
             }
             .padding(.horizontal, 20)
@@ -78,6 +82,122 @@ struct CommunityView: View {
                 }
             }
             .pickerStyle(.segmented)
+        }
+    }
+}
+
+/// First-run network state: a real new user has zero connections, so instead
+/// of a barren feed we lead with the core reason to network — finding training
+/// partners and coaches — plus the actions that fill the feed.
+private struct NetworkEmptyState: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("🤝")
+                        .font(.system(size: 40))
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Build your network")
+                            .font(.system(.title2, design: .rounded).weight(.bold))
+                            .foregroundStyle(.white)
+                        Text("Morphe is better with people. Connect with athletes and coaches near you — then your feed fills with real sessions, wins, and ideas worth stealing.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Button {
+                        store.findAthletesNearby()
+                    } label: {
+                        Label("Find athletes near you", systemImage: "location.magnifyingglass")
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle())
+                }
+            }
+
+            ShareLink(item: store.networkInviteMessage) {
+                NetworkEmptyActionRow(
+                    icon: "person.2.fill",
+                    title: "Invite a training partner",
+                    subtitle: "Bring a friend in and keep each other consistent."
+                )
+            }
+            .buttonStyle(.plain)
+
+            NetworkEmptyExpectations()
+        }
+    }
+}
+
+private struct NetworkEmptyActionRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        GlassCard {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.headline)
+                    .foregroundStyle(MorpheTheme.accent)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(MorpheTheme.panelStrong)
+                    )
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct NetworkEmptyExpectations: View {
+    private let perks: [(String, String)] = [
+        ("figure.run", "Share workouts and wins with people who get it"),
+        ("chart.line.uptrend.xyaxis", "Compare progress and stay accountable"),
+        ("brain.head.profile", "Pick up ideas from coaches and athletes near you")
+    ]
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("What you'll get")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                ForEach(perks, id: \.0) { perk in
+                    HStack(alignment: .center, spacing: 12) {
+                        Image(systemName: perk.0)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.accentAlt)
+                            .frame(width: 24)
+                        Text(perk.1)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
         }
     }
 }
@@ -419,29 +539,37 @@ private struct AthleteContactInbox: View {
             Divider()
                 .overlay(MorpheTheme.stroke.opacity(0.8))
 
-            ScrollView(showsIndicators: false) {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(filteredThreads.enumerated()), id: \.element.id) { index, thread in
-                        AthleteContactRow(
-                            thread: thread,
-                            avatar: contactAvatar(for: thread),
-                            context: store.athleteInboxContext(for: thread),
-                            onOpen: {
-                                store.selectAthleteMessageThread(thread)
-                            },
-                            onQuickAction: { action in
-                                store.performAthleteInboxQuickAction(action, for: thread)
-                            }
-                        )
+            if filteredThreads.isEmpty {
+                AthleteContactEmptyState(isSearching: !searchText.trimmingCharacters(in: .whitespaces).isEmpty) {
+                    store.selectedCommunitySection = .forYou
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            } else {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(filteredThreads.enumerated()), id: \.element.id) { index, thread in
+                            AthleteContactRow(
+                                thread: thread,
+                                avatar: contactAvatar(for: thread),
+                                context: store.athleteInboxContext(for: thread),
+                                onOpen: {
+                                    store.selectAthleteMessageThread(thread)
+                                },
+                                onQuickAction: { action in
+                                    store.performAthleteInboxQuickAction(action, for: thread)
+                                }
+                            )
 
-                        if index < filteredThreads.count - 1 {
-                            Divider()
-                                .overlay(MorpheTheme.stroke.opacity(0.5))
-                                .padding(.leading, 72)
+                            if index < filteredThreads.count - 1 {
+                                Divider()
+                                    .overlay(MorpheTheme.stroke.opacity(0.5))
+                                    .padding(.leading, 72)
+                            }
                         }
                     }
+                    .padding(.vertical, 4)
                 }
-                .padding(.vertical, 4)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -535,6 +663,41 @@ private struct AthleteContactInbox: View {
             return "🏀"
         default:
             return "💬"
+        }
+    }
+}
+
+private struct AthleteContactEmptyState: View {
+    let isSearching: Bool
+    let onExploreFeed: () -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Image(systemName: isSearching ? "magnifyingglass" : "tray")
+                    .font(.title)
+                    .foregroundStyle(MorpheTheme.accentAlt)
+
+                Text(isSearching ? "No matches" : "No conversations yet")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text(isSearching
+                     ? "Nobody in your contacts matches that search."
+                     : "When you connect with athletes, coaches, or a training partner, your conversations land here.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !isSearching {
+                    Button {
+                        onExploreFeed()
+                    } label: {
+                        Label("Find people to connect with", systemImage: "person.2.fill")
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                }
+            }
         }
     }
 }

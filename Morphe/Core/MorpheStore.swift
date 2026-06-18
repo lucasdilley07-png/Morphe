@@ -2687,6 +2687,29 @@ final class MorpheAppStore {
         showCelebration(title: "Connection added", detail: suggestion.name, symbol: "person.crop.circle.badge.plus")
     }
 
+    /// True when the athlete has no people in their network yet — drives the
+    /// "build your network" first-run state instead of a barren feed.
+    var hasNetworkActivity: Bool {
+        !communityPosts.isEmpty
+            || !networkSuggestions.isEmpty
+            || !trainingGroups.isEmpty
+            || !workoutPartners.isEmpty
+    }
+
+    /// Shareable invite text for pulling a training partner into Morphe.
+    /// Becomes a real deep link once accounts/Firebase are connected.
+    var networkInviteMessage: String {
+        let name = clientProfile.name.isEmpty ? "me" : clientProfile.name
+        return "Train with \(name) on Morphe — we can share workouts, track progress, and keep each other consistent. Download it and let's go. 💪"
+    }
+
+    /// Entry point for location-based athlete discovery. Wires to a Firestore
+    /// geo query when multi-user ships; for now it acknowledges the intent so
+    /// the empty-state CTA is honest about being network-backed.
+    func findAthletesNearby() {
+        announce("Finding athletes near you… we'll surface matches as people join your area.")
+    }
+
     func shareCommunityPost(_ text: String, as role: AppRole) {
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanText.isEmpty else { return }
