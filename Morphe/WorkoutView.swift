@@ -11,6 +11,8 @@ struct WorkoutView: View {
     @State private var isShowingRepLogger = false
     @State private var pendingRepCount = 10
     @State private var pendingWeight: Double = 0
+    @State private var editingSetIndex: Int?
+    @State private var showDiscardConfirm = false
     @State private var showCurrentPlan = false
     @State private var showProgramDetails = false
     @State private var showExerciseList = false
@@ -43,11 +45,19 @@ struct WorkoutView: View {
         }
         .sheet(isPresented: $isShowingRepLogger) {
             SetRepLoggingSheet(reps: $pendingRepCount, weight: $pendingWeight) {
-                store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight)
+                if let editIndex = editingSetIndex, let exercise = store.activeWorkoutExercise {
+                    store.updateTrackedSet(exerciseID: exercise.id, setIndex: editIndex, reps: pendingRepCount, weight: pendingWeight)
+                } else {
+                    // Opening the full logger is an explicit action, so it may
+                    // log past the planned set count ("Add extra set").
+                    store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, allowExtra: true)
+                }
+                editingSetIndex = nil
                 isShowingRepLogger = false
             }
             .environment(store)
             .presentationDetents([.height(460)])
+            .onDisappear { editingSetIndex = nil }
         }
         .sheet(isPresented: $showBuilder) {
             WorkoutBuilderSheet()
@@ -71,6 +81,18 @@ struct WorkoutView: View {
                     restRunning: $restRunning
                 )
 
+                if store.isTrackedWorkoutComplete {
+                    WorkoutCompleteCard(
+                        workoutName: store.currentWorkout.name,
+                        totalSets: store.trackedSetTotalCount
+                    ) {
+                        if store.finishTrackedWorkoutSession() {
+                            workoutFinished = true
+                            restRunning = false
+                        }
+                    }
+                }
+
                 if let activeExercise = store.activeWorkoutExercise {
                     ActiveWorkoutTrackerCard(
                         workout: store.currentWorkout,
@@ -82,6 +104,8 @@ struct WorkoutView: View {
                         nextExercise: nextTrackedExercise,
                         suggestedReps: suggestedRepCount(for: activeExercise),
                         quickRepOptions: quickRepOptions(for: activeExercise),
+                        repsLogged: store.trackedSetReps[activeExercise.id, default: []],
+                        weightsLogged: store.trackedSetWeights[activeExercise.id, default: []],
                         weight: $pendingWeight,
                         weightUnit: store.weightUnit,
                         onPrevious: { store.goToPreviousTrackedExercise() },
@@ -91,6 +115,17 @@ struct WorkoutView: View {
                         onOpenCustomRepLogger: {
                             pendingRepCount = suggestedRepCount(for: activeExercise)
                             isShowingRepLogger = true
+                        },
+                        onEditSet: { index in
+                            let repsLogged = store.trackedSetReps[activeExercise.id, default: []]
+                            let weightsLogged = store.trackedSetWeights[activeExercise.id, default: []]
+                            pendingRepCount = repsLogged.indices.contains(index) ? repsLogged[index] : suggestedRepCount(for: activeExercise)
+                            pendingWeight = weightsLogged.indices.contains(index) ? weightsLogged[index] : 0
+                            editingSetIndex = index
+                            isShowingRepLogger = true
+                        },
+                        onDeleteSet: { index in
+                            store.removeTrackedSet(exerciseID: activeExercise.id, setIndex: index)
                         },
                         onNext: { store.goToNextTrackedExercise() },
                         onStartRest: {
@@ -102,13 +137,34 @@ struct WorkoutView: View {
                 }
 
                 HStack(spacing: 10) {
-                    Button("Finish Session and Continue") {
+                    Button("Finish Session") {
                         if store.finishTrackedWorkoutSession() {
                             workoutFinished = true
                             restRunning = false
                         }
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+
+                    Button("Discard") {
+                        showDiscardConfirm = true
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .frame(width: 110)
+                    .accessibilityLabel("Discard workout")
+                }
+                .confirmationDialog(
+                    store.trackedSetTotalCount > 0
+                        ? "Discard this workout? \(store.trackedSetTotalCount) logged set\(store.trackedSetTotalCount == 1 ? "" : "s") will be lost."
+                        : "Discard this workout?",
+                    isPresented: $showDiscardConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("Discard Workout", role: .destructive) {
+                        restRunning = false
+                        workoutFinished = false
+                        store.cancelTrackedWorkoutSession()
+                    }
+                    Button("Keep Training", role: .cancel) {}
                 }
 
                 TrainExpandableSection(
@@ -170,8 +226,52 @@ struct WorkoutView: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Train",
-                    subtitle: "Start, track, finish, rate the session, then let Morphe adjust the next move."
+                    subtitle: store.hasCompletedWorkoutFlow
+                        ? "Session finished — review what you logged, rate it, and lock it in."
+                        : "Start, track, finish, rate the session, then let Morphe adjust the next move."
                 )
+
+                // Right after a finish, reviewing and logging IS the task —
+                // it leads the screen instead of hiding below planning cards.
+                if store.hasCompletedWorkoutFlow {
+                    SessionRecapCard(
+                        items: store.sessionRecapItems,
+                        weightUnit: store.weightUnit
+                    )
+
+                    WorkoutDifficultyFeedbackCard(
+                        selected: store.selectedWorkoutFeedback,
+                        response: store.workoutFeedbackResponse
+                    ) { option in
+                        store.submitWorkoutFeedback(option)
+                        if option == .pain {
+                            isShowingPainFlow = true
+                        }
+                    }
+
+                    if isShowingPainFlow || store.selectedWorkoutFeedback == .pain {
+                        PainFlaggingCard(
+                            painArea: $store.painArea,
+                            painSeverity: $store.painSeverity,
+                            triggerExercise: $store.painTriggerExercise,
+                            painAreas: painAreas
+                        ) {
+                            store.savePainFlag()
+                            isShowingPainFlow = false
+                        }
+                    }
+
+                    if let prompt = postWorkoutPrompt {
+                        PostWorkoutSmartActionCard(prompt: prompt) { action in
+                            handlePostWorkoutAction(action)
+                        }
+                    }
+
+                    Button("Log Workout and View Progress") {
+                        store.logWorkout()
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                }
 
                 Button {
                     showBuilder = true
@@ -321,43 +421,6 @@ struct WorkoutView: View {
                     }
                 }
 
-                if workoutFinished {
-                    WorkoutDifficultyFeedbackCard(
-                        selected: store.selectedWorkoutFeedback,
-                        response: store.workoutFeedbackResponse
-                    ) { option in
-                        store.submitWorkoutFeedback(option)
-                        if option == .pain {
-                            isShowingPainFlow = true
-                        }
-                    }
-                }
-
-                if isShowingPainFlow || store.selectedWorkoutFeedback == .pain {
-                    PainFlaggingCard(
-                        painArea: $store.painArea,
-                        painSeverity: $store.painSeverity,
-                        triggerExercise: $store.painTriggerExercise,
-                        painAreas: painAreas
-                    ) {
-                        store.savePainFlag()
-                        isShowingPainFlow = false
-                    }
-                }
-
-                if let prompt = postWorkoutPrompt {
-                    PostWorkoutSmartActionCard(prompt: prompt) { action in
-                        handlePostWorkoutAction(action)
-                    }
-                }
-
-                if workoutFinished {
-                    Button("Log Workout and View Progress") {
-                        store.logWorkout()
-                    }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                }
-
                 TrainExpandableSection(
                     title: "Form help and history",
                     subtitle: "Open your library help or check recent sessions without crowding the start of the workout page.",
@@ -436,7 +499,7 @@ struct WorkoutView: View {
     }
 
     private var postWorkoutPrompt: PostWorkoutPromptConfiguration? {
-        guard workoutFinished else { return nil }
+        guard store.hasCompletedWorkoutFlow else { return nil }
 
         let isBuddySession = store.partnerWorkoutEnabled && store.selectedWorkoutPartner != nil
         let isCoachAssignedWorkout = store.currentWorkout.name == store.clientProfile.currentProgram
@@ -521,6 +584,91 @@ private enum PostWorkoutPromptAction: String, CaseIterable, Identifiable {
             return "pin.fill"
         case .recoveryReset:
             return "heart.text.square.fill"
+        }
+    }
+}
+
+/// Shown in the live session once every planned set is logged — the loop's
+/// "you're done" signal, with the finish action right there.
+private struct WorkoutCompleteCard: View {
+    let workoutName: String
+    let totalSets: Int
+    let onFinish: () -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.title2)
+                        .foregroundStyle(MorpheTheme.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("All sets logged")
+                            .font(.system(.title3, design: .rounded).weight(.bold))
+                            .foregroundStyle(.white)
+                        Text("\(workoutName) • \(totalSets) sets in the books.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                }
+
+                Button("Finish Session", action: onFinish)
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Post-finish recap of what was actually logged, exercise by exercise, so the
+/// user reviews real numbers before the session becomes a WorkoutLog.
+private struct SessionRecapCard: View {
+    let items: [WorkoutSetRecap]
+    let weightUnit: WeightUnit
+
+    private var totalSets: Int {
+        items.reduce(0) { $0 + $1.reps.count }
+    }
+
+    private func setLine(_ item: WorkoutSetRecap) -> String {
+        zip(item.reps, item.weights)
+            .map { reps, weight in
+                weight > 0 ? "\(reps) × \(weightUnit.format(weight))" : "\(reps) reps"
+            }
+            .joined(separator: ", ")
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Session Recap")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Text("\(totalSets) sets")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accent)
+                }
+
+                if items.isEmpty {
+                    Text("No sets were logged this session.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                } else {
+                    ForEach(items) { item in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Text(setLine(item))
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+            }
         }
     }
 }
@@ -794,14 +942,22 @@ private struct ActiveWorkoutTrackerCard: View {
     let nextExercise: WorkoutExercise?
     let suggestedReps: Int
     let quickRepOptions: [Int]
+    let repsLogged: [Int]
+    let weightsLogged: [Double]
     @Binding var weight: Double
     let weightUnit: WeightUnit
     let onPrevious: () -> Void
     let onQuickLogSet: (Int) -> Void
     let onOpenCustomRepLogger: () -> Void
+    let onEditSet: (Int) -> Void
+    let onDeleteSet: (Int) -> Void
     let onNext: () -> Void
     let onStartRest: () -> Void
     let canGoPrevious: Bool
+
+    private var isExerciseComplete: Bool {
+        completedSets >= totalSets
+    }
 
     private var setProgress: Double {
         guard totalSets > 0 else { return 0 }
@@ -839,14 +995,59 @@ private struct ActiveWorkoutTrackerCard: View {
                     Text("\(exercise.sets) • \(exercise.reps) • \(exercise.difficulty.rawValue)")
                         .foregroundStyle(MorpheTheme.textSecondary)
                     ProgressBarView(progress: setProgress, color: MorpheTheme.accent)
-                    if completedSets > 0 {
-                        Text("Logged sets: \(completedSets) of \(totalSets)")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentAlt)
-                    }
                     Text(exercise.formCue)
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textPrimary)
+                }
+
+                // Every logged set stays visible and editable — a fat-fingered
+                // entry is a tap away from being fixed, not permanent.
+                if !repsLogged.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(Array(repsLogged.enumerated()), id: \.offset) { index, reps in
+                            HStack(spacing: 10) {
+                                Text("Set \(index + 1)")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(MorpheTheme.accentAlt)
+                                    .frame(width: 44, alignment: .leading)
+
+                                Text("\(reps) reps · \(weightUnit.format(weightsLogged.indices.contains(index) ? weightsLogged[index] : 0))")
+                                    .font(.caption)
+                                    .foregroundStyle(.white)
+
+                                Spacer(minLength: 0)
+
+                                Button {
+                                    onEditSet(index)
+                                } label: {
+                                    Image(systemName: "pencil")
+                                        .font(.caption)
+                                        .frame(width: 28, height: 28)
+                                        .background(Circle().fill(MorpheTheme.panelStrong))
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.white)
+                                .accessibilityLabel("Edit set \(index + 1)")
+
+                                Button {
+                                    onDeleteSet(index)
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.caption)
+                                        .frame(width: 28, height: 28)
+                                        .background(Circle().fill(MorpheTheme.panelStrong))
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.danger)
+                                .accessibilityLabel("Delete set \(index + 1)")
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(MorpheTheme.panelStrong.opacity(0.6))
+                    )
                 }
 
                 HStack(spacing: 8) {
@@ -914,28 +1115,45 @@ private struct ActiveWorkoutTrackerCard: View {
                 }
                 .padding(.vertical, 4)
 
-                HStack(spacing: 8) {
-                    Button("Log \(suggestedReps)", action: { onQuickLogSet(suggestedReps) })
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        .accessibilityLabel("Log set: \(suggestedReps) reps at \(weightDisplay)")
-
-                    Button("Custom") {
-                        onOpenCustomRepLogger()
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .accessibilityLabel("Log a custom set")
-
-                    Button("Rest", action: onStartRest)
+                if isExerciseComplete {
+                    HStack(spacing: 8) {
+                        Button {
+                            onOpenCustomRepLogger()
+                        } label: {
+                            Label("Add extra set", systemImage: "plus.circle")
+                        }
                         .buttonStyle(SecondaryCTAButtonStyle())
-                        .accessibilityLabel("Start rest timer")
+
+                        Button("Rest", action: onStartRest)
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .accessibilityLabel("Start rest timer")
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        Button("Log \(suggestedReps)", action: { onQuickLogSet(suggestedReps) })
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                            .accessibilityLabel("Log set: \(suggestedReps) reps at \(weightDisplay)")
+
+                        Button("Custom") {
+                            onOpenCustomRepLogger()
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityLabel("Log a custom set")
+
+                        Button("Rest", action: onStartRest)
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .accessibilityLabel("Start rest timer")
+                    }
                 }
 
                 WrapStack(spacing: 8) {
-                    ForEach(quickRepOptions, id: \.self) { reps in
-                        Button("\(reps) reps") {
-                            onQuickLogSet(reps)
+                    if !isExerciseComplete {
+                        ForEach(quickRepOptions, id: \.self) { reps in
+                            Button("\(reps) reps") {
+                                onQuickLogSet(reps)
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: reps == suggestedReps, selectedColor: MorpheTheme.accent))
                         }
-                        .buttonStyle(FilterChipStyle(isSelected: reps == suggestedReps, selectedColor: MorpheTheme.accent))
                     }
 
                     if canGoPrevious {

@@ -362,6 +362,86 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.lastSessionWeight(for: exercise.id), 45, "the next set pre-fills from the last one")
     }
 
+    /// Builds and starts a 2-exercise workout with 2 sets each, for session tests.
+    private func startedTwoExerciseSession(_ store: MorpheAppStore) {
+        let exercises = Array(store.allExercises.prefix(2))
+        store.createCustomWorkout(
+            name: "Session Test",
+            sport: .strength,
+            items: exercises.map { CustomWorkoutItem(exercise: $0, sets: 2, reps: 8) }
+        )
+        let custom = store.workoutTemplates.first { $0.name == "Session Test" }!
+        store.beginLiveWorkout(custom)
+    }
+
+    func testWorkoutCompleteAfterAllSetsAndAdvanceSkipsDone() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+
+        // Finish exercise 1 (2 sets) — auto-advance should land on exercise 2.
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertFalse(store.isTrackedWorkoutComplete)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertEqual(store.activeWorkoutExerciseIndex, 1, "auto-advance must move to the next incomplete exercise")
+
+        // Finish exercise 2 — the workout is now complete, no dead-end clamp.
+        store.completeTrackedSet(reps: 8)
+        store.completeTrackedSet(reps: 8)
+        XCTAssertTrue(store.isTrackedWorkoutComplete, "all sets logged must surface the complete state")
+        XCTAssertEqual(store.trackedSetTotalCount, 4)
+    }
+
+    func testEditAndRemoveLoggedSet() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        let exercise = store.activeWorkoutExercise!
+
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.updateTrackedSet(exerciseID: exercise.id, setIndex: 0, reps: 10, weight: 55)
+        XCTAssertEqual(store.trackedSetReps[exercise.id], [10])
+        XCTAssertEqual(store.trackedSetWeights[exercise.id], [55])
+
+        store.removeTrackedSet(exerciseID: exercise.id, setIndex: 0)
+        XCTAssertEqual(store.trackedSetReps[exercise.id], [])
+        XCTAssertEqual(store.completedWorkoutSets[exercise.id], 0, "removing a set must re-open the exercise")
+    }
+
+    func testExtraSetBeyondTargetAndDiscard() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        let exercise = store.activeWorkoutExercise!
+
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        // Completing the target auto-advances; navigate back to the done exercise.
+        store.goToPreviousTrackedExercise()
+        XCTAssertEqual(store.activeWorkoutExercise?.id, exercise.id)
+        // Quick-log stays guarded at target…
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertEqual(store.trackedSetReps[exercise.id]?.count, 2, "quick-log must not over-log past the target")
+        // …but an explicit extra set is allowed.
+        store.completeTrackedSet(reps: 8, weight: 50, allowExtra: true)
+        XCTAssertEqual(store.trackedSetReps[exercise.id]?.count, 3, "an explicit extra set logs past the target")
+
+        // Discard resets the whole session without logging.
+        store.cancelTrackedWorkoutSession()
+        XCTAssertFalse(store.isWorkoutSessionActive)
+        XCTAssertEqual(store.trackedSetTotalCount, 0)
+        XCTAssertFalse(store.hasCompletedWorkoutFlow)
+    }
+
+    func testSessionRecapListsOnlyLoggedExercises() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+
+        store.completeTrackedSet(reps: 8, weight: 45)
+        let recap = store.sessionRecapItems
+
+        XCTAssertEqual(recap.count, 1, "recap must list only exercises with logged sets")
+        XCTAssertEqual(recap.first?.reps, [8])
+        XCTAssertEqual(recap.first?.weights, [45])
+    }
+
     func testCustomWorkoutSessionSurvivesRelaunch() {
         let store = freshStore()
         let exercise = store.allExercises.first!

@@ -815,6 +815,14 @@ enum WeightUnit: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+/// One exercise's logged work in the just-finished session, for the recap.
+struct WorkoutSetRecap: Identifiable, Hashable {
+    var id: String          // exercise id
+    var name: String
+    var reps: [Int]
+    var weights: [Double]   // parallel to reps; 0 = bodyweight
+}
+
 struct LoggedExercise: Identifiable, Hashable, Codable {
     var id = UUID()
     var name: String

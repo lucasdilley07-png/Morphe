@@ -1642,12 +1642,42 @@ final class MorpheAppStore {
         trackedSetWeights[exerciseID]?.last
     }
 
-    func completeTrackedSet(reps: Int, weight: Double? = nil) {
+    /// True once every exercise in the live session has hit its target sets.
+    var isTrackedWorkoutComplete: Bool {
+        let exercises = currentWorkout.exercises
+        guard isWorkoutSessionActive, !exercises.isEmpty else { return false }
+        return exercises.allSatisfy {
+            completedWorkoutSets[$0.id, default: 0] >= targetSetCount(for: $0)
+        }
+    }
+
+    /// Total sets logged so far this session (drives the discard confirmation).
+    var trackedSetTotalCount: Int {
+        completedWorkoutSets.values.reduce(0, +)
+    }
+
+    /// The just-finished session's real logged work, per exercise, for the recap.
+    var sessionRecapItems: [WorkoutSetRecap] {
+        currentWorkout.exercises.compactMap { exercise in
+            let reps = trackedSetReps[exercise.id, default: []]
+            guard !reps.isEmpty else { return nil }
+            return WorkoutSetRecap(
+                id: exercise.id,
+                name: exercise.name,
+                reps: reps,
+                weights: trackedSetWeights[exercise.id, default: []]
+            )
+        }
+    }
+
+    /// `allowExtra` lets an explicit user action log past the target set count
+    /// (the quick-log buttons stay guarded so a stray tap can't over-log).
+    func completeTrackedSet(reps: Int, weight: Double? = nil, allowExtra: Bool = false) {
         guard let exercise = activeWorkoutExercise else { return }
         let targetSets = targetSetCount(for: exercise)
         let currentCount = completedWorkoutSets[exercise.id, default: 0]
 
-        guard currentCount < targetSets else {
+        guard allowExtra || currentCount < targetSets else {
             showToast("\(exercise.name) is already complete.")
             return
         }
@@ -1660,17 +1690,82 @@ final class MorpheAppStore {
         Haptics.impact(.light)
 
         if updatedCount == targetSets {
-            showToast("\(exercise.name) complete. Move to the next exercise.")
-            goToNextTrackedExercise()
+            if isTrackedWorkoutComplete {
+                showCelebration(
+                    title: "All sets logged",
+                    detail: "Great work — finish the session when you're ready.",
+                    symbol: "checkmark.seal.fill"
+                )
+            } else {
+                showToast("\(exercise.name) complete. Move to the next exercise.")
+                advanceToNextIncompleteExercise()
+            }
+        } else if updatedCount > targetSets {
+            showToast("Extra set logged — \(updatedCount) of \(targetSets) planned.")
         } else {
             showToast("\(reps) reps logged for set \(updatedCount) of \(targetSets).")
         }
+    }
+
+    /// Rewrites one already-logged set (fat-finger fix without losing the session).
+    func updateTrackedSet(exerciseID: String, setIndex: Int, reps: Int, weight: Double) {
+        guard var repsLogged = trackedSetReps[exerciseID], repsLogged.indices.contains(setIndex),
+              var weightsLogged = trackedSetWeights[exerciseID], weightsLogged.indices.contains(setIndex) else { return }
+        repsLogged[setIndex] = reps
+        weightsLogged[setIndex] = max(0, weight)
+        trackedSetReps[exerciseID] = repsLogged
+        trackedSetWeights[exerciseID] = weightsLogged
+        showToast("Set \(setIndex + 1) updated.")
+    }
+
+    /// Removes one logged set and re-syncs the completed count.
+    func removeTrackedSet(exerciseID: String, setIndex: Int) {
+        guard var repsLogged = trackedSetReps[exerciseID], repsLogged.indices.contains(setIndex) else { return }
+        repsLogged.remove(at: setIndex)
+        trackedSetReps[exerciseID] = repsLogged
+        if var weightsLogged = trackedSetWeights[exerciseID], weightsLogged.indices.contains(setIndex) {
+            weightsLogged.remove(at: setIndex)
+            trackedSetWeights[exerciseID] = weightsLogged
+        }
+        completedWorkoutSets[exerciseID] = repsLogged.count
+        showToast("Set removed.")
+    }
+
+    /// Abandons the live session without logging anything.
+    func cancelTrackedWorkoutSession() {
+        isWorkoutSessionActive = false
+        hasStartedWorkoutFlow = false
+        hasCompletedWorkoutFlow = false
+        activeWorkoutExerciseIndex = 0
+        completedWorkoutSets = [:]
+        trackedSetReps = [:]
+        trackedSetWeights = [:]
+        workoutFeedbackResponse = ""
+        selectedWorkoutFeedback = nil
+        showToast("Workout discarded.")
     }
 
     func goToNextTrackedExercise() {
         guard !currentWorkout.exercises.isEmpty else { return }
         activeWorkoutExerciseIndex = min(activeWorkoutExerciseIndex + 1, currentWorkout.exercises.count - 1)
         Haptics.impact(.light)
+    }
+
+    /// After an exercise completes, jump to the next one that still has sets
+    /// remaining (wrapping), instead of dead-ending on the last exercise.
+    private func advanceToNextIncompleteExercise() {
+        let exercises = currentWorkout.exercises
+        guard !exercises.isEmpty else { return }
+        let count = exercises.count
+        for offset in 1..<max(count, 2) {
+            let index = (activeWorkoutExerciseIndex + offset) % count
+            let exercise = exercises[index]
+            if completedWorkoutSets[exercise.id, default: 0] < targetSetCount(for: exercise) {
+                activeWorkoutExerciseIndex = index
+                Haptics.impact(.light)
+                return
+            }
+        }
     }
 
     func goToPreviousTrackedExercise() {
