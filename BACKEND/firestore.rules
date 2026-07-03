@@ -1,0 +1,48 @@
+rules_version = '2';
+
+// Morphe — Phase 1 (Accounts) security rules.
+// Each user owns exactly their own profile document; nobody can read anyone
+// else's data yet. Coach↔client reads (Phase 3) and networking discovery
+// (Phase 4) deliberately stay locked until those features are built.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    // The user's own profile document. Private to its owner.
+    match /users/{uid} {
+      allow read:          if isOwner(uid);
+      allow create, update: if isOwner(uid);
+      allow delete:        if false;            // account deletion goes through a Function later
+
+      // Phase 2 — the user's own workout data (rules placed now for coherence).
+      match /workoutLogs/{logId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /customWorkouts/{id} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Username uniqueness map. Readable by all (to check availability at sign-up),
+    // claimable only by the signed-in user for their own uid, and immutable from
+    // the client once taken (no reassigning or deleting a handle from the app).
+    match /usernames/{username} {
+      allow read:           if true;
+      allow create:         if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Phase 3 — coach↔client connections. Locked until the feature ships
+    // (will be gated on an active connection in rules + a Cloud Function).
+    match /connections/{connId} {
+      allow read, write: if false;
+    }
+
+    // Default deny for anything not matched above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

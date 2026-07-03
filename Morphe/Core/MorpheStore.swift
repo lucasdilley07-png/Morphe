@@ -395,12 +395,15 @@ final class MorpheAppStore {
         // brand-new user starts empty after onboarding (see resetToFreshUser);
         // the in-memory seed is never shown because onboarding gates the app.
 
+        // Rebuild the user's custom exercises and workouts FIRST, so a restored
+        // in-progress session can resolve a custom workout as its current one
+        // (restoreWorkoutSession only restores currentWorkoutID if the template
+        // already exists).
+        loadCustomWorkoutLibrary()
         // Restore an in-progress workout session, if one was saved.
         if let snapshot = workoutPersistence.loadSession() {
             restoreWorkoutSession(from: snapshot)
         }
-        // Rebuild the user's custom exercises and workouts.
-        loadCustomWorkoutLibrary()
         // Apply the user's saved local profile so the app greets them by name
         // and a returning user skips onboarding.
         if let persistedProfile {
@@ -661,6 +664,7 @@ final class MorpheAppStore {
                     durationMinutes: template.durationMinutes,
                     exercises: template.exercises.map {
                         CustomWorkoutExerciseSnapshot(
+                            id: $0.id,
                             libraryID: $0.exerciseLibraryID,
                             name: $0.name,
                             muscleGroup: $0.muscleGroup.rawValue,
@@ -702,7 +706,10 @@ final class MorpheAppStore {
             guard !workoutTemplates.contains(where: { $0.id == id }) else { continue }
             let exercises = snap.exercises.map {
                 WorkoutExercise(
-                    id: "\($0.libraryID)-\(UUID().uuidString.prefix(6))",
+                    // Reuse the persisted id so tracked-set data from an
+                    // in-progress session survives relaunch; mint one only for
+                    // libraries saved before the id was persisted.
+                    id: $0.id.isEmpty ? "\($0.libraryID)-\(UUID().uuidString.prefix(6))" : $0.id,
                     exerciseLibraryID: $0.libraryID,
                     name: $0.name,
                     muscleGroup: MuscleGroup(rawValue: $0.muscleGroup) ?? .core,
@@ -1621,6 +1628,20 @@ final class MorpheAppStore {
         }
     }
 
+    /// Loads `template` as the current workout AND immediately enters the live
+    /// tracker. Every "Start" action funnels through here, so starting a workout
+    /// always begins the session instead of only staging the plan in Train.
+    func beginLiveWorkout(_ template: WorkoutTemplate) {
+        currentWorkoutID = template.id
+        startTodayWorkout()
+    }
+
+    /// The most recent weight logged for this exercise in the current session,
+    /// used to pre-fill the tracker's inline weight field set-to-set.
+    func lastSessionWeight(for exerciseID: String) -> Double? {
+        trackedSetWeights[exerciseID]?.last
+    }
+
     func completeTrackedSet(reps: Int, weight: Double? = nil) {
         guard let exercise = activeWorkoutExercise else { return }
         let targetSets = targetSetCount(for: exercise)
@@ -2192,12 +2213,12 @@ final class MorpheAppStore {
         showToast("\(template.name) ready in Train.")
     }
 
-    func openSavedWorkout(_ item: SavedWorkoutLibraryItem) {
+    func startSavedWorkout(_ item: SavedWorkoutLibraryItem) {
         guard let template = workoutTemplates.first(where: { $0.id == item.workoutTemplateID }) else {
             showToast("That saved workout is no longer available.")
             return
         }
-        openWorkoutTemplate(template)
+        beginLiveWorkout(template)
     }
 
     func startSavedWorkoutWithBuddy(_ item: SavedWorkoutLibraryItem) {
@@ -2206,8 +2227,7 @@ final class MorpheAppStore {
             return
         }
         partnerWorkoutEnabled = true
-        openWorkoutTemplate(template)
-        showToast("\(template.name) is ready with your workout buddy.")
+        beginLiveWorkout(template)
     }
 
     func startGoodForTodayWorkout() {
@@ -2217,8 +2237,7 @@ final class MorpheAppStore {
             return
         }
 
-        openWorkoutTemplate(template)
-        showToast("\(template.name) is ready for today.")
+        beginLiveWorkout(template)
     }
 
     func startGoodForTodayWorkoutWithBuddy() {
@@ -2234,8 +2253,7 @@ final class MorpheAppStore {
         }
 
         partnerWorkoutEnabled = true
-        openWorkoutTemplate(template)
-        showToast("\(template.name) is ready with your workout buddy.")
+        beginLiveWorkout(template)
     }
 
     func duplicateSavedWorkout(_ item: SavedWorkoutLibraryItem) {

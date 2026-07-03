@@ -35,12 +35,38 @@ struct CustomExerciseSnapshot: Codable, Equatable {
 }
 
 struct CustomWorkoutExerciseSnapshot: Codable, Equatable {
+    /// The exercise's stable in-workout id. Persisted so an in-progress
+    /// session's tracked sets (keyed by this id) reattach after a relaunch.
+    /// Tolerantly decoded: libraries saved before this field existed load
+    /// with an empty id and the loader mints one instead.
+    var id: String
     var libraryID: String
     var name: String
     var muscleGroup: String
     var sets: String
     var reps: String
     var formCue: String
+
+    init(id: String, libraryID: String, name: String, muscleGroup: String, sets: String, reps: String, formCue: String) {
+        self.id = id
+        self.libraryID = libraryID
+        self.name = name
+        self.muscleGroup = muscleGroup
+        self.sets = sets
+        self.reps = reps
+        self.formCue = formCue
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = ((try? c.decodeIfPresent(String.self, forKey: .id)) ?? nil) ?? ""
+        libraryID = try c.decode(String.self, forKey: .libraryID)
+        name = try c.decode(String.self, forKey: .name)
+        muscleGroup = try c.decode(String.self, forKey: .muscleGroup)
+        sets = try c.decode(String.self, forKey: .sets)
+        reps = try c.decode(String.self, forKey: .reps)
+        formCue = try c.decode(String.self, forKey: .formCue)
+    }
 }
 
 struct CustomWorkoutSnapshot: Codable, Equatable {

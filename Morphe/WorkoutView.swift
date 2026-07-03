@@ -57,7 +57,10 @@ struct WorkoutView: View {
 
     private var activeWorkoutMode: some View {
         @Bindable var store = store
-        return VStack(alignment: .leading, spacing: 14) {
+        // One scroll surface for the whole live session: with the inline weight
+        // row the tracker card is tall enough that a fixed header clipped the
+        // console and pushed the Finish button off-screen on smaller devices.
+        return ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
                 LiveWorkoutConsoleCard(
                     workout: store.currentWorkout,
@@ -79,9 +82,11 @@ struct WorkoutView: View {
                         nextExercise: nextTrackedExercise,
                         suggestedReps: suggestedRepCount(for: activeExercise),
                         quickRepOptions: quickRepOptions(for: activeExercise),
+                        weight: $pendingWeight,
+                        weightUnit: store.weightUnit,
                         onPrevious: { store.goToPreviousTrackedExercise() },
                         onQuickLogSet: { reps in
-                            store.completeTrackedSet(reps: reps)
+                            store.completeTrackedSet(reps: reps, weight: pendingWeight)
                         },
                         onOpenCustomRepLogger: {
                             pendingRepCount = suggestedRepCount(for: activeExercise)
@@ -105,54 +110,56 @@ struct WorkoutView: View {
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
 
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    TrainExpandableSection(
-                        title: "Session tools",
-                        subtitle: "Queue, swaps, pain-safe adjustments, and quick tips stay here without pulling focus off the active set.",
-                        isExpanded: $showSessionQueue
-                    ) {
-                        if let activeExercise = store.activeWorkoutExercise {
-                            LiveWorkoutSupportToolsCard(
-                                workout: store.currentWorkout,
-                                exercise: activeExercise,
-                                completedSets: store.completedWorkoutSets[activeExercise.id, default: 0],
-                                totalSets: targetSetCount(for: activeExercise),
-                                canGoPrevious: store.activeWorkoutExerciseIndex > 0,
-                                onPrevious: { store.goToPreviousTrackedExercise() },
-                                onSwap: { swapTarget = activeExercise },
-                                onPain: {
-                                    store.painTriggerExercise = activeExercise.name
-                                    isShowingPainFlow = true
-                                }
-                            )
-                        }
-
-                        FocusedWorkoutQueueCard(
-                            exercises: store.currentWorkout.exercises,
-                            activeExerciseID: store.activeWorkoutExercise?.id,
-                            completedWorkoutSets: store.completedWorkoutSets
-                        )
-
-                        if isShowingPainFlow || store.selectedWorkoutFeedback == .pain {
-                            PainFlaggingCard(
-                                painArea: $store.painArea,
-                                painSeverity: $store.painSeverity,
-                                triggerExercise: $store.painTriggerExercise,
-                                painAreas: painAreas
-                            ) {
-                                store.savePainFlag()
-                                isShowingPainFlow = false
+                TrainExpandableSection(
+                    title: "Session tools",
+                    subtitle: "Queue, swaps, pain-safe adjustments, and quick tips stay here without pulling focus off the active set.",
+                    isExpanded: $showSessionQueue
+                ) {
+                    if let activeExercise = store.activeWorkoutExercise {
+                        LiveWorkoutSupportToolsCard(
+                            workout: store.currentWorkout,
+                            exercise: activeExercise,
+                            completedSets: store.completedWorkoutSets[activeExercise.id, default: 0],
+                            totalSets: targetSetCount(for: activeExercise),
+                            canGoPrevious: store.activeWorkoutExerciseIndex > 0,
+                            onPrevious: { store.goToPreviousTrackedExercise() },
+                            onSwap: { swapTarget = activeExercise },
+                            onPain: {
+                                store.painTriggerExercise = activeExercise.name
+                                isShowingPainFlow = true
                             }
+                        )
+                    }
+
+                    FocusedWorkoutQueueCard(
+                        exercises: store.currentWorkout.exercises,
+                        activeExerciseID: store.activeWorkoutExercise?.id,
+                        completedWorkoutSets: store.completedWorkoutSets
+                    )
+
+                    if isShowingPainFlow || store.selectedWorkoutFeedback == .pain {
+                        PainFlaggingCard(
+                            painArea: $store.painArea,
+                            painSeverity: $store.painSeverity,
+                            triggerExercise: $store.painTriggerExercise,
+                            painAreas: painAreas
+                        ) {
+                            store.savePainFlag()
+                            isShowingPainFlow = false
                         }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 120)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 120)
+        }
+        .onChange(of: store.activeWorkoutExerciseIndex) { _, _ in
+            // Carry the working weight forward; prefer this exercise's own
+            // last logged set when it has one.
+            if let exercise = store.activeWorkoutExercise {
+                pendingWeight = store.lastSessionWeight(for: exercise.id) ?? pendingWeight
             }
         }
     }
@@ -178,10 +185,9 @@ struct WorkoutView: View {
                     YourWorkoutsCard(
                         workouts: myWorkouts,
                         onStart: { template in
-                            store.openWorkoutTemplate(template)
                             workoutFinished = false
                             isShowingPainFlow = false
-                            store.startTodayWorkout()
+                            store.beginLiveWorkout(template)
                         },
                         onDelete: { template in
                             store.deleteCustomWorkout(template.id)
@@ -251,7 +257,9 @@ struct WorkoutView: View {
                         store.savedWorkoutInsight(for: item)
                     },
                     onStart: { item in
-                        store.openSavedWorkout(item)
+                        workoutFinished = false
+                        isShowingPainFlow = false
+                        store.startSavedWorkout(item)
                     },
                     onWithBuddy: { item in
                         store.startSavedWorkoutWithBuddy(item)
@@ -786,6 +794,8 @@ private struct ActiveWorkoutTrackerCard: View {
     let nextExercise: WorkoutExercise?
     let suggestedReps: Int
     let quickRepOptions: [Int]
+    @Binding var weight: Double
+    let weightUnit: WeightUnit
     let onPrevious: () -> Void
     let onQuickLogSet: (Int) -> Void
     let onOpenCustomRepLogger: () -> Void
@@ -796,6 +806,15 @@ private struct ActiveWorkoutTrackerCard: View {
     private var setProgress: Double {
         guard totalSets > 0 else { return 0 }
         return min(Double(completedSets) / Double(totalSets), 1)
+    }
+
+    /// Step size that feels right per unit (5 lb / 2.5 kg).
+    private var weightStep: Double {
+        weightUnit == .kilograms ? 2.5 : 5
+    }
+
+    private var weightDisplay: String {
+        weight > 0 ? weightUnit.format(weight) : "Bodyweight"
     }
 
     var body: some View {
@@ -854,17 +873,61 @@ private struct ActiveWorkoutTrackerCard: View {
                     )
                 }
 
+                // Inline weight for the set about to be logged. Pre-fills from
+                // the last set and carries forward, so the quick-log buttons
+                // capture real load (not bodyweight) without a second screen.
+                HStack(spacing: 12) {
+                    Text("Weight")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textSecondary)
+
+                    Spacer()
+
+                    Button {
+                        weight = max(0, weight - weightStep)
+                    } label: {
+                        Image(systemName: "minus")
+                            .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(.plain)
+                    .background(Circle().fill(MorpheTheme.panelStrong))
+                    .foregroundStyle(.white)
+                    .disabled(weight <= 0)
+                    .accessibilityLabel("Decrease weight")
+
+                    Text(weightDisplay)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(minWidth: 96)
+                        .accessibilityLabel("Weight \(weightDisplay)")
+
+                    Button {
+                        weight += weightStep
+                    } label: {
+                        Image(systemName: "plus")
+                            .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(.plain)
+                    .background(Circle().fill(MorpheTheme.panelStrong))
+                    .foregroundStyle(.white)
+                    .accessibilityLabel("Increase weight")
+                }
+                .padding(.vertical, 4)
+
                 HStack(spacing: 8) {
                     Button("Log \(suggestedReps)", action: { onQuickLogSet(suggestedReps) })
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .accessibilityLabel("Log set: \(suggestedReps) reps at \(weightDisplay)")
 
                     Button("Custom") {
                         onOpenCustomRepLogger()
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityLabel("Log a custom set")
 
-                    Button("Start Rest", action: onStartRest)
+                    Button("Rest", action: onStartRest)
                         .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityLabel("Start rest timer")
                 }
 
                 WrapStack(spacing: 8) {
@@ -1293,17 +1356,31 @@ private struct WorkoutRestControlBar: View {
 
             HStack(spacing: 10) {
                 Button(isRunning ? "Pause" : "Start") {
-                    toggle()
+                    isRunning.toggle()
                 }
                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
 
                 Button("Reset") {
-                    stop()
+                    isRunning = false
                     seconds = 180
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
             }
         }
+        // The countdown is driven by the `isRunning` binding itself, so ANY
+        // entry point (this bar's Start button or the tracker's Rest button)
+        // starts the timer — not just the local toggle.
+        .onChange(of: isRunning) { _, running in
+            if running { startCountdown() } else { cancelCountdown() }
+        }
+        .onAppear {
+            if isRunning { startCountdown() }
+        }
+        .onDisappear {
+            cancelCountdown()
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Rest timer, \(timeString) remaining\(isRunning ? ", running" : "")")
     }
 
     private var timeString: String {
@@ -1312,29 +1389,22 @@ private struct WorkoutRestControlBar: View {
         return String(format: "%d:%02d", minutes, remainingSeconds)
     }
 
-    private func toggle() {
-        isRunning.toggle()
-
-        if isRunning {
-            countdownTask = Task {
-                while !Task.isCancelled && isRunning && seconds > 0 {
-                    try? await Task.sleep(for: .seconds(1))
-                    if seconds > 0 {
-                        seconds -= 1
-                    }
-                }
-                if seconds == 0 {
-                    isRunning = false
-                    Haptics.success()
-                }
+    private func startCountdown() {
+        cancelCountdown()
+        countdownTask = Task {
+            while !Task.isCancelled && seconds > 0 {
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { return }
+                if seconds > 0 { seconds -= 1 }
             }
-        } else {
-            stop()
+            if !Task.isCancelled && seconds == 0 {
+                isRunning = false
+                Haptics.success()
+            }
         }
     }
 
-    private func stop() {
-        isRunning = false
+    private func cancelCountdown() {
         countdownTask?.cancel()
         countdownTask = nil
     }

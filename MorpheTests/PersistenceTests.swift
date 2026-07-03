@@ -317,6 +317,75 @@ final class WorkoutBuilderTests: XCTestCase {
     }
 }
 
+/// Verifies the live workout session: starting, weight capture, and restore.
+@MainActor
+final class WorkoutSessionTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    func testBeginLiveWorkoutEntersLiveSession() {
+        let store = freshStore()
+        let template = store.workoutTemplates.first!
+
+        store.beginLiveWorkout(template)
+
+        XCTAssertTrue(store.isWorkoutSessionActive, "every Start action must enter the live tracker, not just stage the plan")
+        XCTAssertEqual(store.currentWorkout.id, template.id)
+        XCTAssertEqual(store.activeWorkoutExerciseIndex, 0)
+    }
+
+    func testGoodForTodayStartEntersLiveSession() {
+        let store = freshStore()
+        store.startGoodForTodayWorkout()
+        XCTAssertTrue(store.isWorkoutSessionActive, "the headline recommendation's Start must begin a live session")
+    }
+
+    func testQuickLoggedSetRecordsWeight() {
+        let store = freshStore()
+        store.beginLiveWorkout(store.workoutTemplates.first!)
+        let exercise = store.activeWorkoutExercise!
+
+        store.completeTrackedSet(reps: 10, weight: 45)
+
+        XCTAssertEqual(store.trackedSetWeights[exercise.id], [45], "a logged set must carry its real load")
+        XCTAssertEqual(store.lastSessionWeight(for: exercise.id), 45, "the next set pre-fills from the last one")
+    }
+
+    func testCustomWorkoutSessionSurvivesRelaunch() {
+        let store = freshStore()
+        let exercise = store.allExercises.first!
+        store.createCustomWorkout(
+            name: "Push Day",
+            sport: .strength,
+            items: [CustomWorkoutItem(exercise: exercise, sets: 3, reps: 8)]
+        )
+        let custom = store.workoutTemplates.first { $0.name == "Push Day" }!
+        store.beginLiveWorkout(custom)
+        store.completeTrackedSet(reps: 8, weight: 100)
+
+        // Simulate an app relaunch mid-session.
+        let reloaded = MorpheAppStore()
+
+        XCTAssertTrue(reloaded.isWorkoutSessionActive, "an in-progress session must survive relaunch")
+        XCTAssertEqual(reloaded.currentWorkout.name, "Push Day",
+                       "a custom-workout session must restore its own workout (library loads before session restore)")
+        let restoredExercise = reloaded.currentWorkout.exercises.first!
+        XCTAssertEqual(reloaded.trackedSetWeights[restoredExercise.id], [100],
+                       "logged sets must reattach to the restored custom workout")
+    }
+}
+
 /// Verifies the coach↔client training-commerce logic (booking + earnings).
 @MainActor
 final class BookingTests: XCTestCase {
