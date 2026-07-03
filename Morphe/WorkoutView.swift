@@ -11,6 +11,7 @@ struct WorkoutView: View {
     @State private var isShowingRepLogger = false
     @State private var pendingRepCount = 10
     @State private var pendingWeight: Double = 0
+    @State private var pendingRPE: Int?
     @State private var editingSetIndex: Int?
     @State private var showDiscardConfirm = false
     @State private var showCurrentPlan = false
@@ -44,20 +45,27 @@ struct WorkoutView: View {
                 .environment(store)
         }
         .sheet(isPresented: $isShowingRepLogger) {
-            SetRepLoggingSheet(reps: $pendingRepCount, weight: $pendingWeight) {
+            SetRepLoggingSheet(reps: $pendingRepCount, weight: $pendingWeight, rpe: $pendingRPE) {
                 if let editIndex = editingSetIndex, let exercise = store.activeWorkoutExercise {
-                    store.updateTrackedSet(exerciseID: exercise.id, setIndex: editIndex, reps: pendingRepCount, weight: pendingWeight)
+                    store.updateTrackedSet(exerciseID: exercise.id, setIndex: editIndex, reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE)
                 } else {
                     // Opening the full logger is an explicit action, so it may
                     // log past the planned set count ("Add extra set").
-                    store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, allowExtra: true)
+                    store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true)
                 }
                 editingSetIndex = nil
                 isShowingRepLogger = false
             }
             .environment(store)
-            .presentationDetents([.height(460)])
+            .presentationDetents([.height(540)])
             .onDisappear { editingSetIndex = nil }
+        }
+        .onChange(of: store.weightUnit) { oldUnit, newUnit in
+            // Keep the inline stepper value meaning the same physical load
+            // when the unit flips (the store converts the logged sets).
+            guard oldUnit != newUnit, pendingWeight > 0 else { return }
+            let factor = newUnit == .kilograms ? 0.45359237 : 2.20462262
+            pendingWeight = ((pendingWeight * factor) * 10).rounded() / 10
         }
         .sheet(isPresented: $showBuilder) {
             WorkoutBuilderSheet()
@@ -114,13 +122,17 @@ struct WorkoutView: View {
                         },
                         onOpenCustomRepLogger: {
                             pendingRepCount = suggestedRepCount(for: activeExercise)
+                            pendingRPE = nil
                             isShowingRepLogger = true
                         },
                         onEditSet: { index in
                             let repsLogged = store.trackedSetReps[activeExercise.id, default: []]
                             let weightsLogged = store.trackedSetWeights[activeExercise.id, default: []]
+                            let rpesLogged = store.trackedSetRPE[activeExercise.id, default: []]
                             pendingRepCount = repsLogged.indices.contains(index) ? repsLogged[index] : suggestedRepCount(for: activeExercise)
                             pendingWeight = weightsLogged.indices.contains(index) ? weightsLogged[index] : 0
+                            let storedRPE = rpesLogged.indices.contains(index) ? rpesLogged[index] : 0
+                            pendingRPE = storedRPE > 0 ? storedRPE : nil
                             editingSetIndex = index
                             isShowingRepLogger = true
                         },
@@ -469,19 +481,13 @@ struct WorkoutView: View {
         }
     }
 
-    private func cooldownText(for sport: SportFocus) -> String {
-        switch sport {
-        case .boxing:
-            return "Breathing reset, calf stretch, and a short reflection on pace and posture."
-        case .running, .track:
-            return "Walk 3 minutes, lower-leg mobility, and nasal breathing."
-        default:
-            return "Easy cooldown breathing, light mobility, and a quick note on how the session felt."
-        }
-    }
-
     private func targetSetCount(for exercise: WorkoutExercise) -> Int {
-        Int(exercise.sets.prefix { $0.isNumber }) ?? 1
+        // Mirrors the store's parser: first integer anywhere in the string.
+        Int(
+            exercise.sets
+                .components(separatedBy: CharacterSet.decimalDigits.inverted)
+                .first { !$0.isEmpty } ?? ""
+        ) ?? 1
     }
 
     private func suggestedRepCount(for exercise: WorkoutExercise) -> Int {
@@ -631,9 +637,13 @@ private struct SessionRecapCard: View {
     }
 
     private func setLine(_ item: WorkoutSetRecap) -> String {
-        zip(item.reps, item.weights)
-            .map { reps, weight in
-                weight > 0 ? "\(reps) × \(weightUnit.format(weight))" : "\(reps) reps"
+        item.reps.indices
+            .map { index in
+                let weight = item.weights.indices.contains(index) ? item.weights[index] : 0
+                let rpe = item.rpes.indices.contains(index) ? item.rpes[index] : 0
+                var line = weight > 0 ? "\(item.reps[index]) × \(weightUnit.format(weight))" : "\(item.reps[index]) reps"
+                if rpe > 0 { line += " @\(rpe)" }
+                return line
             }
             .joined(separator: ", ")
     }
@@ -797,28 +807,6 @@ private struct WorkoutFlowChipRail: View {
     }
 }
 
-private struct WorkoutFlowCard: View {
-    let workoutStarted: Bool
-    let workoutFinished: Bool
-    let isLogged: Bool
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Workout Flow")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                WorkoutFlowChipRail(
-                    workoutStarted: workoutStarted,
-                    workoutFinished: workoutFinished,
-                    isLogged: isLogged
-                )
-            }
-        }
-    }
-}
-
 private struct FlowStepChip: View {
     let title: String
     let isActive: Bool
@@ -911,22 +899,6 @@ private struct CurrentProgramCard: View {
                 Text(coachCue)
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
-            }
-        }
-    }
-}
-
-private struct WarmupNoticeCard: View {
-    let text: String
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Warm-up")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                Text(text)
-                    .foregroundStyle(MorpheTheme.textPrimary)
             }
         }
     }
@@ -1654,30 +1626,6 @@ private struct AddSwitchWorkoutCard: View {
     }
 }
 
-private struct DrillCard: View {
-    let drill: DrillReference
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(drill.name)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                Spacer()
-                StatusBadge(text: drill.sport.shortTitle, color: MorpheTheme.color(for: drill.sport))
-            }
-
-            Text(drill.skillCategory)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(MorpheTheme.accentAlt)
-            Text(drill.cues)
-                .font(.caption)
-                .foregroundStyle(MorpheTheme.textPrimary)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
 private struct PainFlaggingCard: View {
     @Binding var painArea: String
     @Binding var painSeverity: Int
@@ -1719,6 +1667,7 @@ private struct SetRepLoggingSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Binding var reps: Int
     @Binding var weight: Double
+    @Binding var rpe: Int?
     let onSave: () -> Void
 
     @State private var weightText = ""
@@ -1772,6 +1721,24 @@ private struct SetRepLoggingSheet: View {
                             .buttonStyle(FilterChipStyle(isSelected: reps == preset, selectedColor: MorpheTheme.accentAlt))
                         }
                     }
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Effort (RPE) — optional")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    HStack(spacing: 8) {
+                        ForEach([6, 7, 8, 9, 10], id: \.self) { level in
+                            Button("\(level)") {
+                                rpe = (rpe == level) ? nil : level
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: rpe == level, selectedColor: MorpheTheme.accent))
+                            .accessibilityLabel("RPE \(level)\(rpe == level ? ", selected" : "")")
+                        }
+                    }
+                    Text("10 = nothing left in the tank. Tap again to clear.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
                 }
 
                 HStack(spacing: 10) {

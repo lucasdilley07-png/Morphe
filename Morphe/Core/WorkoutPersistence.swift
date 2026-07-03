@@ -23,7 +23,41 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
     var completedWorkoutSets: [String: Int]
     var trackedSetReps: [String: [Int]]
     var trackedSetWeights: [String: [Double]]
+    /// Per-set RPE, parallel to trackedSetReps (0 = not rated). Tolerantly
+    /// decoded so sessions saved before this field existed still restore.
+    var trackedSetRPE: [String: [Int]]
     var isWorkoutLoggedToday: Bool
+
+    init(currentWorkoutID: UUID?, isWorkoutSessionActive: Bool, hasStartedWorkoutFlow: Bool,
+         hasCompletedWorkoutFlow: Bool, activeWorkoutExerciseIndex: Int,
+         completedWorkoutSets: [String: Int], trackedSetReps: [String: [Int]],
+         trackedSetWeights: [String: [Double]], trackedSetRPE: [String: [Int]],
+         isWorkoutLoggedToday: Bool) {
+        self.currentWorkoutID = currentWorkoutID
+        self.isWorkoutSessionActive = isWorkoutSessionActive
+        self.hasStartedWorkoutFlow = hasStartedWorkoutFlow
+        self.hasCompletedWorkoutFlow = hasCompletedWorkoutFlow
+        self.activeWorkoutExerciseIndex = activeWorkoutExerciseIndex
+        self.completedWorkoutSets = completedWorkoutSets
+        self.trackedSetReps = trackedSetReps
+        self.trackedSetWeights = trackedSetWeights
+        self.trackedSetRPE = trackedSetRPE
+        self.isWorkoutLoggedToday = isWorkoutLoggedToday
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        currentWorkoutID = try c.decodeIfPresent(UUID.self, forKey: .currentWorkoutID)
+        isWorkoutSessionActive = try c.decode(Bool.self, forKey: .isWorkoutSessionActive)
+        hasStartedWorkoutFlow = try c.decode(Bool.self, forKey: .hasStartedWorkoutFlow)
+        hasCompletedWorkoutFlow = try c.decode(Bool.self, forKey: .hasCompletedWorkoutFlow)
+        activeWorkoutExerciseIndex = try c.decode(Int.self, forKey: .activeWorkoutExerciseIndex)
+        completedWorkoutSets = try c.decode([String: Int].self, forKey: .completedWorkoutSets)
+        trackedSetReps = try c.decode([String: [Int]].self, forKey: .trackedSetReps)
+        trackedSetWeights = try c.decode([String: [Double]].self, forKey: .trackedSetWeights)
+        trackedSetRPE = ((try? c.decodeIfPresent([String: [Int]].self, forKey: .trackedSetRPE)) ?? nil) ?? [:]
+        isWorkoutLoggedToday = try c.decode(Bool.self, forKey: .isWorkoutLoggedToday)
+    }
 }
 
 // MARK: - User-built workout library (custom workouts + custom exercises)

@@ -821,6 +821,7 @@ struct WorkoutSetRecap: Identifiable, Hashable {
     var name: String
     var reps: [Int]
     var weights: [Double]   // parallel to reps; 0 = bodyweight
+    var rpes: [Int] = []    // parallel to reps; 0 = not rated
 }
 
 struct LoggedExercise: Identifiable, Hashable, Codable {
@@ -830,6 +831,9 @@ struct LoggedExercise: Identifiable, Hashable, Codable {
     var reps: String
     var weight: String
     var note: String
+    /// Per-set effort like "8, 9" — optional so logs saved before RPE
+    /// existed still decode.
+    var rpe: String?
 }
 
 struct WorkoutLog: Identifiable, Hashable, Codable {

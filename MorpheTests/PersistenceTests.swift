@@ -84,6 +84,7 @@ final class PersistenceTests: XCTestCase {
             completedWorkoutSets: ["goblet-squat": 3],
             trackedSetReps: ["goblet-squat": [10, 9, 8]],
             trackedSetWeights: ["goblet-squat": [135, 135, 130]],
+            trackedSetRPE: ["goblet-squat": [8, 8, 9]],
             isWorkoutLoggedToday: false
         )
         store.saveSession(snapshot)
@@ -428,6 +429,39 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertFalse(store.isWorkoutSessionActive)
         XCTAssertEqual(store.trackedSetTotalCount, 0)
         XCTAssertFalse(store.hasCompletedWorkoutFlow)
+    }
+
+    func testUnitToggleConvertsLoggedSessionWeights() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        let exercise = store.activeWorkoutExercise!
+
+        store.completeTrackedSet(reps: 8, weight: 45)   // 45 lb
+        store.weightUnit = .kilograms
+
+        let converted = store.trackedSetWeights[exercise.id]?.first ?? 0
+        XCTAssertEqual(converted, 20.4, accuracy: 0.05,
+                       "toggling the unit must convert logged weights, not relabel them")
+
+        store.weightUnit = .pounds
+        let roundTripped = store.trackedSetWeights[exercise.id]?.first ?? 0
+        XCTAssertEqual(roundTripped, 45, accuracy: 0.2, "converting back must round-trip")
+    }
+
+    func testRPEIsCapturedRestoredAndLogged() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        let exercise = store.activeWorkoutExercise!
+
+        store.completeTrackedSet(reps: 8, weight: 45, rpe: 8)
+        XCTAssertEqual(store.trackedSetRPE[exercise.id], [8])
+        XCTAssertEqual(store.sessionRecapItems.first?.rpes, [8], "recap must carry the set's RPE")
+
+        // RPE survives a mid-session relaunch.
+        let reloaded = MorpheAppStore()
+        let restoredExercise = reloaded.currentWorkout.exercises.first!
+        XCTAssertEqual(reloaded.trackedSetRPE[restoredExercise.id], [8],
+                       "per-set RPE must persist with the session snapshot")
     }
 
     func testSessionRecapListsOnlyLoggedExercises() {

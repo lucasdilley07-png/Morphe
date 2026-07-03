@@ -198,7 +198,22 @@ final class MorpheAppStore {
     var completedWorkoutSets: [String: Int] = [:] { didSet { persistWorkoutSession() } }
     var trackedSetReps: [String: [Int]] = [:] { didSet { persistWorkoutSession() } }
     var trackedSetWeights: [String: [Double]] = [:] { didSet { persistWorkoutSession() } }
-    var weightUnit: WeightUnit = .pounds { didSet { persistLocalProfile() } }
+    /// Per-set RPE (6–10), parallel to trackedSetReps; 0 = not rated.
+    var trackedSetRPE: [String: [Int]] = [:] { didSet { persistWorkoutSession() } }
+    var weightUnit: WeightUnit = .pounds {
+        didSet {
+            guard oldValue != weightUnit else { return }
+            // Convert already-logged session weights so they keep meaning the
+            // same physical load (45 lb -> 20.4 kg). Without this, toggling
+            // the unit mid-session silently relabeled the raw numbers at log
+            // time. Skipped during profile restore — those weights were saved
+            // in the restored unit already.
+            if !isApplyingProfile {
+                convertTrackedSessionWeights(to: weightUnit)
+            }
+            persistLocalProfile()
+        }
+    }
 
     var coachProfile: CoachProfile
     var coachOverview: CoachOverview
@@ -755,6 +770,7 @@ final class MorpheAppStore {
         completedWorkoutSets = snapshot.completedWorkoutSets
         trackedSetReps = snapshot.trackedSetReps
         trackedSetWeights = snapshot.trackedSetWeights
+        trackedSetRPE = snapshot.trackedSetRPE
     }
 
     /// Persists the current in-progress session snapshot to disk.
@@ -770,6 +786,7 @@ final class MorpheAppStore {
                 completedWorkoutSets: completedWorkoutSets,
                 trackedSetReps: trackedSetReps,
                 trackedSetWeights: trackedSetWeights,
+                trackedSetRPE: trackedSetRPE,
                 isWorkoutLoggedToday: isWorkoutLoggedToday
             )
         )
@@ -1618,6 +1635,7 @@ final class MorpheAppStore {
         completedWorkoutSets = [:]
         trackedSetReps = [:]
         trackedSetWeights = [:]
+        trackedSetRPE = [:]
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         selectedClientTab = .train
@@ -1665,14 +1683,15 @@ final class MorpheAppStore {
                 id: exercise.id,
                 name: exercise.name,
                 reps: reps,
-                weights: trackedSetWeights[exercise.id, default: []]
+                weights: trackedSetWeights[exercise.id, default: []],
+                rpes: trackedSetRPE[exercise.id, default: []]
             )
         }
     }
 
     /// `allowExtra` lets an explicit user action log past the target set count
     /// (the quick-log buttons stay guarded so a stray tap can't over-log).
-    func completeTrackedSet(reps: Int, weight: Double? = nil, allowExtra: Bool = false) {
+    func completeTrackedSet(reps: Int, weight: Double? = nil, rpe: Int? = nil, allowExtra: Bool = false) {
         guard let exercise = activeWorkoutExercise else { return }
         let targetSets = targetSetCount(for: exercise)
         let currentCount = completedWorkoutSets[exercise.id, default: 0]
@@ -1687,6 +1706,7 @@ final class MorpheAppStore {
         trackedSetReps[exercise.id, default: []].append(reps)
         // Record weight per set (0 = bodyweight) so logs carry real load, not "As logged".
         trackedSetWeights[exercise.id, default: []].append(max(0, weight ?? 0))
+        trackedSetRPE[exercise.id, default: []].append(rpe ?? 0)
         Haptics.impact(.light)
 
         if updatedCount == targetSets {
@@ -1707,14 +1727,28 @@ final class MorpheAppStore {
         }
     }
 
+    /// Converts this session's logged weights into `unit` (lb <-> kg), rounded
+    /// to one decimal, so a unit toggle never relabels raw numbers.
+    private func convertTrackedSessionWeights(to unit: WeightUnit) {
+        guard !trackedSetWeights.isEmpty else { return }
+        let factor = unit == .kilograms ? 0.45359237 : 2.20462262
+        trackedSetWeights = trackedSetWeights.mapValues { weights in
+            weights.map { (($0 * factor) * 10).rounded() / 10 }
+        }
+    }
+
     /// Rewrites one already-logged set (fat-finger fix without losing the session).
-    func updateTrackedSet(exerciseID: String, setIndex: Int, reps: Int, weight: Double) {
+    func updateTrackedSet(exerciseID: String, setIndex: Int, reps: Int, weight: Double, rpe: Int? = nil) {
         guard var repsLogged = trackedSetReps[exerciseID], repsLogged.indices.contains(setIndex),
               var weightsLogged = trackedSetWeights[exerciseID], weightsLogged.indices.contains(setIndex) else { return }
         repsLogged[setIndex] = reps
         weightsLogged[setIndex] = max(0, weight)
         trackedSetReps[exerciseID] = repsLogged
         trackedSetWeights[exerciseID] = weightsLogged
+        if var rpesLogged = trackedSetRPE[exerciseID], rpesLogged.indices.contains(setIndex) {
+            rpesLogged[setIndex] = rpe ?? 0
+            trackedSetRPE[exerciseID] = rpesLogged
+        }
         showToast("Set \(setIndex + 1) updated.")
     }
 
@@ -1726,6 +1760,10 @@ final class MorpheAppStore {
         if var weightsLogged = trackedSetWeights[exerciseID], weightsLogged.indices.contains(setIndex) {
             weightsLogged.remove(at: setIndex)
             trackedSetWeights[exerciseID] = weightsLogged
+        }
+        if var rpesLogged = trackedSetRPE[exerciseID], rpesLogged.indices.contains(setIndex) {
+            rpesLogged.remove(at: setIndex)
+            trackedSetRPE[exerciseID] = rpesLogged
         }
         completedWorkoutSets[exerciseID] = repsLogged.count
         showToast("Set removed.")
@@ -1740,6 +1778,7 @@ final class MorpheAppStore {
         completedWorkoutSets = [:]
         trackedSetReps = [:]
         trackedSetWeights = [:]
+        trackedSetRPE = [:]
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         showToast("Workout discarded.")
@@ -2304,6 +2343,7 @@ final class MorpheAppStore {
         completedWorkoutSets = [:]
         trackedSetReps = [:]
         trackedSetWeights = [:]
+        trackedSetRPE = [:]
         selectedClientTab = .train
         showToast("\(template.name) ready in Train.")
     }
@@ -3898,8 +3938,12 @@ final class MorpheAppStore {
     }
 
     private func targetSetCount(for exercise: WorkoutExercise) -> Int {
-        let digits = exercise.sets.prefix { $0.isNumber }
-        return Int(digits) ?? 1
+        // First integer anywhere in the string, so "Superset x3" parses as 3
+        // (not 1) even though every seeded template leads with the digit.
+        let firstNumber = exercise.sets
+            .components(separatedBy: CharacterSet.decimalDigits.inverted)
+            .first { !$0.isEmpty }
+        return Int(firstNumber ?? "") ?? 1
     }
 
     private func addAthleteActivityPost(
@@ -5039,12 +5083,14 @@ final class MorpheAppStore {
             // Real load: the top working weight the user entered, or Bodyweight.
             let topWeight = weightsLogged.max() ?? 0
             let weightSummary = topWeight > 0 ? weightUnit.format(topWeight) : "Bodyweight"
+            let ratedRPEs = trackedSetRPE[exercise.id, default: []].filter { $0 > 0 }
             return LoggedExercise(
                 name: exercise.name,
                 sets: setSummary,
                 reps: repSummary,
                 weight: weightSummary,
-                note: exercise.formCue
+                note: exercise.formCue,
+                rpe: ratedRPEs.isEmpty ? nil : ratedRPEs.map(String.init).joined(separator: ", ")
             )
         }
     }
