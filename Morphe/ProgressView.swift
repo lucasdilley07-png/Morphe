@@ -23,6 +23,20 @@ struct ProgressScreenView: View {
         store.currentAthleteWorkoutLogs
     }
 
+    /// Which of the last 7 days had a logged workout — shown as plain
+    /// trained/rested days instead of a fake-looking score curve.
+    private var last7TrainingDays: [TrainedDay] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return (0..<7).reversed().map { offset in
+            let day = calendar.date(byAdding: .day, value: -offset, to: today) ?? today
+            let trained = currentLogs.contains { calendar.isDate($0.completedAt, inSameDayAs: day) }
+            return TrainedDay(label: formatter.string(from: day), trained: trained)
+        }
+    }
+
     private var partnerInsight: PartnerTrainingInsight {
         store.currentAthletePartnerTrainingInsight
     }
@@ -220,7 +234,7 @@ struct ProgressScreenView: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Progress",
-                    subtitle: "Your weekly story, your reports, and the proof that the work is moving somewhere."
+                    subtitle: "Your weekly story and the proof that the work is moving somewhere."
                 )
 
                 ProgressHeroStrip(
@@ -230,7 +244,8 @@ struct ProgressScreenView: View {
                     streak: logSummary.currentStreakDays,
                     latestWin: logSummary.totalLogs == 0
                         ? "Log your first workout to start your story."
-                        : "\(logSummary.latestWorkoutTitle) is your latest logged session."
+                        : "\(logSummary.latestWorkoutTitle) is your latest logged session.",
+                    showMetrics: store.todayExperienceTier >= 1
                 )
 
                 progressPanel
@@ -243,91 +258,87 @@ struct ProgressScreenView: View {
 
     private var progressPanel: some View {
         Group {
-            // "Am I getting stronger?" leads the screen — it's the question
-            // this page exists to answer.
-            if !store.exerciseStrengthProgress.isEmpty {
-                StrengthProgressCard(
-                    items: store.exerciseStrengthProgress,
-                    weightUnit: store.weightUnit
-                )
-            }
-
-            AIInsightCard(insight: store.clientProfile.aiProgressInsight)
-            LogDrivenWeeklySummaryCard(summary: logSummary)
-            AthletePatternInsightsCard(insights: athletePatternInsights)
-            TrainingPatternInsightCard(insight: trainingPatternInsight)
-            SessionMixCard(insight: sessionMixInsight)
-            // Buddy comparison and workout-source breakdowns (coach/AI imports)
-            // are multi-user concepts — hidden in solo v1.
-            if FeatureFlags.multiUserEnabled {
-                SoloVsBuddyProgressCard(
-                    insight: partnerInsight,
-                    trend: soloBuddyTrend,
-                    trendSummary: soloBuddyTrendSummary
-                )
-                WorkoutSourceMixCard(summary: logSummary)
-                SourceTrendCard(insight: sourceTrendInsight)
-            }
-            RecoveryBalanceCard(insight: recoveryBalanceInsight)
-
-            if let report = athleteReport {
-                WeeklyReportCard(report: report)
-            }
-
-            if let compliance {
-                ProgramComplianceCard(compliance: compliance)
-            }
-
-            WorkoutHistoryCard(logs: store.currentAthleteWorkoutLogs)
-
-            if !store.healthTrend.isEmpty {
-                SimpleChartCard(title: "Activity (last 7 days)") {
-                    Chart(store.healthTrend) { point in
-                        LineMark(
-                            x: .value("Day", point.day),
-                            y: .value("Score", point.value)
-                        )
-                        .foregroundStyle(MorpheTheme.accent)
-                        .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
-                    }
-                    .frame(height: 170)
-                    .accessibilityLabel(Text("Activity over the last 7 days"))
-                }
-            }
-
-            SimpleChartCard(title: "Weekly Consistency") {
-                Chart(store.workoutConsistency) { point in
-                    BarMark(
-                        x: .value("Week", point.week),
-                        y: .value("Workouts", point.workouts)
+            // Progressive disclosure, same tiers as Today: a 0-log user gets
+            // the hero's honest guidance and nothing else — no wall of empty
+            // widgets. Analytics unlock as real training data exists.
+            if store.todayExperienceTier >= 1 {
+                // "Am I getting stronger?" leads — it's the question this
+                // page exists to answer.
+                if !store.exerciseStrengthProgress.isEmpty {
+                    StrengthProgressCard(
+                        items: store.exerciseStrengthProgress,
+                        weightUnit: store.weightUnit
                     )
-                    .foregroundStyle(MorpheTheme.accentAlt)
                 }
-                .frame(height: 160)
-                .accessibilityLabel(Text("Workouts logged per week"))
+
+                // Honest presentation: which days you trained — not binary
+                // data drawn as a dramatic score curve.
+                TrainedDaysCard(days: last7TrainingDays)
+
+                LogDrivenWeeklySummaryCard(summary: logSummary)
+                WorkoutHistoryCard(logs: store.currentAthleteWorkoutLogs)
             }
 
-            if !store.weightTrend.isEmpty {
-                StatCard(
-                    title: "Weight Trend",
-                    value: "\(store.weightTrend.last?.value ?? 0) \(store.weightUnit.label)",
-                    detail: "Start: \(store.weightTrend.first?.value ?? 0) \(store.weightUnit.label)  •  Change: \(weightChange) \(store.weightUnit.label)"
-                )
-            }
+            if store.todayExperienceTier >= 2 {
+                AthletePatternInsightsCard(insights: athletePatternInsights)
+                TrainingPatternInsightCard(insight: trainingPatternInsight)
+                SessionMixCard(insight: sessionMixInsight)
+                // Buddy comparison, source breakdowns, and coach report cards
+                // are multi-user concepts — hidden in solo v1. (Report and
+                // compliance were previously hidden only by accident: they
+                // read demo coach data that solo clearing happened to empty.)
+                if FeatureFlags.multiUserEnabled {
+                    SoloVsBuddyProgressCard(
+                        insight: partnerInsight,
+                        trend: soloBuddyTrend,
+                        trendSummary: soloBuddyTrendSummary
+                    )
+                    WorkoutSourceMixCard(summary: logSummary)
+                    SourceTrendCard(insight: sourceTrendInsight)
 
-            if !store.roadmap.isEmpty {
-                TransformationRoadmapCard(phases: store.roadmap)
-            }
-            if let pattern = store.currentPatternInsight {
-                FrictionInsightCard(insight: pattern) {
-                    store.cyclePatternInsight()
+                    if let report = athleteReport {
+                        WeeklyReportCard(report: report)
+                    }
+                    if let compliance {
+                        ProgramComplianceCard(compliance: compliance)
+                    }
                 }
-            }
-            if !store.profileShowcase.badges.isEmpty {
-                BadgeGridCard(badges: store.profileShowcase.badges)
-            }
-            if !store.recentWins.isEmpty {
-                RecentWinsCard(wins: store.recentWins)
+                RecoveryBalanceCard(insight: recoveryBalanceInsight)
+
+                SimpleChartCard(title: "Weekly Consistency") {
+                    Chart(store.workoutConsistency) { point in
+                        BarMark(
+                            x: .value("Week", point.week),
+                            y: .value("Workouts", point.workouts)
+                        )
+                        .foregroundStyle(MorpheTheme.accentAlt)
+                    }
+                    .frame(height: 160)
+                    .accessibilityLabel(Text("Workouts logged per week"))
+                }
+
+                if !store.weightTrend.isEmpty {
+                    StatCard(
+                        title: "Weight Trend",
+                        value: "\(store.weightTrend.last?.value ?? 0) \(store.weightUnit.label)",
+                        detail: "Start: \(store.weightTrend.first?.value ?? 0) \(store.weightUnit.label)  •  Change: \(weightChange) \(store.weightUnit.label)"
+                    )
+                }
+
+                if !store.roadmap.isEmpty {
+                    TransformationRoadmapCard(phases: store.roadmap)
+                }
+                if let pattern = store.currentPatternInsight {
+                    FrictionInsightCard(insight: pattern) {
+                        store.cyclePatternInsight()
+                    }
+                }
+                if !store.profileShowcase.badges.isEmpty {
+                    BadgeGridCard(badges: store.profileShowcase.badges)
+                }
+                if !store.recentWins.isEmpty {
+                    RecentWinsCard(wins: store.recentWins)
+                }
             }
         }
     }
@@ -404,7 +415,22 @@ struct ProgressScreenView: View {
             || sessionType == .mobilitySession
     }
 
+    /// True when the category came from the template or an explicit keyword —
+    /// not the bare fallback. Unmatched logs are excluded from the
+    /// output-vs-recovery verdict instead of being guessed as high-output.
+    private func hasConfidentCategory(for log: WorkoutLog) -> Bool {
+        if resolvedTemplate(for: log) != nil { return true }
+        let title = log.workoutTitle.lowercased()
+        let notes = log.notes.lowercased()
+        return title.contains("recovery") || notes.contains("recovery")
+            || title.contains("mobility") || notes.contains("mobility")
+            || title.contains("strength") || title.contains("speed")
+            || title.contains("skill") || title.contains("drill")
+            || title.contains("conditioning")
+    }
+
     private func isHighOutput(_ log: WorkoutLog) -> Bool {
+        guard hasConfidentCategory(for: log) else { return false }
         let category = resolvedCategory(for: log)
 
         return category == .conditioning
@@ -414,6 +440,57 @@ struct ProgressScreenView: View {
             || category == .fightCamp
             || category == .speed
             || category == .agility
+    }
+}
+
+private struct TrainedDay: Identifiable {
+    let id = UUID()
+    let label: String
+    let trained: Bool
+}
+
+/// Seven plain day-dots: trained or rested. Replaces the old line chart that
+/// drew binary trained/rested values (80/25) as a dramatic score curve.
+private struct TrainedDaysCard: View {
+    let days: [TrainedDay]
+
+    private var trainedCount: Int {
+        days.filter(\.trained).count
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Last 7 Days")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Text("\(trainedCount) trained")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accent)
+                }
+
+                HStack(spacing: 0) {
+                    ForEach(days) { day in
+                        VStack(spacing: 6) {
+                            Circle()
+                                .fill(day.trained ? MorpheTheme.accent : MorpheTheme.panelStrong)
+                                .frame(width: 26, height: 26)
+                                .overlay(
+                                    Circle().stroke(MorpheTheme.strokeStrong.opacity(day.trained ? 0 : 0.4), lineWidth: 1)
+                                )
+                            Text(day.label)
+                                .font(.caption2)
+                                .foregroundStyle(day.trained ? .white : MorpheTheme.textMuted)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Trained \(trainedCount) of the last 7 days: \(days.filter(\.trained).map(\.label).joined(separator: ", "))")
     }
 }
 
@@ -530,6 +607,9 @@ private struct SessionMixCard: View {
                         .foregroundStyle(color(for: bucket.category))
                     }
                     .frame(height: 170)
+                    .accessibilityLabel(Text(insight.categoryBuckets
+                        .map { "\($0.category.rawValue): \($0.count) sessions" }
+                        .joined(separator: ", ")))
 
                     if let dominantCategory = insight.dominantCategory {
                         Text("Most common category: \(dominantCategory.rawValue)")
@@ -780,19 +860,29 @@ private struct ProgressHeroStrip: View {
     let consistencyTarget: Int
     let streak: Int
     let latestWin: String
+    /// False on first run — same principle as Today: zeros aren't metrics.
+    var showMetrics: Bool = true
 
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 8) {
-                    MetricPill(label: "Morphe Score", value: "\(score)")
-                    MetricPill(label: "This Week", value: "\(consistency)/\(max(consistencyTarget, 1))")
-                    MetricPill(label: "Streak", value: "\(streak) days")
+                if showMetrics {
+                    HStack(spacing: 8) {
+                        MetricPill(label: "Morphe Score", value: "\(score)")
+                        MetricPill(label: "This Week", value: "\(consistency)/\(max(consistencyTarget, 1))")
+                        MetricPill(label: "Streak", value: "\(streak) days")
+                    }
                 }
 
                 Text(latestWin)
                     .font(.headline)
                     .foregroundStyle(.white)
+
+                if !showMetrics {
+                    Text("Your Morphe Score, weekly count, and streak appear here with your first log.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
             }
         }
     }
