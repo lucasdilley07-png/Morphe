@@ -980,6 +980,24 @@ final class MorpheAppStore {
         goodForTodayRecommendation()
     }
 
+    /// Workouts this user has actually logged themselves.
+    var loggedWorkoutCount: Int {
+        workoutLogs.filter { $0.athleteID == clientProfile.id }.count
+    }
+
+    /// Progressive disclosure for the Today screen. A brand-new user gets one
+    /// screen with one action; metrics and tools appear as they're EARNED:
+    ///   0 — first run: hero card + identity only (no zero-metrics, no tools)
+    ///   1 — habit forming (1+ logs): score/streak pills, day plan, adjustments
+    ///   2 — full dashboard (5+ logs): patterns, support & progress
+    var todayExperienceTier: Int {
+        switch loggedWorkoutCount {
+        case 0: return 0
+        case 1...4: return 1
+        default: return 2
+        }
+    }
+
     var athletePatternInsights: [AthletePatternInsight] {
         buildAthletePatternInsights()
     }

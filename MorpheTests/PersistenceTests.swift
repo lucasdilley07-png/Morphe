@@ -500,6 +500,63 @@ final class WorkoutSessionTests: XCTestCase {
     }
 }
 
+/// Verifies the Today screen's progressive disclosure: a new user gets one
+/// screen with one action; metrics and tools unlock as workouts are logged.
+@MainActor
+final class TodayExperienceTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func makeLog(athleteID: UUID, name: String = "Sarah") -> WorkoutLog {
+        WorkoutLog(
+            athleteID: athleteID,
+            athleteName: name,
+            workoutTemplateID: nil,
+            workoutTitle: "Test Session",
+            sport: .strength,
+            completedAt: .now,
+            durationMinutes: 30,
+            exercises: [],
+            notes: "",
+            source: .athleteManual,
+            enteredByUserID: athleteID,
+            enteredByRole: .client,
+            enteredByName: name,
+            verificationStatus: .athleteSubmitted
+        )
+    }
+
+    func testTodayTiersUnlockByLoggedWorkouts() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertEqual(store.loggedWorkoutCount, 0)
+        XCTAssertEqual(store.todayExperienceTier, 0, "a brand-new user gets the minimal Today screen")
+
+        store.workoutLogs.append(makeLog(athleteID: store.clientProfile.id))
+        XCTAssertEqual(store.todayExperienceTier, 1, "the first logged workout unlocks metrics and day tools")
+
+        for _ in 0..<4 { store.workoutLogs.append(makeLog(athleteID: store.clientProfile.id)) }
+        XCTAssertEqual(store.todayExperienceTier, 2, "five logs unlock the full dashboard")
+    }
+
+    func testOtherPeoplesLogsDontUnlockTiers() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.workoutLogs.append(makeLog(athleteID: UUID(), name: "Someone Else"))
+
+        XCTAssertEqual(store.loggedWorkoutCount, 0, "only the user's own logs count toward disclosure")
+        XCTAssertEqual(store.todayExperienceTier, 0)
+    }
+}
+
 /// Verifies the coach↔client training-commerce logic (booking + earnings).
 @MainActor
 final class BookingTests: XCTestCase {

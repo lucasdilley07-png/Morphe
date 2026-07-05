@@ -45,12 +45,17 @@ struct HomeView: View {
                     TodayNextMoveCard(
                         workout: store.currentWorkout,
                         minimumWinModeEnabled: store.minimumWinModeEnabled,
+                        showAssistRow: store.todayExperienceTier >= 1,
                         onStart: { store.startTodayWorkout() },
                         onActivateMinimumWin: { store.activateMinimumWinMode() },
                             onSwitch: { store.cycleWorkout() }
                         )
                 }
 
+                // Progressive disclosure: a first-run user sees the hero and
+                // who they are — no zero-metrics, no tools that need history.
+                // Everything below is earned by logging workouts (see
+                // todayExperienceTier).
                 TodayStatusStrip(
                     showcase: store.profileShowcase,
                     goal: store.clientProfile.goal,
@@ -59,10 +64,11 @@ struct HomeView: View {
                     recovery: store.recovery,
                     morpheScore: store.clientProfile.health.score,
                     morpheTier: morpheScoreTitle,
-                    morpheDetail: store.clientProfile.health.detail
+                    morpheDetail: store.clientProfile.health.detail,
+                    showMetrics: store.todayExperienceTier >= 1
                 )
 
-                if let insight = store.primaryAthletePatternInsight {
+                if store.todayExperienceTier >= 2, let insight = store.primaryAthletePatternInsight {
                     HomePatternInsightCard(insight: insight) {
                         store.openProgress()
                     }
@@ -76,7 +82,7 @@ struct HomeView: View {
                         ) { task in
                             store.toggleMinimumWinTask(task)
                         }
-                    } else {
+                    } else if store.todayExperienceTier >= 1 {
                         TodayPlanCard(
                             todayWinText: todayWinText,
                             tasks: store.todayTasks,
@@ -85,6 +91,7 @@ struct HomeView: View {
                     }
                 }
 
+                if store.todayExperienceTier >= 1 || store.minimumWinModeEnabled {
                 HomeExpandableSection(
                     title: "If plans change",
                     subtitle: adjustmentSubtitle,
@@ -113,7 +120,9 @@ struct HomeView: View {
                         )
                     }
                 }
+                }
 
+                if store.todayExperienceTier >= 2 {
                 HomeExpandableSection(
                     title: "Support & progress",
                     subtitle: supportSubtitle,
@@ -152,6 +161,7 @@ struct HomeView: View {
                     } openMore: {
                         store.openMore(.scores)
                     }
+                }
                 }
             }
             .padding(.horizontal, 20)
@@ -242,6 +252,9 @@ private struct TodayStatusStrip: View {
     let morpheScore: Int
     let morpheTier: String
     let morpheDetail: String
+    /// False on first run: a new user has no readiness/score/energy yet, so
+    /// showing three zeros would only be noise to decode.
+    var showMetrics: Bool = true
 
     var body: some View {
         GlassCard {
@@ -260,25 +273,34 @@ private struct TodayStatusStrip: View {
 
                     Spacer()
 
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("Plan by \(coachName)")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        Text(morpheTier)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                    if showMetrics {
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("Plan by \(coachName)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Text(morpheTier)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                        }
                     }
                 }
 
-                HStack(spacing: 8) {
-                    MetricPill(label: "Readiness", value: "\(recovery.score)")
-                    MetricPill(label: "Score", value: "\(morpheScore)")
-                    MetricPill(label: "Energy", value: "\(recovery.energy)/10")
-                }
+                if showMetrics {
+                    HStack(spacing: 8) {
+                        MetricPill(label: "Readiness", value: "\(recovery.score)")
+                        MetricPill(label: "Score", value: "\(morpheScore)")
+                        MetricPill(label: "Energy", value: "\(recovery.energy)/10")
+                    }
 
-                Text("Plan by \(coachName) • \(morpheDetail)")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textSecondary)
+                    Text("Plan by \(coachName) • \(morpheDetail)")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                } else {
+                    Text("Your Morphe Score, readiness, and streak show up here once you log your first workout.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
@@ -419,6 +441,8 @@ private struct TodayNextMoveCard: View {
     @Environment(MorpheAppStore.self) private var store
     let workout: WorkoutTemplate
     let minimumWinModeEnabled: Bool
+    /// Hidden on first run so the hero is exactly one decision: Start.
+    var showAssistRow: Bool = true
     let onStart: () -> Void
     let onActivateMinimumWin: () -> Void
     let onSwitch: () -> Void
@@ -462,35 +486,37 @@ private struct TodayNextMoveCard: View {
                     }
                 }
 
-                Divider()
-                    .overlay(Color.white.opacity(0.08))
+                if showAssistRow {
+                    Divider()
+                        .overlay(Color.white.opacity(0.08))
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Morphe can help right here")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Morphe can help right here")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
 
-                    WrapStack(spacing: 8) {
-                        Button("Why this plan?") {
-                            inlineReply = store.previewAIAgentReply(for: "Why is this the right plan for today?")
+                        WrapStack(spacing: 8) {
+                            Button("Why this plan?") {
+                                inlineReply = store.previewAIAgentReply(for: "Why is this the right plan for today?")
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
+
+                            Button("Adjust my day") {
+                                inlineReply = store.previewAIAgentReply(for: "Adjust today's plan for me")
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
                         }
-                        .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
 
-                        Button("Adjust my day") {
-                            inlineReply = store.previewAIAgentReply(for: "Adjust today's plan for me")
+                        if let inlineReply {
+                            Text(inlineReply)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(MorpheTheme.panelStrong)
+                                )
                         }
-                        .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
-                    }
-
-                    if let inlineReply {
-                        Text(inlineReply)
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                            .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(MorpheTheme.panelStrong)
-                            )
                     }
                 }
             }
