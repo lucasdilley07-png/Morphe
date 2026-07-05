@@ -1307,7 +1307,7 @@ final class MorpheAppStore {
 
     func completeOnboarding() {
         let generatedPlan = MorpheDemoContent.generatedPlan(from: onboardingDraft)
-        let primarySport = onboardingDraft.selectedSports.first ?? .boxing
+        let primarySport = onboardingDraft.selectedSports.first ?? .generalFitness
         let selectedGoals = onboardingDraft.selectedGoals.map(\.rawValue)
 
         let trimmedName = onboardingDraft.name.trimmingCharacters(in: .whitespacesAndNewlines)

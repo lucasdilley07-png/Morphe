@@ -56,31 +56,27 @@ struct OnboardingFlowView: View {
     @State private var isGeneratingPlan = false
 
     private var steps: [OnboardingStep] {
-        let all: [OnboardingStep] = [
+        // Lean by design: every remaining step feeds something the app
+        // actually uses (name → greeting, goal/sport → plan + templates,
+        // experience → level, schedule → weekly target, injuries → safety
+        // notes). The steps that collected write-only data — gender, body
+        // info, equipment, motivation, confidence, obstacle, theme, avatar —
+        // were cut; ~2 minutes to first value.
+        let solo: [OnboardingStep] = [
             .welcome,
             .name,
-            .gender,
-            .accountType,
             .goal,
-            .equipment,
             .sport,
-            .trainingStyle,
-            .motivationStyle,
             .experience,
-            .bodyInfo,
-            .injuryPain,
             .schedule,
-            .confidence,
-            .obstacle,
-            .theme,
-            .avatar,
+            .injuryPain,
             .review
         ]
-        // The brand is single-accent (locked MORPHE yellow), so the theme/accent
-        // step changes nothing — drop it. Account-type (athlete vs coach) is a v2
-        // surface, skipped in v1.
-        let withoutTheme = all.filter { $0 != .theme }
-        return FeatureFlags.multiUserEnabled ? withoutTheme : withoutTheme.filter { $0 != .accountType }
+        guard FeatureFlags.multiUserEnabled else { return solo }
+        // Multi-user adds the athlete/coach choice right after the name.
+        var multiUser = solo
+        multiUser.insert(.accountType, at: 2)
+        return multiUser
     }
 
     private var currentStep: OnboardingStep {
@@ -123,12 +119,14 @@ struct OnboardingFlowView: View {
                                         .font(.subheadline)
                                         .foregroundStyle(MorpheTheme.textSecondary)
 
+                                    // Welcome is index 0 and shows no header, so
+                                    // the first header a user sees is "Step 1".
                                     ProgressBarView(
-                                        progress: Double(stepIndex + 1) / Double(steps.count),
+                                        progress: Double(stepIndex) / Double(max(steps.count - 1, 1)),
                                         color: MorpheTheme.accent
                                     )
 
-                                    Text("Step \(stepIndex + 1) of \(steps.count)")
+                                    Text("Step \(stepIndex) of \(steps.count - 1)")
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(MorpheTheme.textMuted)
                                 }
@@ -172,36 +170,18 @@ struct OnboardingFlowView: View {
             WelcomeLandingStep()
         case .name:
             NameStep(name: $store.onboardingDraft.name)
-        case .gender:
-            GenderSelectionStep(selection: $store.onboardingDraft.gender)
         case .accountType:
             AccountTypeStep()
         case .goal:
             GoalSelectionStep()
         case .sport:
             SportSelectionStep()
-        case .trainingStyle:
-            TrainingStyleSelectionStep()
         case .experience:
             ExperienceLevelStep(selection: $store.onboardingDraft.experienceLevel)
-        case .bodyInfo:
-            BodyInfoStep(age: $store.onboardingDraft.age, height: $store.onboardingDraft.height, weight: $store.onboardingDraft.weight)
+        case .schedule:
+            ScheduleStep(days: $store.onboardingDraft.trainingDaysPerWeek)
         case .injuryPain:
             InjuryPainStep(text: $store.onboardingDraft.injuries)
-        case .equipment:
-            EquipmentStep(text: $store.onboardingDraft.equipment)
-        case .schedule:
-            ScheduleStep(days: $store.onboardingDraft.trainingDaysPerWeek, duration: $store.onboardingDraft.preferredWorkoutLength)
-        case .motivationStyle:
-            MotivationStyleStep(selection: $store.onboardingDraft.coachingTone)
-        case .confidence:
-            ConfidenceStep(selection: $store.onboardingDraft.confidence)
-        case .obstacle:
-            ObstacleStep(selection: $store.onboardingDraft.biggestObstacle)
-        case .theme:
-            ThemeSelectionStep()
-        case .avatar:
-            AvatarStarterStep(selection: $store.onboardingDraft.avatarStyle, avatars: store.availableAvatars)
         case .review:
             ProfileReviewStep()
         }
@@ -211,21 +191,12 @@ struct OnboardingFlowView: View {
 private enum OnboardingStep {
     case welcome
     case name
-    case gender
     case accountType
     case goal
     case sport
-    case trainingStyle
     case experience
-    case bodyInfo
-    case injuryPain
-    case equipment
     case schedule
-    case motivationStyle
-    case confidence
-    case obstacle
-    case theme
-    case avatar
+    case injuryPain
     case review
 }
 
@@ -291,38 +262,17 @@ private struct NameStep: View {
                     .textContentType(.givenName)
                     .submitLabel(.done)
                     .autocorrectionDisabled()
+                    .onChange(of: name) { _, newValue in
+                        // The name becomes the greeting and the handle —
+                        // keep it a name, not a paragraph.
+                        if newValue.count > 40 {
+                            name = String(newValue.prefix(40))
+                        }
+                    }
 
                 Text("Example: Alex")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
-            }
-        }
-    }
-}
-
-private struct GenderSelectionStep: View {
-    @Binding var selection: GenderOption
-
-    var body: some View {
-        OnboardingCard(
-            title: "What's your gender?",
-            subtitle: "This helps personalize your profile and starting plan context."
-        ) {
-            HStack(spacing: 10) {
-                ForEach(GenderOption.allCases) { gender in
-                    Button {
-                        selection = gender
-                    } label: {
-                        VStack(spacing: 8) {
-                            Text(gender.shortTitle)
-                                .font(.system(.title, design: .rounded).weight(.bold))
-                            Text(gender.rawValue)
-                                .font(.subheadline.weight(.semibold))
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: selection == gender, selectedColor: MorpheTheme.accent))
-                }
             }
         }
     }
@@ -452,37 +402,6 @@ private struct SportSelectionStep: View {
     }
 }
 
-private struct TrainingStyleSelectionStep: View {
-    @Environment(MorpheAppStore.self) private var store
-
-    var body: some View {
-        OnboardingCard(
-            title: "How do you like to train?",
-            subtitle: "Pick up to 5 training styles. Morphe uses these to shape the plan and the language around it."
-        ) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("\(store.onboardingDraft.selectedTrainingStyles.count) of 5 selected")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.textMuted)
-
-                WrapStack(spacing: 10) {
-                    ForEach(TrainingStyleOption.allCases) { style in
-                        Button(style.rawValue) {
-                            store.toggleOnboardingTrainingStyle(style)
-                        }
-                        .buttonStyle(
-                            FilterChipStyle(
-                                isSelected: store.onboardingDraft.selectedTrainingStyles.contains(style),
-                                selectedColor: MorpheTheme.accentAlt
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
 private struct ExperienceLevelStep: View {
     @Binding var selection: ExperienceLevelOption
 
@@ -503,30 +422,6 @@ private struct ExperienceLevelStep: View {
     }
 }
 
-private struct BodyInfoStep: View {
-    @Binding var age: Int
-    @Binding var height: String
-    @Binding var weight: String
-
-    var body: some View {
-        OnboardingCard(
-            title: "A quick starting snapshot",
-            subtitle: "Optional — it helps your plan and progress feel grounded. You can skip or change it later."
-        ) {
-            VStack(spacing: 12) {
-                Stepper("Age: \(age)", value: $age, in: 13...80)
-                    .foregroundStyle(.white)
-
-                TextField("Height (e.g. 5'10\")", text: $height)
-                    .textFieldStyle(MorpheFieldStyle())
-
-                TextField("Weight (e.g. 170 lb)", text: $weight)
-                    .textFieldStyle(MorpheFieldStyle())
-            }
-        }
-    }
-}
-
 private struct InjuryPainStep: View {
     @Binding var text: String
 
@@ -542,301 +437,29 @@ private struct InjuryPainStep: View {
     }
 }
 
-private struct EquipmentStep: View {
-    @Binding var text: String
-
-    private let accessOptions: [(title: String, detail: String, inventory: [String])] = [
-        ("Home Setup", "Bodyweight, dumbbells, jump rope", ["Adjustable dumbbells", "Bench", "Bands", "Jump rope"]),
-        ("Planet Fitness", "Simple strength + cardio access", ["Smith machine", "Cable stack", "Leg press", "Treadmills", "Dumbbells to 75 lb"]),
-        ("LA Fitness", "Full commercial gym access", ["Power rack", "Cable station", "Dumbbells", "Benches", "Turf", "Bikes"]),
-        ("Boxing Gym", "Skill + conditioning equipment", ["Heavy bags", "Speed bag", "Jump ropes", "Medicine balls", "Open mat"])
-    ]
-
-    private var selectedAccess: (title: String, detail: String, inventory: [String])? {
-        accessOptions.first(where: { text.contains($0.title) || text.contains($0.detail) })
-    }
-
-    var body: some View {
-        OnboardingCard(
-            title: "What equipment do you have access to?",
-            subtitle: "Pick the setup closest to yours so Morphe can suggest better exercise swaps."
-        ) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Quick access")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-
-                WrapStack(spacing: 10) {
-                    ForEach(accessOptions, id: \.title) { option in
-                        Button(option.title) {
-                            text = "\(option.title) • \(option.detail)"
-                        }
-                        .buttonStyle(FilterChipStyle(isSelected: selectedAccess?.title == option.title, selectedColor: MorpheTheme.accent))
-                    }
-                }
-
-                if let selectedAccess {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Equipment view")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-
-                            Text(selectedAccess.detail)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-
-                            WrapStack(spacing: 8) {
-                                ForEach(selectedAccess.inventory, id: \.self) { item in
-                                    Text(item)
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 8)
-                                        .background(
-                                            Capsule(style: .continuous)
-                                                .fill(MorpheTheme.panelStrong)
-                                        )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                TextField("Add anything else Morphe should know about your setup", text: $text, axis: .vertical)
-                    .textFieldStyle(MorpheFieldStyle())
-                    .lineLimit(3...5)
-            }
-        }
-    }
-}
-
 private struct ScheduleStep: View {
     @Binding var days: Int
-    @Binding var duration: Int
 
     var body: some View {
         OnboardingCard(
-            title: "What schedule feels realistic?",
-            subtitle: "We care more about repeatable momentum than perfect ambition."
-        ) {
-            VStack(spacing: 12) {
-                Stepper("Training days per week: \(days)", value: $days, in: 1...7)
-                    .foregroundStyle(.white)
-                Stepper("Preferred workout length: \(duration) min", value: $duration, in: 10...90, step: 5)
-                    .foregroundStyle(.white)
-            }
-        }
-    }
-}
-
-private struct MotivationStyleStep: View {
-    @Binding var selection: CoachingTone
-
-    var body: some View {
-        OnboardingCard(
-            title: "How do you want Morphe to coach you?",
-            subtitle: selection.preview
-        ) {
-            WrapStack(spacing: 10) {
-                ForEach(CoachingTone.allCases) { tone in
-                    Button(tone.rawValue) {
-                        selection = tone
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: selection == tone))
-                }
-            }
-        }
-    }
-}
-
-private struct ConfidenceStep: View {
-    @Binding var selection: ConfidenceLevel
-
-    var body: some View {
-        OnboardingCard(
-            title: "How confident are you right now?",
-            subtitle: "This helps Morphe decide how aggressive or gentle the first week should feel."
-        ) {
-            HStack(spacing: 8) {
-                ForEach(ConfidenceLevel.allCases) { level in
-                    Button(level.rawValue) {
-                        selection = level
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: selection == level, selectedColor: MorpheTheme.accentAlt))
-                }
-            }
-        }
-    }
-}
-
-private struct ObstacleStep: View {
-    @Binding var selection: ObstacleOption
-
-    var body: some View {
-        OnboardingCard(
-            title: "What gets in the way most often?",
-            subtitle: "Morphe uses this to pre-build a better Plan B."
-        ) {
-            WrapStack(spacing: 10) {
-                ForEach(ObstacleOption.allCases) { obstacle in
-                    Button(obstacle.rawValue) {
-                        selection = obstacle
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: selection == obstacle, selectedColor: MorpheTheme.warning))
-                }
-            }
-        }
-    }
-}
-
-private struct ThemeSelectionStep: View {
-    @Environment(MorpheAppStore.self) private var store
-
-    var body: some View {
-        OnboardingCard(
-            title: "Pick a theme preset",
-            subtitle: "Premium Profile is free at launch, so personalization starts immediately."
-        ) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Theme preset")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-
-                WrapStack(spacing: 10) {
-                    ForEach(store.availableThemes) { theme in
-                        Button(theme.rawValue) {
-                            store.onboardingDraft.theme = theme
-                        }
-                        .buttonStyle(
-                            FilterChipStyle(
-                                isSelected: store.onboardingDraft.theme == theme,
-                                selectedColor: MorpheTheme.accent
-                            )
-                        )
-                    }
-                }
-
-                Text("Accent color")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-
-                WrapStack(spacing: 10) {
-                    ForEach(store.availableAccentPalettes) { palette in
-                        Button(palette.rawValue) {
-                            store.previewOnboardingAccentPalette(palette)
-                        }
-                        .buttonStyle(
-                            FilterChipStyle(
-                                isSelected: store.onboardingDraft.accentPalette == palette,
-                                selectedColor: MorpheTheme.colors(for: palette).primary
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private struct AvatarStarterStep: View {
-    @Binding var selection: AvatarStyle
-    let avatars: [AvatarStyle]
-
-    var body: some View {
-        OnboardingCard(
-            title: "Pick an avatar starter",
-            subtitle: "A profile that feels like yours makes the habit easier to keep."
+            title: "How many days a week can you train?",
+            subtitle: "We care more about repeatable momentum than perfect ambition. This becomes your weekly target."
         ) {
             VStack(alignment: .leading, spacing: 12) {
-                MorpheAvatarView(
-                    avatar: AvatarProfile(
-                        style: selection,
-                        gear: "Starter gear",
-                        outfit: "Demo kit",
-                        background: "Studio",
-                        badgeFrame: "Builder frame",
-                        levelGlow: "Electric blue"
-                    ),
-                    size: 84
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Text("Choose the starter that feels closest to your vibe. You can customize the full profile later.")
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(avatars) { avatar in
-                            Button {
-                                selection = avatar
-                            } label: {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    MorpheAvatarView(
-                                        avatar: AvatarProfile(
-                                            style: avatar,
-                                            gear: "Starter gear",
-                                            outfit: "Demo kit",
-                                            background: "Studio",
-                                            badgeFrame: "Builder frame",
-                                            levelGlow: "Electric blue"
-                                        ),
-                                        size: 64
-                                    )
-
-                                    HStack(spacing: 8) {
-                                        Image(systemName: avatar.systemImage)
-                                            .font(.caption.weight(.bold))
-                                            .foregroundStyle(MorpheTheme.accentAlt)
-                                        Text(avatar.starterKitLabel)
-                                            .font(.caption.weight(.bold))
-                                            .foregroundStyle(MorpheTheme.textMuted)
-                                    }
-
-                                    Text(avatar.rawValue)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                        .multilineTextAlignment(.leading)
-
-                                    Text(avatarSubtitle(for: avatar))
-                                        .font(.caption)
-                                        .foregroundStyle(MorpheTheme.textSecondary)
-                                        .multilineTextAlignment(.leading)
-                                        .lineLimit(2)
-                                }
-                                .padding(14)
-                                .frame(width: 172, alignment: .leading)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(selection == avatar ? MorpheTheme.panelStrong : MorpheTheme.panel)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .stroke(selection == avatar ? MorpheTheme.accent : MorpheTheme.stroke, lineWidth: 1)
-                                )
-                            }
-                            .buttonStyle(.plain)
+                HStack(spacing: 8) {
+                    ForEach(1...7, id: \.self) { count in
+                        Button("\(count)") {
+                            days = count
                         }
+                        .buttonStyle(FilterChipStyle(isSelected: days == count, selectedColor: MorpheTheme.accent))
+                        .accessibilityLabel("\(count) days per week\(days == count ? ", selected" : "")")
                     }
                 }
-            }
-        }
-    }
 
-    private func avatarSubtitle(for avatar: AvatarStyle) -> String {
-        switch avatar {
-        case .cleanStarter:
-            return "Simple, clean, and focused on consistency."
-        case .fightReady:
-            return "Sharp, athletic, and built for combat sport energy."
-        case .matchFit:
-            return "Made for game shape and steady match fitness."
-        case .jumpDay:
-            return "Explosive, fast, and ready for court work."
-        case .roadRunner:
-            return "Clean pace, endurance, and calm momentum."
-        case .strengthBuilder:
-            return "Grounded, strong, and built around repeatable lifting."
+                Text("\(days) day\(days == 1 ? "" : "s") a week — you can change this anytime.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
         }
     }
 }
@@ -852,45 +475,44 @@ private struct ProfileReviewStep: View {
         store.onboardingDraft.accountType == .coach
     }
 
+    /// A banner that matches the chosen sport — everyone used to get boxing.
+    private var bannerPreset: BannerPreset {
+        switch store.onboardingDraft.sport {
+        case .boxing: return .boxing
+        case .soccer: return .soccer
+        case .basketball: return .basketball
+        case .running, .track: return .running
+        case .strength: return .strength
+        case .weightLoss: return .fatLoss
+        default: return .minimalPremium
+        }
+    }
+
     var body: some View {
         OnboardingCard(
-            title: isCoach ? "Review your coach profile" : "Review your athlete profile",
-            subtitle: isCoach ? "One last look before Morphe builds your first workspace." : "One last look before Morphe builds your first personalized plan."
+            title: isCoach ? "Review your coach profile" : "Review your profile",
+            subtitle: isCoach ? "One last look before Morphe builds your first workspace." : "One last look before Morphe builds your starting plan."
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 ProfileBannerView(
                     banner: BannerProfile(
-                        preset: store.onboardingDraft.sport == .soccer ? .soccer : store.onboardingDraft.sport == .basketball ? .basketball : store.onboardingDraft.sport == .running ? .running : .boxing,
+                        preset: bannerPreset,
                         title: generatedPlan.phase,
                         subtitle: store.onboardingDraft.goal.rawValue
                     ),
                     theme: store.onboardingDraft.theme
                 )
 
-                HStack(spacing: 12) {
-                    MorpheAvatarView(
-                        avatar: AvatarProfile(
-                            style: store.onboardingDraft.avatarStyle,
-                            gear: "Starter",
-                            outfit: "Demo",
-                            background: "Preview",
-                            badgeFrame: "Builder",
-                            levelGlow: "Accent"
-                        ),
-                        size: 72
-                    )
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Starting level: \(store.onboardingDraft.experienceLevel.rawValue)")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                        Text("Primary focus: \(store.onboardingDraft.sport.rawValue)")
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Starting level: \(store.onboardingDraft.experienceLevel.rawValue)")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text("Primary focus: \(store.onboardingDraft.sport.rawValue)")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
                 }
 
-                Text(isCoach ? "What Morphe will build for you" : "What Morphe will build for you")
+                Text("What Morphe will build for you")
                     .font(.headline)
                     .foregroundStyle(.white)
 
@@ -899,18 +521,19 @@ private struct ProfileReviewStep: View {
                         .foregroundStyle(MorpheTheme.textPrimary)
                 }
 
-                ProfileLine(title: "Gender", value: store.onboardingDraft.gender.rawValue)
                 ProfileLine(title: "First phase", value: generatedPlan.phase)
                 ProfileLine(title: "Sports selected", value: store.onboardingDraft.selectedSports.map(\.shortTitle).joined(separator: ", "))
-                ProfileLine(title: "Training selected", value: store.onboardingDraft.selectedTrainingStyles.map(\.rawValue).joined(separator: ", "))
                 ProfileLine(title: "Goals selected", value: store.onboardingDraft.selectedGoals.map(\.rawValue).joined(separator: ", "))
                 ProfileLine(title: isCoach ? "Physical outcome" : "Physical goal", value: store.onboardingDraft.physicalGoalTarget)
                 ProfileLine(title: "Weight goal", value: store.onboardingDraft.weightGoalTarget)
                 ProfileLine(title: "Deadline", value: store.onboardingDraft.goalDeadline)
-                ProfileLine(title: isCoach ? "Suggested structure" : "Suggested schedule", value: "\(store.onboardingDraft.trainingDaysPerWeek) training days, \(store.onboardingDraft.preferredWorkoutLength)-minute sessions")
+                ProfileLine(title: isCoach ? "Suggested structure" : "Weekly target", value: "\(store.onboardingDraft.trainingDaysPerWeek) training days")
+                if !store.onboardingDraft.injuries.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    ProfileLine(title: "Injuries & limits", value: store.onboardingDraft.injuries)
+                }
                 ProfileLine(title: isCoach ? "First action" : "Today's first task", value: generatedPlan.firstTask)
                 ProfileLine(title: isCoach ? "Workspace summary" : "Plan summary", value: generatedPlan.message)
-                Text("Tap Create My Plan and Morphe will turn this into your first starting plan.")
+                Text("Tap Create My Plan and Morphe will turn this into your starting plan.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
             }
@@ -923,10 +546,11 @@ private struct PersonalizedPlanLoadingView: View {
     @State private var message = "Reading your goals..."
     @State private var hasStarted = false
 
+    // Only inputs the plan actually reads (equipment/coaching-style steps
+    // no longer exist).
     private let messages = [
         "Reading your goals...",
-        "Checking your equipment...",
-        "Matching your coaching style...",
+        "Matching your sport and level...",
         "Building your first week..."
     ]
 

@@ -1435,7 +1435,7 @@ struct OnboardingDraft: Hashable {
     var biggestObstacle: ObstacleOption = .time
     var theme: ThemePreset = .morpheBlackBlue
     var accentPalette: AccentPalette = .electricBlue
-    var avatarStyle: AvatarStyle = .fightReady
+    var avatarStyle: AvatarStyle = .cleanStarter
 
     var goal: FitnessGoalOption {
         get { selectedGoals.first ?? .improveConditioning }
@@ -1443,7 +1443,7 @@ struct OnboardingDraft: Hashable {
     }
 
     var sport: SportFocus {
-        get { selectedSports.first ?? .boxing }
+        get { selectedSports.first ?? .generalFitness }
         set { selectedSports = [newValue] }
     }
 }
