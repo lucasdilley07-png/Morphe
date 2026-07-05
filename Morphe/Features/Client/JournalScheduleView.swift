@@ -3,7 +3,16 @@ import SwiftUI
 
 struct ExerciseDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(MorpheAppStore.self) private var store
     let exercise: ExerciseReference
+
+    /// Only alternatives that actually exist in the library — several listed
+    /// names have no page, and dead text teaches nothing.
+    private var realAlternatives: [ExerciseReference] {
+        exercise.alternatives.compactMap { name in
+            store.exerciseDatabase.first { $0.name == name }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,6 +30,13 @@ struct ExerciseDetailView: View {
                             }
 
                             MetricPill(label: "Difficulty", value: exercise.difficulty.rawValue)
+
+                            if !exercise.whyThisMatters.isEmpty {
+                                Text(exercise.whyThisMatters)
+                                    .font(.subheadline)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                     }
 
@@ -59,15 +75,25 @@ struct ExerciseDetailView: View {
                         }
                     }
 
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Alternative Exercises")
-                                .font(.headline)
-                                .foregroundStyle(.white)
+                    if !realAlternatives.isEmpty {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Alternative Exercises")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+                                Text("Tap one to open its form guide.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
 
-                            ForEach(exercise.alternatives, id: \.self) { option in
-                                Text("- \(option)")
-                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                WrapStack(spacing: 8) {
+                                    ForEach(realAlternatives) { alternative in
+                                        Button(alternative.name) {
+                                            // Swaps the sheet's content in place.
+                                            store.selectedExercise = alternative
+                                        }
+                                        .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
+                                    }
+                                }
                             }
                         }
                     }

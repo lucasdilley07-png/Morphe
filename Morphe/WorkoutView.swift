@@ -195,6 +195,9 @@ struct WorkoutView: View {
                             onPain: {
                                 store.painTriggerExercise = activeExercise.name
                                 isShowingPainFlow = true
+                            },
+                            onViewForm: {
+                                store.showExerciseDetail(for: activeExercise)
                             }
                         )
                     }
@@ -1147,6 +1150,7 @@ private struct LiveWorkoutSupportToolsCard: View {
     let onPrevious: () -> Void
     let onSwap: () -> Void
     let onPain: () -> Void
+    let onViewForm: () -> Void
     @State private var inlineAIReply: String?
     @State private var inlineAIContextTitle = "Morphe assist"
 
@@ -1169,6 +1173,11 @@ private struct LiveWorkoutSupportToolsCard: View {
 
                     Button("Swap exercise", action: onSwap)
                         .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
+
+                    // Form questions happen mid-set — the full guide (steps,
+                    // mistakes, alternatives) opens right here now.
+                    Button("Form guide", action: onViewForm)
+                        .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
 
                     Button("Pain flag", action: onPain)
                         .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.warning))
@@ -1547,10 +1556,12 @@ private struct SetRepLoggingSheet: View {
     let onSave: () -> Void
 
     @State private var weightText = ""
+    @State private var showRPEHelp = false
 
     var body: some View {
         @Bindable var store = store
         return NavigationStack {
+            ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
                     Text("Log your set")
@@ -1612,9 +1623,36 @@ private struct SetRepLoggingSheet: View {
                             .accessibilityLabel("RPE \(level)\(rpe == level ? ", selected" : "")")
                         }
                     }
-                    Text("10 = nothing left in the tank. Tap again to clear.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
+                    HStack(spacing: 10) {
+                        Text("10 = nothing left in the tank. Tap again to clear.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+
+                        Spacer(minLength: 0)
+
+                        // The RPE lesson, at the exact moment RPE is asked.
+                        Button(showRPEHelp ? "Hide" : "What's RPE?") {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showRPEHelp.toggle()
+                            }
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentAlt)
+                    }
+
+                    if showRPEHelp,
+                       let lesson = store.lessons.first(where: { $0.title == "The RPE Scale" }) {
+                        Text(lesson.detail)
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(MorpheTheme.panelStrong.opacity(0.6))
+                            )
+                            .transition(.opacity)
+                    }
                 }
 
                 HStack(spacing: 10) {
@@ -1631,9 +1669,9 @@ private struct SetRepLoggingSheet: View {
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 }
 
-                Spacer()
             }
             .padding(20)
+            }
             .background(PremiumBackground())
             .onAppear { weightText = weight > 0 ? String(weight) : "" }
         }

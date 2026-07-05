@@ -833,6 +833,22 @@ private struct RecoveryCheckInSheet: View {
                     }
                     .tint(MorpheTheme.danger)
 
+                    // The recovery lesson, at the exact moment recovery is asked.
+                    if let lesson = store.lessons.first(where: { $0.title == "Recovery Basics" }) {
+                        DisclosureGroup {
+                            Text(lesson.detail)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 6)
+                        } label: {
+                            Text("Why this check-in matters")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.accentAlt)
+                        }
+                        .tint(MorpheTheme.accentAlt)
+                    }
+
                     Button("Save Check-In") {
                         store.submitRecoveryCheckIn(
                             sleepHours: sleepHours,

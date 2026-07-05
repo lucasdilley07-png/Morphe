@@ -1957,9 +1957,13 @@ final class MorpheAppStore {
     }
 
     func swapExercise(_ exercise: WorkoutExercise) {
+        // Use the first alternative that actually exists in the library —
+        // several exercises list a dangling first alt, which used to kill
+        // the swap even when a valid second option existed.
         guard let libraryExercise = exerciseDatabase.first(where: { $0.id == exercise.exerciseLibraryID }),
-              let alternativeName = libraryExercise.alternatives.first,
-              let replacement = exerciseDatabase.first(where: { $0.name == alternativeName })
+              let replacement = libraryExercise.alternatives
+                  .compactMap({ name in exerciseDatabase.first { $0.name == name } })
+                  .first
         else {
             showToast("No swap available for \(exercise.name).")
             return
@@ -2078,7 +2082,13 @@ final class MorpheAppStore {
     }
 
     func showExerciseDetail(for exercise: WorkoutExercise) {
-        selectedExercise = exerciseDatabase.first(where: { $0.id == exercise.exerciseLibraryID })
+        if let reference = exerciseDatabase.first(where: { $0.id == exercise.exerciseLibraryID }) {
+            selectedExercise = reference
+        } else {
+            // Custom exercises have no library page yet — say so instead of
+            // a tap that silently does nothing.
+            showToast("No form guide for \(exercise.name) yet.")
+        }
     }
 
     func selectMuscleGroup(_ group: MuscleGroup) {

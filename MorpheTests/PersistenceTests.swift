@@ -629,6 +629,34 @@ final class WorkoutSessionTests: XCTestCase {
                           "enough XP must actually level up (the bar used to clamp)")
     }
 
+    func testSwapFallsThroughDanglingAlternatives() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        // Every library exercise with ANY resolvable alternative must swap —
+        // several list a dangling FIRST alternative (e.g. Shoulder Press ->
+        // "Landmine Press"), which used to kill the swap outright.
+        let swappable = store.exerciseDatabase.filter { reference in
+            reference.alternatives.contains { name in
+                store.exerciseDatabase.contains { $0.name == name }
+            }
+        }
+        XCTAssertFalse(swappable.isEmpty)
+
+        for reference in swappable {
+            store.createCustomWorkout(
+                name: "Swap \(reference.name)",
+                sport: .strength,
+                items: [CustomWorkoutItem(exercise: reference, sets: 3, reps: 10)]
+            )
+            let exercise = store.currentWorkout.exercises.first!
+            store.swapExercise(exercise)
+            XCTAssertNotEqual(store.currentWorkout.exercises.first?.name, reference.name,
+                              "\(reference.name) must swap to a real alternative")
+        }
+    }
+
     func testFreshUserHasNoFabricatedMetricsOrRules() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
