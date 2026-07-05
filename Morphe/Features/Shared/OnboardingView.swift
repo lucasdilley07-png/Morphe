@@ -2,8 +2,17 @@ import SwiftUI
 
 struct LaunchSequenceView: View {
     @Environment(MorpheAppStore.self) private var store
-    @State private var message = "Reading your recovery..."
+    @State private var message = ""
     @State private var hasStarted = false
+
+    /// A fresh install has no recovery, goals, or plan to "read" — claiming
+    /// otherwise was the app's first lie. New users get one honest brand beat;
+    /// returning users get their plan status.
+    private var launchMessages: [String] {
+        store.hasCompletedOnboarding
+            ? ["Loading your training...", "Today's plan is ready."]
+            : ["TRANSFORM. EVOLVE. BECOME."]
+    }
 
     var body: some View {
         VStack(spacing: 18) {
@@ -30,9 +39,8 @@ struct LaunchSequenceView: View {
         .task {
             guard !hasStarted else { return }
             hasStarted = true
-            let messages = MorpheDemoContent.launchMessages + ["Today's plan is ready"]
 
-            for item in messages {
+            for item in launchMessages {
                 message = item
                 try? await Task.sleep(for: .milliseconds(650))
             }
@@ -239,15 +247,15 @@ private struct WelcomeLandingStep: View {
                         .font(.system(.largeTitle, design: .rounded).weight(.bold))
                         .foregroundStyle(.white)
 
-                    Text("Morphe helps beginners, athletes, and coaches know what to do today, why it matters, and how to keep going when life gets noisy.")
+                    Text("Morphe helps you know what to do today, why it matters, and how to keep going when life gets noisy.")
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
 
                     VStack(alignment: .leading, spacing: 10) {
                         LandingPoint(text: "Create your profile")
-                        LandingPoint(text: "Pick your goal, equipment, and training style")
-                        LandingPoint(text: "Choose how Morphe should coach you")
-                        LandingPoint(text: "Let AI build your first personalized plan")
+                        LandingPoint(text: "Pick your goal and sport")
+                        LandingPoint(text: "Set your weekly schedule")
+                        LandingPoint(text: "Morphe builds your starting plan")
                     }
                 }
             }
@@ -955,7 +963,7 @@ private struct PersonalizedPlanLoadingView: View {
             ProgressView()
                 .tint(MorpheTheme.accent)
 
-            Text("Morphe is shaping your starting plan from your goal, equipment, training style, and coaching preferences.")
+            Text("Morphe is shaping your starting plan from your goal, sport, experience, and weekly schedule.")
                 .font(.caption)
                 .foregroundStyle(MorpheTheme.textMuted)
                 .multilineTextAlignment(.center)

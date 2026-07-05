@@ -9,11 +9,6 @@ enum MorpheDemoContent {
         "Small wins. Real transformation."
     ]
 
-    static let launchMessages = [
-        "Reading your recovery...",
-        "Checking your goals...",
-        "Today's plan is ready."
-    ]
 
     static let themePresets = ThemePreset.allCases
     static let accentPalettes = AccentPalette.allCases
@@ -2853,11 +2848,14 @@ enum MorpheDemoContent {
         .compactMap { $0 }
         .joined(separator: " ")
 
+        // Promise only what the day-0 app actually delivers: a training-day
+        // target and a first workout to log. (Previously promised recovery
+        // check-ins and a nutrition habit that don't exist at tier 0.)
         return (
             phase: "Build Consistency",
             goalTranslation: goal,
-            firstTask: "Complete today's readiness check-in",
-            message: "Your first phase is Build Consistency. This week, Morphe recommends \(draft.trainingDaysPerWeek) short training sessions, 2 recovery check-ins, and one simple nutrition habit\(focusSummary.isEmpty ? "" : " built around your \(focusSummary)").\(targetSummary.isEmpty ? "" : " \(targetSummary)")"
+            firstTask: "Log your first workout",
+            message: "Your first phase is Build Consistency: \(draft.trainingDaysPerWeek) training days a week\(focusSummary.isEmpty ? "" : " built around your \(focusSummary)"). Start with one workout — everything in Morphe grows from your logs.\(targetSummary.isEmpty ? "" : " \(targetSummary)")"
         )
     }
 

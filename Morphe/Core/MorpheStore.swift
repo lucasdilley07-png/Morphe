@@ -556,6 +556,12 @@ final class MorpheAppStore {
         // logs and custom workouts survive.
         clearSeededDemoData()
 
+        // Re-apply the user's own safety/setup notes: the demo clear above
+        // resets limitations/equipment (so the demo athlete's knee complaint
+        // can't leak), which must not erase what THIS user restored.
+        clientProfile.equipment = snapshot.equipment
+        clientProfile.limitations = snapshot.injuries
+
         // History/consistency/score/streak were derived in init against the seeded
         // id; rebuild them now that the user's real identity is restored.
         refreshWorkoutLogDerivedState(for: clientProfile.id)
@@ -1345,6 +1351,12 @@ final class MorpheAppStore {
         // starts in THEIR OWN empty account, not the demo athlete's.
         resetToFreshUser()
 
+        // The user's own safety and setup notes — applied AFTER the reset
+        // (which clears the demo athlete's) so they actually stick. These were
+        // previously discarded and the demo knee complaint persisted instead.
+        clientProfile.limitations = onboardingDraft.injuries.trimmingCharacters(in: .whitespacesAndNewlines)
+        clientProfile.equipment = onboardingDraft.equipment.trimmingCharacters(in: .whitespacesAndNewlines)
+
         showWelcomeExperience = true
         showCelebration(title: "You're all set", detail: "Log your first workout to get going.", symbol: "sparkles")
         persistLocalProfile()
@@ -1389,6 +1401,17 @@ final class MorpheAppStore {
         roadmap = []                    // no fabricated "Assessment — Done" phases
         clientProfile.adherence = 0
         clientProfile.coachName = ""    // no seeded "Coach Marcus" in solo v1
+        // The demo athlete's safety/setup notes and earned level must never
+        // become a new user's (the injuries field is safety data).
+        clientProfile.limitations = ""
+        clientProfile.equipment = ""
+        clientProfile.level = LevelProgress(
+            currentTitle: "Level 1",
+            nextTitle: "Level 2",
+            currentXP: 0,
+            targetXP: 100,
+            streak: 0
+        )
         didCompleteQuickCheckIn = false
         recovery = Self.neutralRecovery
 

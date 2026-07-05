@@ -556,6 +556,33 @@ final class WorkoutSessionTests: XCTestCase {
                        "the log records time actually trained, not the template's planned length")
     }
 
+    func testOnboardingSavesUsersOwnInjuriesNotDemoAthletes() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.onboardingDraft.injuries = "Shoulder impingement, avoid overhead press"
+        store.onboardingDraft.equipment = "Kettlebells only"
+        store.completeOnboarding()
+
+        XCTAssertEqual(store.clientProfile.limitations, "Shoulder impingement, avoid overhead press",
+                       "the user's typed injuries must be saved — this is safety data")
+        XCTAssertEqual(store.clientProfile.equipment, "Kettlebells only")
+        XCTAssertFalse(store.clientProfile.limitations.contains("Knee"),
+                       "the demo athlete's knee complaint must never leak into a real profile")
+
+        // And it survives relaunch (was previously overwritten by demo data).
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.limitations, "Shoulder impingement, avoid overhead press")
+    }
+
+    func testFreshUserStartsAtLevelOne() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertEqual(store.clientProfile.level.currentXP, 0, "no inherited demo XP")
+        XCTAssertEqual(store.clientProfile.level.currentTitle, "Level 1")
+    }
+
     func testConsistencyTargetComesFromOnboarding() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
