@@ -815,6 +815,20 @@ enum WeightUnit: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+/// Per-exercise strength trend derived from real per-set log data — the
+/// "am I getting stronger?" answer. Weights are normalized to the user's
+/// current display unit.
+struct ExerciseStrengthProgress: Identifiable, Hashable {
+    var id: String { exerciseName }
+    var exerciseName: String
+    var sessionCount: Int
+    var latestTopWeight: Double
+    var previousTopWeight: Double
+    var latestDate: Date
+
+    var delta: Double { latestTopWeight - previousTopWeight }
+}
+
 /// One exercise's logged work in the just-finished session, for the recap.
 struct WorkoutSetRecap: Identifiable, Hashable {
     var id: String          // exercise id

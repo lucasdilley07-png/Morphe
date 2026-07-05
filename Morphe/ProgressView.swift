@@ -243,6 +243,15 @@ struct ProgressScreenView: View {
 
     private var progressPanel: some View {
         Group {
+            // "Am I getting stronger?" leads the screen — it's the question
+            // this page exists to answer.
+            if !store.exerciseStrengthProgress.isEmpty {
+                StrengthProgressCard(
+                    items: store.exerciseStrengthProgress,
+                    weightUnit: store.weightUnit
+                )
+            }
+
             AIInsightCard(insight: store.clientProfile.aiProgressInsight)
             LogDrivenWeeklySummaryCard(summary: logSummary)
             AthletePatternInsightsCard(insights: athletePatternInsights)
@@ -269,7 +278,7 @@ struct ProgressScreenView: View {
                 ProgramComplianceCard(compliance: compliance)
             }
 
-            SharedWorkoutLogsCard(logs: Array(store.currentAthleteWorkoutLogs.prefix(5)))
+            WorkoutHistoryCard(logs: store.currentAthleteWorkoutLogs)
 
             if !store.healthTrend.isEmpty {
                 SimpleChartCard(title: "Activity (last 7 days)") {
@@ -924,65 +933,164 @@ private struct RecentWinsCard: View {
     }
 }
 
-private struct SharedWorkoutLogsCard: View {
-    let logs: [WorkoutLog]
+/// "Am I getting stronger?" — per-exercise top-set trend from real logs.
+private struct StrengthProgressCard: View {
+    let items: [ExerciseStrengthProgress]
+    let weightUnit: WeightUnit
+
+    private func deltaText(_ item: ExerciseStrengthProgress) -> String {
+        if item.delta > 0 { return "+\(weightUnit.format(item.delta))" }
+        if item.delta < 0 { return "-\(weightUnit.format(abs(item.delta)))" }
+        return "Held"
+    }
+
+    private func deltaColor(_ item: ExerciseStrengthProgress) -> Color {
+        if item.delta > 0 { return MorpheTheme.accent }
+        if item.delta < 0 { return MorpheTheme.warning }
+        return MorpheTheme.textMuted
+    }
 
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Shared Workout Log")
+                Text("Strength Progress")
                     .font(.headline)
                     .foregroundStyle(.white)
+                Text("Top set now vs. your previous session, per exercise.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
 
-                if logs.isEmpty {
-                    Text("No workout logs yet. Athlete, coach, and AI entries will all show here once access is granted.")
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                } else {
-                    ForEach(logs) { log in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(alignment: .top) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(log.workoutTitle)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                    Text("\(MorpheAppStore.workoutDateLabel(for: log.completedAt)) • \(log.durationMinutes) min")
-                                        .font(.caption)
-                                        .foregroundStyle(MorpheTheme.textSecondary)
-                                }
-
-                                Spacer()
-
-                                StatusBadge(
-                                    text: log.source.badgeTitle,
-                                    color: badgeColor(for: log.source)
-                                )
-                            }
-
-                            Text("\(log.enteredByName) • \(log.verificationStatus.rawValue)")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.accentAlt)
-
-                            Text(log.notes)
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.textSecondary)
+                ForEach(items.prefix(6)) { item in
+                    HStack(alignment: .center, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.exerciseName)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Text("\(item.sessionCount) sessions")
+                                .font(.caption2)
+                                .foregroundStyle(MorpheTheme.textMuted)
                         }
-                        .padding(.vertical, 4)
+
+                        Spacer(minLength: 0)
+
+                        Text(weightUnit.format(item.latestTopWeight))
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+
+                        Text(deltaText(item))
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(deltaColor(item))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(deltaColor(item).opacity(0.16)))
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(item.exerciseName): top set \(weightUnit.format(item.latestTopWeight)), \(deltaText(item)) versus previous session")
                 }
             }
         }
     }
+}
 
-    private func badgeColor(for source: WorkoutLogSource) -> Color {
-        switch source {
-        case .athleteManual:
-            return MorpheTheme.accent
-        case .coachManual:
-            return MorpheTheme.accentAlt
-        case .aiPhotoParsed:
-            return MorpheTheme.lavender
-        case .partnerShared:
-            return MorpheTheme.warning
+/// The user's own training history with the real per-set numbers inside
+/// each session — not just titles and dates.
+private struct WorkoutHistoryCard: View {
+    let logs: [WorkoutLog]
+    @State private var showAll = false
+
+    /// The default note written by the log flow; pure filler in history.
+    private static let fillerNote = "Logged from the live workout flow."
+
+    private var visibleLogs: [WorkoutLog] {
+        showAll ? logs : Array(logs.prefix(5))
+    }
+
+    private func setLine(for exercise: LoggedExercise) -> String {
+        guard let reps = exercise.repsPerSet, !reps.isEmpty else {
+            // Older logs without per-set data fall back to the summary strings.
+            return "\(exercise.sets) • \(exercise.reps) • \(exercise.weight)"
+        }
+        let weights = exercise.weightsPerSet ?? []
+        let rpes = exercise.rpePerSet ?? []
+        let unit = exercise.weightUnit ?? WeightUnit.pounds.rawValue
+        return reps.indices.map { index in
+            let weight = weights.indices.contains(index) ? weights[index] : 0
+            let rpe = rpes.indices.contains(index) ? rpes[index] : 0
+            var line = weight > 0
+                ? "\(reps[index])×\(weight.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(weight)) : String(weight)) \(unit)"
+                : "\(reps[index]) reps"
+            if rpe > 0 { line += " @\(rpe)" }
+            return line
+        }
+        .joined(separator: ", ")
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Workout History")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    if !logs.isEmpty {
+                        Text("\(logs.count)")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+
+                if logs.isEmpty {
+                    Text("Every workout you log lands here with the real sets and weights.")
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                } else {
+                    ForEach(visibleLogs) { log in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .top) {
+                                Text(log.workoutTitle)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                Spacer()
+                                Text("\(MorpheAppStore.workoutDateLabel(for: log.completedAt)) • \(log.durationMinutes) min")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+
+                            ForEach(log.exercises) { exercise in
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(exercise.name)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                    Text(setLine(for: exercise))
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textSecondary)
+                                }
+                            }
+
+                            if !log.notes.isEmpty && log.notes != Self.fillerNote {
+                                Text(log.notes)
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .accessibilityElement(children: .combine)
+
+                        if log.id != visibleLogs.last?.id {
+                            Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+                        }
+                    }
+
+                    if logs.count > 5 {
+                        Button(showAll ? "Show recent only" : "Show all \(logs.count)") {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showAll.toggle()
+                            }
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                    }
+                }
+            }
         }
     }
 }

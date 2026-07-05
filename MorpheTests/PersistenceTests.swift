@@ -472,6 +472,55 @@ final class WorkoutSessionTests: XCTestCase {
                        "per-set RPE must persist with the session snapshot")
     }
 
+    private func strengthLog(for store: MorpheAppStore, exercise: String, daysAgo: Int,
+                             topWeight: Double, unit: String = "lb") -> WorkoutLog {
+        WorkoutLog(
+            athleteID: store.clientProfile.id,
+            athleteName: store.clientProfile.name,
+            workoutTemplateID: nil,
+            workoutTitle: "Strength Session",
+            sport: .strength,
+            completedAt: Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now,
+            durationMinutes: 30,
+            exercises: [LoggedExercise(
+                name: exercise, sets: "2 sets", reps: "8, 8",
+                weight: "\(Int(topWeight)) \(unit)", note: "",
+                repsPerSet: [8, 8], weightsPerSet: [topWeight - 5, topWeight],
+                rpePerSet: [0, 8], weightUnit: unit
+            )],
+            notes: "", source: .athleteManual,
+            enteredByUserID: store.clientProfile.id, enteredByRole: .client,
+            enteredByName: store.clientProfile.name, verificationStatus: .athleteSubmitted
+        )
+    }
+
+    func testStrengthProgressTracksTopSetAcrossSessions() {
+        let store = freshStore()
+        store.workoutLogs.append(strengthLog(for: store, exercise: "Goblet Squat", daysAgo: 7, topWeight: 45))
+        store.workoutLogs.append(strengthLog(for: store, exercise: "Goblet Squat", daysAgo: 1, topWeight: 50))
+        // Single-session exercise must NOT appear (one point isn't a trend).
+        store.workoutLogs.append(strengthLog(for: store, exercise: "Deadlift", daysAgo: 2, topWeight: 135))
+
+        let progress = store.exerciseStrengthProgress
+        XCTAssertEqual(progress.count, 1, "only exercises with 2+ weighted sessions qualify")
+        XCTAssertEqual(progress.first?.exerciseName, "Goblet Squat")
+        XCTAssertEqual(progress.first?.latestTopWeight ?? 0, 50, accuracy: 0.001)
+        XCTAssertEqual(progress.first?.previousTopWeight ?? 0, 45, accuracy: 0.001)
+        XCTAssertEqual(progress.first?.delta ?? 0, 5, accuracy: 0.001)
+    }
+
+    func testStrengthProgressNormalizesRecordedUnit() {
+        let store = freshStore()
+        store.weightUnit = .pounds
+        // Two sessions recorded in kg while the display unit is lb.
+        store.workoutLogs.append(strengthLog(for: store, exercise: "Bench Press", daysAgo: 7, topWeight: 20, unit: "kg"))
+        store.workoutLogs.append(strengthLog(for: store, exercise: "Bench Press", daysAgo: 1, topWeight: 22.5, unit: "kg"))
+
+        let progress = store.exerciseStrengthProgress.first
+        XCTAssertEqual(progress?.latestTopWeight ?? 0, 49.6, accuracy: 0.2,
+                       "kg-recorded weights are converted to the current lb display unit")
+    }
+
     func testLoggedWorkoutPreservesPerSetData() {
         let store = freshStore()
         startedTwoExerciseSession(store)

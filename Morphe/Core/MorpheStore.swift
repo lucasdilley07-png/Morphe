@@ -974,6 +974,44 @@ final class MorpheAppStore {
         workoutLogs(for: clientProfile.id)
     }
 
+    /// Strength-over-time per exercise, from the raw per-set data on the
+    /// user's own logs. Only exercises with 2+ weighted sessions qualify —
+    /// one data point isn't a trend. Weights recorded in another unit are
+    /// converted to the current display unit before comparison.
+    var exerciseStrengthProgress: [ExerciseStrengthProgress] {
+        // (exerciseName -> [(date, topWeight normalized to current unit)])
+        var history: [String: [(date: Date, top: Double)]] = [:]
+
+        for log in currentAthleteWorkoutLogs.sorted(by: { $0.completedAt < $1.completedAt }) {
+            for exercise in log.exercises {
+                guard let weights = exercise.weightsPerSet,
+                      let top = weights.max(), top > 0 else { continue }
+                let recordedUnit = WeightUnit(rawValue: exercise.weightUnit ?? "") ?? weightUnit
+                let normalized: Double
+                if recordedUnit == weightUnit {
+                    normalized = top
+                } else {
+                    let factor = weightUnit == .kilograms ? 0.45359237 : 2.20462262
+                    normalized = ((top * factor) * 10).rounded() / 10
+                }
+                history[exercise.name, default: []].append((log.completedAt, normalized))
+            }
+        }
+
+        return history.compactMap { name, entries -> ExerciseStrengthProgress? in
+            guard entries.count >= 2, let latest = entries.last else { return nil }
+            let previous = entries[entries.count - 2]
+            return ExerciseStrengthProgress(
+                exerciseName: name,
+                sessionCount: entries.count,
+                latestTopWeight: latest.top,
+                previousTopWeight: previous.top,
+                latestDate: latest.date
+            )
+        }
+        .sorted { $0.latestDate > $1.latestDate }
+    }
+
     var currentAthleteWorkoutSummary: WorkoutLogSummary {
         workoutLogSummary(for: clientProfile.id)
     }
