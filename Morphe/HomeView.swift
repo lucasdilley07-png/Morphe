@@ -451,7 +451,7 @@ private struct TodayNextMoveCard: View {
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
-                Text(minimumWinModeEnabled ? "Today's fallback is active" : "Next move")
+                Text(minimumWinModeEnabled ? "Today's fallback is active" : "Today's Workout")
                     .font(.headline)
                     .foregroundStyle(.white)
 
@@ -552,58 +552,6 @@ private struct DoneForTodayCard: View {
                     .buttonStyle(SecondaryCTAButtonStyle())
             }
         }
-    }
-}
-
-private struct TodayPulseRail: View {
-    let recovery: RecoverySnapshot
-    let morpheScore: Int
-    let streak: Int
-    let rank: String
-    let partner: String
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                PulseMiniCard(title: "Readiness", value: "\(recovery.score)", detail: recovery.status.rawValue)
-                PulseMiniCard(title: "Score", value: "\(morpheScore)", detail: "This week")
-                PulseMiniCard(title: "Streak", value: "\(streak) days", detail: "Momentum")
-                PulseMiniCard(title: "Rank", value: rank, detail: "Network")
-                PulseMiniCard(title: "Partner", value: partner, detail: "Session")
-            }
-        }
-    }
-}
-
-private struct PulseMiniCard: View {
-    let title: String
-    let value: String
-    let detail: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(MorpheTheme.textMuted)
-            Text(value)
-                .font(.headline.weight(.bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-            Text(detail)
-                .font(.caption)
-                .foregroundStyle(MorpheTheme.textSecondary)
-                .lineLimit(1)
-        }
-        .padding(14)
-        .frame(width: 136, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(MorpheTheme.panelInteractive)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(MorpheTheme.stroke, lineWidth: 1)
-                )
-        )
     }
 }
 

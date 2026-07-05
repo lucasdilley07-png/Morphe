@@ -14,8 +14,7 @@ struct WorkoutView: View {
     @State private var pendingRPE: Int?
     @State private var editingSetIndex: Int?
     @State private var showDiscardConfirm = false
-    @State private var showCurrentPlan = false
-    @State private var showProgramDetails = false
+    @State private var showLibrary = false
     @State private var showExerciseList = false
     @State private var showAdjustments = false
     @State private var showSessionQueue = false
@@ -285,107 +284,86 @@ struct WorkoutView: View {
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 }
 
-                Button {
-                    showBuilder = true
-                } label: {
-                    Label("Build your own workout", systemImage: "plus.circle.fill")
-                }
-                .buttonStyle(SecondaryCTAButtonStyle())
-
-                let myWorkouts = store.workoutTemplates.filter { store.isCustomWorkout($0.id) }
-                if !myWorkouts.isEmpty {
-                    YourWorkoutsCard(
-                        workouts: myWorkouts,
-                        onStart: { template in
-                            workoutFinished = false
-                            isShowingPainFlow = false
-                            store.beginLiveWorkout(template)
-                        },
-                        onDelete: { template in
-                            store.deleteCustomWorkout(template.id)
-                        }
-                    )
-                }
-
-                GoodForTodayWorkoutCard(
-                    recommendation: goodForTodayRecommendation,
-                    selectedPartnerName: store.selectedWorkoutPartner?.name,
+                // ONE workout, one name: the same session the Today hero
+                // shows, with Morphe's readiness-based pick demoted to an
+                // inline suggestion instead of a competing second entry point.
+                TodaysWorkoutCard(
+                    workout: store.currentWorkout,
+                    suggestion: store.recommendedWorkoutDiffers ? goodForTodayRecommendation : nil,
                     onStart: {
                         workoutFinished = false
                         isShowingPainFlow = false
-                        store.startGoodForTodayWorkout()
+                        store.startTodayWorkout()
                     },
-                    onWithBuddy: {
-                        workoutFinished = false
-                        isShowingPainFlow = false
-                        store.startGoodForTodayWorkoutWithBuddy()
+                    onUseSuggestion: {
+                        store.applyRecommendedWorkout()
                     },
-                    onSaveForLater: {
-                        store.saveGoodForTodayRecommendation()
+                    onSwitch: {
+                        store.cycleWorkout()
                     }
                 )
 
+                if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
+                    PartnerSessionCard(
+                        partner: partner,
+                        mode: store.selectedPartnerWorkoutMode,
+                        plan: plan
+                    ) {
+                        store.sendPartnerReadyCheck()
+                    }
+                }
+
                 TrainExpandableSection(
-                    title: "Current plan",
-                    subtitle: "\(store.currentWorkout.name) • keep the assigned session close without competing with today's recommended move.",
-                    isExpanded: $showCurrentPlan
+                    title: "My Library",
+                    subtitle: "Build your own workouts and keep favorites and saved sessions in one place.",
+                    isExpanded: $showLibrary
                 ) {
-                    WorkoutSessionCard(
-                        workout: store.currentWorkout,
-                        partner: store.partnerWorkoutEnabled ? store.selectedWorkoutPartner : nil,
-                        onStart: {
+                    Button {
+                        showBuilder = true
+                    } label: {
+                        Label("Build your own workout", systemImage: "plus.circle.fill")
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+
+                    let myWorkouts = store.workoutTemplates.filter { store.isCustomWorkout($0.id) }
+                    if !myWorkouts.isEmpty {
+                        YourWorkoutsCard(
+                            workouts: myWorkouts,
+                            onStart: { template in
+                                workoutFinished = false
+                                isShowingPainFlow = false
+                                store.beginLiveWorkout(template)
+                            },
+                            onDelete: { template in
+                                store.deleteCustomWorkout(template.id)
+                            }
+                        )
+                    }
+
+                    SavedWorkoutsLibraryCard(
+                        items: store.savedWorkouts,
+                        insightFor: { item in
+                            store.savedWorkoutInsight(for: item)
+                        },
+                        onStart: { item in
                             workoutFinished = false
                             isShowingPainFlow = false
-                            store.startTodayWorkout()
+                            store.startSavedWorkout(item)
+                        },
+                        onWithBuddy: { item in
+                            store.startSavedWorkoutWithBuddy(item)
+                        },
+                        onDuplicate: { item in
+                            store.duplicateSavedWorkout(item)
+                        },
+                        onTogglePin: { item in
+                            store.togglePinnedSavedWorkout(item)
+                        },
+                        onRemove: { item in
+                            store.removeSavedWorkout(item)
                         }
                     )
-
-                    if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
-                        PartnerSessionCard(
-                            partner: partner,
-                            mode: store.selectedPartnerWorkoutMode,
-                            plan: plan
-                        ) {
-                            store.sendPartnerReadyCheck()
-                        }
-                    }
                 }
-
-                TrainExpandableSection(
-                    title: "Program details",
-                    subtitle: "\(store.clientProfile.currentProgram) • \(store.profileShowcase.currentPhase)",
-                    isExpanded: $showProgramDetails
-                ) {
-                    CurrentProgramCard(
-                        program: store.clientProfile.currentProgram,
-                        phase: store.profileShowcase.currentPhase,
-                        coachCue: store.currentWorkout.coachNote
-                    )
-                }
-
-                SavedWorkoutsLibraryCard(
-                    items: store.savedWorkouts,
-                    insightFor: { item in
-                        store.savedWorkoutInsight(for: item)
-                    },
-                    onStart: { item in
-                        workoutFinished = false
-                        isShowingPainFlow = false
-                        store.startSavedWorkout(item)
-                    },
-                    onWithBuddy: { item in
-                        store.startSavedWorkoutWithBuddy(item)
-                    },
-                    onDuplicate: { item in
-                        store.duplicateSavedWorkout(item)
-                    },
-                    onTogglePin: { item in
-                        store.togglePinnedSavedWorkout(item)
-                    },
-                    onRemove: { item in
-                        store.removeSavedWorkout(item)
-                    }
-                )
 
                 TrainExpandableSection(
                     title: "Exercise list",
@@ -881,29 +859,6 @@ private struct TrainExpandableSection<Content: View>: View {
     }
 }
 
-private struct CurrentProgramCard: View {
-    let program: String
-    let phase: String
-    let coachCue: String
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Current Program")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                HStack(spacing: 8) {
-                    MetricPill(label: "Program", value: program)
-                    MetricPill(label: "Phase", value: phase)
-                }
-                Text(coachCue)
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-            }
-        }
-    }
-}
-
 private struct ActiveWorkoutTrackerCard: View {
     let workout: WorkoutTemplate
     let exercise: WorkoutExercise
@@ -1300,154 +1255,75 @@ private struct LiveWorkoutSupportToolsCard: View {
     }
 }
 
-private struct WorkoutSessionCard: View {
+/// THE workout card on Train — the same session the Today hero shows, with
+/// one Start. Morphe's readiness-based pick appears as an inline suggestion
+/// ("use this instead"), not a competing card with its own name.
+private struct TodaysWorkoutCard: View {
     let workout: WorkoutTemplate
-    let partner: WorkoutPartner?
+    let suggestion: GoodForTodayWorkoutRecommendation?
     let onStart: () -> Void
+    let onUseSuggestion: () -> Void
+    let onSwitch: () -> Void
 
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Today's Plan")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                        Text(workout.name)
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Text(workout.goal)
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    MetricPill(label: "Duration", value: "\(workout.durationMinutes) min")
-                }
-
-                HStack(spacing: 8) {
-                    MetricPill(label: "Type", value: workout.type)
-                    MetricPill(label: "Difficulty", value: workout.difficulty.rawValue)
-                }
-
-                if let partner {
-                    HStack(spacing: 8) {
-                        MetricPill(label: "Partner", value: partner.name)
-                        MetricPill(label: "Mode", value: "Buddy session")
-                    }
-                }
-
-                Text(workout.notes)
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textPrimary)
-
-                HStack(spacing: 10) {
-                    Button("Start Workout", action: onStart)
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                }
-            }
-        }
-    }
-}
-
-private struct GoodForTodayWorkoutCard: View {
-    let recommendation: GoodForTodayWorkoutRecommendation
-    let selectedPartnerName: String?
-    let onStart: () -> Void
-    let onWithBuddy: () -> Void
-    let onSaveForLater: () -> Void
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Good for Today")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                        Text(recommendation.reasonTitle)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentAlt)
-                    }
-
-                    Spacer()
-
-                    StatusBadge(
-                        text: showBuddy ? "Buddy friendly" : "Best fit",
-                        color: showBuddy ? MorpheTheme.warning : MorpheTheme.accent
-                    )
-                }
-
-                Text(recommendation.workoutName)
-                    .font(.title3.weight(.bold))
+                Text("Today's Workout")
+                    .font(.headline)
                     .foregroundStyle(.white)
 
-                Text(recommendation.reasonDetail)
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-
-                if !recommendation.contextChips.isEmpty {
-                    WrapStack(spacing: 8) {
-                        ForEach(recommendation.contextChips, id: \.self) { chip in
-                            StatusBadge(text: chip, color: chipColor(for: chip))
-                        }
-                    }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(workout.name)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                    Text("\(workout.durationMinutes) min • \(workout.goal)")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
                 }
 
-                if let confidenceNote = recommendation.confidenceNote {
-                    Text(confidenceNote)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.warning)
+                if !workout.coachNote.isEmpty {
+                    Text(workout.coachNote)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 }
 
-                HStack(spacing: 8) {
-                    MetricPill(label: "Best for", value: recommendation.bestFor.rawValue)
-                    MetricPill(label: "Mode", value: showBuddy ? "Buddy" : "Solo")
-                    if let selectedPartnerName, showBuddy {
-                        MetricPill(label: "Partner", value: selectedPartnerName)
-                    }
-                }
+                HStack(spacing: 10) {
+                    Button("Start", action: onStart)
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .accessibilityLabel("Start \(workout.name)")
 
-                HStack(spacing: 8) {
-                    Button("Start") {
-                        onStart()
-                    }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-
-                    if showBuddy {
-                        Button("With Buddy") {
-                            onWithBuddy()
-                        }
+                    Button("Switch", action: onSwitch)
                         .buttonStyle(SecondaryCTAButtonStyle())
-                    }
+                        .frame(width: 110)
+                        .accessibilityLabel("Switch to a different workout")
+                }
 
-                    Button("Save for Later") {
-                        onSaveForLater()
+                if let suggestion {
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "sparkles")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.accentAlt)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Morphe suggests: \(suggestion.workoutName)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                Text(suggestion.reasonTitle)
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                            Spacer(minLength: 0)
+                        }
+
+                        Button("Use this instead", action: onUseSuggestion)
+                            .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
+                            .accessibilityLabel("Switch today's workout to \(suggestion.workoutName)")
                     }
-                    .buttonStyle(SecondaryCTAButtonStyle())
                 }
             }
         }
-    }
-
-    /// Buddy/partner UI is a v2 (multi-user) surface, hidden in v1.
-    private var showBuddy: Bool {
-        FeatureFlags.multiUserEnabled && recommendation.prefersBuddy
-    }
-
-    private func chipColor(for chip: String) -> Color {
-        let lowercasedChip = chip.lowercased()
-        if lowercasedChip.contains("buddy") || lowercasedChip.contains("partner") {
-            return MorpheTheme.warning
-        }
-        if lowercasedChip.contains("recovery") || lowercasedChip.contains("low energy") {
-            return MorpheTheme.accentAlt
-        }
-        if lowercasedChip.contains("time crunch") || lowercasedChip.contains("fallback") || lowercasedChip.contains("easy win") {
-            return MorpheTheme.lavender
-        }
-        return MorpheTheme.accent
     }
 }
 

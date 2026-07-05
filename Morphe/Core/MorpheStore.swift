@@ -2383,30 +2383,25 @@ final class MorpheAppStore {
         beginLiveWorkout(template)
     }
 
-    func startGoodForTodayWorkout() {
-        let recommendation = currentGoodForTodayRecommendation
-        guard let template = workoutTemplates.first(where: { $0.id == recommendation.workoutTemplateID }) else {
-            showToast("That workout is not available right now.")
-            return
-        }
-
-        beginLiveWorkout(template)
+    /// True when Morphe's readiness-based suggestion is a different workout
+    /// than the one currently staged as today's.
+    var recommendedWorkoutDiffers: Bool {
+        currentGoodForTodayRecommendation.workoutTemplateID != currentWorkout.id
     }
 
-    func startGoodForTodayWorkoutWithBuddy() {
+    /// Adopts the readiness-based suggestion as today's workout. One workout
+    /// identity everywhere — Today's hero and Train's card always show the
+    /// same session; the engine's pick is a suggestion, not a second entry
+    /// point with its own name.
+    func applyRecommendedWorkout() {
         let recommendation = currentGoodForTodayRecommendation
         guard let template = workoutTemplates.first(where: { $0.id == recommendation.workoutTemplateID }) else {
             showToast("That workout is not available right now.")
             return
         }
 
-        if selectedWorkoutPartner == nil {
-            selectedWorkoutPartnerID = workoutPartners.first(where: { $0.linkedAthleteID != nil })?.id
-                ?? workoutPartners.first?.id
-        }
-
-        partnerWorkoutEnabled = true
-        beginLiveWorkout(template)
+        currentWorkoutID = template.id
+        showToast("Today's workout is now \(template.name).")
     }
 
     func duplicateSavedWorkout(_ item: SavedWorkoutLibraryItem) {

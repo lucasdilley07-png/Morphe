@@ -346,10 +346,16 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.activeWorkoutExerciseIndex, 0)
     }
 
-    func testGoodForTodayStartEntersLiveSession() {
+    func testApplyRecommendedWorkoutSwapsTodaysSession() {
         let store = freshStore()
-        store.startGoodForTodayWorkout()
-        XCTAssertTrue(store.isWorkoutSessionActive, "the headline recommendation's Start must begin a live session")
+        let recommendedID = store.currentGoodForTodayRecommendation.workoutTemplateID
+
+        store.applyRecommendedWorkout()
+
+        XCTAssertEqual(store.currentWorkout.id, recommendedID,
+                       "accepting the suggestion makes it today's one workout")
+        XCTAssertFalse(store.recommendedWorkoutDiffers, "suggestion row disappears once adopted")
+        XCTAssertFalse(store.isWorkoutSessionActive, "adopting a suggestion stages it; Start goes live")
     }
 
     func testQuickLoggedSetRecordsWeight() {
