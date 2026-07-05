@@ -1425,7 +1425,9 @@ private struct WelcomeExperienceView: View {
                                 .foregroundStyle(.white)
 
                             HStack(spacing: 8) {
-                                MetricPill(label: "Account", value: isCoach ? "Coach" : "Athlete")
+                                if FeatureFlags.multiUserEnabled {
+                                    MetricPill(label: "Account", value: isCoach ? "Coach" : "Athlete")
+                                }
                                 MetricPill(label: "Primary Sport", value: store.clientProfile.sportMode.rawValue)
                                 MetricPill(label: "Primary Goal", value: store.clientProfile.goal)
                             }
@@ -1449,14 +1451,16 @@ private struct WelcomeExperienceView: View {
                             Text("What happens next")
                                 .font(.headline)
                                 .foregroundStyle(.white)
-                            Text(isCoach ? "Open Home to triage the day, use Athletes for profiles and notes, then move into Build or Inbox when you want to act." : "Start on Home for today's plan, open Train when you're ready to move, and use Progress to see the bigger picture.")
+                            // Names the tabs that actually exist, and promises
+                            // only what tier 0 shows: one workout to start.
+                            Text(isCoach ? "Open Home to triage the day, use Athletes for profiles and notes, then move into Build or Inbox when you want to act." : "Today has your first workout ready. Open Train when you're ready to move — and everything else in Morphe grows from the workouts you log.")
                                 .foregroundStyle(MorpheTheme.textSecondary)
-                            Text("You can update your account type, sports, training styles, goals, colors, and profile look anytime from Profile.")
+                            Text("You can update your name and weight unit anytime from your profile.")
                                 .foregroundStyle(MorpheTheme.textPrimary)
                         }
                     }
 
-                    Button(isCoach ? "Open Coach Home" : "Open My Home") {
+                    Button(isCoach ? "Open Coach Home" : "Start Training") {
                         store.dismissWelcomeExperience()
                         dismiss()
                     }

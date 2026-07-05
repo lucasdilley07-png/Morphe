@@ -1357,8 +1357,9 @@ final class MorpheAppStore {
         clientProfile.limitations = onboardingDraft.injuries.trimmingCharacters(in: .whitespacesAndNewlines)
         clientProfile.equipment = onboardingDraft.equipment.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // The welcome sheet IS the completion celebration — the toast overlay
+        // rendered underneath it and expired unseen.
         showWelcomeExperience = true
-        showCelebration(title: "You're all set", detail: "Log your first workout to get going.", symbol: "sparkles")
         persistLocalProfile()
     }
 
@@ -2770,12 +2771,13 @@ final class MorpheAppStore {
         showToast(isCompact ? "Compact exercise view on." : "Detailed exercise cards on.")
     }
 
+    // Selection toggles stay quiet on success — the chip itself shows the
+    // state (and announces it via the .isSelected trait). Toasts only fire
+    // when a tap is BLOCKED, which is the one case that needs explaining.
     func toggleOnboardingGoal(_ goal: FitnessGoalOption) {
         switch toggleSelection(goal, in: &onboardingDraft.selectedGoals) {
-        case .added:
-            showToast("\(goal.rawValue) added.")
-        case .removed:
-            showToast("\(goal.rawValue) removed.")
+        case .added, .removed:
+            Haptics.impact(.light)
         case .blockedMaximum:
             showToast("Pick up to \(personalizationSelectionLimit) goals.")
         case .blockedMinimum:
@@ -2785,10 +2787,8 @@ final class MorpheAppStore {
 
     func toggleOnboardingSport(_ sport: SportFocus) {
         switch toggleSelection(sport, in: &onboardingDraft.selectedSports) {
-        case .added:
-            showToast("\(sport.rawValue) added.")
-        case .removed:
-            showToast("\(sport.rawValue) removed.")
+        case .added, .removed:
+            Haptics.impact(.light)
         case .blockedMaximum:
             showToast("Pick up to \(personalizationSelectionLimit) sports.")
         case .blockedMinimum:
@@ -2798,10 +2798,8 @@ final class MorpheAppStore {
 
     func toggleOnboardingTrainingStyle(_ style: TrainingStyleOption) {
         switch toggleSelection(style, in: &onboardingDraft.selectedTrainingStyles) {
-        case .added:
-            showToast("\(style.rawValue) added.")
-        case .removed:
-            showToast("\(style.rawValue) removed.")
+        case .added, .removed:
+            Haptics.impact(.light)
         case .blockedMaximum:
             showToast("Pick up to \(personalizationSelectionLimit) training styles.")
         case .blockedMinimum:

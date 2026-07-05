@@ -106,6 +106,7 @@ struct OnboardingFlowView: View {
             if isGeneratingPlan {
                 PersonalizedPlanLoadingView()
             } else {
+                ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
                         if currentStep != .welcome {
@@ -134,11 +135,15 @@ struct OnboardingFlowView: View {
                         }
 
                         stepView(for: currentStep)
+                            .id(stepIndex)
+                            .transition(.opacity)
 
                         HStack(spacing: 10) {
                             if stepIndex > 0 {
                                 Button("Back") {
-                                    stepIndex -= 1
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        stepIndex -= 1
+                                    }
                                 }
                                 .buttonStyle(SecondaryCTAButtonStyle())
                             }
@@ -147,7 +152,9 @@ struct OnboardingFlowView: View {
                                 if currentStep == .review {
                                     isGeneratingPlan = true
                                 } else {
-                                    stepIndex += 1
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        stepIndex += 1
+                                    }
                                 }
                             }
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
@@ -157,6 +164,14 @@ struct OnboardingFlowView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 24)
+                    .id("onboardingTop")
+                }
+                .scrollDismissesKeyboard(.immediately)
+                // A long step scrolled to its Next button must not leave the
+                // NEXT step's title off-screen.
+                .onChange(of: stepIndex) { _, _ in
+                    proxy.scrollTo("onboardingTop", anchor: .top)
+                }
                 }
             }
         }
@@ -410,7 +425,7 @@ private struct ExperienceLevelStep: View {
             title: "How experienced are you?",
             subtitle: "We keep the language and challenge level friendly to where you are now."
         ) {
-            HStack(spacing: 8) {
+            WrapStack(spacing: 8) {
                 ForEach(ExperienceLevelOption.allCases) { level in
                     Button(level.rawValue) {
                         selection = level
@@ -446,13 +461,13 @@ private struct ScheduleStep: View {
             subtitle: "We care more about repeatable momentum than perfect ambition. This becomes your weekly target."
         ) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 8) {
+                WrapStack(spacing: 8) {
                     ForEach(1...7, id: \.self) { count in
                         Button("\(count)") {
                             days = count
                         }
                         .buttonStyle(FilterChipStyle(isSelected: days == count, selectedColor: MorpheTheme.accent))
-                        .accessibilityLabel("\(count) days per week\(days == count ? ", selected" : "")")
+                        .accessibilityLabel("\(count) days per week")
                     }
                 }
 

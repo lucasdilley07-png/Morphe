@@ -1557,6 +1557,9 @@ struct FilterChipStyle: ButtonStyle {
                     .stroke(isSelected ? Color.white.opacity(0.18) : MorpheTheme.strokeStrong.opacity(0.22), lineWidth: 1)
             )
             .shadow(color: isSelected ? selectedColor.opacity(0.22) : .clear, radius: 10, x: 0, y: 6)
+            // Selection was color-only — invisible to VoiceOver and weak for
+            // color-blind users. Every chip in the app gets the trait from here.
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
