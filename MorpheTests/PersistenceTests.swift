@@ -583,6 +583,71 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.clientProfile.level.currentTitle, "Level 1")
     }
 
+    func testQuizProgressAndXPSurviveRelaunch() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let quiz = store.quizzes.first!
+        store.answerQuiz(quiz, with: quiz.correctIndex)
+        XCTAssertTrue(store.completedQuizIDs.contains(quiz.id))
+        let earnedXP = store.clientProfile.level.currentXP
+        XCTAssertGreaterThan(earnedXP, 0, "a correct answer earns XP")
+
+        // Everything earned must survive a relaunch (it used to wipe to zero).
+        let reloaded = MorpheAppStore()
+        XCTAssertTrue(reloaded.completedQuizIDs.contains(quiz.id), "quiz completion persists via stable ids")
+        XCTAssertEqual(reloaded.clientProfile.level.currentXP, earnedXP, "earned XP persists")
+    }
+
+    func testWrongThenRightEarnsNoXP() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let quiz = store.quizzes.first!
+        let wrongIndex = quiz.correctIndex == 0 ? 1 : 0
+        store.answerQuiz(quiz, with: wrongIndex)
+        store.answerQuiz(quiz, with: quiz.correctIndex)   // explanation revealed the answer
+
+        XCTAssertFalse(store.completedQuizIDs.contains(quiz.id), "the first answer is final")
+        XCTAssertEqual(store.clientProfile.level.currentXP, 0, "no XP for answering after the reveal")
+    }
+
+    func testXPRollsOverIntoLevelUps() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        // Fresh baseline: Level 1, 0/100. Ten correct quizzes (10-12 XP each)
+        // must cross into Level 2 instead of clamping at the bar.
+        for quiz in store.quizzes.prefix(10) {
+            store.answerQuiz(quiz, with: quiz.correctIndex)
+        }
+
+        XCTAssertNotEqual(store.clientProfile.level.currentTitle, "Level 1",
+                          "enough XP must actually level up (the bar used to clamp)")
+    }
+
+    func testFreshUserHasNoFabricatedMetricsOrRules() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.onboardingDraft.injuries = "Wrist pain on push-ups"
+        store.completeOnboarding()
+
+        XCTAssertTrue(store.sportMetrics.isEmpty, "no fabricated sport metrics for a real user")
+        XCTAssertEqual(store.personalRules.count, 1, "personal rules derive from the user's own injuries")
+        XCTAssertEqual(store.personalRules.first?.detail, "Wrist pain on push-ups")
+        XCTAssertFalse(store.personalRules.contains { $0.title.contains("Knee pain") },
+                       "the demo athlete's rules must never leak")
+        XCTAssertEqual(store.clientProfile.aiTodayInsight.title, "Today's tip",
+                       "no 'AI Coach Message' branding")
+
+        // Switching sports must not resurrect fabricated metrics.
+        store.selectSportMode(.running)
+        XCTAssertTrue(store.sportMetrics.isEmpty)
+    }
+
     func testConsistencyTargetComesFromOnboarding() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"

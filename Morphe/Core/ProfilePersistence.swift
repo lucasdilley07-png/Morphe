@@ -43,6 +43,12 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var currentProgram: String
     var currentPhase: String
     var trainingDaysPerWeek: Int = 3
+    // Learning progress — earned XP/level and completed quizzes previously
+    // lived only in memory, so everything a user earned vanished on relaunch.
+    var levelTitle: String = ""
+    var levelXP: Int = 0
+    var levelTargetXP: Int = 0
+    var completedQuizIDs: [String] = []
 }
 
 extension LocalProfileSnapshot {
@@ -89,6 +95,10 @@ extension LocalProfileSnapshot {
         currentProgram = str(.currentProgram)
         currentPhase = str(.currentPhase)
         trainingDaysPerWeek = ((try? c.decodeIfPresent(Int.self, forKey: .trainingDaysPerWeek)) ?? nil) ?? 3
+        levelTitle = str(.levelTitle)
+        levelXP = ((try? c.decodeIfPresent(Int.self, forKey: .levelXP)) ?? nil) ?? 0
+        levelTargetXP = ((try? c.decodeIfPresent(Int.self, forKey: .levelTargetXP)) ?? nil) ?? 0
+        completedQuizIDs = arr(.completedQuizIDs)
     }
 }
 

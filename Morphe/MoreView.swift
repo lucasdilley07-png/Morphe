@@ -144,7 +144,11 @@ struct MoreView: View {
             SportModeSelector(selected: store.selectedSportMode) { sport in
                 store.selectSportMode(sport)
             }
-            SportMetricsCard(sport: store.selectedSportMode, metrics: store.sportMetrics)
+            // Only ever non-empty in the pre-onboarding demo — a real user
+            // has no fabricated sport metrics.
+            if !store.sportMetrics.isEmpty {
+                SportMetricsCard(sport: store.selectedSportMode, metrics: store.sportMetrics)
+            }
             PersonalRecordsCard(records: personalRecords)
         }
     }
@@ -168,7 +172,9 @@ struct MoreView: View {
             }
 
             GoalTranslationCard(translation: store.goalTranslation)
-            PersonalRulesCard(rules: store.personalRules)
+            if !store.personalRules.isEmpty {
+                PersonalRulesCard(rules: store.personalRules)
+            }
         }
     }
 

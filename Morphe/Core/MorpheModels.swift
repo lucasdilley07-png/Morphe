@@ -1074,12 +1074,15 @@ struct BodyEducationTopic: Identifiable, Hashable {
 }
 
 struct MiniQuiz: Identifiable, Hashable {
-    var id = UUID()
     var question: String
     var options: [String]
     var correctIndex: Int
     var explanation: String
     var rewardXP: Int
+
+    /// Stable across launches — completion state is persisted by this id.
+    /// (A per-launch UUID made saved progress impossible to reattach.)
+    var id: String { question }
 }
 
 struct SmartNotificationItem: Identifiable, Hashable {
@@ -1387,10 +1390,12 @@ struct CelebrationMoment: Identifiable, Hashable {
 }
 
 struct LessonCard: Identifiable, Hashable {
-    var id = UUID()
     var title: String
     var subtitle: String
     var detail: String
+
+    /// Stable across launches, same reason as MiniQuiz.id.
+    var id: String { title }
 }
 
 struct ProfileShowcase: Hashable {

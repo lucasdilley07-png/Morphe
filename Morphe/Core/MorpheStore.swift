@@ -150,8 +150,8 @@ final class MorpheAppStore {
     var whyThisMatters: [WhyThisMatters]
     var lessons: [LessonCard]
     var quizzes: [MiniQuiz]
-    var quizSelections: [UUID: Int] = [:]
-    var completedQuizIDs: Set<UUID> = []
+    var quizSelections: [String: Int] = [:]
+    var completedQuizIDs: Set<String> = []
     var selectedSportMode: SportFocus
     var sportMetrics: [SportMetric]
 
@@ -562,6 +562,19 @@ final class MorpheAppStore {
         clientProfile.equipment = snapshot.equipment
         clientProfile.limitations = snapshot.injuries
 
+        rebuildPersonalRules()
+
+        // Same for earned learning progress: the demo clear resets Level 1 /
+        // 0 XP, which must not wipe what THIS user actually earned.
+        if !snapshot.levelTitle.isEmpty, snapshot.levelTargetXP > 0 {
+            let levelValue = levelNumber(from: snapshot.levelTitle) ?? 1
+            clientProfile.level.currentTitle = snapshot.levelTitle
+            clientProfile.level.nextTitle = "Level \(levelValue + 1)"
+            clientProfile.level.currentXP = snapshot.levelXP
+            clientProfile.level.targetXP = snapshot.levelTargetXP
+        }
+        completedQuizIDs = Set(snapshot.completedQuizIDs)
+
         // History/consistency/score/streak were derived in init against the seeded
         // id; rebuild them now that the user's real identity is restored.
         refreshWorkoutLogDerivedState(for: clientProfile.id)
@@ -597,7 +610,11 @@ final class MorpheAppStore {
                 weightUnit: weightUnit.rawValue,
                 currentProgram: clientProfile.currentProgram,
                 currentPhase: profileShowcase.currentPhase,
-                trainingDaysPerWeek: clientProfile.trainingDaysPerWeek
+                trainingDaysPerWeek: clientProfile.trainingDaysPerWeek,
+                levelTitle: clientProfile.level.currentTitle,
+                levelXP: clientProfile.level.currentXP,
+                levelTargetXP: clientProfile.level.targetXP,
+                completedQuizIDs: Array(completedQuizIDs)
             )
         )
     }
@@ -1356,6 +1373,7 @@ final class MorpheAppStore {
         // previously discarded and the demo knee complaint persisted instead.
         clientProfile.limitations = onboardingDraft.injuries.trimmingCharacters(in: .whitespacesAndNewlines)
         clientProfile.equipment = onboardingDraft.equipment.trimmingCharacters(in: .whitespacesAndNewlines)
+        rebuildPersonalRules()
 
         // The welcome sheet IS the completion celebration — the toast overlay
         // rendered underneath it and expired unseen.
@@ -1406,6 +1424,10 @@ final class MorpheAppStore {
         // become a new user's (the injuries field is safety data).
         clientProfile.limitations = ""
         clientProfile.equipment = ""
+        // Same class of leak: the demo's fabricated sport metrics ("Mile time
+        // 6:08") and personal rules ("Knee pain history") are other-person data.
+        sportMetrics = []
+        personalRules = []
         clientProfile.level = LevelProgress(
             currentTitle: "Level 1",
             nextTitle: "Level 2",
@@ -2260,15 +2282,20 @@ final class MorpheAppStore {
     }
 
     func answerQuiz(_ quiz: MiniQuiz, with index: Int) {
+        // The first answer is final: the explanation reveals the correct
+        // option, so wrong-then-right must not earn XP — and a completed
+        // quiz can't be flipped to a wrong state afterward. A missed quiz
+        // resets next launch for an honest retry.
+        guard quizSelections[quiz.id] == nil else { return }
         quizSelections[quiz.id] = index
-        guard !completedQuizIDs.contains(quiz.id) else { return }
 
         if index == quiz.correctIndex {
             completedQuizIDs.insert(quiz.id)
             updateXP(for: quiz.rewardXP, add: true)
             showCelebration(title: "Quiz complete", detail: "+\(quiz.rewardXP) XP", symbol: "brain.head.profile")
+            persistLocalProfile()
         } else {
-            showToast("Good try. Review the explanation and try again.")
+            showToast("Good try — the explanation below has the answer.")
         }
     }
 
@@ -4029,11 +4056,35 @@ final class MorpheAppStore {
 
     private func updateXP(for amount: Int, add: Bool) {
         if add {
-            clientProfile.level.currentXP = min(clientProfile.level.currentXP + amount, clientProfile.level.targetXP)
+            clientProfile.level.currentXP += amount
+            // Roll surplus XP into real level-ups — the bar used to clamp at
+            // the target, so "Level 2" was a promise that never arrived.
+            while clientProfile.level.currentXP >= clientProfile.level.targetXP {
+                clientProfile.level.currentXP -= clientProfile.level.targetXP
+                let nextLevel = (levelNumber(from: clientProfile.level.currentTitle) ?? 1) + 1
+                clientProfile.level.currentTitle = "Level \(nextLevel)"
+                clientProfile.level.nextTitle = "Level \(nextLevel + 1)"
+                clientProfile.level.targetXP += 50
+                showCelebration(title: "Level \(nextLevel)", detail: "Keep stacking the work.", symbol: "arrow.up.circle.fill")
+            }
             Haptics.success()
         } else {
             clientProfile.level.currentXP = max(clientProfile.level.currentXP - amount, 0)
         }
+        persistLocalProfile()
+    }
+
+    private func levelNumber(from title: String) -> Int? {
+        Int(title.components(separatedBy: CharacterSet.decimalDigits.inverted).first { !$0.isEmpty } ?? "")
+    }
+
+    /// Quick Tools shows the user's own training rules, derived from what they
+    /// actually told us — never the demo athlete's seeded list.
+    private func rebuildPersonalRules() {
+        let injuries = clientProfile.limitations.trimmingCharacters(in: .whitespacesAndNewlines)
+        personalRules = injuries.isEmpty ? [] : [
+            PersonalRule(title: "Injury & limits note", detail: injuries)
+        ]
     }
 
     private func targetSetCount(for exercise: WorkoutExercise) -> Int {
@@ -4275,7 +4326,12 @@ final class MorpheAppStore {
         clientProfile.sportMode = sport
         clientProfile.welcomeMessage = motivationalGreeting(for: sport)
         clientProfile.aiTodayInsight = todayInsight(for: sport)
-        sportMetrics = MorpheDemoContent.sportMetrics(for: sport)
+        // NEVER re-seed the fabricated demo sport metrics ("Mile time 6:08",
+        // "Up 12%") for a real user — there is no real data source for them
+        // yet, and an empty list hides the card honestly.
+        if !hasCompletedOnboarding {
+            sportMetrics = MorpheDemoContent.sportMetrics(for: sport)
+        }
         profileShowcase.banner = bannerProfile(for: sport)
         profileShowcase.bio = profileBio(for: sport, trainingStyles: clientProfile.selectedTrainingStyles, goals: clientProfile.selectedGoals)
     }
@@ -4492,7 +4548,7 @@ final class MorpheAppStore {
 
     private func todayInsight(for sport: SportFocus) -> AIInsight {
         AIInsight(
-            title: "AI Coach Message",
+            title: "Today's tip",
             summary: motivationalGreeting(for: sport),
             risk: recovery.status == .ready ? .low : .medium,
             recommendation: "Keep the session realistic, finish one useful win, and log how it felt.",
