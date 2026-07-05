@@ -85,6 +85,8 @@ final class PersistenceTests: XCTestCase {
             trackedSetReps: ["goblet-squat": [10, 9, 8]],
             trackedSetWeights: ["goblet-squat": [135, 135, 130]],
             trackedSetRPE: ["goblet-squat": [8, 8, 9]],
+            workoutSessionStartedAt: Date(timeIntervalSince1970: 1_750_000_000),
+            completedSessionMinutes: 42,
             isWorkoutLoggedToday: false
         )
         store.saveSession(snapshot)
@@ -468,6 +470,55 @@ final class WorkoutSessionTests: XCTestCase {
         let restoredExercise = reloaded.currentWorkout.exercises.first!
         XCTAssertEqual(reloaded.trackedSetRPE[restoredExercise.id], [8],
                        "per-set RPE must persist with the session snapshot")
+    }
+
+    func testLoggedWorkoutPreservesPerSetData() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+
+        store.completeTrackedSet(reps: 10, weight: 45, rpe: 8)
+        store.completeTrackedSet(reps: 8, weight: 50, rpe: 9)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+
+        let logged = store.workoutLogs
+            .first { $0.athleteID == store.clientProfile.id }?
+            .exercises.first { $0.repsPerSet != nil }
+        XCTAssertEqual(logged?.repsPerSet, [10, 8], "raw per-set reps must survive into the log")
+        XCTAssertEqual(logged?.weightsPerSet, [45, 50], "raw per-set weights must survive into the log")
+        XCTAssertEqual(logged?.rpePerSet, [8, 9], "raw per-set RPE must survive into the log")
+        XCTAssertEqual(logged?.weightUnit, store.weightUnit.rawValue, "the recording unit is pinned on the log")
+    }
+
+    func testLoggedDurationIsElapsedTimeNotTemplateLength() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+
+        // Simulate a session that started 25 minutes ago.
+        store.workoutSessionStartedAt = Date.now.addingTimeInterval(-25 * 60)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.finishTrackedWorkoutSession()
+
+        XCTAssertEqual(store.completedSessionMinutes ?? 0, 25, accuracy: 1)
+
+        store.logWorkout()
+        let log = store.workoutLogs.first { $0.athleteID == store.clientProfile.id }
+        XCTAssertEqual(log?.durationMinutes ?? 0, 25, accuracy: 1,
+                       "the log records time actually trained, not the template's planned length")
+    }
+
+    func testConsistencyTargetComesFromOnboarding() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.onboardingDraft.trainingDaysPerWeek = 4
+        store.completeOnboarding()
+
+        XCTAssertEqual(store.clientProfile.trainingDaysPerWeek, 4)
+
+        // And it survives a relaunch.
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.trainingDaysPerWeek, 4,
+                       "the weekly target persists with the profile")
     }
 
     func testSessionRecapListsOnlyLoggedExercises() {

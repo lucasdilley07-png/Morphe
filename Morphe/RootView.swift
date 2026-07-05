@@ -269,7 +269,7 @@ private struct ClientExperienceShell: View {
                     .tag(ClientTab.community)
             }
 
-            ProgressView()
+            ProgressScreenView()
                 .tag(ClientTab.hub)
 
             MoreView()

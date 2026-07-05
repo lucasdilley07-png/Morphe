@@ -26,12 +26,17 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
     /// Per-set RPE, parallel to trackedSetReps (0 = not rated). Tolerantly
     /// decoded so sessions saved before this field existed still restore.
     var trackedSetRPE: [String: [Int]]
+    /// Session timing (tolerantly decoded): when the live session started and
+    /// the elapsed minutes captured at finish.
+    var workoutSessionStartedAt: Date?
+    var completedSessionMinutes: Int?
     var isWorkoutLoggedToday: Bool
 
     init(currentWorkoutID: UUID?, isWorkoutSessionActive: Bool, hasStartedWorkoutFlow: Bool,
          hasCompletedWorkoutFlow: Bool, activeWorkoutExerciseIndex: Int,
          completedWorkoutSets: [String: Int], trackedSetReps: [String: [Int]],
          trackedSetWeights: [String: [Double]], trackedSetRPE: [String: [Int]],
+         workoutSessionStartedAt: Date?, completedSessionMinutes: Int?,
          isWorkoutLoggedToday: Bool) {
         self.currentWorkoutID = currentWorkoutID
         self.isWorkoutSessionActive = isWorkoutSessionActive
@@ -42,6 +47,8 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
         self.trackedSetReps = trackedSetReps
         self.trackedSetWeights = trackedSetWeights
         self.trackedSetRPE = trackedSetRPE
+        self.workoutSessionStartedAt = workoutSessionStartedAt
+        self.completedSessionMinutes = completedSessionMinutes
         self.isWorkoutLoggedToday = isWorkoutLoggedToday
     }
 
@@ -56,6 +63,8 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
         trackedSetReps = try c.decode([String: [Int]].self, forKey: .trackedSetReps)
         trackedSetWeights = try c.decode([String: [Double]].self, forKey: .trackedSetWeights)
         trackedSetRPE = ((try? c.decodeIfPresent([String: [Int]].self, forKey: .trackedSetRPE)) ?? nil) ?? [:]
+        workoutSessionStartedAt = ((try? c.decodeIfPresent(Date.self, forKey: .workoutSessionStartedAt)) ?? nil)
+        completedSessionMinutes = ((try? c.decodeIfPresent(Int.self, forKey: .completedSessionMinutes)) ?? nil)
         isWorkoutLoggedToday = try c.decode(Bool.self, forKey: .isWorkoutLoggedToday)
     }
 }

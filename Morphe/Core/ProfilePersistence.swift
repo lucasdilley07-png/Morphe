@@ -42,6 +42,7 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var weightUnit: String
     var currentProgram: String
     var currentPhase: String
+    var trainingDaysPerWeek: Int = 3
 }
 
 extension LocalProfileSnapshot {
@@ -87,6 +88,7 @@ extension LocalProfileSnapshot {
         weightUnit = str(.weightUnit, "pounds")
         currentProgram = str(.currentProgram)
         currentPhase = str(.currentPhase)
+        trainingDaysPerWeek = ((try? c.decodeIfPresent(Int.self, forKey: .trainingDaysPerWeek)) ?? nil) ?? 3
     }
 }
 

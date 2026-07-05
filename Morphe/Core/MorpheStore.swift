@@ -200,6 +200,12 @@ final class MorpheAppStore {
     var trackedSetWeights: [String: [Double]] = [:] { didSet { persistWorkoutSession() } }
     /// Per-set RPE (6–10), parallel to trackedSetReps; 0 = not rated.
     var trackedSetRPE: [String: [Int]] = [:] { didSet { persistWorkoutSession() } }
+    /// When the live session actually began, so logs carry time trained —
+    /// not the template's advertised length.
+    var workoutSessionStartedAt: Date? { didSet { persistWorkoutSession() } }
+    /// Elapsed minutes captured at finish (clamped 1min–8h); nil = no live
+    /// session timing, fall back to the template's planned duration.
+    var completedSessionMinutes: Int? { didSet { persistWorkoutSession() } }
     var weightUnit: WeightUnit = .pounds {
         didSet {
             guard oldValue != weightUnit else { return }
@@ -534,6 +540,9 @@ final class MorpheAppStore {
         if !snapshot.currentPhase.isEmpty {
             profileShowcase.currentPhase = snapshot.currentPhase
         }
+        if snapshot.trainingDaysPerWeek > 0 {
+            clientProfile.trainingDaysPerWeek = snapshot.trainingDaysPerWeek
+        }
 
         onboardingDraft.name = snapshot.name
         if let sport = SportFocus(rawValue: snapshot.sportMode) {
@@ -581,7 +590,8 @@ final class MorpheAppStore {
                 username: profileShowcase.username,
                 weightUnit: weightUnit.rawValue,
                 currentProgram: clientProfile.currentProgram,
-                currentPhase: profileShowcase.currentPhase
+                currentPhase: profileShowcase.currentPhase,
+                trainingDaysPerWeek: clientProfile.trainingDaysPerWeek
             )
         )
     }
@@ -771,6 +781,8 @@ final class MorpheAppStore {
         trackedSetReps = snapshot.trackedSetReps
         trackedSetWeights = snapshot.trackedSetWeights
         trackedSetRPE = snapshot.trackedSetRPE
+        workoutSessionStartedAt = snapshot.workoutSessionStartedAt
+        completedSessionMinutes = snapshot.completedSessionMinutes
     }
 
     /// Persists the current in-progress session snapshot to disk.
@@ -787,6 +799,8 @@ final class MorpheAppStore {
                 trackedSetReps: trackedSetReps,
                 trackedSetWeights: trackedSetWeights,
                 trackedSetRPE: trackedSetRPE,
+                workoutSessionStartedAt: workoutSessionStartedAt,
+                completedSessionMinutes: completedSessionMinutes,
                 isWorkoutLoggedToday: isWorkoutLoggedToday
             )
         )
@@ -1276,6 +1290,7 @@ final class MorpheAppStore {
         clientProfile.weightGoalTarget = onboardingDraft.weightGoalTarget
         clientProfile.goalDeadline = onboardingDraft.goalDeadline
         clientProfile.fitnessLevel = onboardingDraft.experienceLevel.rawValue
+        clientProfile.trainingDaysPerWeek = onboardingDraft.trainingDaysPerWeek
         clientProfile.sportMode = primarySport
         clientProfile.currentProgram = generatedPlan.phase
         profileShowcase.theme = onboardingDraft.theme
@@ -1649,6 +1664,8 @@ final class MorpheAppStore {
         hasStartedWorkoutFlow = true
         hasCompletedWorkoutFlow = false
         didShareCurrentWorkoutHighlight = false
+        workoutSessionStartedAt = .now
+        completedSessionMinutes = nil
         activeWorkoutExerciseIndex = 0
         completedWorkoutSets = [:]
         trackedSetReps = [:]
@@ -1792,6 +1809,8 @@ final class MorpheAppStore {
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false
         hasCompletedWorkoutFlow = false
+        workoutSessionStartedAt = nil
+        completedSessionMinutes = nil
         activeWorkoutExerciseIndex = 0
         completedWorkoutSets = [:]
         trackedSetReps = [:]
@@ -1837,6 +1856,13 @@ final class MorpheAppStore {
             selectedClientTab = .train
             showToast("Start the session in Train before finishing it.")
             return false
+        }
+
+        // Capture how long the session actually ran (template length is only
+        // the fallback when timing is unavailable, e.g. legacy sessions).
+        if let startedAt = workoutSessionStartedAt {
+            let elapsed = Int((Date.now.timeIntervalSince(startedAt) / 60).rounded())
+            completedSessionMinutes = min(max(elapsed, 1), 480)
         }
 
         isWorkoutSessionActive = false
@@ -2063,7 +2089,8 @@ final class MorpheAppStore {
                 workoutTitle: currentWorkout.name,
                 sport: currentWorkout.sport,
                 completedAt: .now,
-                durationMinutes: currentWorkout.durationMinutes,
+                // Time actually trained, not the template's advertised length.
+                durationMinutes: completedSessionMinutes ?? currentWorkout.durationMinutes,
                 exercises: loggedExercises,
                 notes: sessionNotes,
                 source: isBuddySession ? .partnerShared : .athleteManual,
@@ -5096,14 +5123,21 @@ final class MorpheAppStore {
             // Real load: the top working weight the user entered, or Bodyweight.
             let topWeight = weightsLogged.max() ?? 0
             let weightSummary = topWeight > 0 ? weightUnit.format(topWeight) : "Bodyweight"
-            let ratedRPEs = trackedSetRPE[exercise.id, default: []].filter { $0 > 0 }
+            let rpesLogged = trackedSetRPE[exercise.id, default: []]
+            let ratedRPEs = rpesLogged.filter { $0 > 0 }
             return LoggedExercise(
                 name: exercise.name,
                 sets: setSummary,
                 reps: repSummary,
                 weight: weightSummary,
                 note: exercise.formCue,
-                rpe: ratedRPEs.isEmpty ? nil : ratedRPEs.map(String.init).joined(separator: ", ")
+                rpe: ratedRPEs.isEmpty ? nil : ratedRPEs.map(String.init).joined(separator: ", "),
+                // Keep the raw per-set arrays so strength-over-time can be
+                // computed later; the strings above are display-only.
+                repsPerSet: repsLogged.isEmpty ? nil : repsLogged,
+                weightsPerSet: repsLogged.isEmpty ? nil : weightsLogged,
+                rpePerSet: repsLogged.isEmpty ? nil : rpesLogged,
+                weightUnit: repsLogged.isEmpty ? nil : weightUnit.rawValue
             )
         }
     }
@@ -5130,7 +5164,7 @@ final class MorpheAppStore {
             workoutTitle: currentWorkout.name,
             sport: currentWorkout.sport,
             completedAt: .now,
-            durationMinutes: currentWorkout.durationMinutes,
+            durationMinutes: completedSessionMinutes ?? currentWorkout.durationMinutes,
             exercises: exercises,
             notes: "Shared session with \(clientProfile.name) in \(selectedPartnerWorkoutMode.rawValue.lowercased()) mode. Synced by Morphe partner workout.",
             source: .partnerShared,

@@ -1,7 +1,10 @@
 import Charts
 import SwiftUI
 
-struct ProgressView: View {
+// Named ProgressScreenView (not ProgressView) so it can't shadow SwiftUI's
+// ProgressView spinner — the shadowing silently embedded this entire dashboard
+// wherever a plain loading spinner was intended (onboarding, auth).
+struct ProgressScreenView: View {
     @Environment(MorpheAppStore.self) private var store
 
     private var athleteReport: AthleteReport? {
@@ -223,6 +226,7 @@ struct ProgressView: View {
                 ProgressHeroStrip(
                     score: store.clientProfile.health.score,
                     consistency: logSummary.workoutsThisWeek,
+                    consistencyTarget: store.clientProfile.trainingDaysPerWeek,
                     streak: logSummary.currentStreakDays,
                     latestWin: logSummary.totalLogs == 0
                         ? "Log your first workout to start your story."
@@ -762,6 +766,9 @@ private struct AthletePatternInsightsCard: View {
 private struct ProgressHeroStrip: View {
     let score: Int
     let consistency: Int
+    /// The user's own weekly training-day goal from onboarding — not a
+    /// hardcoded 5 that a 3-day plan could never satisfy.
+    let consistencyTarget: Int
     let streak: Int
     let latestWin: String
 
@@ -769,18 +776,14 @@ private struct ProgressHeroStrip: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
-                    MetricPill(label: "Morphe", value: "\(score)")
-                    MetricPill(label: "Consistency", value: "\(consistency)/5")
+                    MetricPill(label: "Morphe Score", value: "\(score)")
+                    MetricPill(label: "This Week", value: "\(consistency)/\(max(consistencyTarget, 1))")
                     MetricPill(label: "Streak", value: "\(streak) days")
                 }
 
                 Text(latestWin)
                     .font(.headline)
                     .foregroundStyle(.white)
-
-                Text("Use this page like a clean control panel: check the story first, then open the deeper tools only when you need them.")
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
             }
         }
     }

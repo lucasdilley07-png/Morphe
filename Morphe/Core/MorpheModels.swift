@@ -834,6 +834,15 @@ struct LoggedExercise: Identifiable, Hashable, Codable {
     /// Per-set effort like "8, 9" — optional so logs saved before RPE
     /// existed still decode.
     var rpe: String?
+
+    // Raw per-set data (parallel arrays), preserved so progress analytics can
+    // compute strength-over-time. The display strings above collapse these
+    // (top weight only), which made progression structurally impossible for
+    // any log saved without them. All optional: older logs still decode.
+    var repsPerSet: [Int]?
+    var weightsPerSet: [Double]?   // 0 = bodyweight, in `weightUnit` at log time
+    var rpePerSet: [Int]?          // 0 = not rated
+    var weightUnit: String?        // "lb" / "kg" the weights were recorded in
 }
 
 struct WorkoutLog: Identifiable, Hashable, Codable {
@@ -1441,6 +1450,9 @@ struct ClientProfile: Hashable {
     var level: LevelProgress
     var adherence: Int
     var networkRank: String = "Builder"
+    /// The weekly training-day target the user chose in onboarding; drives
+    /// the "Consistency x/y" denominator instead of a hardcoded 5.
+    var trainingDaysPerWeek: Int = 3
     var goal: String
     var selectedGoals: [String]
     var physicalGoalTarget: String
