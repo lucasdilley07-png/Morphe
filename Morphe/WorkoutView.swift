@@ -15,7 +15,6 @@ struct WorkoutView: View {
     @State private var editingSetIndex: Int?
     @State private var showDiscardConfirm = false
     @State private var showLibrary = false
-    @State private var showDiscover = false
     @State private var showExerciseList = false
     @State private var showAdjustments = false
     @State private var showSessionQueue = false
@@ -78,17 +77,12 @@ struct WorkoutView: View {
         // One scroll surface for the whole live session: with the inline weight
         // row the tracker card is tall enough that a fixed header clipped the
         // console and pushed the Finish button off-screen on smaller devices.
+        // The set console leads: logging is THE task mid-session, so it must
+        // be on screen without scrolling past session ceremony. Finish takes
+        // its place when everything is logged; timer and session context sit
+        // below the work surface.
         return ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
-                LiveWorkoutConsoleCard(
-                    workout: store.currentWorkout,
-                    exerciseIndex: store.activeWorkoutExerciseIndex,
-                    totalExercises: max(store.currentWorkout.exercises.count, 1),
-                    warmupText: warmupText(for: store.currentWorkout.sport),
-                    restSeconds: $restSeconds,
-                    restRunning: $restRunning
-                )
-
                 if store.isTrackedWorkoutComplete {
                     WorkoutCompleteCard(
                         workoutName: store.currentWorkout.name,
@@ -147,6 +141,15 @@ struct WorkoutView: View {
                         canGoPrevious: store.activeWorkoutExerciseIndex > 0
                     )
                 }
+
+                LiveWorkoutConsoleCard(
+                    workout: store.currentWorkout,
+                    exerciseIndex: store.activeWorkoutExerciseIndex,
+                    totalExercises: max(store.currentWorkout.exercises.count, 1),
+                    warmupText: warmupText(for: store.currentWorkout.sport),
+                    restSeconds: $restSeconds,
+                    restRunning: $restRunning
+                )
 
                 HStack(spacing: 10) {
                     Button("Finish Session") {
@@ -369,22 +372,6 @@ struct WorkoutView: View {
                     )
                 }
 
-                if !store.catalogWorkouts.isEmpty {
-                    TrainExpandableSection(
-                        title: "Discover",
-                        subtitle: "\(store.discoverWorkouts.count) workouts organized by training type — strength to recovery and everything between.",
-                        isExpanded: $showDiscover
-                    ) {
-                        DiscoverCatalogSection(
-                            onStart: { template in
-                                workoutFinished = false
-                                isShowingPainFlow = false
-                                store.startCatalogWorkout(template)
-                            }
-                        )
-                    }
-                }
-
                 TrainExpandableSection(
                     title: "Exercise list",
                     subtitle: "\(store.currentWorkout.exercises.count) moves in today's plan. Open it when you want detail, not before you need it.",
@@ -562,6 +549,33 @@ struct WorkoutView: View {
             store.saveCurrentWorkoutAsFavorite()
         case .recoveryReset:
             store.logRecoveryReset()
+        }
+    }
+}
+
+/// Discover as its own destination — the catalog was buried as a collapsed
+/// third section on Train; the flagship content deserves a tab. Starting a
+/// workout here drops straight into the live tracker on Train.
+struct DiscoverScreenView: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionTitleView(
+                    title: "Discover",
+                    subtitle: "\(store.discoverWorkouts.count) workouts across 18 training types — start one now or save it for later."
+                )
+
+                DiscoverCatalogSection(
+                    onStart: { template in
+                        store.startCatalogWorkout(template)
+                    }
+                )
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 120)
         }
     }
 }
@@ -767,16 +781,6 @@ private struct LiveWorkoutConsoleCard: View {
                     )
                 }
 
-                WorkoutFlowChipRail(
-                    workoutStarted: true,
-                    workoutFinished: false,
-                    isLogged: false
-                )
-
-                Text("Log the work here and let everything else wait until the session is done.")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Warm-up")
                         .font(.subheadline.weight(.semibold))
@@ -789,41 +793,6 @@ private struct LiveWorkoutConsoleCard: View {
                 WorkoutRestControlBar(seconds: $restSeconds, isRunning: $restRunning)
             }
         }
-    }
-}
-
-private struct WorkoutFlowChipRail: View {
-    let workoutStarted: Bool
-    let workoutFinished: Bool
-    let isLogged: Bool
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                FlowStepChip(title: "Start", isActive: true)
-                FlowStepChip(title: "Track", isActive: workoutStarted)
-                FlowStepChip(title: "Finish", isActive: workoutFinished)
-                FlowStepChip(title: "Feedback", isActive: workoutFinished)
-                FlowStepChip(title: "Progress", isActive: isLogged)
-            }
-        }
-    }
-}
-
-private struct FlowStepChip: View {
-    let title: String
-    let isActive: Bool
-
-    var body: some View {
-        Text(title)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(isActive ? .black : .white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isActive ? MorpheTheme.accent : MorpheTheme.panelStrong)
-            )
     }
 }
 
@@ -914,13 +883,25 @@ private struct ActiveWorkoutTrackerCard: View {
         return min(Double(completedSets) / Double(totalSets), 1)
     }
 
-    /// Step size that feels right per unit (5 lb / 2.5 kg).
+    @State private var repsToLog = 10
+
+    /// Fine step (5 lb / 2.5 kg) and coarse step (25 lb / 10 kg) — a plate
+    /// jump shouldn't take five taps.
     private var weightStep: Double {
         weightUnit == .kilograms ? 2.5 : 5
     }
 
+    private var coarseWeightStep: Double {
+        weightUnit == .kilograms ? 10 : 25
+    }
+
     private var weightDisplay: String {
         weight > 0 ? weightUnit.format(weight) : "Bodyweight"
+    }
+
+    /// The button says exactly what it will log — no surprises.
+    private var logButtonTitle: String {
+        weight > 0 ? "Log set · \(repsToLog) × \(weightUnit.format(weight))" : "Log set · \(repsToLog) reps"
     }
 
     var body: some View {
@@ -1000,11 +981,6 @@ private struct ActiveWorkoutTrackerCard: View {
                     )
                 }
 
-                HStack(spacing: 8) {
-                    MetricPill(label: "Muscle", value: exercise.muscleGroup.rawValue)
-                    MetricPill(label: "Target", value: exercise.reps)
-                }
-
                 if let nextExercise {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Up next")
@@ -1024,98 +1000,133 @@ private struct ActiveWorkoutTrackerCard: View {
                     )
                 }
 
-                // Inline weight for the set about to be logged. Pre-fills from
-                // the last set and carries forward, so the quick-log buttons
-                // capture real load (not bodyweight) without a second screen.
-                HStack(spacing: 12) {
-                    Text("Weight")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textSecondary)
+                // The set console: dial in reps and weight on two telemetry
+                // rows, then ONE full-width action logs exactly what it says.
+                // (The old layout split logging across a small button plus a
+                // row of rep chips that did the same thing, and 5-unit weight
+                // steps meant 18 taps to get from the bar to a working set.)
+                if !isExerciseComplete {
+                    VStack(spacing: 10) {
+                        SetConsoleRow(
+                            label: "Reps",
+                            value: "\(repsToLog)",
+                            onCoarseDown: nil,
+                            onDown: { repsToLog = max(1, repsToLog - 1) },
+                            onUp: { repsToLog = min(50, repsToLog + 1) },
+                            onCoarseUp: nil
+                        )
 
-                    Spacer()
+                        SetConsoleRow(
+                            label: "Weight",
+                            value: weight > 0 ? weightUnit.format(weight) : "BW",
+                            coarseStep: weightUnit == .kilograms ? "10" : "25",
+                            onCoarseDown: { weight = max(0, weight - coarseWeightStep) },
+                            onDown: { weight = max(0, weight - weightStep) },
+                            onUp: { weight += weightStep },
+                            onCoarseUp: { weight += coarseWeightStep }
+                        )
 
-                    Button {
-                        weight = max(0, weight - weightStep)
-                    } label: {
-                        Image(systemName: "minus")
-                            .frame(width: 34, height: 34)
+                        Button(logButtonTitle) {
+                            onQuickLogSet(repsToLog)
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .accessibilityLabel("Log set: \(repsToLog) reps at \(weightDisplay)")
                     }
-                    .buttonStyle(.plain)
-                    .background(Circle().fill(MorpheTheme.panelStrong))
-                    .foregroundStyle(.white)
-                    .disabled(weight <= 0)
-                    .accessibilityLabel("Decrease weight")
-
-                    Text(weightDisplay)
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 96)
-                        .accessibilityLabel("Weight \(weightDisplay)")
-
-                    Button {
-                        weight += weightStep
-                    } label: {
-                        Image(systemName: "plus")
-                            .frame(width: 34, height: 34)
-                    }
-                    .buttonStyle(.plain)
-                    .background(Circle().fill(MorpheTheme.panelStrong))
-                    .foregroundStyle(.white)
-                    .accessibilityLabel("Increase weight")
                 }
-                .padding(.vertical, 4)
 
-                if isExerciseComplete {
-                    HStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    if isExerciseComplete {
                         Button {
                             onOpenCustomRepLogger()
                         } label: {
-                            Label("Add extra set", systemImage: "plus.circle")
+                            Label("Extra set", systemImage: "plus.circle")
                         }
                         .buttonStyle(SecondaryCTAButtonStyle())
-
-                        Button("Rest", action: onStartRest)
-                            .buttonStyle(SecondaryCTAButtonStyle())
-                            .accessibilityLabel("Start rest timer")
-                    }
-                } else {
-                    HStack(spacing: 8) {
-                        Button("Log \(suggestedReps)", action: { onQuickLogSet(suggestedReps) })
-                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                            .accessibilityLabel("Log set: \(suggestedReps) reps at \(weightDisplay)")
-
-                        Button("Custom") {
+                    } else {
+                        Button("More") {
                             onOpenCustomRepLogger()
                         }
                         .buttonStyle(SecondaryCTAButtonStyle())
-                        .accessibilityLabel("Log a custom set")
-
-                        Button("Rest", action: onStartRest)
-                            .buttonStyle(SecondaryCTAButtonStyle())
-                            .accessibilityLabel("Start rest timer")
+                        .accessibilityLabel("Log a custom set with RPE")
                     }
-                }
 
-                WrapStack(spacing: 8) {
-                    if !isExerciseComplete {
-                        ForEach(quickRepOptions, id: \.self) { reps in
-                            Button("\(reps) reps") {
-                                onQuickLogSet(reps)
-                            }
-                            .buttonStyle(FilterChipStyle(isSelected: reps == suggestedReps, selectedColor: MorpheTheme.accent))
-                        }
-                    }
+                    Button("Rest", action: onStartRest)
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityLabel("Start rest timer")
 
                     if canGoPrevious {
-                        Button("Previous", action: onPrevious)
-                            .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.panelStrong))
+                        Button("Prev", action: onPrevious)
+                            .buttonStyle(SecondaryCTAButtonStyle())
                     }
 
                     Button("Next", action: onNext)
-                        .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
+                        .buttonStyle(SecondaryCTAButtonStyle())
                 }
             }
         }
+        .onAppear { repsToLog = suggestedReps }
+        .onChange(of: exercise.id) { _, _ in repsToLog = suggestedReps }
+    }
+}
+
+/// One telemetry adjuster row: micro label, mono value, fine (and optionally
+/// coarse) stepper buttons flanking it.
+private struct SetConsoleRow: View {
+    let label: String
+    let value: String
+    var coarseStep: String? = nil
+    let onCoarseDown: (() -> Void)?
+    let onDown: () -> Void
+    let onUp: () -> Void
+    let onCoarseUp: (() -> Void)?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(label.uppercased())
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.2)
+                .foregroundStyle(MorpheTheme.textMuted)
+                .frame(width: 56, alignment: .leading)
+
+            if let onCoarseDown, let coarseStep {
+                ConsoleStepButton(title: "-\(coarseStep)", action: onCoarseDown)
+            }
+            ConsoleStepButton(title: "−", action: onDown)
+
+            Text(value)
+                .font(.system(.title3, design: .monospaced).weight(.bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel("\(label) \(value)")
+
+            ConsoleStepButton(title: "+", action: onUp)
+            if let onCoarseUp, let coarseStep {
+                ConsoleStepButton(title: "+\(coarseStep)", action: onCoarseUp)
+            }
+        }
+    }
+}
+
+private struct ConsoleStepButton: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                .foregroundStyle(.white)
+                .frame(minWidth: 40, minHeight: 40)
+                .background(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(title == "−" ? "Decrease" : title == "+" ? "Increase" : title))
     }
 }
 

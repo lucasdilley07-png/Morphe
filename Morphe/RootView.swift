@@ -261,6 +261,9 @@ private struct ClientExperienceShell: View {
             WorkoutView()
                 .tag(ClientTab.train)
 
+            DiscoverScreenView()
+                .tag(ClientTab.discover)
+
             if FeatureFlags.multiUserEnabled {
                 CommunityView()
                     .tag(ClientTab.community)

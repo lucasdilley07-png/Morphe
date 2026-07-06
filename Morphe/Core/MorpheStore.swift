@@ -442,6 +442,7 @@ final class MorpheAppStore {
         // Same-day relaunch: no-op (daily state was just restored). New day —
         // or first launch ever — starts the daily surfaces fresh.
         handleDayRolloverIfNeeded()
+
     }
 
     // MARK: - Auth actions
@@ -990,6 +991,8 @@ final class MorpheAppStore {
             return ["Start my workout", "I'm tired — give me a smaller win", "Show my progress", "What can you do?"]
         case .train:
             return ["Start my workout", "Open the exercise library", "How hard should this feel?", "Discard this session"]
+        case .discover:
+            return ["Start my workout", "What training type fits my goal?", "Show my progress", "What can you do?"]
         case .community:
             return ["Help me reply to my coach", "Draft a progress post", "What should I ask my partner?", "Summarize support messages"]
         case .hub:
@@ -1022,6 +1025,8 @@ final class MorpheAppStore {
             return "Adjust the day, lower the friction, and keep momentum moving."
         case .train:
             return "Get form help, swaps, and pain-safe suggestions without breaking workout flow."
+        case .discover:
+            return "Find the right workout across 18 training types and start it in one tap."
         case .community:
             return "Stay connected to your coach, partner, and support loop."
         case .hub:
@@ -1054,6 +1059,8 @@ final class MorpheAppStore {
             return "Ask how to adjust today, lower the load, or protect the streak..."
         case .train:
             return "Ask for swaps, form help, or pain-safe options..."
+        case .discover:
+            return "Ask what to train today or which type fits your goal..."
         case .community:
             return "Ask for a reply, post idea, or partner check-in..."
         case .hub:
@@ -1090,6 +1097,8 @@ final class MorpheAppStore {
                 return "Active workout: \(activeWorkoutExercise?.name ?? currentWorkout.name)"
             }
             return "Train: \(currentWorkout.name)"
+        case .discover:
+            return "Discover: browsing \(discoverWorkouts.count) workouts"
         case .community:
             return selectedCommunitySection == .contact ? "Contact" : "For You"
         case .hub:
@@ -1594,6 +1603,7 @@ final class MorpheAppStore {
         let trainable = workoutTemplates.filter {
             $0.sessionType != .recoverySession
                 && $0.category != .recovery
+                && $0.difficulty != .recovery
                 && $0.durationMinutes >= 20
         }
         let sportMatches = trainable.filter { $0.sport == sport }
@@ -2810,7 +2820,7 @@ final class MorpheAppStore {
         func has(_ words: String...) -> Bool { words.contains { lower.contains($0) } }
 
         if has("what can you do", "help me use", "commands") || lower == "help" {
-            return "I can start your workout, turn on Minimum Win mode, open Progress, Lessons, the exercise library, or your profile, and switch lb/kg. Just ask."
+            return "I can start your workout, turn on Minimum Win mode, open Discover, Progress, Lessons, the exercise library, or your profile, and switch lb/kg. Just ask."
         }
 
         // Questions get answers, not actions. "Should I stop training when my
@@ -2879,6 +2889,11 @@ final class MorpheAppStore {
             openMore(.learn)
             closeAIAgent()
             return "Opened Lessons — today's quiz is at the top."
+        }
+        if has("discover", "browse workouts", "find a workout", "catalog", "new workout") {
+            selectedClientTab = .discover
+            closeAIAgent()
+            return "Opened Discover — \(discoverWorkouts.count) workouts filtered by training type, level, time, and equipment."
         }
         if has("library", "exercise", "form guide", "anatomy") {
             openMore(.library)
@@ -4823,6 +4838,10 @@ final class MorpheAppStore {
         let firstWin = recentWins.first ?? "You kept showing up when the plan got busy."
 
         switch selectedClientTab {
+        case .discover:
+            if lowercasedPrompt.contains("type") || lowercasedPrompt.contains("goal") || lowercasedPrompt.contains("which") {
+                return "Match the training type to the goal: strength or hypertrophy to build, HIIT or cardio to condition, mobility or recovery to feel better tomorrow. Filter by your level and the time you actually have, then start the one that fits."
+            }
         case .today:
             if lowercasedPrompt.contains("adjust") || lowercasedPrompt.contains("plan") || lowercasedPrompt.contains("smaller win") {
                 let fallback = selectedPlanBReason?.rawValue ?? "low readiness"

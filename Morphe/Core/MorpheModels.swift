@@ -59,22 +59,25 @@ enum FeatureFlags {
 enum ClientTab: String, CaseIterable, MorpheTabItem {
     case today
     case train
+    case discover
     case community
     case hub
     case more
 
     var id: String { rawValue }
 
-    /// Tabs shown in the bottom navigation. v1 is Today · Train · Progress · Learn;
-    /// the Network (community) tab returns when multi-user ships.
+    /// Tabs shown in the bottom navigation. v1 is Today · Train · Discover ·
+    /// Progress · Learn; the Network (community) tab returns when multi-user
+    /// ships.
     static var visibleCases: [ClientTab] {
-        FeatureFlags.multiUserEnabled ? allCases : [.today, .train, .hub, .more]
+        FeatureFlags.multiUserEnabled ? allCases : [.today, .train, .discover, .hub, .more]
     }
 
     var title: String {
         switch self {
         case .today: return "Today"
         case .train: return "Train"
+        case .discover: return "Discover"
         case .community: return "Network"
         case .hub: return "Progress"
         case .more: return "Learn"
@@ -85,6 +88,7 @@ enum ClientTab: String, CaseIterable, MorpheTabItem {
         switch self {
         case .today: return "house.fill"
         case .train: return "figure.run"
+        case .discover: return "square.grid.2x2.fill"
         case .community: return "person.3.sequence.fill"
         case .hub: return "chart.line.uptrend.xyaxis"
         case .more: return "book.fill"

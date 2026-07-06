@@ -1468,6 +1468,15 @@ final class MetricsTests: XCTestCase {
         XCTAssertTrue(reloaded.streakProtected, "same-day relaunch still shows today as protected")
     }
 
+    func testAssistantOpensDiscoverTab() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.sendAIAgentPrompt("open discover")
+        XCTAssertEqual(store.selectedClientTab, .discover, "'open discover' navigates to the Discover tab")
+    }
+
     func testAssistantStartWinsOverStopPhrasing() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
