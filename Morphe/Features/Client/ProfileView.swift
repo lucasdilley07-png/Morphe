@@ -24,7 +24,8 @@ struct ProfileView: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
-            .padding(.bottom, 120)
+            // This is a sheet — no tab bar underneath to pad around.
+            .padding(.bottom, 40)
         }
     }
 
@@ -375,63 +376,6 @@ private struct CoachProfileBody: View {
     }
 }
 
-struct PaywallPreviewScreen: View {
-    @Environment(MorpheAppStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    SectionTitleView(
-                        title: "Morphe Plans",
-                        subtitle: "Premium Profile is free at launch. This preview is only for advanced coaching features."
-                    )
-
-                    SubscriptionStatusCard(status: store.subscriptionStatus)
-
-                    ForEach(store.subscriptionPlans) { plan in
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(plan.title)
-                                            .font(.headline)
-                                            .foregroundStyle(.white)
-                                        Text(plan.price)
-                                            .font(.title3.weight(.bold))
-                                            .foregroundStyle(MorpheTheme.accent)
-                                    }
-                                    Spacer()
-                                    Text(plan.audience)
-                                        .font(.caption)
-                                        .foregroundStyle(MorpheTheme.textMuted)
-                                }
-
-                                ForEach(plan.features, id: \.self) { feature in
-                                    Text("- \(feature)")
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(20)
-            }
-            .background(PremiumBackground())
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        store.closePaywall()
-                        dismiss()
-                    }
-                    .foregroundStyle(.white)
-                }
-            }
-        }
-    }
-}
-
 private struct SelectionToken: View {
     let text: String
     let color: Color
@@ -543,27 +487,3 @@ private struct AthleteRecentLogsCard: View {
     }
 }
 
-private struct NutritionMeter: View {
-    let title: String
-    let consumed: Int
-    let goal: Int
-    let unit: String
-
-    private var progress: Double {
-        guard goal > 0 else { return 0 }
-        return min(Double(consumed) / Double(goal), 1)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title)
-                    .foregroundStyle(.white)
-                Spacer()
-                Text("\(consumed)\(unit) / \(goal)\(unit)")
-                    .foregroundStyle(MorpheTheme.textSecondary)
-            }
-            ProgressBarView(progress: progress, color: MorpheTheme.accent)
-        }
-    }
-}

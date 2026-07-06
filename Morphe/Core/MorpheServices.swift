@@ -9,7 +9,6 @@ enum MorpheDemoContent {
         "Small wins. Real transformation."
     ]
 
-
     static let themePresets = ThemePreset.allCases
     static let accentPalettes = AccentPalette.allCases
     static let avatarStyles = AvatarStyle.allCases
@@ -1845,61 +1844,6 @@ enum MorpheDemoContent {
         ],
         aiPerformanceBio: "Lucas is building a strong identity around consistency-first boxing conditioning. He responds well to direct coaching, short wins, and plans that adapt when life gets noisy."
     )
-
-    static let subscriptionPlans: [SubscriptionPlan] = [
-        SubscriptionPlan(
-            title: "Morphe Free",
-            price: "$0",
-            audience: "All users at launch",
-            features: [
-                "Basic workout tracking",
-                "Basic and premium profile access",
-                "Custom avatar and banner",
-                "Theme colors and shareable profile card",
-                "Basic AI coach messages",
-                "Community, challenges, and leaderboards"
-            ]
-        ),
-        SubscriptionPlan(
-            title: "Morphe Premium",
-            price: "$19/mo",
-            audience: "Client upgrade preview",
-            features: [
-                "Personalized AI plans",
-                "Advanced smart plan adjustment",
-                "Advanced recovery insights",
-                "Advanced workout analytics",
-                "More AI coach access",
-                "Advanced nutrition guidance"
-            ]
-        ),
-        SubscriptionPlan(
-            title: "Morphe Coach Pro",
-            price: "$79/mo",
-            audience: "Coach upgrade preview",
-            features: [
-                "Client management",
-                "Program builder",
-                "AI summaries",
-                "Intervention queue",
-                "Video review",
-                "Sport-specific programming"
-            ]
-        )
-    ]
-
-    static let subscriptionStatus = SubscriptionStatus(
-        currentPlan: "Morphe Free",
-        isPremiumUnlocked: false,
-        profileIsFree: true,
-        note: "Premium Profile is completely free at launch. Personalization and shareable identity are growth features, not paywalled features."
-    )
-
-    static let unlockableItems: [UnlockableItem] = [
-        UnlockableItem(title: "Builder glow", detail: "Unlocked after 250 XP"),
-        UnlockableItem(title: "Consistency frame", detail: "Unlocked after protecting your streak 3 times"),
-        UnlockableItem(title: "Comeback badge", detail: "Unlocked after a missed day followed by a rebound")
-    ]
 
     static let clientCoachConversation: [ThreadMessage] = [
         ThreadMessage(sender: .coach, senderName: "Coach Marcus", text: "Good morning. Stay moderate today and tell me how the first round feels.", timestamp: "8:02 AM"),

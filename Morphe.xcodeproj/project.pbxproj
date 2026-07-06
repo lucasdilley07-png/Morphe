@@ -25,7 +25,7 @@
 		1B20F6002C4000010010004D /* BookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100068 /* BookingView.swift */; };
 		1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100054 /* JournalScheduleView.swift */; };
 		1B20F6002C40000100100045 /* CoachDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100055 /* CoachDashboardView.swift */; };
-		1B20F6002C40000100100046 /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100061 /* DiscoverView.swift */; };
+		1B20F6002C40000100100046 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100061 /* ProfileView.swift */; };
 		1B20F6002C40000100100047 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100062 /* MoreView.swift */; };
 		1B20F6002C40000100100048 /* WorkoutPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100063 /* WorkoutPersistence.swift */; };
 		1B20F6002C40000100100049 /* ProfilePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100064 /* ProfilePersistence.swift */; };
@@ -71,7 +71,7 @@
 		1B20F6002C40000100100068 /* BookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100054 /* JournalScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalScheduleView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100055 /* CoachDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachDashboardView.swift; sourceTree = "<group>"; };
-		1B20F6002C40000100100061 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
+		1B20F6002C40000100100061 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100062 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100063 /* WorkoutPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPersistence.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100064 /* ProfilePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistence.swift; sourceTree = "<group>"; };
@@ -162,7 +162,7 @@
 		1B20F6002C40000100100058 /* Client */ = {
 			isa = PBXGroup;
 			children = (
-				1B20F6002C40000100100061 /* DiscoverView.swift */,
+				1B20F6002C40000100100061 /* ProfileView.swift */,
 				1B20F6002C40000100100054 /* JournalScheduleView.swift */,
 			);
 			path = Client;
@@ -302,7 +302,7 @@
 				1B20F6002C4000010010004D /* BookingView.swift in Sources */,
 				1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */,
 				1B20F6002C40000100100045 /* CoachDashboardView.swift in Sources */,
-				1B20F6002C40000100100046 /* DiscoverView.swift in Sources */,
+				1B20F6002C40000100100046 /* ProfileView.swift in Sources */,
 				1B20F6002C40000100100047 /* MoreView.swift in Sources */,
 				1B20F6002C40000100100048 /* WorkoutPersistence.swift in Sources */,
 				1B20F6002C40000100100049 /* ProfilePersistence.swift in Sources */,

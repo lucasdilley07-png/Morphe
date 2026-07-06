@@ -119,8 +119,6 @@ final class MorpheAppStore {
     var selectedHubFeature: ClientHubFeature? = .learn
     var selectedCommunitySection: ClientCommunitySection = .forYou
     var selectedCoachBuildSection: CoachBuildSection = .builder
-    var athleteProfileIsPublic = true
-    var coachProfileIsPublic = true
     var quickCaptureNotes: [String] = []
 
     var clientProfile: ClientProfile
@@ -252,11 +250,6 @@ final class MorpheAppStore {
     var leadRecords: [LeadRecord]
     var coachAnalytics: CoachAnalytics
 
-    var subscriptionPlans: [SubscriptionPlan]
-    var subscriptionStatus: SubscriptionStatus
-    var unlockableItems: [UnlockableItem]
-    var showPaywall = false
-
     let exerciseDatabase: [ExerciseReference]
     /// Exercises the user created themselves (merged with the built-in library).
     var customExercises: [ExerciseReference] = []
@@ -267,10 +260,7 @@ final class MorpheAppStore {
     var allExercises: [ExerciseReference] {
         exerciseDatabase + customExercises
     }
-    let availableThemes: [ThemePreset]
-    let availableAccentPalettes: [AccentPalette]
     let availableAvatars: [AvatarStyle]
-    let availableBanners: [BannerPreset]
     private let personalizationSelectionLimit = 5
     private var didShareCurrentWorkoutHighlight = false
     private var pendingCoachOutreachContext: PendingCoachOutreachContext?
@@ -317,10 +307,7 @@ final class MorpheAppStore {
         self.profilePersistence = profilePersistence
 
         self.exerciseDatabase = MorpheDemoContent.exerciseDatabase
-        self.availableThemes = MorpheDemoContent.themePresets
-        self.availableAccentPalettes = MorpheDemoContent.accentPalettes
         self.availableAvatars = MorpheDemoContent.avatarStyles
-        self.availableBanners = MorpheDemoContent.bannerPresets
 
         self.clientProfile = seededClientProfile
         self.profileShowcase = seededProfileShowcase
@@ -408,10 +395,6 @@ final class MorpheAppStore {
         self.playbooks = MorpheDemoContent.playbooks
         self.leadRecords = MorpheDemoContent.leadRecords
         self.coachAnalytics = MorpheDemoContent.coachAnalytics
-
-        self.subscriptionPlans = MorpheDemoContent.subscriptionPlans
-        self.subscriptionStatus = MorpheDemoContent.subscriptionStatus
-        self.unlockableItems = MorpheDemoContent.unlockableItems
 
         MorpheTheme.apply(accentPalette: profileShowcase.accentPalette)
 
@@ -1402,7 +1385,9 @@ final class MorpheAppStore {
         selectedCoachTab = .dashboard
         selectedCommunitySection = .forYou
         selectedSportMode = primarySport
-        clientProfile.gender = onboardingDraft.gender
+        // Gender is deliberately NOT copied: the step was cut from onboarding,
+        // so writing the draft's default would silently record "Male" for
+        // every user without asking.
         clientProfile.selectedSports = onboardingDraft.selectedSports
         clientProfile.selectedTrainingStyles = onboardingDraft.selectedTrainingStyles
         clientProfile.selectedGoals = selectedGoals
@@ -1488,6 +1473,7 @@ final class MorpheAppStore {
         // 6:08") and personal rules ("Knee pain history") are other-person data.
         sportMetrics = []
         personalRules = []
+        profileShowcase.aiPerformanceBio = ""
         clientProfile.level = LevelProgress(
             currentTitle: "Level 1",
             nextTitle: "Level 2",
@@ -2910,17 +2896,6 @@ final class MorpheAppStore {
         Haptics.impact(.light)
     }
 
-    func selectThemePreset(_ theme: ThemePreset) {
-        profileShowcase.theme = theme
-        showToast("\(theme.rawValue) applied.")
-    }
-
-    func selectAccentPalette(_ palette: AccentPalette) {
-        profileShowcase.accentPalette = palette
-        MorpheTheme.apply(accentPalette: palette)
-        showToast("\(palette.rawValue) accents applied.")
-    }
-
     func updateDisplayName(_ newName: String) {
         let trimmed = String(newName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
         guard !trimmed.isEmpty else {
@@ -2943,18 +2918,6 @@ final class MorpheAppStore {
         profileShowcase.avatar.style = style
         persistLocalProfile()
         showCelebration(title: "Avatar updated", detail: style.rawValue, symbol: "person.crop.circle")
-    }
-
-    func selectBannerPreset(_ preset: BannerPreset) {
-        profileShowcase.banner = BannerProfile(preset: preset, title: bannerTitle(for: preset), subtitle: profileShowcase.currentPhase)
-        persistLocalProfile()
-        showToast("\(preset.rawValue) banner applied.")
-    }
-
-    func selectCoachingTone(_ tone: CoachingTone) {
-        profileShowcase.coachingTone = tone
-        persistLocalProfile()
-        showToast("\(tone.rawValue) coaching tone selected.")
     }
 
     func toggleCoachProfileTrainingStyle(_ style: TrainingStyleOption) {
@@ -3049,10 +3012,6 @@ final class MorpheAppStore {
         applyPrimarySport(primarySport)
         goalTranslation = MorpheDemoContent.goalTranslation(for: clientProfile.goal, sport: primarySport)
         showToast("Sports updated.")
-    }
-
-    func shareProfile() {
-        showCelebration(title: "Profile ready to share", detail: "@\(profileShowcase.username)", symbol: "square.and.arrow.up.fill")
     }
 
     func reactToCommunityPost(_ post: ProgressPost) {
@@ -3246,16 +3205,8 @@ final class MorpheAppStore {
         pendingPartnerSessionPost = nil
     }
 
-    func openPaywall() {
-        showPaywall = true
-    }
-
     func announce(_ message: String) {
         showToast(message)
-    }
-
-    func closePaywall() {
-        showPaywall = false
     }
 
     func openClientHub(_ client: CoachClient) {
@@ -3544,17 +3495,6 @@ final class MorpheAppStore {
         workoutLogs.removeAll { $0.id == log.id }
         refreshWorkoutLogDerivedState(for: log.athleteID)
         showToast("Workout log removed.")
-    }
-
-    func toggleProfileVisibility(for role: AppRole) {
-        switch role {
-        case .client:
-            athleteProfileIsPublic.toggle()
-            showToast(athleteProfileIsPublic ? "Athlete profile is now public." : "Athlete profile is now private.")
-        case .coach:
-            coachProfileIsPublic.toggle()
-            showToast(coachProfileIsPublic ? "Coach profile is now public." : "Coach profile is now private.")
-        }
     }
 
     func contactSupport() {

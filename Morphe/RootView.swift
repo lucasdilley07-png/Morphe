@@ -79,10 +79,7 @@ struct RootView: View {
                     }
             }
             .background(PremiumBackground())
-        }
-        .sheet(isPresented: $store.showPaywall) {
-            PaywallPreviewScreen()
-                .environment(store)
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $store.showUniversalSearch) {
             NavigationStack {

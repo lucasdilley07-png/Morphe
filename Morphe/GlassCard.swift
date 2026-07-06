@@ -1475,30 +1475,6 @@ struct BadgeGridCard: View {
     }
 }
 
-struct SubscriptionStatusCard: View {
-    let status: SubscriptionStatus
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Subscription Status")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                Text(status.currentPlan)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
-                Text(status.note)
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-
-                if status.profileIsFree {
-                    StatusBadge(text: "Premium Profile is Free", color: MorpheTheme.accent)
-                }
-            }
-        }
-    }
-}
-
 struct CalendarEventCard: View {
     let event: CalendarEvent
     let onReschedule: () -> Void
