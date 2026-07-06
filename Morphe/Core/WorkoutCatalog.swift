@@ -22,6 +22,7 @@ struct CatalogWorkout: Codable, Identifiable, Hashable {
     var id: String                 // stable UUID string (uuid5 of the combo key)
     var name: String
     var focus: String              // Full Body / Push / Pull / Legs / Core / Conditioning / Recovery
+    var trainingType: String?      // primary taxonomy ("Strength training", "HIIT", …)
     var level: String              // DemoDifficulty rawValue
     var durationMinutes: Int
     var equipmentProfile: String   // Bodyweight / Dumbbells / Full Gym
@@ -85,6 +86,7 @@ enum WorkoutCatalog {
             durationMinutes: workout.durationMinutes,
             equipment: workout.equipmentProfile,
             focusTag: workout.focus,
+            trainingTypeTag: workout.trainingType ?? "",
             exercises: exercises,
             notes: workout.notes,
             coachNote: workout.notes

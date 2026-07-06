@@ -713,6 +713,25 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertTrue(legends.contains { $0.name == "The Golden Six" })
     }
 
+    func testTrainingTypeTaxonomyCoversAllEighteenTypes() {
+        let store = MorpheAppStore()
+
+        let expected: Set<String> = [
+            "Strength training", "Hypertrophy training", "Muscular endurance",
+            "Cardiovascular endurance", "HIIT", "Power training",
+            "Speed & agility training", "Mobility training", "Flexibility training",
+            "Functional training", "Calisthenics", "Circuit training",
+            "Cross-training", "Plyometric training", "Balance & stability training",
+            "Core training", "Sport-specific training", "Recovery training"
+        ]
+        let present = Set(store.discoverWorkouts.map(\.trainingTypeTag))
+
+        XCTAssertEqual(expected.subtracting(present), [],
+                       "every training type in the taxonomy must have at least one workout")
+        XCTAssertTrue(store.catalogWorkouts.allSatisfy { !$0.trainingTypeTag.isEmpty },
+                      "every catalog workout carries a training type")
+    }
+
     func testSavedCatalogWorkoutSurvivesRelaunch() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"

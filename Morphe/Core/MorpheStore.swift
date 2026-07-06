@@ -1910,6 +1910,22 @@ final class MorpheAppStore {
         savedWorkouts.contains { $0.workoutTemplateID == template.id }
     }
 
+    /// Everything browsable in Discover: the bundled catalog plus the
+    /// authored per-sport templates surfaced as "Sport-specific training"
+    /// (real content — the 18th training type in the taxonomy).
+    var discoverWorkouts: [WorkoutTemplate] {
+        let sportSpecific = workoutTemplates
+            .filter { $0.sport != .generalFitness && !isCustomWorkout($0.id) && $0.trainingTypeTag.isEmpty }
+            .map { template -> WorkoutTemplate in
+                var copy = template
+                copy.trainingTypeTag = "Sport-specific training"
+                copy.focusTag = template.sport.shortTitle
+                copy.type = "Sport Series"
+                return copy
+            }
+        return catalogWorkouts + sportSpecific
+    }
+
     /// Rebuilds saved catalog items after a launch (or after the demo clear
     /// on the returning-user path wipes savedWorkouts).
     private func rebuildSavedCatalogWorkouts() {

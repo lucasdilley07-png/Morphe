@@ -372,7 +372,7 @@ struct WorkoutView: View {
                 if !store.catalogWorkouts.isEmpty {
                     TrainExpandableSection(
                         title: "Discover",
-                        subtitle: "\(store.catalogWorkouts.count) Morphe Programs — filter by focus, level, time, and equipment.",
+                        subtitle: "\(store.discoverWorkouts.count) workouts organized by training type — strength to recovery and everything between.",
                         isExpanded: $showDiscover
                     ) {
                         DiscoverCatalogSection(
@@ -1288,6 +1288,7 @@ private struct DiscoverCatalogSection: View {
     @Environment(MorpheAppStore.self) private var store
     let onStart: (WorkoutTemplate) -> Void
 
+    @State private var trainingTypeFilter: String?
     @State private var collectionFilter: String?
     @State private var focusFilter: String?
     @State private var levelFilter: DemoDifficulty?
@@ -1295,13 +1296,28 @@ private struct DiscoverCatalogSection: View {
     @State private var equipmentFilter: String?
     @State private var visibleCount = 12
 
+    /// The product's canonical training taxonomy, in presentation order.
+    private static let trainingTypeOrder = [
+        "Strength training", "Hypertrophy training", "Muscular endurance",
+        "Cardiovascular endurance", "HIIT", "Power training",
+        "Speed & agility training", "Mobility training", "Flexibility training",
+        "Functional training", "Calisthenics", "Circuit training",
+        "Cross-training", "Plyometric training", "Balance & stability training",
+        "Core training", "Sport-specific training", "Recovery training"
+    ]
+
+    private var trainingTypeOptions: [String] {
+        let present = Set(store.discoverWorkouts.map(\.trainingTypeTag))
+        return Self.trainingTypeOrder.filter { present.contains($0) }
+    }
+
     private var collectionOptions: [String] {
-        Array(Set(store.catalogWorkouts.map(\.type))).sorted()
+        Array(Set(store.discoverWorkouts.map(\.type))).sorted()
     }
 
     private var focusOptions: [String] {
         var seen: Set<String> = []
-        return store.catalogWorkouts.compactMap { template in
+        return store.discoverWorkouts.compactMap { template in
             guard !template.focusTag.isEmpty, !seen.contains(template.focusTag) else { return nil }
             seen.insert(template.focusTag)
             return template.focusTag
@@ -1309,8 +1325,9 @@ private struct DiscoverCatalogSection: View {
     }
 
     private var filtered: [WorkoutTemplate] {
-        store.catalogWorkouts.filter { template in
-            (collectionFilter == nil || template.type == collectionFilter)
+        store.discoverWorkouts.filter { template in
+            (trainingTypeFilter == nil || template.trainingTypeTag == trainingTypeFilter)
+                && (collectionFilter == nil || template.type == collectionFilter)
                 && (focusFilter == nil || template.focusTag == focusFilter)
                 && (levelFilter == nil || template.difficulty == levelFilter)
                 && (durationFilter == nil || template.durationMinutes == durationFilter)
@@ -1322,6 +1339,8 @@ private struct DiscoverCatalogSection: View {
         VStack(alignment: .leading, spacing: 14) {
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
+                    // Training type is the primary organizing facet.
+                    filterRow("Training type", options: trainingTypeOptions, selection: $trainingTypeFilter) { $0 }
                     if collectionOptions.count > 1 {
                         filterRow("Collection", options: collectionOptions, selection: $collectionFilter) { $0 }
                     }
@@ -1361,6 +1380,7 @@ private struct DiscoverCatalogSection: View {
                 }
             }
         }
+        .onChange(of: trainingTypeFilter) { _, _ in visibleCount = 12 }
         .onChange(of: collectionFilter) { _, _ in visibleCount = 12 }
         .onChange(of: focusFilter) { _, _ in visibleCount = 12 }
         .onChange(of: levelFilter) { _, _ in visibleCount = 12 }

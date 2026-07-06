@@ -1064,6 +1064,338 @@ enum MorpheDemoContent {
             beginnerModification: "Step back instead of jumping and skip the hop.",
             alternatives: ["Mountain Climber", "Jump Rope"],
             whyThisMatters: "Burpees deliver strength and cardio in one demanding move."
+        ),
+
+        // MARK: Plyometric / power
+        ExerciseReference(
+            id: "jump-squat",
+            name: "Jump Squat",
+            muscleGroup: .legs,
+            movementPattern: "Jump",
+            musclesWorked: "Quads, glutes, and calves",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "",
+            instructions: [
+                "Squat to about half depth with arms back.",
+                "Explode up as high as you can.",
+                "Land soft, absorb, and reset before the next rep."
+            ],
+            formCue: "Land like you're trying not to make a sound.",
+            commonMistakes: "Landing stiff-legged with knees caving in.",
+            beginnerModification: "Do fast bodyweight squats without leaving the floor.",
+            alternatives: ["Bodyweight Squat", "Burpee"],
+            whyThisMatters: "Jumping trains your legs to produce force fast — the root of athletic power."
+        ),
+        ExerciseReference(
+            id: "broad-jump",
+            name: "Broad Jump",
+            muscleGroup: .legs,
+            movementPattern: "Jump",
+            musclesWorked: "Glutes, hamstrings, and quads",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "",
+            instructions: [
+                "Swing your arms back and load your hips.",
+                "Jump forward for distance, not height.",
+                "Stick the landing in a stable half squat."
+            ],
+            formCue: "Stick every landing before you step back.",
+            commonMistakes: "Rushing reps without resetting the landing.",
+            beginnerModification: "Jump shorter distances and step back calmly.",
+            alternatives: ["Jump Squat", "Bodyweight Squat"],
+            whyThisMatters: "Horizontal power carries straight into sprinting and sport."
+        ),
+        ExerciseReference(
+            id: "skater-jump",
+            name: "Skater Jump",
+            muscleGroup: .legs,
+            movementPattern: "Lateral jump",
+            musclesWorked: "Glutes, quads, and ankles",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "",
+            instructions: [
+                "Bound sideways off one leg.",
+                "Land on the other leg with a soft knee.",
+                "Hold one beat, then bound back."
+            ],
+            formCue: "Balance the landing before the next bound.",
+            commonMistakes: "Letting the landing knee collapse inward.",
+            beginnerModification: "Step side to side, adding a small hop as you improve.",
+            alternatives: ["Jump Squat", "Reverse Lunge"],
+            whyThisMatters: "Side-to-side power and landing control protect knees and build agility."
+        ),
+
+        // MARK: Speed & agility
+        ExerciseReference(
+            id: "high-knees",
+            name: "High Knees",
+            muscleGroup: .conditioning,
+            movementPattern: "Run in place",
+            musclesWorked: "Hip flexors, calves, and core",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Run in place driving knees to hip height.",
+                "Stay tall on the balls of your feet.",
+                "Pump your arms like a sprinter."
+            ],
+            formCue: "Fast feet, tall posture.",
+            commonMistakes: "Leaning back as the legs get tired.",
+            beginnerModification: "March in place with high knees at a slower pace.",
+            alternatives: ["Jump Rope", "Mountain Climber"],
+            whyThisMatters: "Quick turnover and knee drive are the mechanics of speed."
+        ),
+        ExerciseReference(
+            id: "lateral-shuffle",
+            name: "Lateral Shuffle",
+            muscleGroup: .conditioning,
+            movementPattern: "Lateral movement",
+            musclesWorked: "Glutes, quads, and adductors",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Drop into an athletic stance, hips low.",
+                "Shuffle sideways 3-5 quick steps.",
+                "Plant the outside foot and shuffle back."
+            ],
+            formCue: "Stay low the whole time — don't bounce up.",
+            commonMistakes: "Crossing the feet or standing up between reps.",
+            beginnerModification: "Slow the steps and shorten the distance.",
+            alternatives: ["High Knees", "Skater Jump"],
+            whyThisMatters: "Change of direction is the agility skill every field sport runs on."
+        ),
+
+        // MARK: Functional
+        ExerciseReference(
+            id: "farmer-carry",
+            name: "Farmer Carry",
+            muscleGroup: .core,
+            movementPattern: "Loaded carry",
+            musclesWorked: "Grip, traps, core, and legs",
+            equipment: "Dumbbells or kettlebells",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Hold a heavy weight in each hand.",
+                "Walk tall with tight ribs and level shoulders.",
+                "Set the weights down with a flat back."
+            ],
+            formCue: "Walk like both pockets are full and you can't tip.",
+            commonMistakes: "Leaning to one side or shrugging the shoulders.",
+            beginnerModification: "Carry one lighter weight and switch sides halfway.",
+            alternatives: ["Kettlebell Swing", "Plank"],
+            whyThisMatters: "Carrying heavy things is the most direct real-world strength there is."
+        ),
+
+        // MARK: Balance & stability
+        ExerciseReference(
+            id: "single-leg-rdl",
+            name: "Single-Leg Romanian Deadlift",
+            muscleGroup: .legs,
+            movementPattern: "Hinge",
+            musclesWorked: "Hamstrings, glutes, and ankles",
+            equipment: "None or one dumbbell",
+            difficulty: .moderate,
+            videoPlaceholder: "",
+            instructions: [
+                "Balance on one leg with a soft knee.",
+                "Hinge forward as the free leg extends behind you.",
+                "Squeeze the standing glute to return upright."
+            ],
+            formCue: "Square hips — imagine headlights pointing at the floor.",
+            commonMistakes: "Opening the hip and losing the line of the back leg.",
+            beginnerModification: "Keep the back toe lightly touching the floor.",
+            alternatives: ["Romanian Deadlift", "Glute Bridge"],
+            whyThisMatters: "Single-leg balance under a hinge builds ankles, knees, and hips that hold up."
+        ),
+        ExerciseReference(
+            id: "bird-dog",
+            name: "Bird Dog",
+            muscleGroup: .core,
+            movementPattern: "Anti-rotation",
+            musclesWorked: "Deep core and low back",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Start on all fours with a flat back.",
+                "Extend opposite arm and leg without tilting.",
+                "Pause, return, and switch sides."
+            ],
+            formCue: "A cup of water on your low back shouldn't spill.",
+            commonMistakes: "Arching the low back as the leg lifts.",
+            beginnerModification: "Lift only the leg or only the arm.",
+            alternatives: ["Dead Bug", "Plank"],
+            whyThisMatters: "Anti-rotation strength keeps the spine steady in everything you do."
+        ),
+        ExerciseReference(
+            id: "single-leg-glute-bridge",
+            name: "Single-Leg Glute Bridge",
+            muscleGroup: .legs,
+            movementPattern: "Hip extension",
+            musclesWorked: "Glutes and hamstrings",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Lie on your back, one foot planted, one leg extended.",
+                "Drive through the planted heel to lift your hips.",
+                "Keep hips level; lower with control."
+            ],
+            formCue: "Level hips — don't let one side drop.",
+            commonMistakes: "Pushing through the toes and cramping the hamstring.",
+            beginnerModification: "Do two-leg glute bridges first.",
+            alternatives: ["Glute Bridge", "Single-Leg Romanian Deadlift"],
+            whyThisMatters: "One-sided glute strength fixes the imbalances two-leg work hides."
+        ),
+
+        // MARK: Mobility
+        ExerciseReference(
+            id: "cat-cow",
+            name: "Cat-Cow",
+            muscleGroup: .back,
+            movementPattern: "Spinal flexion/extension",
+            musclesWorked: "Spine and deep core",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Start on all fours.",
+                "Exhale and round your spine toward the ceiling.",
+                "Inhale and let your belly drop as your chest lifts."
+            ],
+            formCue: "Move one vertebra at a time, matched to your breath.",
+            commonMistakes: "Rushing the movement instead of segmenting it.",
+            beginnerModification: "Shrink the range to what feels smooth.",
+            alternatives: ["Thread the Needle", "Child's Pose"],
+            whyThisMatters: "A spine that moves well segment by segment resists stiffness and tweaks."
+        ),
+        ExerciseReference(
+            id: "worlds-greatest-stretch",
+            name: "World's Greatest Stretch",
+            muscleGroup: .legs,
+            movementPattern: "Dynamic stretch",
+            musclesWorked: "Hips, hamstrings, and thoracic spine",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Step into a deep lunge, hands inside the front foot.",
+                "Rotate your inside arm to the ceiling and follow it with your eyes.",
+                "Return, straighten the front leg briefly, and switch sides."
+            ],
+            formCue: "Own each position for a breath before moving on.",
+            commonMistakes: "Collapsing into the lunge instead of staying long.",
+            beginnerModification: "Drop the back knee to the floor.",
+            alternatives: ["Cat-Cow", "Walking Lunge"],
+            whyThisMatters: "One move that opens hips, hamstrings, and upper back — the best warm-up minute in training."
+        ),
+        ExerciseReference(
+            id: "thread-the-needle",
+            name: "Thread the Needle",
+            muscleGroup: .back,
+            movementPattern: "Thoracic rotation",
+            musclesWorked: "Upper back and shoulders",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Start on all fours.",
+                "Slide one arm under your body, palm up, until the shoulder rests down.",
+                "Hold, then rotate the same arm up toward the ceiling."
+            ],
+            formCue: "Rotate from the upper back, not the low back.",
+            commonMistakes: "Shifting the hips instead of rotating the spine.",
+            beginnerModification: "Shorten the reach and skip the ceiling rotation.",
+            alternatives: ["Cat-Cow", "Face Pull"],
+            whyThisMatters: "Upper-back rotation keeps pressing and daily posture healthy."
+        ),
+
+        // MARK: Flexibility
+        ExerciseReference(
+            id: "hip-flexor-stretch",
+            name: "Kneeling Hip Flexor Stretch",
+            muscleGroup: .legs,
+            movementPattern: "Static stretch",
+            musclesWorked: "Hip flexors and quads",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Kneel with one foot forward in a half-kneel.",
+                "Tuck your tailbone and shift gently forward.",
+                "Hold and breathe; switch sides."
+            ],
+            formCue: "The stretch comes from the tucked pelvis, not the lean.",
+            commonMistakes: "Arching the low back and calling it a stretch.",
+            beginnerModification: "Pad the knee and reduce the forward shift.",
+            alternatives: ["World's Greatest Stretch", "Reverse Lunge"],
+            whyThisMatters: "Sitting shortens hip flexors; opening them protects the low back."
+        ),
+        ExerciseReference(
+            id: "standing-hamstring-stretch",
+            name: "Standing Hamstring Stretch",
+            muscleGroup: .legs,
+            movementPattern: "Static stretch",
+            musclesWorked: "Hamstrings and calves",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Prop one heel on a low surface, leg straight.",
+                "Hinge from the hips with a long spine.",
+                "Hold where you feel a clean stretch and breathe."
+            ],
+            formCue: "Fold at the hips — don't round toward the toes.",
+            commonMistakes: "Rounding the back to fake extra range.",
+            beginnerModification: "Keep the heel on the floor and hinge less.",
+            alternatives: ["Romanian Deadlift", "World's Greatest Stretch"],
+            whyThisMatters: "Hamstrings that lengthen calmly make hinging safe and deep."
+        ),
+        ExerciseReference(
+            id: "chest-doorway-stretch",
+            name: "Doorway Chest Stretch",
+            muscleGroup: .chest,
+            movementPattern: "Static stretch",
+            musclesWorked: "Chest and front shoulders",
+            equipment: "A doorway or rack",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Place your forearm on a doorframe, elbow at shoulder height.",
+                "Step through gently until the chest opens.",
+                "Hold and breathe; switch sides."
+            ],
+            formCue: "Open the chest without flaring the ribs.",
+            commonMistakes: "Cranking into pain instead of easing into a stretch.",
+            beginnerModification: "Lower the elbow and reduce the step-through.",
+            alternatives: ["Face Pull", "Thread the Needle"],
+            whyThisMatters: "A open chest balances all the pressing and desk time your shoulders absorb."
+        ),
+        ExerciseReference(
+            id: "childs-pose",
+            name: "Child's Pose",
+            muscleGroup: .back,
+            movementPattern: "Static stretch",
+            musclesWorked: "Lats, low back, and hips",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Kneel and sit back toward your heels.",
+                "Reach both arms long on the floor.",
+                "Let your chest sink and breathe slowly."
+            ],
+            formCue: "Every exhale, sink a little further.",
+            commonMistakes: "Holding tension in the shoulders instead of releasing.",
+            beginnerModification: "Widen the knees or rest your head on a cushion.",
+            alternatives: ["Cat-Cow", "Thread the Needle"],
+            whyThisMatters: "A genuine reset position — it downshifts the nervous system and opens the back."
         )
     ]
 

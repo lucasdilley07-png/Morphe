@@ -708,6 +708,9 @@ struct WorkoutTemplate: Identifiable, Hashable {
     var equipment: String
     /// Catalog facet ("Full Body", "Push", …) — empty for non-catalog templates.
     var focusTag: String = ""
+    /// Primary taxonomy ("Strength training", "HIIT", …) — the Discover
+    /// organizing spine; empty for non-catalog templates.
+    var trainingTypeTag: String = ""
     var exercises: [WorkoutExercise]
     var defaultSets: String = "3 sets"
     var defaultReps: String = "10 reps"
