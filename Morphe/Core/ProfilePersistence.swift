@@ -52,6 +52,11 @@ struct LocalProfileSnapshot: Codable, Equatable {
     // Body metrics, editable from Profile.
     var height: String = ""
     var bodyWeight: String = ""
+    // Daily state — which calendar day the daily surfaces belong to, and which
+    // tasks were completed that day (so a same-day relaunch can't re-offer
+    // already-earned task XP).
+    var dailyStateDay: String = ""
+    var completedTaskTitlesToday: [String] = []
 }
 
 extension LocalProfileSnapshot {
@@ -104,6 +109,8 @@ extension LocalProfileSnapshot {
         completedQuizIDs = arr(.completedQuizIDs)
         height = str(.height)
         bodyWeight = str(.bodyWeight)
+        dailyStateDay = str(.dailyStateDay)
+        completedTaskTitlesToday = arr(.completedTaskTitlesToday)
     }
 }
 

@@ -128,6 +128,10 @@ final class MorpheAppStore {
     var minimumWinModeEnabled = false
     var minimumWinMessage = "Today does not need to be perfect. Complete one small win to keep momentum."
     var streakProtected = false
+    /// Calendar-day key ("2026-07-05") of the last daily reset. Persisted so a
+    /// same-day relaunch keeps today's completed tasks, and compared on every
+    /// foreground so a night in the app switcher can't freeze "today".
+    private(set) var lastDailyResetDay = ""
     var selectedConfidence: ConfidenceLevel? = .maybe
     var didCompleteQuickCheckIn = false
     var recovery: RecoverySnapshot
@@ -430,6 +434,10 @@ final class MorpheAppStore {
 
         authUser = authService.currentUser
         if let authUser { selectedRole = authUser.role.appRole }
+
+        // Same-day relaunch: no-op (daily state was just restored). New day —
+        // or first launch ever — starts the daily surfaces fresh.
+        handleDayRolloverIfNeeded()
     }
 
     // MARK: - Auth actions
@@ -577,6 +585,17 @@ final class MorpheAppStore {
         }
         completedQuizIDs = Set(snapshot.completedQuizIDs)
 
+        // Daily state: a same-day relaunch keeps today's completed tasks
+        // (re-offering them unchecked was an infinite XP faucet); a new day
+        // starts fresh via handleDayRolloverIfNeeded at the end of init.
+        lastDailyResetDay = snapshot.dailyStateDay
+        if snapshot.dailyStateDay == Self.dayKey() {
+            for index in todayTasks.indices {
+                todayTasks[index].isCompleted =
+                    snapshot.completedTaskTitlesToday.contains(todayTasks[index].title)
+            }
+        }
+
         // History/consistency/score/streak were derived in init against the seeded
         // id; rebuild them now that the user's real identity is restored.
         refreshWorkoutLogDerivedState(for: clientProfile.id)
@@ -618,7 +637,9 @@ final class MorpheAppStore {
                 levelTargetXP: clientProfile.level.targetXP,
                 completedQuizIDs: Array(completedQuizIDs),
                 height: clientProfile.height,
-                bodyWeight: clientProfile.bodyWeight
+                bodyWeight: clientProfile.bodyWeight,
+                dailyStateDay: lastDailyResetDay,
+                completedTaskTitlesToday: todayTasks.filter(\.isCompleted).map(\.title)
             )
         )
     }
@@ -807,9 +828,25 @@ final class MorpheAppStore {
         isRestoringWorkoutSession = true
         defer { isRestoringWorkoutSession = false }
 
-        if let id = snapshot.currentWorkoutID,
-           workoutTemplates.contains(where: { $0.id == id }) {
-            currentWorkoutID = id
+        if let id = snapshot.currentWorkoutID {
+            if workoutTemplates.contains(where: { $0.id == id }) {
+                currentWorkoutID = id
+            } else if let catalogTemplate = catalogWorkouts.first(where: { $0.id == id }) {
+                // A Discover workout that was started but never saved exists
+                // only in the bundled catalog after a relaunch — rebuild its
+                // template so the live session reattaches to the right workout
+                // (and its tracked-set keys resolve).
+                ensureCatalogWorkoutInLibrary(catalogTemplate)
+                currentWorkoutID = id
+            } else if snapshot.isWorkoutSessionActive {
+                // The session's workout no longer exists anywhere. Restoring
+                // the session flags would attach the live tracker (and its
+                // logged sets) to whatever template happens to be current —
+                // drop the stale session instead of corrupting a different
+                // workout.
+                isWorkoutLoggedToday = snapshot.isWorkoutLoggedToday
+                return
+            }
         }
         isWorkoutLoggedToday = snapshot.isWorkoutLoggedToday
         isWorkoutSessionActive = snapshot.isWorkoutSessionActive
@@ -1764,6 +1801,39 @@ final class MorpheAppStore {
         showToast("Momentum protected.")
     }
 
+    // MARK: - Day rollover
+
+    /// Calendar-day key ("2026-07-05") for daily-state comparisons.
+    static func dayKey(for date: Date = .now) -> String {
+        let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    /// Resets the daily surfaces when a calendar-day boundary passes. Runs at
+    /// launch AND on every return to the foreground — an app suspended
+    /// overnight used to keep yesterday's "you're done for today", completed
+    /// tasks, and check-in state forever.
+    func handleDayRolloverIfNeeded(now: Date = .now) {
+        let today = Self.dayKey(for: now)
+        guard today != lastDailyResetDay else { return }
+        lastDailyResetDay = today
+
+        for index in todayTasks.indices { todayTasks[index].isCompleted = false }
+        for index in minimumWinTasks.indices { minimumWinTasks[index].isCompleted = false }
+        minimumWinModeEnabled = false
+        streakProtected = false
+        didCompleteQuickCheckIn = false
+        // A new day means a new quiz — selections are per-day, earned
+        // completions (completedQuizIDs, XP) are forever.
+        quizSelections = [:]
+
+        // "Logged today", streak, and score are date-derived — recompute them
+        // against the new day instead of trusting launch-time values.
+        refreshWorkoutLogDerivedState(for: clientProfile.id)
+
+        if hasCompletedOnboarding { persistLocalProfile() }
+    }
+
     func toggleTask(_ task: TaskItem) {
         guard let index = todayTasks.firstIndex(where: { $0.id == task.id }) else { return }
         todayTasks[index].isCompleted.toggle()
@@ -1776,6 +1846,9 @@ final class MorpheAppStore {
                 symbol: "sparkles"
             )
         }
+        // Completions are persisted per-day: without this, every relaunch
+        // offered the same unchecked list again — an infinite XP faucet.
+        persistLocalProfile()
     }
 
     func toggleMinimumWinTask(_ task: TaskItem) {
@@ -2476,10 +2549,15 @@ final class MorpheAppStore {
         quizSelections[quiz.id] = index
 
         if index == quiz.correctIndex {
-            completedQuizIDs.insert(quiz.id)
-            updateXP(for: quiz.rewardXP, add: true)
-            showCelebration(title: "Quiz complete", detail: "+\(quiz.rewardXP) XP", symbol: "brain.head.profile")
-            persistLocalProfile()
+            // XP is awarded once per quiz, ever — answering an already-aced
+            // question again (day rotation cycles through the pool) must not
+            // become a repeatable XP source.
+            if !completedQuizIDs.contains(quiz.id) {
+                completedQuizIDs.insert(quiz.id)
+                updateXP(for: quiz.rewardXP, add: true)
+                showCelebration(title: "Quiz complete", detail: "+\(quiz.rewardXP) XP", symbol: "brain.head.profile")
+                persistLocalProfile()
+            }
         } else {
             showToast("Good try — the explanation below has the answer.")
         }
@@ -2636,59 +2714,95 @@ final class MorpheAppStore {
         let lower = text.lowercased()
         func has(_ words: String...) -> Bool { words.contains { lower.contains($0) } }
 
-        // Session control first — the most consequential intents.
-        if has("discard", "cancel", "quit", "stop") && has("workout", "session", "training") {
-            guard isWorkoutSessionActive else { return "There's no live session to discard right now." }
-            cancelTrackedWorkoutSession()
-            return "Session discarded — nothing was logged."
+        if has("what can you do", "help me use", "commands") || lower == "help" {
+            return "I can start your workout, turn on Minimum Win mode, open Progress, Lessons, the exercise library, or your profile, and switch lb/kg. Just ask."
         }
-        if has("start", "begin") && has("workout", "plan", "session", "train") {
+
+        // Questions get answers, not actions. "Should I stop training when my
+        // knee hurts?" is a coaching ask — matching it as a command used to
+        // silently wipe the live session.
+        let questionStarts = [
+            "should", "when", "what", "how", "why", "where", "who",
+            "is ", "are ", "am ", "do ", "does ", "did ", "would", "could",
+            "can ", "explain", "tell me"
+        ]
+        if lower.contains("?") || questionStarts.contains(where: { lower.hasPrefix($0) }) {
+            return nil
+        }
+
+        // Start first: "stop procrastinating and start my workout" is a start.
+        if has("start", "begin", "let's train", "lets train") && has("workout", "session", "training", "today's plan", "todays plan") {
             guard !isWorkoutSessionActive else {
                 selectedClientTab = .train
+                closeAIAgent()
                 return "You're already mid-session — it's open in Train."
             }
             startTodayWorkout()
+            closeAIAgent()
             return "Done — \(currentWorkout.name) is live in Train. Log your first set when you're ready."
         }
-        if has("smaller", "easier", "tired", "low energy", "minimum win") {
+
+        // Deliberately NOT executed from chat: logged sets are unrecoverable,
+        // and the tracker's own Discard flow confirms before deleting. Chat
+        // points there instead of matching its way into data loss.
+        if has("discard", "cancel", "quit", "stop") && has("workout", "session", "training") {
+            guard isWorkoutSessionActive else { return "There's no live session right now." }
+            selectedClientTab = .train
+            closeAIAgent()
+            return "I don't discard sessions from chat — logged sets can't be recovered. Use Discard at the top of Train; it double-checks first. Running low instead? Say \"minimum win\" and I'll shrink today."
+        }
+
+        // Minimum Win needs training context: bare "tired" used to flip the
+        // mode on messages like "I'm tired of chicken — meal ideas?".
+        if has("minimum win", "smaller win", "easier day", "easy day", "low energy", "shrink today")
+            || (has("tired", "exhausted", "drained", "no energy") && has("workout", "train", "session", "today", "win")) {
             activateMinimumWinMode()
             return "Minimum Win mode is on — one small win still counts today."
         }
 
-        // Settings.
-        if has("kilogram", " kg", "to kg") {
-            weightUnit = .kilograms
-            return "Switched to kilograms."
-        }
-        if has("pound", " lb", "to lb") {
-            weightUnit = .pounds
-            return "Switched to pounds."
+        // Units switch only on an explicit ask — "I lifted 100 kg today" is a
+        // statement, not a settings change.
+        if has("switch", "change", "prefer", "track in", "weights in", "use kg", "use kilo", "use lb", "use pound") {
+            let toKG = has("to kg", "to kilo", "in kg", "in kilo")
+            let toLB = has("to lb", "to pound", "in lb", "in pound")
+            let wantsKG = toKG || (!toLB && has("kilogram", " kg", "kgs"))
+            let wantsLB = toLB || (!toKG && has("pound", " lb", "lbs"))
+            if wantsKG != wantsLB {
+                weightUnit = wantsKG ? .kilograms : .pounds
+                return "Weights now shown in \(wantsKG ? "kilograms" : "pounds")."
+            }
         }
 
-        // Navigation.
+        // Navigation closes the chat sheet — moving tabs behind a presented
+        // sheet looked like nothing happened.
         if has("progress", "score", "streak", "stronger", "records", "history") {
             openProgress()
+            closeAIAgent()
             return "Opened Progress — your score, strength trend, and workout history are there."
         }
         if has("lesson", "quiz", "learn") {
             openMore(.learn)
+            closeAIAgent()
             return "Opened Lessons — today's quiz is at the top."
         }
         if has("library", "exercise", "form guide", "anatomy") {
             openMore(.library)
+            closeAIAgent()
             return "Opened the exercise library — pick a muscle group to browse form guides."
         }
-        if has("profile", "settings", "avatar", "injur", "rename") {
-            openClientProfile()
-            return "Opened your profile — name, weight unit, training days, injuries, and avatar live here."
+        if has("profile", "settings", "injur", "rename", "training days") {
+            // Two sheets can't co-present: dismiss the chat, then present the
+            // profile once the transition has room to run.
+            closeAIAgent()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                self?.openClientProfile()
+            }
+            return "Opening your profile — name, weight unit, training days, and injuries live there."
         }
         if has("today", "home") && has("open", "go to", "back", "show") {
             selectedClientTab = .today
+            closeAIAgent()
             return "Back on Today."
-        }
-
-        if has("help", "what can you do", "commands") {
-            return "I can start or discard your workout, turn on Minimum Win mode, open Progress, Lessons, the exercise library, or your profile, and switch lb/kg. Just ask."
         }
 
         return nil

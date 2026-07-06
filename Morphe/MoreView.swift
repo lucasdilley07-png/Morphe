@@ -25,14 +25,13 @@ struct MoreView: View {
         ClientHubFeature.allCases.filter { $0 != .progress }
     }
 
-    /// ONE quiz a day (the old surface dumped a 10-quiz, 40-button wall and
-    /// claimed it "rotated daily"). Prefers the first uncompleted quiz in
-    /// today's rotation so streaky learners always get something new.
+    /// ONE quiz per calendar day — the day picks it, completion doesn't skip
+    /// ahead. (The old "first uncompleted" rule let a learner chain all 16 in
+    /// one sitting, then hit an empty pool with a false "tomorrow" promise.)
     private var dailyQuiz: MiniQuiz? {
         guard !store.quizzes.isEmpty else { return nil }
         let dayIndex = Calendar.current.ordinality(of: .day, in: .year, for: .now) ?? 0
-        let rotation = (0..<store.quizzes.count).map { store.quizzes[(dayIndex + $0) % store.quizzes.count] }
-        return rotation.first { !store.completedQuizIDs.contains($0.id) } ?? rotation.first
+        return store.quizzes[dayIndex % store.quizzes.count]
     }
 
     private var nutritionTargets: [(label: String, value: String, detail: String)] {
@@ -341,7 +340,9 @@ struct MoreView: View {
                                     .foregroundStyle(answeredIndex == quiz.correctIndex ? MorpheTheme.accent : MorpheTheme.textSecondary)
                                     .fixedSize(horizontal: false, vertical: true)
                             } else if isComplete {
-                                Text("Already aced — a new question lands tomorrow.")
+                                Text(store.completedQuizIDs.count == store.quizzes.count
+                                     ? "You've aced every question — fresh material arrives with new lessons."
+                                     : "Already aced — a new question lands tomorrow.")
                                     .font(.subheadline)
                                     .foregroundStyle(MorpheTheme.textSecondary)
                             }

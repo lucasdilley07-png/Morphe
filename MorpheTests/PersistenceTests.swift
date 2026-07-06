@@ -788,8 +788,10 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertTrue(store.isWorkoutSessionActive, "'start my workout' actually starts the session")
         XCTAssertEqual(store.selectedClientTab, .train)
 
+        // Discard is deliberately NOT executed from chat — logged sets are
+        // unrecoverable, so Morphe AI points at the confirming UI instead.
         store.sendAIAgentPrompt("Discard this session")
-        XCTAssertFalse(store.isWorkoutSessionActive, "'discard this session' actually cancels it")
+        XCTAssertTrue(store.isWorkoutSessionActive, "chat never silently discards a live session")
 
         store.sendAIAgentPrompt("Switch to kg")
         XCTAssertEqual(store.weightUnit, .kilograms, "'switch to kg' changes the setting")
@@ -800,7 +802,8 @@ final class WorkoutSessionTests: XCTestCase {
         // Every command produced a confirmation reply from Morphe AI.
         let aiReplies = store.athleteAIAgentConversation.filter { $0.senderName == "Morphe AI" }
         XCTAssertTrue(aiReplies.contains { $0.text.contains("kilograms") })
-        XCTAssertTrue(aiReplies.contains { $0.text.contains("discarded") })
+        XCTAssertTrue(aiReplies.contains { $0.text.contains("Discard at the top of Train") },
+                      "the discard ask is answered with the safe path")
     }
 
     func testRenameRegeneratesHandleAndCapsLength() {
@@ -1152,5 +1155,178 @@ final class MetricsTests: XCTestCase {
         XCTAssertNotEqual(store.clientProfile.health.score, 76, "must not be the seeded demo score")
         XCTAssertGreaterThanOrEqual(store.clientProfile.level.streak, 1, "today's log starts a streak")
         XCTAssertFalse(store.healthTrend.isEmpty, "activity trend reflects real logs")
+    }
+
+    // MARK: - Catalog session restore (audit red list)
+
+    func testStartedCatalogWorkoutSessionSurvivesRelaunch() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        // Start a Discover workout WITHOUT saving it — on relaunch its
+        // template exists only in the bundled catalog, and the restore used
+        // to silently point the live session at a different workout.
+        let template = store.catalogWorkouts.first(where: { !$0.exercises.isEmpty })!
+        store.startCatalogWorkout(template)
+        store.completeTrackedSet(reps: 8, weight: 100)
+        let exerciseID = template.exercises[0].id
+
+        let reloaded = MorpheAppStore()
+        XCTAssertTrue(reloaded.isWorkoutSessionActive)
+        XCTAssertEqual(reloaded.currentWorkout.id, template.id,
+                       "the session must reattach to the catalog workout it was started from")
+        XCTAssertEqual(reloaded.trackedSetReps[exerciseID], [8],
+                       "logged sets must resolve against the rebuilt template")
+        XCTAssertNotNil(reloaded.activeWorkoutExercise, "the tracker must not come back headless")
+    }
+
+    func testStaleSessionForMissingWorkoutIsDropped() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        // A persisted session pointing at a workout that no longer exists
+        // anywhere (not in templates, not in the catalog).
+        WorkoutFilePersistence().saveSession(
+            WorkoutSessionSnapshot(
+                currentWorkoutID: UUID(),
+                isWorkoutSessionActive: true,
+                hasStartedWorkoutFlow: true,
+                hasCompletedWorkoutFlow: false,
+                activeWorkoutExerciseIndex: 3,
+                completedWorkoutSets: [:],
+                trackedSetReps: [:],
+                trackedSetWeights: [:],
+                trackedSetRPE: [:],
+                workoutSessionStartedAt: Date(),
+                completedSessionMinutes: nil,
+                isWorkoutLoggedToday: false
+            )
+        )
+
+        let reloaded = MorpheAppStore()
+        XCTAssertFalse(reloaded.isWorkoutSessionActive,
+                       "a session whose workout is gone is dropped, not attached to a random template")
+        XCTAssertEqual(reloaded.activeWorkoutExerciseIndex, 0)
+    }
+
+    // MARK: - Day rollover (audit red list)
+
+    func testDayRolloverResetsDailySurfacesAndKeepsEarnings() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.toggleTask(store.todayTasks[0])
+        store.activateMinimumWinMode()
+        let quiz = store.quizzes.first!
+        store.answerQuiz(quiz, with: quiz.correctIndex)
+        let earnedXP = store.clientProfile.level.currentXP
+        XCTAssertGreaterThan(earnedXP, 0)
+
+        store.handleDayRolloverIfNeeded(now: Date(timeIntervalSinceNow: 172_800))
+
+        XCTAssertFalse(store.todayTasks[0].isCompleted, "a new day starts with fresh tasks")
+        XCTAssertFalse(store.minimumWinModeEnabled, "Minimum Win is a per-day mode")
+        XCTAssertFalse(store.didCompleteQuickCheckIn, "check-in resets daily")
+        XCTAssertTrue(store.quizSelections.isEmpty, "quiz answers are per-day")
+        XCTAssertEqual(store.clientProfile.level.currentXP, earnedXP, "earned XP is forever")
+        XCTAssertTrue(store.completedQuizIDs.contains(quiz.id), "quiz mastery is forever")
+    }
+
+    func testSameDayRolloverIsANoOp() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.toggleTask(store.todayTasks[0])
+        store.handleDayRolloverIfNeeded()
+        XCTAssertTrue(store.todayTasks[0].isCompleted,
+                      "re-foregrounding on the same day must not wipe today's progress")
+    }
+
+    func testCompletedTasksSurviveSameDayRelaunch() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let task = store.todayTasks[0]
+        store.toggleTask(task)
+        let earnedXP = store.clientProfile.level.currentXP
+        XCTAssertGreaterThan(earnedXP, 0)
+
+        // Relaunching used to reset the checklist while keeping the XP —
+        // re-checking the same tasks every launch was an infinite XP faucet.
+        let reloaded = MorpheAppStore()
+        XCTAssertTrue(reloaded.todayTasks.first { $0.title == task.title }?.isCompleted ?? false,
+                      "a task completed today stays completed after a same-day relaunch")
+        XCTAssertEqual(reloaded.clientProfile.level.currentXP, earnedXP)
+    }
+
+    func testQuizNeverReawardsXP() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let quiz = store.quizzes.first!
+        store.answerQuiz(quiz, with: quiz.correctIndex)
+        let earnedXP = store.clientProfile.level.currentXP
+
+        // The day rotation cycles the pool, so an aced quiz can come around
+        // again — answering it a second time must not pay twice.
+        store.handleDayRolloverIfNeeded(now: Date(timeIntervalSinceNow: 172_800))
+        store.answerQuiz(quiz, with: quiz.correctIndex)
+        XCTAssertEqual(store.clientProfile.level.currentXP, earnedXP, "quiz XP is once per quiz, ever")
+    }
+
+    // MARK: - Morphe AI safety (audit red list)
+
+    func testAssistantTreatsQuestionsAsQuestionsNotCommands() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.startTodayWorkout()
+        store.completeTrackedSet(reps: 8, weight: 95)
+        store.sendAIAgentPrompt("Should I stop training when my knee hurts?")
+        XCTAssertTrue(store.isWorkoutSessionActive, "a coaching question must never wipe the session")
+
+        store.sendAIAgentPrompt("stop my workout")
+        XCTAssertTrue(store.isWorkoutSessionActive, "even the command form is answered with the safe path")
+        store.cancelTrackedWorkoutSession()
+
+        store.sendAIAgentPrompt("Where do I begin with my nutrition plan?")
+        XCTAssertFalse(store.isWorkoutSessionActive, "a nutrition question must not start a workout")
+    }
+
+    func testAssistantUnitAndModeMatchersNeedIntent() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertEqual(store.weightUnit, .pounds)
+        store.sendAIAgentPrompt("I lifted 100 kg today")
+        XCTAssertEqual(store.weightUnit, .pounds, "mentioning kg is not a request to switch units")
+
+        store.sendAIAgentPrompt("I'm tired of chicken. Give me meal ideas")
+        XCTAssertFalse(store.minimumWinModeEnabled, "being tired of chicken is not a training mode")
+
+        store.sendAIAgentPrompt("switch to kg")
+        XCTAssertEqual(store.weightUnit, .kilograms)
+        store.sendAIAgentPrompt("change back to pounds")
+        XCTAssertEqual(store.weightUnit, .pounds)
+
+        store.sendAIAgentPrompt("I'm tired today")
+        XCTAssertTrue(store.minimumWinModeEnabled, "a real low-energy signal still activates Minimum Win")
+    }
+
+    func testAssistantStartWinsOverStopPhrasing() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.sendAIAgentPrompt("stop procrastinating and start my workout")
+        XCTAssertTrue(store.isWorkoutSessionActive, "'…and start my workout' is a start, not a discard")
     }
 }
