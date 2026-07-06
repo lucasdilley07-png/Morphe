@@ -1000,6 +1000,63 @@ final class MorpheAppStore {
         workoutLogs(for: clientProfile.id)
     }
 
+    /// Personal records derived from the user's real logged sets: the
+    /// all-time top weight per exercise. This makes "your records build
+    /// themselves from the workouts you log" actually true — the seeded
+    /// showcase records were cleared for real users and nothing ever
+    /// repopulated them.
+    var derivedPersonalRecords: [PersonalRecord] {
+        var best: [String: (weight: Double, date: Date)] = [:]
+
+        for log in currentAthleteWorkoutLogs {
+            for exercise in log.exercises {
+                guard let weights = exercise.weightsPerSet,
+                      let top = weights.max(), top > 0 else { continue }
+                let recordedUnit = WeightUnit(rawValue: exercise.weightUnit ?? "") ?? weightUnit
+                let normalized: Double
+                if recordedUnit == weightUnit {
+                    normalized = top
+                } else {
+                    let factor = weightUnit == .kilograms ? 0.45359237 : 2.20462262
+                    normalized = ((top * factor) * 10).rounded() / 10
+                }
+                if normalized > (best[exercise.name]?.weight ?? 0) {
+                    best[exercise.name] = (normalized, log.completedAt)
+                }
+            }
+        }
+
+        return best
+            .map { name, entry in
+                PersonalRecord(
+                    title: name,
+                    value: weightUnit.format(entry.weight),
+                    detail: "Top set • \(Self.workoutDateLabel(for: entry.date))"
+                )
+            }
+            .sorted { $0.title < $1.title }
+    }
+
+    /// Updates the user's injury/limitations note post-onboarding — safety
+    /// data must stay editable, not locked after minute one.
+    func updateInjuryNote(_ note: String) {
+        clientProfile.limitations = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        rebuildPersonalRules()
+        persistLocalProfile()
+        showToast(clientProfile.limitations.isEmpty ? "Injury note cleared." : "Injury note updated.")
+    }
+
+    /// Updates the weekly training-day target (drives the consistency
+    /// denominator on Progress and the profile snapshot).
+    func updateTrainingDaysPerWeek(_ days: Int) {
+        let clamped = min(max(days, 1), 7)
+        guard clamped != clientProfile.trainingDaysPerWeek else { return }
+        clientProfile.trainingDaysPerWeek = clamped
+        persistLocalProfile()
+        Haptics.impact(.light)
+        showToast("Weekly target: \(clamped) day\(clamped == 1 ? "" : "s").")
+    }
+
     /// Strength-over-time per exercise, from the raw per-set data on the
     /// user's own logs. Only exercises with 2+ weighted sessions qualify —
     /// one data point isn't a trend. Weights recorded in another unit are

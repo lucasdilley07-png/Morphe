@@ -4,6 +4,8 @@ struct ProfileView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var isEditingName = false
     @State private var nameDraft = ""
+    @State private var isEditingInjuries = false
+    @State private var injuriesDraft = ""
 
     private var isCoach: Bool {
         store.selectedRole == .coach
@@ -104,6 +106,81 @@ struct ProfileView: View {
                     .frame(width: 110)
                 }
 
+                if !isCoach {
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    // Weekly target — drives the consistency denominator on
+                    // Progress; was user-set in onboarding then locked forever.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Training days per week")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        WrapStack(spacing: 8) {
+                            ForEach(1...7, id: \.self) { count in
+                                Button("\(count)") {
+                                    store.updateTrainingDaysPerWeek(count)
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.trainingDaysPerWeek == count, selectedColor: MorpheTheme.accent))
+                                .accessibilityLabel("\(count) days per week")
+                            }
+                        }
+                    }
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    // Injuries are safety data — collected in onboarding and
+                    // previously never editable again.
+                    if isEditingInjuries {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("Injuries or limits Morphe should respect", text: $injuriesDraft, axis: .vertical)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .lineLimit(2...4)
+                            HStack(spacing: 12) {
+                                Button("Save") {
+                                    store.updateInjuryNote(injuriesDraft)
+                                    isEditingInjuries = false
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.accent)
+                                .accessibilityLabel("Save injury note")
+                                Button("Cancel") {
+                                    isEditingInjuries = false
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .accessibilityLabel("Cancel injury note edit")
+                            }
+                        }
+                    } else {
+                        settingsRow(
+                            "Injuries & limits",
+                            value: store.clientProfile.limitations.isEmpty ? "None noted" : store.clientProfile.limitations
+                        ) {
+                            injuriesDraft = store.clientProfile.limitations
+                            isEditingInjuries = true
+                        }
+                    }
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    // Wires the avatar layer back up: the onboarding avatar
+                    // step was cut, which froze everyone on the default with
+                    // no way to change it anywhere.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Avatar")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        WrapStack(spacing: 8) {
+                            ForEach(store.availableAvatars) { style in
+                                Button(style.rawValue) {
+                                    store.selectAvatarStyle(style)
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: store.profileShowcase.avatar.style == style, selectedColor: MorpheTheme.accentAlt))
+                            }
+                        }
+                    }
+                }
+
                 Divider().overlay(Color.white.opacity(0.08))
 
                 if FeatureFlags.accountsEnabled {
@@ -196,8 +273,8 @@ private struct AthleteProfileBody: View {
 
             AthleteRecentLogsCard(logs: Array(store.currentAthleteWorkoutLogs.prefix(5)))
 
-            if !store.profileShowcase.personalRecords.isEmpty {
-                PersonalRecordsListCard(records: store.profileShowcase.personalRecords)
+            if !store.derivedPersonalRecords.isEmpty {
+                PersonalRecordsListCard(records: store.derivedPersonalRecords)
             }
         }
     }

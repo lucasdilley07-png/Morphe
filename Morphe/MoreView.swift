@@ -9,7 +9,9 @@ struct MoreView: View {
     }
 
     private var personalRecords: [PersonalRecord] {
-        store.profileShowcase.personalRecords
+        // Real records from logged sets — the seeded showcase list is always
+        // empty for real users.
+        store.derivedPersonalRecords
     }
 
     private var featuredDrills: [DrillReference] {

@@ -509,6 +509,36 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(progress.first?.delta ?? 0, 5, accuracy: 0.001)
     }
 
+    func testPersonalRecordsDeriveFromLoggedSets() {
+        let store = freshStore()
+        XCTAssertTrue(store.derivedPersonalRecords.isEmpty, "no records before any logs")
+
+        store.workoutLogs.append(strengthLog(for: store, exercise: "Goblet Squat", daysAgo: 7, topWeight: 45))
+        store.workoutLogs.append(strengthLog(for: store, exercise: "Goblet Squat", daysAgo: 1, topWeight: 50))
+
+        let records = store.derivedPersonalRecords
+        XCTAssertEqual(records.count, 1, "one record per exercise")
+        XCTAssertEqual(records.first?.title, "Goblet Squat")
+        XCTAssertEqual(records.first?.value, "50 lb", "the record is the all-time top set")
+    }
+
+    func testInjuryNoteAndTrainingDaysAreEditablePostOnboarding() {
+        let store = freshStore()
+
+        store.updateInjuryNote("New shoulder tweak — no overhead work")
+        XCTAssertEqual(store.clientProfile.limitations, "New shoulder tweak — no overhead work")
+        XCTAssertEqual(store.personalRules.first?.detail, "New shoulder tweak — no overhead work",
+                       "personal rules follow the injury note")
+
+        store.updateTrainingDaysPerWeek(5)
+        XCTAssertEqual(store.clientProfile.trainingDaysPerWeek, 5)
+
+        // Both survive relaunch.
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.limitations, "New shoulder tweak — no overhead work")
+        XCTAssertEqual(reloaded.clientProfile.trainingDaysPerWeek, 5)
+    }
+
     func testStrengthProgressNormalizesRecordedUnit() {
         let store = freshStore()
         store.weightUnit = .pounds
