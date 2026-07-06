@@ -1372,6 +1372,32 @@ final class MetricsTests: XCTestCase {
                        "the first staged workout matches the chosen sport, not the first seeded template")
     }
 
+    func testOnboardingStagesARealTrainingSession() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        // The first staged workout must be a real session — the recovery
+        // pivot and the 15-minute fallback used to win on array order.
+        XCTAssertNotEqual(store.currentWorkout.category, .recovery,
+                          "day 0 must not open on a recovery pivot")
+        XCTAssertGreaterThanOrEqual(store.currentWorkout.durationMinutes, 20)
+    }
+
+    func testStagedWorkoutSurvivesRelaunchByName() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.onboardingDraft.selectedSports = [.boxing]
+        store.completeOnboarding()
+        let stagedName = store.currentWorkout.name
+
+        // Seeded template ids re-mint every launch — the persisted name is
+        // what keeps the personalized pick staged across relaunches.
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.currentWorkout.name, stagedName,
+                       "the staged workout survives relaunch")
+    }
+
     func testRecommendationRotatesAfterLoggingCurrentWorkout() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"

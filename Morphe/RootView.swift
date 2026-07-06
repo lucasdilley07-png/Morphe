@@ -339,17 +339,14 @@ private struct ClientPinnedHeader: View {
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(MorpheTheme.panelRaised.opacity(0.96))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(MorpheTheme.strokeStrong.opacity(0.24), lineWidth: 1)
-                )
-        )
-        .shadow(color: MorpheTheme.glow.opacity(0.1), radius: 12, x: 0, y: 6)
+        .padding(.horizontal, 2)
+        .padding(.vertical, 10)
+        // Flat header — the hairline below is the only chrome.
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: 1)
+        }
     }
 }
 
@@ -482,14 +479,9 @@ private struct HeaderCircleButton: View {
                 .foregroundStyle(.white)
                 .frame(width: 38, height: 38)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(MorpheTheme.panelRaised)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(MorpheTheme.strokeStrong.opacity(0.28), lineWidth: 1)
-                        )
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
                 )
-                .shadow(color: MorpheTheme.glow.opacity(0.12), radius: 10, x: 0, y: 6)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(label))
@@ -545,35 +537,14 @@ private struct FloatingAIAgentButton: View {
     }
 
     private var buttonBackground: some View {
+        // Flat HUD capsule: solid ink so it stays legible over any scroll
+        // content, one accent hairline as the identity.
         Capsule(style: .continuous)
-            .fill(MorpheTheme.panelRaised.opacity(0.98))
+            .fill(MorpheTheme.ink.opacity(0.97))
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(MorpheTheme.strokeStrong.opacity(0.42), lineWidth: 1)
+                    .stroke(MorpheTheme.accent.opacity(0.55), lineWidth: 1)
             )
-            .overlay(alignment: .topLeading) {
-                Capsule(style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [MorpheTheme.accent.opacity(0.84), MorpheTheme.accentAlt.opacity(0.20), .clear],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(height: 2)
-                    .padding(.horizontal, 10)
-                    .padding(.top, 1)
-            }
-            .overlay(alignment: .leading) {
-                Circle()
-                    .fill(MorpheTheme.accent.opacity(0.82))
-                    .frame(width: 8, height: 8)
-                    .shadow(color: MorpheTheme.glow, radius: 10, x: 0, y: 0)
-                    .padding(.leading, 14)
-                    .opacity(isCompact ? 0 : 1)
-            }
-            .shadow(color: MorpheTheme.glow.opacity(0.26), radius: 18, x: 0, y: 10)
-            .shadow(color: Color.black.opacity(0.24), radius: 22, x: 0, y: 14)
     }
 }
 

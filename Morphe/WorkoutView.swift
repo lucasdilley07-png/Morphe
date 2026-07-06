@@ -834,43 +834,41 @@ private struct TrainExpandableSection<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
+        // Flat HUD disclosure — tracked mono label, hairline rule, +/- state.
         VStack(alignment: .leading, spacing: 12) {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isExpanded.toggle()
                 }
             } label: {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title)
-                            .font(.headline)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 10) {
+                        Text(title.uppercased())
+                            .font(MorpheTheme.microLabel(12))
+                            .tracking(1.6)
                             .foregroundStyle(.white)
-                        Text(subtitle)
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .multilineTextAlignment(.leading)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+
+                        Rectangle()
+                            .fill(MorpheTheme.stroke)
+                            .frame(height: 1)
+                            .frame(maxWidth: .infinity)
+
+                        Image(systemName: isExpanded ? "minus" : "plus")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accent)
                     }
 
-                    Spacer()
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 32, height: 32)
-                        .background(
-                            Circle()
-                                .fill(MorpheTheme.panelStrong)
-                        )
+                    if !isExpanded {
+                        Text(subtitle)
+                            .font(.footnote)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .multilineTextAlignment(.leading)
+                    }
                 }
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(MorpheTheme.panelRaised)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(MorpheTheme.strokeStrong.opacity(0.24), lineWidth: 1)
-                        )
-                )
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 

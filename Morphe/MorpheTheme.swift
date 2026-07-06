@@ -2,41 +2,49 @@ import SwiftUI
 import UIKit
 
 enum MorpheTheme {
-    // MORPHE brand palette — black + #FFD600 yellow.
-    static let ink = Color(red: 0.043, green: 0.043, blue: 0.047)          // near-black base
-    static let inkAlt = Color(red: 0.067, green: 0.067, blue: 0.067)       // #111111
-    static let panel = Color(red: 0.118, green: 0.118, blue: 0.118).opacity(0.96)        // #1E1E1E
-    static let panelStrong = Color(red: 0.150, green: 0.150, blue: 0.150).opacity(0.97)  // #262626
-    static let panelRaised = Color(red: 0.173, green: 0.173, blue: 0.173).opacity(0.98)  // #2C2C2C
-    static let panelInteractive = Color(red: 0.215, green: 0.215, blue: 0.215).opacity(0.98) // #373737
+    // MORPHE telemetry palette — flat black + #FFD600 yellow. HUD language:
+    // flat surfaces, hairline strokes, monospaced micro-labels; no glass
+    // gradients, no glows. Yellow is scarce — primary action + key data.
+    static let ink = Color(red: 0.020, green: 0.020, blue: 0.024)          // flat near-black base
+    static let inkAlt = Color(red: 0.043, green: 0.043, blue: 0.047)
+    static let panel = Color.white.opacity(0.035)                          // flat surface tints
+    static let panelStrong = Color.white.opacity(0.06)
+    static let panelRaised = Color.white.opacity(0.085)
+    static let panelInteractive = Color.white.opacity(0.13)
     static let textPrimary = Color.white
     static let textSecondary = Color.white.opacity(0.66)
     static let textMuted = Color.white.opacity(0.44)
     static let stroke = Color.white.opacity(0.10)
-    static let strokeSubtle = Color.white.opacity(0.06)
+    static let strokeSubtle = Color.white.opacity(0.05)
     static let warning = Color(red: 0.98, green: 0.70, blue: 0.25)         // amber, distinct from accent
     static let danger = Color(red: 0.95, green: 0.36, blue: 0.36)
     static let lavender = Color(red: 0.72, green: 0.72, blue: 0.74)        // neutral (no off-brand purple)
     private static var currentAccentPalette: AccentPalette = .gold
 
+    /// HUD corner radius — sharp, technical. One knob for the whole system.
+    static let radius: CGFloat = 3
+
+    /// Monospaced micro-label — the telemetry signature. Pair with
+    /// `.tracking(1.4)` and an uppercased string.
+    static func microLabel(_ size: CGFloat = 11) -> Font {
+        .system(size: size, design: .monospaced).weight(.semibold)
+    }
+
+    // Glows retired with the glass design; kept near-zero for API compat.
     static var glow: Color {
-        accent.opacity(0.22)
+        accent.opacity(0.05)
     }
 
     static var glowAlt: Color {
-        accentAlt.opacity(0.18)
+        accentAlt.opacity(0.04)
     }
 
     static var strokeStrong: Color {
-        accent.opacity(0.34)
+        accent.opacity(0.30)
     }
 
     static var HUDGradient: LinearGradient {
-        LinearGradient(
-            colors: [panelRaised, panel],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        LinearGradient(colors: [panel, panel], startPoint: .top, endPoint: .bottom)
     }
 
     /// MORPHE signature yellow (#FFD600). The brand is single-accent, so this is
@@ -161,62 +169,13 @@ enum Haptics {
 
 struct PremiumBackground: View {
     var body: some View {
+        // Flat black with a faint engineering grid — the telemetry canvas.
+        // No radial glows, no gradient washes: content carries the screen.
         ZStack {
             MorpheTheme.ink
 
-            LinearGradient(
-                colors: [
-                    MorpheTheme.inkAlt.opacity(0.78),
-                    MorpheTheme.ink.opacity(0.94),
-                    Color.black
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
             PerformanceGridOverlay()
-                .opacity(0.55)
-
-            RadialGradient(
-                colors: [
-                    MorpheTheme.accent.opacity(0.16),
-                    .clear
-                ],
-                center: .topTrailing,
-                startRadius: 24,
-                endRadius: 340
-            )
-
-            RadialGradient(
-                colors: [
-                    MorpheTheme.accentAlt.opacity(0.12),
-                    .clear
-                ],
-                center: .bottomLeading,
-                startRadius: 24,
-                endRadius: 320
-            )
-
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(0.03),
-                    .clear,
-                    Color.black.opacity(0.22)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            RadialGradient(
-                colors: [
-                    Color.white.opacity(0.08),
-                    .clear
-                ],
-                center: .topLeading,
-                startRadius: 12,
-                endRadius: 220
-            )
-            .blendMode(.screen)
+                .opacity(0.35)
         }
         .ignoresSafeArea()
     }
@@ -227,53 +186,40 @@ struct PrimaryCTAButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.black.opacity(0.92))
+            .textCase(.uppercase)
+            .font(.system(.subheadline, design: .monospaced).weight(.bold))
+            .tracking(1.2)
+            .foregroundStyle(.black)
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(configuration.isPressed ? 0.84 : 1),
-                                MorpheTheme.accentAlt.opacity(configuration.isPressed ? 0.82 : 0.94)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                    )
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(accent.opacity(configuration.isPressed ? 0.78 : 1))
             )
-            .shadow(color: accent.opacity(0.26), radius: 16, x: 0, y: 10)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeInOut(duration: 0.16), value: configuration.isPressed)
+            .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
 struct SecondaryCTAButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.white)
+            .textCase(.uppercase)
+            .font(.system(.subheadline, design: .monospaced).weight(.bold))
+            .tracking(1.2)
+            .foregroundStyle(configuration.isPressed ? MorpheTheme.textSecondary : .white)
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(configuration.isPressed ? MorpheTheme.panelStrong : MorpheTheme.panel)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(configuration.isPressed ? MorpheTheme.panelStrong : Color.clear)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(MorpheTheme.strokeStrong.opacity(configuration.isPressed ? 0.8 : 0.45), lineWidth: 1)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 8)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeInOut(duration: 0.16), value: configuration.isPressed)
+            .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

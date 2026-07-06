@@ -31,13 +31,18 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
     var workoutSessionStartedAt: Date?
     var completedSessionMinutes: Int?
     var isWorkoutLoggedToday: Bool
+    /// The staged workout's NAME, as a fallback key: seeded template UUIDs
+    /// re-mint every launch, so the id alone can't restore a staged seeded
+    /// workout across relaunches. Tolerantly decoded.
+    var currentWorkoutName: String
 
     init(currentWorkoutID: UUID?, isWorkoutSessionActive: Bool, hasStartedWorkoutFlow: Bool,
          hasCompletedWorkoutFlow: Bool, activeWorkoutExerciseIndex: Int,
          completedWorkoutSets: [String: Int], trackedSetReps: [String: [Int]],
          trackedSetWeights: [String: [Double]], trackedSetRPE: [String: [Int]],
          workoutSessionStartedAt: Date?, completedSessionMinutes: Int?,
-         isWorkoutLoggedToday: Bool) {
+         isWorkoutLoggedToday: Bool, currentWorkoutName: String = "") {
+        self.currentWorkoutName = currentWorkoutName
         self.currentWorkoutID = currentWorkoutID
         self.isWorkoutSessionActive = isWorkoutSessionActive
         self.hasStartedWorkoutFlow = hasStartedWorkoutFlow
@@ -66,6 +71,7 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
         workoutSessionStartedAt = ((try? c.decodeIfPresent(Date.self, forKey: .workoutSessionStartedAt)) ?? nil)
         completedSessionMinutes = ((try? c.decodeIfPresent(Int.self, forKey: .completedSessionMinutes)) ?? nil)
         isWorkoutLoggedToday = try c.decode(Bool.self, forKey: .isWorkoutLoggedToday)
+        currentWorkoutName = ((try? c.decodeIfPresent(String.self, forKey: .currentWorkoutName)) ?? nil) ?? ""
     }
 }
 

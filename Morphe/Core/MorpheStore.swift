@@ -891,6 +891,12 @@ final class MorpheAppStore {
                 // (and its tracked-set keys resolve).
                 ensureCatalogWorkoutInLibrary(catalogTemplate)
                 currentWorkoutID = id
+            } else if !snapshot.currentWorkoutName.isEmpty,
+                      let named = workoutTemplates.first(where: { $0.name == snapshot.currentWorkoutName }) {
+                // Seeded template ids re-mint every launch — the persisted
+                // name recovers the user's staged pick (so the day-0
+                // personalized workout survives a relaunch).
+                currentWorkoutID = named.id
             } else if snapshot.isWorkoutSessionActive {
                 // The session's workout no longer exists anywhere. Restoring
                 // the session flags would attach the live tracker (and its
@@ -930,7 +936,8 @@ final class MorpheAppStore {
                 trackedSetRPE: trackedSetRPE,
                 workoutSessionStartedAt: workoutSessionStartedAt,
                 completedSessionMinutes: completedSessionMinutes,
-                isWorkoutLoggedToday: isWorkoutLoggedToday
+                isWorkoutLoggedToday: isWorkoutLoggedToday,
+                currentWorkoutName: currentWorkout.name
             )
         )
     }
@@ -1581,7 +1588,14 @@ final class MorpheAppStore {
             case .advanced: return .advanced
             }
         }()
-        let trainable = workoutTemplates.filter { $0.sessionType != .recoverySession }
+        // A first workout is a real training session: no recovery pivots, no
+        // sub-20-minute fallbacks — those otherwise win on array order and
+        // make a weak first impression.
+        let trainable = workoutTemplates.filter {
+            $0.sessionType != .recoverySession
+                && $0.category != .recovery
+                && $0.durationMinutes >= 20
+        }
         let sportMatches = trainable.filter { $0.sport == sport }
         return sportMatches.first(where: { $0.difficulty == target })
             ?? sportMatches.first

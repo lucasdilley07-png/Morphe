@@ -39,56 +39,44 @@ struct CoachLayout<Content: View>: View {
     }
 }
 
-private struct PerformancePanelBackground: View {
-    var cornerRadius: CGFloat = 8
-    var accentOpacity: Double = 0.18
+/// Thin L-brackets at the panel corners — the HUD signature. Neutral white so
+/// yellow stays reserved for actions and data.
+private struct HUDCornerTicks: View {
+    var arm: CGFloat = 9
+    var color: Color = Color.white.opacity(0.22)
 
     var body: some View {
+        GeometryReader { proxy in
+            let w = proxy.size.width
+            let h = proxy.size.height
+            Path { path in
+                // Top-leading
+                path.move(to: CGPoint(x: 0, y: arm)); path.addLine(to: .zero); path.addLine(to: CGPoint(x: arm, y: 0))
+                // Top-trailing
+                path.move(to: CGPoint(x: w - arm, y: 0)); path.addLine(to: CGPoint(x: w, y: 0)); path.addLine(to: CGPoint(x: w, y: arm))
+                // Bottom-trailing
+                path.move(to: CGPoint(x: w, y: h - arm)); path.addLine(to: CGPoint(x: w, y: h)); path.addLine(to: CGPoint(x: w - arm, y: h))
+                // Bottom-leading
+                path.move(to: CGPoint(x: arm, y: h)); path.addLine(to: CGPoint(x: 0, y: h)); path.addLine(to: CGPoint(x: 0, y: h - arm))
+            }
+            .stroke(color, lineWidth: 1)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+private struct PerformancePanelBackground: View {
+    var cornerRadius: CGFloat = MorpheTheme.radius
+
+    var body: some View {
+        // Flat telemetry panel: one surface tint, one hairline, corner ticks.
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(MorpheTheme.HUDGradient)
+            .fill(MorpheTheme.panel)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(MorpheTheme.stroke, lineWidth: 1)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                MorpheTheme.accent.opacity(accentOpacity),
-                                .clear,
-                                MorpheTheme.accentAlt.opacity(accentOpacity * 0.72)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-                    .blur(radius: 0.2)
-            )
-            .overlay(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.10),
-                                .clear
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(height: 1.2)
-                    .padding(.horizontal, 1)
-            }
-            .overlay(alignment: .bottomTrailing) {
-                Circle()
-                    .fill(MorpheTheme.glowAlt.opacity(0.85))
-                    .frame(width: 92, height: 92)
-                    .blur(radius: 34)
-                    .offset(x: 24, y: 24)
-                    .allowsHitTesting(false)
-            }
+            .overlay(HUDCornerTicks())
     }
 }
 
@@ -104,8 +92,6 @@ struct GlassCard<Content: View>: View {
             .padding(16)
             .frame(maxWidth: .infinity)
             .background(PerformancePanelBackground())
-            .shadow(color: MorpheTheme.glow.opacity(0.18), radius: 18, x: 0, y: 10)
-            .shadow(color: Color.black.opacity(0.28), radius: 26, x: 0, y: 14)
     }
 }
 
@@ -114,22 +100,26 @@ struct SectionTitleView: View {
     let subtitle: String
 
     var body: some View {
+        // HUD header: accent index tick, tracked mono title, hairline rule
+        // running to the trailing edge.
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.system(.title, design: .rounded).weight(.bold))
-                .foregroundStyle(MorpheTheme.textPrimary)
-                .overlay(alignment: .bottomLeading) {
-                    Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [MorpheTheme.accent.opacity(0.88), MorpheTheme.accentAlt.opacity(0.28)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: 52, height: 3)
-                        .offset(y: 8)
-                }
+            HStack(spacing: 10) {
+                Rectangle()
+                    .fill(MorpheTheme.accent)
+                    .frame(width: 3, height: 14)
+
+                Text(title.uppercased())
+                    .font(.system(size: 14, design: .monospaced).weight(.bold))
+                    .tracking(2)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .lineLimit(1)
+                    .layoutPriority(1)
+
+                Rectangle()
+                    .fill(MorpheTheme.stroke)
+                    .frame(height: 1)
+                    .frame(maxWidth: .infinity)
+            }
 
             Text(subtitle)
                 .font(.footnote.weight(.medium))
@@ -147,27 +137,27 @@ struct MetricPill: View {
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label.uppercased())
-                .font(.system(.caption2, design: .rounded).weight(.bold))
-                .tracking(0.8)
-                .foregroundStyle(MorpheTheme.textMuted)
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(MorpheTheme.textPrimary)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+        // Telemetry readout: accent index bar, mono value — no box.
+        HStack(alignment: .top, spacing: 8) {
+            Rectangle()
+                .fill(MorpheTheme.accent.opacity(0.75))
+                .frame(width: 2)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(label.uppercased())
+                    .font(MorpheTheme.microLabel(10))
+                    .tracking(1.2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Text(value)
+                    .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(MorpheTheme.panelStrong)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(MorpheTheme.strokeStrong.opacity(0.20), lineWidth: 1)
-                )
-        )
+        .padding(.vertical, 4)
+        .padding(.trailing, 8)
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(label): \(value)"))
     }
@@ -178,20 +168,16 @@ struct StatusBadge: View {
     let color: Color
 
     var body: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.white)
+        Text(text.uppercased())
+            .font(MorpheTheme.microLabel(10))
+            .tracking(1.1)
+            .foregroundStyle(color)
             .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .padding(.vertical, 5)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(color.opacity(0.16))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(color.opacity(0.72), lineWidth: 1)
-                    )
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .stroke(color.opacity(0.55), lineWidth: 1)
             )
-            .shadow(color: color.opacity(0.18), radius: 10, x: 0, y: 4)
     }
 }
 
@@ -202,22 +188,16 @@ struct ProgressBarView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(MorpheTheme.panelStrong)
+                Rectangle()
+                    .fill(Color.white.opacity(0.08))
 
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [color.opacity(0.96), MorpheTheme.accentAlt.opacity(0.64)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: max(proxy.size.width * progress, 8))
-                    .shadow(color: color.opacity(0.28), radius: 8, x: 0, y: 2)
+                Rectangle()
+                    .fill(color)
+                    .frame(width: max(proxy.size.width * progress, 4))
             }
         }
-        .frame(height: 10)
+        .frame(height: 5)
+        .clipShape(RoundedRectangle(cornerRadius: 1, style: .continuous))
         .animation(.easeInOut(duration: 0.35), value: progress)
         .accessibilityElement()
         .accessibilityValue(Text("\(Int((progress * 100).rounded())) percent"))
@@ -228,20 +208,20 @@ struct ToastBanner: View {
     let text: String
 
     var body: some View {
+        // Floats over content, so the fill is solid ink — not a surface tint.
         Text(text)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(MorpheTheme.panelRaised.opacity(0.96))
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.ink.opacity(0.97))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(MorpheTheme.strokeStrong.opacity(0.45), lineWidth: 1)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .stroke(MorpheTheme.accent.opacity(0.45), lineWidth: 1)
             )
-            .shadow(color: MorpheTheme.glow.opacity(0.20), radius: 14, x: 0, y: 6)
     }
 }
 
@@ -1348,29 +1328,29 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
     let onSelect: (Item) -> Void
 
     var body: some View {
+        // HUD dock: solid ink bar, hairline frame; the active tab is yellow
+        // text over a thin underline tick — no filled pills.
         HStack(spacing: 4) {
             ForEach(items, id: \.self) { item in
                 Button {
                     onSelect(item)
                 } label: {
-                    VStack(spacing: 5) {
+                    VStack(spacing: 6) {
                         Image(systemName: item.systemImage)
                             .font(.system(.subheadline).weight(.semibold))
-                        Text(item.title)
-                            .font(.caption2.weight(.bold))
+                        Text(item.title.uppercased())
+                            .font(MorpheTheme.microLabel(9))
+                            .tracking(1.0)
                             .lineLimit(1)
-                    }
-                    .foregroundStyle(selected == item ? .black : .white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        Rectangle()
                             .fill(selected == item ? MorpheTheme.accent : .clear)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(selected == item ? Color.white.opacity(0.18) : .clear, lineWidth: 1)
-                            )
-                    )
+                            .frame(width: 26, height: 2)
+                    }
+                    .foregroundStyle(selected == item ? MorpheTheme.accent : Color.white.opacity(0.55))
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 10)
+                    .padding(.bottom, 6)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .ignore)
@@ -1378,30 +1358,15 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                 .accessibilityAddTraits(selected == item ? [.isButton, .isSelected] : .isButton)
             }
         }
-        .padding(6)
+        .padding(.horizontal, 6)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(MorpheTheme.panelRaised.opacity(0.98))
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.ink.opacity(0.97))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(MorpheTheme.strokeStrong.opacity(0.28), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
                 )
-                .overlay(alignment: .topLeading) {
-                    Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [MorpheTheme.accent.opacity(0.64), .clear],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: 82, height: 2)
-                        .padding(.top, 1)
-                        .padding(.leading, 10)
-                }
         )
-        .shadow(color: MorpheTheme.glow.opacity(0.14), radius: 18, x: 0, y: 8)
-        .shadow(color: Color.black.opacity(0.24), radius: 24, x: 0, y: 12)
     }
 }
 
@@ -1525,14 +1490,13 @@ struct FilterChipStyle: ButtonStyle {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isSelected ? selectedColor : (configuration.isPressed ? MorpheTheme.panelStrong : MorpheTheme.panel))
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(isSelected ? selectedColor : (configuration.isPressed ? MorpheTheme.panelStrong : Color.white.opacity(0.04)))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(isSelected ? Color.white.opacity(0.18) : MorpheTheme.strokeStrong.opacity(0.22), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.10), lineWidth: 1)
             )
-            .shadow(color: isSelected ? selectedColor.opacity(0.22) : .clear, radius: 10, x: 0, y: 6)
             // Selection was color-only — invisible to VoiceOver and weak for
             // color-blind users. Every chip in the app gets the trait from here.
             .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -1544,11 +1508,11 @@ struct MorpheFieldStyle: TextFieldStyle {
         configuration
             .padding(14)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(MorpheTheme.panel)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(Color.white.opacity(0.04))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(MorpheTheme.strokeStrong.opacity(0.24), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(Color.white.opacity(0.14), lineWidth: 1)
                     )
             )
             .foregroundStyle(.white)
