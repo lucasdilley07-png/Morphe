@@ -1288,11 +1288,16 @@ private struct DiscoverCatalogSection: View {
     @Environment(MorpheAppStore.self) private var store
     let onStart: (WorkoutTemplate) -> Void
 
+    @State private var collectionFilter: String?
     @State private var focusFilter: String?
     @State private var levelFilter: DemoDifficulty?
     @State private var durationFilter: Int?
     @State private var equipmentFilter: String?
     @State private var visibleCount = 12
+
+    private var collectionOptions: [String] {
+        Array(Set(store.catalogWorkouts.map(\.type))).sorted()
+    }
 
     private var focusOptions: [String] {
         var seen: Set<String> = []
@@ -1305,7 +1310,8 @@ private struct DiscoverCatalogSection: View {
 
     private var filtered: [WorkoutTemplate] {
         store.catalogWorkouts.filter { template in
-            (focusFilter == nil || template.focusTag == focusFilter)
+            (collectionFilter == nil || template.type == collectionFilter)
+                && (focusFilter == nil || template.focusTag == focusFilter)
                 && (levelFilter == nil || template.difficulty == levelFilter)
                 && (durationFilter == nil || template.durationMinutes == durationFilter)
                 && (equipmentFilter == nil || template.equipment == equipmentFilter)
@@ -1316,6 +1322,9 @@ private struct DiscoverCatalogSection: View {
         VStack(alignment: .leading, spacing: 14) {
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
+                    if collectionOptions.count > 1 {
+                        filterRow("Collection", options: collectionOptions, selection: $collectionFilter) { $0 }
+                    }
                     filterRow("Focus", options: focusOptions, selection: $focusFilter) { $0 }
                     filterRow("Level", options: [DemoDifficulty.beginner, .moderate, .advanced], selection: $levelFilter) { $0.rawValue }
                     filterRow("Time", options: [20, 30, 45], selection: $durationFilter) { "\($0) min" }
@@ -1352,6 +1361,7 @@ private struct DiscoverCatalogSection: View {
                 }
             }
         }
+        .onChange(of: collectionFilter) { _, _ in visibleCount = 12 }
         .onChange(of: focusFilter) { _, _ in visibleCount = 12 }
         .onChange(of: levelFilter) { _, _ in visibleCount = 12 }
         .onChange(of: durationFilter) { _, _ in visibleCount = 12 }
@@ -1399,7 +1409,12 @@ private struct DiscoverWorkoutCard: View {
                             .foregroundStyle(MorpheTheme.textSecondary)
                     }
                     Spacer()
-                    StatusBadge(text: template.focusTag, color: MorpheTheme.accentAlt)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        if template.type != "Morphe Program" {
+                            StatusBadge(text: template.type, color: MorpheTheme.accent)
+                        }
+                        StatusBadge(text: template.focusTag, color: MorpheTheme.accentAlt)
+                    }
                 }
 
                 Text(template.goal)

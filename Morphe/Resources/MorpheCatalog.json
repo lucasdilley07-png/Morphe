@@ -2,6 +2,297 @@
  "version": 1,
  "workouts": [
   {
+   "id": "59d8651e-339a-5e2e-93de-b65f7f042741",
+   "name": "The Golden Six",
+   "focus": "Full Body",
+   "level": "Moderate",
+   "durationMinutes": 45,
+   "equipmentProfile": "Full Gym",
+   "goal": "The classic six-exercise full-body program from the Golden Era",
+   "notes": "Run it three days a week. Add weight only when every set is clean \u2014 this exact routine built champions.",
+   "collection": "Legends",
+   "exercises": [
+    {
+     "libraryID": "barbell-back-squat",
+     "sets": 4,
+     "reps": 10
+    },
+    {
+     "libraryID": "barbell-bench-press",
+     "sets": 3,
+     "reps": 10
+    },
+    {
+     "libraryID": "pull-up",
+     "sets": 3,
+     "reps": 8
+    },
+    {
+     "libraryID": "overhead-press",
+     "sets": 4,
+     "reps": 10
+    },
+    {
+     "libraryID": "bicep-curl",
+     "sets": 3,
+     "reps": 10
+    },
+    {
+     "libraryID": "bicycle-crunch",
+     "sets": 3,
+     "reps": 15
+    }
+   ]
+  },
+  {
+   "id": "aa5bfe55-071f-5c91-858c-891f3179fb04",
+   "name": "Golden-Era Chest & Back",
+   "focus": "Full Body",
+   "level": "Advanced",
+   "durationMinutes": 45,
+   "equipmentProfile": "Full Gym",
+   "goal": "The legendary antagonist superset day: press, then pull, no filler",
+   "notes": "Inspired by Golden-Era volume training \u2014 pair a chest set with a back set and keep rest short.",
+   "collection": "Legends",
+   "exercises": [
+    {
+     "libraryID": "barbell-bench-press",
+     "sets": 4,
+     "reps": 8
+    },
+    {
+     "libraryID": "pull-up",
+     "sets": 4,
+     "reps": 8
+    },
+    {
+     "libraryID": "dumbbell-chest-fly",
+     "sets": 3,
+     "reps": 10
+    },
+    {
+     "libraryID": "bent-over-row",
+     "sets": 4,
+     "reps": 8
+    },
+    {
+     "libraryID": "dumbbell-bench-press",
+     "sets": 3,
+     "reps": 10
+    },
+    {
+     "libraryID": "seated-cable-row",
+     "sets": 3,
+     "reps": 10
+    }
+   ]
+  },
+  {
+   "id": "32574192-1e35-5b4c-a2f0-f0df56fe444b",
+   "name": "Golden-Era Shoulders & Arms",
+   "focus": "Push",
+   "level": "Moderate",
+   "durationMinutes": 45,
+   "equipmentProfile": "Full Gym",
+   "goal": "Cannonball delts and sleeve-filling arms, the classic way",
+   "notes": "Golden-Era pump work: moderate loads, full range, and chase the squeeze on every rep.",
+   "collection": "Legends",
+   "exercises": [
+    {
+     "libraryID": "overhead-press",
+     "sets": 4,
+     "reps": 8
+    },
+    {
+     "libraryID": "lateral-raise",
+     "sets": 3,
+     "reps": 12
+    },
+    {
+     "libraryID": "rear-delt-fly",
+     "sets": 3,
+     "reps": 12
+    },
+    {
+     "libraryID": "bicep-curl",
+     "sets": 4,
+     "reps": 8
+    },
+    {
+     "libraryID": "skullcrusher",
+     "sets": 4,
+     "reps": 8
+    },
+    {
+     "libraryID": "tricep-pushdown",
+     "sets": 3,
+     "reps": 12
+    }
+   ]
+  },
+  {
+   "id": "51dbbbf3-28cb-5168-99bb-2e67a8aa881c",
+   "name": "Golden-Era Legs & Core",
+   "focus": "Legs",
+   "level": "Moderate",
+   "durationMinutes": 45,
+   "equipmentProfile": "Full Gym",
+   "goal": "Classic quad-dominant leg training with honest core work",
+   "notes": "Front squats keep you upright and humble. Golden-Era rule: never skip calves.",
+   "collection": "Legends",
+   "exercises": [
+    {
+     "libraryID": "front-squat",
+     "sets": 4,
+     "reps": 8
+    },
+    {
+     "libraryID": "romanian-deadlift",
+     "sets": 4,
+     "reps": 8
+    },
+    {
+     "libraryID": "walking-lunge",
+     "sets": 3,
+     "reps": 12
+    },
+    {
+     "libraryID": "calf-raise",
+     "sets": 4,
+     "reps": 15
+    },
+    {
+     "libraryID": "hanging-knee-raise",
+     "sets": 3,
+     "reps": 12
+    }
+   ]
+  },
+  {
+   "id": "768ca822-c576-51bf-aa7a-5728c5acf2d9",
+   "name": "Mass-Monster Leg Day",
+   "focus": "Legs",
+   "level": "Advanced",
+   "durationMinutes": 45,
+   "equipmentProfile": "Full Gym",
+   "goal": "Heavy power-bodybuilding legs in the spirit of the mass monsters",
+   "notes": "Built like the 90s pros trained: heavy barbell work first, then volume until the legs give out. Lightweight, baby.",
+   "collection": "Legends",
+   "exercises": [
+    {
+     "libraryID": "barbell-back-squat",
+     "sets": 5,
+     "reps": 6
+    },
+    {
+     "libraryID": "leg-press",
+     "sets": 4,
+     "reps": 10
+    },
+    {
+     "libraryID": "walking-lunge",
+     "sets": 3,
+     "reps": 12
+    },
+    {
+     "libraryID": "leg-extension",
+     "sets": 3,
+     "reps": 12
+    },
+    {
+     "libraryID": "hamstring-curl",
+     "sets": 4,
+     "reps": 10
+    },
+    {
+     "libraryID": "calf-raise",
+     "sets": 4,
+     "reps": 15
+    }
+   ]
+  },
+  {
+   "id": "9fa57ebf-18c4-5883-9c36-0ff312981135",
+   "name": "Mass-Monster Back & Power",
+   "focus": "Pull",
+   "level": "Advanced",
+   "durationMinutes": 45,
+   "equipmentProfile": "Full Gym",
+   "goal": "Deadlift-led back thickness, power-bodybuilding style",
+   "notes": "Heavy pulls first while you're fresh, then rows from every angle. Nobody built a big back with light weights.",
+   "collection": "Legends",
+   "exercises": [
+    {
+     "libraryID": "conventional-deadlift",
+     "sets": 4,
+     "reps": 6
+    },
+    {
+     "libraryID": "bent-over-row",
+     "sets": 4,
+     "reps": 8
+    },
+    {
+     "libraryID": "seated-cable-row",
+     "sets": 4,
+     "reps": 10
+    },
+    {
+     "libraryID": "pull-up",
+     "sets": 3,
+     "reps": 8
+    },
+    {
+     "libraryID": "dumbbell-row",
+     "sets": 3,
+     "reps": 10
+    }
+   ]
+  },
+  {
+   "id": "8f8dc772-91ef-58ae-b4a6-49505309d304",
+   "name": "Arm Blaster Specialization",
+   "focus": "Push",
+   "level": "Moderate",
+   "durationMinutes": 45,
+   "equipmentProfile": "Full Gym",
+   "goal": "A dedicated arm day in the tradition of the sport's great arm specialists",
+   "notes": "Volume arm specialization: strict preacher work, no swinging, and triceps get equal billing.",
+   "collection": "Legends",
+   "exercises": [
+    {
+     "libraryID": "preacher-curl",
+     "sets": 4,
+     "reps": 10
+    },
+    {
+     "libraryID": "bicep-curl",
+     "sets": 4,
+     "reps": 8
+    },
+    {
+     "libraryID": "hammer-curl",
+     "sets": 3,
+     "reps": 12
+    },
+    {
+     "libraryID": "skullcrusher",
+     "sets": 4,
+     "reps": 10
+    },
+    {
+     "libraryID": "tricep-pushdown",
+     "sets": 4,
+     "reps": 12
+    },
+    {
+     "libraryID": "dip",
+     "sets": 3,
+     "reps": 10
+    }
+   ]
+  },
+  {
    "id": "2d631763-a346-5b3c-9b8e-96e84111d09d",
    "name": "Beginner Full Body A",
    "focus": "Full Body",

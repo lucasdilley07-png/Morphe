@@ -27,6 +27,8 @@ struct CatalogWorkout: Codable, Identifiable, Hashable {
     var equipmentProfile: String   // Bodyweight / Dumbbells / Full Gym
     var goal: String
     var notes: String
+    /// Curated collection name ("Legends"); nil = generated Morphe Program.
+    var collection: String?
     var exercises: [CatalogExercise]
 }
 
@@ -74,7 +76,7 @@ enum WorkoutCatalog {
         return WorkoutTemplate(
             id: templateID,
             name: workout.name,
-            type: "Morphe Program",
+            type: workout.collection ?? "Morphe Program",
             sport: .generalFitness,
             category: category(for: workout.focus),
             sessionType: workout.focus == "Recovery" ? .recoverySession : .gymWorkout,

@@ -705,6 +705,12 @@ final class WorkoutSessionTests: XCTestCase {
 
         // Facets are populated.
         XCTAssertTrue(store.catalogWorkouts.allSatisfy { !$0.focusTag.isEmpty })
+
+        // The curated Legends collection ships alongside the generated
+        // programs, era-named (no celebrity names without a license).
+        let legends = store.catalogWorkouts.filter { $0.type == "Legends" }
+        XCTAssertGreaterThanOrEqual(legends.count, 7)
+        XCTAssertTrue(legends.contains { $0.name == "The Golden Six" })
     }
 
     func testSavedCatalogWorkoutSurvivesRelaunch() {

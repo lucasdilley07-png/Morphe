@@ -98,6 +98,149 @@ NOTES = {
     "Advanced": "Push the top sets, keep the last rep honest, and rest fully between sets.",
 }
 
+# ------------------------------------------------------------ legends corpus
+#
+# Faithful classic routines from bodybuilding's history, named by era/style —
+# NOT by athlete. Training methods aren't protectable, but celebrity names
+# implying endorsement are a right-of-publicity risk; license real names
+# before ever attaching them.
+
+LEGENDS = [
+    {
+        "name": "The Golden Six",
+        "focus": "Full Body",
+        "level": "Moderate",
+        "durationMinutes": 45,
+        "goal": "The classic six-exercise full-body program from the Golden Era",
+        "notes": "Run it three days a week. Add weight only when every set is clean — this exact routine built champions.",
+        "exercises": [
+            ("barbell-back-squat", 4, 10),
+            ("barbell-bench-press", 3, 10),
+            ("pull-up", 3, 8),
+            ("overhead-press", 4, 10),
+            ("bicep-curl", 3, 10),
+            ("bicycle-crunch", 3, 15),
+        ],
+    },
+    {
+        "name": "Golden-Era Chest & Back",
+        "focus": "Full Body",
+        "level": "Advanced",
+        "durationMinutes": 45,
+        "goal": "The legendary antagonist superset day: press, then pull, no filler",
+        "notes": "Inspired by Golden-Era volume training — pair a chest set with a back set and keep rest short.",
+        "exercises": [
+            ("barbell-bench-press", 4, 8),
+            ("pull-up", 4, 8),
+            ("dumbbell-chest-fly", 3, 10),
+            ("bent-over-row", 4, 8),
+            ("dumbbell-bench-press", 3, 10),
+            ("seated-cable-row", 3, 10),
+        ],
+    },
+    {
+        "name": "Golden-Era Shoulders & Arms",
+        "focus": "Push",
+        "level": "Moderate",
+        "durationMinutes": 45,
+        "goal": "Cannonball delts and sleeve-filling arms, the classic way",
+        "notes": "Golden-Era pump work: moderate loads, full range, and chase the squeeze on every rep.",
+        "exercises": [
+            ("overhead-press", 4, 8),
+            ("lateral-raise", 3, 12),
+            ("rear-delt-fly", 3, 12),
+            ("bicep-curl", 4, 8),
+            ("skullcrusher", 4, 8),
+            ("tricep-pushdown", 3, 12),
+        ],
+    },
+    {
+        "name": "Golden-Era Legs & Core",
+        "focus": "Legs",
+        "level": "Moderate",
+        "durationMinutes": 45,
+        "goal": "Classic quad-dominant leg training with honest core work",
+        "notes": "Front squats keep you upright and humble. Golden-Era rule: never skip calves.",
+        "exercises": [
+            ("front-squat", 4, 8),
+            ("romanian-deadlift", 4, 8),
+            ("walking-lunge", 3, 12),
+            ("calf-raise", 4, 15),
+            ("hanging-knee-raise", 3, 12),
+        ],
+    },
+    {
+        "name": "Mass-Monster Leg Day",
+        "focus": "Legs",
+        "level": "Advanced",
+        "durationMinutes": 45,
+        "goal": "Heavy power-bodybuilding legs in the spirit of the mass monsters",
+        "notes": "Built like the 90s pros trained: heavy barbell work first, then volume until the legs give out. Lightweight, baby.",
+        "exercises": [
+            ("barbell-back-squat", 5, 6),
+            ("leg-press", 4, 10),
+            ("walking-lunge", 3, 12),
+            ("leg-extension", 3, 12),
+            ("hamstring-curl", 4, 10),
+            ("calf-raise", 4, 15),
+        ],
+    },
+    {
+        "name": "Mass-Monster Back & Power",
+        "focus": "Pull",
+        "level": "Advanced",
+        "durationMinutes": 45,
+        "goal": "Deadlift-led back thickness, power-bodybuilding style",
+        "notes": "Heavy pulls first while you're fresh, then rows from every angle. Nobody built a big back with light weights.",
+        "exercises": [
+            ("conventional-deadlift", 4, 6),
+            ("bent-over-row", 4, 8),
+            ("seated-cable-row", 4, 10),
+            ("pull-up", 3, 8),
+            ("dumbbell-row", 3, 10),
+        ],
+    },
+    {
+        "name": "Arm Blaster Specialization",
+        "focus": "Push",
+        "level": "Moderate",
+        "durationMinutes": 45,
+        "goal": "A dedicated arm day in the tradition of the sport's great arm specialists",
+        "notes": "Volume arm specialization: strict preacher work, no swinging, and triceps get equal billing.",
+        "exercises": [
+            ("preacher-curl", 4, 10),
+            ("bicep-curl", 4, 8),
+            ("hammer-curl", 3, 12),
+            ("skullcrusher", 4, 10),
+            ("tricep-pushdown", 4, 12),
+            ("dip", 3, 10),
+        ],
+    },
+]
+
+def build_legends(exercise_ids):
+    workouts = []
+    for routine in LEGENDS:
+        for library_id, _, _ in routine["exercises"]:
+            if library_id not in exercise_ids:
+                raise SystemExit(f"Legends routine '{routine['name']}' references missing exercise: {library_id}")
+        workouts.append({
+            "id": str(uuid.uuid5(NAMESPACE, f"legend|{routine['name']}")),
+            "name": routine["name"],
+            "focus": routine["focus"],
+            "level": routine["level"],
+            "durationMinutes": routine["durationMinutes"],
+            "equipmentProfile": "Full Gym",
+            "goal": routine["goal"],
+            "notes": routine["notes"],
+            "collection": "Legends",
+            "exercises": [
+                {"libraryID": lib, "sets": sets, "reps": reps}
+                for lib, sets, reps in routine["exercises"]
+            ],
+        })
+    return workouts
+
 # ---------------------------------------------------------------- generation
 
 def build_catalog(exercises):
@@ -167,7 +310,7 @@ def main():
     exercises = extract_exercises(source)
     if len(exercises) < 40:
         raise SystemExit(f"Only extracted {len(exercises)} exercises — parser drifted from MorpheServices.swift?")
-    catalog = build_catalog(exercises)
+    catalog = build_legends({e["id"] for e in exercises}) + build_catalog(exercises)
     ids = [w["id"] for w in catalog]
     assert len(ids) == len(set(ids)), "duplicate workout ids"
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
