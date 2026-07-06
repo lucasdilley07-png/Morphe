@@ -35,6 +35,9 @@ struct ProfileView: View {
                     detailsCard
                 }
                 settingsCard
+                if !isCoach {
+                    levelCard
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
@@ -123,6 +126,48 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+
+    /// XP readout at the bottom of the page. Levels climb a decade curve:
+    /// 1–10 take 100 XP each, 11–20 take 200, 21–30 take 300, and so on.
+    private var levelCard: some View {
+        let level = store.clientProfile.level
+        return GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .lastTextBaseline) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("LEVEL")
+                            .font(MorpheTheme.microLabel(10))
+                            .tracking(1.4)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        Text("\(store.currentLevelNumber)")
+                            .font(.system(size: 34, design: .monospaced).weight(.bold))
+                            .foregroundStyle(MorpheTheme.accent)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text("XP TO LEVEL \(store.currentLevelNumber + 1)")
+                            .font(MorpheTheme.microLabel(10))
+                            .tracking(1.4)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        Text("\(level.currentXP) / \(level.targetXP)")
+                            .font(.system(.title3, design: .monospaced).weight(.semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+
+                ProgressBarView(progress: level.progress, color: MorpheTheme.accent)
+
+                Text("Earn XP from workouts, daily wins, and quizzes. Each tier of ten levels asks a little more: 100 XP per level through 10, then 200, then 300.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Level \(store.currentLevelNumber), \(level.currentXP) of \(level.targetXP) XP to level \(store.currentLevelNumber + 1)")
     }
 
     private var identityCard: some View {

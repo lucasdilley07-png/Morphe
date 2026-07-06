@@ -445,7 +445,6 @@ final class MorpheAppStore {
         // Same-day relaunch: no-op (daily state was just restored). New day —
         // or first launch ever — starts the daily surfaces fresh.
         handleDayRolloverIfNeeded()
-
     }
 
     // MARK: - Auth actions
@@ -586,11 +585,20 @@ final class MorpheAppStore {
         // Same for earned learning progress: the demo clear resets Level 1 /
         // 0 XP, which must not wipe what THIS user actually earned.
         if !snapshot.levelTitle.isEmpty, snapshot.levelTargetXP > 0 {
-            let levelValue = levelNumber(from: snapshot.levelTitle) ?? 1
-            clientProfile.level.currentTitle = snapshot.levelTitle
+            var levelValue = levelNumber(from: snapshot.levelTitle) ?? 1
+            var xp = max(snapshot.levelXP, 0)
+            // Targets come from the decade curve, not the stored value —
+            // saves from the old +50-per-level curve migrate on load. If the
+            // stored XP now overflows the (possibly smaller) target, roll it
+            // into level-ups silently.
+            while xp >= Self.xpTarget(forLevel: levelValue) {
+                xp -= Self.xpTarget(forLevel: levelValue)
+                levelValue += 1
+            }
+            clientProfile.level.currentTitle = "Level \(levelValue)"
             clientProfile.level.nextTitle = "Level \(levelValue + 1)"
-            clientProfile.level.currentXP = snapshot.levelXP
-            clientProfile.level.targetXP = snapshot.levelTargetXP
+            clientProfile.level.currentXP = xp
+            clientProfile.level.targetXP = Self.xpTarget(forLevel: levelValue)
         }
         completedQuizIDs = Set(snapshot.completedQuizIDs)
 
@@ -4551,6 +4559,17 @@ final class MorpheAppStore {
         }
     }
 
+    /// XP needed to clear a level, on a decade curve: levels 1–10 take
+    /// 100 XP each, 11–20 take 200, 21–30 take 300, and so on.
+    static func xpTarget(forLevel level: Int) -> Int {
+        ((max(level, 1) - 1) / 10 + 1) * 100
+    }
+
+    /// The numeric level parsed from the level title ("Level 12" → 12).
+    var currentLevelNumber: Int {
+        levelNumber(from: clientProfile.level.currentTitle) ?? 1
+    }
+
     private func updateXP(for amount: Int, add: Bool) {
         if add {
             clientProfile.level.currentXP += amount
@@ -4561,7 +4580,7 @@ final class MorpheAppStore {
                 let nextLevel = (levelNumber(from: clientProfile.level.currentTitle) ?? 1) + 1
                 clientProfile.level.currentTitle = "Level \(nextLevel)"
                 clientProfile.level.nextTitle = "Level \(nextLevel + 1)"
-                clientProfile.level.targetXP += 50
+                clientProfile.level.targetXP = Self.xpTarget(forLevel: nextLevel)
                 showCelebration(title: "Level \(nextLevel)", detail: "Keep stacking the work.", symbol: "arrow.up.circle.fill")
             }
             Haptics.success()

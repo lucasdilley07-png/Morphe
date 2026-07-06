@@ -644,6 +644,41 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.clientProfile.level.currentXP, 0, "no XP for answering after the reveal")
     }
 
+    func testXPTargetsFollowDecadeCurve() {
+        // Levels 1–10 take 100 XP each, 11–20 take 200, 21–30 take 300…
+        XCTAssertEqual(MorpheAppStore.xpTarget(forLevel: 1), 100)
+        XCTAssertEqual(MorpheAppStore.xpTarget(forLevel: 10), 100)
+        XCTAssertEqual(MorpheAppStore.xpTarget(forLevel: 11), 200)
+        XCTAssertEqual(MorpheAppStore.xpTarget(forLevel: 20), 200)
+        XCTAssertEqual(MorpheAppStore.xpTarget(forLevel: 21), 300)
+        XCTAssertEqual(MorpheAppStore.xpTarget(forLevel: 35), 400)
+        XCTAssertEqual(MorpheAppStore.xpTarget(forLevel: 0), 100, "defensive floor at level 1")
+    }
+
+    func testLevelTargetsSurviveRelaunchOnTheCurve() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        // Earn enough XP to cross at least one level boundary.
+        for quiz in store.quizzes.prefix(12) {
+            store.answerQuiz(quiz, with: quiz.correctIndex)
+        }
+        let levelBefore = store.currentLevelNumber
+        let xpBefore = store.clientProfile.level.currentXP
+        XCTAssertGreaterThan(levelBefore, 1)
+        XCTAssertEqual(store.clientProfile.level.targetXP,
+                       MorpheAppStore.xpTarget(forLevel: levelBefore),
+                       "the live target follows the decade curve")
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.currentLevelNumber, levelBefore)
+        XCTAssertEqual(reloaded.clientProfile.level.currentXP, xpBefore)
+        XCTAssertEqual(reloaded.clientProfile.level.targetXP,
+                       MorpheAppStore.xpTarget(forLevel: levelBefore),
+                       "restored targets are recomputed from the curve, not trusted from disk")
+    }
+
     func testXPRollsOverIntoLevelUps() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
