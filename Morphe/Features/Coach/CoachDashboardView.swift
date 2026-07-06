@@ -126,14 +126,13 @@ private struct CoachPinnedHeader: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                 .fill(MorpheTheme.panelRaised.opacity(0.96))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .stroke(MorpheTheme.strokeStrong.opacity(0.24), lineWidth: 1)
                 )
         )
-        .shadow(color: MorpheTheme.glow.opacity(0.1), radius: 12, x: 0, y: 6)
     }
 }
 
@@ -148,14 +147,13 @@ private struct CoachHeaderCircleButton: View {
                 .foregroundStyle(.white)
                 .frame(width: 38, height: 38)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(MorpheTheme.panelRaised)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .stroke(MorpheTheme.strokeStrong.opacity(0.28), lineWidth: 1)
                         )
                 )
-                .shadow(color: MorpheTheme.glow.opacity(0.12), radius: 10, x: 0, y: 6)
         }
         .buttonStyle(.plain)
     }
@@ -198,10 +196,10 @@ private struct CoachCommandDisclosureSection<Content: View>: View {
                 }
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(MorpheTheme.panelRaised)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .stroke(MorpheTheme.strokeStrong.opacity(0.24), lineWidth: 1)
                         )
                 )
@@ -870,10 +868,10 @@ private struct CoachMenuField<Content: View>: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(MorpheTheme.panel)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .stroke(MorpheTheme.stroke.opacity(0.8), lineWidth: 1)
                         )
                 )
@@ -958,10 +956,10 @@ private struct CoachBuilderDisclosureSection<Content: View>: View {
                 }
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(MorpheTheme.panelRaised)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .stroke(MorpheTheme.strokeStrong.opacity(0.24), lineWidth: 1)
                         )
                 )
@@ -1015,10 +1013,10 @@ private struct CoachLibraryDisclosureSection<Content: View>: View {
                 }
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(MorpheTheme.panelRaised)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .stroke(MorpheTheme.strokeStrong.opacity(0.24), lineWidth: 1)
                         )
                 )
@@ -2114,10 +2112,10 @@ private struct CoachMessagesScreen: View {
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 10)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                         .fill(MorpheTheme.panelRaised)
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                                 .stroke(MorpheTheme.strokeStrong.opacity(0.22), lineWidth: 1)
                                         )
                                 )
@@ -2802,7 +2800,7 @@ private struct CoachTriageStatPill: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                 .fill(MorpheTheme.panelStrong)
         )
     }
@@ -2834,17 +2832,17 @@ private struct CoachTriageActionButton: View {
                     .foregroundStyle(.white)
                     .frame(width: 30, height: 30)
                     .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(accent.opacity(0.9))
                     )
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                     .fill(MorpheTheme.panelStrong)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .stroke(accent.opacity(0.2), lineWidth: 1)
                     )
             )
@@ -3166,7 +3164,7 @@ private struct CoachMessageRow: View {
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: message.sender == .coach ? .trailing : .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(message.sender == .coach ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
                 )
         }
@@ -3361,7 +3359,7 @@ private struct VideoReviewHubCard: View {
 
                 ForEach(clips) { clip in
                     VStack(alignment: .leading, spacing: 10) {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(MorpheTheme.panelStrong)
                             .overlay(
                                 VStack(spacing: 8) {

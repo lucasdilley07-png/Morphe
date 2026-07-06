@@ -736,7 +736,7 @@ private struct PostWorkoutSmartActionCard: View {
                             .padding(.vertical, 12)
                             .frame(maxWidth: .infinity)
                             .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                     .fill(MorpheTheme.panelStrong)
                             )
                         }
@@ -954,7 +954,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                     Image(systemName: "pencil")
                                         .font(.caption)
                                         .frame(width: 28, height: 28)
-                                        .background(Circle().fill(MorpheTheme.panelStrong))
+                                        .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(.white)
@@ -966,7 +966,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                     Image(systemName: "trash")
                                         .font(.caption)
                                         .frame(width: 28, height: 28)
-                                        .background(Circle().fill(MorpheTheme.panelStrong))
+                                        .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(MorpheTheme.danger)
@@ -976,7 +976,7 @@ private struct ActiveWorkoutTrackerCard: View {
                     }
                     .padding(10)
                     .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(MorpheTheme.panelStrong.opacity(0.6))
                     )
                 }
@@ -995,7 +995,7 @@ private struct ActiveWorkoutTrackerCard: View {
                     }
                     .padding(12)
                     .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(MorpheTheme.panelStrong)
                     )
                 }
@@ -1144,9 +1144,9 @@ private struct FocusedWorkoutQueueCard: View {
 
                 ForEach(exercises) { exercise in
                     HStack(spacing: 10) {
-                        Circle()
+                        Rectangle()
                             .fill(activeExerciseID == exercise.id ? MorpheTheme.accent : MorpheTheme.panelStrong)
-                            .frame(width: 10, height: 10)
+                            .frame(width: 8, height: 8)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(exercise.name)
@@ -1281,7 +1281,7 @@ private struct LiveWorkoutSupportToolsCard: View {
                     }
                     .padding(12)
                     .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(MorpheTheme.panelStrong)
                     )
                 }
@@ -1871,7 +1871,7 @@ private struct SetRepLoggingSheet: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(10)
                             .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                     .fill(MorpheTheme.panelStrong.opacity(0.6))
                             )
                             .transition(.opacity)
@@ -2017,10 +2017,10 @@ private struct SavedWorkoutsLibraryCard: View {
                             }
                             .padding(12)
                             .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                     .fill(MorpheTheme.panel)
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                             .stroke(MorpheTheme.stroke.opacity(0.8), lineWidth: 1)
                                     )
                             )
@@ -2325,10 +2325,10 @@ private struct ShortcutWorkoutSection: View {
                 }
                 .padding(12)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(MorpheTheme.panel)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .stroke(MorpheTheme.stroke.opacity(0.75), lineWidth: 1)
                         )
                 )
@@ -2795,7 +2795,7 @@ private struct ExercisePickerSheet: View {
                             }
                             .padding(12)
                             .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                     .fill(MorpheTheme.panel)
                             )
                         }

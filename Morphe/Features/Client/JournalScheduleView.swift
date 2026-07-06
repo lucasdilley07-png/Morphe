@@ -669,10 +669,10 @@ private struct CoachAthleteDisclosureSection<Content: View>: View {
                 }
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(MorpheTheme.panelRaised)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .stroke(MorpheTheme.strokeStrong.opacity(0.24), lineWidth: 1)
                         )
                 )
@@ -712,10 +712,10 @@ private struct CoachAthleteActionButton: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                     .fill(Color.white.opacity(0.05))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .strokeBorder(tint.opacity(0.24), lineWidth: 1)
                     )
             )
@@ -762,10 +762,10 @@ private struct CoachOutreachShortcutStrip: View {
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 10)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                         .fill(MorpheTheme.panelRaised)
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                                 .stroke(MorpheTheme.strokeStrong.opacity(0.22), lineWidth: 1)
                                         )
                                 )
@@ -1522,7 +1522,7 @@ struct CoachNotesPanel: View {
                     .padding(8)
                     .scrollContentBackground(.hidden)
                     .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(Color.white.opacity(0.06))
                     )
                     .foregroundStyle(.white)

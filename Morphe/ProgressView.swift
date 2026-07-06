@@ -480,11 +480,12 @@ private struct TrainedDaysCard: View {
                 HStack(spacing: 0) {
                     ForEach(days) { day in
                         VStack(spacing: 6) {
-                            Circle()
-                                .fill(day.trained ? MorpheTheme.accent : MorpheTheme.panelStrong)
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .fill(day.trained ? MorpheTheme.accent : Color.white.opacity(0.05))
                                 .frame(width: 26, height: 26)
                                 .overlay(
-                                    Circle().stroke(MorpheTheme.strokeStrong.opacity(day.trained ? 0 : 0.4), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                        .stroke(Color.white.opacity(day.trained ? 0 : 0.14), lineWidth: 1)
                                 )
                             Text(day.label)
                                 .font(.caption2)
@@ -829,7 +830,7 @@ private struct AthletePatternInsightsCard: View {
                                 .foregroundStyle(MorpheTheme.accentAlt)
                                 .frame(width: 34, height: 34)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                         .fill(MorpheTheme.panelRaised)
                                 )
 
@@ -1078,7 +1079,7 @@ private struct StrengthProgressCard: View {
                             .foregroundStyle(deltaColor(item))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Capsule().fill(deltaColor(item).opacity(0.16)))
+                            .background(RoundedRectangle(cornerRadius: 2, style: .continuous).stroke(deltaColor(item).opacity(0.55), lineWidth: 1))
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(item.exerciseName): top set \(weightUnit.format(item.latestTopWeight)), \(deltaText(item)) versus previous session")

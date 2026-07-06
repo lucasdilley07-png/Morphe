@@ -203,10 +203,10 @@ private struct PartnerSessionPostSheet: View {
                         }
                         .padding(12)
                         .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .fill(MorpheTheme.panel)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                         .stroke(MorpheTheme.stroke.opacity(0.8), lineWidth: 1)
                                 )
                         )
@@ -444,25 +444,12 @@ struct DemoBrandHeader: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 14)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(MorpheTheme.panelRaised)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .fill(Color.white.opacity(0.04))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(MorpheTheme.strokeStrong.opacity(0.28), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
                         )
-                        .overlay(alignment: .topLeading) {
-                            Capsule(style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [MorpheTheme.accent.opacity(0.64), .clear],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: 72, height: 2)
-                                .padding(.top, 1)
-                                .padding(.leading, 10)
-                        }
                 )
             }
             .buttonStyle(.plain)
@@ -668,7 +655,7 @@ private struct AIAgentMessageRow: View {
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: message.sender == .user ? .trailing : .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(message.sender == .user ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
                 )
         }
@@ -697,9 +684,12 @@ private struct NetworkProfilePreviewSheet: View {
                                 .font(.system(.largeTitle))
                                 .frame(width: 62, height: 62)
                                 .background(
-                                    Circle()
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                         .fill(MorpheTheme.panelStrong)
-                                        .overlay(Circle().stroke(MorpheTheme.stroke, lineWidth: 1))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                                .stroke(MorpheTheme.stroke, lineWidth: 1)
+                                        )
                                 )
 
                             VStack(alignment: .leading, spacing: 4) {
@@ -732,8 +722,8 @@ private struct NetworkProfilePreviewSheet: View {
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
                                     .background(
-                                        Capsule(style: .continuous)
-                                            .fill(MorpheTheme.panelStrong)
+                                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                            .stroke(Color.white.opacity(0.14), lineWidth: 1)
                                     )
                             }
                         }
@@ -1322,10 +1312,10 @@ private struct QuickAddGridCard: View {
                         .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
                         .padding(14)
                         .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .fill(MorpheTheme.panelInteractive)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                         .stroke(MorpheTheme.stroke, lineWidth: 1)
                                 )
                         )
@@ -1455,7 +1445,7 @@ private struct WelcomeTag: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                Capsule(style: .continuous)
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .fill(color)
             )
     }

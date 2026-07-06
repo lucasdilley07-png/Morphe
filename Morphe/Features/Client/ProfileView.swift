@@ -418,7 +418,7 @@ private struct CoachProfileBody: View {
                                 .font(.headline)
                                 .foregroundStyle(MorpheTheme.accent)
                                 .frame(width: 44, height: 44)
-                                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(MorpheTheme.panelStrong))
+                                .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.panelStrong))
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Training Business")
                                     .font(.subheadline.weight(.semibold))
@@ -463,7 +463,7 @@ private struct SelectionToken: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                Capsule(style: .continuous)
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .fill(color)
             )
             .lineLimit(1)

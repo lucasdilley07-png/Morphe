@@ -216,7 +216,7 @@ private struct HomePatternInsightCard: View {
                         .foregroundStyle(MorpheTheme.accentAlt)
                         .frame(width: 36, height: 36)
                         .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .fill(MorpheTheme.panelRaised)
                         )
 
@@ -524,7 +524,7 @@ private struct TodayNextMoveCard: View {
                                 .foregroundStyle(MorpheTheme.textPrimary)
                                 .padding(12)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                         .fill(MorpheTheme.panelStrong)
                                 )
                         }
@@ -888,7 +888,7 @@ private struct RecoveryCheckInSheet: View {
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(MorpheTheme.accentAlt)
                         }
-                        .tint(MorpheTheme.accentAlt)
+                        .disclosureGroupStyle(HUDDisclosureStyle())
                     }
 
                     Button("Save Check-In") {
@@ -1077,7 +1077,7 @@ private struct PartnerWorkoutCard: View {
                                 .padding(12)
                                 .frame(width: 150, alignment: .leading)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                         .fill(selectedPartner?.id == partner.id ? MorpheTheme.accent : MorpheTheme.panelStrong)
                                 )
                             }

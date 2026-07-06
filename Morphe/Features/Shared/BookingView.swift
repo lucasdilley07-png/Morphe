@@ -216,7 +216,7 @@ private struct BookingPackageCard: View {
                 }
             }
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                     .stroke(isSelected ? MorpheTheme.accent.opacity(0.6) : .clear, lineWidth: 1.5)
             )
         }
@@ -243,11 +243,11 @@ private struct BookingSlotChip: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                     .fill(isSelected ? MorpheTheme.accent : MorpheTheme.panel)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                     .stroke(MorpheTheme.strokeStrong.opacity(isSelected ? 0 : 0.4), lineWidth: 1)
             )
         }
@@ -312,7 +312,7 @@ private struct BookingRow: View {
                 .font(.headline)
                 .foregroundStyle(MorpheTheme.accentAlt)
                 .frame(width: 40, height: 40)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(MorpheTheme.panelStrong))
+                .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.panelStrong))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(booking.packageTitle)
@@ -508,7 +508,7 @@ private struct EarningsStat: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MorpheTheme.panelStrong))
+        .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.panelStrong))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(value)")
     }

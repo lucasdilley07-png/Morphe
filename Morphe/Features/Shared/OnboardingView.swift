@@ -19,7 +19,6 @@ struct LaunchSequenceView: View {
             Spacer()
 
             MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 94)
-                .shadow(color: MorpheTheme.accentAlt.opacity(0.28), radius: 18)
 
             Text("Morphe")
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
@@ -584,7 +583,6 @@ private struct PersonalizedPlanLoadingView: View {
                 ),
                 size: 94
             )
-            .shadow(color: MorpheTheme.accentAlt.opacity(0.28), radius: 18)
 
             Text("Morphe")
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))

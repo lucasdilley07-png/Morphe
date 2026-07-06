@@ -260,53 +260,21 @@ struct MorpheAvatarView: View {
     }
 
     var body: some View {
+        // HUD identity tile: flat square, hairline, yellow glyph — the old
+        // gold-coin gradient was the last piece of glass in the header.
         ZStack {
-            Circle()
-                .fill(MorpheTheme.HUDGradient)
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panelStrong)
                 .overlay(
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [MorpheTheme.accent.opacity(0.72), MorpheTheme.accentAlt.opacity(0.42)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .padding(4)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .stroke(Color.white.opacity(0.14), lineWidth: 1)
                 )
-                .overlay(
-                    Circle()
-                        .stroke(MorpheTheme.strokeStrong.opacity(0.42), lineWidth: 1.5)
-                )
-                .shadow(color: MorpheTheme.glow.opacity(0.24), radius: 18, x: 0, y: 10)
 
-            Circle()
-                .stroke(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.22), .clear, MorpheTheme.accent.opacity(0.35)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 3
-                )
-                .padding(2)
-
-            VStack(spacing: 4) {
-                Image(systemName: avatar.style.systemImage)
-                    .font(.system(size: size * 0.26, weight: .bold))
-                    .foregroundStyle(iconAccent)
-                Text(shortTitle)
-                    .font(.system(size: size * 0.12, weight: .semibold))
-                    .foregroundStyle(MorpheTheme.textSecondary)
-                    .lineLimit(1)
-            }
-            .padding(8)
+            Image(systemName: avatar.style.systemImage)
+                .font(.system(size: size * 0.4, weight: .semibold))
+                .foregroundStyle(MorpheTheme.accent)
         }
         .frame(width: size, height: size)
-        .overlay(
-            Circle()
-                .stroke(Color.white.opacity(0.12), lineWidth: 1)
-        )
         .accessibilityHidden(true)
     }
 
@@ -351,16 +319,10 @@ struct ProfileBannerView: View {
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: gradientColors(for: theme),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panelStrong)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .stroke(MorpheTheme.strokeStrong.opacity(0.28), lineWidth: 1)
                 )
                 .overlay(alignment: .topTrailing) {
@@ -379,14 +341,7 @@ struct ProfileBannerView: View {
                     }
                     .padding(18)
                 }
-                .overlay(
-                    LinearGradient(
-                        colors: [Color.black.opacity(0.05), Color.black.opacity(0.55)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                )
+
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(eyebrowText(for: banner.preset))
@@ -395,14 +350,13 @@ struct ProfileBannerView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
-                        Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.12))
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
                     )
 
                 Text(banner.title)
                     .font(.system(.title, design: .rounded).weight(.bold))
                     .foregroundStyle(.white)
-                    .shadow(color: Color.black.opacity(0.35), radius: 16, x: 0, y: 10)
 
                 Text(banner.subtitle)
                     .font(.subheadline.weight(.semibold))
@@ -545,38 +499,27 @@ struct ScoreRing: View {
     let color: Color
 
     var body: some View {
+        // Thin instrument ring: flat color, square cap, mono numerals.
         ZStack {
             Circle()
-                .stroke(MorpheTheme.panelStrong, lineWidth: 10)
+                .stroke(Color.white.opacity(0.08), lineWidth: 4)
 
             Circle()
                 .trim(from: 0, to: Double(score) / 100.0)
-                .stroke(
-                    LinearGradient(
-                        colors: [color, MorpheTheme.accentAlt.opacity(0.78)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                )
+                .stroke(color, style: StrokeStyle(lineWidth: 4, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
-                .shadow(color: color.opacity(0.28), radius: 10, x: 0, y: 4)
 
             VStack(spacing: 2) {
                 Text("\(score)")
-                    .font(.system(.title, design: .rounded).weight(.bold))
+                    .font(.system(.title2, design: .monospaced).weight(.bold))
                     .foregroundStyle(.white)
-                Text("score")
-                    .font(.system(.caption2, design: .rounded).weight(.semibold))
-                    .tracking(0.7)
+                Text("SCORE")
+                    .font(MorpheTheme.microLabel(9))
+                    .tracking(1.4)
                     .foregroundStyle(MorpheTheme.textMuted)
             }
         }
         .frame(width: 88, height: 88)
-        .overlay(
-            Circle()
-                .stroke(MorpheTheme.strokeStrong.opacity(0.22), lineWidth: 1)
-        )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Morphe Score"))
         .accessibilityValue(Text("\(score) out of 100"))
@@ -731,7 +674,7 @@ struct SmartPlanAdjustmentCard: View {
                             .padding(.horizontal, 10)
                             .padding(.vertical, 8)
                             .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                     .fill(MorpheTheme.panelStrong)
                             )
                     }
@@ -821,7 +764,7 @@ struct TaskRow: View {
     var body: some View {
         Button(action: onToggle) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                Image(systemName: task.isCompleted ? "checkmark.square.fill" : "square")
                     .foregroundStyle(task.isCompleted ? MorpheTheme.accent : MorpheTheme.textMuted)
                     .font(.headline)
 
@@ -1263,11 +1206,11 @@ struct QuickActionButton: View {
             .padding(14)
             .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                     .fill(MorpheTheme.panelStrong)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                     .stroke(MorpheTheme.stroke, lineWidth: 1)
             )
         }
@@ -1298,10 +1241,10 @@ struct RoleSwitcher: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(selectedRole == role ? MorpheTheme.accent : MorpheTheme.panelStrong)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                     .stroke(selectedRole == role ? Color.white.opacity(0.18) : MorpheTheme.strokeStrong.opacity(0.20), lineWidth: 1)
                             )
                     )
@@ -1430,7 +1373,7 @@ struct BadgeGridCard: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                         .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .fill(MorpheTheme.panelStrong)
                         )
                     }
@@ -1523,7 +1466,7 @@ private struct PhotoSlotView: View {
     let label: String
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
+        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
             .fill(MorpheTheme.panelStrong)
             .overlay(
                 VStack(spacing: 8) {
@@ -1537,6 +1480,39 @@ private struct PhotoSlotView: View {
                 .padding(8)
             )
             .frame(maxWidth: .infinity, minHeight: 100)
+    }
+}
+
+/// Flat HUD accordion for system DisclosureGroups: label, hairline rule,
+/// yellow +/- state — matches the Home/Train section disclosures.
+struct HUDDisclosureStyle: DisclosureGroupStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    configuration.isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    configuration.label
+
+                    Rectangle()
+                        .fill(MorpheTheme.stroke)
+                        .frame(height: 1)
+                        .frame(maxWidth: .infinity)
+
+                    Image(systemName: configuration.isExpanded ? "minus" : "plus")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accent)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if configuration.isExpanded {
+                configuration.content
+            }
+        }
     }
 }
 

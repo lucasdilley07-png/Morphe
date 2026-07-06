@@ -383,7 +383,7 @@ struct MoreView: View {
                                     .foregroundStyle(MorpheTheme.accentAlt)
                             }
                         }
-                        .tint(MorpheTheme.textMuted)
+                        .disclosureGroupStyle(HUDDisclosureStyle())
                     }
                 }
             }
@@ -427,11 +427,11 @@ private struct MoreFeatureGrid: View {
                     .padding(14)
                     .frame(maxWidth: .infinity, minHeight: 124, alignment: .leading)
                     .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(selected == feature ? MorpheTheme.panelStrong : MorpheTheme.panel)
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .stroke(selected == feature ? MorpheTheme.accent : MorpheTheme.stroke, lineWidth: 1)
                     )
                 }

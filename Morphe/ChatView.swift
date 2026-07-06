@@ -146,7 +146,7 @@ private struct NetworkEmptyActionRow: View {
                     .foregroundStyle(MorpheTheme.accent)
                     .frame(width: 44, height: 44)
                     .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(MorpheTheme.panelStrong)
                     )
 
@@ -239,10 +239,10 @@ private struct NetworkDisclosureSection<Content: View>: View {
                 }
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(MorpheTheme.panelRaised)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .stroke(MorpheTheme.strokeStrong.opacity(0.24), lineWidth: 1)
                         )
                 )
@@ -1122,7 +1122,7 @@ struct CommunityPostCard: View {
                         }
                         .padding(10)
                         .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .fill(MorpheTheme.panel)
                         )
                     }
@@ -1145,11 +1145,11 @@ private struct CompactCommunityActionButtonStyle: ButtonStyle {
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                     .fill(configuration.isPressed ? MorpheTheme.panelStrong : MorpheTheme.panel)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                     .stroke(MorpheTheme.strokeStrong.opacity(configuration.isPressed ? 0.8 : 0.45), lineWidth: 1)
             )
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
@@ -1359,7 +1359,7 @@ private struct ClientConversationRow: View {
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: message.sender == .user ? .trailing : .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(backgroundColor)
                 )
         }
