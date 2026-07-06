@@ -229,24 +229,35 @@ struct CelebrationOverlay: View {
     let moment: CelebrationMoment
 
     var body: some View {
-        GlassCard {
-            HStack(spacing: 12) {
-                Image(systemName: moment.symbol)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(MorpheTheme.accent)
+        // Floats over scroll content like the toast, so it gets the same
+        // treatment: solid ink fill + gold hairline. The translucent surface
+        // tint read as see-through here.
+        HStack(spacing: 12) {
+            Image(systemName: moment.symbol)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(MorpheTheme.accent)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(moment.title)
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                    Text(moment.detail)
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                }
-
-                Spacer()
+            VStack(alignment: .leading, spacing: 4) {
+                Text(moment.title)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Text(moment.detail)
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
             }
+
+            Spacer()
         }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.ink.opacity(0.97))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .stroke(MorpheTheme.accent.opacity(0.45), lineWidth: 1)
+        )
     }
 }
 

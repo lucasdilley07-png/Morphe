@@ -1359,6 +1359,58 @@ final class MetricsTests: XCTestCase {
                       "the copy's library entry persists too")
     }
 
+    // MARK: - Switch rotates the user's own library
+
+    func testSwitchWithNoSavedWorkoutsShowsPopup() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let stagedID = store.currentWorkout.id
+        store.cycleWorkout()
+
+        XCTAssertTrue(store.showSwitchNeedsSavedWorkouts, "no library, nothing to switch to — say so")
+        XCTAssertEqual(store.currentWorkout.id, stagedID, "the staged workout must not change")
+    }
+
+    func testSwitchRotatesThroughSavedWorkoutsOnly() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let first = store.catalogWorkouts[0]
+        let second = store.catalogWorkouts[1]
+        store.saveCatalogWorkout(first)
+        store.saveCatalogWorkout(second)
+
+        // Staged workout isn't saved — Switch enters the user's rotation
+        // (library order, newest save first)…
+        store.cycleWorkout()
+        XCTAssertEqual(store.currentWorkout.id, second.id)
+        // …and keeps rotating inside it, never back to unsaved templates.
+        store.cycleWorkout()
+        XCTAssertEqual(store.currentWorkout.id, first.id)
+        store.cycleWorkout()
+        XCTAssertEqual(store.currentWorkout.id, second.id)
+        XCTAssertFalse(store.showSwitchNeedsSavedWorkouts)
+    }
+
+    func testSwitchWithOnlyStagedSaveShowsPopup() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let only = store.catalogWorkouts[0]
+        store.saveCatalogWorkout(only)
+        store.cycleWorkout()
+        XCTAssertEqual(store.currentWorkout.id, only.id, "the single saved workout gets staged")
+
+        store.cycleWorkout()
+        XCTAssertTrue(store.showSwitchNeedsSavedWorkouts,
+                      "the only saved workout is already staged — prompt to save more")
+        XCTAssertEqual(store.currentWorkout.id, only.id)
+    }
+
     // MARK: - Day-0 personalization + rotation (audit backlog pass 2)
 
     func testOnboardingPersonalizesFirstWorkout() {

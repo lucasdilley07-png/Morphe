@@ -114,6 +114,9 @@ final class MorpheAppStore {
     var showUniversalSearch = false
     var showQuickAdd = false
     var showAIAgent = false
+    /// Pop-up shown when Switch has nothing to rotate to (no saved workouts,
+    /// or the only saved workout is already staged).
+    var showSwitchNeedsSavedWorkouts = false
     var selectedNetworkProfile: NetworkProfilePreview?
     // A tab named "Learn" opens to learning, not to a scoreboard.
     var selectedHubFeature: ClientHubFeature? = .learn
@@ -2008,14 +2011,51 @@ final class MorpheAppStore {
         }
     }
 
+    /// Workouts the user actually owns: library saves plus their own custom
+    /// builds — what Switch rotates through.
+    private var ownedWorkoutRotation: [WorkoutTemplate] {
+        var seen: Set<UUID> = []
+        var rotation: [WorkoutTemplate] = []
+        for item in savedWorkouts {
+            if let template = workoutTemplates.first(where: { $0.id == item.workoutTemplateID }),
+               seen.insert(template.id).inserted {
+                rotation.append(template)
+            }
+        }
+        for template in workoutTemplates where customWorkoutIDs.contains(template.id) {
+            if seen.insert(template.id).inserted {
+                rotation.append(template)
+            }
+        }
+        return rotation
+    }
+
     func cycleWorkout() {
-        // Id-keyed: with same-named templates possible (catalog copies), a
-        // name-keyed cycle resolves to the first match and can get stuck.
-        guard workoutTemplates.count > 1,
-              let currentIndex = workoutTemplates.firstIndex(where: { $0.id == currentWorkout.id }) else { return }
-        let next = workoutTemplates[(currentIndex + 1) % workoutTemplates.count]
-        setCurrentWorkout(next)
-        showToast("Switched to \(next.name).")
+        // Switch rotates through the USER'S workouts (saved + custom built),
+        // not the whole seeded template list — cycling 20+ templates the user
+        // never chose was a slot machine.
+        let rotation = ownedWorkoutRotation
+
+        guard !rotation.isEmpty else {
+            showSwitchNeedsSavedWorkouts = true
+            return
+        }
+
+        if let currentIndex = rotation.firstIndex(where: { $0.id == currentWorkout.id }) {
+            guard rotation.count > 1 else {
+                // Their only saved workout is already staged.
+                showSwitchNeedsSavedWorkouts = true
+                return
+            }
+            let next = rotation[(currentIndex + 1) % rotation.count]
+            setCurrentWorkout(next)
+            showToast("Switched to \(next.name).")
+        } else {
+            // Current workout isn't one of theirs — enter the rotation.
+            let next = rotation[0]
+            setCurrentWorkout(next)
+            showToast("Switched to \(next.name).")
+        }
     }
 
     func applyWorkoutAdjustment(_ option: WorkoutAdjustmentOption) {

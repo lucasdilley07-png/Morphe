@@ -108,6 +108,14 @@ struct RootView: View {
             WelcomeExperienceView()
                 .environment(store)
         }
+        .alert("Save more workouts to switch", isPresented: $store.showSwitchNeedsSavedWorkouts) {
+            Button("Open Discover") {
+                store.selectedClientTab = .discover
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Switch rotates between the workouts you've saved. Save some from Discover — or build your own in Train — and they'll show up here.")
+        }
         .overlay(alignment: .top) {
             VStack(spacing: 10) {
                 if let toast = store.toastMessage {
@@ -551,48 +559,22 @@ private struct MorpheAIAgentSheet: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
-                    title: store.selectedRole == .coach ? "Morphe AI" : "Morphe AI",
+                    title: "Morphe AI",
                     subtitle: store.aiAgentSubtitle
                 )
 
-                GlassCard {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 6) {
-                        Text("Current context")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        Text(store.aiAgentContextLabel)
-                            .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: store.selectedRole == .coach ? "person.2.wave.2.fill" : "sparkles")
-                            .foregroundStyle(MorpheTheme.accent)
-                    }
-                }
-
+                // Conversation leads — this is a chat, not a control panel.
                 GlassCard {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Quick intents")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-
-                        WrapStack(spacing: 8) {
-                            ForEach(store.aiAgentQuickPrompts, id: \.self) { item in
-                                Button(item) {
-                                    store.sendAIAgentPrompt(item)
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
-                            }
+                        ForEach(messages.suffix(8)) { message in
+                            AIAgentMessageRow(message: message)
                         }
                     }
                 }
 
                 GlassCard {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Assistant Console")
+                        Text("Ask Morphe")
                             .font(.headline)
                             .foregroundStyle(.white)
 
@@ -612,16 +594,16 @@ private struct MorpheAIAgentSheet: View {
                     }
                 }
 
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Conversation")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-
-                        ForEach(messages.suffix(8)) { message in
-                            AIAgentMessageRow(message: message)
-                        }
-                    }
+                HStack(spacing: 8) {
+                    Text("Context".uppercased())
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    Text(store.aiAgentContextLabel)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .lineLimit(1)
+                    Spacer()
                 }
             }
             .padding(.horizontal, 20)
