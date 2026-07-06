@@ -57,6 +57,8 @@ struct LocalProfileSnapshot: Codable, Equatable {
     // already-earned task XP).
     var dailyStateDay: String = ""
     var completedTaskTitlesToday: [String] = []
+    // Days protected with a minimum win — they count in the streak.
+    var protectedDayKeys: [String] = []
 }
 
 extension LocalProfileSnapshot {
@@ -111,6 +113,7 @@ extension LocalProfileSnapshot {
         bodyWeight = str(.bodyWeight)
         dailyStateDay = str(.dailyStateDay)
         completedTaskTitlesToday = arr(.completedTaskTitlesToday)
+        protectedDayKeys = arr(.protectedDayKeys)
     }
 }
 

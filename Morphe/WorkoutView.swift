@@ -505,27 +505,31 @@ struct WorkoutView: View {
     private var postWorkoutPrompt: PostWorkoutPromptConfiguration? {
         guard store.hasCompletedWorkoutFlow else { return nil }
 
-        let isBuddySession = store.partnerWorkoutEnabled && store.selectedWorkoutPartner != nil
-        let isCoachAssignedWorkout = store.currentWorkout.name == store.clientProfile.currentProgram
         let isRecoverySession = store.currentWorkout.category == .recovery || store.currentWorkout.name == "Low Energy Recovery Day"
         let currentWorkoutIsPinnedFavorite = store.savedWorkouts.contains {
             $0.workoutTemplateID == store.currentWorkout.id && $0.isPinned
         }
 
-        if isBuddySession {
-            return PostWorkoutPromptConfiguration(
-                title: "Keep the shared momentum going",
-                detail: "You finished together. Share the session or lock in the next one while the accountability is still warm.",
-                actions: [.share, .inviteBuddy]
-            )
-        }
-
-        if isCoachAssignedWorkout {
-            return PostWorkoutPromptConfiguration(
-                title: "Close the feedback loop",
-                detail: "Let your coach know how the session landed or share the win while it still feels fresh.",
-                actions: [.messageCoach, .share]
-            )
+        // Share / Message Coach / Invite Buddy are multi-user surfaces — in
+        // solo v1 they dead-ended into hidden screens.
+        if FeatureFlags.multiUserEnabled {
+            let isBuddySession = store.partnerWorkoutEnabled && store.selectedWorkoutPartner != nil
+            if isBuddySession {
+                return PostWorkoutPromptConfiguration(
+                    title: "Keep the shared momentum going",
+                    detail: "You finished together. Share the session or lock in the next one while the accountability is still warm.",
+                    actions: [.share, .inviteBuddy]
+                )
+            }
+            if !isRecoverySession {
+                return PostWorkoutPromptConfiguration(
+                    title: currentWorkoutIsPinnedFavorite ? "Nice work. Keep the loop moving." : "This one is worth keeping close",
+                    detail: currentWorkoutIsPinnedFavorite
+                        ? "You already trust this session. Share it or send a quick note to your coach before you close the day."
+                        : "If this session landed well, pin it as a favorite or share the win before you move on.",
+                    actions: currentWorkoutIsPinnedFavorite ? [.share, .messageCoach] : [.saveFavorite, .share]
+                )
+            }
         }
 
         if isRecoverySession {
@@ -536,12 +540,13 @@ struct WorkoutView: View {
             )
         }
 
+        // Solo: only offer what actually works. A pinned favorite needs
+        // nothing more — no card beats a card full of dead buttons.
+        guard !currentWorkoutIsPinnedFavorite else { return nil }
         return PostWorkoutPromptConfiguration(
-            title: currentWorkoutIsPinnedFavorite ? "Nice work. Keep the loop moving." : "This one is worth keeping close",
-            detail: currentWorkoutIsPinnedFavorite
-                ? "You already trust this session. Share it or send a quick note to your coach before you close the day."
-                : "If this session landed well, pin it as a favorite or share the win before you move on.",
-            actions: currentWorkoutIsPinnedFavorite ? [.share, .messageCoach] : [.saveFavorite, .share]
+            title: "This one is worth keeping close",
+            detail: "If this session landed well, pin it as a favorite so it's one tap away next time.",
+            actions: [.saveFavorite]
         )
     }
 

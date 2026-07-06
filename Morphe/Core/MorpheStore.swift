@@ -132,6 +132,9 @@ final class MorpheAppStore {
     /// same-day relaunch keeps today's completed tasks, and compared on every
     /// foreground so a night in the app switcher can't freeze "today".
     private(set) var lastDailyResetDay = ""
+    /// Days the user protected with a minimum win instead of a full session.
+    /// Persisted; these count as on-schedule days in the streak computation.
+    private(set) var protectedDayKeys: Set<String> = []
     var selectedConfidence: ConfidenceLevel? = .maybe
     var didCompleteQuickCheckIn = false
     var recovery: RecoverySnapshot
@@ -595,6 +598,8 @@ final class MorpheAppStore {
                     snapshot.completedTaskTitlesToday.contains(todayTasks[index].title)
             }
         }
+        protectedDayKeys = Set(snapshot.protectedDayKeys)
+        streakProtected = protectedDayKeys.contains(Self.dayKey())
 
         // History/consistency/score/streak were derived in init against the seeded
         // id; rebuild them now that the user's real identity is restored.
@@ -639,7 +644,8 @@ final class MorpheAppStore {
                 height: clientProfile.height,
                 bodyWeight: clientProfile.bodyWeight,
                 dailyStateDay: lastDailyResetDay,
-                completedTaskTitlesToday: todayTasks.filter(\.isCompleted).map(\.title)
+                completedTaskTitlesToday: todayTasks.filter(\.isCompleted).map(\.title),
+                protectedDayKeys: Array(protectedDayKeys)
             )
         )
     }
@@ -1569,13 +1575,7 @@ final class MorpheAppStore {
         recovery = Self.neutralRecovery
 
         // Honest guidance tips (no fabricated "improved 25%" claims, no "AI" label).
-        clientProfile.aiTodayInsight = AIInsight(
-            title: "Today's tip",
-            summary: "You don't need a perfect session — you need a consistent one. Show up and log it.",
-            risk: .low,
-            recommendation: "Start moderate, protect your sleep tonight, and add some protein.",
-            suggestedAction: "Start today's workout"
-        )
+        clientProfile.aiTodayInsight = Self.rotatingDailyTip()
         clientProfile.aiProgressInsight = AIInsight(
             title: "Progress tip",
             summary: "Your progress lives in your logged sessions. Stack a few and the trend follows.",
@@ -1782,23 +1782,21 @@ final class MorpheAppStore {
     }
 
     func protectStreak(with option: String) {
-        let wasProtected = streakProtected
         streakProtected = true
-        if !wasProtected {
-            addAthleteActivityPost(
-                title: "Momentum protected",
-                detail: "Protected the streak with \(option.lowercased()) instead of letting the day disappear.",
-                tags: [selectedSportMode.shortTitle, "Streak Save"],
-                comments: [
-                    coachHighlightComment(
-                        text: "That still counts. The win is keeping the habit alive when the day could have slipped."
-                    )
-                ],
-                reactions: 6
-            )
-        }
+        recordProtectedDay()
         showCelebration(title: "Momentum protected", detail: option, symbol: "shield.fill")
         showToast("Momentum protected.")
+    }
+
+    /// Makes streak protection REAL: the day is persisted and counts as an
+    /// on-schedule day in the streak computation. ("Momentum protected" used
+    /// to write a flag nothing read — the streak still showed 0 the next day.)
+    private func recordProtectedDay() {
+        let key = Self.dayKey()
+        guard !protectedDayKeys.contains(key) else { return }
+        protectedDayKeys.insert(key)
+        refreshWorkoutLogDerivedState(for: clientProfile.id)
+        persistLocalProfile()
     }
 
     // MARK: - Day rollover
@@ -1827,11 +1825,54 @@ final class MorpheAppStore {
         // completions (completedQuizIDs, XP) are forever.
         quizSelections = [:]
 
+        // A new day gets a new tip (they used to be frozen for life).
+        clientProfile.aiTodayInsight = Self.rotatingDailyTip(for: now)
+
         // "Logged today", streak, and score are date-derived — recompute them
         // against the new day instead of trusting launch-time values.
         refreshWorkoutLogDerivedState(for: clientProfile.id)
 
         if hasCompletedOnboarding { persistLocalProfile() }
+    }
+
+    /// Honest, general training tips rotated by calendar day — the same tip
+    /// every launch forever read as a broken feature by week two.
+    static func rotatingDailyTip(for date: Date = .now) -> AIInsight {
+        let tips: [(summary: String, recommendation: String, action: String)] = [
+            ("You don't need a perfect session — you need a consistent one. Show up and log it.",
+             "Start moderate, protect your sleep tonight, and add some protein.",
+             "Start today's workout"),
+            ("The first set is the hardest part of the whole workout. Get under it and the rest follows.",
+             "Commit to the warm-up only — momentum usually handles the rest.",
+             "Start today's workout"),
+            ("Progress hides in your logs, not in the mirror. Small weight jumps add up fast.",
+             "Try adding one rep or a small amount of weight to one exercise today.",
+             "Start today's workout"),
+            ("Rest days are training days for recovery. If today is one, take it without guilt.",
+             "On rest days, walk, stretch, or do a quick check-in instead of forcing a session.",
+             "Do a quick check-in"),
+            ("Form first, load second. A clean rep at lighter weight beats a grinding one every time.",
+             "Open the form guide for your first exercise before you load the bar.",
+             "Start today's workout"),
+            ("Consistency beats intensity: three honest sessions a week outwork one heroic Saturday.",
+             "Protect your scheduled days this week — even a shortened session counts.",
+             "Start today's workout"),
+            ("Sleep is the strongest recovery tool you own. Tonight's sleep is part of today's training.",
+             "Aim for a consistent bedtime tonight, especially after a hard session.",
+             "Do a quick check-in"),
+            ("If today feels heavy, shrink it — a minimum win keeps the habit alive when motivation dips.",
+             "One small win still counts. Say \"minimum win\" to Morphe AI if you need a lighter day.",
+             "Need a smaller win?")
+        ]
+        let dayIndex = Calendar.current.ordinality(of: .day, in: .year, for: date) ?? 0
+        let tip = tips[dayIndex % tips.count]
+        return AIInsight(
+            title: "Today's tip",
+            summary: tip.summary,
+            risk: .low,
+            recommendation: tip.recommendation,
+            suggestedAction: tip.action
+        )
     }
 
     func toggleTask(_ task: TaskItem) {
@@ -1857,17 +1898,12 @@ final class MorpheAppStore {
         updateXP(for: minimumWinTasks[index].xp, add: minimumWinTasks[index].isCompleted)
 
         if minimumWinTasks[index].isCompleted {
-            let wasProtected = streakProtected
             streakProtected = true
-            if !wasProtected {
-                addAthleteActivityPost(
-                    title: "Minimum win complete",
-                    detail: "Kept the habit alive with \(task.title.lowercased()).",
-                    tags: [selectedSportMode.shortTitle, "Minimum Win"]
-                )
-            }
+            recordProtectedDay()
             showCelebration(title: "Momentum protected", detail: task.title, symbol: "flame.fill")
             showToast("Momentum protected.")
+        } else {
+            persistLocalProfile()
         }
     }
 
@@ -2454,42 +2490,8 @@ final class MorpheAppStore {
         hasStartedWorkoutFlow = false
         hasCompletedWorkoutFlow = false
 
-        if !isBuddySession && !didShareCurrentWorkoutHighlight {
-            let completedAssignedWorkout = currentWorkout.name == clientProfile.currentProgram
-            let completedRecoveryWorkout = currentWorkout.category == .recovery || currentWorkout.name == "Low Energy Recovery Day"
-
-            if completedAssignedWorkout {
-                addAthleteActivityPost(
-                    title: "Coach assignment complete",
-                    detail: "Finished \(currentWorkout.name) from \(clientProfile.planCreatedBy)'s plan and logged it clean in Morphe.",
-                    tags: [selectedSportMode.shortTitle, "Coach Assignment", "Workout Complete"],
-                    comments: [
-                        coachHighlightComment(
-                            text: "That is the kind of follow-through that keeps the plan working. Nice job closing the loop."
-                        )
-                    ],
-                    reactions: 10
-                )
-            } else if completedRecoveryWorkout {
-                addAthleteActivityPost(
-                    title: "Recovery day followed through",
-                    detail: "Kept the momentum alive with \(currentWorkout.name) instead of forcing a heavy day that did not fit.",
-                    tags: [selectedSportMode.shortTitle, "Recovery Win", "Workout Complete"],
-                    comments: [
-                        coachHighlightComment(
-                            text: "Good call. Recovery still moves the week forward when it keeps you honest and ready."
-                        )
-                    ],
-                    reactions: 7
-                )
-            } else {
-                addAthleteActivityPost(
-                    title: "Workout complete",
-                    detail: "Finished \(currentWorkout.name) in \(currentWorkout.durationMinutes) minutes and closed the loop in Morphe.",
-                    tags: [selectedSportMode.shortTitle, "Workout Complete"]
-                )
-            }
-        }
+        // No self-authored feed posts with fabricated coach applause here —
+        // social content becomes real when multi-user does.
 
         if partnerWorkoutEnabled, let partner = selectedWorkoutPartner, let partnerPlan = currentPartnerWorkoutPlan {
             updateXP(for: partnerPlan.xpBonus, add: true)
@@ -5673,7 +5675,7 @@ final class MorpheAppStore {
     /// Derives the user's Morphe Score, streak, and activity trend from their
     /// real logged workouts — no seeded numbers, no fake growth.
     private func recomputeClientMetrics(from logs: [WorkoutLog]) {
-        let streak = Self.currentWorkoutStreak(from: logs)
+        let streak = currentWorkoutStreak(from: logs)
         clientProfile.level.streak = streak
 
         if logs.isEmpty {
@@ -5782,7 +5784,7 @@ final class MorpheAppStore {
             workoutsThisWeek: thisWeekLogs.count,
             minutesThisWeek: totalMinutes,
             averageDuration: averageDuration,
-            currentStreakDays: Self.currentWorkoutStreak(from: logs),
+            currentStreakDays: Self.consecutiveDayStreak(from: logs),
             athleteEntries: athleteEntries,
             coachEntries: coachEntries,
             aiEntries: aiEntries,
@@ -6850,7 +6852,51 @@ final class MorpheAppStore {
         }
     }
 
-    private static func currentWorkoutStreak(from logs: [WorkoutLog]) -> Int {
+    /// Streak of on-schedule training days for the current athlete. Two rules
+    /// make it honest: (1) the streak is SCHEDULE-aware — someone training the
+    /// promised 3 days a week keeps their streak across rest days (the old
+    /// consecutive-calendar-day rule showed a compliant user "Streak: 0" most
+    /// mornings); (2) protected days (minimum wins) count as training days.
+    private func currentWorkoutStreak(from logs: [WorkoutLog]) -> Int {
+        let calendar = Calendar.current
+        var activeDays = Set(logs.map { calendar.startOfDay(for: $0.completedAt) })
+        for key in protectedDayKeys {
+            if let day = Self.date(fromDayKey: key) {
+                activeDays.insert(calendar.startOfDay(for: day))
+            }
+        }
+        let sortedDays = activeDays.sorted(by: >)
+        guard let latestDay = sortedDays.first else { return 0 }
+
+        // Training n days/week means sessions land ~7/n days apart — allow
+        // that spacing (plus nothing extra) before the streak breaks.
+        let daysPerWeek = max(1, min(7, clientProfile.trainingDaysPerWeek))
+        let allowedGap = Int((7.0 / Double(daysPerWeek)).rounded(.up))
+
+        let today = calendar.startOfDay(for: .now)
+        guard let sinceLatest = calendar.dateComponents([.day], from: latestDay, to: today).day,
+              sinceLatest <= allowedGap else { return 0 }
+
+        var streak = 1
+        var anchorDay = latestDay
+        for day in sortedDays.dropFirst() {
+            guard let gap = calendar.dateComponents([.day], from: day, to: anchorDay).day,
+                  gap <= allowedGap else { break }
+            streak += 1
+            anchorDay = day
+        }
+        return streak
+    }
+
+    private static func date(fromDayKey key: String) -> Date? {
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return Calendar.current.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+    }
+
+    /// Strict consecutive-day streak, used for coach-side client summaries
+    /// where the athlete's schedule and protected days aren't known.
+    private static func consecutiveDayStreak(from logs: [WorkoutLog]) -> Int {
         let calendar = Calendar.current
         let uniqueDays = Array(Set(logs.map { calendar.startOfDay(for: $0.completedAt) })).sorted(by: >)
 

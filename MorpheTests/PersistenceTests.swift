@@ -1321,6 +1321,59 @@ final class MetricsTests: XCTestCase {
         XCTAssertTrue(store.minimumWinModeEnabled, "a real low-energy signal still activates Minimum Win")
     }
 
+    // MARK: - Honest streak (audit backlog pass 1)
+
+    func testStreakSurvivesRestDaysOnSchedule() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.updateTrainingDaysPerWeek(3)
+        let athleteID = store.clientProfile.id
+
+        // Trained 3 days ago and today — perfectly on a 3-day/week schedule.
+        // The old consecutive-day rule called this "streak: 1".
+        func log(daysAgo: Int) -> WorkoutLog {
+            WorkoutLog(
+                athleteID: athleteID,
+                athleteName: "Sarah",
+                workoutTemplateID: nil,
+                workoutTitle: "Session",
+                sport: .strength,
+                completedAt: Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!,
+                durationMinutes: 30,
+                exercises: [],
+                notes: "",
+                source: .athleteManual,
+                enteredByUserID: athleteID,
+                enteredByRole: .client,
+                enteredByName: "Sarah",
+                verificationStatus: .athleteSubmitted
+            )
+        }
+        WorkoutFilePersistence().saveLogs([log(daysAgo: 3), log(daysAgo: 0)])
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.level.streak, 2,
+                       "rest days inside the user's own schedule must not break the streak")
+    }
+
+    func testMinimumWinActuallyProtectsStreak() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertEqual(store.clientProfile.level.streak, 0)
+        store.toggleMinimumWinTask(store.minimumWinTasks[0])
+        XCTAssertTrue(store.streakProtected)
+        XCTAssertEqual(store.clientProfile.level.streak, 1,
+                       "'Momentum protected' must actually feed the streak, not just show a toast")
+
+        // And it survives a relaunch.
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.level.streak, 1, "protected days persist")
+        XCTAssertTrue(reloaded.streakProtected, "same-day relaunch still shows today as protected")
+    }
+
     func testAssistantStartWinsOverStopPhrasing() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"

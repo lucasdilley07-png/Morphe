@@ -21,7 +21,9 @@ struct HomeView: View {
             return "\(athlete.goal) - \(athlete.competitionDate)"
         }
 
-        return "\(store.profileShowcase.currentPhase) - next weekly review in 3 days"
+        // Goal + real cadence — no invented "weekly review in 3 days" promise.
+        let goal = store.clientProfile.goal.isEmpty ? "Building the habit" : store.clientProfile.goal
+        return "\(goal) - \(store.clientProfile.trainingDaysPerWeek) days a week"
     }
 
     private var todayWinText: String {
