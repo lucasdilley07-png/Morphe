@@ -23,13 +23,14 @@ struct MoreView: View {
         ClientHubFeature.allCases.filter { $0 != .progress }
     }
 
-    private var dailyQuizzes: [MiniQuiz] {
-        guard !store.quizzes.isEmpty else { return [] }
-        let count = min(max(5, min(store.quizzes.count, 10)), store.quizzes.count)
+    /// ONE quiz a day (the old surface dumped a 10-quiz, 40-button wall and
+    /// claimed it "rotated daily"). Prefers the first uncompleted quiz in
+    /// today's rotation so streaky learners always get something new.
+    private var dailyQuiz: MiniQuiz? {
+        guard !store.quizzes.isEmpty else { return nil }
         let dayIndex = Calendar.current.ordinality(of: .day, in: .year, for: .now) ?? 0
-        return (0..<count).map { offset in
-            store.quizzes[(dayIndex + offset) % store.quizzes.count]
-        }
+        let rotation = (0..<store.quizzes.count).map { store.quizzes[(dayIndex + $0) % store.quizzes.count] }
+        return rotation.first { !store.completedQuizIDs.contains($0.id) } ?? rotation.first
     }
 
     private var nutritionTargets: [(label: String, value: String, detail: String)] {
@@ -72,10 +73,12 @@ struct MoreView: View {
         "Child's Pose Breathing"
     ]
 
+    // Swap Exercise was removed: it silently rewrote the current workout's
+    // first exercise and yanked the user to Train — a destructive surprise
+    // from a Learn tab. Swapping lives in the workout itself now.
     private let quickActions: [(TodayQuickAction, String)] = [
         (.logWorkout, "checkmark.circle"),
-        (.swapExercise, "arrow.triangle.2.circlepath"),
-        (.askAI, "sparkles")
+        (.askAI, "text.bubble")
     ]
 
     private let quickActionColumns = [
@@ -88,18 +91,8 @@ struct MoreView: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Learn",
-                    subtitle: "Anatomy, exercise help, recovery, nutrition basics, and short lessons in one clean place."
+                    subtitle: "Exercise help, recovery, nutrition basics, and short lessons in one place."
                 )
-
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Use this when you need support, not when you need noise.")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                        Text("Progress stays focused on reports and momentum. More is where Morphe keeps the helpful extras.")
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                }
 
                 MoreFeatureGrid(features: utilityFeatures, selected: activeFeature) { feature in
                     store.selectedHubFeature = feature
@@ -180,13 +173,12 @@ struct MoreView: View {
 
     private var libraryPanel: some View {
         Group {
-            SportModeSelector(selected: store.selectedSportMode) { sport in
-                store.selectSportMode(sport)
-            }
-
+            // (SportModeSelector removed from here: browsing the library must
+            // not rewrite the user's sports, goal, and persisted profile as a
+            // side effect — it lives in Scores where changing sport is the point.)
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Anatomy + Exercise Library")
+                    Text("Exercise Library")
                         .font(.headline)
                         .foregroundStyle(.white)
                     Text("Browse by muscle group, then open the movement for beginner-friendly form help and safer alternatives.")
@@ -267,18 +259,11 @@ struct MoreView: View {
                     Text("Nutrition Basics")
                         .font(.headline)
                         .foregroundStyle(.white)
-                    Text("Start with daily targets that support your current goal. Hit the basics before trying to be perfect.")
+                    // Honest framing: these are general starting points from
+                    // the goal type, not personalized macros. (The old Mode
+                    // picker wrote a value nothing in the app ever read.)
+                    Text("General starting points for your goal type — not personalized targets. Hit the basics before trying to be perfect.")
                         .foregroundStyle(MorpheTheme.textSecondary)
-
-                    Picker("Mode", selection: Binding(
-                        get: { store.nutrition.mode },
-                        set: { store.setNutritionMode($0) }
-                    )) {
-                        ForEach(NutritionMode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
 
                     ForEach(nutritionTargets, id: \.label) { target in
                         HStack {
@@ -307,16 +292,28 @@ struct MoreView: View {
         Group {
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Mini Quizzes")
-                        .font(.headline)
-                        .foregroundStyle(.white)
+                    HStack {
+                        Text("Daily Quiz")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Text("\(store.completedQuizIDs.count) of \(store.quizzes.count)")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accentAlt)
+                            .accessibilityLabel("\(store.completedQuizIDs.count) of \(store.quizzes.count) quizzes complete")
+                    }
 
-                    Text("New questions rotate daily so the learning stays short and fresh.")
+                    Text("One new question a day. Answer it right the first time to earn XP.")
+                        .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
 
-                    ForEach(dailyQuizzes) { quiz in
-                        VStack(alignment: .leading, spacing: 4) {
+                    if let quiz = dailyQuiz {
+                        let answeredIndex = store.quizSelections[quiz.id]
+                        let isComplete = store.completedQuizIDs.contains(quiz.id)
+
+                        VStack(alignment: .leading, spacing: 8) {
                             Text(quiz.question)
+                                .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.white)
 
                             ForEach(Array(quiz.options.enumerated()), id: \.offset) { index, option in
@@ -325,51 +322,74 @@ struct MoreView: View {
                                 }
                                 .buttonStyle(
                                     FilterChipStyle(
-                                        isSelected: store.quizSelections[quiz.id] == index,
+                                        isSelected: answeredIndex == index || (isComplete && index == quiz.correctIndex),
                                         selectedColor: index == quiz.correctIndex ? MorpheTheme.accent : MorpheTheme.warning
                                     )
                                 )
+                                .disabled(answeredIndex != nil || isComplete)
+                                .accessibilityLabel(quizOptionLabel(option: option, index: index, quiz: quiz, answeredIndex: answeredIndex))
                             }
 
-                            if let selectedIndex = store.quizSelections[quiz.id] {
-                                Text(selectedIndex == quiz.correctIndex ? quiz.explanation : "Not quite. \(quiz.explanation)")
-                                    .font(.caption)
-                                    .foregroundStyle(selectedIndex == quiz.correctIndex ? MorpheTheme.accent : MorpheTheme.textSecondary)
+                            if let answeredIndex {
+                                // "Correct/Not quite" in words, not just color.
+                                Text(answeredIndex == quiz.correctIndex
+                                     ? "Correct! \(quiz.explanation)"
+                                     : "Not quite. \(quiz.explanation)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(answeredIndex == quiz.correctIndex ? MorpheTheme.accent : MorpheTheme.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            } else if isComplete {
+                                Text("Already aced — a new question lands tomorrow.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
                             }
 
-                            if store.completedQuizIDs.contains(quiz.id) {
+                            if isComplete {
                                 Text("+\(quiz.rewardXP) XP earned")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(MorpheTheme.accentAlt)
                             }
                         }
-                        .padding(.vertical, 4)
                     }
                 }
             }
 
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Learn")
+                    Text("Lessons")
                         .font(.headline)
                         .foregroundStyle(.white)
+                    Text("Two-minute reads on training, recovery, and effort.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
 
                     ForEach(store.lessons) { lesson in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(lesson.title)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-                            Text(lesson.subtitle)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.accentAlt)
+                        DisclosureGroup {
                             Text(lesson.detail)
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 4)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(lesson.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                Text(lesson.subtitle)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.accentAlt)
+                            }
                         }
+                        .tint(MorpheTheme.textMuted)
                     }
                 }
             }
         }
+    }
+
+    private func quizOptionLabel(option: String, index: Int, quiz: MiniQuiz, answeredIndex: Int?) -> String {
+        guard answeredIndex != nil || store.completedQuizIDs.contains(quiz.id) else { return option }
+        return index == quiz.correctIndex ? "\(option), correct answer" : option
     }
 }
 
@@ -455,6 +475,13 @@ private struct PersonalRecordsCard: View {
                 Text("Personal Records")
                     .font(.headline)
                     .foregroundStyle(.white)
+
+                if records.isEmpty {
+                    Text("Your records build themselves from the workouts you log — the first one lands with your first big set.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 ForEach(records) { record in
                     HStack(alignment: .top) {

@@ -148,7 +148,7 @@ enum ClientHubFeature: String, CaseIterable, Identifiable {
     case tools = "Quick Tools"
     case library = "Exercise Library"
     case nutrition = "Nutrition Basics"
-    case learn = "Learn"
+    case learn = "Lessons"
 
     var id: String { rawValue }
 
@@ -172,7 +172,7 @@ enum ClientHubFeature: String, CaseIterable, Identifiable {
         case .tools:
             return "Quick actions, notifications, and shortcuts"
         case .library:
-            return "Anatomy, exercises, and form help"
+            return "Exercises, form help, and alternatives"
         case .nutrition:
             return "Daily targets and simple eating guidance"
         case .learn:

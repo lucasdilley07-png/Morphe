@@ -115,7 +115,8 @@ final class MorpheAppStore {
     var showQuickAdd = false
     var showAIAgent = false
     var selectedNetworkProfile: NetworkProfilePreview?
-    var selectedHubFeature: ClientHubFeature? = .scores
+    // A tab named "Learn" opens to learning, not to a scoreboard.
+    var selectedHubFeature: ClientHubFeature? = .learn
     var selectedCommunitySection: ClientCommunitySection = .forYou
     var selectedCoachBuildSection: CoachBuildSection = .builder
     var athleteProfileIsPublic = true
