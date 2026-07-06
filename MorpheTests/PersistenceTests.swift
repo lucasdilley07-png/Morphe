@@ -657,6 +657,25 @@ final class WorkoutSessionTests: XCTestCase {
         }
     }
 
+    func testRenameRegeneratesHandleAndCapsLength() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Lucas"
+        store.completeOnboarding()
+        XCTAssertEqual(store.profileShowcase.username, "lucas")
+
+        store.updateDisplayName("Maria Lopez")
+        XCTAssertEqual(store.profileShowcase.displayName, "Maria Lopez")
+        XCTAssertEqual(store.profileShowcase.username, "marialopez",
+                       "the @handle must follow a rename, not strand the old name")
+
+        store.updateDisplayName(String(repeating: "x", count: 300))
+        XCTAssertEqual(store.profileShowcase.displayName.count, 40, "names cap at 40 chars")
+
+        let nameBefore = store.profileShowcase.displayName
+        store.updateDisplayName("   ")
+        XCTAssertEqual(store.profileShowcase.displayName, nameBefore, "an empty save keeps the old name")
+    }
+
     func testFreshUserHasNoFabricatedMetricsOrRules() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"

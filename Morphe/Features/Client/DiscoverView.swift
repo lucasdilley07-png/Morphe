@@ -41,12 +41,11 @@ struct ProfileView: View {
                             .foregroundStyle(MorpheTheme.accent)
                         Text(isCoach
                             ? "Coach"
-                            : "\(store.clientProfile.sportMode.rawValue) • \(store.clientProfile.fitnessLevel)")
+                            : "\(store.clientProfile.sportMode.rawValue)\(store.clientProfile.fitnessLevel.isEmpty ? "" : " • \(store.clientProfile.fitnessLevel)")")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textMuted)
                     }
                     Spacer()
-                    StatusBadge(text: isCoach ? "Coach" : "Athlete", color: MorpheTheme.accent)
                 }
             }
         }
@@ -64,12 +63,20 @@ struct ProfileView: View {
                     HStack(spacing: 8) {
                         TextField("Your name", text: $nameDraft)
                             .textFieldStyle(MorpheFieldStyle())
+                            .submitLabel(.done)
+                            .onSubmit { saveName() }
                         Button("Save") {
-                            store.updateDisplayName(nameDraft)
-                            isEditingName = false
+                            saveName()
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(MorpheTheme.accent)
+                        .accessibilityLabel("Save name")
+                        Button("Cancel") {
+                            isEditingName = false
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .accessibilityLabel("Cancel name edit")
                     }
                 } else {
                     settingsRow(
@@ -109,6 +116,16 @@ struct ProfileView: View {
         }
     }
 
+    private func saveName() {
+        let trimmed = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        store.updateDisplayName(nameDraft)
+        // Keep the editor open on an empty save so the silent-close bug
+        // (old name kept, no feedback) can't recur.
+        if !trimmed.isEmpty {
+            isEditingName = false
+        }
+    }
+
     private func settingsRow(_ title: String, value: String, showEdit: Bool = true, onEdit: @escaping () -> Void) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
@@ -117,12 +134,14 @@ struct ProfileView: View {
                     .foregroundStyle(MorpheTheme.textMuted)
                 Text(value)
                     .foregroundStyle(.white)
+                    .lineLimit(2)
             }
             Spacer()
             if showEdit {
                 Button("Edit", action: onEdit)
                     .buttonStyle(.plain)
                     .foregroundStyle(MorpheTheme.accent)
+                    .accessibilityLabel("Edit \(title.lowercased())")
             }
         }
     }
@@ -140,10 +159,19 @@ private struct AthleteProfileBody: View {
                     Text("Training snapshot")
                         .font(.headline)
                         .foregroundStyle(.white)
-                    HStack(spacing: 8) {
-                        MetricPill(label: "Morphe Score", value: "\(store.clientProfile.health.score)")
-                        MetricPill(label: "Streak", value: "\(store.clientProfile.level.streak) days")
-                        MetricPill(label: "This week", value: "\(summary.workoutsThisWeek)")
+                    if store.todayExperienceTier >= 1 {
+                        HStack(spacing: 8) {
+                            MetricPill(label: "Morphe Score", value: "\(store.clientProfile.health.score)")
+                            // The real log-derived streak (level.streak is a
+                            // legacy field that stays 0).
+                            MetricPill(label: "Streak", value: "\(summary.currentStreakDays) days")
+                            MetricPill(label: "This week", value: "\(summary.workoutsThisWeek) of \(max(store.clientProfile.trainingDaysPerWeek, 1))")
+                        }
+                    } else {
+                        Text("Your score, streak, and weekly count appear after your first logged workout.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -382,12 +410,12 @@ private struct AthleteRecentLogsCard: View {
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Recent Shared Logs")
+                Text("Recent Workouts")
                     .font(.headline)
                     .foregroundStyle(.white)
 
                 if logs.isEmpty {
-                    Text("Workout logs added by you, your coach, or Morphe AI will show here.")
+                    Text("The workouts you log land here.")
                         .foregroundStyle(MorpheTheme.textSecondary)
                 } else {
                     ForEach(logs) { log in
@@ -402,14 +430,22 @@ private struct AthleteRecentLogsCard: View {
                                         .foregroundStyle(MorpheTheme.textSecondary)
                                 }
                                 Spacer()
-                                StatusBadge(text: log.source.badgeTitle, color: badgeColor(for: log.source))
+                                // Provenance badges ("Coach entry", "Athlete
+                                // submitted") only mean something once other
+                                // people can write to your log.
+                                if FeatureFlags.multiUserEnabled {
+                                    StatusBadge(text: log.source.badgeTitle, color: badgeColor(for: log.source))
+                                }
                             }
 
-                            Text("\(log.enteredByName) • \(log.verificationStatus.rawValue)")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.accentAlt)
+                            if FeatureFlags.multiUserEnabled {
+                                Text("\(log.enteredByName) • \(log.verificationStatus.rawValue)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.accentAlt)
+                            }
                         }
                         .padding(.vertical, 2)
+                        .accessibilityElement(children: .combine)
                     }
                 }
             }

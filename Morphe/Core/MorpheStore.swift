@@ -217,6 +217,8 @@ final class MorpheAppStore {
             // in the restored unit already.
             if !isApplyingProfile {
                 convertTrackedSessionWeights(to: weightUnit)
+                Haptics.impact(.light)
+                showToast("Weights now shown in \(weightUnit.label).")
             }
             persistLocalProfile()
         }
@@ -2863,11 +2865,21 @@ final class MorpheAppStore {
     }
 
     func updateDisplayName(_ newName: String) {
-        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        let trimmed = String(newName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        guard !trimmed.isEmpty else {
+            showToast("Your name can't be empty.")
+            return
+        }
         clientProfile.name = trimmed
         profileShowcase.displayName = trimmed
+        // The @handle follows the name — a rename must not strand the old
+        // handle on every surface. (Local only; uniqueness comes with accounts.)
+        let handle = trimmed.lowercased().filter { $0.isLetter || $0.isNumber }
+        if !handle.isEmpty {
+            profileShowcase.username = handle
+        }
         persistLocalProfile()
+        showToast("Name updated.")
     }
 
     func selectAvatarStyle(_ style: AvatarStyle) {
