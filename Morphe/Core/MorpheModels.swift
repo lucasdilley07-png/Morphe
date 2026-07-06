@@ -706,6 +706,8 @@ struct WorkoutTemplate: Identifiable, Hashable {
     var difficulty: DemoDifficulty
     var durationMinutes: Int
     var equipment: String
+    /// Catalog facet ("Full Body", "Push", …) — empty for non-catalog templates.
+    var focusTag: String = ""
     var exercises: [WorkoutExercise]
     var defaultSets: String = "3 sets"
     var defaultReps: String = "10 reps"

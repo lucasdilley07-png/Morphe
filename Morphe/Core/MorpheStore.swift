@@ -155,6 +155,11 @@ final class MorpheAppStore {
     var sportMetrics: [SportMetric]
 
     var workoutTemplates: [WorkoutTemplate]
+    /// The bundled Discover catalog (Morphe Programs) — browsable, separate
+    /// from workoutTemplates so pickers/cycling aren't flooded by 273 entries.
+    var catalogWorkouts: [WorkoutTemplate] = []
+    /// Saved-from-Discover ids restored from disk, reapplied after demo clears.
+    private var persistedSavedCatalogIDs: [String] = []
     var savedWorkouts: [SavedWorkoutLibraryItem]
     var currentWorkoutID: UUID { didSet { persistWorkoutSession() } }
     var workoutLogs: [WorkoutLog] {
@@ -307,6 +312,12 @@ final class MorpheAppStore {
         self.profilePersistence = profilePersistence
 
         self.exerciseDatabase = MorpheDemoContent.exerciseDatabase
+        // Bundled Discover catalog: content as data. Every document is
+        // validated against the library — a workout with a missing exercise
+        // is dropped rather than shipped broken.
+        self.catalogWorkouts = WorkoutCatalog.loadBundled().compactMap {
+            WorkoutCatalog.template(from: $0, library: MorpheDemoContent.exerciseDatabase)
+        }
         self.availableAvatars = MorpheDemoContent.avatarStyles
 
         self.clientProfile = seededClientProfile
@@ -551,6 +562,9 @@ final class MorpheAppStore {
         clientProfile.bodyWeight = snapshot.bodyWeight
 
         rebuildPersonalRules()
+        // The demo clear also wiped savedWorkouts — restore the user's own
+        // Discover saves.
+        rebuildSavedCatalogWorkouts()
 
         // Same for earned learning progress: the demo clear resets Level 1 /
         // 0 XP, which must not wipe what THIS user actually earned.
@@ -713,14 +727,26 @@ final class MorpheAppStore {
                     }
                 )
             }
+        // Saved Discover items persist as catalog ids and are rebuilt on load.
+        let savedCatalogIDs = savedWorkouts
+            .map(\.workoutTemplateID)
+            .filter { id in catalogWorkouts.contains { $0.id == id } }
+            .map(\.uuidString)
+
         workoutPersistence.saveLibrary(
-            WorkoutLibrarySnapshot(customExercises: exerciseSnaps, customWorkouts: workoutSnaps)
+            WorkoutLibrarySnapshot(
+                customExercises: exerciseSnaps,
+                customWorkouts: workoutSnaps,
+                savedCatalogWorkoutIDs: savedCatalogIDs
+            )
         )
     }
 
     /// Rebuilds the user's custom exercises and workouts from disk at launch.
     private func loadCustomWorkoutLibrary() {
         guard let snapshot = workoutPersistence.loadLibrary() else { return }
+        persistedSavedCatalogIDs = snapshot.savedCatalogWorkoutIDs
+        rebuildSavedCatalogWorkouts()
         customExercises = snapshot.customExercises.map { snap in
             ExerciseReference(
                 id: snap.id,
@@ -1840,6 +1866,73 @@ final class MorpheAppStore {
         startTodayWorkout()
     }
 
+    // MARK: - Discover catalog (bundled Morphe Programs)
+
+    /// Makes a catalog workout usable by the rest of the app (start, save,
+    /// history resolution) by inserting its template into workoutTemplates.
+    private func ensureCatalogWorkoutInLibrary(_ template: WorkoutTemplate) {
+        guard !workoutTemplates.contains(where: { $0.id == template.id }) else { return }
+        workoutTemplates.append(template)
+    }
+
+    func startCatalogWorkout(_ template: WorkoutTemplate) {
+        ensureCatalogWorkoutInLibrary(template)
+        beginLiveWorkout(template)
+    }
+
+    func saveCatalogWorkout(_ template: WorkoutTemplate) {
+        ensureCatalogWorkoutInLibrary(template)
+        guard !savedWorkouts.contains(where: { $0.workoutTemplateID == template.id }) else {
+            showToast("\(template.name) is already in My Library.")
+            return
+        }
+        savedWorkouts.insert(
+            SavedWorkoutLibraryItem(
+                workoutTemplateID: template.id,
+                workoutName: template.name,
+                sport: template.sport,
+                sourceName: "Morphe Programs",
+                sourceRole: .client,
+                sourceContext: "Saved from Discover",
+                bestFor: .solo,
+                note: template.goal
+            ),
+            at: 0
+        )
+        if !persistedSavedCatalogIDs.contains(template.id.uuidString) {
+            persistedSavedCatalogIDs.append(template.id.uuidString)
+        }
+        persistWorkoutLibrary()
+        showCelebration(title: "Saved to My Library", detail: template.name, symbol: "bookmark.fill")
+    }
+
+    func isCatalogWorkoutSaved(_ template: WorkoutTemplate) -> Bool {
+        savedWorkouts.contains { $0.workoutTemplateID == template.id }
+    }
+
+    /// Rebuilds saved catalog items after a launch (or after the demo clear
+    /// on the returning-user path wipes savedWorkouts).
+    private func rebuildSavedCatalogWorkouts() {
+        for idString in persistedSavedCatalogIDs {
+            guard let template = catalogWorkouts.first(where: { $0.id.uuidString == idString }),
+                  !savedWorkouts.contains(where: { $0.workoutTemplateID == template.id })
+            else { continue }
+            ensureCatalogWorkoutInLibrary(template)
+            savedWorkouts.append(
+                SavedWorkoutLibraryItem(
+                    workoutTemplateID: template.id,
+                    workoutName: template.name,
+                    sport: template.sport,
+                    sourceName: "Morphe Programs",
+                    sourceRole: .client,
+                    sourceContext: "Saved from Discover",
+                    bestFor: .solo,
+                    note: template.goal
+                )
+            )
+        }
+    }
+
     /// The most recent weight logged for this exercise in the current session,
     /// used to pre-fill the tracker's inline weight field set-to-set.
     func lastSessionWeight(for exerciseID: String) -> Double? {
@@ -2695,6 +2788,8 @@ final class MorpheAppStore {
 
     func removeSavedWorkout(_ item: SavedWorkoutLibraryItem) {
         savedWorkouts.removeAll { $0.id == item.id }
+        persistedSavedCatalogIDs.removeAll { $0 == item.workoutTemplateID.uuidString }
+        persistWorkoutLibrary()
         showToast("Removed from saved workouts.")
     }
 

@@ -15,6 +15,7 @@ struct WorkoutView: View {
     @State private var editingSetIndex: Int?
     @State private var showDiscardConfirm = false
     @State private var showLibrary = false
+    @State private var showDiscover = false
     @State private var showExerciseList = false
     @State private var showAdjustments = false
     @State private var showSessionQueue = false
@@ -366,6 +367,22 @@ struct WorkoutView: View {
                             store.removeSavedWorkout(item)
                         }
                     )
+                }
+
+                if !store.catalogWorkouts.isEmpty {
+                    TrainExpandableSection(
+                        title: "Discover",
+                        subtitle: "\(store.catalogWorkouts.count) Morphe Programs — filter by focus, level, time, and equipment.",
+                        isExpanded: $showDiscover
+                    ) {
+                        DiscoverCatalogSection(
+                            onStart: { template in
+                                workoutFinished = false
+                                isShowingPainFlow = false
+                                store.startCatalogWorkout(template)
+                            }
+                        )
+                    }
                 }
 
                 TrainExpandableSection(
@@ -1261,6 +1278,152 @@ private struct LiveWorkoutSupportToolsCard: View {
     private func showInlineAIReply(title: String, prompt: String) {
         inlineAIContextTitle = title
         inlineAIReply = store.previewAIAgentReply(for: prompt)
+    }
+}
+
+/// Browsable catalog of bundled Morphe Programs with faceted filters —
+/// Stage A of the content pipeline (becomes the Firestore-backed feed with
+/// engagement ranking once the backend lands).
+private struct DiscoverCatalogSection: View {
+    @Environment(MorpheAppStore.self) private var store
+    let onStart: (WorkoutTemplate) -> Void
+
+    @State private var focusFilter: String?
+    @State private var levelFilter: DemoDifficulty?
+    @State private var durationFilter: Int?
+    @State private var equipmentFilter: String?
+    @State private var visibleCount = 12
+
+    private var focusOptions: [String] {
+        var seen: Set<String> = []
+        return store.catalogWorkouts.compactMap { template in
+            guard !template.focusTag.isEmpty, !seen.contains(template.focusTag) else { return nil }
+            seen.insert(template.focusTag)
+            return template.focusTag
+        }
+    }
+
+    private var filtered: [WorkoutTemplate] {
+        store.catalogWorkouts.filter { template in
+            (focusFilter == nil || template.focusTag == focusFilter)
+                && (levelFilter == nil || template.difficulty == levelFilter)
+                && (durationFilter == nil || template.durationMinutes == durationFilter)
+                && (equipmentFilter == nil || template.equipment == equipmentFilter)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    filterRow("Focus", options: focusOptions, selection: $focusFilter) { $0 }
+                    filterRow("Level", options: [DemoDifficulty.beginner, .moderate, .advanced], selection: $levelFilter) { $0.rawValue }
+                    filterRow("Time", options: [20, 30, 45], selection: $durationFilter) { "\($0) min" }
+                    filterRow("Equipment", options: ["Bodyweight", "Dumbbells", "Full Gym"], selection: $equipmentFilter) { $0 }
+
+                    Text("\(filtered.count) workout\(filtered.count == 1 ? "" : "s")")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accentAlt)
+                }
+            }
+
+            if filtered.isEmpty {
+                GlassCard {
+                    Text("No programs match those filters — loosen one and try again.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                ForEach(filtered.prefix(visibleCount)) { template in
+                    DiscoverWorkoutCard(
+                        template: template,
+                        isSaved: store.isCatalogWorkoutSaved(template),
+                        onStart: { onStart(template) },
+                        onSave: { store.saveCatalogWorkout(template) }
+                    )
+                }
+
+                if filtered.count > visibleCount {
+                    Button("Show more (\(filtered.count - visibleCount) left)") {
+                        visibleCount += 12
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                }
+            }
+        }
+        .onChange(of: focusFilter) { _, _ in visibleCount = 12 }
+        .onChange(of: levelFilter) { _, _ in visibleCount = 12 }
+        .onChange(of: durationFilter) { _, _ in visibleCount = 12 }
+        .onChange(of: equipmentFilter) { _, _ in visibleCount = 12 }
+    }
+
+    private func filterRow<Option: Hashable>(
+        _ label: String,
+        options: [Option],
+        selection: Binding<Option?>,
+        title: @escaping (Option) -> String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textMuted)
+            WrapStack(spacing: 8) {
+                ForEach(options, id: \.self) { option in
+                    Button(title(option)) {
+                        selection.wrappedValue = selection.wrappedValue == option ? nil : option
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: selection.wrappedValue == option, selectedColor: MorpheTheme.accentAlt))
+                }
+            }
+        }
+    }
+}
+
+private struct DiscoverWorkoutCard: View {
+    let template: WorkoutTemplate
+    let isSaved: Bool
+    let onStart: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(template.name)
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                        Text("\(template.durationMinutes) min • \(template.equipment) • \(template.exercises.count) exercises")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                    Spacer()
+                    StatusBadge(text: template.focusTag, color: MorpheTheme.accentAlt)
+                }
+
+                Text(template.goal)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+
+                HStack(spacing: 8) {
+                    Button("Start", action: onStart)
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .accessibilityLabel("Start \(template.name)")
+
+                    Button {
+                        onSave()
+                    } label: {
+                        Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                            .frame(width: 44, height: 24)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .frame(width: 64)
+                    .accessibilityLabel(isSaved ? "\(template.name) saved" : "Save \(template.name) to My Library")
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
     }
 }
 

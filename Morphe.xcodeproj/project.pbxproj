@@ -17,6 +17,7 @@
 		1B20F6002C40000100100008 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100018 /* ChatView.swift */; };
 		1B20F6002C40000100100009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100019 /* Assets.xcassets */; };
 		1B20F6002C4000010010004A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */; };
+		1B20F6002C4000010010004E /* MorpheCatalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100069 /* MorpheCatalog.json */; };
 		1B20F6002C40000100100040 /* MorpheModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100050 /* MorpheModels.swift */; };
 		1B20F6002C40000100100041 /* MorpheServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100051 /* MorpheServices.swift */; };
 		1B20F6002C40000100100042 /* MorpheStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100052 /* MorpheStore.swift */; };
@@ -30,6 +31,7 @@
 		1B20F6002C40000100100048 /* WorkoutPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100063 /* WorkoutPersistence.swift */; };
 		1B20F6002C40000100100049 /* ProfilePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100064 /* ProfilePersistence.swift */; };
 		1B20F6002C4000010010004B /* Accounts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100066 /* Accounts.swift */; };
+		1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010006A /* WorkoutCatalog.swift */; };
 		1B20F6002C400001001000AA /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000A9 /* PersistenceTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -63,6 +65,7 @@
 		1B20F6002C40000100100018 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100019 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		1B20F6002C40000100100069 /* MorpheCatalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/MorpheCatalog.json; sourceTree = "<group>"; };
 		1B20F6002C40000100100050 /* MorpheModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheModels.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100051 /* MorpheServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheServices.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100052 /* MorpheStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheStore.swift; sourceTree = "<group>"; };
@@ -76,6 +79,7 @@
 		1B20F6002C40000100100063 /* WorkoutPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPersistence.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100064 /* ProfilePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistence.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100066 /* Accounts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Accounts.swift; sourceTree = "<group>"; };
+		1B20F6002C4000010010006A /* WorkoutCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCatalog.swift; sourceTree = "<group>"; };
 		1B20F6002C400001001000A1 /* MorpheTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MorpheTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B20F6002C400001001000A9 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -123,6 +127,7 @@
 				1B20F6002C40000100100018 /* ChatView.swift */,
 				1B20F6002C40000100100019 /* Assets.xcassets */,
 				1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */,
+				1B20F6002C40000100100069 /* MorpheCatalog.json */,
 			);
 			path = Morphe;
 			sourceTree = "<group>";
@@ -145,6 +150,7 @@
 				1B20F6002C40000100100063 /* WorkoutPersistence.swift */,
 				1B20F6002C40000100100064 /* ProfilePersistence.swift */,
 				1B20F6002C40000100100066 /* Accounts.swift */,
+				1B20F6002C4000010010006A /* WorkoutCatalog.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -276,6 +282,7 @@
 			files = (
 				1B20F6002C40000100100009 /* Assets.xcassets in Resources */,
 				1B20F6002C4000010010004A /* PrivacyInfo.xcprivacy in Resources */,
+				1B20F6002C4000010010004E /* MorpheCatalog.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -307,6 +314,7 @@
 				1B20F6002C40000100100048 /* WorkoutPersistence.swift in Sources */,
 				1B20F6002C40000100100049 /* ProfilePersistence.swift in Sources */,
 				1B20F6002C4000010010004B /* Accounts.swift in Sources */,
+				1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -123,6 +123,23 @@ struct CustomWorkoutSnapshot: Codable, Equatable {
 struct WorkoutLibrarySnapshot: Codable, Equatable {
     var customExercises: [CustomExerciseSnapshot]
     var customWorkouts: [CustomWorkoutSnapshot]
+    /// Catalog workouts the user saved from Discover (template UUID strings).
+    /// Tolerantly decoded so libraries saved before this field existed load.
+    var savedCatalogWorkoutIDs: [String]
+
+    init(customExercises: [CustomExerciseSnapshot], customWorkouts: [CustomWorkoutSnapshot],
+         savedCatalogWorkoutIDs: [String] = []) {
+        self.customExercises = customExercises
+        self.customWorkouts = customWorkouts
+        self.savedCatalogWorkoutIDs = savedCatalogWorkoutIDs
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        customExercises = try c.decode([CustomExerciseSnapshot].self, forKey: .customExercises)
+        customWorkouts = try c.decode([CustomWorkoutSnapshot].self, forKey: .customWorkouts)
+        savedCatalogWorkoutIDs = ((try? c.decodeIfPresent([String].self, forKey: .savedCatalogWorkoutIDs)) ?? nil) ?? []
+    }
 }
 
 /// Abstraction over where workout data is stored.

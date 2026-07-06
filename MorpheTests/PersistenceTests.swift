@@ -687,6 +687,55 @@ final class WorkoutSessionTests: XCTestCase {
         }
     }
 
+    func testCatalogLoadsValidatedAndStable() {
+        let store = MorpheAppStore()
+
+        XCTAssertGreaterThan(store.catalogWorkouts.count, 100, "the bundled catalog must load at scale")
+
+        // Every exercise in every catalog workout must resolve to the library
+        // (the loader drops broken documents — none should be dropped).
+        let documents = WorkoutCatalog.loadBundled()
+        XCTAssertEqual(store.catalogWorkouts.count, documents.count,
+                       "no catalog workout should be dropped for unresolvable exercises")
+
+        // Stable identity: a second load produces identical ids (saved
+        // references must survive relaunch and regeneration).
+        let reloadedIDs = Set(MorpheAppStore().catalogWorkouts.map(\.id))
+        XCTAssertEqual(Set(store.catalogWorkouts.map(\.id)), reloadedIDs)
+
+        // Facets are populated.
+        XCTAssertTrue(store.catalogWorkouts.allSatisfy { !$0.focusTag.isEmpty })
+    }
+
+    func testSavedCatalogWorkoutSurvivesRelaunch() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let template = store.catalogWorkouts.first!
+        store.saveCatalogWorkout(template)
+        XCTAssertTrue(store.isCatalogWorkoutSaved(template))
+
+        let reloaded = MorpheAppStore()
+        XCTAssertTrue(reloaded.savedWorkouts.contains { $0.workoutTemplateID == template.id },
+                      "a Discover save must survive relaunch")
+        XCTAssertTrue(reloaded.workoutTemplates.contains { $0.id == template.id },
+                      "the saved template must be startable after relaunch")
+    }
+
+    func testCatalogWorkoutStartsLiveSession() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let template = store.catalogWorkouts.first!
+        store.startCatalogWorkout(template)
+
+        XCTAssertTrue(store.isWorkoutSessionActive)
+        XCTAssertEqual(store.currentWorkout.id, template.id)
+        XCTAssertFalse(store.currentWorkout.exercises.isEmpty)
+    }
+
     func testProfileDetailEditorsPersist() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
