@@ -94,6 +94,13 @@ struct HomeView: View {
                             onToggleTask: { store.toggleTask($0) }
                         )
                     }
+
+                    // The check-in otherwise lives inside "If plans change",
+                    // which is earned at tier 1 — a brand-new user had no way
+                    // to reach the one input that personalizes their day.
+                    if store.todayExperienceTier == 0 {
+                        TierZeroCheckInCard(isComplete: store.didCompleteQuickCheckIn)
+                    }
                 }
 
                 if store.todayExperienceTier >= 1 || store.minimumWinModeEnabled {
@@ -682,6 +689,37 @@ private struct UpcomingGoalCard: View {
 
     var body: some View {
         StatCard(title: "Upcoming Goal / Event", value: "What this week points toward", detail: text)
+    }
+}
+
+/// Slim day-0 entry to the recovery check-in — the full planner card is
+/// earned at tier 1, but readiness input matters from the first session.
+private struct TierZeroCheckInCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    let isComplete: Bool
+    @State private var showCheckIn = false
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("How ready are you today?")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Text(isComplete
+                     ? "Readiness \(store.recovery.score) • \(store.recovery.status.rawValue). \(store.recovery.reason)"
+                     : "A 30-second check-in helps Morphe size today's workout to how you actually feel.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                Button(isComplete ? "Update check-in" : "Do a quick check-in") {
+                    showCheckIn = true
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+            }
+        }
+        .sheet(isPresented: $showCheckIn) {
+            RecoveryCheckInSheet(recovery: store.recovery)
+                .environment(store)
+        }
     }
 }
 

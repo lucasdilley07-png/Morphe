@@ -1321,6 +1321,36 @@ final class MetricsTests: XCTestCase {
         XCTAssertTrue(store.minimumWinModeEnabled, "a real low-energy signal still activates Minimum Win")
     }
 
+    // MARK: - Day-0 personalization + rotation (audit backlog pass 2)
+
+    func testOnboardingPersonalizesFirstWorkout() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.onboardingDraft.selectedSports = [.boxing]
+        store.onboardingDraft.experienceLevel = .advanced
+        store.completeOnboarding()
+
+        XCTAssertEqual(store.currentWorkout.sport, .boxing,
+                       "the first staged workout matches the chosen sport, not the first seeded template")
+    }
+
+    func testRecommendationRotatesAfterLoggingCurrentWorkout() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertFalse(store.recommendedWorkoutDiffers,
+                       "before any logs, the staged workout is the recommendation")
+
+        store.startTodayWorkout()
+        store.hasCompletedWorkoutFlow = true
+        store.logWorkout()
+
+        XCTAssertTrue(store.recommendedWorkoutDiffers,
+                      "after closing the staged workout, the suggestion moves to a different session")
+        XCTAssertNotEqual(store.currentGoodForTodayRecommendation.workoutTemplateID, store.currentWorkout.id)
+    }
+
     // MARK: - Honest streak (audit backlog pass 1)
 
     func testStreakSurvivesRestDaysOnSchedule() {

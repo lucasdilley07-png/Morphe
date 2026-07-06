@@ -1495,7 +1495,7 @@ final class MorpheAppStore {
         profileShowcase.avatar.style = onboardingDraft.avatarStyle
         profileShowcase.currentPhase = generatedPlan.phase
         applyPrimarySport(primarySport)
-        currentPlanAdjustment = MorpheDemoContent.defaultPlanAdjustment
+        currentPlanAdjustment = Self.neutralPlanAdjustment
         goalTranslation = generatedPlan.goalTranslation
         MorpheTheme.apply(accentPalette: onboardingDraft.accentPalette)
 
@@ -1510,10 +1510,35 @@ final class MorpheAppStore {
         clientProfile.equipment = onboardingDraft.equipment.trimmingCharacters(in: .whitespacesAndNewlines)
         rebuildPersonalRules()
 
+        // Personalize the first staged workout: the plan-generation step
+        // claims to match sport and level, so the picks must actually land —
+        // an advanced boxer should not open the app to "Beginner Full Body
+        // Strength" like everyone else.
+        if let firstWorkout = bestFirstWorkout(sport: primarySport, level: onboardingDraft.experienceLevel) {
+            currentWorkoutID = firstWorkout.id
+        }
+
         // The welcome sheet IS the completion celebration — the toast overlay
         // rendered underneath it and expired unseen.
         showWelcomeExperience = true
         persistLocalProfile()
+    }
+
+    /// Best seeded template for a brand-new user: their sport at their level,
+    /// then their sport at any level, then general fitness at their level.
+    private func bestFirstWorkout(sport: SportFocus, level: ExperienceLevelOption) -> WorkoutTemplate? {
+        let target: DemoDifficulty = {
+            switch level {
+            case .beginner: return .beginner
+            case .intermediate: return .moderate
+            case .advanced: return .advanced
+            }
+        }()
+        let trainable = workoutTemplates.filter { $0.sessionType != .recoverySession }
+        let sportMatches = trainable.filter { $0.sport == sport }
+        return sportMatches.first(where: { $0.difficulty == target })
+            ?? sportMatches.first
+            ?? trainable.first(where: { $0.sport == .generalFitness && $0.difficulty == target })
     }
 
     /// Resets the signed-in user to a clean, empty account: a brand-new identity
@@ -1573,6 +1598,7 @@ final class MorpheAppStore {
         )
         didCompleteQuickCheckIn = false
         recovery = Self.neutralRecovery
+        currentPlanAdjustment = Self.neutralPlanAdjustment
 
         // Honest guidance tips (no fabricated "improved 25%" claims, no "AI" label).
         clientProfile.aiTodayInsight = Self.rotatingDailyTip()
@@ -1821,6 +1847,10 @@ final class MorpheAppStore {
         minimumWinModeEnabled = false
         streakProtected = false
         didCompleteQuickCheckIn = false
+        // Yesterday's Plan B and confidence answer don't describe today.
+        selectedConfidence = .maybe
+        selectedPlanBReason = nil
+        currentPlanAdjustment = Self.neutralPlanAdjustment
         // A new day means a new quiz — selections are per-day, earned
         // completions (completedQuizIDs, XP) are forever.
         quizSelections = [:]
@@ -5658,6 +5688,17 @@ final class MorpheAppStore {
         recomputeClientMetrics(from: logs)
     }
 
+    /// A neutral plan adjustment for a user who hasn't reported anything —
+    /// the seeded default claimed "your recovery score is low and you
+    /// reported soreness yesterday" for people who never reported a thing,
+    /// which also steered every fresh user into the recovery recommendation.
+    static let neutralPlanAdjustment = PlanAdjustment(
+        title: "Your plan is set for today",
+        body: "No adjustments yet — do a quick check-in or pick a Plan B if the day changes.",
+        reasons: [],
+        recommendation: "Start when you're ready and log how it goes."
+    )
+
     /// A neutral recovery baseline shown until the user does a check-in — clearly
     /// a default, not a fabricated measurement.
     static let neutralRecovery = RecoverySnapshot(
@@ -6015,6 +6056,21 @@ final class MorpheAppStore {
         return .solo
     }
 
+    /// A different template at a similar difficulty for the same sport (or
+    /// general fitness), rotated deterministically by day.
+    private func nextVarietySuggestion(after current: WorkoutTemplate) -> WorkoutTemplate? {
+        let candidates = workoutTemplates.filter {
+            $0.id != current.id
+                && $0.sessionType != .recoverySession
+                && ($0.sport == clientProfile.sportMode || $0.sport == .generalFitness)
+        }
+        guard !candidates.isEmpty else { return nil }
+        let similar = candidates.filter { $0.difficulty == current.difficulty }
+        let pool = similar.isEmpty ? candidates : similar
+        let dayIndex = Calendar.current.ordinality(of: .day, in: .year, for: .now) ?? 0
+        return pool[dayIndex % pool.count]
+    }
+
     private func goodForTodayRecommendation() -> GoodForTodayWorkoutRecommendation {
         let behavior = goodForTodayBehaviorSnapshot()
         let needsRecovery = recovery.status == .recoveryRecommended
@@ -6240,6 +6296,33 @@ final class MorpheAppStore {
                     prefersBuddy: false
                 )
             }
+        }
+
+        // Variety: if the user just finished the staged workout, the next
+        // suggestion moves them forward instead of recommending the session
+        // they just closed. (The old default branch recommended the current
+        // workout itself, so "Today's Workout" never rotated on its own.)
+        if let lastLog = workoutLogs.first(where: { $0.athleteID == clientProfile.id }),
+           lastLog.workoutTemplateID == currentWorkout.id,
+           let daysSince = Calendar.current.dateComponents([.day], from: lastLog.completedAt, to: .now).day,
+           daysSince <= 2,
+           let nextTemplate = nextVarietySuggestion(after: currentWorkout) {
+            return recommendation(
+                from: nextTemplate,
+                sourceName: "Morphe",
+                reasonTitle: "Time for the next step",
+                reasonDetail: "You closed \(currentWorkout.name) recently — this keeps the week moving without repeating the same session.",
+                contextChips: recommendationContextChips(
+                    needsRecovery: false,
+                    needsFallback: false,
+                    prefersBuddy: false,
+                    bestFor: suggestedUseCase(for: nextTemplate, context: nextTemplate.name),
+                    behavioralChips: []
+                ),
+                confidenceNote: nil,
+                bestFor: suggestedUseCase(for: nextTemplate, context: nextTemplate.name),
+                prefersBuddy: false
+            )
         }
 
         if let currentPlanSaved = savedWorkouts.first(where: { $0.workoutTemplateID == currentWorkout.id }) {
