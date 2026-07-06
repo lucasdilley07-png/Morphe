@@ -279,7 +279,7 @@ enum WorkoutAdjustmentOption: String, CaseIterable, Identifiable {
 enum TodayQuickAction: String, CaseIterable, Identifiable {
     case logWorkout = "Log Workout"
     case swapExercise = "Swap Exercise"
-    case askAI = "Ask Morphe"
+    case askAI = "Ask Morphe AI"
     case messageTrainer = "Message Trainer"
 
     var id: String { rawValue }
@@ -1481,7 +1481,7 @@ struct ClientProfile: Hashable {
     var limitations: String
     var equipment: String
     var currentProgram: String
-    var planCreatedBy: String = "Morphe Tips"
+    var planCreatedBy: String = "Morphe AI"
     var aiTodayInsight: AIInsight
     var aiProgressInsight: AIInsight
     var aiNutritionInsight: AIInsight

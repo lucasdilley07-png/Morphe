@@ -82,7 +82,10 @@ struct HomeView: View {
                         ) { task in
                             store.toggleMinimumWinTask(task)
                         }
-                    } else if store.todayExperienceTier >= 1 {
+                    } else {
+                        // Daily wins stay visible from day 0 — small
+                        // checkable tasks give a brand-new user something to
+                        // complete before the metrics exist.
                         TodayPlanCard(
                             todayWinText: todayWinText,
                             tasks: store.todayTasks,

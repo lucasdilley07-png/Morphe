@@ -687,6 +687,30 @@ final class WorkoutSessionTests: XCTestCase {
         }
     }
 
+    func testMorpheAIExecutesCommands() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.sendAIAgentPrompt("Start my workout")
+        XCTAssertTrue(store.isWorkoutSessionActive, "'start my workout' actually starts the session")
+        XCTAssertEqual(store.selectedClientTab, .train)
+
+        store.sendAIAgentPrompt("Discard this session")
+        XCTAssertFalse(store.isWorkoutSessionActive, "'discard this session' actually cancels it")
+
+        store.sendAIAgentPrompt("Switch to kg")
+        XCTAssertEqual(store.weightUnit, .kilograms, "'switch to kg' changes the setting")
+
+        store.sendAIAgentPrompt("Show my progress")
+        XCTAssertEqual(store.selectedClientTab, .hub, "'show my progress' navigates there")
+
+        // Every command produced a confirmation reply from Morphe AI.
+        let aiReplies = store.athleteAIAgentConversation.filter { $0.senderName == "Morphe AI" }
+        XCTAssertTrue(aiReplies.contains { $0.text.contains("kilograms") })
+        XCTAssertTrue(aiReplies.contains { $0.text.contains("discarded") })
+    }
+
     func testRenameRegeneratesHandleAndCapsLength() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Lucas"

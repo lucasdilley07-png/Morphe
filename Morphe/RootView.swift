@@ -500,7 +500,7 @@ private struct FloatingAIAgentButton: View {
     @Environment(MorpheAppStore.self) private var store
 
     private var label: String {
-        store.selectedRole == .coach ? "Coach Tips" : "Morphe Tips"
+        store.selectedRole == .coach ? "Morphe AI" : "Morphe AI"
     }
 
     private var isCompact: Bool {
@@ -590,7 +590,7 @@ private struct MorpheAIAgentSheet: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
-                    title: store.selectedRole == .coach ? "Coach Tips" : "Morphe Tips",
+                    title: store.selectedRole == .coach ? "Morphe AI" : "Morphe AI",
                     subtitle: store.aiAgentSubtitle
                 )
 
