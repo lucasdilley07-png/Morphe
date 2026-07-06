@@ -167,6 +167,7 @@ final class MorpheAppStore {
     var catalogWorkouts: [WorkoutTemplate] = []
     /// Saved-from-Discover ids restored from disk, reapplied after demo clears.
     private var persistedSavedCatalogIDs: [String] = []
+    private var persistedSavedTemplates: [SavedTemplateSnapshot] = []
     var savedWorkouts: [SavedWorkoutLibraryItem]
     var currentWorkoutID: UUID { didSet { persistWorkoutSession() } }
     var workoutLogs: [WorkoutLog] {
@@ -574,8 +575,9 @@ final class MorpheAppStore {
 
         rebuildPersonalRules()
         // The demo clear also wiped savedWorkouts — restore the user's own
-        // Discover saves.
+        // Discover saves and non-catalog saves.
         rebuildSavedCatalogWorkouts()
+        rebuildSavedTemplateWorkouts()
 
         // Same for earned learning progress: the demo clear resets Level 1 /
         // 0 XP, which must not wipe what THIS user actually earned.
@@ -760,19 +762,37 @@ final class MorpheAppStore {
             .filter { id in catalogWorkouts.contains { $0.id == id } }
             .map(\.uuidString)
 
+        // Everything else the user saved persists by name (seeded template
+        // ids re-mint per launch) and is rebuilt on load.
+        let savedTemplates = savedWorkouts
+            .filter { item in !catalogWorkouts.contains { $0.id == item.workoutTemplateID } }
+            .map {
+                SavedTemplateSnapshot(
+                    name: $0.workoutName,
+                    sourceName: $0.sourceName,
+                    sourceContext: $0.sourceContext,
+                    bestFor: $0.bestFor.rawValue,
+                    note: $0.note,
+                    isPinned: $0.isPinned
+                )
+            }
+
         workoutPersistence.saveLibrary(
             WorkoutLibrarySnapshot(
                 customExercises: exerciseSnaps,
                 customWorkouts: workoutSnaps,
-                savedCatalogWorkoutIDs: savedCatalogIDs
+                savedCatalogWorkoutIDs: savedCatalogIDs,
+                savedTemplates: savedTemplates
             )
         )
+        persistedSavedTemplates = savedTemplates
     }
 
     /// Rebuilds the user's custom exercises and workouts from disk at launch.
     private func loadCustomWorkoutLibrary() {
         guard let snapshot = workoutPersistence.loadLibrary() else { return }
         persistedSavedCatalogIDs = snapshot.savedCatalogWorkoutIDs
+        persistedSavedTemplates = snapshot.savedTemplates
         rebuildSavedCatalogWorkouts()
         customExercises = snapshot.customExercises.map { snap in
             ExerciseReference(
@@ -825,6 +845,33 @@ final class MorpheAppStore {
             )
             customWorkoutIDs.insert(id)
             workoutTemplates.insert(template, at: 0)
+        }
+
+        // Non-catalog saves resolve by name, so they rebuild only after the
+        // custom templates above exist.
+        rebuildSavedTemplateWorkouts()
+    }
+
+    /// Restores non-catalog library saves (recommendation saves, duplicated
+    /// copies) by matching persisted names against the loaded templates.
+    private func rebuildSavedTemplateWorkouts() {
+        for snap in persistedSavedTemplates {
+            guard let template = workoutTemplates.first(where: { $0.name == snap.name }),
+                  !savedWorkouts.contains(where: { $0.workoutTemplateID == template.id })
+            else { continue }
+            savedWorkouts.append(
+                SavedWorkoutLibraryItem(
+                    workoutTemplateID: template.id,
+                    workoutName: template.name,
+                    sport: template.sport,
+                    sourceName: snap.sourceName,
+                    sourceRole: .client,
+                    sourceContext: snap.sourceContext,
+                    bestFor: SavedWorkoutUseCase(rawValue: snap.bestFor) ?? .solo,
+                    note: snap.note,
+                    isPinned: snap.isPinned
+                )
+            )
         }
     }
 
@@ -1938,11 +1985,13 @@ final class MorpheAppStore {
     }
 
     func cycleWorkout() {
-        let names = workoutTemplates.map(\.name)
-        guard let currentIndex = names.firstIndex(of: currentWorkout.name), !names.isEmpty else { return }
-        let nextName = names[(currentIndex + 1) % names.count]
-        setCurrentWorkout(named: nextName)
-        showToast("Switched to \(nextName).")
+        // Id-keyed: with same-named templates possible (catalog copies), a
+        // name-keyed cycle resolves to the first match and can get stuck.
+        guard workoutTemplates.count > 1,
+              let currentIndex = workoutTemplates.firstIndex(where: { $0.id == currentWorkout.id }) else { return }
+        let next = workoutTemplates[(currentIndex + 1) % workoutTemplates.count]
+        setCurrentWorkout(next)
+        showToast("Switched to \(next.name).")
     }
 
     func applyWorkoutAdjustment(_ option: WorkoutAdjustmentOption) {
@@ -2932,6 +2981,10 @@ final class MorpheAppStore {
         copiedTemplate.name = "My Copy - \(template.name)"
         copiedTemplate.coachNote = "Personal copy built from \(item.sourceName)'s saved workout."
         workoutTemplates.insert(copiedTemplate, at: 0)
+        // The copy is the user's own workout: registering it as custom makes
+        // it survive relaunch AND keeps it out of the curated Discover feed
+        // (which filters custom workouts).
+        customWorkoutIDs.insert(copiedTemplate.id)
 
         let copyItem = SavedWorkoutLibraryItem(
             workoutTemplateID: copiedTemplate.id,
@@ -2944,6 +2997,7 @@ final class MorpheAppStore {
             note: "Personal copy of \(template.name)."
         )
         savedWorkouts.insert(copyItem, at: 0)
+        persistWorkoutLibrary()
         openWorkoutTemplate(copiedTemplate)
         showToast("Saved workout duplicated into your library.")
     }
@@ -2960,6 +3014,7 @@ final class MorpheAppStore {
 
         if savedWorkouts[index].isPinned {
             savedWorkouts[index].isPinned = false
+            persistWorkoutLibrary()
             showToast("Removed from pinned workouts.")
             return
         }
@@ -2971,6 +3026,7 @@ final class MorpheAppStore {
         }
 
         savedWorkouts[index].isPinned = true
+        persistWorkoutLibrary()
         showToast("Pinned to the top of Train.")
     }
 
@@ -4403,6 +4459,10 @@ final class MorpheAppStore {
 
     private func setCurrentWorkout(named name: String) {
         guard let template = workoutTemplates.first(where: { $0.name == name }) else { return }
+        setCurrentWorkout(template)
+    }
+
+    private func setCurrentWorkout(_ template: WorkoutTemplate) {
         currentWorkoutID = template.id
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false
@@ -6030,6 +6090,7 @@ final class MorpheAppStore {
             ),
             at: 0
         )
+        persistWorkoutLibrary()
         showToast("Saved \(template.name) to your library.")
     }
 

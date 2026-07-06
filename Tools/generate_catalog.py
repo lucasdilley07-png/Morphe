@@ -288,7 +288,11 @@ def build_catalog(exercises):
                                 if not picked:
                                     continue
                                 suffix = "" if variants == 1 else f" {'AB'[variant]}"
-                                name = f"{level} {short} {focus}{suffix}" if config["kind"] == "split" else f"{level} Core{suffix}"
+                                # Duration + equipment live in the name: the same split
+                                # at 30/45 min x Dumbbells/Full Gym otherwise ships four
+                                # identically-named cards (and breaks name-keyed lookups).
+                                base = f"{level} {short} {focus}" if config["kind"] == "split" else f"{level} Core"
+                                name = f"{base} • {minutes} min {profile}{suffix}"
                                 key = f"{modality}|{focus}|{level}|{minutes}|{profile}|{variant}"
                                 workouts.append(make_workout(
                                     key, name, modality, focus, level, minutes, profile,

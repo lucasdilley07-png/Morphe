@@ -322,7 +322,7 @@ enum MorpheDemoContent {
             formCue: "Walk like you are late but not panicked.",
             commonMistakes: "Holding the rails the whole time.",
             beginnerModification: "Use a flat treadmill or outdoor walk.",
-            alternatives: ["Outdoor Walk", "Bike"],
+            alternatives: ["Stationary Bike", "Rowing Machine"],
             whyThisMatters: "Recovery cardio protects consistency on low-energy days."
         ),
         ExerciseReference(
@@ -2269,7 +2269,7 @@ enum MorpheDemoContent {
         physicalGoalTarget: "Lean out, sharpen conditioning, and feel more athletic in everyday training.",
         weightGoalTarget: "Reach 205 lbs while keeping boxing sharpness",
         goalDeadline: "By the end of summer",
-        fitnessLevel: "Beginner-intermediate",
+        fitnessLevel: "Intermediate",
         limitations: "Knee can get cranky when lunges get sloppy.",
         equipment: "Home dumbbells, heavy bag, gym access twice a week",
         currentProgram: "Boxing Base Builder",
@@ -2323,7 +2323,7 @@ enum MorpheDemoContent {
                 sport: .boxing,
                 position: "Amateur welterweight",
                 goal: "Improve conditioning and body composition",
-                fitnessLevel: "Beginner-intermediate",
+                fitnessLevel: "Intermediate",
                 trainingAge: "11 months",
                 injuryHistory: ["Old right ankle sprain"],
                 limitations: ["Knee discomfort during deep lunges"],

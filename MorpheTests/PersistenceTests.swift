@@ -1321,6 +1321,44 @@ final class MetricsTests: XCTestCase {
         XCTAssertTrue(store.minimumWinModeEnabled, "a real low-energy signal still activates Minimum Win")
     }
 
+    // MARK: - Library save persistence (audit backlog pass 3)
+
+    func testNonCatalogSaveSurvivesRelaunch() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        // Saving the recommendation stores a seeded template — those ids
+        // re-mint every launch, so this save used to silently vanish.
+        store.saveGoodForTodayRecommendation()
+        let savedName = store.savedWorkouts.first!.workoutName
+
+        let reloaded = MorpheAppStore()
+        let restored = reloaded.savedWorkouts.first { $0.workoutName == savedName }
+        XCTAssertNotNil(restored, "a recommendation save survives relaunch")
+        XCTAssertTrue(reloaded.workoutTemplates.contains { $0.id == restored?.workoutTemplateID },
+                      "the restored save points at a startable template")
+    }
+
+    func testDuplicatedWorkoutIsCustomAndStaysOutOfDiscover() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.onboardingDraft.selectedSports = [.boxing]
+        store.completeOnboarding()
+
+        store.saveGoodForTodayRecommendation()
+        store.duplicateSavedWorkout(store.savedWorkouts.first!)
+
+        XCTAssertFalse(store.discoverWorkouts.contains { $0.name.hasPrefix("My Copy") },
+                       "a personal copy must not surface in the curated Discover feed")
+
+        let reloaded = MorpheAppStore()
+        XCTAssertTrue(reloaded.workoutTemplates.contains { $0.name.hasPrefix("My Copy") },
+                      "the copy persists as a custom workout")
+        XCTAssertTrue(reloaded.savedWorkouts.contains { $0.workoutName.hasPrefix("My Copy") },
+                      "the copy's library entry persists too")
+    }
+
     // MARK: - Day-0 personalization + rotation (audit backlog pass 2)
 
     func testOnboardingPersonalizesFirstWorkout() {

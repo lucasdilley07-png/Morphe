@@ -1013,13 +1013,15 @@ private struct MorpheHubEntryCard: View {
                 Text("Need more than today's plan?")
                     .font(.headline)
                     .foregroundStyle(.white)
-                Text("Open Progress for reports and wins, or More for scores, quick tools, exercise help, nutrition basics, and learning.")
+                Text("Open Progress for reports and wins, or Learn for lessons, the daily quiz, exercise help, and nutrition basics.")
                     .foregroundStyle(MorpheTheme.textSecondary)
 
                 HStack(spacing: 10) {
                     Button("Open Progress", action: openProgress)
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
-                    Button("Open More", action: openMore)
+                    // The tab is named Learn — a button named "More" pointed
+                    // at a tab that doesn't exist.
+                    Button("Open Learn", action: openMore)
                         .buttonStyle(SecondaryCTAButtonStyle())
                 }
             }

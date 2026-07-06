@@ -120,18 +120,34 @@ struct CustomWorkoutSnapshot: Codable, Equatable {
     var exercises: [CustomWorkoutExerciseSnapshot]
 }
 
+/// A non-catalog library save (seeded or custom template), persisted by NAME —
+/// seeded template UUIDs are re-minted every launch, so ids can't be trusted
+/// across relaunches. Names are unique across the seeded set and custom builds.
+struct SavedTemplateSnapshot: Codable, Equatable {
+    var name: String
+    var sourceName: String
+    var sourceContext: String
+    var bestFor: String
+    var note: String
+    var isPinned: Bool
+}
+
 struct WorkoutLibrarySnapshot: Codable, Equatable {
     var customExercises: [CustomExerciseSnapshot]
     var customWorkouts: [CustomWorkoutSnapshot]
     /// Catalog workouts the user saved from Discover (template UUID strings).
     /// Tolerantly decoded so libraries saved before this field existed load.
     var savedCatalogWorkoutIDs: [String]
+    /// Non-catalog saves (recommendation saves, duplicated copies) — these
+    /// used to silently vanish for a returning user.
+    var savedTemplates: [SavedTemplateSnapshot]
 
     init(customExercises: [CustomExerciseSnapshot], customWorkouts: [CustomWorkoutSnapshot],
-         savedCatalogWorkoutIDs: [String] = []) {
+         savedCatalogWorkoutIDs: [String] = [], savedTemplates: [SavedTemplateSnapshot] = []) {
         self.customExercises = customExercises
         self.customWorkouts = customWorkouts
         self.savedCatalogWorkoutIDs = savedCatalogWorkoutIDs
+        self.savedTemplates = savedTemplates
     }
 
     init(from decoder: Decoder) throws {
@@ -139,6 +155,7 @@ struct WorkoutLibrarySnapshot: Codable, Equatable {
         customExercises = try c.decode([CustomExerciseSnapshot].self, forKey: .customExercises)
         customWorkouts = try c.decode([CustomWorkoutSnapshot].self, forKey: .customWorkouts)
         savedCatalogWorkoutIDs = ((try? c.decodeIfPresent([String].self, forKey: .savedCatalogWorkoutIDs)) ?? nil) ?? []
+        savedTemplates = ((try? c.decodeIfPresent([SavedTemplateSnapshot].self, forKey: .savedTemplates)) ?? nil) ?? []
     }
 }
 

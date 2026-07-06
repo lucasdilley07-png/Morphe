@@ -344,9 +344,15 @@ struct ProgressScreenView: View {
     }
 
     private func resolvedTemplate(for log: WorkoutLog) -> WorkoutTemplate? {
-        if let templateID = log.workoutTemplateID,
-           let template = store.workoutTemplates.first(where: { $0.id == templateID }) {
-            return template
+        if let templateID = log.workoutTemplateID {
+            if let template = store.workoutTemplates.first(where: { $0.id == templateID }) {
+                return template
+            }
+            // A catalog workout logged but never saved isn't rebuilt into
+            // workoutTemplates on relaunch — the bundled catalog still knows it.
+            if let catalogTemplate = store.catalogWorkouts.first(where: { $0.id == templateID }) {
+                return catalogTemplate
+            }
         }
 
         return store.workoutTemplates.first {

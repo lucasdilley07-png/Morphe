@@ -14,8 +14,14 @@ struct ProfileView: View {
     }
 
     private var bodyMetricsChanged: Bool {
-        heightDraft.trimmingCharacters(in: .whitespaces) != store.clientProfile.height
-            || weightDraft.trimmingCharacters(in: .whitespaces) != store.clientProfile.bodyWeight
+        // Compare what a save would actually store (trimmed + 20-char cap) —
+        // comparing the raw draft left "Save details" stuck for long input.
+        normalizedMetric(heightDraft) != store.clientProfile.height
+            || normalizedMetric(weightDraft) != store.clientProfile.bodyWeight
+    }
+
+    private func normalizedMetric(_ value: String) -> String {
+        String(value.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
     }
 
     var body: some View {

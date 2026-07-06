@@ -1297,8 +1297,19 @@ private struct DiscoverCatalogSection: View {
     @State private var collectionFilter: String?
     @State private var focusFilter: String?
     @State private var levelFilter: DemoDifficulty?
-    @State private var durationFilter: Int?
+    @State private var durationFilter: String?
     @State private var equipmentFilter: String?
+
+    /// Time filters are ranges, not exact matches — sport sessions run
+    /// 15/24/36/38-min lengths, so exact chips made Time + Sport-specific
+    /// always return zero results.
+    private static let durationBuckets = ["Under 25 min", "25–40 min", "Over 40 min"]
+
+    private func durationBucket(_ minutes: Int) -> String {
+        if minutes < 25 { return "Under 25 min" }
+        if minutes <= 40 { return "25–40 min" }
+        return "Over 40 min"
+    }
     @State private var visibleCount = 12
 
     /// The product's canonical training taxonomy, in presentation order.
@@ -1335,7 +1346,7 @@ private struct DiscoverCatalogSection: View {
                 && (collectionFilter == nil || template.type == collectionFilter)
                 && (focusFilter == nil || template.focusTag == focusFilter)
                 && (levelFilter == nil || template.difficulty == levelFilter)
-                && (durationFilter == nil || template.durationMinutes == durationFilter)
+                && (durationFilter == nil || durationBucket(template.durationMinutes) == durationFilter)
                 && (equipmentFilter == nil || template.equipment == equipmentFilter)
         }
     }
@@ -1351,7 +1362,7 @@ private struct DiscoverCatalogSection: View {
                     }
                     filterRow("Focus", options: focusOptions, selection: $focusFilter) { $0 }
                     filterRow("Level", options: [DemoDifficulty.beginner, .moderate, .advanced], selection: $levelFilter) { $0.rawValue }
-                    filterRow("Time", options: [20, 30, 45], selection: $durationFilter) { "\($0) min" }
+                    filterRow("Time", options: Self.durationBuckets, selection: $durationFilter) { $0 }
                     filterRow("Equipment", options: ["Bodyweight", "Dumbbells", "Full Gym"], selection: $equipmentFilter) { $0 }
 
                     Text("\(filtered.count) workout\(filtered.count == 1 ? "" : "s")")
