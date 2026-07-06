@@ -49,6 +49,9 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var levelXP: Int = 0
     var levelTargetXP: Int = 0
     var completedQuizIDs: [String] = []
+    // Body metrics, editable from Profile.
+    var height: String = ""
+    var bodyWeight: String = ""
 }
 
 extension LocalProfileSnapshot {
@@ -99,6 +102,8 @@ extension LocalProfileSnapshot {
         levelXP = ((try? c.decodeIfPresent(Int.self, forKey: .levelXP)) ?? nil) ?? 0
         levelTargetXP = ((try? c.decodeIfPresent(Int.self, forKey: .levelTargetXP)) ?? nil) ?? 0
         completedQuizIDs = arr(.completedQuizIDs)
+        height = str(.height)
+        bodyWeight = str(.bodyWeight)
     }
 }
 

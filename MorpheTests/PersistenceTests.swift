@@ -687,6 +687,24 @@ final class WorkoutSessionTests: XCTestCase {
         }
     }
 
+    func testProfileDetailEditorsPersist() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.updateBodyMetrics(height: "5'10\"", weight: "172 lb")
+        store.updateExperienceLevel(.advanced)
+        store.toggleProfileGoal(.gainMuscle)
+        store.toggleProfileTrainingStyle(.strength)
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.height, "5'10\"")
+        XCTAssertEqual(reloaded.clientProfile.bodyWeight, "172 lb")
+        XCTAssertEqual(reloaded.clientProfile.fitnessLevel, ExperienceLevelOption.advanced.rawValue)
+        XCTAssertTrue(reloaded.clientProfile.selectedGoals.contains(FitnessGoalOption.gainMuscle.rawValue))
+        XCTAssertTrue(reloaded.clientProfile.selectedTrainingStyles.contains(.strength))
+    }
+
     func testMorpheAIExecutesCommands() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"

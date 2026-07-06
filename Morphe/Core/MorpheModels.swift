@@ -1480,6 +1480,9 @@ struct ClientProfile: Hashable {
     var fitnessLevel: String
     var limitations: String
     var equipment: String
+    /// Free-text body metrics, user-editable from Profile ("5'10\"", "178 cm").
+    var height: String = ""
+    var bodyWeight: String = ""
     var currentProgram: String
     var planCreatedBy: String = "Morphe AI"
     var aiTodayInsight: AIInsight

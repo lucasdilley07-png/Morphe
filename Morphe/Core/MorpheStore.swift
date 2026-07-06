@@ -547,6 +547,8 @@ final class MorpheAppStore {
         // can't leak), which must not erase what THIS user restored.
         clientProfile.equipment = snapshot.equipment
         clientProfile.limitations = snapshot.injuries
+        clientProfile.height = snapshot.height
+        clientProfile.bodyWeight = snapshot.bodyWeight
 
         rebuildPersonalRules()
 
@@ -600,7 +602,9 @@ final class MorpheAppStore {
                 levelTitle: clientProfile.level.currentTitle,
                 levelXP: clientProfile.level.currentXP,
                 levelTargetXP: clientProfile.level.targetXP,
-                completedQuizIDs: Array(completedQuizIDs)
+                completedQuizIDs: Array(completedQuizIDs),
+                height: clientProfile.height,
+                bodyWeight: clientProfile.bodyWeight
             )
         )
     }
@@ -1029,6 +1033,21 @@ final class MorpheAppStore {
         rebuildPersonalRules()
         persistLocalProfile()
         showToast(clientProfile.limitations.isEmpty ? "Injury note cleared." : "Injury note updated.")
+    }
+
+    /// Updates free-text body metrics from Profile (onboarding no longer asks).
+    func updateBodyMetrics(height: String, weight: String) {
+        clientProfile.height = String(height.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
+        clientProfile.bodyWeight = String(weight.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
+        persistLocalProfile()
+        showToast("Details saved.")
+    }
+
+    func updateExperienceLevel(_ level: ExperienceLevelOption) {
+        guard clientProfile.fitnessLevel != level.rawValue else { return }
+        clientProfile.fitnessLevel = level.rawValue
+        persistLocalProfile()
+        Haptics.impact(.light)
     }
 
     /// Updates the weekly training-day target (drives the consistency
@@ -3033,7 +3052,8 @@ final class MorpheAppStore {
     func toggleProfileTrainingStyle(_ style: TrainingStyleOption) {
         switch toggleSelection(style, in: &clientProfile.selectedTrainingStyles) {
         case .added, .removed:
-            showToast("Training styles updated.")
+            persistLocalProfile()   // was mutating without saving
+            Haptics.impact(.light)
         case .blockedMaximum:
             showToast("Pick up to \(personalizationSelectionLimit) training styles.")
         case .blockedMinimum:

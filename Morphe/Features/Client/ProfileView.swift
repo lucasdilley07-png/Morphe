@@ -6,9 +6,16 @@ struct ProfileView: View {
     @State private var nameDraft = ""
     @State private var isEditingInjuries = false
     @State private var injuriesDraft = ""
+    @State private var heightDraft = ""
+    @State private var weightDraft = ""
 
     private var isCoach: Bool {
         store.selectedRole == .coach
+    }
+
+    private var bodyMetricsChanged: Bool {
+        heightDraft.trimmingCharacters(in: .whitespaces) != store.clientProfile.height
+            || weightDraft.trimmingCharacters(in: .whitespaces) != store.clientProfile.bodyWeight
     }
 
     var body: some View {
@@ -19,6 +26,7 @@ struct ProfileView: View {
                     CoachProfileBody(store: store)
                 } else {
                     AthleteProfileBody(store: store)
+                    detailsCard
                 }
                 settingsCard
             }
@@ -27,14 +35,94 @@ struct ProfileView: View {
             // This is a sheet — no tab bar underneath to pad around.
             .padding(.bottom, 40)
         }
+        .onAppear {
+            heightDraft = store.clientProfile.height
+            weightDraft = store.clientProfile.bodyWeight
+        }
+    }
+
+    /// Everything about the user's training identity, editable in place —
+    /// onboarding stays lean, so this is where these details live.
+    private var detailsCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Your Details")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Experience")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
+                        ForEach(ExperienceLevelOption.allCases) { level in
+                            Button(level.rawValue) {
+                                store.updateExperienceLevel(level)
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.fitnessLevel == level.rawValue))
+                        }
+                    }
+                }
+
+                Divider().overlay(Color.white.opacity(0.08))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Goals")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
+                        ForEach(FitnessGoalOption.allCases) { goal in
+                            Button(goal.rawValue) {
+                                store.toggleProfileGoal(goal)
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.selectedGoals.contains(goal.rawValue)))
+                        }
+                    }
+                }
+
+                Divider().overlay(Color.white.opacity(0.08))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Training styles")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
+                        ForEach(TrainingStyleOption.allCases) { style in
+                            Button(style.rawValue) {
+                                store.toggleProfileTrainingStyle(style)
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.selectedTrainingStyles.contains(style), selectedColor: MorpheTheme.warning))
+                        }
+                    }
+                }
+
+                Divider().overlay(Color.white.opacity(0.08))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Body")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    HStack(spacing: 10) {
+                        TextField("Height (5'10\" or 178 cm)", text: $heightDraft)
+                            .textFieldStyle(MorpheFieldStyle())
+                        TextField("Weight (170 lb)", text: $weightDraft)
+                            .textFieldStyle(MorpheFieldStyle())
+                    }
+                    if bodyMetricsChanged {
+                        Button("Save details") {
+                            store.updateBodyMetrics(height: heightDraft, weight: weightDraft)
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                    }
+                }
+            }
+        }
     }
 
     private var identityCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 14) {
-                    MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 72)
-
                     VStack(alignment: .leading, spacing: 4) {
                         Text(isCoach ? store.coachProfile.name : store.profileShowcase.displayName)
                             .font(.title2.weight(.bold))
@@ -162,24 +250,6 @@ struct ProfileView: View {
                         }
                     }
 
-                    Divider().overlay(Color.white.opacity(0.08))
-
-                    // Wires the avatar layer back up: the onboarding avatar
-                    // step was cut, which froze everyone on the default with
-                    // no way to change it anywhere.
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Avatar")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        WrapStack(spacing: 8) {
-                            ForEach(store.availableAvatars) { style in
-                                Button(style.rawValue) {
-                                    store.selectAvatarStyle(style)
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: store.profileShowcase.avatar.style == style, selectedColor: MorpheTheme.accentAlt))
-                            }
-                        }
-                    }
                 }
 
                 Divider().overlay(Color.white.opacity(0.08))
