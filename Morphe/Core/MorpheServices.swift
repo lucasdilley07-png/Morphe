@@ -1715,7 +1715,7 @@ enum MorpheDemoContent {
         GoalTranslation(goal: "Build consistency", weeklyActions: ["3 short training sessions", "2 recovery check-ins", "1 simple nutrition habit", "Minimum Win backup plan"]),
         GoalTranslation(goal: "Improve conditioning", weeklyActions: ["2 conditioning sessions", "1 strength session", "1 recovery block", "Weekly effort review"]),
         GoalTranslation(goal: "Get stronger", weeklyActions: ["3 strength sessions", "Track one main lift", "Protein goal", "1 recovery day"]),
-        GoalTranslation(goal: "Return after injury", weeklyActions: ["Pain-free movement check-in", "2 coached sessions", "Mobility every training day", "Coach review before big intensity jumps"]),
+        GoalTranslation(goal: "Return after injury", weeklyActions: ["Pain-free movement check-in", "2 guided low-intensity sessions", "Mobility every training day", "Review pain trends before big intensity jumps"]),
         GoalTranslation(goal: "Prepare for event/competition", weeklyActions: ["Event-specific training", "Readiness check-ins", "Taper planning", "Recovery priority"])
     ]
 
@@ -2273,7 +2273,7 @@ enum MorpheDemoContent {
         limitations: "Knee can get cranky when lunges get sloppy.",
         equipment: "Home dumbbells, heavy bag, gym access twice a week",
         currentProgram: "Boxing Base Builder",
-        planCreatedBy: "Morphe AI",
+        planCreatedBy: "Morphe",
         aiTodayInsight: AIInsight(
             title: "AI Coach Message",
             summary: "You do not need to train like a champion today. You just need to build the habits that create one.",
@@ -2999,7 +2999,7 @@ enum MorpheDemoContent {
         case .tooHard:
             return "No problem. Morphe will reduce the next session so you can keep momentum."
         case .pain:
-            return "Pain reported. Morphe will suggest a safer option and notify your coach."
+            return "Pain reported. Morphe will suggest a safer option and adjust today's plan."
         case .skippedParts:
             return "Thanks for logging that. Morphe will trim the next plan so it fits real life better."
         }
@@ -3011,7 +3011,7 @@ enum MorpheDemoContent {
                 title: "Pain flag changed the plan",
                 body: "Today's session was adjusted because you reported pain during a previous movement.",
                 reasons: reasons,
-                recommendation: "Use pain-free alternatives and send a note to your coach."
+                recommendation: "Use pain-free alternatives until the area settles, and ease back gradually."
             )
         }
 
@@ -3099,10 +3099,10 @@ enum MorpheDemoContent {
         }
 
         if lowerArea.contains("back") {
-            return ("Dead Bug", "Swap the loaded movement for dead bug and a short walk while the coach reviews it.")
+            return ("Dead Bug", "Swap the loaded movement for dead bug and a short walk until the area settles.")
         }
 
-        return ("Recovery Session", "Use a pain-free recovery option and let your coach review the trigger.")
+        return ("Recovery Session", "Use a pain-free recovery option and watch how the trigger movement feels next time.")
     }
 
     static func generatedPlan(from draft: OnboardingDraft) -> (phase: String, goalTranslation: GoalTranslation, firstTask: String, message: String) {

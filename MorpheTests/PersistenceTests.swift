@@ -1701,3 +1701,269 @@ final class MetricsTests: XCTestCase {
         XCTAssertTrue(store.isWorkoutSessionActive, "'…and start my workout' is a start, not a discard")
     }
 }
+
+/// Regression tests for the second full-audit fix pass: the session-work
+/// gate, honest logging, the minimum-win XP faucet, and tolerant history
+/// decoding.
+@MainActor
+final class AuditFixRegressionTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    override func tearDown() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        super.tearDown()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    /// Starts a live session on the user's own 2-exercise custom workout.
+    private func startedSession(_ store: MorpheAppStore) {
+        let exercises = Array(store.allExercises.prefix(2))
+        store.createCustomWorkout(
+            name: "Gate Test",
+            sport: .strength,
+            items: exercises.map { CustomWorkoutItem(exercise: $0, sets: 2, reps: 8) }
+        )
+        let custom = store.workoutTemplates.first { $0.name == "Gate Test" }!
+        store.beginLiveWorkout(custom)
+    }
+
+    // MARK: - Session-work gate
+
+    func testReplacingLiveSessionRequiresConfirmation() {
+        let store = freshStore()
+        startedSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        let activeID = store.currentWorkout.id
+        let other = store.workoutTemplates.first { $0.id != activeID }!
+
+        store.openWorkoutTemplate(other)
+
+        XCTAssertNotNil(store.pendingWorkoutChange, "destroying a live session must ask first")
+        XCTAssertEqual(store.currentWorkout.id, activeID, "nothing changes until confirmed")
+        XCTAssertTrue(store.isWorkoutSessionActive, "the session survives until the user confirms")
+
+        store.confirmPendingWorkoutChange()
+        XCTAssertEqual(store.currentWorkout.id, other.id)
+        XCTAssertFalse(store.isWorkoutSessionActive)
+        XCTAssertNil(store.pendingWorkoutChange)
+    }
+
+    func testCancellingGateKeepsSessionIntact() {
+        let store = freshStore()
+        startedSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        let activeID = store.currentWorkout.id
+
+        store.startTodayWorkout() // "restart" while live must also gate
+        XCTAssertNotNil(store.pendingWorkoutChange)
+
+        store.cancelPendingWorkoutChange()
+        XCTAssertNil(store.pendingWorkoutChange)
+        XCTAssertTrue(store.isWorkoutSessionActive)
+        XCTAssertEqual(store.currentWorkout.id, activeID)
+        XCTAssertEqual(store.trackedSetTotalCount, 1, "logged sets survive a cancelled restart")
+    }
+
+    // MARK: - Honest logging
+
+    func testUntrackedExercisesAreNotLoggedAsPerformed() {
+        let store = freshStore()
+        startedSession(store)
+        // Track only the first exercise; leave the second untouched.
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+
+        let before = store.workoutLogs.count
+        store.logWorkout()
+
+        XCTAssertEqual(store.workoutLogs.count, before + 1)
+        let log = store.workoutLogs.first { $0.workoutTitle == "Gate Test" }!
+        XCTAssertEqual(log.exercises.count, 1, "an untouched exercise must not be logged as performed")
+        XCTAssertEqual(log.exercises.first?.sets, "2 sets")
+    }
+
+    func testUseSuggestionAfterFinishCannotFabricateALog() {
+        let store = freshStore()
+        startedSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+
+        store.applyRecommendedWorkout()
+        XCTAssertNotNil(store.pendingWorkoutChange, "adopting a suggestion over an unlogged recap must gate")
+        store.confirmPendingWorkoutChange()
+
+        XCTAssertFalse(store.hasCompletedWorkoutFlow, "the stale finished flag must not survive the switch")
+        let before = store.workoutLogs.count
+        store.logWorkout()
+        XCTAssertEqual(store.workoutLogs.count, before, "no log may be written for a session that never ran")
+    }
+
+    func testSecondFinishedSessionSameDayIsLoggable() {
+        let store = freshStore()
+
+        startedSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        let before = store.workoutLogs.count
+        store.logWorkout()
+        XCTAssertEqual(store.workoutLogs.count, before + 1)
+        XCTAssertTrue(store.isWorkoutLoggedToday)
+
+        // Evening session, same day — used to hit "already logged" and vanish.
+        let other = store.workoutTemplates.first { $0.name != "Gate Test" }!
+        store.beginLiveWorkout(other)
+        store.completeTrackedSet(reps: 10, weight: 40)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        store.logWorkout()
+
+        XCTAssertEqual(store.workoutLogs.count, before + 2, "a second finished session must be loggable")
+        XCTAssertFalse(store.hasCompletedWorkoutFlow, "logging closes the session either way")
+    }
+
+    // MARK: - Minimum-win XP faucet
+
+    func testMinimumWinCompletionSurvivesRelaunch() {
+        let store = freshStore()
+        let task = store.minimumWinTasks.first!
+        store.toggleMinimumWinTask(task)
+        let xpAfterToggle = store.clientProfile.level.currentXP
+        let levelAfterToggle = store.clientProfile.level.currentTitle
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.level.currentXP, xpAfterToggle)
+        XCTAssertEqual(reloaded.clientProfile.level.currentTitle, levelAfterToggle)
+        XCTAssertTrue(
+            reloaded.minimumWinTasks.first { $0.title == task.title }?.isCompleted ?? false,
+            "a same-day relaunch must not re-offer an already-earned minimum win (XP faucet)"
+        )
+    }
+
+    // MARK: - Day-scoped data durability
+
+    func testNutritionAndPainReportsSurviveRelaunch() {
+        let store = freshStore()
+        store.addWaterCup()
+        if let meal = store.nutrition.quickMeals.first {
+            store.addQuickMeal(meal)
+        }
+        store.painArea = "Knee"
+        store.painSeverity = 6
+        store.savePainFlag()
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.nutrition.waterConsumed, 1, "same-day water log must survive relaunch")
+        if store.nutrition.quickMeals.first != nil {
+            XCTAssertEqual(reloaded.nutrition.meals.count, 1, "same-day meals must survive relaunch")
+        }
+        XCTAssertEqual(reloaded.painReports.count, 1, "pain flags are safety data and must persist")
+        XCTAssertEqual(reloaded.painReports.first?.area, "Knee")
+        XCTAssertEqual(reloaded.painReports.first?.severity, 6)
+    }
+
+    func testProfileSportEditSurvivesRelaunch() {
+        let store = freshStore()
+        let newSport = SportFocus.allCases.first { !store.clientProfile.selectedSports.contains($0) && $0 != .generalFitness }!
+        store.toggleProfileSport(newSport)
+        XCTAssertEqual(store.clientProfile.selectedSports.first, newSport)
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.selectedSports.first, newSport,
+                       "a sport edit in Profile must survive relaunch")
+    }
+
+    // MARK: - Tolerant history decoding
+
+    private func logsFileURL(_ name: String) -> URL {
+        let base = try! FileManager.default.url(
+            for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        return base
+            .appendingPathComponent("MorpheTests-\(name)", isDirectory: true)
+            .appendingPathComponent("workout-logs.json")
+    }
+
+    private func sampleLog() -> WorkoutLog {
+        WorkoutLog(
+            athleteID: UUID(),
+            athleteName: "Tester",
+            workoutTemplateID: nil,
+            workoutTitle: "Real Workout",
+            sport: .strength,
+            completedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            durationMinutes: 42,
+            exercises: [],
+            notes: "",
+            source: .athleteManual,
+            enteredByUserID: UUID(),
+            enteredByRole: .client,
+            enteredByName: "Tester",
+            verificationStatus: .athleteSubmitted
+        )
+    }
+
+    func testCorruptLogsFileLoadsEmptyNotNil() {
+        let persistence = WorkoutFilePersistence(directoryName: "MorpheTests-\(#function)")
+        defer { persistence.clear() }
+        try! Data("this is not json".utf8).write(to: logsFileURL(#function))
+
+        let loaded = persistence.loadLogs()
+        XCTAssertNotNil(loaded, "a corrupt file must not read as 'no file' (that resurrects demo logs)")
+        XCTAssertEqual(loaded?.count, 0)
+    }
+
+    func testLegacyBareArrayLogsStillLoad() {
+        let persistence = WorkoutFilePersistence(directoryName: "MorpheTests-\(#function)")
+        defer { persistence.clear() }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        try! encoder.encode([sampleLog()]).write(to: logsFileURL(#function))
+
+        let loaded = persistence.loadLogs()
+        XCTAssertEqual(loaded?.count, 1, "pre-versioning bare-array files must still load")
+        XCTAssertEqual(loaded?.first?.workoutTitle, "Real Workout")
+    }
+
+    func testOneBadLogDoesNotDestroyHistory() {
+        let persistence = WorkoutFilePersistence(directoryName: "MorpheTests-\(#function)")
+        defer { persistence.clear() }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let goodObject = try! JSONSerialization.jsonObject(with: encoder.encode(sampleLog()))
+        let wrapper: [String: Any] = [
+            "schemaVersion": 1,
+            "logs": [goodObject, ["sport": 12345]] // second entry is garbage
+        ]
+        try! JSONSerialization.data(withJSONObject: wrapper).write(to: logsFileURL(#function))
+
+        let loaded = persistence.loadLogs()
+        XCTAssertEqual(loaded?.count, 1, "one undecodable log must drop that log, not the whole history")
+        XCTAssertEqual(loaded?.first?.workoutTitle, "Real Workout")
+    }
+
+    func testUnknownEnumValueInOneFieldKeepsTheLog() {
+        let persistence = WorkoutFilePersistence(directoryName: "MorpheTests-\(#function)")
+        defer { persistence.clear() }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        var object = try! JSONSerialization.jsonObject(with: encoder.encode(sampleLog())) as! [String: Any]
+        object["sport"] = "A Sport From The Future"
+        let wrapper: [String: Any] = ["schemaVersion": 1, "logs": [object]]
+        try! JSONSerialization.data(withJSONObject: wrapper).write(to: logsFileURL(#function))
+
+        let loaded = persistence.loadLogs()
+        XCTAssertEqual(loaded?.count, 1, "an unknown enum raw value must not throw the log away")
+        XCTAssertEqual(loaded?.first?.sport, .generalFitness, "unknown sport falls back to the neutral case")
+    }
+}

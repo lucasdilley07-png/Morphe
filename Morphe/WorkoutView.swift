@@ -14,7 +14,6 @@ struct WorkoutView: View {
     @State private var pendingRPE: Int?
     @State private var editingSetIndex: Int?
     @State private var showDiscardConfirm = false
-    @State private var showStartOverConfirm = false
     @State private var showLibrary = false
     @State private var showExerciseList = false
     @State private var showAdjustments = false
@@ -307,16 +306,11 @@ struct WorkoutView: View {
                     workout: store.currentWorkout,
                     suggestion: store.recommendedWorkoutDiffers ? goodForTodayRecommendation : nil,
                     onStart: {
-                        // A finished-but-unlogged session sits one scroll up —
-                        // starting again wipes its tracked sets, so it gets
-                        // the same confirmation the Discard button has.
-                        if store.hasCompletedWorkoutFlow {
-                            showStartOverConfirm = true
-                        } else {
-                            workoutFinished = false
-                            isShowingPainFlow = false
-                            store.startTodayWorkout()
-                        }
+                        // The store's session-work gate confirms before a
+                        // live session or unlogged recap gets destroyed.
+                        workoutFinished = false
+                        isShowingPainFlow = false
+                        store.startTodayWorkout()
                     },
                     onUseSuggestion: {
                         store.applyRecommendedWorkout()
@@ -325,18 +319,6 @@ struct WorkoutView: View {
                         store.cycleWorkout()
                     }
                 )
-                .confirmationDialog(
-                    "Start a new session? Your finished session hasn't been logged — its sets will be lost.",
-                    isPresented: $showStartOverConfirm,
-                    titleVisibility: .visible
-                ) {
-                    Button("Discard recap and start", role: .destructive) {
-                        workoutFinished = false
-                        isShowingPainFlow = false
-                        store.startTodayWorkout()
-                    }
-                    Button("Keep my recap", role: .cancel) {}
-                }
 
                 if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
                     PartnerSessionCard(
@@ -2246,8 +2228,9 @@ private struct SavedWorkoutsLibraryCard: View {
     private func sourceBadgeText(for item: SavedWorkoutLibraryItem) -> String {
         if item.sourceContext == "Built by you" { return "My copy" }
         // Catalog and Morphe-recommended saves aren't from a person.
+        // ("Morphe AI" survives in saves persisted before the honest rename.)
         if item.sourceName == "Morphe Programs" { return "Morphe Program" }
-        if item.sourceName == "Morphe AI" { return "Morphe AI" }
+        if item.sourceName == "Morphe" || item.sourceName == "Morphe AI" { return "Morphe" }
         return item.sourceRole == .coach ? "Coach source" : "Athlete source"
     }
 

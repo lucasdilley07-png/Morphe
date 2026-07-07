@@ -100,6 +100,9 @@ struct RootView: View {
                 MorpheAIAgentSheet()
                     .environment(store)
             }
+            // AI actions can hit the session-work gate while this sheet is
+            // frontmost — host the dialog here too so it can present.
+            .sessionWorkGateDialog()
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .background(PremiumBackground())
@@ -108,6 +111,7 @@ struct RootView: View {
             WelcomeExperienceView()
                 .environment(store)
         }
+        .sessionWorkGateDialog()
         .alert("Save more workouts to switch", isPresented: $store.showSwitchNeedsSavedWorkouts) {
             Button("Open Discover") {
                 store.selectedClientTab = .discover
@@ -1189,6 +1193,11 @@ private struct QuickAddSheet: View {
                         ) {
                             if store.hasCompletedWorkoutFlow {
                                 store.logWorkout()
+                            } else if store.isWorkoutSessionActive {
+                                // Resume = return to the live console. The old
+                                // path restarted the session and wiped every
+                                // logged set.
+                                store.selectedClientTab = .train
                             } else {
                                 store.startTodayWorkout()
                             }
@@ -1441,5 +1450,45 @@ private struct WelcomeTag: View {
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .fill(color)
             )
+    }
+}
+
+/// Hosts the store's session-work gate as a destructive confirmation dialog.
+/// Attached at the root and on any sheet whose actions can hit the gate.
+private struct SessionWorkGateDialog: ViewModifier {
+    @Environment(MorpheAppStore.self) private var store
+
+    func body(content: Content) -> some View {
+        content.confirmationDialog(
+            store.pendingWorkoutChange?.title ?? "Replace today's workout?",
+            isPresented: Binding(
+                get: { store.pendingWorkoutChange != nil },
+                set: { if !$0 { store.cancelPendingWorkoutChange() } }
+            ),
+            titleVisibility: .visible,
+            presenting: store.pendingWorkoutChange
+        ) { change in
+            // `change` is captured by value, so the confirmed action survives
+            // the isPresented binding clearing the store's pending slot.
+            Button(
+                store.isWorkoutSessionActive
+                    ? "Discard live session and continue"
+                    : "Discard recap and continue",
+                role: .destructive
+            ) {
+                change.action()
+            }
+            Button("Keep what I have", role: .cancel) {}
+        } message: { _ in
+            Text(store.isWorkoutSessionActive
+                ? "Your workout is in progress — its logged sets will be lost."
+                : "Your finished session hasn't been logged — its sets will be lost.")
+        }
+    }
+}
+
+extension View {
+    func sessionWorkGateDialog() -> some View {
+        modifier(SessionWorkGateDialog())
     }
 }

@@ -15,6 +15,8 @@ import Foundation
 /// Codable snapshot of an in-progress workout session, so a session in flight
 /// survives backgrounding or a relaunch.
 struct WorkoutSessionSnapshot: Codable, Equatable {
+    /// Explicit migration hook for future non-additive schema changes.
+    var schemaVersion: Int = 1
     var currentWorkoutID: UUID?
     var isWorkoutSessionActive: Bool
     var hasStartedWorkoutFlow: Bool
@@ -59,6 +61,7 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = ((try? c.decodeIfPresent(Int.self, forKey: .schemaVersion)) ?? nil) ?? 1
         currentWorkoutID = try c.decodeIfPresent(UUID.self, forKey: .currentWorkoutID)
         isWorkoutSessionActive = try c.decode(Bool.self, forKey: .isWorkoutSessionActive)
         hasStartedWorkoutFlow = try c.decode(Bool.self, forKey: .hasStartedWorkoutFlow)
@@ -139,6 +142,8 @@ struct SavedTemplateSnapshot: Codable, Equatable {
 }
 
 struct WorkoutLibrarySnapshot: Codable, Equatable {
+    /// Explicit migration hook for future non-additive schema changes.
+    var schemaVersion: Int = 1
     var customExercises: [CustomExerciseSnapshot]
     var customWorkouts: [CustomWorkoutSnapshot]
     /// Catalog workouts the user saved from Discover (template UUID strings).
@@ -163,12 +168,40 @@ struct WorkoutLibrarySnapshot: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = ((try? c.decodeIfPresent(Int.self, forKey: .schemaVersion)) ?? nil) ?? 1
         customExercises = try c.decode([CustomExerciseSnapshot].self, forKey: .customExercises)
         customWorkouts = try c.decode([CustomWorkoutSnapshot].self, forKey: .customWorkouts)
         savedCatalogWorkoutIDs = ((try? c.decodeIfPresent([String].self, forKey: .savedCatalogWorkoutIDs)) ?? nil) ?? []
         savedTemplates = ((try? c.decodeIfPresent([SavedTemplateSnapshot].self, forKey: .savedTemplates)) ?? nil) ?? []
         pinnedCatalogWorkoutIDs = ((try? c.decodeIfPresent([String].self, forKey: .pinnedCatalogWorkoutIDs)) ?? nil) ?? []
     }
+}
+
+// MARK: - Logged-history file format
+
+/// Versioned wrapper for the workout-logs file. Files written before
+/// versioning are bare `[WorkoutLog]` arrays; the version field gives future
+/// schema changes an explicit migration hook instead of relying on per-field
+/// tolerance alone.
+struct WorkoutLogsSnapshot: Codable {
+    var schemaVersion: Int
+    var logs: [WorkoutLog]
+}
+
+/// Wraps an element so one undecodable entry drops that entry instead of
+/// nil-ing the whole array (which used to resurrect seeded demo logs over a
+/// real user's entire history).
+struct FailableElement<Element: Decodable>: Decodable {
+    let value: Element?
+
+    init(from decoder: Decoder) {
+        value = try? Element(from: decoder)
+    }
+}
+
+private struct TolerantLogsSnapshot: Decodable {
+    var schemaVersion: Int
+    var logs: [FailableElement<WorkoutLog>]
 }
 
 /// Abstraction over where workout data is stored.
@@ -218,11 +251,25 @@ final class WorkoutFilePersistence: WorkoutPersisting {
 
     func loadLogs() -> [WorkoutLog]? {
         guard let data = try? Data(contentsOf: logsURL) else { return nil }
-        return try? decoder.decode([WorkoutLog].self, from: data)
+        // Current format: versioned wrapper, tolerant per element.
+        if let snapshot = try? decoder.decode(TolerantLogsSnapshot.self, from: data) {
+            return snapshot.logs.compactMap(\.value)
+        }
+        // Legacy format: bare array (pre-versioning), tolerant per element.
+        if let elements = try? decoder.decode([FailableElement<WorkoutLog>].self, from: data) {
+            return elements.compactMap(\.value)
+        }
+        // The file exists but is unreadable. Returning nil would resurrect
+        // the seeded demo logs AND overwrite this file on the next save —
+        // keep the evidence aside and start from an empty history instead.
+        let backupURL = logsURL.appendingPathExtension("corrupt")
+        try? FileManager.default.removeItem(at: backupURL)
+        try? FileManager.default.copyItem(at: logsURL, to: backupURL)
+        return []
     }
 
     func saveLogs(_ logs: [WorkoutLog]) {
-        guard let data = try? encoder.encode(logs) else { return }
+        guard let data = try? encoder.encode(WorkoutLogsSnapshot(schemaVersion: 1, logs: logs)) else { return }
         try? data.write(to: logsURL, options: [.atomic])
     }
 

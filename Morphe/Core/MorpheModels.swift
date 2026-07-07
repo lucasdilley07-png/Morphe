@@ -888,6 +888,33 @@ struct WorkoutLog: Identifiable, Hashable, Codable {
     var verificationStatus: WorkoutVerificationStatus
 }
 
+extension WorkoutLog {
+    /// Tolerant decode (in an extension so the memberwise init survives).
+    /// A renamed enum case or type tweak in ONE field of ONE log used to nil
+    /// the whole history array, which then fell back to seeded demo logs and
+    /// overwrote the user's real file. Owner and date stay strict — a log
+    /// without them is meaningless and is dropped by the per-element decoder.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        athleteID = try c.decode(UUID.self, forKey: .athleteID)
+        completedAt = try c.decode(Date.self, forKey: .completedAt)
+        id = ((try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? nil) ?? UUID()
+        athleteName = ((try? c.decodeIfPresent(String.self, forKey: .athleteName)) ?? nil) ?? ""
+        workoutTemplateID = ((try? c.decodeIfPresent(UUID.self, forKey: .workoutTemplateID)) ?? nil)
+        workoutTitle = ((try? c.decodeIfPresent(String.self, forKey: .workoutTitle)) ?? nil) ?? "Workout"
+        sport = ((try? c.decodeIfPresent(SportFocus.self, forKey: .sport)) ?? nil) ?? .generalFitness
+        durationMinutes = ((try? c.decodeIfPresent(Int.self, forKey: .durationMinutes)) ?? nil) ?? 0
+        exercises = ((try? c.decodeIfPresent([LoggedExercise].self, forKey: .exercises)) ?? nil) ?? []
+        notes = ((try? c.decodeIfPresent(String.self, forKey: .notes)) ?? nil) ?? ""
+        source = ((try? c.decodeIfPresent(WorkoutLogSource.self, forKey: .source)) ?? nil) ?? .athleteManual
+        enteredByUserID = ((try? c.decodeIfPresent(UUID.self, forKey: .enteredByUserID)) ?? nil) ?? athleteID
+        enteredByRole = ((try? c.decodeIfPresent(AppRole.self, forKey: .enteredByRole)) ?? nil) ?? .client
+        enteredByName = ((try? c.decodeIfPresent(String.self, forKey: .enteredByName)) ?? nil) ?? athleteName
+        visibility = ((try? c.decodeIfPresent(String.self, forKey: .visibility)) ?? nil) ?? "Connected coach + athlete"
+        verificationStatus = ((try? c.decodeIfPresent(WorkoutVerificationStatus.self, forKey: .verificationStatus)) ?? nil) ?? .athleteSubmitted
+    }
+}
+
 struct WorkoutLogSummary: Hashable {
     var totalLogs: Int
     var workoutsThisWeek: Int
@@ -1494,7 +1521,9 @@ struct ClientProfile: Hashable {
     var height: String = ""
     var bodyWeight: String = ""
     var currentProgram: String
-    var planCreatedBy: String = "Morphe AI"
+    // "Morphe", not "Morphe AI": the starting plan comes from deterministic
+    // onboarding heuristics — calling it AI was an overclaim.
+    var planCreatedBy: String = "Morphe"
     var aiTodayInsight: AIInsight
     var aiProgressInsight: AIInsight
     var aiNutritionInsight: AIInsight

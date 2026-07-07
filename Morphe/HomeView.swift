@@ -67,7 +67,8 @@ struct HomeView: View {
                     morpheScore: store.clientProfile.health.score,
                     morpheTier: morpheScoreTitle,
                     morpheDetail: store.clientProfile.health.detail,
-                    showMetrics: store.todayExperienceTier >= 1
+                    showMetrics: store.todayExperienceTier >= 1,
+                    hasCheckedIn: store.didCompleteQuickCheckIn
                 )
 
                 if store.todayExperienceTier >= 2, let insight = store.primaryAthletePatternInsight {
@@ -196,10 +197,10 @@ struct HomeView: View {
 
     private var supportSubtitle: String {
         if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner {
-            return "\(partner.name), your coach context, and your next checkpoint stay here when you want them."
+            return "\(partner.name), your plan context, and your next checkpoint stay here when you want them."
         }
 
-        return "Coach context, partner mode, and progress stay here without crowding the top of the day."
+        return "Your plan's context and progress checkpoints stay here without crowding the top of the day."
     }
 }
 
@@ -267,6 +268,10 @@ private struct TodayStatusStrip: View {
     /// False on first run: a new user has no readiness/score/energy yet, so
     /// showing three zeros would only be noise to decode.
     var showMetrics: Bool = true
+    /// Readiness/energy are measurements only after a check-in — before one,
+    /// the default RecoverySnapshot is a synthetic starting point and renders
+    /// as an em dash instead of pretending to be data.
+    var hasCheckedIn: Bool = false
 
     var body: some View {
         GlassCard {
@@ -299,9 +304,9 @@ private struct TodayStatusStrip: View {
 
                 if showMetrics {
                     HStack(spacing: 8) {
-                        MetricPill(label: "Readiness", value: "\(recovery.score)")
+                        MetricPill(label: "Readiness", value: hasCheckedIn ? "\(recovery.score)" : "—")
                         MetricPill(label: "Score", value: "\(morpheScore)")
-                        MetricPill(label: "Energy", value: "\(recovery.energy)/10")
+                        MetricPill(label: "Energy", value: hasCheckedIn ? "\(recovery.energy)/10" : "—")
                     }
 
                     Text("Plan by \(coachName) • \(morpheDetail)")
@@ -578,7 +583,7 @@ private struct WorkoutPlanByCoachMiniCard: View {
                     MetricPill(label: "Current Phase", value: phase)
                 }
 
-                Text("\(profile.currentProgram) is being guided by \(profile.planCreatedBy). Morphe handles the daily decisions, but the plan still feels coached.")
+                Text("\(profile.currentProgram) was built from your goal, sport, and schedule. Morphe adjusts the daily plan as you check in and log.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
             }

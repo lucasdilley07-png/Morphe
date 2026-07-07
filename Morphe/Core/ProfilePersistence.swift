@@ -13,8 +13,27 @@ import Foundation
 // arrives, swapping `ProfileFilePersistence` for a cloud implementation is all
 // that changes.
 
+/// A meal the user logged today (persisted so nutrition survives relaunch).
+struct MealSnapshot: Codable, Equatable {
+    var mealType: String
+    var name: String
+    var calories: Int
+    var protein: Int
+}
+
+/// A pain flag the user filed — safety data, kept across relaunches.
+struct PainReportSnapshot: Codable, Equatable {
+    var area: String
+    var severity: Int
+    var triggerExercise: String
+    var alternative: String
+    var note: String
+}
+
 /// Codable snapshot of the user's locally-saved identity and preferences.
 struct LocalProfileSnapshot: Codable, Equatable {
+    /// Explicit migration hook for future non-additive schema changes.
+    var schemaVersion: Int = 1
     var hasCompletedOnboarding: Bool
     /// The user's own stable identity (UUID string), minted at onboarding so a
     /// real user is never the seeded demo athlete.
@@ -59,6 +78,33 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var completedTaskTitlesToday: [String] = []
     // Days protected with a minimum win — they count in the streak.
     var protectedDayKeys: [String] = []
+    // Minimum-win completions are day-scoped like task titles; without them a
+    // same-day relaunch re-offered the task unchecked while keeping the XP —
+    // an infinite XP faucet.
+    var completedMinimumWinTitlesToday: [String] = []
+    var minimumWinModeEnabled: Bool = false
+    var selectedPlanBReason: String = ""
+    // Today's nutrition log (day-scoped; goals stay seeded, the mode is a
+    // lasting preference).
+    var nutritionCaloriesConsumed: Int = 0
+    var nutritionProteinConsumed: Int = 0
+    var nutritionWaterConsumed: Int = 0
+    var nutritionScore: Int = -1
+    var nutritionMode: String = ""
+    var nutritionMeals: [MealSnapshot] = []
+    // Today's recovery check-in (day-scoped; -1 score = no check-in saved).
+    var didCompleteQuickCheckIn: Bool = false
+    var recoveryScore: Int = -1
+    var recoveryStatus: String = ""
+    var recoveryReason: String = ""
+    var recoverySleepHours: Double = 0
+    var recoveryEnergy: Int = 0
+    var recoverySoreness: Int = 0
+    var recoveryMood: Int = 0
+    var recoveryPain: Bool = false
+    // Durable safety + display preferences.
+    var painReports: [PainReportSnapshot] = []
+    var prefersCompactExerciseView: Bool = false
 }
 
 extension LocalProfileSnapshot {
@@ -114,6 +160,27 @@ extension LocalProfileSnapshot {
         dailyStateDay = str(.dailyStateDay)
         completedTaskTitlesToday = arr(.completedTaskTitlesToday)
         protectedDayKeys = arr(.protectedDayKeys)
+        schemaVersion = ((try? c.decodeIfPresent(Int.self, forKey: .schemaVersion)) ?? nil) ?? 1
+        completedMinimumWinTitlesToday = arr(.completedMinimumWinTitlesToday)
+        minimumWinModeEnabled = ((try? c.decodeIfPresent(Bool.self, forKey: .minimumWinModeEnabled)) ?? nil) ?? false
+        selectedPlanBReason = str(.selectedPlanBReason)
+        nutritionCaloriesConsumed = ((try? c.decodeIfPresent(Int.self, forKey: .nutritionCaloriesConsumed)) ?? nil) ?? 0
+        nutritionProteinConsumed = ((try? c.decodeIfPresent(Int.self, forKey: .nutritionProteinConsumed)) ?? nil) ?? 0
+        nutritionWaterConsumed = ((try? c.decodeIfPresent(Int.self, forKey: .nutritionWaterConsumed)) ?? nil) ?? 0
+        nutritionScore = ((try? c.decodeIfPresent(Int.self, forKey: .nutritionScore)) ?? nil) ?? -1
+        nutritionMode = str(.nutritionMode)
+        nutritionMeals = ((try? c.decodeIfPresent([MealSnapshot].self, forKey: .nutritionMeals)) ?? nil) ?? []
+        didCompleteQuickCheckIn = ((try? c.decodeIfPresent(Bool.self, forKey: .didCompleteQuickCheckIn)) ?? nil) ?? false
+        recoveryScore = ((try? c.decodeIfPresent(Int.self, forKey: .recoveryScore)) ?? nil) ?? -1
+        recoveryStatus = str(.recoveryStatus)
+        recoveryReason = str(.recoveryReason)
+        recoverySleepHours = ((try? c.decodeIfPresent(Double.self, forKey: .recoverySleepHours)) ?? nil) ?? 0
+        recoveryEnergy = ((try? c.decodeIfPresent(Int.self, forKey: .recoveryEnergy)) ?? nil) ?? 0
+        recoverySoreness = ((try? c.decodeIfPresent(Int.self, forKey: .recoverySoreness)) ?? nil) ?? 0
+        recoveryMood = ((try? c.decodeIfPresent(Int.self, forKey: .recoveryMood)) ?? nil) ?? 0
+        recoveryPain = ((try? c.decodeIfPresent(Bool.self, forKey: .recoveryPain)) ?? nil) ?? false
+        painReports = ((try? c.decodeIfPresent([PainReportSnapshot].self, forKey: .painReports)) ?? nil) ?? []
+        prefersCompactExerciseView = ((try? c.decodeIfPresent(Bool.self, forKey: .prefersCompactExerciseView)) ?? nil) ?? false
     }
 }
 

@@ -577,6 +577,16 @@ final class MorpheAppStore {
         clientProfile.height = snapshot.height
         clientProfile.bodyWeight = snapshot.bodyWeight
 
+        // Durable extras that used to be memory-only: pain flags are safety
+        // data, the nutrition mode and view density are lasting preferences.
+        painReports = snapshot.painReports.map {
+            PainReport(area: $0.area, severity: $0.severity, triggerExercise: $0.triggerExercise, alternative: $0.alternative, note: $0.note)
+        }
+        if let mode = NutritionMode(rawValue: snapshot.nutritionMode) {
+            nutrition.mode = mode
+        }
+        prefersCompactExerciseView = snapshot.prefersCompactExerciseView
+
         rebuildPersonalRules()
         // The demo clear also wiped savedWorkouts — restore the user's own
         // Discover saves and non-catalog saves.
@@ -611,6 +621,51 @@ final class MorpheAppStore {
             for index in todayTasks.indices {
                 todayTasks[index].isCompleted =
                     snapshot.completedTaskTitlesToday.contains(todayTasks[index].title)
+            }
+
+            // Same-day Plan B / Minimum Win state. Rebuilding from the reason
+            // restores the adjusted plan card and its task list; completions
+            // are re-applied by title (like todayTasks above) so a same-day
+            // relaunch can't re-offer already-earned minimum-win XP.
+            minimumWinModeEnabled = snapshot.minimumWinModeEnabled
+            if let reason = PlanBReason(rawValue: snapshot.selectedPlanBReason) {
+                selectedPlanBReason = reason
+                let result = MorpheDemoContent.planBResponse(for: reason)
+                currentPlanAdjustment = result.0
+                minimumWinTasks = result.1
+                minimumWinMessage = result.2
+                minimumWinModeEnabled = true
+            }
+            for index in minimumWinTasks.indices {
+                minimumWinTasks[index].isCompleted =
+                    snapshot.completedMinimumWinTitlesToday.contains(minimumWinTasks[index].title)
+            }
+
+            // Today's nutrition log (the demo clear above zeroed it).
+            nutrition.caloriesConsumed = snapshot.nutritionCaloriesConsumed
+            nutrition.proteinConsumed = snapshot.nutritionProteinConsumed
+            nutrition.waterConsumed = snapshot.nutritionWaterConsumed
+            if snapshot.nutritionScore >= 0 {
+                nutrition.nutritionScore = snapshot.nutritionScore
+            }
+            nutrition.meals = snapshot.nutritionMeals.map {
+                MealLogEntry(mealType: $0.mealType, name: $0.name, calories: $0.calories, protein: $0.protein, logged: true)
+            }
+
+            // Today's recovery check-in (score -1 = none saved today).
+            didCompleteQuickCheckIn = snapshot.didCompleteQuickCheckIn
+            if snapshot.recoveryScore >= 0 {
+                recovery = RecoverySnapshot(
+                    score: snapshot.recoveryScore,
+                    status: RecoveryStatus(rawValue: snapshot.recoveryStatus) ?? .moderate,
+                    reason: snapshot.recoveryReason,
+                    sleepHours: snapshot.recoverySleepHours,
+                    energy: snapshot.recoveryEnergy,
+                    soreness: snapshot.recoverySoreness,
+                    mood: snapshot.recoveryMood,
+                    pain: snapshot.recoveryPain,
+                    previousSessionFeedback: recovery.previousSessionFeedback
+                )
             }
         }
         protectedDayKeys = Set(snapshot.protectedDayKeys)
@@ -660,7 +715,31 @@ final class MorpheAppStore {
                 bodyWeight: clientProfile.bodyWeight,
                 dailyStateDay: lastDailyResetDay,
                 completedTaskTitlesToday: todayTasks.filter(\.isCompleted).map(\.title),
-                protectedDayKeys: Array(protectedDayKeys)
+                protectedDayKeys: Array(protectedDayKeys),
+                completedMinimumWinTitlesToday: minimumWinTasks.filter(\.isCompleted).map(\.title),
+                minimumWinModeEnabled: minimumWinModeEnabled,
+                selectedPlanBReason: selectedPlanBReason?.rawValue ?? "",
+                nutritionCaloriesConsumed: nutrition.caloriesConsumed,
+                nutritionProteinConsumed: nutrition.proteinConsumed,
+                nutritionWaterConsumed: nutrition.waterConsumed,
+                nutritionScore: nutrition.nutritionScore,
+                nutritionMode: nutrition.mode.rawValue,
+                nutritionMeals: nutrition.meals.map {
+                    MealSnapshot(mealType: $0.mealType, name: $0.name, calories: $0.calories, protein: $0.protein)
+                },
+                didCompleteQuickCheckIn: didCompleteQuickCheckIn,
+                recoveryScore: didCompleteQuickCheckIn ? recovery.score : -1,
+                recoveryStatus: recovery.status.rawValue,
+                recoveryReason: recovery.reason,
+                recoverySleepHours: recovery.sleepHours,
+                recoveryEnergy: recovery.energy,
+                recoverySoreness: recovery.soreness,
+                recoveryMood: recovery.mood,
+                recoveryPain: recovery.pain,
+                painReports: painReports.map {
+                    PainReportSnapshot(area: $0.area, severity: $0.severity, triggerExercise: $0.triggerExercise, alternative: $0.alternative, note: $0.note)
+                },
+                prefersCompactExerciseView: prefersCompactExerciseView
             )
         )
     }
@@ -743,10 +822,25 @@ final class MorpheAppStore {
     /// Deletes one of the user's custom workouts.
     func deleteCustomWorkout(_ id: UUID) {
         guard customWorkoutIDs.contains(id) else { return }
+        if currentWorkoutID == id, hasUnsavedSessionWork {
+            confirmDiscardingSessionWork("Delete this workout?") { [weak self] in
+                self?.performDeleteCustomWorkout(id)
+            }
+        } else {
+            performDeleteCustomWorkout(id)
+        }
+    }
+
+    private func performDeleteCustomWorkout(_ id: UUID) {
         workoutTemplates.removeAll { $0.id == id }
         customWorkoutIDs.remove(id)
-        if currentWorkoutID == id {
-            currentWorkoutID = workoutTemplates.first?.id ?? currentWorkoutID
+        // Saved-library cards pointing at the deleted template would error on
+        // Start and silently vanish on the next relaunch — remove them now.
+        savedWorkouts.removeAll { $0.workoutTemplateID == id }
+        if currentWorkoutID == id, let fallback = workoutTemplates.first {
+            // setCurrentWorkout (not a bare id write) so live-session flags
+            // can't silently reattach to an unrelated template.
+            setCurrentWorkout(fallback)
         }
         persistWorkoutLibrary()
     }
@@ -929,12 +1023,12 @@ final class MorpheAppStore {
                 // name recovers the user's staged pick (so the day-0
                 // personalized workout survives a relaunch).
                 currentWorkoutID = named.id
-            } else if snapshot.isWorkoutSessionActive {
+            } else if snapshot.isWorkoutSessionActive || snapshot.hasCompletedWorkoutFlow {
                 // The session's workout no longer exists anywhere. Restoring
-                // the session flags would attach the live tracker (and its
-                // logged sets) to whatever template happens to be current —
-                // drop the stale session instead of corrupting a different
-                // workout.
+                // the session flags would attach the live tracker (or a
+                // finished-but-unlogged recap, which "Log" would then write
+                // against the wrong template) to whatever template happens to
+                // be current — drop the stale session instead.
                 isWorkoutLoggedToday = snapshot.isWorkoutLoggedToday
                 return
             }
@@ -1828,6 +1922,7 @@ final class MorpheAppStore {
     func completeQuickCheckIn() {
         didCompleteQuickCheckIn = true
         recovery.energy = min(recovery.energy + 1, 10)
+        persistLocalProfile()
         showToast("Quick check-in saved.")
     }
 
@@ -1873,6 +1968,7 @@ final class MorpheAppStore {
         )
         didCompleteQuickCheckIn = true
         Haptics.success()
+        persistLocalProfile()
         showToast("Recovery check-in saved.")
     }
 
@@ -1887,10 +1983,17 @@ final class MorpheAppStore {
         )
         Haptics.impact(.medium)
         showCelebration(title: "Plan B activated", detail: "Smaller still counts", symbol: "figure.walk")
+        persistLocalProfile()
         showToast("Minimum Win Mode is on.")
     }
 
     func choosePlanB(_ reason: PlanBReason) {
+        confirmDiscardingSessionWork("Switch to Plan B?") { [weak self] in
+            self?.performChoosePlanB(reason)
+        }
+    }
+
+    private func performChoosePlanB(_ reason: PlanBReason) {
         let result = MorpheDemoContent.planBResponse(for: reason)
         selectedPlanBReason = reason
         currentPlanAdjustment = result.0
@@ -1910,6 +2013,7 @@ final class MorpheAppStore {
         }
 
         showCelebration(title: "Plan B ready", detail: reason.rawValue, symbol: "arrow.triangle.branch")
+        persistLocalProfile()
         showToast(reason.rawValue)
     }
 
@@ -1960,6 +2064,13 @@ final class MorpheAppStore {
         // A new day means a new quiz — selections are per-day, earned
         // completions (completedQuizIDs, XP) are forever.
         quizSelections = [:]
+
+        // Yesterday's meals, water, and readiness don't describe today.
+        nutrition.caloriesConsumed = 0
+        nutrition.proteinConsumed = 0
+        nutrition.waterConsumed = 0
+        nutrition.meals = []
+        recovery = Self.neutralRecovery
 
         // A new day gets a new tip (they used to be frozen for life).
         clientProfile.aiTodayInsight = Self.rotatingDailyTip(for: now)
@@ -2046,8 +2157,10 @@ final class MorpheAppStore {
                 streakProtected = false
                 refreshWorkoutLogDerivedState(for: clientProfile.id)
             }
-            persistLocalProfile()
         }
+        // Persist both directions: completions are restored by title on a
+        // same-day relaunch, so an un-persisted check was an XP faucet.
+        persistLocalProfile()
     }
 
     /// Workouts the user actually owns: library saves plus their own custom
@@ -2087,17 +2200,32 @@ final class MorpheAppStore {
                 return
             }
             let next = rotation[(currentIndex + 1) % rotation.count]
-            setCurrentWorkout(next)
-            showToast("Switched to \(next.name).")
+            confirmDiscardingSessionWork("Switch to \(next.name)?") { [weak self] in
+                self?.setCurrentWorkout(next)
+                self?.showToast("Switched to \(next.name).")
+            }
         } else {
             // Current workout isn't one of theirs — enter the rotation.
             let next = rotation[0]
-            setCurrentWorkout(next)
-            showToast("Switched to \(next.name).")
+            confirmDiscardingSessionWork("Switch to \(next.name)?") { [weak self] in
+                self?.setCurrentWorkout(next)
+                self?.showToast("Switched to \(next.name).")
+            }
         }
     }
 
     func applyWorkoutAdjustment(_ option: WorkoutAdjustmentOption) {
+        // Reschedule leaves the staged workout alone — nothing at risk.
+        if option == .reschedule {
+            performWorkoutAdjustment(option)
+        } else {
+            confirmDiscardingSessionWork("\(option.rawValue)?") { [weak self] in
+                self?.performWorkoutAdjustment(option)
+            }
+        }
+    }
+
+    private func performWorkoutAdjustment(_ option: WorkoutAdjustmentOption) {
         switch option {
         case .easier:
             setCurrentWorkout(named: "Low Energy Recovery Day")
@@ -2127,7 +2255,53 @@ final class MorpheAppStore {
         showToast(option.rawValue)
     }
 
+    // MARK: - Session-work gate
+
+    /// A destructive workout change awaiting user confirmation (hosted as a
+    /// confirmation dialog at the root). Every path that would replace or
+    /// restart today's workout while a live session — or a finished-but-
+    /// unlogged recap — exists routes through here: one gate for Today,
+    /// Train, Quick Add, Discover, and Morphe AI instead of per-screen
+    /// confirmations.
+    struct PendingWorkoutChange: Identifiable {
+        let id = UUID()
+        let title: String
+        let action: () -> Void
+    }
+
+    var pendingWorkoutChange: PendingWorkoutChange?
+
+    /// True when replacing today's workout would silently destroy work the
+    /// user hasn't logged yet.
+    var hasUnsavedSessionWork: Bool {
+        isWorkoutSessionActive || hasCompletedWorkoutFlow
+    }
+
+    private func confirmDiscardingSessionWork(_ title: String, then action: @escaping () -> Void) {
+        if hasUnsavedSessionWork {
+            pendingWorkoutChange = PendingWorkoutChange(title: title, action: action)
+        } else {
+            action()
+        }
+    }
+
+    func confirmPendingWorkoutChange() {
+        let change = pendingWorkoutChange
+        pendingWorkoutChange = nil
+        change?.action()
+    }
+
+    func cancelPendingWorkoutChange() {
+        pendingWorkoutChange = nil
+    }
+
     func startTodayWorkout() {
+        confirmDiscardingSessionWork("Restart today's workout?") { [weak self] in
+            self?.performStartTodayWorkout()
+        }
+    }
+
+    private func performStartTodayWorkout() {
         isWorkoutSessionActive = true
         hasStartedWorkoutFlow = true
         hasCompletedWorkoutFlow = false
@@ -2153,8 +2327,10 @@ final class MorpheAppStore {
     /// tracker. Every "Start" action funnels through here, so starting a workout
     /// always begins the session instead of only staging the plan in Train.
     func beginLiveWorkout(_ template: WorkoutTemplate) {
-        currentWorkoutID = template.id
-        startTodayWorkout()
+        confirmDiscardingSessionWork("Start \(template.name)?") { [weak self] in
+            self?.currentWorkoutID = template.id
+            self?.performStartTodayWorkout()
+        }
     }
 
     // MARK: - Discover catalog (bundled Morphe Programs)
@@ -2439,7 +2615,13 @@ final class MorpheAppStore {
 
         updateCurrentWorkout { workout in
             guard let index = workout.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
-            workout.exercises[index] = MorpheDemoContent.makeWorkoutExercise(replacement.id, sets: exercise.sets, reps: exercise.reps)
+            var replacementExercise = MorpheDemoContent.makeWorkoutExercise(replacement.id, sets: exercise.sets, reps: exercise.reps)
+            // Mint a unique per-slot id: reusing the raw library id can
+            // collide with an exercise already in this workout (shared set
+            // counts, duplicate ForEach ids). exerciseLibraryID keeps the
+            // library link for form cues and future swaps.
+            replacementExercise.id = "\(replacement.id)#\(UUID().uuidString.prefix(8))"
+            workout.exercises[index] = replacementExercise
         }
 
         showToast("Swapped \(exercise.name) for \(replacement.name).")
@@ -2599,8 +2781,10 @@ final class MorpheAppStore {
         let report = PainReport(area: painArea, severity: painSeverity, triggerExercise: painTriggerExercise, alternative: result.0, note: result.1)
         painReports.insert(report, at: 0)
         currentPlanAdjustment = MorpheDemoContent.planAdjustment(for: [.painReported])
-        workoutFeedbackResponse = "Pain flag saved. Morphe recommends \(result.0) and coach review."
+        workoutFeedbackResponse = "Pain flag saved. Morphe recommends \(result.0) until the area settles."
         clientConversation.append(ThreadMessage(sender: .system, senderName: "Morphe", text: "Pain flag saved. Safer option: \(result.1)", timestamp: "Now"))
+        // Pain flags are safety data — they must survive a relaunch.
+        persistLocalProfile()
         showToast("Pain flag saved.")
     }
 
@@ -2621,15 +2805,18 @@ final class MorpheAppStore {
     }
 
     func logWorkout() {
-        if isWorkoutLoggedToday {
-            openProgress()
-            showToast("Today's workout is already logged.")
-            return
-        }
-
+        // A finished session is always loggable — including a SECOND session
+        // in one day (it used to hit the "already logged" wall and sit in
+        // limbo forever). Double-logging the SAME session stays impossible
+        // because logging resets hasCompletedWorkoutFlow.
         guard hasCompletedWorkoutFlow else {
-            selectedClientTab = .train
-            showToast("Finish the session in Train before logging it.")
+            if isWorkoutLoggedToday {
+                openProgress()
+                showToast("Today's workout is already logged.")
+            } else {
+                selectedClientTab = .train
+                showToast("Finish the session in Train before logging it.")
+            }
             return
         }
 
@@ -2704,16 +2891,19 @@ final class MorpheAppStore {
         nutrition.proteinConsumed += meal.protein
         nutrition.meals.append(MealLogEntry(mealType: "Quick Add", name: meal.title, calories: meal.calories, protein: meal.protein, logged: true))
         nutrition.nutritionScore = min(nutrition.nutritionScore + 2, 100)
+        persistLocalProfile()
         showToast("Added \(meal.title).")
     }
 
     func addWaterCup() {
         nutrition.waterConsumed = min(nutrition.waterConsumed + 1, nutrition.waterGoal)
+        persistLocalProfile()
         showToast("Water updated.")
     }
 
     func setNutritionMode(_ mode: NutritionMode) {
         nutrition.mode = mode
+        persistLocalProfile()
         showToast("\(mode.rawValue) enabled.")
     }
 
@@ -3035,6 +3225,12 @@ final class MorpheAppStore {
     }
 
     func openWorkoutTemplate(_ template: WorkoutTemplate) {
+        confirmDiscardingSessionWork("Switch to \(template.name)?") { [weak self] in
+            self?.performOpenWorkoutTemplate(template)
+        }
+    }
+
+    private func performOpenWorkoutTemplate(_ template: WorkoutTemplate) {
         currentWorkoutID = template.id
         hasStartedWorkoutFlow = false
         hasCompletedWorkoutFlow = false
@@ -3083,8 +3279,12 @@ final class MorpheAppStore {
             return
         }
 
-        currentWorkoutID = template.id
-        showToast("Today's workout is now \(template.name).")
+        confirmDiscardingSessionWork("Switch to \(template.name)?") { [weak self] in
+            // Through setCurrentWorkout (not a bare id write) so a stale
+            // finished-session flag can't log this template as performed.
+            self?.setCurrentWorkout(template)
+            self?.showToast("Today's workout is now \(template.name).")
+        }
     }
 
     func duplicateSavedWorkout(_ item: SavedWorkoutLibraryItem) {
@@ -3311,6 +3511,7 @@ final class MorpheAppStore {
         recovery.energy = min(recovery.energy + 1, 10)
         recovery.soreness = max(recovery.soreness - 1, 0)
         recentWins.insert("Added a quick recovery reset after training.", at: 0)
+        persistLocalProfile()
         showToast("Recovery reset saved.")
     }
 
@@ -3371,6 +3572,7 @@ final class MorpheAppStore {
 
     func setCompactExerciseView(_ isCompact: Bool) {
         prefersCompactExerciseView = isCompact
+        persistLocalProfile()
         showToast(isCompact ? "Compact exercise view on." : "Detailed exercise cards on.")
     }
 
@@ -3532,6 +3734,9 @@ final class MorpheAppStore {
         let primarySport = clientProfile.selectedSports.first ?? sport
         applyPrimarySport(primarySport)
         goalTranslation = MorpheDemoContent.goalTranslation(for: clientProfile.goal, sport: primarySport)
+        // Goals and training styles persist their toggles; sports didn't —
+        // the edit silently reverted on relaunch.
+        persistLocalProfile()
         showToast("Sports updated.")
     }
 
@@ -5809,8 +6014,23 @@ final class MorpheAppStore {
     }
 
     private func makeLoggedExercisesFromCurrentWorkout() -> [LoggedExercise] {
-        currentWorkout.exercises.map { exercise in
+        // When the user tracked ANY exercise, untouched exercises were
+        // skipped — logging them with their planned sets/reps would fabricate
+        // work that never happened (and inflate exercise counts downstream).
+        // A session finished with zero tracking keeps the planned fallback:
+        // that's the deliberate "did it as written, skip the bookkeeping" path.
+        let anyExerciseTracked = currentWorkout.exercises.contains { exercise in
+            !trackedSetReps[exercise.id, default: []].isEmpty
+                || completedWorkoutSets[exercise.id, default: 0] > 0
+        }
+
+        return currentWorkout.exercises.compactMap { exercise in
             let repsLogged = trackedSetReps[exercise.id, default: []]
+            if anyExerciseTracked,
+               repsLogged.isEmpty,
+               completedWorkoutSets[exercise.id, default: 0] == 0 {
+                return nil
+            }
             let weightsLogged = trackedSetWeights[exercise.id, default: []]
             let repSummary = repsLogged.isEmpty
                 ? exercise.reps
