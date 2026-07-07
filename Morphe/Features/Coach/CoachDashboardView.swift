@@ -272,6 +272,7 @@ private struct CoachCommandCenterScreen: View {
                     pendingAIReviewCount: pendingAIReviewAthlete.map { athlete in
                         store.workoutLogs(for: athlete.id).filter { $0.verificationStatus == .aiPendingReview }.count
                     } ?? 0,
+                    painFlagCount: store.coachOverview.painFlags,
                     replyQueueCount: store.coachOverview.messagesNeedingResponse,
                     nextSession: nextUpcomingSession,
                     nextIntervention: nextInterventionNeedingAction,
@@ -437,24 +438,40 @@ private struct CoachAthletesScreen: View {
                     subtitle: "Filter by sport, scan the risk level, and open the athlete hub for the full context."
                 )
 
-                MultiSportCoachFilter(
-                    selected: store.coachSportFilter,
-                    sports: store.coachFilterOptions
-                ) { sport in
-                    store.selectCoachSportFilter(sport)
-                }
-
-                ForEach(store.filteredCoachClients) { athlete in
-                    CoachAthleteCard(
-                        athlete: athlete,
-                        onOpenHub: { store.openClientHub(athlete) },
-                        onMessage: {
-                            if let thread = store.messageThreads.first(where: { $0.participant == athlete.name }) {
-                                store.selectedCoachTab = .messages
-                                store.selectThread(thread)
-                            }
+                if store.coachClients.isEmpty {
+                    // A brand-new coach has no roster — say so instead of
+                    // rendering a sport filter over a blank void.
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("No athletes yet")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                            Text("Your roster starts empty. When Morphe accounts launch, athletes join with an invite code you share — their training, readiness, and messages land here.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
                         }
-                    )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    MultiSportCoachFilter(
+                        selected: store.coachSportFilter,
+                        sports: store.coachFilterOptions
+                    ) { sport in
+                        store.selectCoachSportFilter(sport)
+                    }
+
+                    ForEach(store.filteredCoachClients) { athlete in
+                        CoachAthleteCard(
+                            athlete: athlete,
+                            onOpenHub: { store.openClientHub(athlete) },
+                            onMessage: {
+                                if let thread = store.messageThreads.first(where: { $0.participant == athlete.name }) {
+                                    store.selectedCoachTab = .messages
+                                    store.selectThread(thread)
+                                }
+                            }
+                        )
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -2227,7 +2244,7 @@ private struct CoachMessagesScreen: View {
         if store.coachOverview.checkInsNeeded > 0 {
             return "Use Morphe AI to summarize who needs attention and draft clean outreach quickly."
         }
-        return "Use Morphe AI for athlete summaries, plan adjustments, and fast outreach drafts."
+        return "Ask Morphe quick training questions and workspace how-tos while you coach."
     }
 
     private func threadPriority(for thread: MessageThread) -> Int {
@@ -2675,6 +2692,7 @@ private struct CoachDashboardTriageCard: View {
     let coachName: String
     let atRiskCount: Int
     let pendingAIReviewCount: Int
+    let painFlagCount: Int
     let replyQueueCount: Int
     let nextSession: CalendarEvent?
     let nextIntervention: CoachIntervention?
@@ -2736,7 +2754,9 @@ private struct CoachDashboardTriageCard: View {
 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
                     CoachTriageStatPill(label: "Needs attention", value: "\(atRiskCount)")
-                    CoachTriageStatPill(label: "AI reviews", value: "\(pendingAIReviewCount)")
+                    // Pain flags are real data today; "AI reviews" advertised
+                    // an import workflow that doesn't exist yet.
+                    CoachTriageStatPill(label: "Pain flags", value: "\(painFlagCount)")
                     CoachTriageStatPill(label: "Reply queue", value: "\(replyQueueCount)")
                     CoachTriageStatPill(label: "Next session", value: nextSession.map { "\($0.day) \($0.time)" } ?? "No live block")
                 }

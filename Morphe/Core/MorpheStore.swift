@@ -400,7 +400,9 @@ final class MorpheAppStore {
         self.messageThreads = threads
         self.selectedThreadID = threads.first?.id
         self.coachAIAgentConversation = [
-            ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "I can summarize athlete risk, draft outreach, and suggest lighter plans from your coaching data.", timestamp: "Now")
+            // Honest scope: quick answers and workspace help — not "AI analysis
+            // of your coaching data" the rule-based assistant can't deliver.
+            ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "Ask me while you coach — quick answers on training, recovery, and getting around your workspace.", timestamp: "Now")
         ]
         self.outreachSuggestions = MorpheDemoContent.outreachSuggestions
         self.messageTemplates = MorpheDemoContent.messageTemplates
@@ -504,6 +506,15 @@ final class MorpheAppStore {
         // dictates it (auth wins once accounts are connected).
         if authUser == nil, let role = AppRole(rawValue: snapshot.accountRole) {
             selectedRole = role
+        }
+
+        // A returning coach gets THEIR identity in the workspace header —
+        // without this, every relaunch reverted to demo "Coach Marcus".
+        if selectedRole == .coach {
+            let handle = snapshot.username.isEmpty
+                ? snapshot.name.lowercased().filter { $0.isLetter || $0.isNumber }
+                : snapshot.username
+            applyCoachIdentity(name: snapshot.name, handle: handle)
         }
 
         clientProfile.name = snapshot.name
@@ -1643,6 +1654,25 @@ final class MorpheAppStore {
         showToast(role == .client ? "Athlete account active." : "Coach account active.")
     }
 
+    /// Replaces the seeded demo coach identity with the real user's. Sports,
+    /// goals, and specialty mirror the profile; practice stats start at zero
+    /// because a new coach has no athletes, groups, or playbooks yet.
+    private func applyCoachIdentity(name: String, handle: String) {
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        coachProfile.name = name
+        if !handle.isEmpty {
+            coachProfile.username = handle
+        }
+        coachProfile.sports = clientProfile.selectedSports
+        coachProfile.specialty = clientProfile.selectedSports.prefix(3).map(\.rawValue).joined(separator: " / ")
+        coachProfile.selectedGoals = clientProfile.selectedGoals
+        coachProfile.headline = "Coaching on Morphe."
+        coachProfile.networkRank = "Coach"
+        coachProfile.activeClients = 0
+        coachProfile.groups = []
+        coachProfile.playbooks = []
+    }
+
     func completeOnboarding() {
         let generatedPlan = MorpheDemoContent.generatedPlan(from: onboardingDraft)
         let primarySport = onboardingDraft.selectedSports.first ?? .generalFitness
@@ -1697,6 +1727,12 @@ final class MorpheAppStore {
         clientProfile.limitations = onboardingDraft.injuries.trimmingCharacters(in: .whitespacesAndNewlines)
         clientProfile.equipment = onboardingDraft.equipment.trimmingCharacters(in: .whitespacesAndNewlines)
         rebuildPersonalRules()
+
+        // A coach account is the USER's practice, not demo "Coach Marcus" —
+        // stamp their identity into the workspace and zero the seeded stats.
+        if onboardingDraft.accountType == .coach {
+            applyCoachIdentity(name: resolvedName, handle: handle)
+        }
 
         // Personalize the first staged workout: the plan-generation step
         // claims to match sport and level, so the picks must actually land —
