@@ -1,43 +1,111 @@
 rules_version = '2';
 
-// Morphe — Phase 1 (Accounts) security rules.
-// Each user owns exactly their own profile document; nobody can read anyone
-// else's data yet. Coach↔client reads (Phase 3) and networking discovery
-// (Phase 4) deliberately stay locked until those features are built.
+// Morphe — security rules (Phases 1–3).
+// Phase 1: each user owns exactly their own profile document.
+// Phase 3 (coach↔client, designed 2026-07-06): a coach with an ACTIVE
+// connection may read a linked athlete's full profile and workout logs.
+// Product decisions baked in here:
+//   • Linking = reusable coach code + the coach approves each request.
+//   • A linked coach sees the FULL athlete profile (incl. injuries, body
+//     metrics, goals) — chosen for coaching quality over granular privacy.
+//   • Coach signup is open; users/{uid}.coach.verified is reserved for a
+//     future credential-check gate and can never be set true from the client.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
 
-    // The user's own profile document. Private to its owner.
-    match /users/{uid} {
-      allow read:          if isOwner(uid);
-      allow create, update: if isOwner(uid);
-      allow delete:        if false;            // account deletion goes through a Function later
+    // Active coach↔client link. Connection ids are deterministic —
+    // "{coachUid}_{athleteUid}" — so the check is a single doc lookup.
+    function isActiveCoachOf(athleteUid) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/connections/$(request.auth.uid + '_' + athleteUid))
+        && get(/databases/$(database)/documents/connections/$(request.auth.uid + '_' + athleteUid)).data.status == 'active';
+    }
 
-      // Phase 2 — the user's own workout data (rules placed now for coherence).
+    // True when the write does NOT try to flip coach.verified to true.
+    // (The flag flips only via a Function/console once credential checks exist.)
+    function keepsVerifiedHonest() {
+      return request.resource.data.get('coach', {}).get('verified', false) != true;
+    }
+
+    // The user's profile document. Private to its owner, plus read access
+    // for an actively linked coach (full-profile decision above).
+    match /users/{uid} {
+      allow read:   if isOwner(uid) || isActiveCoachOf(uid);
+      allow create: if isOwner(uid) && keepsVerifiedHonest();
+      allow update: if isOwner(uid)
+        && (keepsVerifiedHonest()
+            || resource.data.get('coach', {}).get('verified', false) == true);
+      allow delete: if false;   // account deletion goes through a Function later
+
+      // The user's own workout data. Linked coaches read, never write.
       match /workoutLogs/{logId} {
-        allow read, write: if isOwner(uid);
+        allow read:  if isOwner(uid) || isActiveCoachOf(uid);
+        allow write: if isOwner(uid);
       }
       match /customWorkouts/{id} {
         allow read, write: if isOwner(uid);
       }
     }
 
-    // Username uniqueness map. Readable by all (to check availability at sign-up),
-    // claimable only by the signed-in user for their own uid, and immutable from
-    // the client once taken (no reassigning or deleting a handle from the app).
+    // Username uniqueness map. Readable by all (to check availability at
+    // sign-up), claimable only by the signed-in user for their own uid, and
+    // immutable from the client once taken.
     match /usernames/{username} {
       allow read:           if true;
       allow create:         if isSignedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if false;
     }
 
-    // Phase 3 — coach↔client connections. Locked until the feature ships
-    // (will be gated on an active connection in rules + a Cloud Function).
+    // Coach codes: ONE reusable, shareable code per coach (e.g. MORPHE-4X2K9).
+    // Any signed-in user can resolve a code to a coach uid (that's how the
+    // athlete's "enter your coach's code" field works). A coach claims a code
+    // only for themself; codes are immutable from the client (rotation and
+    // one-code-per-coach enforcement move to a Cloud Function later).
+    match /coachCodes/{code} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.coachUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['coachUid', 'createdAt']);
+      allow update, delete: if false;
+    }
+
+    // Coach↔client connections. Deterministic id "{coachUid}_{athleteUid}".
+    // Lifecycle: athlete enters a coach code → creates a PENDING request →
+    // the coach approves (active) or declines (declined) → either side can
+    // end the link at any time (revoked). Revoking kills the coach's read
+    // access instantly via isActiveCoachOf above.
     match /connections/{connId} {
-      allow read, write: if false;
+      allow read: if isSignedIn()
+        && (request.auth.uid == resource.data.coachUid
+            || request.auth.uid == resource.data.athleteUid);
+
+      // Only the athlete creates a request, only as pending, only under the
+      // deterministic id, and never to themself.
+      allow create: if isSignedIn()
+        && request.resource.data.athleteUid == request.auth.uid
+        && request.resource.data.coachUid != request.auth.uid
+        && request.resource.data.status == 'pending'
+        && connId == request.resource.data.coachUid + '_' + request.resource.data.athleteUid;
+
+      // Participants move the status; the two uids are immutable.
+      allow update: if isSignedIn()
+        && request.resource.data.coachUid == resource.data.coachUid
+        && request.resource.data.athleteUid == resource.data.athleteUid
+        && (
+          // The coach decides on a pending request…
+          (request.auth.uid == resource.data.coachUid
+            && resource.data.status == 'pending'
+            && request.resource.data.status in ['active', 'declined'])
+          // …and either side can revoke at any time.
+          || ((request.auth.uid == resource.data.coachUid
+               || request.auth.uid == resource.data.athleteUid)
+              && request.resource.data.status == 'revoked')
+        );
+
+      allow delete: if false;
     }
 
     // Default deny for anything not matched above.
