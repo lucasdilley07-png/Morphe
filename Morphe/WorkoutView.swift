@@ -574,7 +574,7 @@ struct DiscoverScreenView: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Discover",
-                    subtitle: "\(store.discoverWorkouts.count) workouts across 18 training types — start one now or save it for later."
+                    subtitle: "\(store.discoverWorkouts.count) workouts, shelved by training style."
                 )
 
                 DiscoverCatalogSection(
@@ -1308,16 +1308,19 @@ private struct LiveWorkoutSupportToolsCard: View {
 /// Browsable catalog of bundled Morphe Programs with faceted filters —
 /// Stage A of the content pipeline (becomes the Firestore-backed feed with
 /// engagement ranking once the backend lands).
+/// Grouped-shelf catalog: the 18-type taxonomy rolls up into five browsable
+/// families, each a horizontal carousel of compact cards with short type
+/// chips above it. The old landing view was six rows of text chips over a
+/// vertical wall of text cards.
 private struct DiscoverCatalogSection: View {
     @Environment(MorpheAppStore.self) private var store
     let onStart: (WorkoutTemplate) -> Void
 
-    @State private var trainingTypeFilter: String?
-    @State private var collectionFilter: String?
-    @State private var focusFilter: String?
     @State private var levelFilter: DemoDifficulty?
     @State private var durationFilter: String?
     @State private var equipmentFilter: String?
+    /// Per-shelf selected type (family name -> full training-type tag).
+    @State private var shelfTypeSelection: [String: String] = [:]
 
     /// Time filters are ranges, not exact matches — sport sessions run
     /// 15/24/36/38-min lengths, so exact chips made Time + Sport-specific
@@ -1329,170 +1332,246 @@ private struct DiscoverCatalogSection: View {
         if minutes <= 40 { return "25–40 min" }
         return "Over 40 min"
     }
-    @State private var visibleCount = 12
 
-    /// The product's canonical training taxonomy, in presentation order.
-    private static let trainingTypeOrder = [
-        "Strength training", "Hypertrophy training", "Muscular endurance",
-        "Cardiovascular endurance", "HIIT", "Power training",
-        "Speed & agility training", "Mobility training", "Flexibility training",
-        "Functional training", "Calisthenics", "Circuit training",
-        "Cross-training", "Plyometric training", "Balance & stability training",
-        "Core training", "Sport-specific training", "Recovery training"
+    /// The product's canonical 18-type taxonomy, grouped into shelf families.
+    private static let families: [(name: String, types: [String])] = [
+        ("Build", ["Strength training", "Hypertrophy training", "Muscular endurance", "Power training"]),
+        ("Condition", ["Cardiovascular endurance", "HIIT", "Circuit training", "Cross-training"]),
+        ("Move", ["Mobility training", "Flexibility training", "Balance & stability training", "Core training", "Calisthenics", "Functional training"]),
+        ("Athletic", ["Speed & agility training", "Plyometric training", "Sport-specific training"]),
+        ("Recover", ["Recovery training"])
     ]
 
-    private var trainingTypeOptions: [String] {
-        let present = Set(store.discoverWorkouts.map(\.trainingTypeTag))
-        return Self.trainingTypeOrder.filter { present.contains($0) }
-    }
+    /// Chip-length names for the full taxonomy tags.
+    private static let shortTypeNames: [String: String] = [
+        "Strength training": "Strength",
+        "Hypertrophy training": "Hypertrophy",
+        "Muscular endurance": "Muscular Endurance",
+        "Cardiovascular endurance": "Cardio",
+        "HIIT": "HIIT",
+        "Power training": "Power",
+        "Speed & agility training": "Speed & Agility",
+        "Mobility training": "Mobility",
+        "Flexibility training": "Flexibility",
+        "Functional training": "Functional",
+        "Calisthenics": "Calisthenics",
+        "Circuit training": "Circuits",
+        "Cross-training": "Cross-Training",
+        "Plyometric training": "Plyometrics",
+        "Balance & stability training": "Balance",
+        "Core training": "Core",
+        "Sport-specific training": "Sport-Specific",
+        "Recovery training": "Recovery"
+    ]
 
-    private var collectionOptions: [String] {
-        Array(Set(store.discoverWorkouts.map(\.type))).sorted()
-    }
-
-    private var focusOptions: [String] {
-        var seen: Set<String> = []
-        return store.discoverWorkouts.compactMap { template in
-            guard !template.focusTag.isEmpty, !seen.contains(template.focusTag) else { return nil }
-            seen.insert(template.focusTag)
-            return template.focusTag
-        }
-    }
-
-    private var filtered: [WorkoutTemplate] {
+    private var globallyFiltered: [WorkoutTemplate] {
         store.discoverWorkouts.filter { template in
-            (trainingTypeFilter == nil || template.trainingTypeTag == trainingTypeFilter)
-                && (collectionFilter == nil || template.type == collectionFilter)
-                && (focusFilter == nil || template.focusTag == focusFilter)
-                && (levelFilter == nil || template.difficulty == levelFilter)
+            (levelFilter == nil || template.difficulty == levelFilter)
                 && (durationFilter == nil || durationBucket(template.durationMinutes) == durationFilter)
                 && (equipmentFilter == nil || template.equipment == equipmentFilter)
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            GlassCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    // Training type is the primary organizing facet.
-                    filterRow("Training type", options: trainingTypeOptions, selection: $trainingTypeFilter) { $0 }
-                    if collectionOptions.count > 1 {
-                        filterRow("Collection", options: collectionOptions, selection: $collectionFilter) { $0 }
-                    }
-                    filterRow("Focus", options: focusOptions, selection: $focusFilter) { $0 }
-                    filterRow("Level", options: [DemoDifficulty.beginner, .moderate, .advanced], selection: $levelFilter) { $0.rawValue }
-                    filterRow("Time", options: Self.durationBuckets, selection: $durationFilter) { $0 }
-                    filterRow("Equipment", options: ["Bodyweight", "Dumbbells", "Full Gym"], selection: $equipmentFilter) { $0 }
+        // One pass through the catalog per refresh — shelves read the groups.
+        let available = globallyFiltered
+        let byType = Dictionary(grouping: available, by: \.trainingTypeTag)
+        // Catalog collection tag is the bare word "Legends" (WorkoutCatalog:80).
+        let legends = available.filter { $0.type == "Legends" }
 
-                    Text("\(filtered.count) workout\(filtered.count == 1 ? "" : "s")")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(MorpheTheme.accentAlt)
-                }
-            }
+        VStack(alignment: .leading, spacing: 20) {
+            filterBar
 
-            if filtered.isEmpty {
+            if available.isEmpty {
                 GlassCard {
                     Text("No programs match those filters — loosen one and try again.")
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-            } else {
-                ForEach(filtered.prefix(visibleCount)) { template in
-                    DiscoverWorkoutCard(
+            }
+
+            if !legends.isEmpty {
+                shelf(title: "Legends Collection", workouts: legends)
+            }
+
+            ForEach(Self.families, id: \.name) { family in
+                familyShelf(family: family, byType: byType)
+            }
+        }
+        .onChange(of: levelFilter) { _, _ in shelfTypeSelection = [:] }
+        .onChange(of: durationFilter) { _, _ in shelfTypeSelection = [:] }
+        .onChange(of: equipmentFilter) { _, _ in shelfTypeSelection = [:] }
+    }
+
+    // MARK: - Global filter bar
+
+    private var filterBar: some View {
+        HStack(spacing: 8) {
+            filterMenu("Level", selection: $levelFilter, options: [DemoDifficulty.beginner, .moderate, .advanced]) { $0.rawValue }
+            filterMenu("Time", selection: $durationFilter, options: Self.durationBuckets) { $0 }
+            filterMenu("Equipment", selection: $equipmentFilter, options: ["Bodyweight", "Dumbbells", "Full Gym"]) { $0 }
+            Spacer()
+        }
+    }
+
+    private func filterMenu<Option: Hashable>(
+        _ label: String,
+        selection: Binding<Option?>,
+        options: [Option],
+        title: @escaping (Option) -> String
+    ) -> some View {
+        Menu {
+            Button("All") { selection.wrappedValue = nil }
+            ForEach(options, id: \.self) { option in
+                Button(title(option)) { selection.wrappedValue = option }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text((selection.wrappedValue.map(title) ?? label).uppercased())
+                    .font(MorpheTheme.microLabel(10))
+                    .tracking(1.0)
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .foregroundStyle(selection.wrappedValue == nil ? MorpheTheme.textSecondary : .black)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(selection.wrappedValue == nil ? MorpheTheme.panelStrong : MorpheTheme.accent)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                    )
+            )
+        }
+        .accessibilityLabel("\(label) filter")
+    }
+
+    // MARK: - Shelves
+
+    @ViewBuilder
+    private func familyShelf(family: (name: String, types: [String]), byType: [String: [WorkoutTemplate]]) -> some View {
+        let presentTypes = family.types.filter { !(byType[$0] ?? []).isEmpty }
+        if !presentTypes.isEmpty {
+            // A selection pointing at a type the filters emptied acts as "all".
+            let selected = shelfTypeSelection[family.name].flatMap { presentTypes.contains($0) ? $0 : nil }
+            let workouts = selected.flatMap { byType[$0] } ?? presentTypes.flatMap { byType[$0] ?? [] }
+
+            VStack(alignment: .leading, spacing: 10) {
+                shelfHeader(title: family.name, count: workouts.count)
+
+                if presentTypes.count > 1 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(presentTypes, id: \.self) { type in
+                                Button(Self.shortTypeNames[type] ?? type) {
+                                    shelfTypeSelection[family.name] = selected == type ? nil : type
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: selected == type, selectedColor: MorpheTheme.accentAlt))
+                            }
+                        }
+                    }
+                }
+
+                cardRow(workouts)
+            }
+        }
+    }
+
+    private func shelf(title: String, workouts: [WorkoutTemplate]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            shelfHeader(title: title, count: workouts.count)
+            cardRow(workouts)
+        }
+    }
+
+    private func shelfHeader(title: String, count: Int) -> some View {
+        HStack(spacing: 10) {
+            Rectangle()
+                .fill(MorpheTheme.accent)
+                .frame(width: 3, height: 14)
+
+            Text(title.uppercased())
+                .font(.system(size: 14, design: .monospaced).weight(.bold))
+                .tracking(2)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .lineLimit(1)
+                .layoutPriority(1)
+
+            Text(String(format: "%03d", count))
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.0)
+                .foregroundStyle(MorpheTheme.accentAlt)
+
+            Rectangle()
+                .fill(MorpheTheme.stroke)
+                .frame(height: 1)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func cardRow(_ workouts: [WorkoutTemplate]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 10) {
+                ForEach(workouts) { template in
+                    DiscoverShelfCard(
                         template: template,
+                        typeName: Self.shortTypeNames[template.trainingTypeTag] ?? template.trainingTypeTag,
                         isSaved: store.isCatalogWorkoutSaved(template),
                         onStart: { onStart(template) },
                         onSave: { store.saveCatalogWorkout(template) }
                     )
-                }
-
-                if filtered.count > visibleCount {
-                    Button("Show more (\(filtered.count - visibleCount) left)") {
-                        visibleCount += 12
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                }
-            }
-        }
-        .onChange(of: trainingTypeFilter) { _, _ in visibleCount = 12 }
-        .onChange(of: collectionFilter) { _, _ in visibleCount = 12 }
-        .onChange(of: focusFilter) { _, _ in visibleCount = 12 }
-        .onChange(of: levelFilter) { _, _ in visibleCount = 12 }
-        .onChange(of: durationFilter) { _, _ in visibleCount = 12 }
-        .onChange(of: equipmentFilter) { _, _ in visibleCount = 12 }
-    }
-
-    private func filterRow<Option: Hashable>(
-        _ label: String,
-        options: [Option],
-        selection: Binding<Option?>,
-        title: @escaping (Option) -> String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(MorpheTheme.textMuted)
-            WrapStack(spacing: 8) {
-                ForEach(options, id: \.self) { option in
-                    Button(title(option)) {
-                        selection.wrappedValue = selection.wrappedValue == option ? nil : option
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: selection.wrappedValue == option, selectedColor: MorpheTheme.accentAlt))
                 }
             }
         }
     }
 }
 
-private struct DiscoverWorkoutCard: View {
+/// Compact carousel card: level badge, two-line name, one mono meta line,
+/// Start + save. The paragraph of goal copy lives on after starting, not here.
+private struct DiscoverShelfCard: View {
     let template: WorkoutTemplate
+    let typeName: String
     let isSaved: Bool
     let onStart: () -> Void
     let onSave: () -> Void
 
     var body: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(template.name)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white)
-                        Text("\(template.durationMinutes) min • \(template.equipment) • \(template.exercises.count) exercises")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
+                    StatusBadge(text: template.difficulty.rawValue, color: MorpheTheme.accentAlt)
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 4) {
-                        if template.type != "Morphe Program" {
-                            StatusBadge(text: template.type, color: MorpheTheme.accent)
-                        }
-                        StatusBadge(text: template.focusTag, color: MorpheTheme.accentAlt)
-                    }
-                }
-
-                Text(template.goal)
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textMuted)
-
-                HStack(spacing: 8) {
-                    Button("Start", action: onStart)
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        .accessibilityLabel("Start \(template.name)")
-
-                    Button {
-                        onSave()
-                    } label: {
+                    Button(action: onSave) {
                         Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                            .frame(width: 44, height: 24)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(isSaved ? MorpheTheme.accent : MorpheTheme.textSecondary)
+                            .frame(width: 32, height: 24)
                     }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .frame(width: 64)
+                    .buttonStyle(.plain)
                     .accessibilityLabel(isSaved ? "\(template.name) saved" : "Save \(template.name) to My Library")
                 }
+
+                Text(template.name)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(2, reservesSpace: true)
+
+                Text("\(template.durationMinutes) MIN • \(template.equipment.uppercased()) • \(typeName.uppercased())")
+                    .font(MorpheTheme.microLabel(9))
+                    .tracking(0.8)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .lineLimit(1)
+
+                Button("Start", action: onStart)
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .accessibilityLabel("Start \(template.name)")
             }
         }
+        .frame(width: 230)
         .accessibilityElement(children: .contain)
     }
 }
