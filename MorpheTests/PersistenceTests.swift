@@ -1502,6 +1502,134 @@ final class MetricsTests: XCTestCase {
         XCTAssertNotEqual(store.currentGoodForTodayRecommendation.workoutTemplateID, store.currentWorkout.id)
     }
 
+    // MARK: - Review fixes (2026-07-06 audit)
+
+    func testProgressSummaryUsesHonestStreak() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        // A protected day must show up in the summary streak — the number
+        // Progress and Profile display — not only in Learn's scoreboard.
+        store.toggleMinimumWinTask(store.minimumWinTasks[0])
+        let summary = store.workoutLogSummary(for: store.clientProfile.id)
+        XCTAssertEqual(summary.currentStreakDays, 1,
+                       "the summary streak honors protected days")
+    }
+
+    func testFiveDayTrainerSurvivesTheWeekend() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.updateTrainingDaysPerWeek(5)
+        let athleteID = store.clientProfile.id
+
+        func log(daysAgo: Int) -> WorkoutLog {
+            WorkoutLog(
+                athleteID: athleteID, athleteName: "Sarah", workoutTemplateID: nil,
+                workoutTitle: "Session", sport: .strength,
+                completedAt: Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!,
+                durationMinutes: 30, exercises: [], notes: "",
+                source: .athleteManual, enteredByUserID: athleteID,
+                enteredByRole: .client, enteredByName: "Sarah",
+                verificationStatus: .athleteSubmitted
+            )
+        }
+        // Friday + Monday for a Mon–Fri trainer: a 3-day gap that the old
+        // ceil(7/5)=2 allowance broke every single weekend.
+        WorkoutFilePersistence().saveLogs([log(daysAgo: 3), log(daysAgo: 0)])
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.level.streak, 2,
+                       "a compliant 5-day/week schedule keeps its streak across the weekend")
+    }
+
+    func testLoggingWorkoutGrantsTaskXP() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.startTodayWorkout()
+        store.hasCompletedWorkoutFlow = true
+        store.logWorkout()
+
+        // 50 (workout) + 25 (complete task) + 15 (log task) = 90 — the
+        // auto-checked tasks used to advertise XP they never paid.
+        XCTAssertEqual(store.clientProfile.level.currentXP, 90)
+        XCTAssertTrue(store.todayTasks.first { $0.title == "Complete today's workout" }!.isCompleted)
+
+        // And toggling an auto-completed task off/on nets exactly zero.
+        let task = store.todayTasks.first { $0.title == "Complete today's workout" }!
+        store.toggleTask(task)
+        store.toggleTask(store.todayTasks.first { $0.title == task.title }!)
+        XCTAssertEqual(store.clientProfile.level.currentXP, 90, "toggle off/on is XP-neutral")
+    }
+
+    func testXPRefundDemotesThroughLevelBoundary() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        // 90 XP from logging, +20 from the protein task → Level 2, 10/100.
+        store.startTodayWorkout()
+        store.hasCompletedWorkoutFlow = true
+        store.logWorkout()
+        let protein = store.todayTasks.first { $0.title == "Hit protein goal" }!
+        store.toggleTask(protein)
+        XCTAssertEqual(store.currentLevelNumber, 2)
+        XCTAssertEqual(store.clientProfile.level.currentXP, 10)
+
+        // Un-checking must demote back — the old clamp banked the level.
+        store.toggleTask(store.todayTasks.first { $0.title == protein.title }!)
+        XCTAssertEqual(store.currentLevelNumber, 1, "refund crosses the boundary back down")
+        XCTAssertEqual(store.clientProfile.level.currentXP, 90)
+    }
+
+    func testPinnedCatalogSaveSurvivesRelaunch() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let template = store.catalogWorkouts[0]
+        store.saveCatalogWorkout(template)
+        store.togglePinnedSavedWorkout(store.savedWorkouts.first { $0.workoutTemplateID == template.id }!)
+        XCTAssertTrue(store.savedWorkouts.first { $0.workoutTemplateID == template.id }!.isPinned)
+
+        let reloaded = MorpheAppStore()
+        XCTAssertTrue(reloaded.savedWorkouts.first { $0.workoutTemplateID == template.id }?.isPinned ?? false,
+                      "a pinned Discover save keeps its pin across relaunch")
+    }
+
+    func testUncheckingMinimumWinRetractsProtection() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.toggleMinimumWinTask(store.minimumWinTasks[0])
+        XCTAssertEqual(store.clientProfile.level.streak, 1)
+
+        store.toggleMinimumWinTask(store.minimumWinTasks[0])
+        XCTAssertFalse(store.streakProtected, "retracting the win retracts the protection")
+        XCTAssertEqual(store.clientProfile.level.streak, 0)
+    }
+
+    func testCustomWorkoutNamesAreUnique() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        let exercise = store.exerciseDatabase[0]
+        store.createCustomWorkout(name: "Leg Day", sport: .generalFitness,
+                                  items: [CustomWorkoutItem(exercise: exercise, sets: 3, reps: 10)])
+        store.createCustomWorkout(name: "Leg Day", sport: .generalFitness,
+                                  items: [CustomWorkoutItem(exercise: exercise, sets: 3, reps: 10)])
+
+        let names = store.workoutTemplates.filter { $0.name.hasPrefix("Leg Day") }.map(\.name)
+        XCTAssertEqual(Set(names).count, names.count,
+                       "names double as restore keys, so duplicates must be suffixed")
+        XCTAssertEqual(names.count, 2)
+    }
+
     // MARK: - Honest streak (audit backlog pass 1)
 
     func testStreakSurvivesRestDaysOnSchedule() {

@@ -14,6 +14,7 @@ struct WorkoutView: View {
     @State private var pendingRPE: Int?
     @State private var editingSetIndex: Int?
     @State private var showDiscardConfirm = false
+    @State private var showStartOverConfirm = false
     @State private var showLibrary = false
     @State private var showExerciseList = false
     @State private var showAdjustments = false
@@ -236,6 +237,14 @@ struct WorkoutView: View {
                 pendingWeight = store.lastSessionWeight(for: exercise.id) ?? pendingWeight
             }
         }
+        .onAppear {
+            // A mid-session relaunch restores the session but not this view
+            // state — without the reseed the next quick-log records 0 ("BW")
+            // even though the session knows the working weight.
+            if pendingWeight == 0, let exercise = store.activeWorkoutExercise {
+                pendingWeight = store.lastSessionWeight(for: exercise.id) ?? 0
+            }
+        }
     }
 
     private var workoutPlanningMode: some View {
@@ -246,7 +255,7 @@ struct WorkoutView: View {
                     title: "Train",
                     subtitle: store.hasCompletedWorkoutFlow
                         ? "Session finished — review what you logged, rate it, and lock it in."
-                        : "Start, track, finish, rate the session, then let Morphe adjust the next move."
+                        : "Start the session, log sets in the console, then rate it and lock it in."
                 )
 
                 // Right after a finish, reviewing and logging IS the task —
@@ -298,9 +307,16 @@ struct WorkoutView: View {
                     workout: store.currentWorkout,
                     suggestion: store.recommendedWorkoutDiffers ? goodForTodayRecommendation : nil,
                     onStart: {
-                        workoutFinished = false
-                        isShowingPainFlow = false
-                        store.startTodayWorkout()
+                        // A finished-but-unlogged session sits one scroll up —
+                        // starting again wipes its tracked sets, so it gets
+                        // the same confirmation the Discard button has.
+                        if store.hasCompletedWorkoutFlow {
+                            showStartOverConfirm = true
+                        } else {
+                            workoutFinished = false
+                            isShowingPainFlow = false
+                            store.startTodayWorkout()
+                        }
                     },
                     onUseSuggestion: {
                         store.applyRecommendedWorkout()
@@ -309,6 +325,18 @@ struct WorkoutView: View {
                         store.cycleWorkout()
                     }
                 )
+                .confirmationDialog(
+                    "Start a new session? Your finished session hasn't been logged — its sets will be lost.",
+                    isPresented: $showStartOverConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("Discard recap and start", role: .destructive) {
+                        workoutFinished = false
+                        isShowingPainFlow = false
+                        store.startTodayWorkout()
+                    }
+                    Button("Keep my recap", role: .cancel) {}
+                }
 
                 if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
                     PartnerSessionCard(
@@ -428,7 +456,7 @@ struct WorkoutView: View {
                             Text("Need form help or substitutions?")
                                 .font(.headline)
                                 .foregroundStyle(.white)
-                            Text("Open More for the anatomy view, exercise library, quick swaps, and beginner-friendly form help.")
+                            Text("Open Learn for the exercise library and beginner-friendly form help, or swap a move right from today's plan.")
                                 .foregroundStyle(MorpheTheme.textSecondary)
                             HStack(spacing: 10) {
                                 Button("Open Exercise Library") {
@@ -2062,7 +2090,7 @@ private struct SavedWorkoutsLibraryCard: View {
                 .pickerStyle(.segmented)
 
                 if filteredItems.isEmpty {
-                    Text("Nothing saved yet. Save workouts from profiles or For You and they’ll show up here.")
+                    Text("Nothing saved yet. Save workouts from Discover — or build your own in Train — and they’ll show up here.")
                         .foregroundStyle(MorpheTheme.textSecondary)
                 } else {
                     ForEach(filteredItems) { item in
@@ -2216,7 +2244,11 @@ private struct SavedWorkoutsLibraryCard: View {
     }
 
     private func sourceBadgeText(for item: SavedWorkoutLibraryItem) -> String {
-        item.sourceContext == "Built by you" ? "My copy" : "Athlete source"
+        if item.sourceContext == "Built by you" { return "My copy" }
+        // Catalog and Morphe-recommended saves aren't from a person.
+        if item.sourceName == "Morphe Programs" { return "Morphe Program" }
+        if item.sourceName == "Morphe AI" { return "Morphe AI" }
+        return item.sourceRole == .coach ? "Coach source" : "Athlete source"
     }
 
     private func sourceBadgeColor(for item: SavedWorkoutLibraryItem) -> Color {

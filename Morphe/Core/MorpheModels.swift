@@ -273,8 +273,8 @@ enum CalendarEventType: String, CaseIterable, Identifiable {
 enum WorkoutAdjustmentOption: String, CaseIterable, Identifiable {
     case easier = "Make it easier"
     case shorter = "Make it shorter"
-    case home = "Switch to home workout"
-    case gym = "Switch to gym workout"
+    case home = "Use the home version"
+    case gym = "Use the gym version"
     case recovery = "Replace with recovery session"
     case reschedule = "Move to another day"
 

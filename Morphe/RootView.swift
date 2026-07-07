@@ -527,8 +527,13 @@ private struct FloatingAIAgentButton: View {
         .contextMenu {
             ForEach(store.aiAgentQuickPrompts.prefix(4), id: \.self) { prompt in
                 Button(prompt) {
-                    store.openAIAgent()
-                    store.sendAIAgentPrompt(prompt)
+                    // Action prompts navigate — the result IS the feedback,
+                    // so no sheet. Conversational prompts open the chat so
+                    // the reply is actually visible (it used to open a sheet
+                    // that the action layer instantly closed).
+                    if !store.sendAIAgentPrompt(prompt) {
+                        store.openAIAgent()
+                    }
                 }
             }
         }
@@ -1190,12 +1195,18 @@ private struct QuickAddSheet: View {
                             dismissQuickAdd()
                         },
                         QuickAddItem(title: "Browse Exercises", subtitle: "Open the exercise library", systemImage: "books.vertical.fill") {
-                            store.selectedClientTab = .more
+                            // openMore selects the library panel — setting the
+                            // tab alone landed on whatever panel was last open.
+                            store.openMore(.library)
                             dismissQuickAdd()
                         },
                         QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {
-                            store.openAIAgent()
+                            // Two sheets can't co-present: dismiss this one,
+                            // then open the chat once the transition has room.
                             dismissQuickAdd()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                                store.openAIAgent()
+                            }
                         }
                     ])
                 }

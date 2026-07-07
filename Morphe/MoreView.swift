@@ -450,7 +450,7 @@ private struct HubScoreboardCard: View {
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Scores + Levels")
+                Text("Scores & Levels")
                     .font(.headline)
                     .foregroundStyle(.white)
 

@@ -298,7 +298,7 @@ private struct AccountTypeStep: View {
     var body: some View {
         OnboardingCard(
             title: "What kind of account are you creating?",
-            subtitle: "Choose the workspace you want first. You can still switch account type later from Profile."
+            subtitle: "Choose the workspace that fits how you'll use Morphe."
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 RoleSwitcher(selectedRole: store.onboardingDraft.accountType) { role in

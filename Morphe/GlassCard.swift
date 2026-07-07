@@ -193,7 +193,8 @@ struct ProgressBarView: View {
 
                 Rectangle()
                     .fill(color)
-                    .frame(width: max(proxy.size.width * progress, 4))
+                    // No phantom sliver at zero — an empty bar means empty.
+                    .frame(width: progress <= 0 ? 0 : max(proxy.size.width * progress, 4))
             }
         }
         .frame(height: 5)
@@ -1171,7 +1172,7 @@ struct LevelProgressCard: View {
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Level / Rank")
+                Text("Level")
                     .font(.headline)
                     .foregroundStyle(.white)
 

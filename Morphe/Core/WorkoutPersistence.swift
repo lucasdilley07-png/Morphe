@@ -147,13 +147,18 @@ struct WorkoutLibrarySnapshot: Codable, Equatable {
     /// Non-catalog saves (recommendation saves, duplicated copies) — these
     /// used to silently vanish for a returning user.
     var savedTemplates: [SavedTemplateSnapshot]
+    /// Pinned catalog saves (template UUID strings) — catalog items persist
+    /// as bare ids, so the pin needs its own record to survive relaunch.
+    var pinnedCatalogWorkoutIDs: [String]
 
     init(customExercises: [CustomExerciseSnapshot], customWorkouts: [CustomWorkoutSnapshot],
-         savedCatalogWorkoutIDs: [String] = [], savedTemplates: [SavedTemplateSnapshot] = []) {
+         savedCatalogWorkoutIDs: [String] = [], savedTemplates: [SavedTemplateSnapshot] = [],
+         pinnedCatalogWorkoutIDs: [String] = []) {
         self.customExercises = customExercises
         self.customWorkouts = customWorkouts
         self.savedCatalogWorkoutIDs = savedCatalogWorkoutIDs
         self.savedTemplates = savedTemplates
+        self.pinnedCatalogWorkoutIDs = pinnedCatalogWorkoutIDs
     }
 
     init(from decoder: Decoder) throws {
@@ -162,6 +167,7 @@ struct WorkoutLibrarySnapshot: Codable, Equatable {
         customWorkouts = try c.decode([CustomWorkoutSnapshot].self, forKey: .customWorkouts)
         savedCatalogWorkoutIDs = ((try? c.decodeIfPresent([String].self, forKey: .savedCatalogWorkoutIDs)) ?? nil) ?? []
         savedTemplates = ((try? c.decodeIfPresent([SavedTemplateSnapshot].self, forKey: .savedTemplates)) ?? nil) ?? []
+        pinnedCatalogWorkoutIDs = ((try? c.decodeIfPresent([String].self, forKey: .pinnedCatalogWorkoutIDs)) ?? nil) ?? []
     }
 }
 

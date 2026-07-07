@@ -361,8 +361,8 @@ private struct AthleteProfileBody: View {
                     if store.todayExperienceTier >= 1 {
                         HStack(spacing: 8) {
                             MetricPill(label: "Morphe Score", value: "\(store.clientProfile.health.score)")
-                            // The real log-derived streak (level.streak is a
-                            // legacy field that stays 0).
+                            // Schedule-aware streak (protected days count)
+                            // via workoutLogSummary's honest path.
                             MetricPill(label: "Streak", value: "\(summary.currentStreakDays) days")
                             MetricPill(label: "This week", value: "\(summary.workoutsThisWeek) of \(max(store.clientProfile.trainingDaysPerWeek, 1))")
                         }

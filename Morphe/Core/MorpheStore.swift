@@ -171,6 +171,7 @@ final class MorpheAppStore {
     /// Saved-from-Discover ids restored from disk, reapplied after demo clears.
     private var persistedSavedCatalogIDs: [String] = []
     private var persistedSavedTemplates: [SavedTemplateSnapshot] = []
+    private var persistedPinnedCatalogIDs: [String] = []
     var savedWorkouts: [SavedWorkoutLibraryItem]
     var currentWorkoutID: UUID { didSet { persistWorkoutSession() } }
     var workoutLogs: [WorkoutLog] {
@@ -694,8 +695,20 @@ final class MorpheAppStore {
 
     /// Builds a new workout from chosen exercises, makes it the current plan,
     /// and persists it so it survives relaunches.
+    /// Names double as restore keys (session restore and saved-template
+    /// rebuild both match by name), so two templates must never share one.
+    private func uniqueWorkoutName(_ proposed: String) -> String {
+        let base = proposed.isEmpty ? "My Workout" : proposed
+        guard workoutTemplates.contains(where: { $0.name == base }) else { return base }
+        var suffix = 2
+        while workoutTemplates.contains(where: { $0.name == "\(base) \(suffix)" }) {
+            suffix += 1
+        }
+        return "\(base) \(suffix)"
+    }
+
     func createCustomWorkout(name: String, sport: SportFocus, items: [CustomWorkoutItem]) {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = uniqueWorkoutName(name.trimmingCharacters(in: .whitespacesAndNewlines))
         let exercises = items.map { item in
             WorkoutExercise(
                 id: "\(item.exercise.id)-\(UUID().uuidString.prefix(6))",
@@ -789,15 +802,21 @@ final class MorpheAppStore {
                 )
             }
 
+        let pinnedCatalogIDs = savedWorkouts
+            .filter { item in item.isPinned && catalogWorkouts.contains { $0.id == item.workoutTemplateID } }
+            .map { $0.workoutTemplateID.uuidString }
+
         workoutPersistence.saveLibrary(
             WorkoutLibrarySnapshot(
                 customExercises: exerciseSnaps,
                 customWorkouts: workoutSnaps,
                 savedCatalogWorkoutIDs: savedCatalogIDs,
-                savedTemplates: savedTemplates
+                savedTemplates: savedTemplates,
+                pinnedCatalogWorkoutIDs: pinnedCatalogIDs
             )
         )
         persistedSavedTemplates = savedTemplates
+        persistedPinnedCatalogIDs = pinnedCatalogIDs
     }
 
     /// Rebuilds the user's custom exercises and workouts from disk at launch.
@@ -805,6 +824,7 @@ final class MorpheAppStore {
         guard let snapshot = workoutPersistence.loadLibrary() else { return }
         persistedSavedCatalogIDs = snapshot.savedCatalogWorkoutIDs
         persistedSavedTemplates = snapshot.savedTemplates
+        persistedPinnedCatalogIDs = snapshot.pinnedCatalogWorkoutIDs
         rebuildSavedCatalogWorkouts()
         customExercises = snapshot.customExercises.map { snap in
             ExerciseReference(
@@ -1618,9 +1638,13 @@ final class MorpheAppStore {
                 && $0.durationMinutes >= 20
         }
         let sportMatches = trainable.filter { $0.sport == sport }
+        // The chain must never dead-end: the old generalFitness-only fallback
+        // was provably nil (both generalFitness seeds are short/recovery), so
+        // every sport without a seeded template silently kept the default.
         return sportMatches.first(where: { $0.difficulty == target })
             ?? sportMatches.first
-            ?? trainable.first(where: { $0.sport == .generalFitness && $0.difficulty == target })
+            ?? trainable.first(where: { $0.difficulty == target })
+            ?? trainable.first
     }
 
     /// Resets the signed-in user to a clean, empty account: a brand-new identity
@@ -2015,6 +2039,13 @@ final class MorpheAppStore {
             showCelebration(title: "Momentum protected", detail: task.title, symbol: "flame.fill")
             showToast("Momentum protected.")
         } else {
+            // Retracting the last minimum win retracts the protection — the
+            // day used to stay a streak day forever after an un-check.
+            if !minimumWinTasks.contains(where: \.isCompleted) {
+                protectedDayKeys.remove(Self.dayKey())
+                streakProtected = false
+                refreshWorkoutLogDerivedState(for: clientProfile.id)
+            }
             persistLocalProfile()
         }
     }
@@ -2203,7 +2234,8 @@ final class MorpheAppStore {
                     sourceRole: .client,
                     sourceContext: "Saved from Discover",
                     bestFor: .solo,
-                    note: template.goal
+                    note: template.goal,
+                    isPinned: persistedPinnedCatalogIDs.contains(idString)
                 )
             )
         }
@@ -2841,20 +2873,28 @@ final class MorpheAppStore {
         showToast(message)
     }
 
-    func sendAIAgentPrompt(_ text: String) {
+    /// Returns true when the prompt was handled by the action layer (the
+    /// user is looking at the result), false when the reply is conversational
+    /// and lives in the chat — callers use this to decide whether opening the
+    /// chat sheet would help or just flash and close.
+    @discardableResult
+    func sendAIAgentPrompt(_ text: String) -> Bool {
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanText.isEmpty else { return }
+        guard !cleanText.isEmpty else { return false }
 
         if selectedRole == .coach {
             coachAIAgentConversation.append(ThreadMessage(sender: .user, senderName: coachProfile.name, text: cleanText, timestamp: "Now"))
             coachAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: coachAgentReply(to: cleanText), timestamp: "Now"))
+            return false
         } else {
             athleteAIAgentConversation.append(ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now"))
             // Actions first: if the ask maps to something Morphe AI can DO
             // (start a workout, open a screen, change a setting), do it and
             // confirm — otherwise fall back to the coaching reply.
-            let reply = assistantActionReply(for: cleanText) ?? athleteAgentReply(to: cleanText)
+            let actionReply = assistantActionReply(for: cleanText)
+            let reply = actionReply ?? athleteAgentReply(to: cleanText)
             athleteAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now"))
+            return actionReply != nil
         }
     }
 
@@ -3055,7 +3095,7 @@ final class MorpheAppStore {
 
         var copiedTemplate = template
         copiedTemplate.id = UUID()
-        copiedTemplate.name = "My Copy - \(template.name)"
+        copiedTemplate.name = uniqueWorkoutName("My Copy - \(template.name)")
         copiedTemplate.coachNote = "Personal copy built from \(item.sourceName)'s saved workout."
         workoutTemplates.insert(copiedTemplate, at: 0)
         // The copy is the user's own workout: registering it as custom makes
@@ -3748,7 +3788,13 @@ final class MorpheAppStore {
     }
 
     func workoutLogSummary(for athleteID: UUID) -> WorkoutLogSummary {
-        workoutLogSummary(from: workoutLogs(for: athleteID))
+        // The current athlete gets the schedule-aware streak (protected days
+        // count); coach-side summaries keep the strict computation because
+        // another athlete's schedule and protected days aren't known here.
+        workoutLogSummary(
+            from: workoutLogs(for: athleteID),
+            scheduleAware: athleteID == clientProfile.id
+        )
     }
 
     func partnerTrainingInsight(for athleteID: UUID) -> PartnerTrainingInsight {
@@ -4554,9 +4600,13 @@ final class MorpheAppStore {
     }
 
     private func markTaskCompleted(named title: String) {
-        if let index = todayTasks.firstIndex(where: { $0.title == title }) {
-            todayTasks[index].isCompleted = true
-        }
+        // Grants the task's XP too — auto-completing used to flip the box
+        // while paying nothing, so the labels advertised XP that the honest
+        // path (actually training) never received.
+        guard let index = todayTasks.firstIndex(where: { $0.title == title }),
+              !todayTasks[index].isCompleted else { return }
+        todayTasks[index].isCompleted = true
+        updateXP(for: todayTasks[index].xp, add: true)
     }
 
     /// XP needed to clear a level, on a decade curve: levels 1–10 take
@@ -4585,7 +4635,20 @@ final class MorpheAppStore {
             }
             Haptics.success()
         } else {
-            clientProfile.level.currentXP = max(clientProfile.level.currentXP - amount, 0)
+            // Demote through level boundaries so un-checking refunds exactly
+            // what was earned — the old clamp-at-zero let a level-up survive
+            // the refund (free levels via boundary toggling).
+            var remaining = amount
+            while remaining > clientProfile.level.currentXP,
+                  levelNumber(from: clientProfile.level.currentTitle) ?? 1 > 1 {
+                let previousLevel = (levelNumber(from: clientProfile.level.currentTitle) ?? 2) - 1
+                remaining -= clientProfile.level.currentXP
+                clientProfile.level.currentTitle = "Level \(previousLevel)"
+                clientProfile.level.nextTitle = "Level \(previousLevel + 1)"
+                clientProfile.level.targetXP = Self.xpTarget(forLevel: previousLevel)
+                clientProfile.level.currentXP = clientProfile.level.targetXP
+            }
+            clientProfile.level.currentXP = max(clientProfile.level.currentXP - remaining, 0)
         }
         persistLocalProfile()
     }
@@ -5882,7 +5945,7 @@ final class MorpheAppStore {
             return
         }
 
-        let summary = workoutLogSummary(from: logs)
+        let summary = workoutLogSummary(from: logs, scheduleAware: true)
         let weekCount = summary.workoutsThisWeek
         // Score reflects recent consistency + streak, bounded 10–100.
         let score = min(100, max(10, 35 + weekCount * 10 + min(streak, 7) * 3))
@@ -5935,7 +5998,7 @@ final class MorpheAppStore {
         coachClients[athleteIndex].complianceScore = min(max(baselineCompliance + delta, 0), 100)
         coachClients[athleteIndex].programCompliance.score = min(max(baselineProgramCompliance + delta, 0), 100)
 
-        let summary = workoutLogSummary(from: logs)
+        let summary = workoutLogSummary(from: logs, scheduleAware: false)
         let partnerInsight = partnerTrainingInsight(from: logs, athleteName: coachClients[athleteIndex].name)
         coachClients[athleteIndex].programCompliance.summary = logs.isEmpty
             ? (baselineClient?.programCompliance.summary ?? coachClients[athleteIndex].programCompliance.summary)
@@ -5949,7 +6012,7 @@ final class MorpheAppStore {
         }
     }
 
-    private func workoutLogSummary(from logs: [WorkoutLog]) -> WorkoutLogSummary {
+    private func workoutLogSummary(from logs: [WorkoutLog], scheduleAware: Bool) -> WorkoutLogSummary {
         let calendar = Calendar.current
         let thisWeekLogs = logs.filter { calendar.isDate($0.completedAt, equalTo: .now, toGranularity: .weekOfYear) }
         let totalMinutes = thisWeekLogs.reduce(0) { $0 + $1.durationMinutes }
@@ -5977,7 +6040,9 @@ final class MorpheAppStore {
             workoutsThisWeek: thisWeekLogs.count,
             minutesThisWeek: totalMinutes,
             averageDuration: averageDuration,
-            currentStreakDays: Self.consecutiveDayStreak(from: logs),
+            currentStreakDays: scheduleAware
+                ? currentWorkoutStreak(from: logs)
+                : Self.consecutiveDayStreak(from: logs),
             athleteEntries: athleteEntries,
             coachEntries: coachEntries,
             aiEntries: aiEntries,
@@ -7104,10 +7169,12 @@ final class MorpheAppStore {
         let sortedDays = activeDays.sorted(by: >)
         guard let latestDay = sortedDays.first else { return 0 }
 
-        // Training n days/week means sessions land ~7/n days apart — allow
-        // that spacing (plus nothing extra) before the streak breaks.
+        // Any weekly pattern that hits n training days has a worst-case gap
+        // of 8-n days (train n consecutive days, rest the remainder) — e.g.
+        // Mon–Fri (5/week) has a Fri→Mon gap of 3. ceil(7/n) was too strict
+        // and reset compliant 5-day trainers every single weekend.
         let daysPerWeek = max(1, min(7, clientProfile.trainingDaysPerWeek))
-        let allowedGap = Int((7.0 / Double(daysPerWeek)).rounded(.up))
+        let allowedGap = max(1, 8 - daysPerWeek)
 
         let today = calendar.startOfDay(for: .now)
         guard let sinceLatest = calendar.dateComponents([.day], from: latestDay, to: today).day,
