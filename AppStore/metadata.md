@@ -61,7 +61,7 @@ First release of Morphe. Build your own workouts, log real sets with weight and 
 - **Secondary category:** (optional) Lifestyle
 - **Age rating:** 4+ (no objectionable content; not medical advice)
 - **Price:** Free
-- **Bundle ID:** com.lucas.Morphe
+- **Bundle ID:** com.morpheapp.Morphe
 - **Version:** 1.0
 - **Privacy Policy URL:** _<your hosted policy URL — see docs/ and LAUNCH_CHECKLIST.md>_
 - **Support URL:** _<a page or email you control, e.g. a simple site or mailto>_
@@ -73,7 +73,7 @@ Morphe has no backend, no analytics, no third-party SDKs, and no tracking — no
 
 ## TestFlight (internal beta) — minimum needed
 TestFlight does NOT require screenshots or the full description. You need:
-- An app record in App Store Connect (bundle id com.lucas.Morphe)
+- An app record in App Store Connect (bundle id com.morpheapp.Morphe)
 - An uploaded build (see LAUNCH_CHECKLIST.md)
 - "Test Information" → Beta App Description + your email as feedback contact
 - Add yourself/testers under Internal Testing

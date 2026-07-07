@@ -25,7 +25,7 @@ App Store Connect requires a public Privacy Policy URL.
 
 ## 3. Create the app in App Store Connect  (needs your account)
 1. appstoreconnect.apple.com → **My Apps → +** → New App.
-2. Platform iOS · Name **Morphe** · Primary language English · Bundle ID **com.lucas.Morphe** · SKU `morphe-001`.
+2. Platform iOS · Name **Morphe** · Primary language English · Bundle ID **com.morpheapp.Morphe** · SKU `morphe-001`.
 3. Fill the listing from `AppStore/metadata.md`; set Privacy Policy URL from step 1; App Privacy → **Data Not Collected**.
 
 ## 4. Archive & upload  (in Xcode, after steps 2–3)

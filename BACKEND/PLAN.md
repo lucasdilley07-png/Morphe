@@ -96,7 +96,7 @@ lookup and prevent duplicate requests for the same pair.
 
 ## What needs YOU (one-time, ~15 min) vs me
 **You (Firebase console + Apple):**
-1. Create a Firebase project, add an **iOS app** with bundle id `com.lucas.Morphe`.
+1. Create a Firebase project, add an **iOS app** with bundle id `com.morpheapp.Morphe`.
 2. Download **`GoogleService-Info.plist`** and hand it to me (drop it in `Morphe/`).
 3. In Firebase → Authentication, enable **Apple** and **Email/Password** providers.
 4. (For Sign in with Apple) in the Apple Developer portal, enable the *Sign in with Apple*
