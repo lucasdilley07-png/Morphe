@@ -574,7 +574,7 @@ struct DiscoverScreenView: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Discover",
-                    subtitle: "\(store.discoverWorkouts.count) workouts, shelved by training style."
+                    subtitle: "\(store.discoverWorkouts.count) workouts — pick a training style."
                 )
 
                 DiscoverCatalogSection(
@@ -1308,19 +1308,23 @@ private struct LiveWorkoutSupportToolsCard: View {
 /// Browsable catalog of bundled Morphe Programs with faceted filters —
 /// Stage A of the content pipeline (becomes the Firestore-backed feed with
 /// engagement ranking once the backend lands).
-/// Grouped-shelf catalog: the 18-type taxonomy rolls up into five browsable
-/// families, each a horizontal carousel of compact cards with short type
-/// chips above it. The old landing view was six rows of text chips over a
-/// vertical wall of text cards.
+/// Icon-led catalog: the landing view is a grid of training-style tiles
+/// (icon + short name + count) grouped under five family headers, with a
+/// featured Legends tile on top. Workout cards and filters only appear after
+/// drilling into a style — the landing itself is nearly wordless.
 private struct DiscoverCatalogSection: View {
     @Environment(MorpheAppStore.self) private var store
     let onStart: (WorkoutTemplate) -> Void
 
+    private enum Selection: Equatable {
+        case legends
+        case type(String)
+    }
+
+    @State private var selection: Selection?
     @State private var levelFilter: DemoDifficulty?
     @State private var durationFilter: String?
     @State private var equipmentFilter: String?
-    /// Per-shelf selected type (family name -> full training-type tag).
-    @State private var shelfTypeSelection: [String: String] = [:]
 
     /// Time filters are ranges, not exact matches — sport sessions run
     /// 15/24/36/38-min lengths, so exact chips made Time + Sport-specific
@@ -1333,7 +1337,7 @@ private struct DiscoverCatalogSection: View {
         return "Over 40 min"
     }
 
-    /// The product's canonical 18-type taxonomy, grouped into shelf families.
+    /// The product's canonical 18-type taxonomy, grouped into families.
     private static let families: [(name: String, types: [String])] = [
         ("Build", ["Strength training", "Hypertrophy training", "Muscular endurance", "Power training"]),
         ("Condition", ["Cardiovascular endurance", "HIIT", "Circuit training", "Cross-training"]),
@@ -1342,7 +1346,7 @@ private struct DiscoverCatalogSection: View {
         ("Recover", ["Recovery training"])
     ]
 
-    /// Chip-length names for the full taxonomy tags.
+    /// Tile-length names for the full taxonomy tags.
     private static let shortTypeNames: [String: String] = [
         "Strength training": "Strength",
         "Hypertrophy training": "Hypertrophy",
@@ -1364,47 +1368,254 @@ private struct DiscoverCatalogSection: View {
         "Recovery training": "Recovery"
     ]
 
-    private var globallyFiltered: [WorkoutTemplate] {
-        store.discoverWorkouts.filter { template in
+    /// One pictogram per training style — the tile reads by icon first.
+    private static let typeSymbols: [String: String] = [
+        "Strength training": "dumbbell.fill",
+        "Hypertrophy training": "figure.strengthtraining.traditional",
+        "Muscular endurance": "repeat",
+        "Cardiovascular endurance": "heart.fill",
+        "HIIT": "bolt.fill",
+        "Power training": "bolt.circle.fill",
+        "Speed & agility training": "figure.run",
+        "Mobility training": "figure.flexibility",
+        "Flexibility training": "figure.cooldown",
+        "Functional training": "figure.cross.training",
+        "Calisthenics": "figure.gymnastics",
+        "Circuit training": "arrow.triangle.2.circlepath",
+        "Cross-training": "figure.mixed.cardio",
+        "Plyometric training": "figure.jumprope",
+        "Balance & stability training": "figure.mind.and.body",
+        "Core training": "figure.core.training",
+        "Sport-specific training": "sportscourt.fill",
+        "Recovery training": "leaf.fill"
+    ]
+
+    var body: some View {
+        if let selection {
+            detailView(selection)
+        } else {
+            landingGrid
+        }
+    }
+
+    // MARK: - Landing: icon tile grid
+
+    private var landingGrid: some View {
+        let byType = Dictionary(grouping: store.discoverWorkouts, by: \.trainingTypeTag)
+        let legendsCount = store.discoverWorkouts.filter { $0.type == "Legends" }.count
+
+        return VStack(alignment: .leading, spacing: 20) {
+            if legendsCount > 0 {
+                legendsTile(count: legendsCount)
+            }
+
+            ForEach(Self.families, id: \.name) { family in
+                let presentTypes = family.types.filter { !(byType[$0] ?? []).isEmpty }
+                if !presentTypes.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        sectionHeader(
+                            title: family.name,
+                            count: presentTypes.reduce(0) { $0 + (byType[$1]?.count ?? 0) }
+                        )
+
+                        LazyVGrid(
+                            columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+                            spacing: 10
+                        ) {
+                            ForEach(presentTypes, id: \.self) { type in
+                                typeTile(type, count: byType[type]?.count ?? 0)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func typeTile(_ type: String, count: Int) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selection = .type(type)
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: Self.typeSymbols[type] ?? "square.grid.2x2")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(MorpheTheme.accent)
+                    .frame(width: 26)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text((Self.shortTypeNames[type] ?? type).uppercased())
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.0)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Text(String(format: "%03d", count))
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(1.0)
+                        .foregroundStyle(MorpheTheme.accentAlt)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panelStrong)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(Self.shortTypeNames[type] ?? type), \(count) workouts")
+    }
+
+    private func legendsTile(count: Int) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selection = .legends
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(MorpheTheme.accent)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("LEGENDS COLLECTION")
+                        .font(MorpheTheme.microLabel(11))
+                        .tracking(1.6)
+                        .foregroundStyle(.white)
+                    Text(String(format: "%03d CURATED PROGRAMS", count))
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(1.0)
+                        .foregroundStyle(MorpheTheme.accentAlt)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panelStrong)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(MorpheTheme.accent.opacity(0.45), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Legends Collection, \(count) curated programs")
+    }
+
+    // MARK: - Drill-in: one style's programs
+
+    @ViewBuilder
+    private func detailView(_ selection: Selection) -> some View {
+        let all: [WorkoutTemplate] = {
+            switch selection {
+            case .legends:
+                return store.discoverWorkouts.filter { $0.type == "Legends" }
+            case .type(let tag):
+                return store.discoverWorkouts.filter { $0.trainingTypeTag == tag }
+            }
+        }()
+        let filtered = all.filter { template in
             (levelFilter == nil || template.difficulty == levelFilter)
                 && (durationFilter == nil || durationBucket(template.durationMinutes) == durationFilter)
                 && (equipmentFilter == nil || template.equipment == equipmentFilter)
         }
-    }
+        let title: String = {
+            switch selection {
+            case .legends: return "Legends Collection"
+            case .type(let tag): return Self.shortTypeNames[tag] ?? tag
+            }
+        }()
 
-    var body: some View {
-        // One pass through the catalog per refresh — shelves read the groups.
-        let available = globallyFiltered
-        let byType = Dictionary(grouping: available, by: \.trainingTypeTag)
-        // Catalog collection tag is the bare word "Legends" (WorkoutCatalog:80).
-        let legends = available.filter { $0.type == "Legends" }
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    self.selection = nil
+                    levelFilter = nil
+                    durationFilter = nil
+                    equipmentFilter = nil
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("ALL STYLES")
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.4)
+                }
+                .foregroundStyle(MorpheTheme.accent)
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back to all training styles")
 
-        VStack(alignment: .leading, spacing: 20) {
+            sectionHeader(title: title, count: filtered.count)
+
             filterBar
 
-            if available.isEmpty {
+            if filtered.isEmpty {
                 GlassCard {
                     Text("No programs match those filters — loosen one and try again.")
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-            }
-
-            if !legends.isEmpty {
-                shelf(title: "Legends Collection", workouts: legends)
-            }
-
-            ForEach(Self.families, id: \.name) { family in
-                familyShelf(family: family, byType: byType)
+            } else {
+                LazyVStack(spacing: 10) {
+                    ForEach(filtered) { template in
+                        DiscoverProgramCard(
+                            template: template,
+                            typeName: Self.shortTypeNames[template.trainingTypeTag] ?? template.trainingTypeTag,
+                            isSaved: store.isCatalogWorkoutSaved(template),
+                            onStart: { onStart(template) },
+                            onSave: { store.saveCatalogWorkout(template) }
+                        )
+                    }
+                }
             }
         }
-        .onChange(of: levelFilter) { _, _ in shelfTypeSelection = [:] }
-        .onChange(of: durationFilter) { _, _ in shelfTypeSelection = [:] }
-        .onChange(of: equipmentFilter) { _, _ in shelfTypeSelection = [:] }
     }
 
-    // MARK: - Global filter bar
+    // MARK: - Shared chrome
+
+    private func sectionHeader(title: String, count: Int) -> some View {
+        HStack(spacing: 10) {
+            Rectangle()
+                .fill(MorpheTheme.accent)
+                .frame(width: 3, height: 14)
+
+            Text(title.uppercased())
+                .font(.system(size: 14, design: .monospaced).weight(.bold))
+                .tracking(2)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .lineLimit(1)
+                .layoutPriority(1)
+
+            Text(String(format: "%03d", count))
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.0)
+                .foregroundStyle(MorpheTheme.accentAlt)
+
+            Rectangle()
+                .fill(MorpheTheme.stroke)
+                .frame(height: 1)
+                .frame(maxWidth: .infinity)
+        }
+    }
 
     private var filterBar: some View {
         HStack(spacing: 8) {
@@ -1449,90 +1660,11 @@ private struct DiscoverCatalogSection: View {
         }
         .accessibilityLabel("\(label) filter")
     }
-
-    // MARK: - Shelves
-
-    @ViewBuilder
-    private func familyShelf(family: (name: String, types: [String]), byType: [String: [WorkoutTemplate]]) -> some View {
-        let presentTypes = family.types.filter { !(byType[$0] ?? []).isEmpty }
-        if !presentTypes.isEmpty {
-            // A selection pointing at a type the filters emptied acts as "all".
-            let selected = shelfTypeSelection[family.name].flatMap { presentTypes.contains($0) ? $0 : nil }
-            let workouts = selected.flatMap { byType[$0] } ?? presentTypes.flatMap { byType[$0] ?? [] }
-
-            VStack(alignment: .leading, spacing: 10) {
-                shelfHeader(title: family.name, count: workouts.count)
-
-                if presentTypes.count > 1 {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(presentTypes, id: \.self) { type in
-                                Button(Self.shortTypeNames[type] ?? type) {
-                                    shelfTypeSelection[family.name] = selected == type ? nil : type
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: selected == type, selectedColor: MorpheTheme.accentAlt))
-                            }
-                        }
-                    }
-                }
-
-                cardRow(workouts)
-            }
-        }
-    }
-
-    private func shelf(title: String, workouts: [WorkoutTemplate]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            shelfHeader(title: title, count: workouts.count)
-            cardRow(workouts)
-        }
-    }
-
-    private func shelfHeader(title: String, count: Int) -> some View {
-        HStack(spacing: 10) {
-            Rectangle()
-                .fill(MorpheTheme.accent)
-                .frame(width: 3, height: 14)
-
-            Text(title.uppercased())
-                .font(.system(size: 14, design: .monospaced).weight(.bold))
-                .tracking(2)
-                .foregroundStyle(MorpheTheme.textPrimary)
-                .lineLimit(1)
-                .layoutPriority(1)
-
-            Text(String(format: "%03d", count))
-                .font(MorpheTheme.microLabel(10))
-                .tracking(1.0)
-                .foregroundStyle(MorpheTheme.accentAlt)
-
-            Rectangle()
-                .fill(MorpheTheme.stroke)
-                .frame(height: 1)
-                .frame(maxWidth: .infinity)
-        }
-    }
-
-    private func cardRow(_ workouts: [WorkoutTemplate]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .top, spacing: 10) {
-                ForEach(workouts) { template in
-                    DiscoverShelfCard(
-                        template: template,
-                        typeName: Self.shortTypeNames[template.trainingTypeTag] ?? template.trainingTypeTag,
-                        isSaved: store.isCatalogWorkoutSaved(template),
-                        onStart: { onStart(template) },
-                        onSave: { store.saveCatalogWorkout(template) }
-                    )
-                }
-            }
-        }
-    }
 }
 
-/// Compact carousel card: level badge, two-line name, one mono meta line,
-/// Start + save. The paragraph of goal copy lives on after starting, not here.
-private struct DiscoverShelfCard: View {
+/// Compact program card for the drill-in list: level badge, two-line name,
+/// one mono meta line, Start + save. The goal paragraph never renders here.
+private struct DiscoverProgramCard: View {
     let template: WorkoutTemplate
     let typeName: String
     let isSaved: Bool
@@ -1558,7 +1690,7 @@ private struct DiscoverShelfCard: View {
                 Text(template.name)
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
-                    .lineLimit(2, reservesSpace: true)
+                    .lineLimit(2)
 
                 Text("\(template.durationMinutes) MIN • \(template.equipment.uppercased()) • \(typeName.uppercased())")
                     .font(MorpheTheme.microLabel(9))
@@ -1571,7 +1703,6 @@ private struct DiscoverShelfCard: View {
                     .accessibilityLabel("Start \(template.name)")
             }
         }
-        .frame(width: 230)
         .accessibilityElement(children: .contain)
     }
 }
