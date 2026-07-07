@@ -131,7 +131,8 @@ struct MoreView: View {
                 recovery: store.recovery,
                 morpheScore: store.clientProfile.health.score,
                 streak: store.clientProfile.level.streak,
-                adherence: store.clientProfile.adherence
+                adherence: store.clientProfile.adherence,
+                hasCheckedIn: store.didCompleteQuickCheckIn
             )
             LevelProgressCard(progress: store.clientProfile.level)
             GoalTranslationCard(translation: store.goalTranslation)
@@ -446,6 +447,9 @@ private struct HubScoreboardCard: View {
     let morpheScore: Int
     let streak: Int
     let adherence: Int
+    /// Readiness is a measurement only after a check-in — before one, the
+    /// neutral default renders as an em dash (same rule as Today's strip).
+    var hasCheckedIn: Bool = false
 
     var body: some View {
         GlassCard {
@@ -455,17 +459,25 @@ private struct HubScoreboardCard: View {
                     .foregroundStyle(.white)
 
                 HStack(spacing: 8) {
-                    MetricPill(label: "Readiness", value: "\(recovery.score)")
+                    MetricPill(label: "Readiness", value: hasCheckedIn ? "\(recovery.score)" : "—")
                     MetricPill(label: "Morphe Score", value: "\(morpheScore)")
                     MetricPill(label: "Streak", value: "\(streak) days")
                 }
 
-                Text(streak > 0
-                    ? "Recovery is \(recovery.status.rawValue.lowercased()) today. You're on a \(streak)-day streak — keep it going."
-                    : "Recovery is \(recovery.status.rawValue.lowercased()) today. Log a workout to start your streak.")
+                Text(recoveryLine)
                     .foregroundStyle(MorpheTheme.textSecondary)
             }
         }
+    }
+
+    private var recoveryLine: String {
+        let recoveryPart = hasCheckedIn
+            ? "Recovery is \(recovery.status.rawValue.lowercased()) today."
+            : "Do a quick check-in on Today to set your readiness."
+        let streakPart = streak > 0
+            ? "You're on a \(streak)-day streak — keep it going."
+            : "Log a workout to start your streak."
+        return "\(recoveryPart) \(streakPart)"
     }
 }
 

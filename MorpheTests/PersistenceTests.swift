@@ -1967,3 +1967,141 @@ final class AuditFixRegressionTests: XCTestCase {
         XCTAssertEqual(loaded?.first?.sport, .generalFitness, "unknown sport falls back to the neutral case")
     }
 }
+
+/// Regression tests for the fourth audit's fix pass: chat never fakes
+/// success, custom builds can't fabricate logs, swaps can't eat sets,
+/// Plan B doesn't leak across days, and coach identity survives relaunch.
+@MainActor
+final class Audit4RegressionTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    override func tearDown() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        super.tearDown()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    private func finishedUnloggedSession(_ store: MorpheAppStore) {
+        store.beginLiveWorkout(store.workoutTemplates.first!)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        XCTAssertTrue(store.hasCompletedWorkoutFlow)
+    }
+
+    func testAIStartDeclinesOverUnloggedRecap() {
+        let store = freshStore()
+        finishedUnloggedSession(store)
+
+        store.sendAIAgentPrompt("start my workout")
+
+        XCTAssertNil(store.pendingWorkoutChange, "chat must never queue a destructive confirmation")
+        XCTAssertTrue(store.hasCompletedWorkoutFlow, "the unlogged recap survives the chat request")
+        XCTAssertFalse(store.isWorkoutSessionActive, "no session may start while claiming nothing")
+    }
+
+    func testCreateCustomWorkoutOverRecapCannotFabricateALog() {
+        let store = freshStore()
+        finishedUnloggedSession(store)
+        let stagedID = store.currentWorkout.id
+
+        let exercises = Array(store.allExercises.prefix(1))
+        store.createCustomWorkout(
+            name: "Fabrication Test",
+            sport: .strength,
+            items: exercises.map { CustomWorkoutItem(exercise: $0, sets: 2, reps: 8) }
+        )
+
+        XCTAssertNotNil(store.pendingWorkoutChange, "staging a new build over a recap must gate")
+        XCTAssertEqual(store.currentWorkout.id, stagedID, "nothing staged until confirmed")
+        XCTAssertTrue(store.workoutTemplates.contains { $0.name == "Fabrication Test" },
+                      "the build itself is created either way")
+
+        store.confirmPendingWorkoutChange()
+        XCTAssertFalse(store.hasCompletedWorkoutFlow, "staging resets the stale finished flag")
+
+        let before = store.workoutLogs.count
+        store.logWorkout()
+        XCTAssertEqual(store.workoutLogs.count, before, "no log for a workout never performed")
+    }
+
+    func testSwapRefusedWhenExerciseHasLoggedSets() {
+        let store = freshStore()
+        let exercises = Array(store.allExercises.prefix(2))
+        store.createCustomWorkout(
+            name: "Swap Test",
+            sport: .strength,
+            items: exercises.map { CustomWorkoutItem(exercise: $0, sets: 2, reps: 8) }
+        )
+        let custom = store.workoutTemplates.first { $0.name == "Swap Test" }!
+        store.beginLiveWorkout(custom)
+        let active = store.activeWorkoutExercise!
+        store.completeTrackedSet(reps: 8, weight: 50)
+
+        store.swapExercise(active)
+
+        XCTAssertTrue(store.currentWorkout.exercises.contains { $0.id == active.id },
+                      "an exercise with logged sets must not be swapped out (its sets would vanish from the log)")
+    }
+
+    func testPlanBStateResetsOnDayRollover() {
+        let store = freshStore()
+        let defaultTitles = store.minimumWinTasks.map(\.title)
+        store.choosePlanB(.traveling)
+        store.toggleMinimumWinTask(store.minimumWinTasks.first!)
+        XCTAssertTrue(store.minimumWinModeEnabled)
+
+        store.handleDayRolloverIfNeeded(now: Date.now.addingTimeInterval(86_400))
+
+        XCTAssertEqual(store.minimumWinTasks.map(\.title), defaultTitles,
+                       "a new day starts from the default minimum wins")
+        XCTAssertFalse(store.minimumWinTasks.contains(where: \.isCompleted))
+        XCTAssertFalse(store.minimumWinModeEnabled)
+        XCTAssertNil(store.selectedPlanBReason)
+    }
+
+    func testCoachIdentityKeepsOwnSportsAcrossRelaunch() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sam"
+        store.onboardingDraft.accountType = .coach
+        store.onboardingDraft.selectedSports = [.soccer]
+        store.completeOnboarding()
+        XCTAssertEqual(store.coachProfile.name, "Sam")
+        XCTAssertTrue(store.coachProfile.specialty.contains("Soccer"), store.coachProfile.specialty)
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.coachProfile.name, "Sam",
+                       "a relaunch must not revert the workspace to demo Coach Marcus")
+        XCTAssertTrue(reloaded.coachProfile.specialty.contains("Soccer"),
+                      "specialty must come from the coach's own sports, not the demo athlete's: \(reloaded.coachProfile.specialty)")
+        XCTAssertEqual(reloaded.coachProfile.activeClients, 0)
+    }
+
+    func testDeleteCustomWorkoutPerformsAndCleansSavedCards() {
+        let store = freshStore()
+        let exercises = Array(store.allExercises.prefix(1))
+        store.createCustomWorkout(
+            name: "Delete Test",
+            sport: .strength,
+            items: exercises.map { CustomWorkoutItem(exercise: $0, sets: 2, reps: 8) }
+        )
+        let custom = store.workoutTemplates.first { $0.name == "Delete Test" }!
+
+        store.deleteCustomWorkout(custom.id)
+
+        XCTAssertFalse(store.workoutTemplates.contains { $0.id == custom.id })
+        XCTAssertFalse(store.savedWorkouts.contains { $0.workoutTemplateID == custom.id })
+        XCTAssertNil(store.pendingWorkoutChange, "deletion is confirmed at the view layer, not the session gate")
+    }
+}

@@ -3,7 +3,7 @@ import SwiftUI
 struct WorkoutView: View {
     @Environment(MorpheAppStore.self) private var store
 
-    @State private var workoutFinished = false
+    @State private var workoutPendingDelete: WorkoutTemplate?
     @State private var restSeconds = 180
     @State private var restRunning = false
     @State private var swapTarget: WorkoutExercise?
@@ -89,7 +89,6 @@ struct WorkoutView: View {
                         totalSets: store.trackedSetTotalCount
                     ) {
                         if store.finishTrackedWorkoutSession() {
-                            workoutFinished = true
                             restRunning = false
                         }
                     }
@@ -154,7 +153,6 @@ struct WorkoutView: View {
                 HStack(spacing: 10) {
                     Button("Finish Session") {
                         if store.finishTrackedWorkoutSession() {
-                            workoutFinished = true
                             restRunning = false
                         }
                     }
@@ -176,7 +174,6 @@ struct WorkoutView: View {
                 ) {
                     Button("Discard Workout", role: .destructive) {
                         restRunning = false
-                        workoutFinished = false
                         store.cancelTrackedWorkoutSession()
                     }
                     Button("Keep Training", role: .cancel) {}
@@ -308,7 +305,6 @@ struct WorkoutView: View {
                     onStart: {
                         // The store's session-work gate confirms before a
                         // live session or unlogged recap gets destroyed.
-                        workoutFinished = false
                         isShowingPainFlow = false
                         store.startTodayWorkout()
                     },
@@ -347,14 +343,27 @@ struct WorkoutView: View {
                         YourWorkoutsCard(
                             workouts: myWorkouts,
                             onStart: { template in
-                                workoutFinished = false
                                 isShowingPainFlow = false
                                 store.beginLiveWorkout(template)
                             },
                             onDelete: { template in
-                                store.deleteCustomWorkout(template.id)
+                                workoutPendingDelete = template
                             }
                         )
+                        .confirmationDialog(
+                            "Delete \(workoutPendingDelete?.name ?? "this workout")? It's removed from your library — there's no undo.",
+                            isPresented: Binding(
+                                get: { workoutPendingDelete != nil },
+                                set: { if !$0 { workoutPendingDelete = nil } }
+                            ),
+                            titleVisibility: .visible,
+                            presenting: workoutPendingDelete
+                        ) { template in
+                            Button("Delete Workout", role: .destructive) {
+                                store.deleteCustomWorkout(template.id)
+                            }
+                            Button("Keep It", role: .cancel) {}
+                        }
                     }
 
                     SavedWorkoutsLibraryCard(
@@ -363,7 +372,6 @@ struct WorkoutView: View {
                             store.savedWorkoutInsight(for: item)
                         },
                         onStart: { item in
-                            workoutFinished = false
                             isShowingPainFlow = false
                             store.startSavedWorkout(item)
                         },
@@ -423,7 +431,6 @@ struct WorkoutView: View {
                     AddSwitchWorkoutCard { option in
                         store.applyWorkoutAdjustment(option)
                         if option == .recovery || option == .shorter || option == .easier {
-                            workoutFinished = false
                         }
                     }
                 }
@@ -570,22 +577,31 @@ struct DiscoverScreenView: View {
     @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                SectionTitleView(
-                    title: "Discover",
-                    subtitle: "\(store.discoverWorkouts.count) workouts — pick a training style."
-                )
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    SectionTitleView(
+                        title: "Discover",
+                        subtitle: "\(store.discoverWorkouts.count) workouts — pick a training style."
+                    )
 
-                DiscoverCatalogSection(
-                    onStart: { template in
-                        store.startCatalogWorkout(template)
-                    }
-                )
+                    DiscoverCatalogSection(
+                        onStart: { template in
+                            store.startCatalogWorkout(template)
+                        },
+                        // Entering or leaving a style must land at the top —
+                        // the in-place swap otherwise keeps the old offset and
+                        // strands the user mid-list with the header off-screen.
+                        onSelectionChange: {
+                            proxy.scrollTo("discoverTop", anchor: .top)
+                        }
+                    )
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 120)
+                .id("discoverTop")
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 120)
         }
     }
 }
@@ -637,7 +653,7 @@ private struct WorkoutCompleteCard: View {
                         .foregroundStyle(MorpheTheme.accent)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("All sets logged")
-                            .font(.system(.title3, design: .rounded).weight(.bold))
+                            .font(.title3.weight(.bold))
                             .foregroundStyle(.white)
                         Text("\(workoutName) • \(totalSets) sets in the books.")
                             .font(.subheadline)
@@ -1315,6 +1331,7 @@ private struct LiveWorkoutSupportToolsCard: View {
 private struct DiscoverCatalogSection: View {
     @Environment(MorpheAppStore.self) private var store
     let onStart: (WorkoutTemplate) -> Void
+    var onSelectionChange: () -> Void = {}
 
     private enum Selection: Equatable {
         case legends
@@ -1339,9 +1356,9 @@ private struct DiscoverCatalogSection: View {
 
     /// The product's canonical 18-type taxonomy, grouped into families.
     private static let families: [(name: String, types: [String])] = [
-        ("Build", ["Strength training", "Hypertrophy training", "Muscular endurance", "Power training"]),
+        ("Build", ["Strength training", "Hypertrophy training", "Muscular endurance", "Power training", "Calisthenics"]),
         ("Condition", ["Cardiovascular endurance", "HIIT", "Circuit training", "Cross-training"]),
-        ("Move", ["Mobility training", "Flexibility training", "Balance & stability training", "Core training", "Calisthenics", "Functional training"]),
+        ("Move", ["Mobility training", "Flexibility training", "Balance & stability training", "Core training", "Functional training"]),
         ("Athletic", ["Speed & agility training", "Plyometric training", "Sport-specific training"]),
         ("Recover", ["Recovery training"])
     ]
@@ -1372,7 +1389,7 @@ private struct DiscoverCatalogSection: View {
     private static let typeSymbols: [String: String] = [
         "Strength training": "dumbbell.fill",
         "Hypertrophy training": "figure.strengthtraining.traditional",
-        "Muscular endurance": "repeat",
+        "Muscular endurance": "figure.rower",
         "Cardiovascular endurance": "heart.fill",
         "HIIT": "bolt.fill",
         "Power training": "bolt.circle.fill",
@@ -1437,6 +1454,7 @@ private struct DiscoverCatalogSection: View {
             withAnimation(.easeInOut(duration: 0.2)) {
                 selection = .type(type)
             }
+            onSelectionChange()
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: Self.typeSymbols[type] ?? "square.grid.2x2")
@@ -1479,6 +1497,7 @@ private struct DiscoverCatalogSection: View {
             withAnimation(.easeInOut(duration: 0.2)) {
                 selection = .legends
             }
+            onSelectionChange()
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "trophy.fill")
@@ -1549,6 +1568,7 @@ private struct DiscoverCatalogSection: View {
                     durationFilter = nil
                     equipmentFilter = nil
                 }
+                onSelectionChange()
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.left")
@@ -1565,7 +1585,7 @@ private struct DiscoverCatalogSection: View {
 
             sectionHeader(title: title, count: filtered.count)
 
-            filterBar
+            filterBar(equipmentOptions: Array(Set(all.map(\.equipment))).sorted())
 
             if filtered.isEmpty {
                 GlassCard {
@@ -1617,11 +1637,16 @@ private struct DiscoverCatalogSection: View {
         }
     }
 
-    private var filterBar: some View {
+    private func filterBar(equipmentOptions: [String]) -> some View {
         HStack(spacing: 8) {
             filterMenu("Level", selection: $levelFilter, options: [DemoDifficulty.beginner, .moderate, .advanced]) { $0.rawValue }
             filterMenu("Time", selection: $durationFilter, options: Self.durationBuckets) { $0 }
-            filterMenu("Equipment", selection: $equipmentFilter, options: ["Bodyweight", "Dumbbells", "Full Gym"]) { $0 }
+            // Options mirror the style's real data — the hardcoded bucket
+            // list made every equipment chip a dead end for the bridged
+            // sport-specific templates ("Ball + cones" is not "Full Gym").
+            if equipmentOptions.count > 1 {
+                filterMenu("Equipment", selection: $equipmentFilter, options: equipmentOptions) { $0 }
+            }
             Spacer()
         }
     }
@@ -2171,7 +2196,9 @@ private struct SavedWorkoutsLibraryCard: View {
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text("Save coach and athlete workouts from around Morphe, then run them solo, with a buddy, or turn them into your own copy.")
+                Text(FeatureFlags.multiUserEnabled
+                    ? "Save coach and athlete workouts from around Morphe, then run them solo, with a buddy, or turn them into your own copy."
+                    : "Save workouts from Discover — or your own builds — then run them or turn them into a copy you can edit.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -2327,7 +2354,9 @@ private struct SavedWorkoutsLibraryCard: View {
                                 MetricPill(label: "Saved", value: MorpheAppStore.workoutDateLabel(for: item.savedAt))
                                 MetricPill(label: "Completed", value: "\(insight.completionCount)x")
                                 MetricPill(label: "Last run", value: insight.lastCompletedAt.map(MorpheAppStore.workoutDateLabel(for:)) ?? "Not yet")
-                                MetricPill(label: "Mode", value: insight.hasBuddyCompletion ? "Buddy tried" : "Solo ready")
+                                if FeatureFlags.multiUserEnabled {
+                                    MetricPill(label: "Mode", value: insight.hasBuddyCompletion ? "Buddy tried" : "Solo ready")
+                                }
                             }
 
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {

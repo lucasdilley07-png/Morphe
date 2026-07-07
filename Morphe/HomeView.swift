@@ -309,11 +309,12 @@ private struct TodayStatusStrip: View {
                         MetricPill(label: "Energy", value: hasCheckedIn ? "\(recovery.energy)/10" : "—")
                     }
 
-                    Text("Plan by \(coachName) • \(morpheDetail)")
+                    // "Plan by" already sits top-right in this card.
+                    Text(morpheDetail)
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                 } else {
-                    Text("Your Morphe Score, readiness, and streak show up here once you log your first workout.")
+                    Text("Your Morphe Score, readiness, and energy show up here once you log your first workout.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

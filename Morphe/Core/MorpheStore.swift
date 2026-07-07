@@ -508,15 +508,6 @@ final class MorpheAppStore {
             selectedRole = role
         }
 
-        // A returning coach gets THEIR identity in the workspace header —
-        // without this, every relaunch reverted to demo "Coach Marcus".
-        if selectedRole == .coach {
-            let handle = snapshot.username.isEmpty
-                ? snapshot.name.lowercased().filter { $0.isLetter || $0.isNumber }
-                : snapshot.username
-            applyCoachIdentity(name: snapshot.name, handle: handle)
-        }
-
         clientProfile.name = snapshot.name
         if let gender = GenderOption(rawValue: snapshot.gender) {
             clientProfile.gender = gender
@@ -530,6 +521,18 @@ final class MorpheAppStore {
         if !snapshot.selectedGoals.isEmpty {
             clientProfile.selectedGoals = snapshot.selectedGoals
         }
+
+        // A returning coach gets THEIR identity in the workspace header.
+        // Must run AFTER the sports/goals restore above — calling it earlier
+        // stamped the DEMO athlete's sports into the coach's specialty on
+        // every relaunch (the exact leak the identity fix was meant to close).
+        if selectedRole == .coach {
+            let handle = snapshot.username.isEmpty
+                ? snapshot.name.lowercased().filter { $0.isLetter || $0.isNumber }
+                : snapshot.username
+            applyCoachIdentity(name: snapshot.name, handle: handle)
+        }
+
         clientProfile.goal = snapshot.goal
         clientProfile.physicalGoalTarget = snapshot.physicalGoalTarget
         clientProfile.weightGoalTarget = snapshot.weightGoalTarget
@@ -825,24 +828,29 @@ final class MorpheAppStore {
         )
         workoutTemplates.insert(template, at: 0)
         customWorkoutIDs.insert(template.id)
-        currentWorkoutID = template.id
         persistWorkoutLibrary()
+        // Stage through the gate + setCurrentWorkout: the old bare id write
+        // left a finished-session flag pointing at the new build, which "Log
+        // Workout" then wrote to history as performed. If the user cancels,
+        // the workout still exists in their library — only staging is skipped.
+        confirmDiscardingSessionWork("Switch to \(template.name)?") { [weak self] in
+            self?.setCurrentWorkout(template)
+        }
         showToast("\(template.name) created. Start it from Current plan.")
     }
 
     /// Deletes one of the user's custom workouts.
+    /// Deletion is confirmed at the VIEW level with delete-specific copy
+    /// (the session gate's "discard and continue" wording never said the
+    /// workout itself dies). This performs unconditionally.
     func deleteCustomWorkout(_ id: UUID) {
         guard customWorkoutIDs.contains(id) else { return }
-        if currentWorkoutID == id, hasUnsavedSessionWork {
-            confirmDiscardingSessionWork("Delete this workout?") { [weak self] in
-                self?.performDeleteCustomWorkout(id)
-            }
-        } else {
-            performDeleteCustomWorkout(id)
-        }
+        performDeleteCustomWorkout(id)
     }
 
     private func performDeleteCustomWorkout(_ id: UUID) {
+        let name = workoutTemplates.first(where: { $0.id == id })?.name ?? "Workout"
+        defer { showToast("\(name) deleted.") }
         workoutTemplates.removeAll { $0.id == id }
         customWorkoutIDs.remove(id)
         // Saved-library cards pointing at the deleted template would error on
@@ -1857,6 +1865,7 @@ final class MorpheAppStore {
         nutrition.caloriesConsumed = 0
         nutrition.proteinConsumed = 0
         nutrition.waterConsumed = 0
+        nutrition.nutritionScore = 0
         nutrition.meals = []
         nutrition.weeklyProteinTrend = []
 
@@ -2089,7 +2098,9 @@ final class MorpheAppStore {
         lastDailyResetDay = today
 
         for index in todayTasks.indices { todayTasks[index].isCompleted = false }
-        for index in minimumWinTasks.indices { minimumWinTasks[index].isCompleted = false }
+        // Fresh defaults, not just unchecked — so a Plan B response that ever
+        // swaps in reason-specific tasks can't leak them into the next day.
+        minimumWinTasks = MorpheDemoContent.minimumWinTasks
         minimumWinModeEnabled = false
         streakProtected = false
         didCompleteQuickCheckIn = false
@@ -2105,6 +2116,7 @@ final class MorpheAppStore {
         nutrition.caloriesConsumed = 0
         nutrition.proteinConsumed = 0
         nutrition.waterConsumed = 0
+        nutrition.nutritionScore = 0
         nutrition.meals = []
         recovery = Self.neutralRecovery
 
@@ -2649,6 +2661,15 @@ final class MorpheAppStore {
             return
         }
 
+        // Sets already logged under this exercise are keyed by its id — a
+        // swap would silently drop them from the recap and the final log.
+        let loggedSets = max(trackedSetReps[exercise.id, default: []].count,
+                             completedWorkoutSets[exercise.id, default: 0])
+        guard loggedSets == 0 else {
+            showToast("\(exercise.name) already has \(loggedSets) logged set\(loggedSets == 1 ? "" : "s") — finish it or remove them before swapping.")
+            return
+        }
+
         updateCurrentWorkout { workout in
             guard let index = workout.exercises.firstIndex(where: { $0.id == exercise.id }) else { return }
             var replacementExercise = MorpheDemoContent.makeWorkoutExercise(replacement.id, sets: exercise.sets, reps: exercise.reps)
@@ -3156,6 +3177,15 @@ final class MorpheAppStore {
                 closeAIAgent()
                 return "You're already mid-session — it's open in Train."
             }
+            // Chat never queues a destructive confirmation (same rule as
+            // discard): claiming "Done" while the gate is pending recorded a
+            // success that may never happen — and dismissing this sheet could
+            // cancel the queued action through the dialog binding.
+            guard !hasUnsavedSessionWork else {
+                selectedClientTab = .train
+                closeAIAgent()
+                return "You have a finished session that isn't logged yet — log it (or discard it) in Train first, then start the new one."
+            }
             startTodayWorkout()
             closeAIAgent()
             return "Done — \(currentWorkout.name) is live in Train. Log your first set when you're ready."
@@ -3207,7 +3237,7 @@ final class MorpheAppStore {
         if has("discover", "browse workouts", "find a workout", "catalog", "new workout") {
             selectedClientTab = .discover
             closeAIAgent()
-            return "Opened Discover — \(discoverWorkouts.count) workouts filtered by training type, level, time, and equipment."
+            return "Opened Discover — pick a training style to browse its workouts."
         }
         if has("library", "exercise", "form guide", "anatomy") {
             openMore(.library)
@@ -3294,8 +3324,13 @@ final class MorpheAppStore {
             showToast("That saved workout is no longer available.")
             return
         }
-        partnerWorkoutEnabled = true
-        beginLiveWorkout(template)
+        // Inside the gate: flipping partner mode before confirmation left it
+        // on against the EXISTING session when the user cancelled.
+        confirmDiscardingSessionWork("Start \(template.name)?") { [weak self] in
+            self?.partnerWorkoutEnabled = true
+            self?.currentWorkoutID = template.id
+            self?.performStartTodayWorkout()
+        }
     }
 
     /// True when Morphe's readiness-based suggestion is a different workout

@@ -100,9 +100,10 @@ struct RootView: View {
                 MorpheAIAgentSheet()
                     .environment(store)
             }
-            // AI actions can hit the session-work gate while this sheet is
-            // frontmost — host the dialog here too so it can present.
-            .sessionWorkGateDialog()
+            // Chat deliberately never queues the session-work gate (it
+            // declines with an honest reply instead), so no dialog host here —
+            // sheet teardown writing through the shared binding could cancel
+            // a pending change.
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .background(PremiumBackground())

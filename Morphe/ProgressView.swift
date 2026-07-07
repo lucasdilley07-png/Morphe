@@ -906,10 +906,10 @@ private struct LogDrivenWeeklySummaryCard: View {
                     .foregroundStyle(.white)
 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
-                    MetricPill(label: "This week", value: "\(summary.workoutsThisWeek)")
+                    MetricPill(label: "Workouts", value: "\(summary.workoutsThisWeek)")
                     MetricPill(label: "Minutes", value: "\(summary.minutesThisWeek)")
                     MetricPill(label: "Average", value: "\(summary.averageDuration) min")
-                    MetricPill(label: "Log streak", value: "\(summary.currentStreakDays) days")
+                    MetricPill(label: "Streak", value: "\(summary.currentStreakDays) days")
                 }
 
                 Text(summary.latestWorkoutTitle)
