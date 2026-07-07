@@ -367,7 +367,7 @@ struct ProfileBannerView: View {
                     )
 
                 Text(banner.title)
-                    .font(.system(.title, design: .rounded).weight(.bold))
+                    .font(.title.weight(.bold))
                     .foregroundStyle(.white)
 
                 Text(banner.subtitle)
@@ -426,7 +426,8 @@ struct ProfileBannerView: View {
         case .transformation: return "sparkles"
         case .recovery: return "heart.text.square.fill"
         case .team: return "person.3.sequence.fill"
-        case .minimalPremium: return "moon.stars.fill"
+        // A moon reads "sleep tracker"; the reticle is the HUD-native mark.
+        case .minimalPremium: return "viewfinder"
         }
     }
 }

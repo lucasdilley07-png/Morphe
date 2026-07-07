@@ -20,12 +20,14 @@ struct LaunchSequenceView: View {
 
             MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 94)
 
-            Text("Morphe")
-                .font(.system(.largeTitle, design: .rounded).weight(.bold))
+            Text("MORPHE")
+                .font(.system(size: 28, design: .monospaced).weight(.bold))
+                .tracking(6)
                 .foregroundStyle(.white)
 
-            Text(message)
-                .font(.headline)
+            Text(message.uppercased())
+                .font(MorpheTheme.microLabel(12))
+                .tracking(1.8)
                 .foregroundStyle(MorpheTheme.textSecondary)
                 .transition(.opacity)
 
@@ -111,8 +113,13 @@ struct OnboardingFlowView: View {
                         if currentStep != .welcome {
                             GlassCard {
                                 VStack(alignment: .leading, spacing: 12) {
+                                    Text("PROFILE SETUP")
+                                        .font(MorpheTheme.microLabel())
+                                        .tracking(1.4)
+                                        .foregroundStyle(MorpheTheme.accent)
+
                                     Text("Create your profile")
-                                        .font(.system(.title, design: .rounded).weight(.bold))
+                                        .font(.title2.weight(.bold))
                                         .foregroundStyle(.white)
 
                                     Text("A few simple choices make the plan feel personal without turning setup into homework.")
@@ -126,8 +133,9 @@ struct OnboardingFlowView: View {
                                         color: MorpheTheme.accent
                                     )
 
-                                    Text("Step \(stepIndex) of \(steps.count - 1)")
-                                        .font(.caption.weight(.semibold))
+                                    Text("STEP \(stepIndex) / \(steps.count - 1)")
+                                        .font(MorpheTheme.microLabel(10))
+                                        .tracking(1.4)
                                         .foregroundStyle(MorpheTheme.textMuted)
                                 }
                             }
@@ -228,8 +236,13 @@ private struct WelcomeLandingStep: View {
 
             GlassCard {
                 VStack(alignment: .leading, spacing: 14) {
+                    Text("GETTING STARTED")
+                        .font(MorpheTheme.microLabel())
+                        .tracking(1.4)
+                        .foregroundStyle(MorpheTheme.accent)
+
                     Text("Welcome to Morphe")
-                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                        .font(.title.weight(.bold))
                         .foregroundStyle(.white)
 
                     Text("Morphe helps you know what to do today, why it matters, and how to keep going when life gets noisy.")
@@ -237,10 +250,10 @@ private struct WelcomeLandingStep: View {
                         .foregroundStyle(MorpheTheme.textSecondary)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        LandingPoint(text: "Create your profile")
-                        LandingPoint(text: "Pick your goal and sport")
-                        LandingPoint(text: "Set your weekly schedule")
-                        LandingPoint(text: "Morphe builds your starting plan")
+                        LandingPoint(index: 1, text: "Create your profile")
+                        LandingPoint(index: 2, text: "Pick your goal and sport")
+                        LandingPoint(index: 3, text: "Set your weekly schedule")
+                        LandingPoint(index: 4, text: "Morphe builds your starting plan")
                     }
                 }
             }
@@ -249,12 +262,15 @@ private struct WelcomeLandingStep: View {
 }
 
 private struct LandingPoint: View {
+    let index: Int
     let text: String
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "sparkle")
-                .font(.caption.weight(.bold))
+        // Telemetry checklist row: mono index instead of a sparkle glyph.
+        HStack(spacing: 12) {
+            Text(String(format: "%02d", index))
+                .font(MorpheTheme.microLabel(11))
+                .tracking(1.2)
                 .foregroundStyle(MorpheTheme.accent)
             Text(text)
                 .foregroundStyle(.white)
@@ -584,16 +600,18 @@ private struct PersonalizedPlanLoadingView: View {
                 size: 94
             )
 
-            Text("Morphe")
-                .font(.system(.largeTitle, design: .rounded).weight(.bold))
+            Text("MORPHE")
+                .font(.system(size: 28, design: .monospaced).weight(.bold))
+                .tracking(6)
                 .foregroundStyle(.white)
 
             Text(store.onboardingDraft.accountType == .coach ? "Building your coach workspace..." : "Building your personalized plan...")
                 .font(.headline)
                 .foregroundStyle(.white)
 
-            Text(message)
-                .font(.subheadline)
+            Text(message.uppercased())
+                .font(MorpheTheme.microLabel(11))
+                .tracking(1.6)
                 .foregroundStyle(MorpheTheme.textSecondary)
                 .transition(.opacity)
 
