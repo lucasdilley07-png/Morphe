@@ -78,6 +78,8 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var completedTaskTitlesToday: [String] = []
     // Days protected with a minimum win — they count in the streak.
     var protectedDayKeys: [String] = []
+    // Where the user is in their catalog-backed daily-plan rotation.
+    var planDayIndex: Int = 0
     // Minimum-win completions are day-scoped like task titles; without them a
     // same-day relaunch re-offered the task unchecked while keeping the XP —
     // an infinite XP faucet.
@@ -160,6 +162,7 @@ extension LocalProfileSnapshot {
         dailyStateDay = str(.dailyStateDay)
         completedTaskTitlesToday = arr(.completedTaskTitlesToday)
         protectedDayKeys = arr(.protectedDayKeys)
+        planDayIndex = ((try? c.decodeIfPresent(Int.self, forKey: .planDayIndex)) ?? nil) ?? 0
         schemaVersion = ((try? c.decodeIfPresent(Int.self, forKey: .schemaVersion)) ?? nil) ?? 1
         completedMinimumWinTitlesToday = arr(.completedMinimumWinTitlesToday)
         minimumWinModeEnabled = ((try? c.decodeIfPresent(Bool.self, forKey: .minimumWinModeEnabled)) ?? nil) ?? false

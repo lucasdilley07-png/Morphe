@@ -168,6 +168,15 @@ final class MorpheAppStore {
     /// The bundled Discover catalog (Morphe Programs) — browsable, separate
     /// from workoutTemplates so pickers/cycling aren't flooded by 273 entries.
     var catalogWorkouts: [WorkoutTemplate] = []
+
+    /// The personalized daily-plan rotation (catalog workout ids), rebuilt
+    /// deterministically from the user's level + equipment and sequenced by
+    /// focus so consecutive days differ. Empty until onboarding / catalog load;
+    /// staging then falls back to the seeded templates.
+    var personalizedPlanIDs: [UUID] = []
+    /// Which entry of the rotation is staged as today's workout. Advances each
+    /// new day while the user is still following the auto-plan.
+    var planDayIndex: Int = 0
     /// Saved-from-Discover ids restored from disk, reapplied after demo clears.
     private var persistedSavedCatalogIDs: [String] = []
     private var persistedSavedTemplates: [SavedTemplateSnapshot] = []
@@ -689,6 +698,13 @@ final class MorpheAppStore {
         protectedDayKeys = Set(snapshot.protectedDayKeys)
         streakProtected = protectedDayKeys.contains(Self.dayKey())
 
+        // Rebuild the daily-plan rotation from the restored level + equipment
+        // (deterministic, so the same profile yields the same plan) and restore
+        // where in it the user was. Staging isn't done here — the session
+        // snapshot restores the actual currentWorkout; rollover advances it.
+        planDayIndex = max(0, snapshot.planDayIndex)
+        rebuildPersonalizedPlan()
+
         // History/consistency/score/streak were derived in init against the seeded
         // id; rebuild them now that the user's real identity is restored.
         refreshWorkoutLogDerivedState(for: clientProfile.id)
@@ -734,6 +750,7 @@ final class MorpheAppStore {
                 dailyStateDay: lastDailyResetDay,
                 completedTaskTitlesToday: todayTasks.filter(\.isCompleted).map(\.title),
                 protectedDayKeys: Array(protectedDayKeys),
+                planDayIndex: planDayIndex,
                 completedMinimumWinTitlesToday: minimumWinTasks.filter(\.isCompleted).map(\.title),
                 minimumWinModeEnabled: minimumWinModeEnabled,
                 selectedPlanBReason: selectedPlanBReason?.rawValue ?? "",
@@ -1765,12 +1782,17 @@ final class MorpheAppStore {
             )
         }
 
-        // Personalize the first staged workout: the plan-generation step
-        // claims to match sport and level, so the picks must actually land —
-        // an advanced boxer should not open the app to "Beginner Full Body
-        // Strength" like everyone else.
-        if let firstWorkout = bestFirstWorkout(sport: primarySport, level: onboardingDraft.experienceLevel) {
-            currentWorkoutID = firstWorkout.id
+        // Today's plan draws from the 348-workout catalog, matched to the
+        // user's level and rotated by focus day to day — the plan-generation
+        // step promises "matched to your sport and level," so it must actually
+        // pull from real, varied content instead of the same 5 seeds. Seeded
+        // templates remain the fallback when the catalog isn't available.
+        rebuildPersonalizedPlan()
+        planDayIndex = 0
+        if !stagePlanWorkout() {
+            if let firstWorkout = bestFirstWorkout(sport: primarySport, level: onboardingDraft.experienceLevel) {
+                currentWorkoutID = firstWorkout.id
+            }
         }
 
         // The welcome sheet IS the completion celebration — the toast overlay
@@ -1806,6 +1828,98 @@ final class MorpheAppStore {
             ?? sportMatches.first
             ?? trainable.first(where: { $0.difficulty == target })
             ?? trainable.first
+    }
+
+    // MARK: - Personalized daily plan (catalog-backed)
+
+    private func planTargetDifficulty(for level: String) -> DemoDifficulty {
+        let l = level.lowercased()
+        if l.contains("begin") { return .beginner }
+        if l.contains("adv") { return .advanced }
+        return .moderate
+    }
+
+    /// Soft equipment ranking from the user's free-text setup — a preference
+    /// for ordering, never an exclusion (the onboarding equipment field is
+    /// unstructured, so filtering on it would wrongly drop content).
+    private func equipmentPreferenceOrder() -> [String] {
+        let e = clientProfile.equipment.lowercased()
+        if e.contains("gym") { return ["Full Gym", "Dumbbells", "Bodyweight"] }
+        if e.contains("dumbbell") || e.contains("home") { return ["Dumbbells", "Bodyweight", "Full Gym"] }
+        if e.contains("body") || e.isEmpty { return ["Bodyweight", "Dumbbells", "Full Gym"] }
+        return ["Dumbbells", "Bodyweight", "Full Gym"]
+    }
+
+    /// Rebuilds the daily-plan rotation from the catalog: filtered to the
+    /// user's level, ranked by equipment preference, and round-robined across
+    /// focus (Full Body / Legs / Push / Pull / Conditioning / Core) so each
+    /// day changes focus and many distinct workouts pass before any repeat.
+    func rebuildPersonalizedPlan() {
+        let level = planTargetDifficulty(for: clientProfile.fitnessLevel)
+        let trainable = catalogWorkouts.filter {
+            $0.difficulty == level && $0.durationMinutes >= 20 && $0.focusTag != "Recovery"
+        }
+        guard !trainable.isEmpty else { personalizedPlanIDs = []; return }
+
+        let pref = equipmentPreferenceOrder()
+        func rank(_ t: WorkoutTemplate) -> Int { pref.firstIndex(of: t.equipment) ?? pref.count }
+
+        let focusOrder = ["Full Body", "Legs", "Push", "Pull", "Conditioning", "Core"]
+        let buckets: [[WorkoutTemplate]] = focusOrder
+            .map { focus in
+                trainable.filter { $0.focusTag == focus }
+                    .sorted { rank($0) != rank($1) ? rank($0) < rank($1) : $0.name < $1.name }
+            }
+            .filter { !$0.isEmpty }
+        guard !buckets.isEmpty else { personalizedPlanIDs = []; return }
+
+        var sequence: [UUID] = []
+        var round = 0
+        let maxLength = 24
+        while sequence.count < maxLength {
+            var addedThisRound = false
+            for bucket in buckets where round < bucket.count {
+                sequence.append(bucket[round].id)
+                addedThisRound = true
+                if sequence.count >= maxLength { break }
+            }
+            if !addedThisRound { break }
+            round += 1
+        }
+        personalizedPlanIDs = sequence
+    }
+
+    /// Stages the plan workout at `planDayIndex` as today's workout. Returns
+    /// false (a no-op) when the plan is empty so callers can fall back.
+    @discardableResult
+    func stagePlanWorkout() -> Bool {
+        guard !personalizedPlanIDs.isEmpty else { return false }
+        let idx = ((planDayIndex % personalizedPlanIDs.count) + personalizedPlanIDs.count) % personalizedPlanIDs.count
+        guard let template = catalogWorkouts.first(where: { $0.id == personalizedPlanIDs[idx] }) else { return false }
+        ensureCatalogWorkoutInLibrary(template)
+        currentWorkoutID = template.id
+        isWorkoutSessionActive = false
+        hasStartedWorkoutFlow = false
+        hasCompletedWorkoutFlow = false
+        activeWorkoutExerciseIndex = 0
+        completedWorkoutSets = [:]
+        trackedSetReps = [:]
+        trackedSetWeights = [:]
+        trackedSetRPE = [:]
+        return true
+    }
+
+    /// On a new day, rotate today's plan to the next focus — but only while the
+    /// user is still following the auto-plan (currentWorkout is a plan entry),
+    /// nothing is in progress, and today isn't already logged. If they switched
+    /// to a saved or custom workout, that hand-picked choice is left alone.
+    private func advancePlanForNewDayIfOnPlan() {
+        guard !personalizedPlanIDs.isEmpty,
+              !hasUnsavedSessionWork,
+              !isWorkoutLoggedToday,
+              personalizedPlanIDs.contains(currentWorkoutID) else { return }
+        planDayIndex = (planDayIndex + 1) % personalizedPlanIDs.count
+        stagePlanWorkout()
     }
 
     /// Resets the signed-in user to a clean, empty account: a brand-new identity
@@ -2149,6 +2263,9 @@ final class MorpheAppStore {
         // "Logged today", streak, and score are date-derived — recompute them
         // against the new day instead of trusting launch-time values.
         refreshWorkoutLogDerivedState(for: clientProfile.id)
+
+        // A new day = a different workout, so day 3 isn't a rerun of day 1.
+        advancePlanForNewDayIfOnPlan()
 
         if hasCompletedOnboarding { persistLocalProfile() }
     }

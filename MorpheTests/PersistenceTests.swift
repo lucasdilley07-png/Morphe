@@ -1455,8 +1455,14 @@ final class MetricsTests: XCTestCase {
         store.onboardingDraft.experienceLevel = .advanced
         store.completeOnboarding()
 
-        XCTAssertEqual(store.currentWorkout.sport, .boxing,
-                       "the first staged workout matches the chosen sport, not the first seeded template")
+        // Today's plan now draws from the 348-workout catalog, matched to the
+        // user's LEVEL. The generated catalog is sport-agnostic (sport-specific
+        // sessions live in Discover), so personalization is by level + variety,
+        // not by staging one repeated sport seed.
+        XCTAssertTrue(store.catalogWorkouts.contains { $0.id == store.currentWorkout.id },
+                      "the first workout is a catalog workout, not a repeated seed")
+        XCTAssertEqual(store.currentWorkout.difficulty, .advanced,
+                       "and it matches the chosen level")
     }
 
     func testOnboardingStagesARealTrainingSession() {
@@ -2287,5 +2293,98 @@ final class FormAnalyzerTests: XCTestCase {
         XCTAssertEqual(all.count, 2)
         XCTAssertEqual(all.first?.reps, 6, "newest first")
         XCTAssertEqual(store.bestDepthAngle(), 82, "smallest angle = deepest rep")
+    }
+}
+
+/// "Today's plan" now draws from the 348-workout catalog, matched to the
+/// user's level and rotated by focus day to day.
+@MainActor
+final class DailyPlanTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    override func tearDown() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        super.tearDown()
+    }
+
+    private func onboard(level: ExperienceLevelOption) -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.onboardingDraft.experienceLevel = level
+        store.completeOnboarding()
+        return store
+    }
+
+    func testOnboardingStagesACatalogWorkout() {
+        let store = onboard(level: .beginner)
+        XCTAssertFalse(store.personalizedPlanIDs.isEmpty, "a plan is built from the catalog")
+        XCTAssertTrue(store.catalogWorkouts.contains { $0.id == store.currentWorkout.id },
+                      "Today's workout is a catalog workout, not one of the five seeds")
+    }
+
+    func testPlanIsFilteredToTheUsersLevel() {
+        let store = onboard(level: .beginner)
+        for id in store.personalizedPlanIDs {
+            XCTAssertEqual(store.catalogWorkouts.first { $0.id == id }?.difficulty, .beginner)
+        }
+    }
+
+    func testConsecutivePlanDaysChangeFocus() {
+        let store = onboard(level: .intermediate)
+        let focuses = store.personalizedPlanIDs.prefix(4).compactMap { id in
+            store.catalogWorkouts.first { $0.id == id }?.focusTag
+        }
+        XCTAssertGreaterThanOrEqual(focuses.count, 2)
+        XCTAssertNotEqual(focuses[0], focuses[1], "day 2 must not repeat day 1's focus")
+    }
+
+    func testNewDayStagesTheNextPlanWorkout() {
+        let store = onboard(level: .intermediate)
+        let day1 = store.currentWorkout.id
+        XCTAssertEqual(store.planDayIndex, 0)
+
+        store.handleDayRolloverIfNeeded(now: Date.now.addingTimeInterval(86_400))
+
+        XCTAssertEqual(store.planDayIndex, 1)
+        XCTAssertNotEqual(store.currentWorkout.id, day1, "a new day is a different workout")
+        XCTAssertEqual(store.currentWorkout.id, store.personalizedPlanIDs[1])
+    }
+
+    func testHandPickedWorkoutSurvivesDayRollover() {
+        let store = onboard(level: .intermediate)
+        let ex = Array(store.allExercises.prefix(2))
+        store.createCustomWorkout(name: "My Own Day", sport: .strength,
+            items: ex.map { CustomWorkoutItem(exercise: $0, sets: 3, reps: 8) })
+        let custom = store.workoutTemplates.first { $0.name == "My Own Day" }!
+        XCTAssertEqual(store.currentWorkout.id, custom.id)
+        XCTAssertFalse(store.personalizedPlanIDs.contains(custom.id))
+
+        store.handleDayRolloverIfNeeded(now: Date.now.addingTimeInterval(86_400))
+
+        XCTAssertEqual(store.currentWorkout.id, custom.id,
+                       "a workout the user chose themselves must not be auto-rotated away")
+    }
+
+    func testPlanPositionIsPersistedAndRebuildsOnRelaunch() {
+        let store = onboard(level: .intermediate)
+        store.handleDayRolloverIfNeeded(now: Date.now.addingTimeInterval(86_400))
+        XCTAssertEqual(store.planDayIndex, 1)
+
+        XCTAssertEqual(ProfileFilePersistence().loadProfile()?.planDayIndex, 1,
+                       "the plan position is persisted")
+
+        // A relaunch rebuilds the plan and stages a valid catalog workout. (A
+        // genuinely new calendar day legitimately advances the index again, so
+        // this asserts a working plan, not a frozen index.)
+        let reloaded = MorpheAppStore()
+        XCTAssertFalse(reloaded.personalizedPlanIDs.isEmpty, "the plan rebuilds on relaunch")
+        XCTAssertTrue(reloaded.catalogWorkouts.contains { $0.id == reloaded.currentWorkout.id },
+                      "a catalog plan workout is staged after relaunch")
     }
 }
