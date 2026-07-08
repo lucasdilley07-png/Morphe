@@ -20,6 +20,7 @@ struct WorkoutView: View {
     @State private var showSessionQueue = false
     @State private var showHistory = false
     @State private var showBuilder = false
+    @State private var showFormCheck = false
 
     private var deleteWorkoutDialogTitle: String {
         guard let template = workoutPendingDelete else { return "Delete this workout?" }
@@ -79,6 +80,9 @@ struct WorkoutView: View {
         .sheet(isPresented: $showBuilder) {
             WorkoutBuilderSheet()
                 .environment(store)
+        }
+        .fullScreenCover(isPresented: $showFormCheck) {
+            FormCheckView()
         }
     }
 
@@ -263,6 +267,10 @@ struct WorkoutView: View {
                         ? "Session finished — review what you logged, rate it, and lock it in."
                         : "Start the session, log sets in the console, then rate it and lock it in."
                 )
+
+                if !store.hasCompletedWorkoutFlow {
+                    FormCheckLaunchCard { showFormCheck = true }
+                }
 
                 // Right after a finish, reviewing and logging IS the task —
                 // it leads the screen instead of hiding below planning cards.
@@ -825,6 +833,38 @@ private struct LiveWorkoutConsoleCard: View {
                 }
 
                 WorkoutRestControlBar(seconds: $restSeconds, isRunning: $restRunning)
+            }
+        }
+    }
+}
+
+/// Entry point for the camera form coach (Phase 1: framing + reps).
+private struct FormCheckLaunchCard: View {
+    let onStart: () -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "figure.strengthtraining.functional")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.accent)
+                    Text("FORM CHECK · BETA")
+                        .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                        .foregroundStyle(MorpheTheme.accent)
+                    Spacer()
+                }
+
+                Text("Set your phone up and train in frame")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Morphe uses the front camera to keep you framed and count your reps. On-device only — video never leaves your phone.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                Button("Open Form Check", action: onStart)
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
             }
         }
     }
