@@ -2218,3 +2218,74 @@ final class CleanupRegressionTests: XCTestCase {
                        "a sportless coach must never inherit the demo athlete's sports")
     }
 }
+
+/// Form Check Phase 2 — the cue analyzer is a pure function of rep metrics, so
+/// the advice logic is verified here even though the camera can't run on the
+/// Simulator.
+final class FormAnalyzerTests: XCTestCase {
+
+    private func rep(angle: CGFloat, valgus: CGFloat? = 1.0, descent: Double = 2.0) -> FormRepMetrics {
+        FormRepMetrics(minKneeAngle: angle, valgusRatio: valgus, descentSeconds: descent, ascentSeconds: 1.5)
+    }
+
+    func testCleanSetPraisesDepthAndFlagsNothingElse() {
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88), count: 5))
+        XCTAssertEqual(s.reps, 5)
+        XCTAssertEqual(Int(s.bestMinKneeAngle), 88)
+        XCTAssertTrue(s.cues.contains { $0.category == .depth && $0.tone == .good })
+        XCTAssertFalse(s.cues.contains { $0.category == .knees })
+        XCTAssertFalse(s.cues.contains { $0.category == .tempo })
+    }
+
+    func testShallowRepsSuggestGoingLower() {
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 125), count: 5))
+        XCTAssertTrue(s.cues.contains { $0.category == .depth && $0.tone == .suggestion })
+    }
+
+    func testCavingKneesLeadTheCues() {
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, valgus: 0.8), count: 5))
+        XCTAssertEqual(s.cues.first?.category, .knees, "the injury-relevant cue must lead")
+    }
+
+    func testFastDescentSuggestsControl() {
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, descent: 0.3), count: 5))
+        XCTAssertTrue(s.cues.contains { $0.category == .tempo })
+    }
+
+    func testUnmeasuredValgusIsNeverFlagged() {
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, valgus: nil), count: 5))
+        XCTAssertFalse(s.cues.contains { $0.category == .knees }, "can't flag what the camera couldn't measure")
+    }
+
+    func testCuesCapAtThreeKneesFirst() {
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 125, valgus: 0.8, descent: 0.3), count: 5))
+        XCTAssertLessThanOrEqual(s.cues.count, 3)
+        XCTAssertEqual(s.cues.first?.category, .knees)
+        XCTAssertTrue(s.cues.contains { $0.category == .depth && $0.tone == .suggestion })
+        XCTAssertTrue(s.cues.contains { $0.category == .tempo })
+    }
+
+    func testEmptySetHasNoCues() {
+        let s = FormAnalyzer.analyze([])
+        XCTAssertEqual(s.reps, 0)
+        XCTAssertTrue(s.cues.isEmpty)
+    }
+
+    func testLiveCueReflectsTheWorstIssue() {
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 88, valgus: 0.7), repNumber: 3).contains("caved"))
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 130), repNumber: 2).contains("above parallel"))
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 88), repNumber: 1).contains("clean"))
+    }
+
+    func testHistoryRoundTripAndDeepestBest() {
+        let store = FormCheckFilePersistence(directoryName: "MorpheTests-\(#function)")
+        defer { store.clear() }
+        XCTAssertTrue(store.load().isEmpty)
+        store.append(FormCheckResult(date: 1, exercise: "Squat", reps: 5, avgMinKneeAngle: 95, bestMinKneeAngle: 90, cues: ["a"]))
+        store.append(FormCheckResult(date: 2, exercise: "Squat", reps: 6, avgMinKneeAngle: 88, bestMinKneeAngle: 82, cues: []))
+        let all = store.load()
+        XCTAssertEqual(all.count, 2)
+        XCTAssertEqual(all.first?.reps, 6, "newest first")
+        XCTAssertEqual(store.bestDepthAngle(), 82, "smallest angle = deepest rep")
+    }
+}

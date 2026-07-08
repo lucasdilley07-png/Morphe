@@ -61,6 +61,164 @@ enum FramingState: Equatable {
     var isTrackable: Bool { self == .good }
 }
 
+// MARK: Form metrics + rule-based cue analysis (Phase 2)
+//
+// The analyzer is a PURE function of per-rep metrics — no camera, no state —
+// so the advice logic is fully unit-testable even though the pose pipeline
+// only runs on a device. Cues are framed as observations + suggestions, never
+// diagnoses; form checking is safety-adjacent and the honesty bar is highest
+// here.
+
+/// What the camera measured for one rep of a squat.
+struct FormRepMetrics: Equatable {
+    /// Deepest (smallest) interior knee angle reached. ~90° ≈ parallel.
+    var minKneeAngle: CGFloat
+    /// Knee-spread ÷ ankle-spread at the bottom. < ~0.85 = knees caving in.
+    /// nil when both knees + ankles weren't confidently visible.
+    var valgusRatio: CGFloat?
+    var descentSeconds: Double
+    var ascentSeconds: Double
+}
+
+struct FormCue: Equatable {
+    enum Category: String { case knees, depth, tempo, consistency }
+    enum Tone { case good, suggestion }
+    var category: Category
+    var tone: Tone
+    var message: String
+}
+
+struct FormSetSummary: Equatable {
+    var reps: Int
+    var avgMinKneeAngle: CGFloat
+    var bestMinKneeAngle: CGFloat   // smallest angle = deepest rep
+    var cues: [FormCue]
+}
+
+enum FormAnalyzer {
+    // Thresholds are honest heuristics from squat coaching, not medical limits.
+    static let shallowAngle: CGFloat = 110      // above this ≈ not yet parallel
+    static let valgusRatio: CGFloat = 0.85      // below this ≈ knees caving
+    static let fastDescent: Double = 0.6        // faster than this ≈ dropping
+
+    static func analyze(_ metrics: [FormRepMetrics]) -> FormSetSummary {
+        guard !metrics.isEmpty else {
+            return FormSetSummary(reps: 0, avgMinKneeAngle: 0, bestMinKneeAngle: 0, cues: [])
+        }
+        let n = metrics.count
+        let angles = metrics.map(\.minKneeAngle)
+        let avg = angles.reduce(0, +) / CGFloat(n)
+        let best = angles.min() ?? 0
+
+        var cues: [FormCue] = []
+
+        // Knees first — it's the injury-relevant cue, so it leads.
+        let valgusValues = metrics.compactMap(\.valgusRatio)
+        let caved = valgusValues.filter { $0 < valgusRatio }.count
+        if valgusValues.count >= 2, Double(caved) / Double(valgusValues.count) > 0.3 {
+            cues.append(FormCue(category: .knees, tone: .suggestion,
+                message: "Push your knees out — they drifted inward on \(caved) rep\(caved == 1 ? "" : "s"), often as you tire."))
+        }
+
+        // Depth.
+        let shallow = angles.filter { $0 > shallowAngle }.count
+        if Double(shallow) / Double(n) > 0.4 {
+            cues.append(FormCue(category: .depth, tone: .suggestion,
+                message: "Try sitting a little lower — \(shallow) of \(n) rep\(n == 1 ? "" : "s") stopped above parallel."))
+        } else {
+            cues.append(FormCue(category: .depth, tone: .good,
+                message: "Good depth — you're getting to about parallel."))
+        }
+
+        // Tempo.
+        let avgDescent = metrics.map(\.descentSeconds).reduce(0, +) / Double(n)
+        if avgDescent > 0, avgDescent < fastDescent {
+            cues.append(FormCue(category: .tempo, tone: .suggestion,
+                message: "Control the way down — you're dropping fast; aim for about two seconds."))
+        }
+
+        // At most three cues so it reads as coaching, not a wall of text.
+        return FormSetSummary(reps: n, avgMinKneeAngle: avg, bestMinKneeAngle: best,
+                              cues: Array(cues.prefix(3)))
+    }
+
+    /// One-line feedback for the rep that just finished (shown live).
+    static func liveCue(for m: FormRepMetrics, repNumber: Int) -> String {
+        if let v = m.valgusRatio, v < valgusRatio { return "Rep \(repNumber) · knees caved in" }
+        if m.minKneeAngle > shallowAngle { return "Rep \(repNumber) · a little above parallel" }
+        return "Rep \(repNumber) · clean"
+    }
+}
+
+// MARK: Persisted form-check history (isolated from the workout-log store)
+
+struct FormCheckResult: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var date: Double                 // timeIntervalSince1970
+    var exercise: String
+    var reps: Int
+    var avgMinKneeAngle: Double
+    var bestMinKneeAngle: Double
+    var cues: [String]
+
+    init(id: UUID = UUID(), date: Double, exercise: String, reps: Int,
+         avgMinKneeAngle: Double, bestMinKneeAngle: Double, cues: [String]) {
+        self.id = id; self.date = date; self.exercise = exercise; self.reps = reps
+        self.avgMinKneeAngle = avgMinKneeAngle; self.bestMinKneeAngle = bestMinKneeAngle; self.cues = cues
+    }
+
+    // Tolerant decode — one bad field can't nil the whole history.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = ((try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? nil) ?? UUID()
+        date = ((try? c.decodeIfPresent(Double.self, forKey: .date)) ?? nil) ?? 0
+        exercise = ((try? c.decodeIfPresent(String.self, forKey: .exercise)) ?? nil) ?? "Squat"
+        reps = ((try? c.decodeIfPresent(Int.self, forKey: .reps)) ?? nil) ?? 0
+        avgMinKneeAngle = ((try? c.decodeIfPresent(Double.self, forKey: .avgMinKneeAngle)) ?? nil) ?? 0
+        bestMinKneeAngle = ((try? c.decodeIfPresent(Double.self, forKey: .bestMinKneeAngle)) ?? nil) ?? 0
+        cues = ((try? c.decodeIfPresent([String].self, forKey: .cues)) ?? nil) ?? []
+    }
+}
+
+/// Standalone, versioned, tolerant persistence — deliberately NOT wired into
+/// the god-object store or the workout-log/streak/XP paths.
+final class FormCheckFilePersistence {
+    private struct Wrapper: Codable { var schemaVersion: Int; var results: [FormCheckResult] }
+    private let url: URL
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
+
+    init(directoryName: String = "MorpheStore") {
+        let base = (try? FileManager.default.url(for: .applicationSupportDirectory,
+                                                 in: .userDomainMask, appropriateFor: nil, create: true))
+            ?? FileManager.default.temporaryDirectory
+        let dir = base.appendingPathComponent(directoryName, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        url = dir.appendingPathComponent("form-check-history.json")
+    }
+
+    func load() -> [FormCheckResult] {
+        guard let data = try? Data(contentsOf: url) else { return [] }
+        if let w = try? decoder.decode(Wrapper.self, from: data) { return w.results }
+        return []   // unreadable → empty, never a crash
+    }
+
+    func append(_ result: FormCheckResult) {
+        var all = load()
+        all.insert(result, at: 0)
+        if let data = try? encoder.encode(Wrapper(schemaVersion: 1, results: all)) {
+            try? data.write(to: url, options: [.atomic])
+        }
+    }
+
+    /// Deepest rep ever recorded (smallest angle), for the "personal best" line.
+    func bestDepthAngle() -> Double? {
+        load().map(\.bestMinKneeAngle).filter { $0 > 0 }.min()
+    }
+
+    func clear() { try? FileManager.default.removeItem(at: url) }
+}
+
 // MARK: Camera + Vision session
 
 @Observable
@@ -85,9 +243,18 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     private let poseRequest = VNDetectHumanBodyPoseRequest()
     private var isConfigured = false
 
-    // Rep-counting state machine (knee-angle based for the squat).
+    // Per-rep feedback (Phase 2).
+    private(set) var repMetrics: [FormRepMetrics] = []
+    private(set) var liveCue: String?
+
+    // Rep-counting + metric-capture state machine (knee-angle based, squat).
     private var repPhase: RepPhase = .up
     private enum RepPhase { case up, down }
+    private var descentStartT: Double?
+    private var minAngleThisRep: CGFloat = .greatestFiniteMagnitude
+    private var bottomT: Double = 0
+    private var bottomPose: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+    private let history = FormCheckFilePersistence()
 
     init(exercise: FormCheckExercise) {
         self.exercise = exercise
@@ -168,6 +335,27 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     func resetReps() {
         repCount = 0
         repPhase = .up
+        descentStartT = nil
+        minAngleThisRep = .greatestFiniteMagnitude
+        repMetrics = []
+        liveCue = nil
+    }
+
+    /// Ends the set, analyzes it, persists the result, and returns the summary
+    /// plus the all-time best depth angle for the review screen.
+    func finishSet() -> (summary: FormSetSummary, bestEverAngle: Double?) {
+        stop()
+        let summary = FormAnalyzer.analyze(repMetrics)
+        if summary.reps > 0 {
+            history.append(FormCheckResult(
+                date: Date().timeIntervalSince1970,
+                exercise: exercise.rawValue,
+                reps: summary.reps,
+                avgMinKneeAngle: Double(summary.avgMinKneeAngle),
+                bestMinKneeAngle: Double(summary.bestMinKneeAngle),
+                cues: summary.cues.map(\.message)))
+        }
+        return (summary, history.bestDepthAngle())
     }
 
     // MARK: Frame processing
@@ -176,6 +364,7 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
                        didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let frameTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
 
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
         try? handler.perform([poseRequest])
@@ -197,13 +386,18 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         }
 
         let framing = Self.framingState(for: mapped)
-        let rep = updateReps(with: mapped, framing: framing)
+        let newRep = updateReps(with: mapped, framing: framing, time: frameTime)
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.joints = mapped
             self.framing = framing
-            if rep { self.repCount += 1; Haptics.impact(.light) }
+            if let metrics = newRep {
+                self.repMetrics.append(metrics)
+                self.repCount += 1
+                self.liveCue = FormAnalyzer.liveCue(for: metrics, repNumber: self.repCount)
+                Haptics.impact(.light)
+            }
         }
     }
 
@@ -224,20 +418,48 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     // MARK: Reps (squat: knee-angle state machine)
 
     private func updateReps(with joints: [VNHumanBodyPoseObservation.JointName: CGPoint],
-                            framing: FramingState) -> Bool {
-        guard framing.isTrackable, let angle = kneeAngle(from: joints) else { return false }
+                            framing: FramingState, time t: Double) -> FormRepMetrics? {
+        guard framing.isTrackable, let angle = kneeAngle(from: joints) else { return nil }
 
-        // Hysteresis: descend past 100° to arm a rep, rise past 155° to bank it.
         switch repPhase {
-        case .up where angle < 100:
-            repPhase = .down
-        case .down where angle > 155:
-            repPhase = .up
-            return true
-        default:
-            break
+        case .up:
+            if angle > 155 {
+                // Standing, or an aborted partial — reset the rep accumulator.
+                descentStartT = nil
+                minAngleThisRep = .greatestFiniteMagnitude
+            } else {
+                if descentStartT == nil { descentStartT = t }   // movement begun
+                if angle < minAngleThisRep {
+                    minAngleThisRep = angle; bottomT = t; bottomPose = joints
+                }
+                if angle < 100 { repPhase = .down }              // deep enough to count
+            }
+        case .down:
+            if angle < minAngleThisRep {
+                minAngleThisRep = angle; bottomT = t; bottomPose = joints
+            }
+            if angle > 155 {
+                let metrics = FormRepMetrics(
+                    minKneeAngle: minAngleThisRep,
+                    valgusRatio: Self.valgusRatio(from: bottomPose),
+                    descentSeconds: max(0, bottomT - (descentStartT ?? bottomT)),
+                    ascentSeconds: max(0, t - bottomT))
+                repPhase = .up
+                descentStartT = nil
+                minAngleThisRep = .greatestFiniteMagnitude
+                return metrics
+            }
         }
-        return false
+        return nil
+    }
+
+    /// Knee-spread ÷ ankle-spread at the bottom pose — the knee-valgus proxy.
+    private static func valgusRatio(from j: [VNHumanBodyPoseObservation.JointName: CGPoint]) -> CGFloat? {
+        guard let lk = j[.leftKnee], let rk = j[.rightKnee],
+              let la = j[.leftAnkle], let ra = j[.rightAnkle] else { return nil }
+        let knee = abs(lk.x - rk.x), ankle = abs(la.x - ra.x)
+        guard ankle > 0.001 else { return nil }
+        return knee / ankle
     }
 
     /// Interior knee angle (hip–knee–ankle), preferring whichever leg is more
@@ -337,6 +559,13 @@ private struct PoseOverlay: View {
 struct FormCheckView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var session: FormCheckSession
+    @State private var summaryPayload: SummaryPayload?
+
+    private struct SummaryPayload: Identifiable {
+        let id = UUID()
+        let summary: FormSetSummary
+        let bestEver: Double?
+    }
 
     init(exercise: FormCheckExercise = .squat) {
         _session = State(initialValue: FormCheckSession(exercise: exercise))
@@ -365,6 +594,12 @@ struct FormCheckView: View {
         }
         .task { session.configure() }
         .onDisappear { session.stop() }
+        .sheet(item: $summaryPayload) { payload in
+            FormSummarySheet(summary: payload.summary, bestEver: payload.bestEver) {
+                summaryPayload = nil
+                dismiss()
+            }
+        }
     }
 
     private var liveView: some View {
@@ -412,23 +647,43 @@ struct FormCheckView: View {
                 .padding(.horizontal, 14).padding(.vertical, 8)
                 .background(RoundedRectangle(cornerRadius: MorpheTheme.radius).fill(session.framing.color))
 
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("\(session.repCount)")
-                    .font(.system(size: 56, design: .monospaced).weight(.bold))
-                    .foregroundStyle(.white)
-                    .contentTransition(.numericText())
-                Text("REPS")
-                    .font(MorpheTheme.microLabel(12)).tracking(2)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-                Spacer()
-                Button("Reset") { session.resetReps() }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .frame(width: 96)
+            VStack(spacing: 12) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text("\(session.repCount)")
+                        .font(.system(size: 56, design: .monospaced).weight(.bold))
+                        .foregroundStyle(.white)
+                        .contentTransition(.numericText())
+                    Text("REPS")
+                        .font(MorpheTheme.microLabel(12)).tracking(2)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    Spacer()
+                }
+
+                if let cue = session.liveCue {
+                    Text(cue.uppercased())
+                        .font(MorpheTheme.microLabel(11)).tracking(1.2)
+                        .foregroundStyle(MorpheTheme.accent)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transition(.opacity)
+                }
+
+                HStack(spacing: 10) {
+                    Button("Reset") { session.resetReps() }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                    Button("Finish & Review") {
+                        let result = session.finishSet()
+                        summaryPayload = SummaryPayload(summary: result.summary, bestEver: result.bestEverAngle)
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(session.repCount == 0)
+                    .opacity(session.repCount == 0 ? 0.5 : 1)
+                }
             }
             .padding(16)
             .background(RoundedRectangle(cornerRadius: MorpheTheme.radius).fill(.black.opacity(0.55)))
+            .animation(.easeInOut(duration: 0.2), value: session.liveCue)
 
-            Text("Form cues are coming next — for now Morphe counts your reps and helps you frame up. This is a training aid, not a physical therapist.")
+            Text("Morphe reads what the front camera can see — depth, knee tracking, and tempo. It's a training aid, not a physical therapist.")
                 .font(.caption2)
                 .foregroundStyle(MorpheTheme.textMuted)
                 .multilineTextAlignment(.center)
@@ -448,5 +703,77 @@ struct FormCheckView: View {
                 .padding(.top, 8)
         }
         .padding(28)
+    }
+}
+
+// MARK: - Set review (post-set summary + honest cues)
+
+private struct FormSummarySheet: View {
+    let summary: FormSetSummary
+    let bestEver: Double?
+    let onClose: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    SectionTitleView(title: "Set Review", subtitle: "What the front camera measured this set.")
+
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 8) {
+                                MetricPill(label: "Reps", value: "\(summary.reps)")
+                                MetricPill(label: "Avg knee", value: summary.reps > 0 ? "\(Int(summary.avgMinKneeAngle))°" : "—")
+                                MetricPill(label: "Deepest", value: summary.reps > 0 ? "\(Int(summary.bestMinKneeAngle))°" : "—")
+                            }
+                            Text("About 90° is roughly parallel — a smaller angle means a deeper squat.")
+                                .font(.caption2)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                    }
+
+                    if summary.cues.isEmpty {
+                        GlassCard {
+                            Text(summary.reps == 0
+                                 ? "No full reps were counted. Make sure your whole body is inside the green frame, then try again."
+                                 : "Nothing to flag — those reps looked clean.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        ForEach(Array(summary.cues.enumerated()), id: \.offset) { _, cue in
+                            GlassCard {
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: cue.tone == .good ? "checkmark.circle.fill" : "arrow.up.forward.circle.fill")
+                                        .foregroundStyle(cue.tone == .good ? Color(red: 0.30, green: 0.85, blue: 0.45) : MorpheTheme.accent)
+                                    Text(cue.message)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                        }
+                    }
+
+                    if let best = bestEver, best > 0 {
+                        Text("Your deepest squat on record: \(Int(best))° knee bend.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+
+                    Text("These are what the camera could see — a helpful signal, not a medical assessment. If something hurts, stop.")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { onClose() }.foregroundStyle(.white)
+                }
+            }
+        }
     }
 }
