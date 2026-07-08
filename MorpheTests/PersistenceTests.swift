@@ -2023,17 +2023,17 @@ final class Audit4RegressionTests: XCTestCase {
             items: exercises.map { CustomWorkoutItem(exercise: $0, sets: 2, reps: 8) }
         )
 
-        XCTAssertNotNil(store.pendingWorkoutChange, "staging a new build over a recap must gate")
-        XCTAssertEqual(store.currentWorkout.id, stagedID, "nothing staged until confirmed")
+        // New behavior: building over a recap doesn't stage the build at all
+        // (no gate queued from the builder sheet), so the never-performed build
+        // can never become the logged workout.
+        XCTAssertNil(store.pendingWorkoutChange, "no gate queued from the builder sheet")
+        XCTAssertEqual(store.currentWorkout.id, stagedID, "the build must not stage over the recap")
         XCTAssertTrue(store.workoutTemplates.contains { $0.name == "Fabrication Test" },
-                      "the build itself is created either way")
+                      "the build itself still lands in the library")
 
-        store.confirmPendingWorkoutChange()
-        XCTAssertFalse(store.hasCompletedWorkoutFlow, "staging resets the stale finished flag")
-
-        let before = store.workoutLogs.count
         store.logWorkout()
-        XCTAssertEqual(store.workoutLogs.count, before, "no log for a workout never performed")
+        XCTAssertFalse(store.workoutLogs.contains { $0.workoutTitle == "Fabrication Test" },
+                       "the logged workout is the real finished session, never the untouched build")
     }
 
     func testSwapRefusedWhenExerciseHasLoggedSets() {
@@ -2103,5 +2103,118 @@ final class Audit4RegressionTests: XCTestCase {
         XCTAssertFalse(store.workoutTemplates.contains { $0.id == custom.id })
         XCTAssertFalse(store.savedWorkouts.contains { $0.workoutTemplateID == custom.id })
         XCTAssertNil(store.pendingWorkoutChange, "deletion is confirmed at the view layer, not the session gate")
+    }
+}
+
+/// Regression tests for the audit-4 cleanup: these exercise the
+/// finished-but-unlogged-recap path and the post-log state that the earlier
+/// audit-4 tests skipped (which is why F1–F4 slipped through).
+@MainActor
+final class CleanupRegressionTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    override func tearDown() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        super.tearDown()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    private func stagedCustom(_ store: MorpheAppStore, name: String, count: Int = 2) -> WorkoutTemplate {
+        let exercises = Array(store.allExercises.prefix(count))
+        store.createCustomWorkout(
+            name: name,
+            sport: .strength,
+            items: exercises.map { CustomWorkoutItem(exercise: $0, sets: 2, reps: 8) }
+        )
+        return store.workoutTemplates.first { $0.name == name }!
+    }
+
+    // F1/F5 — swap guard only fires during an unsaved session, never after log.
+    func testSwapBlockedOnlyDuringUnsavedSession() {
+        let store = freshStore()
+        let custom = stagedCustom(store, name: "Swap Guard")
+        store.beginLiveWorkout(custom)
+        let active = store.activeWorkoutExercise!
+        let untouched = store.currentWorkout.exercises.first { $0.id != active.id }!
+
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertNotNil(store.swapBlockReason(for: active),
+                        "a logged exercise blocks swap mid-session")
+        XCTAssertNil(store.swapBlockReason(for: untouched),
+                     "an untouched exercise stays swappable")
+
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        store.logWorkout()
+        XCTAssertNil(store.swapBlockReason(for: active),
+                     "after logging, a stale tracked count must not permanently wall off a swap")
+    }
+
+    // F2 — deleting the staged workout over a recap performs cleanly (the
+    // session-loss disclosure lives in the view dialog).
+    func testDeleteCurrentWorkoutOverRecapPerformsCleanly() {
+        let store = freshStore()
+        let custom = stagedCustom(store, name: "Recap Delete")
+        store.beginLiveWorkout(custom)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        XCTAssertTrue(store.hasCompletedWorkoutFlow)
+
+        store.deleteCustomWorkout(custom.id)
+
+        XCTAssertFalse(store.workoutTemplates.contains { $0.id == custom.id })
+        XCTAssertFalse(store.hasCompletedWorkoutFlow, "deleting the staged workout resets the recap")
+        XCTAssertNil(store.pendingWorkoutChange, "delete confirms at the view, never via the session gate")
+    }
+
+    // F3 — building a workout over a recap doesn't stage it (no gate queued
+    // from the builder sheet, recap survives).
+    func testCustomBuildOverRecapDoesNotStageOrQueue() {
+        let store = freshStore()
+        store.beginLiveWorkout(store.currentWorkout)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+
+        _ = stagedCustom(store, name: "Build Over Recap", count: 1)
+
+        XCTAssertNil(store.pendingWorkoutChange, "no gate may be queued from the builder sheet")
+        XCTAssertTrue(store.workoutTemplates.contains { $0.name == "Build Over Recap" },
+                      "the build still lands in the library")
+        XCTAssertNotEqual(store.currentWorkout.name, "Build Over Recap",
+                          "it must not stage over the unlogged recap")
+        XCTAssertTrue(store.hasCompletedWorkoutFlow, "the recap survives the build")
+    }
+
+    // F3 (happy path) — with no session, a new build stages immediately.
+    func testCustomBuildWithNoSessionStagesImmediately() {
+        let store = freshStore()
+        let custom = stagedCustom(store, name: "Clean Build", count: 1)
+        XCTAssertEqual(store.currentWorkout.id, custom.id, "no session → the build becomes the current plan")
+        XCTAssertNil(store.pendingWorkoutChange)
+    }
+
+    // F4 — a coach who picked no sports gets an honest specialty, not the
+    // demo athlete's Boxing/Strength.
+    func testCoachWithNoSportsGetsHonestSpecialty() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Dana"
+        store.onboardingDraft.accountType = .coach
+        store.onboardingDraft.selectedSports = []
+        store.completeOnboarding()
+
+        XCTAssertEqual(store.coachProfile.specialty, "Personal coaching")
+        XCTAssertFalse(store.coachProfile.specialty.contains("Boxing"),
+                       "a sportless coach must never inherit the demo athlete's sports")
     }
 }

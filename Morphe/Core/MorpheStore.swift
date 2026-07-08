@@ -522,15 +522,19 @@ final class MorpheAppStore {
             clientProfile.selectedGoals = snapshot.selectedGoals
         }
 
-        // A returning coach gets THEIR identity in the workspace header.
-        // Must run AFTER the sports/goals restore above — calling it earlier
-        // stamped the DEMO athlete's sports into the coach's specialty on
-        // every relaunch (the exact leak the identity fix was meant to close).
+        // A returning coach gets THEIR identity in the workspace header, built
+        // from the snapshot's own sports/goals (not clientProfile, which may
+        // still hold the seeded demo default when the coach picked no sports).
         if selectedRole == .coach {
             let handle = snapshot.username.isEmpty
                 ? snapshot.name.lowercased().filter { $0.isLetter || $0.isNumber }
                 : snapshot.username
-            applyCoachIdentity(name: snapshot.name, handle: handle)
+            applyCoachIdentity(
+                name: snapshot.name,
+                handle: handle,
+                sports: snapshot.selectedSports.compactMap { SportFocus(rawValue: $0) },
+                goals: snapshot.selectedGoals
+            )
         }
 
         clientProfile.goal = snapshot.goal
@@ -829,14 +833,17 @@ final class MorpheAppStore {
         workoutTemplates.insert(template, at: 0)
         customWorkoutIDs.insert(template.id)
         persistWorkoutLibrary()
-        // Stage through the gate + setCurrentWorkout: the old bare id write
-        // left a finished-session flag pointing at the new build, which "Log
-        // Workout" then wrote to history as performed. If the user cancels,
-        // the workout still exists in their library — only staging is skipped.
-        confirmDiscardingSessionWork("Switch to \(template.name)?") { [weak self] in
-            self?.setCurrentWorkout(template)
+        // Stage it as the current plan ONLY when nothing is lost. With a
+        // finished-but-unlogged session, staging (setCurrentWorkout) would
+        // silently drop that recap — and the confirm dialog can't present from
+        // the builder sheet anyway. So the build just lands in Your workouts
+        // and the user starts it when the current session is closed.
+        if hasUnsavedSessionWork {
+            showToast("\(template.name) saved to Your workouts.")
+        } else {
+            setCurrentWorkout(template)
+            showToast("\(template.name) is ready in your Current plan.")
         }
-        showToast("\(template.name) created. Start it from Current plan.")
     }
 
     /// Deletes one of the user's custom workouts.
@@ -999,6 +1006,11 @@ final class MorpheAppStore {
 
     /// Restores non-catalog library saves (recommendation saves, duplicated
     /// copies) by matching persisted names against the loaded templates.
+    /// WARNING: names are load-bearing restore keys here — an unresolved save
+    /// is silently dropped and the next persistWorkoutLibrary re-derives the
+    /// snapshot without it, permanently. Never rename a seeded/custom template
+    /// name without a migration, or existing users lose those saves. (Catalog
+    /// saves are ID-keyed and safe to rename; f266b95 only touched those.)
     private func rebuildSavedTemplateWorkouts() {
         for snap in persistedSavedTemplates {
             guard let template = workoutTemplates.first(where: { $0.name == snap.name }),
@@ -1665,15 +1677,21 @@ final class MorpheAppStore {
     /// Replaces the seeded demo coach identity with the real user's. Sports,
     /// goals, and specialty mirror the profile; practice stats start at zero
     /// because a new coach has no athletes, groups, or playbooks yet.
-    private func applyCoachIdentity(name: String, handle: String) {
+    /// Sports/goals are passed in from the authoritative source (the draft at
+    /// onboarding, the snapshot at relaunch) rather than read off clientProfile
+    /// — reading clientProfile stamped the seeded demo athlete's sports into a
+    /// coach's specialty whenever the coach had no sports of their own.
+    private func applyCoachIdentity(name: String, handle: String, sports: [SportFocus], goals: [String]) {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         coachProfile.name = name
         if !handle.isEmpty {
             coachProfile.username = handle
         }
-        coachProfile.sports = clientProfile.selectedSports
-        coachProfile.specialty = clientProfile.selectedSports.prefix(3).map(\.rawValue).joined(separator: " / ")
-        coachProfile.selectedGoals = clientProfile.selectedGoals
+        coachProfile.sports = sports
+        coachProfile.specialty = sports.isEmpty
+            ? "Personal coaching"
+            : sports.prefix(3).map(\.rawValue).joined(separator: " / ")
+        coachProfile.selectedGoals = goals
         coachProfile.headline = "Coaching on Morphe."
         coachProfile.networkRank = "Coach"
         coachProfile.activeClients = 0
@@ -1739,7 +1757,12 @@ final class MorpheAppStore {
         // A coach account is the USER's practice, not demo "Coach Marcus" —
         // stamp their identity into the workspace and zero the seeded stats.
         if onboardingDraft.accountType == .coach {
-            applyCoachIdentity(name: resolvedName, handle: handle)
+            applyCoachIdentity(
+                name: resolvedName,
+                handle: handle,
+                sports: onboardingDraft.selectedSports,
+                goals: selectedGoals
+            )
         }
 
         // Personalize the first staged workout: the plan-generation step
@@ -2648,6 +2671,20 @@ final class MorpheAppStore {
         return true
     }
 
+    /// Non-nil when `exercise` can't be swapped right now because doing so
+    /// would discard sets the user has logged. Only blocks during an unsaved
+    /// session — a count left in the tracked dicts after logging (they aren't
+    /// cleared on log) is stale and must not wall off a later swap. The swap
+    /// sheet reads this to disable its button up front instead of walking the
+    /// user to a toast dead-end.
+    func swapBlockReason(for exercise: WorkoutExercise) -> String? {
+        guard hasUnsavedSessionWork else { return nil }
+        let loggedSets = max(trackedSetReps[exercise.id, default: []].count,
+                             completedWorkoutSets[exercise.id, default: 0])
+        guard loggedSets > 0 else { return nil }
+        return "\(exercise.name) has \(loggedSets) logged set\(loggedSets == 1 ? "" : "s") this session — remove them in the tracker before swapping."
+    }
+
     func swapExercise(_ exercise: WorkoutExercise) {
         // Use the first alternative that actually exists in the library —
         // several exercises list a dangling first alt, which used to kill
@@ -2661,12 +2698,10 @@ final class MorpheAppStore {
             return
         }
 
-        // Sets already logged under this exercise are keyed by its id — a
-        // swap would silently drop them from the recap and the final log.
-        let loggedSets = max(trackedSetReps[exercise.id, default: []].count,
-                             completedWorkoutSets[exercise.id, default: 0])
-        guard loggedSets == 0 else {
-            showToast("\(exercise.name) already has \(loggedSets) logged set\(loggedSets == 1 ? "" : "s") — finish it or remove them before swapping.")
+        // A swap drops the exercise's logged sets from the recap and the log —
+        // refuse only while a live/unlogged session actually holds them.
+        if let reason = swapBlockReason(for: exercise) {
+            showToast(reason)
             return
         }
 
@@ -3178,13 +3213,11 @@ final class MorpheAppStore {
                 return "You're already mid-session — it's open in Train."
             }
             // Chat never queues a destructive confirmation (same rule as
-            // discard): claiming "Done" while the gate is pending recorded a
-            // success that may never happen — and dismissing this sheet could
-            // cancel the queued action through the dialog binding.
+            // discard). Decline in the conversation and leave the sheet open so
+            // the user actually reads the reply — closing it dropped them in
+            // Train with no explanation.
             guard !hasUnsavedSessionWork else {
-                selectedClientTab = .train
-                closeAIAgent()
-                return "You have a finished session that isn't logged yet — log it (or discard it) in Train first, then start the new one."
+                return "You've got a finished session that isn't logged yet. Log it from Train first, then ask me again and I'll start the next one."
             }
             startTodayWorkout()
             closeAIAgent()
@@ -4868,6 +4901,12 @@ final class MorpheAppStore {
         hasCompletedWorkoutFlow = false
         activeWorkoutExerciseIndex = 0
         completedWorkoutSets = [:]
+        // Switching workouts abandons the old session's tracking — clear it so
+        // stale per-exercise counts can't leak into the new template (slot ids
+        // are shared library ids across templates) or block a swap.
+        trackedSetReps = [:]
+        trackedSetWeights = [:]
+        trackedSetRPE = [:]
     }
 
     private func updateCurrentWorkout(_ update: (inout WorkoutTemplate) -> Void) {

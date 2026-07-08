@@ -21,6 +21,16 @@ struct WorkoutView: View {
     @State private var showHistory = false
     @State private var showBuilder = false
 
+    private var deleteWorkoutDialogTitle: String {
+        guard let template = workoutPendingDelete else { return "Delete this workout?" }
+        var message = "Delete \(template.name)? It's removed from your library — there's no undo."
+        // Deleting the staged workout resets the session; disclose the loss.
+        if store.currentWorkout.id == template.id, store.hasUnsavedSessionWork {
+            message += " Your finished session hasn't been logged — deleting this discards it."
+        }
+        return message
+    }
+
     private let painAreas = ["Knee", "Shoulder", "Back", "Hip", "Ankle", "Neck"]
     private var goodForTodayRecommendation: GoodForTodayWorkoutRecommendation {
         store.currentGoodForTodayRecommendation
@@ -351,7 +361,7 @@ struct WorkoutView: View {
                             }
                         )
                         .confirmationDialog(
-                            "Delete \(workoutPendingDelete?.name ?? "this workout")? It's removed from your library — there's no undo.",
+                            deleteWorkoutDialogTitle,
                             isPresented: Binding(
                                 get: { workoutPendingDelete != nil },
                                 set: { if !$0 { workoutPendingDelete = nil } }
@@ -430,8 +440,6 @@ struct WorkoutView: View {
 
                     AddSwitchWorkoutCard { option in
                         store.applyWorkoutAdjustment(option)
-                        if option == .recovery || option == .shorter || option == .easier {
-                        }
                     }
                 }
 
@@ -2769,11 +2777,21 @@ private struct ExerciseSwapFlowSheet: View {
                                         .foregroundStyle(.white)
                                 }
 
+                                if let blockReason = store.swapBlockReason(for: exercise) {
+                                    // Surface the refusal up front instead of
+                                    // walking the user to a toast dead-end.
+                                    Text(blockReason)
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.warning)
+                                }
+
                                 Button("Swap Exercise") {
                                     store.swapExercise(exercise)
                                     dismiss()
                                 }
                                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                                .disabled(store.swapBlockReason(for: exercise) != nil)
+                                .opacity(store.swapBlockReason(for: exercise) != nil ? 0.5 : 1)
                             }
                         }
                     }
