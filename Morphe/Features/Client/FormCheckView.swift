@@ -659,6 +659,8 @@ struct FormCheckView: View {
         let summary: FormSetSummary
         let bestEver: Double?
         let movement: FormCheckMovement
+        let exerciseName: String
+        let metrics: [FormRepMetrics]
     }
 
     init(exerciseName: String = "Squat", movement: FormCheckMovement = .squat) {
@@ -689,7 +691,13 @@ struct FormCheckView: View {
         .task { session.configure() }
         .onDisappear { session.stop() }
         .sheet(item: $summaryPayload) { payload in
-            FormSummarySheet(summary: payload.summary, bestEver: payload.bestEver, movement: payload.movement) {
+            FormSummarySheet(
+                summary: payload.summary,
+                bestEver: payload.bestEver,
+                movement: payload.movement,
+                exerciseName: payload.exerciseName,
+                metrics: payload.metrics
+            ) {
                 summaryPayload = nil
                 dismiss()
             }
@@ -766,7 +774,13 @@ struct FormCheckView: View {
                         .buttonStyle(SecondaryCTAButtonStyle())
                     Button("Finish & Review") {
                         let result = session.finishSet()
-                        summaryPayload = SummaryPayload(summary: result.summary, bestEver: result.bestEverAngle, movement: session.movement)
+                        summaryPayload = SummaryPayload(
+                            summary: result.summary,
+                            bestEver: result.bestEverAngle,
+                            movement: session.movement,
+                            exerciseName: session.exerciseName,
+                            metrics: session.repMetrics
+                        )
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     .disabled(session.repCount == 0)
@@ -806,8 +820,19 @@ private struct FormSummarySheet: View {
     let summary: FormSetSummary
     let bestEver: Double?
     var movement: FormCheckMovement = .squat
-    private var jointLabel: String { movement == .squat ? "knee" : "elbow" }
+    var exerciseName: String = "Squat"
+    var metrics: [FormRepMetrics] = []
     let onClose: () -> Void
+
+    private var jointLabel: String { movement == .squat ? "knee" : "elbow" }
+
+    #if DEBUG
+    @State private var aiText: String?
+    @State private var aiError: String?
+    @State private var aiLoading = false
+    @State private var keyDraft = ""
+    @State private var hasKey = (DevAIKey.value?.isEmpty == false)
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -852,8 +877,12 @@ private struct FormSummarySheet: View {
                         }
                     }
 
+                    #if DEBUG
+                    aiReviewSection
+                    #endif
+
                     if let best = bestEver, best > 0 {
-                        Text("Your deepest squat on record: \(Int(best))° knee bend.")
+                        Text("Your deepest \(movement == .squat ? "squat" : "push-up") on record: \(Int(best))° \(jointLabel) bend.")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
                     }
@@ -872,4 +901,144 @@ private struct FormSummarySheet: View {
             }
         }
     }
+
+    #if DEBUG
+    @ViewBuilder private var aiReviewSection: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("AI COACH · DEV")
+                    .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                    .foregroundStyle(MorpheTheme.accent)
+
+                if !hasKey {
+                    Text("Paste an Anthropic API key to try AI coaching on this set. Dev builds only — stored on this device, never shipped.")
+                        .font(.caption).foregroundStyle(MorpheTheme.textSecondary)
+                    SecureField("sk-ant-...", text: $keyDraft)
+                        .textFieldStyle(.roundedBorder)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                    Button("Save key") {
+                        DevAIKey.value = keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                        hasKey = (DevAIKey.value?.isEmpty == false)
+                        keyDraft = ""
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                } else if let aiText {
+                    Text(aiText)
+                        .font(.subheadline).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Re-run") { Task { await runAIReview() } }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                } else {
+                    if let aiError {
+                        Text(aiError)
+                            .font(.caption).foregroundStyle(Color(red: 0.92, green: 0.40, blue: 0.40))
+                    }
+                    Button(aiLoading ? "Reviewing…" : "Get AI coaching") {
+                        Task { await runAIReview() }
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(aiLoading || summary.reps == 0)
+                }
+            }
+        }
+    }
+
+    @MainActor private func runAIReview() async {
+        aiLoading = true
+        aiError = nil
+        defer { aiLoading = false }
+        do {
+            aiText = try await FormAIReviewer().review(
+                exerciseName: exerciseName, movement: movement, metrics: metrics)
+        } catch {
+            aiError = (error as? FormAIReviewer.APIError)?.message ?? error.localizedDescription
+        }
+    }
+    #endif
 }
+
+#if DEBUG
+// MARK: - Dev-only Claude form review
+//
+// GATED TO DEBUG BUILDS ONLY — never compiled into a release/TestFlight/App
+// Store build, so the app can never ship an API key or call Anthropic
+// directly. This is a temporary way to feel the AI coaching before the
+// Firebase Cloud Function proxy exists (the proxy is where the key lives for
+// real). The key is entered at runtime and stored on-device.
+
+enum DevAIKey {
+    private static let storageKey = "morphe.dev.anthropicKey"
+    static var value: String? {
+        get { UserDefaults.standard.string(forKey: storageKey) }
+        set { UserDefaults.standard.set(newValue, forKey: storageKey) }
+    }
+}
+
+struct FormAIReviewer {
+    struct APIError: Error { let message: String }
+
+    /// Sends the MEASURED rep data (angles/tempo — never video) to Claude and
+    /// returns a short coaching note. Raw HTTPS: Swift has no official
+    /// Anthropic SDK.
+    func review(exerciseName: String, movement: FormCheckMovement, metrics: [FormRepMetrics]) async throws -> String {
+        guard let apiKey = DevAIKey.value, !apiKey.isEmpty else {
+            throw APIError(message: "No API key set.")
+        }
+        guard !metrics.isEmpty else {
+            throw APIError(message: "No reps to review.")
+        }
+
+        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        request.httpMethod = "POST"
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.timeoutInterval = 30
+
+        let body: [String: Any] = [
+            "model": "claude-opus-4-8",
+            "max_tokens": 320,
+            "system": Self.system,
+            "messages": [["role": "user", "content": Self.prompt(exerciseName: exerciseName, movement: movement, metrics: metrics)]]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw APIError(message: "No response from the API.") }
+        guard http.statusCode == 200 else {
+            let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])
+                .flatMap { ($0?["error"] as? [String: Any])?["message"] as? String }
+            throw APIError(message: "API \(http.statusCode): \(detail ?? "request failed")")
+        }
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = json["content"] as? [[String: Any]] else {
+            throw APIError(message: "Couldn't read the response.")
+        }
+        let text = content.compactMap { $0["text"] as? String }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? "No coaching came back — try again." : text
+    }
+
+    private static let system = """
+    You are an experienced, encouraging strength coach reviewing ONE set an athlete just finished. It was measured by a phone's front camera — you have joint angles per rep, not video. Give 2–4 short sentences of specific coaching grounded ONLY in the numbers provided (depth/range of motion, tempo, consistency across reps, and knee tracking for squats). Never diagnose injuries or pain. If the set looks clean, say so and give one thing to keep doing. Plain conversational language, no bullet lists, no preamble.
+    """
+
+    private static func prompt(exerciseName: String, movement: FormCheckMovement, metrics: [FormRepMetrics]) -> String {
+        var lines: [String] = [
+            "Exercise: \(exerciseName)",
+            "Pattern: \(movement == .squat ? "squat — the angle is the knee (hip-knee-ankle)" : "push-up — the angle is the elbow (shoulder-elbow-wrist)")",
+            "Reps counted: \(metrics.count)"
+        ]
+        for (i, m) in metrics.enumerated() {
+            var parts = ["depth \(Int(m.minKneeAngle))°", "descent \(String(format: "%.1f", m.descentSeconds))s"]
+            if movement == .squat, let v = m.valgusRatio {
+                parts.append("knee/ankle spread \(String(format: "%.2f", v))")
+            }
+            lines.append("Rep \(i + 1): " + parts.joined(separator: ", "))
+        }
+        lines.append("")
+        lines.append("Reference: a smaller angle = a deeper rep; ~90° is full range. For squats, knee/ankle spread below ~0.85 suggests the knees caving inward (but a single front camera reads this loosely).")
+        return lines.joined(separator: "\n")
+    }
+}
+#endif
