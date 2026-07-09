@@ -2235,7 +2235,7 @@ final class FormAnalyzerTests: XCTestCase {
     }
 
     func testCleanSetPraisesDepthAndFlagsNothingElse() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88), count: 5))
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88), count: 5), movement: .squat)
         XCTAssertEqual(s.reps, 5)
         XCTAssertEqual(Int(s.bestMinKneeAngle), 88)
         XCTAssertTrue(s.cues.contains { $0.category == .depth && $0.tone == .good })
@@ -2244,27 +2244,27 @@ final class FormAnalyzerTests: XCTestCase {
     }
 
     func testShallowRepsSuggestGoingLower() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 125), count: 5))
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 125), count: 5), movement: .squat)
         XCTAssertTrue(s.cues.contains { $0.category == .depth && $0.tone == .suggestion })
     }
 
     func testCavingKneesLeadTheCues() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, valgus: 0.8), count: 5))
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, valgus: 0.8), count: 5), movement: .squat)
         XCTAssertEqual(s.cues.first?.category, .knees, "the injury-relevant cue must lead")
     }
 
     func testFastDescentSuggestsControl() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, descent: 0.3), count: 5))
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, descent: 0.3), count: 5), movement: .squat)
         XCTAssertTrue(s.cues.contains { $0.category == .tempo })
     }
 
     func testUnmeasuredValgusIsNeverFlagged() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, valgus: nil), count: 5))
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, valgus: nil), count: 5), movement: .squat)
         XCTAssertFalse(s.cues.contains { $0.category == .knees }, "can't flag what the camera couldn't measure")
     }
 
     func testCuesCapAtThreeKneesFirst() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 125, valgus: 0.8, descent: 0.3), count: 5))
+        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 125, valgus: 0.8, descent: 0.3), count: 5), movement: .squat)
         XCTAssertLessThanOrEqual(s.cues.count, 3)
         XCTAssertEqual(s.cues.first?.category, .knees)
         XCTAssertTrue(s.cues.contains { $0.category == .depth && $0.tone == .suggestion })
@@ -2272,15 +2272,15 @@ final class FormAnalyzerTests: XCTestCase {
     }
 
     func testEmptySetHasNoCues() {
-        let s = FormAnalyzer.analyze([])
+        let s = FormAnalyzer.analyze([], movement: .squat)
         XCTAssertEqual(s.reps, 0)
         XCTAssertTrue(s.cues.isEmpty)
     }
 
     func testLiveCueReflectsTheWorstIssue() {
-        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 88, valgus: 0.7), repNumber: 3).contains("caved"))
-        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 130), repNumber: 2).contains("above parallel"))
-        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 88), repNumber: 1).contains("clean"))
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 88, valgus: 0.7), repNumber: 3, movement: .squat).contains("caved"))
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 130), repNumber: 2, movement: .squat).contains("above parallel"))
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 88), repNumber: 1, movement: .squat).contains("clean"))
     }
 
     func testHistoryRoundTripAndDeepestBest() {
@@ -2293,6 +2293,25 @@ final class FormAnalyzerTests: XCTestCase {
         XCTAssertEqual(all.count, 2)
         XCTAssertEqual(all.first?.reps, 6, "newest first")
         XCTAssertEqual(store.bestDepthAngle(), 82, "smallest angle = deepest rep")
+    }
+
+    func testMovementInference() {
+        XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Push-Up", muscleGroup: .chest), .pushup)
+        XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Overhead Press", muscleGroup: .shoulders), .pushup)
+        XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Chest Fly", muscleGroup: .chest), .pushup)
+        XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Back Squat", muscleGroup: .legs), .squat)
+        XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Walking Lunge", muscleGroup: .legs), .squat)
+    }
+
+    func testPushupCuesUsePushLanguageAndSkipKnees() {
+        // Shallow push-ups; the valgus value must be ignored for this movement.
+        let m = Array(repeating: rep(angle: 130, valgus: 0.7), count: 5)
+        let s = FormAnalyzer.analyze(m, movement: .pushup)
+        XCTAssertFalse(s.cues.contains { $0.category == .knees }, "push-ups never get a knee cue")
+        let depth = s.cues.first { $0.category == .depth }
+        XCTAssertEqual(depth?.tone, .suggestion)
+        XCTAssertTrue(depth?.message.contains("lower") ?? false)
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 130), repNumber: 1, movement: .pushup).contains("shallow"))
     }
 }
 

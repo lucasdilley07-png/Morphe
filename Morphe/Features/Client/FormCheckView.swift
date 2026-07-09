@@ -14,19 +14,38 @@ import Vision
 // there and the screen shows a device-required state. The live pipeline must be
 // verified on a physical iPhone.
 
-// MARK: Exercise model
+// MARK: Movement model
+//
+// Rep counting keys off ONE joint angle per movement pattern. The camera coach
+// supports two camera-trackable patterns today; any other exercise falls back
+// to the squat (lower-body) tracker. The exercise NAME shown to the user comes
+// straight from the active workout, so the header always matches what they're
+// actually doing.
 
-enum FormCheckExercise: String, CaseIterable, Identifiable {
-    case squat = "Squat"
+enum FormCheckMovement {
+    case squat    // knee angle — standing; depth + knee-tracking + tempo
+    case pushup   // elbow angle — prone; depth + tempo
 
-    var id: String { rawValue }
+    /// Best-guess pattern for a workout exercise: name keywords first, then
+    /// muscle group. Defaults to squat (the safe lower-body/compound tracker).
+    static func infer(exerciseName name: String, muscleGroup: MuscleGroup) -> FormCheckMovement {
+        let n = name.lowercased()
+        let pushWords = ["push", "press", "dip", "bench", "overhead", "fly"]
+        if pushWords.contains(where: { n.contains($0) }) { return .pushup }
+        switch muscleGroup {
+        case .chest, .shoulders: return .pushup
+        default: return .squat
+        }
+    }
 
     var setupHint: String {
         switch self {
-        case .squat:
-            return "Stand facing the camera with your whole body in frame. Squat at a steady, controlled tempo."
+        case .squat:  return "Stand facing the camera with your whole body in frame. Move at a steady, controlled tempo."
+        case .pushup: return "Rest the phone on the floor to your side so it can see your whole body. Steady tempo."
         }
     }
+
+    var usesValgus: Bool { self == .squat }
 }
 
 // MARK: Framing state (the red / yellow / green distance box)
@@ -101,33 +120,39 @@ enum FormAnalyzer {
     static let valgusRatio: CGFloat = 0.85      // below this ≈ knees caving
     static let fastDescent: Double = 0.6        // faster than this ≈ dropping
 
-    static func analyze(_ metrics: [FormRepMetrics]) -> FormSetSummary {
+    static func analyze(_ metrics: [FormRepMetrics], movement: FormCheckMovement) -> FormSetSummary {
         guard !metrics.isEmpty else {
             return FormSetSummary(reps: 0, avgMinKneeAngle: 0, bestMinKneeAngle: 0, cues: [])
         }
         let n = metrics.count
-        let angles = metrics.map(\.minKneeAngle)
+        let angles = metrics.map(\.minKneeAngle)   // primary depth angle for the movement
         let avg = angles.reduce(0, +) / CGFloat(n)
         let best = angles.min() ?? 0
 
         var cues: [FormCue] = []
 
-        // Knees first — it's the injury-relevant cue, so it leads.
-        let valgusValues = metrics.compactMap(\.valgusRatio)
-        let caved = valgusValues.filter { $0 < valgusRatio }.count
-        if valgusValues.count >= 2, Double(caved) / Double(valgusValues.count) > 0.3 {
-            cues.append(FormCue(category: .knees, tone: .suggestion,
-                message: "Push your knees out — they drifted inward on \(caved) rep\(caved == 1 ? "" : "s"), often as you tire."))
+        // Knee tracking is squat-specific and leads (it's injury-relevant).
+        if movement.usesValgus {
+            let valgusValues = metrics.compactMap(\.valgusRatio)
+            let caved = valgusValues.filter { $0 < valgusRatio }.count
+            if valgusValues.count >= 2, Double(caved) / Double(valgusValues.count) > 0.3 {
+                cues.append(FormCue(category: .knees, tone: .suggestion,
+                    message: "Push your knees out — they drifted inward on \(caved) rep\(caved == 1 ? "" : "s"), often as you tire."))
+            }
         }
 
-        // Depth.
+        // Depth / range of motion.
         let shallow = angles.filter { $0 > shallowAngle }.count
         if Double(shallow) / Double(n) > 0.4 {
-            cues.append(FormCue(category: .depth, tone: .suggestion,
-                message: "Try sitting a little lower — \(shallow) of \(n) rep\(n == 1 ? "" : "s") stopped above parallel."))
+            let msg = movement == .squat
+                ? "Try sitting a little lower — \(shallow) of \(n) rep\(n == 1 ? "" : "s") stopped above parallel."
+                : "Go a little lower — \(shallow) of \(n) rep\(n == 1 ? "" : "s") were shallow. Aim to bring your chest toward the floor."
+            cues.append(FormCue(category: .depth, tone: .suggestion, message: msg))
         } else {
-            cues.append(FormCue(category: .depth, tone: .good,
-                message: "Good depth — you're getting to about parallel."))
+            let msg = movement == .squat
+                ? "Good depth — you're getting to about parallel."
+                : "Good range — you're getting nice and low."
+            cues.append(FormCue(category: .depth, tone: .good, message: msg))
         }
 
         // Tempo.
@@ -143,9 +168,11 @@ enum FormAnalyzer {
     }
 
     /// One-line feedback for the rep that just finished (shown live).
-    static func liveCue(for m: FormRepMetrics, repNumber: Int) -> String {
-        if let v = m.valgusRatio, v < valgusRatio { return "Rep \(repNumber) · knees caved in" }
-        if m.minKneeAngle > shallowAngle { return "Rep \(repNumber) · a little above parallel" }
+    static func liveCue(for m: FormRepMetrics, repNumber: Int, movement: FormCheckMovement) -> String {
+        if movement.usesValgus, let v = m.valgusRatio, v < valgusRatio { return "Rep \(repNumber) · knees caved in" }
+        if m.minKneeAngle > shallowAngle {
+            return "Rep \(repNumber) · \(movement == .squat ? "a little above parallel" : "a little shallow")"
+        }
         return "Rep \(repNumber) · clean"
     }
 }
@@ -235,7 +262,8 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     /// already mirrored to match the front-camera preview.
     private(set) var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
 
-    let exercise: FormCheckExercise
+    let exerciseName: String
+    let movement: FormCheckMovement
     let session = AVCaptureSession()
 
     private let sessionQueue = DispatchQueue(label: "com.morpheapp.formcheck.session")
@@ -256,8 +284,9 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     private var bottomPose: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
     private let history = FormCheckFilePersistence()
 
-    init(exercise: FormCheckExercise) {
-        self.exercise = exercise
+    init(exerciseName: String, movement: FormCheckMovement) {
+        self.exerciseName = exerciseName
+        self.movement = movement
         super.init()
     }
 
@@ -345,11 +374,11 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     /// plus the all-time best depth angle for the review screen.
     func finishSet() -> (summary: FormSetSummary, bestEverAngle: Double?) {
         stop()
-        let summary = FormAnalyzer.analyze(repMetrics)
+        let summary = FormAnalyzer.analyze(repMetrics, movement: movement)
         if summary.reps > 0 {
             history.append(FormCheckResult(
                 date: Date().timeIntervalSince1970,
-                exercise: exercise.rawValue,
+                exercise: exerciseName,
                 reps: summary.reps,
                 avgMinKneeAngle: Double(summary.avgMinKneeAngle),
                 bestMinKneeAngle: Double(summary.bestMinKneeAngle),
@@ -385,8 +414,8 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
             mapped[name] = CGPoint(x: 1 - point.location.x, y: 1 - point.location.y)
         }
 
-        let framing = Self.framingState(for: mapped)
-        let newRep = updateReps(with: mapped, framing: framing, time: frameTime)
+        let framing = framingState(for: mapped)
+        let newRep = updateReps(with: mapped, time: frameTime)
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
@@ -395,7 +424,7 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
             if let metrics = newRep {
                 self.repMetrics.append(metrics)
                 self.repCount += 1
-                self.liveCue = FormAnalyzer.liveCue(for: metrics, repNumber: self.repCount)
+                self.liveCue = FormAnalyzer.liveCue(for: metrics, repNumber: self.repCount, movement: self.movement)
                 Haptics.impact(.light)
             }
         }
@@ -403,28 +432,40 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
 
     // MARK: Framing
 
-    private static func framingState(for joints: [VNHumanBodyPoseObservation.JointName: CGPoint]) -> FramingState {
-        // Need head-ish and feet-ish anchors to judge distance.
-        let ys = joints.values.map(\.y)
-        guard joints.count >= 6, let top = ys.min(), let bottom = ys.max() else { return .noPerson }
-        let bodyHeight = bottom - top          // fraction of frame height
-        switch bodyHeight {
-        case 0.92...:      return .tooClose
-        case 0.60..<0.92:  return .good
-        default:           return .tooFar
+    private func framingState(for joints: [VNHumanBodyPoseObservation.JointName: CGPoint]) -> FramingState {
+        guard joints.count >= 6 else { return .noPerson }
+        switch movement {
+        case .squat:
+            // Standing: judge distance by how much of the frame height the body fills.
+            let ys = joints.values.map(\.y)
+            guard let top = ys.min(), let bottom = ys.max() else { return .noPerson }
+            let bodyHeight = bottom - top
+            switch bodyHeight {
+            case 0.92...:      return .tooClose
+            case 0.60..<0.92:  return .good
+            default:           return .tooFar
+            }
+        case .pushup:
+            // Prone: height isn't meaningful — good once the tracked arm is visible.
+            return primaryAngle(from: joints) != nil ? .good : .tooFar
         }
     }
 
-    // MARK: Reps (squat: knee-angle state machine)
+    // MARK: Reps (movement-aware joint-angle state machine)
+    //
+    // Rep counting is NOT gated on perfect framing — it fires whenever the
+    // movement's primary joints are detected. (The old squat-only version
+    // required the green "good" box, so a push-up, where the body is low and
+    // horizontal, could never count.)
 
     private func updateReps(with joints: [VNHumanBodyPoseObservation.JointName: CGPoint],
-                            framing: FramingState, time t: Double) -> FormRepMetrics? {
-        guard framing.isTrackable, let angle = kneeAngle(from: joints) else { return nil }
+                            time t: Double) -> FormRepMetrics? {
+        guard let angle = primaryAngle(from: joints) else { return nil }
 
         switch repPhase {
         case .up:
             if angle > 155 {
-                // Standing, or an aborted partial — reset the rep accumulator.
+                // Extended / between reps — reset the accumulator.
                 descentStartT = nil
                 minAngleThisRep = .greatestFiniteMagnitude
             } else {
@@ -441,7 +482,7 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
             if angle > 155 {
                 let metrics = FormRepMetrics(
                     minKneeAngle: minAngleThisRep,
-                    valgusRatio: Self.valgusRatio(from: bottomPose),
+                    valgusRatio: movement.usesValgus ? Self.valgusRatio(from: bottomPose) : nil,
                     descentSeconds: max(0, bottomT - (descentStartT ?? bottomT)),
                     ascentSeconds: max(0, t - bottomT))
                 repPhase = .up
@@ -453,6 +494,33 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         return nil
     }
 
+    /// The angle that opens and closes once per rep: knee for the squat, elbow
+    /// for the push-up, preferring whichever side is more confidently visible.
+    private func primaryAngle(from joints: [VNHumanBodyPoseObservation.JointName: CGPoint]) -> CGFloat? {
+        switch movement {
+        case .squat:
+            return Self.jointAngle(joints, .leftHip, .leftKnee, .leftAnkle)
+                ?? Self.jointAngle(joints, .rightHip, .rightKnee, .rightAnkle)
+        case .pushup:
+            return Self.jointAngle(joints, .leftShoulder, .leftElbow, .leftWrist)
+                ?? Self.jointAngle(joints, .rightShoulder, .rightElbow, .rightWrist)
+        }
+    }
+
+    /// Interior angle (degrees) at joint `b` formed by a–b–c.
+    private static func jointAngle(_ joints: [VNHumanBodyPoseObservation.JointName: CGPoint],
+                                   _ a: VNHumanBodyPoseObservation.JointName,
+                                   _ b: VNHumanBodyPoseObservation.JointName,
+                                   _ c: VNHumanBodyPoseObservation.JointName) -> CGFloat? {
+        guard let pa = joints[a], let pb = joints[b], let pc = joints[c] else { return nil }
+        let v1 = CGVector(dx: pa.x - pb.x, dy: pa.y - pb.y)
+        let v2 = CGVector(dx: pc.x - pb.x, dy: pc.y - pb.y)
+        let dot = v1.dx * v2.dx + v1.dy * v2.dy
+        let mag = hypot(v1.dx, v1.dy) * hypot(v2.dx, v2.dy)
+        guard mag > 0 else { return nil }
+        return acos(max(-1, min(1, dot / mag))) * 180 / .pi
+    }
+
     /// Knee-spread ÷ ankle-spread at the bottom pose — the knee-valgus proxy.
     private static func valgusRatio(from j: [VNHumanBodyPoseObservation.JointName: CGPoint]) -> CGFloat? {
         guard let lk = j[.leftKnee], let rk = j[.rightKnee],
@@ -460,23 +528,6 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         let knee = abs(lk.x - rk.x), ankle = abs(la.x - ra.x)
         guard ankle > 0.001 else { return nil }
         return knee / ankle
-    }
-
-    /// Interior knee angle (hip–knee–ankle), preferring whichever leg is more
-    /// confidently visible.
-    private func kneeAngle(from joints: [VNHumanBodyPoseObservation.JointName: CGPoint]) -> CGFloat? {
-        func angle(_ hip: VNHumanBodyPoseObservation.JointName,
-                   _ knee: VNHumanBodyPoseObservation.JointName,
-                   _ ankle: VNHumanBodyPoseObservation.JointName) -> CGFloat? {
-            guard let h = joints[hip], let k = joints[knee], let a = joints[ankle] else { return nil }
-            let v1 = CGVector(dx: h.x - k.x, dy: h.y - k.y)
-            let v2 = CGVector(dx: a.x - k.x, dy: a.y - k.y)
-            let dot = v1.dx * v2.dx + v1.dy * v2.dy
-            let mag = hypot(v1.dx, v1.dy) * hypot(v2.dx, v2.dy)
-            guard mag > 0 else { return nil }
-            return acos(max(-1, min(1, dot / mag))) * 180 / .pi
-        }
-        return angle(.leftHip, .leftKnee, .leftAnkle) ?? angle(.rightHip, .rightKnee, .rightAnkle)
     }
 }
 
@@ -594,10 +645,11 @@ struct FormCheckView: View {
         let id = UUID()
         let summary: FormSetSummary
         let bestEver: Double?
+        let movement: FormCheckMovement
     }
 
-    init(exercise: FormCheckExercise = .squat) {
-        _session = State(initialValue: FormCheckSession(exercise: exercise))
+    init(exerciseName: String = "Squat", movement: FormCheckMovement = .squat) {
+        _session = State(initialValue: FormCheckSession(exerciseName: exerciseName, movement: movement))
     }
 
     var body: some View {
@@ -624,7 +676,7 @@ struct FormCheckView: View {
         .task { session.configure() }
         .onDisappear { session.stop() }
         .sheet(item: $summaryPayload) { payload in
-            FormSummarySheet(summary: payload.summary, bestEver: payload.bestEver) {
+            FormSummarySheet(summary: payload.summary, bestEver: payload.bestEver, movement: payload.movement) {
                 summaryPayload = nil
                 dismiss()
             }
@@ -651,7 +703,7 @@ struct FormCheckView: View {
                 Text("FORM CHECK · BETA")
                     .font(MorpheTheme.microLabel(10)).tracking(1.6)
                     .foregroundStyle(MorpheTheme.accent)
-                Text(session.exercise.rawValue.uppercased())
+                Text(session.exerciseName.uppercased())
                     .font(.system(size: 22, design: .monospaced).weight(.bold)).tracking(2)
                     .foregroundStyle(.white)
             }
@@ -701,7 +753,7 @@ struct FormCheckView: View {
                         .buttonStyle(SecondaryCTAButtonStyle())
                     Button("Finish & Review") {
                         let result = session.finishSet()
-                        summaryPayload = SummaryPayload(summary: result.summary, bestEver: result.bestEverAngle)
+                        summaryPayload = SummaryPayload(summary: result.summary, bestEver: result.bestEverAngle, movement: session.movement)
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     .disabled(session.repCount == 0)
@@ -740,6 +792,8 @@ struct FormCheckView: View {
 private struct FormSummarySheet: View {
     let summary: FormSetSummary
     let bestEver: Double?
+    var movement: FormCheckMovement = .squat
+    private var jointLabel: String { movement == .squat ? "knee" : "elbow" }
     let onClose: () -> Void
 
     var body: some View {
@@ -752,10 +806,10 @@ private struct FormSummarySheet: View {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 8) {
                                 MetricPill(label: "Reps", value: "\(summary.reps)")
-                                MetricPill(label: "Avg knee", value: summary.reps > 0 ? "\(Int(summary.avgMinKneeAngle))°" : "—")
+                                MetricPill(label: "Avg \(jointLabel)", value: summary.reps > 0 ? "\(Int(summary.avgMinKneeAngle))°" : "—")
                                 MetricPill(label: "Deepest", value: summary.reps > 0 ? "\(Int(summary.bestMinKneeAngle))°" : "—")
                             }
-                            Text("About 90° is roughly parallel — a smaller angle means a deeper squat.")
+                            Text("A smaller \(jointLabel) angle means a deeper rep — about 90° is a full range.")
                                 .font(.caption2)
                                 .foregroundStyle(MorpheTheme.textMuted)
                         }
