@@ -3179,10 +3179,8 @@ private struct WorkoutBuilderSheet: View {
                 }
             }
             .sheet(isPresented: $showExercisePicker) {
-                ExercisePickerSheet { exercise in
-                    items.append(CustomWorkoutItem(exercise: exercise))
-                }
-                .environment(store)
+                ExercisePickerSheet(items: $items)
+                    .environment(store)
             }
         }
     }
@@ -3191,26 +3189,84 @@ private struct WorkoutBuilderSheet: View {
 private struct ExercisePickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(MorpheAppStore.self) private var store
-    let onPick: (ExerciseReference) -> Void
+    @Binding var items: [CustomWorkoutItem]
 
     @State private var query = ""
+    @State private var groupFilter: MuscleGroup?
     @State private var showCustomForm = false
     @State private var customName = ""
     @State private var customMuscle: MuscleGroup = .core
 
+    /// Picks stay in the sheet: tapping adds (or removes) without dismissing,
+    /// so building a 6-exercise workout is one visit, not six.
+    private var addedIDs: Set<String> { Set(items.map(\.exercise.id)) }
+
     private var filtered: [ExerciseReference] {
-        let all = store.allExercises
-        guard !query.isEmpty else { return all }
+        var all = store.allExercises
+        if let groupFilter { all = all.filter { $0.muscleGroup == groupFilter } }
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return all }
         return all.filter {
-            $0.name.localizedCaseInsensitiveContains(query)
-                || $0.muscleGroup.rawValue.localizedCaseInsensitiveContains(query)
+            $0.name.localizedCaseInsensitiveContains(q)
+                || $0.muscleGroup.rawValue.localizedCaseInsensitiveContains(q)
+        }
+    }
+
+    /// Grouped by muscle for browsing; a search or chip filter flattens it.
+    private var grouped: [(group: MuscleGroup, exercises: [ExerciseReference])] {
+        MuscleGroup.allCases.compactMap { group in
+            let members = filtered.filter { $0.muscleGroup == group }
+            return members.isEmpty ? nil : (group, members)
         }
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 14) {
+                    // Own search field — always visible, never hijacks the nav
+                    // bar (the old .searchable hid the Done button mid-search).
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        TextField("Search exercises", text: $query)
+                            .textFieldStyle(.plain)
+                            .foregroundStyle(.white)
+                            .autocorrectionDisabled()
+                        if !query.isEmpty {
+                            Button {
+                                query = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            .accessibilityLabel("Clear search")
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(MorpheTheme.panelStrong)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                            )
+                    )
+
+                    // Muscle-group chips.
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(MuscleGroup.allCases) { group in
+                                Button(group.rawValue) {
+                                    groupFilter = groupFilter == group ? nil : group
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: groupFilter == group, selectedColor: MorpheTheme.accentAlt))
+                            }
+                        }
+                    }
+
                     Button {
                         withAnimation { showCustomForm.toggle() }
                     } label: {
@@ -3232,8 +3288,9 @@ private struct ExercisePickerSheet: View {
                                 .tint(MorpheTheme.accent)
                                 Button("Add custom exercise") {
                                     let created = store.addCustomExercise(name: customName, muscleGroup: customMuscle)
-                                    onPick(created)
-                                    dismiss()
+                                    items.append(CustomWorkoutItem(exercise: created))
+                                    customName = ""
+                                    withAnimation { showCustomForm = false }
                                 }
                                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                                 .disabled(customName.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -3241,44 +3298,86 @@ private struct ExercisePickerSheet: View {
                         }
                     }
 
-                    ForEach(filtered) { exercise in
-                        Button {
-                            onPick(exercise)
-                            dismiss()
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(exercise.name)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                    Text(exercise.muscleGroup.rawValue)
-                                        .font(.caption)
-                                        .foregroundStyle(MorpheTheme.textMuted)
-                                }
-                                Spacer()
-                                Image(systemName: "plus")
-                                    .foregroundStyle(MorpheTheme.accent)
+                    ForEach(grouped, id: \.group) { section in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 10) {
+                                Rectangle()
+                                    .fill(MorpheTheme.accent)
+                                    .frame(width: 3, height: 12)
+                                Text(section.group.rawValue.uppercased())
+                                    .font(MorpheTheme.microLabel(11)).tracking(1.6)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Text(String(format: "%02d", section.exercises.count))
+                                    .font(MorpheTheme.microLabel(10))
+                                    .foregroundStyle(MorpheTheme.accentAlt)
+                                Rectangle()
+                                    .fill(MorpheTheme.stroke)
+                                    .frame(height: 1)
+                                    .frame(maxWidth: .infinity)
                             }
-                            .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                    .fill(MorpheTheme.panel)
-                            )
+                            .padding(.top, 4)
+
+                            ForEach(section.exercises) { exercise in
+                                exerciseRow(exercise)
+                            }
                         }
-                        .buttonStyle(.plain)
+                    }
+
+                    if grouped.isEmpty {
+                        Text("No exercises match — try another word, or create a custom one above.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
                     }
                 }
                 .padding(20)
             }
             .background(PremiumBackground())
-            .navigationTitle("Add exercise")
+            .navigationTitle("Add exercises")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(items.isEmpty ? "Done" : "Done (\(items.count))") { dismiss() }
+                        .foregroundStyle(MorpheTheme.accent)
                 }
             }
         }
+    }
+
+    private func exerciseRow(_ exercise: ExerciseReference) -> some View {
+        let isAdded = addedIDs.contains(exercise.id)
+        return Button {
+            if isAdded {
+                items.removeAll { $0.exercise.id == exercise.id }
+            } else {
+                items.append(CustomWorkoutItem(exercise: exercise))
+                Haptics.impact(.light)
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(exercise.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text(exercise.equipment)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                Spacer()
+                Image(systemName: isAdded ? "checkmark.circle.fill" : "plus")
+                    .foregroundStyle(isAdded ? Color(red: 0.30, green: 0.85, blue: 0.45) : MorpheTheme.accent)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panel)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(isAdded ? MorpheTheme.accent.opacity(0.5) : Color.clear, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(exercise.name)\(isAdded ? ", added" : "")")
+        .accessibilityHint(isAdded ? "Removes it from your workout" : "Adds it to your workout")
     }
 }
