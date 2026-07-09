@@ -5,6 +5,7 @@ struct HomeView: View {
     @State private var showAdjustments = false
     @State private var showSupport = false
     @State private var doneDismissed = false
+    @State private var showMessages = false
 
     private var morpheScoreTitle: String {
         switch store.clientProfile.health.score {
@@ -174,8 +175,9 @@ struct HomeView: View {
                 }
                 }
 
-                MessagesCard(latest: store.clientConversation.last) {
-                    store.openAIAgent()
+                MessagesCard(latest: store.athleteMessageThreads.first) {
+                    store.selectedCommunitySection = .contact
+                    showMessages = true
                 }
             }
             .padding(.horizontal, 20)
@@ -191,6 +193,22 @@ struct HomeView: View {
         .onChange(of: store.isWorkoutLoggedToday) { _, logged in
             // A new day clears the flag so the pop-up shows after the next log.
             if !logged { doneDismissed = false }
+        }
+        .sheet(isPresented: $showMessages) {
+            NavigationStack {
+                CommunityView()
+                    .environment(store)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .principal) {
+                            Text("Messages").font(.headline).foregroundStyle(.white)
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { showMessages = false }.foregroundStyle(.white)
+                        }
+                    }
+            }
+            .background(PremiumBackground())
         }
     }
 
@@ -599,11 +617,11 @@ private struct TodayNextMoveCard: View {
     }
 }
 
-/// Bottom-of-Today entry into the Morphe conversation. Honest messaging: it
-/// opens the user's thread with Morphe (the AI assistant + the notes it sends
-/// on log/feedback), not a coach inbox — coaches don't exist in solo v1.
+/// Bottom-of-Today entry into coach + friend messaging. Morphe AI lives on the
+/// floating button, not here. For a solo v1 user this opens an honest empty
+/// inbox — real conversations arrive with accounts/coach linking.
 private struct MessagesCard: View {
-    let latest: ThreadMessage?
+    let latest: MessageThread?
     let onOpen: () -> Void
 
     var body: some View {
@@ -623,19 +641,19 @@ private struct MessagesCard: View {
                     }
 
                     if let latest {
-                        Text(latest.senderName)
+                        Text(latest.participant)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.white)
-                        Text(latest.text)
+                        Text(latest.preview)
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
                             .lineLimit(2)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
-                        Text("Message Morphe")
+                        Text("Coaches & friends")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.white)
-                        Text("Ask about your plan, swap an exercise, or get today made easier.")
+                        Text("When you connect with a coach or training friends, your conversations live here.")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -644,7 +662,7 @@ private struct MessagesCard: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityHint("Opens your conversation with Morphe")
+        .accessibilityHint("Opens your coach and friend messages")
     }
 }
 
