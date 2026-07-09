@@ -487,16 +487,45 @@ private struct CameraPreview: UIViewRepresentable {
 
     func makeUIView(context: Context) -> PreviewView {
         let view = PreviewView()
-        view.videoPreviewLayer.session = session
-        view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        view.backgroundColor = .black
+        view.configuredSession = session
         return view
     }
 
-    func updateUIView(_ uiView: PreviewView, context: Context) {}
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        uiView.configuredSession = session
+    }
 
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var videoPreviewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+
+        var configuredSession: AVCaptureSession? {
+            didSet { attachSession() }
+        }
+
+        // Assigning the session to the preview layer BEFORE the view is in the
+        // window hierarchy can leave the preview connection inactive — a black
+        // screen even though the session is running. Re-attaching once the view
+        // has a window (and on every session change) is the reliable fix.
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            attachSession()
+        }
+
+        private func attachSession() {
+            guard window != nil, let session = configuredSession else { return }
+            if videoPreviewLayer.session !== session {
+                videoPreviewLayer.session = session
+            }
+            videoPreviewLayer.videoGravity = .resizeAspectFill
+            // Pin the preview to portrait; the front-camera preview layer is
+            // mirrored (selfie) by default, matching the pose overlay's coords.
+            if let connection = videoPreviewLayer.connection,
+               connection.isVideoRotationAngleSupported(90) {
+                connection.videoRotationAngle = 90
+            }
+        }
     }
 }
 

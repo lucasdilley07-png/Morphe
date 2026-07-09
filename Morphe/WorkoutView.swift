@@ -164,6 +164,16 @@ struct WorkoutView: View {
                     restRunning: $restRunning
                 )
 
+                // Form Check available mid-set, not just before the session.
+                Button {
+                    showFormCheck = true
+                } label: {
+                    Label("Form Check", systemImage: "camera.viewfinder")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .accessibilityHint("Open the front camera to check your form and count reps")
+
                 HStack(spacing: 10) {
                     Button("Finish Session") {
                         if store.finishTrackedWorkoutSession() {
