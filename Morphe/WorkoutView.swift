@@ -1194,24 +1194,91 @@ private struct SetConsoleRow: View {
     }
 }
 
+/// Drives press-and-hold auto-repeat with a ramp. Owns its Timer in a class
+/// because reading SwiftUI @State inside an escaping Timer closure is stale —
+/// the View struct is recreated on every update.
+@MainActor
+final class HoldRepeater {
+    private var timer: Timer?
+    private var start: Date?
+    private(set) var isHolding = false
+
+    /// Repeat cadence: ~1× (a step every 0.16s) until the button has been held
+    /// for 2s, then ~4× faster (every 0.04s) so weight/reps climb quickly.
+    nonisolated static func interval(heldSeconds: TimeInterval) -> TimeInterval {
+        heldSeconds >= 2.0 ? 0.04 : 0.16
+    }
+
+    func begin(_ action: @escaping () -> Void) {
+        guard !isHolding else { return }
+        isHolding = true
+        start = Date()
+        action()                       // a plain tap fires exactly one step
+        schedule(action, after: 0.5)   // brief delay before auto-repeat kicks in
+    }
+
+    private func schedule(_ action: @escaping () -> Void, after delay: TimeInterval) {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.isHolding else { return }
+                action()
+                let held = Date().timeIntervalSince(self.start ?? Date())
+                self.schedule(action, after: Self.interval(heldSeconds: held))
+            }
+        }
+    }
+
+    func end() {
+        isHolding = false
+        timer?.invalidate()
+        timer = nil
+        start = nil
+    }
+}
+
 private struct ConsoleStepButton: View {
     let title: String
     let action: () -> Void
 
+    @State private var repeater = HoldRepeater()
+    @State private var isPressing = false
+
     var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(.subheadline, design: .monospaced).weight(.bold))
-                .foregroundStyle(.white)
-                .frame(minWidth: 40, minHeight: 40)
-                .background(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(title == "−" ? "Decrease" : title == "+" ? "Increase" : title))
+        Text(title)
+            .font(.system(.subheadline, design: .monospaced).weight(.bold))
+            .foregroundStyle(.white)
+            .frame(minWidth: 40, minHeight: 40)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(isPressing ? Color.white.opacity(0.12) : Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                    )
+            )
+            .contentShape(Rectangle())
+            // minimumDistance 0 makes this fire on touch-down, so a quick tap is
+            // one step and a hold auto-repeats — no separate tap gesture needed.
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        guard !isPressing else { return }
+                        isPressing = true
+                        Haptics.impact(.light)
+                        repeater.begin(action)
+                    }
+                    .onEnded { _ in
+                        isPressing = false
+                        repeater.end()
+                    }
+            )
+            .onDisappear { repeater.end() }
+            .accessibilityElement()
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(Text(title == "−" ? "Decrease" : title == "+" ? "Increase" : title))
+            .accessibilityHint("Double-tap to step; touch and hold to change quickly")
+            .accessibilityAction { action() }
     }
 }
 

@@ -2469,3 +2469,17 @@ final class ProgressionTests: XCTestCase {
                        "the too-easy feedback + weight persist, so the bump survives relaunch")
     }
 }
+
+/// The press-and-hold stepper ramps to ~4x after 2 seconds held.
+final class HoldRepeaterTests: XCTestCase {
+    func testCadenceRampsAfterTwoSeconds() {
+        let slow = HoldRepeater.interval(heldSeconds: 0.5)
+        let fast = HoldRepeater.interval(heldSeconds: 2.5)
+        XCTAssertEqual(slow, 0.16, "before 2s a hold repeats at the normal rate")
+        XCTAssertEqual(fast, 0.04, "after 2s it accelerates")
+        XCTAssertEqual(slow / fast, 4, accuracy: 0.01, "roughly 4x faster once ramped")
+        // The boundary flips exactly at 2 seconds.
+        XCTAssertEqual(HoldRepeater.interval(heldSeconds: 1.99), 0.16)
+        XCTAssertEqual(HoldRepeater.interval(heldSeconds: 2.0), 0.04)
+    }
+}
