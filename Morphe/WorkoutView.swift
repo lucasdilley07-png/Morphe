@@ -241,10 +241,13 @@ struct WorkoutView: View {
             .padding(.bottom, 120)
         }
         .onChange(of: store.activeWorkoutExerciseIndex) { _, _ in
-            // Carry the working weight forward; prefer this exercise's own
-            // last logged set when it has one.
+            // Carry the working weight forward: this session's own last set,
+            // else the cross-session progression suggestion (last logged
+            // weight, bumped when last time felt easy).
             if let exercise = store.activeWorkoutExercise {
-                pendingWeight = store.lastSessionWeight(for: exercise.id) ?? pendingWeight
+                pendingWeight = store.lastSessionWeight(for: exercise.id)
+                    ?? store.suggestedWorkingWeight(for: exercise)
+                    ?? pendingWeight
             }
         }
         .onAppear {
@@ -252,7 +255,9 @@ struct WorkoutView: View {
             // state — without the reseed the next quick-log records 0 ("BW")
             // even though the session knows the working weight.
             if pendingWeight == 0, let exercise = store.activeWorkoutExercise {
-                pendingWeight = store.lastSessionWeight(for: exercise.id) ?? 0
+                pendingWeight = store.lastSessionWeight(for: exercise.id)
+                    ?? store.suggestedWorkingWeight(for: exercise)
+                    ?? 0
             }
         }
     }
@@ -926,6 +931,7 @@ private struct TrainExpandableSection<Content: View>: View {
 }
 
 private struct ActiveWorkoutTrackerCard: View {
+    @Environment(MorpheAppStore.self) private var store
     let workout: WorkoutTemplate
     let exercise: WorkoutExercise
     let exerciseIndex: Int
@@ -1000,6 +1006,11 @@ private struct ActiveWorkoutTrackerCard: View {
                     Text("\(exercise.sets) • \(exercise.reps) • \(exercise.difficulty.rawValue)")
                         .foregroundStyle(MorpheTheme.textSecondary)
                     ProgressBarView(progress: setProgress, color: MorpheTheme.accent)
+                    if let progression = store.progressionNote(for: exercise) {
+                        Text(progression)
+                            .font(MorpheTheme.microLabel(10)).tracking(1.0)
+                            .foregroundStyle(MorpheTheme.accent)
+                    }
                     Text(exercise.formCue)
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textPrimary)

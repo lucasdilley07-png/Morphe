@@ -2611,6 +2611,46 @@ final class MorpheAppStore {
         trackedSetWeights[exerciseID]?.last
     }
 
+    // MARK: - Progression (suggest more when last time felt easy)
+
+    private func progressionIncrement() -> Double { weightUnit == .kilograms ? 2.5 : 5 }
+
+    /// The top weight the user last logged for an exercise of this name (across
+    /// prior sessions, newest first) and how that session felt.
+    private func lastLoggedTopWeight(forExerciseNamed name: String)
+        -> (weight: Double, unit: WeightUnit, feedback: WorkoutFeedbackOption?)? {
+        for log in workoutLogs where log.athleteID == clientProfile.id {
+            guard let logged = log.exercises.first(where: { $0.name == name }),
+                  let top = logged.weightsPerSet?.max(), top > 0 else { continue }
+            let unit = WeightUnit(rawValue: logged.weightUnit ?? "") ?? weightUnit
+            let feedback = log.sessionFeedback.flatMap { WorkoutFeedbackOption(rawValue: $0) }
+            return (top, unit, feedback)
+        }
+        return nil
+    }
+
+    /// Suggested working weight for the next set of `exercise`: the last weight
+    /// the user logged for it, plus a small bump when that session felt too
+    /// easy. This is what finally makes "Morphe will increase your challenge"
+    /// true instead of a text card. Returns nil for bodyweight / no history.
+    func suggestedWorkingWeight(for exercise: WorkoutExercise) -> Double? {
+        guard let last = lastLoggedTopWeight(forExerciseNamed: exercise.name) else { return nil }
+        // Only bump when the logged unit matches the current one — never guess
+        // a number across a lb/kg switch.
+        if last.feedback == .tooEasy, last.unit == weightUnit {
+            return last.weight + progressionIncrement()
+        }
+        return last.weight
+    }
+
+    /// A short, honest note for the tracker when Morphe is suggesting more than
+    /// last time; nil when there's no bump.
+    func progressionNote(for exercise: WorkoutExercise) -> String? {
+        guard let last = lastLoggedTopWeight(forExerciseNamed: exercise.name),
+              last.feedback == .tooEasy, last.unit == weightUnit, last.weight > 0 else { return nil }
+        return "MORPHE SUGGESTS +\(weightUnit.format(progressionIncrement())) — last time felt easy"
+    }
+
     /// True once every exercise in the live session has hit its target sets.
     var isTrackedWorkoutComplete: Bool {
         let exercises = currentWorkout.exercises
@@ -3057,7 +3097,8 @@ final class MorpheAppStore {
                 enteredByName: isBuddySession
                     ? "\(clientProfile.name) + \(selectedWorkoutPartner?.name ?? "Partner")"
                     : clientProfile.name,
-                verificationStatus: .athleteSubmitted
+                verificationStatus: .athleteSubmitted,
+                sessionFeedback: selectedWorkoutFeedback?.rawValue
             )
         )
 

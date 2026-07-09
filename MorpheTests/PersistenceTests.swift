@@ -2388,3 +2388,84 @@ final class DailyPlanTests: XCTestCase {
                       "a catalog plan workout is staged after relaunch")
     }
 }
+
+/// Progression — a session that felt "too easy" makes Morphe pre-fill a small
+/// bump on that exercise's next working weight (the promise that used to be a
+/// text card).
+@MainActor
+final class ProgressionTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    override func tearDown() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        super.tearDown()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    /// Runs one session on the current workout, logging `weight` on the first
+    /// exercise, rating it, and logging the workout. Returns that exercise.
+    @discardableResult
+    private func logSession(_ store: MorpheAppStore, weight: Double, feedback: WorkoutFeedbackOption) -> WorkoutExercise {
+        store.startTodayWorkout()
+        let exercise = store.activeWorkoutExercise!
+        store.completeTrackedSet(reps: 8, weight: weight)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        store.submitWorkoutFeedback(feedback)
+        store.logWorkout()
+        return exercise
+    }
+
+    func testTooEasyBumpsNextSuggestedWeight() {
+        let store = freshStore()
+        let exercise = logSession(store, weight: 100, feedback: .tooEasy)
+
+        // Pounds default → +5 lb bump on the next suggestion for that exercise.
+        XCTAssertEqual(store.suggestedWorkingWeight(for: exercise), 105)
+        XCTAssertNotNil(store.progressionNote(for: exercise))
+    }
+
+    func testJustRightHoldsTheWeight() {
+        let store = freshStore()
+        let exercise = logSession(store, weight: 100, feedback: .justRight)
+
+        XCTAssertEqual(store.suggestedWorkingWeight(for: exercise), 100, "no bump when it felt right")
+        XCTAssertNil(store.progressionNote(for: exercise))
+    }
+
+    func testTooHardDoesNotBump() {
+        let store = freshStore()
+        let exercise = logSession(store, weight: 100, feedback: .tooHard)
+        XCTAssertEqual(store.suggestedWorkingWeight(for: exercise), 100)
+        XCTAssertNil(store.progressionNote(for: exercise))
+    }
+
+    func testBodyweightExerciseGetsNoWeightSuggestion() {
+        let store = freshStore()
+        let exercise = logSession(store, weight: 0, feedback: .tooEasy)
+        XCTAssertNil(store.suggestedWorkingWeight(for: exercise), "bodyweight has no weight to bump")
+        XCTAssertNil(store.progressionNote(for: exercise))
+    }
+
+    func testSuggestionSurvivesRelaunch() {
+        let store = freshStore()
+        let exercise = logSession(store, weight: 135, feedback: .tooEasy)
+        XCTAssertEqual(store.suggestedWorkingWeight(for: exercise), 140)
+
+        let reloaded = MorpheAppStore()
+        // The exercise resolves by name from the persisted log.
+        XCTAssertEqual(reloaded.suggestedWorkingWeight(for: exercise), 140,
+                       "the too-easy feedback + weight persist, so the bump survives relaunch")
+    }
+}

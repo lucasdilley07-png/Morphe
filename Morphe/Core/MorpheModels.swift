@@ -886,6 +886,10 @@ struct WorkoutLog: Identifiable, Hashable, Codable {
     var enteredByName: String
     var visibility: String = "Connected coach + athlete"
     var verificationStatus: WorkoutVerificationStatus
+    /// How the session felt (WorkoutFeedbackOption raw value), captured at log
+    /// time so the next session can suggest a small progression. Optional:
+    /// logs saved before this existed decode with nil (= no bump).
+    var sessionFeedback: String?
 }
 
 extension WorkoutLog {
@@ -912,6 +916,7 @@ extension WorkoutLog {
         enteredByName = ((try? c.decodeIfPresent(String.self, forKey: .enteredByName)) ?? nil) ?? athleteName
         visibility = ((try? c.decodeIfPresent(String.self, forKey: .visibility)) ?? nil) ?? "Connected coach + athlete"
         verificationStatus = ((try? c.decodeIfPresent(WorkoutVerificationStatus.self, forKey: .verificationStatus)) ?? nil) ?? .athleteSubmitted
+        sessionFeedback = ((try? c.decodeIfPresent(String.self, forKey: .sessionFeedback)) ?? nil)
     }
 }
 

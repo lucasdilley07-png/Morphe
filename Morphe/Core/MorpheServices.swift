@@ -2993,7 +2993,7 @@ enum MorpheDemoContent {
     static func workoutFeedbackResponse(for option: WorkoutFeedbackOption) -> String {
         switch option {
         case .tooEasy:
-            return "Great. Morphe will slightly increase your challenge next time."
+            return "Nice — that means you're ready for more. Next session Morphe pre-fills a small bump on the weights you logged today."
         case .justRight:
             return "Perfect. Morphe will keep the next session in the same productive range."
         case .tooHard:
