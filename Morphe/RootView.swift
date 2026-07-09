@@ -95,7 +95,7 @@ struct RootView: View {
             }
             .background(PremiumBackground())
         }
-        .sheet(isPresented: $store.showAIAgent) {
+        .fullScreenCover(isPresented: $store.showAIAgent) {
             NavigationStack {
                 MorpheAIAgentSheet()
                     .environment(store)
@@ -104,8 +104,6 @@ struct RootView: View {
             // declines with an honest reply instead), so no dialog host here —
             // sheet teardown writing through the shared binding could cancel
             // a pending change.
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
             .background(PremiumBackground())
         }
         .sheet(isPresented: $store.showWelcomeExperience) {
@@ -560,67 +558,59 @@ private struct MorpheAIAgentSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var prompt = ""
+    @FocusState private var inputFocused: Bool
 
     private var messages: [ThreadMessage] {
         store.selectedRole == .coach ? store.coachAIAgentConversation : store.athleteAIAgentConversation
     }
 
+    private var trimmedPrompt: String {
+        prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                SectionTitleView(
-                    title: "Morphe AI",
-                    subtitle: store.aiAgentSubtitle
-                )
-
-                // Conversation leads — this is a chat, not a control panel.
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(messages.suffix(8)) { message in
-                            AIAgentMessageRow(message: message)
-                        }
-                    }
-                }
-
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Ask Morphe")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-
-                        TextField(
-                            store.aiAgentPlaceholder,
-                            text: $prompt,
-                            axis: .vertical
-                        )
-                        .lineLimit(2...4)
-                        .textFieldStyle(MorpheFieldStyle())
-
-                        Button("Send") {
-                            store.sendAIAgentPrompt(prompt)
-                            prompt = ""
-                        }
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    Text("Context".uppercased())
-                        .font(MorpheTheme.microLabel(10))
-                        .tracking(1.2)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    Text(store.aiAgentContextLabel)
+        // One full-screen chat surface: the conversation fills the page and
+        // the composer is pinned to the bottom — no separate "Morphe AI" and
+        // "Ask Morphe" cards.
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(store.aiAgentSubtitle)
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
-                        .lineLimit(1)
-                    Spacer()
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom, 4)
+
+                    ForEach(messages) { message in
+                        AIAgentMessageRow(message: message)
+                            .id(message.id)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 16)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onAppear {
+                if let last = messages.last {
+                    proxy.scrollTo(last.id, anchor: .bottom)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 40)
+            .onChange(of: messages.count) {
+                guard let last = messages.last else { return }
+                withAnimation(.easeOut(duration: 0.2)) {
+                    proxy.scrollTo(last.id, anchor: .bottom)
+                }
+            }
         }
+        .safeAreaInset(edge: .bottom) { composerBar }
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Morphe AI")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Done") {
                     store.closeAIAgent()
@@ -629,6 +619,62 @@ private struct MorpheAIAgentSheet: View {
                 .foregroundStyle(.white)
             }
         }
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// Full-width composer pinned to the bottom of the chat.
+    private var composerBar: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Text("Context".uppercased())
+                    .font(MorpheTheme.microLabel(10))
+                    .tracking(1.2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Text(store.aiAgentContextLabel)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .lineLimit(1)
+                Spacer()
+            }
+
+            HStack(alignment: .bottom, spacing: 10) {
+                TextField(
+                    store.aiAgentPlaceholder,
+                    text: $prompt,
+                    axis: .vertical
+                )
+                .lineLimit(1...4)
+                .textFieldStyle(MorpheFieldStyle())
+                .focused($inputFocused)
+
+                Button(action: send) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(trimmedPrompt.isEmpty ? MorpheTheme.textMuted : MorpheTheme.accent)
+                }
+                .buttonStyle(.plain)
+                .disabled(trimmedPrompt.isEmpty)
+                .accessibilityLabel("Send")
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .background(
+            MorpheTheme.ink.opacity(0.97)
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 1)
+                }
+                .ignoresSafeArea(edges: .bottom)
+        )
+    }
+
+    private func send() {
+        guard !trimmedPrompt.isEmpty else { return }
+        store.sendAIAgentPrompt(trimmedPrompt)
+        prompt = ""
     }
 }
 
