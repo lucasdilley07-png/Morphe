@@ -1459,6 +1459,7 @@ private struct DiscoverCatalogSection: View {
     }
 
     @State private var selection: Selection?
+    @State private var searchQuery = ""
     @State private var levelFilter: DemoDifficulty?
     @State private var durationFilter: String?
     @State private var equipmentFilter: String?
@@ -1537,11 +1538,91 @@ private struct DiscoverCatalogSection: View {
 
     // MARK: - Landing: icon tile grid
 
+    /// Search matches name, style, focus, and goal so "boxing", "core", or a
+    /// workout's own name all land.
+    private var searchResults: [WorkoutTemplate] {
+        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return [] }
+        return store.discoverWorkouts.filter {
+            $0.name.localizedCaseInsensitiveContains(q)
+                || $0.trainingTypeTag.localizedCaseInsensitiveContains(q)
+                || $0.focusTag.localizedCaseInsensitiveContains(q)
+                || $0.goal.localizedCaseInsensitiveContains(q)
+        }
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textMuted)
+            TextField("Search workouts", text: $searchQuery)
+                .textFieldStyle(.plain)
+                .foregroundStyle(.white)
+                .autocorrectionDisabled()
+            if !searchQuery.isEmpty {
+                Button {
+                    searchQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panelStrong)
+                .overlay(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
+        )
+    }
+
+    @ViewBuilder
+    private var searchResultsList: some View {
+        let results = searchResults
+        sectionHeader(title: "Results", count: results.count)
+        if results.isEmpty {
+            GlassCard {
+                Text("No workouts match \"\(searchQuery)\" — try a style like strength, boxing, or core.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else {
+            LazyVStack(spacing: 10) {
+                ForEach(results.prefix(30)) { template in
+                    DiscoverProgramCard(
+                        template: template,
+                        typeName: Self.shortTypeNames[template.trainingTypeTag] ?? template.trainingTypeTag,
+                        isSaved: store.isCatalogWorkoutSaved(template),
+                        onStart: { onStart(template) },
+                        onSave: { store.saveCatalogWorkout(template) }
+                    )
+                }
+            }
+            if results.count > 30 {
+                Text("Showing the first 30 — keep typing to narrow it down.")
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+        }
+    }
+
     private var landingGrid: some View {
         let byType = Dictionary(grouping: store.discoverWorkouts, by: \.trainingTypeTag)
         let legendsCount = store.discoverWorkouts.filter { $0.type == "Legends" }.count
 
         return VStack(alignment: .leading, spacing: 20) {
+            searchBar
+
+            if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                searchResultsList
+            } else {
             if legendsCount > 0 {
                 legendsTile(count: legendsCount)
             }
@@ -1565,6 +1646,7 @@ private struct DiscoverCatalogSection: View {
                         }
                     }
                 }
+            }
             }
         }
     }

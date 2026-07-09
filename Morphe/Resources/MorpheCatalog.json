@@ -13816,6 +13816,406 @@
           "reps": 10
         }
       ]
+    },
+    {
+      "name": "Iron Dawn Ring Circuit",
+      "focus": "Conditioning",
+      "trainingType": "Circuit training",
+      "level": "Advanced",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "goal": "The heavyweight champion's calisthenics grind — volume that makes fatigue familiar",
+      "notes": "Built on the dawn calisthenics tradition of 1980s heavyweight boxing camps: huge simple volume, split into sets, done daily. Scale the numbers — the champions split theirs across a whole day.",
+      "exercises": [
+        {
+          "libraryID": "sit-up",
+          "sets": 5,
+          "reps": 30
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 5,
+          "reps": 20
+        },
+        {
+          "libraryID": "dip",
+          "sets": 4,
+          "reps": 12
+        },
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 5,
+          "reps": 40
+        },
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 3,
+          "reps": 60
+        },
+        {
+          "libraryID": "jump-rope",
+          "sets": 3,
+          "reps": 100
+        }
+      ],
+      "id": "247a401d-a7c4-5374-89df-6f3c70f35d6b",
+      "collection": "Legends"
+    },
+    {
+      "name": "Float Like Thunder Rounds",
+      "focus": "Conditioning",
+      "trainingType": "Cardiovascular endurance",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Boxing-ring cardio: rope rounds and shadow work with dancing feet",
+      "notes": "The classic ring-conditioning formula — jump rope rounds, loose shadow boxing, and core. Stay light on your feet the whole session.",
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 5,
+          "reps": 100
+        },
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 5,
+          "reps": 60
+        },
+        {
+          "libraryID": "sit-up",
+          "sets": 3,
+          "reps": 25
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 3,
+          "reps": 30
+        }
+      ],
+      "id": "d8ffa667-35af-5af8-81f9-808fa1279e1d",
+      "collection": "Legends"
+    },
+    {
+      "name": "Pitch Genius Footwork",
+      "focus": "Conditioning",
+      "trainingType": "Speed & agility training",
+      "level": "Moderate",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Short-burst acceleration and lateral quickness, the playmaker's toolkit",
+      "notes": "Modeled on elite footballers' agility sessions: multi-directional movement, short explosive bursts, single-leg strength. Quality of movement over quantity.",
+      "exercises": [
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "reps": 20
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 4,
+          "reps": 30
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "reps": 20
+        },
+        {
+          "libraryID": "bulgarian-split-squat",
+          "sets": 3,
+          "reps": 8
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 3,
+          "reps": 10
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "reps": 30
+        }
+      ],
+      "id": "da1bc307-b794-5ce0-9788-b74a7e456309",
+      "collection": "Legends"
+    },
+    {
+      "name": "Olympic Lane Opener",
+      "focus": "Recovery",
+      "trainingType": "Mobility training",
+      "level": "Beginner",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "goal": "The swimmer's pre-race opener: shoulders, spine, and hamstrings, systematically",
+      "notes": "A head-to-toe dynamic warm-up in the tradition of Olympic swimmers — famous cross-body arm swings included. Use it before any upper-body or full-body session.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 3,
+          "reps": 15
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "reps": 6
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "reps": 10
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "reps": 30
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "reps": 30
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "reps": 20
+        }
+      ],
+      "id": "f23621e6-e989-5903-8d12-2859b4842d19",
+      "collection": "Legends"
+    },
+    {
+      "name": "Lightning Strike Protocol",
+      "focus": "Conditioning",
+      "trainingType": "Speed & agility training",
+      "level": "Advanced",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Sprinter's speed day: max-intent bursts and explosive jumps",
+      "notes": "World-record sprint training distilled: warm up completely, sprint with full intent, rest fully between efforts. Speed is a skill — never grind it out tired.",
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 3,
+          "reps": 30
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 8,
+          "reps": 20
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 4,
+          "reps": 5
+        },
+        {
+          "libraryID": "box-jump",
+          "sets": 4,
+          "reps": 5
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 8
+        }
+      ],
+      "id": "238da501-e706-55f3-b3b1-e308183d2479",
+      "collection": "Legends"
+    },
+    {
+      "name": "Mamba Dawn Session",
+      "focus": "Full Body",
+      "trainingType": "Strength training",
+      "level": "Advanced",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "goal": "The 4 a.m. blueprint: heavy basics plus track work before anyone's awake",
+      "notes": "In the tradition of basketball's most obsessive pre-dawn sessions — compound strength, then sprints, then core. The edge is showing up when nobody's watching.",
+      "exercises": [
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 4,
+          "reps": 8
+        },
+        {
+          "libraryID": "barbell-bench-press",
+          "sets": 4,
+          "reps": 8
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 4,
+          "reps": 8
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "reps": 15
+        },
+        {
+          "libraryID": "sit-up",
+          "sets": 4,
+          "reps": 25
+        }
+      ],
+      "id": "8170534a-f075-58ee-8525-420523592af4",
+      "collection": "Legends"
+    },
+    {
+      "name": "Winger's Engine Circuit",
+      "focus": "Conditioning",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Match-shaped conditioning: sprints, jumps, pushing, and core in circuit",
+      "notes": "Built like an elite winger's gym day — high-intensity efforts that mimic match situations: explode, recover, repeat.",
+      "exercises": [
+        {
+          "libraryID": "sprint-interval",
+          "sets": 5,
+          "reps": 20
+        },
+        {
+          "libraryID": "box-jump",
+          "sets": 3,
+          "reps": 8
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 4,
+          "reps": 20
+        },
+        {
+          "libraryID": "bicycle-crunch",
+          "sets": 3,
+          "reps": 20
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 3,
+          "reps": 12
+        }
+      ],
+      "id": "af7ecc90-bd34-5c72-b3ad-f66265cf757d",
+      "collection": "Legends"
+    },
+    {
+      "name": "Air Time Vertical Pack",
+      "focus": "Legs",
+      "trainingType": "Plyometric training",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "goal": "Bounce work: jumps, landings, and calves for a higher vertical",
+      "notes": "Classic vertical-jump training — explosive reps, soft landings, full recovery between sets. Land quiet every single rep.",
+      "exercises": [
+        {
+          "libraryID": "box-jump",
+          "sets": 4,
+          "reps": 6
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 4,
+          "reps": 10
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 3,
+          "reps": 5
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 3,
+          "reps": 12
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 4,
+          "reps": 15
+        }
+      ],
+      "id": "da46a7e1-b141-530f-a829-beeb2006b3a8",
+      "collection": "Legends"
+    },
+    {
+      "name": "Baseline Power Day",
+      "focus": "Full Body",
+      "trainingType": "Power training",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "goal": "Court power: hips, rotation, and first-step quickness",
+      "notes": "In the mold of a champion's court-sport strength day — hip power, rotational core, and lateral movement that translates directly to explosive play.",
+      "exercises": [
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 15
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 4,
+          "reps": 12
+        },
+        {
+          "libraryID": "russian-twist",
+          "sets": 3,
+          "reps": 20
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "reps": 20
+        },
+        {
+          "libraryID": "shoulder-press",
+          "sets": 3,
+          "reps": 10
+        }
+      ],
+      "id": "e02d4a17-8946-52b0-b4cd-fd4300c9267b",
+      "collection": "Legends"
+    },
+    {
+      "name": "Marathon King Base Miles",
+      "focus": "Conditioning",
+      "trainingType": "Cardiovascular endurance",
+      "level": "Beginner",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "goal": "The distance-runner's secret: mostly easy, a little fast, endlessly consistent",
+      "notes": "Modeled on the marathon greats: long easy effort, a few relaxed strides, and disciplined mobility after. The magic is doing it again tomorrow.",
+      "exercises": [
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "reps": 30
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 4,
+          "reps": 15
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 15
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "reps": 30
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "reps": 6
+        }
+      ],
+      "id": "23942081-db99-586c-af5d-58af8dd419bd",
+      "collection": "Legends"
     }
   ]
 }

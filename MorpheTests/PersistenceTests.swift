@@ -2295,6 +2295,19 @@ final class FormAnalyzerTests: XCTestCase {
         XCTAssertEqual(store.bestDepthAngle(), 82, "smallest angle = deepest rep")
     }
 
+    func testEveryCatalogWorkoutResolvesToATemplate() {
+        // A workout whose exercise isn't in the library is silently dropped by
+        // the loader — this pins the full catalog (incl. the athlete-inspired
+        // Legends) as resolvable, so a bad libraryID fails here, not in prod.
+        let catalog = WorkoutCatalog.loadBundled()
+        XCTAssertEqual(catalog.count, 358, "bundled catalog size")
+        let resolved = catalog.compactMap {
+            WorkoutCatalog.template(from: $0, library: MorpheDemoContent.exerciseDatabase)
+        }
+        XCTAssertEqual(resolved.count, catalog.count, "every catalog workout must resolve")
+        XCTAssertEqual(resolved.filter { $0.type == "Legends" }.count, 17, "7 classic + 10 athlete-inspired legends")
+    }
+
     func testMovementInference() {
         XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Push-Up", muscleGroup: .chest), .pushup)
         XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Overhead Press", muscleGroup: .shoulders), .pushup)

@@ -1396,6 +1396,126 @@ enum MorpheDemoContent {
             beginnerModification: "Widen the knees or rest your head on a cushion.",
             alternatives: ["Cat-Cow", "Thread the Needle"],
             whyThisMatters: "A genuine reset position — it downshifts the nervous system and opens the back."
+        ),
+        ExerciseReference(
+            id: "shadow-boxing",
+            name: "Shadow Boxing",
+            muscleGroup: .conditioning,
+            movementPattern: "Striking / footwork",
+            musclesWorked: "Shoulders, core, and legs",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Stand in a relaxed stance, hands up at your chin.",
+                "Throw light punches at the air — jabs, crosses, hooks — while moving your feet.",
+                "Stay on the balls of your feet and keep breathing."
+            ],
+            formCue: "Snap the punch back as fast as it goes out.",
+            commonMistakes: "Dropping the hands and going flat-footed as you tire.",
+            beginnerModification: "Just jabs and footwork — add hooks when the rhythm feels easy.",
+            alternatives: ["High Knees", "Jump Rope"],
+            whyThisMatters: "Footwork-plus-punching is full-body conditioning that also trains coordination and rhythm."
+        ),
+        ExerciseReference(
+            id: "sit-up",
+            name: "Sit-Up",
+            muscleGroup: .core,
+            movementPattern: "Trunk flexion",
+            musclesWorked: "Abs and hip flexors",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Lie on your back with knees bent, feet flat.",
+                "Curl your torso up until your chest nears your knees.",
+                "Lower back down with control."
+            ],
+            formCue: "Curl up one vertebra at a time — don't yank your neck.",
+            commonMistakes: "Pulling on the head and using momentum.",
+            beginnerModification: "Do crunches (shoulder blades off the floor only).",
+            alternatives: ["Bicycle Crunch", "Plank"],
+            whyThisMatters: "The classic high-volume core builder used in boxing gyms for a century."
+        ),
+        ExerciseReference(
+            id: "box-jump",
+            name: "Box Jump",
+            muscleGroup: .legs,
+            movementPattern: "Jump",
+            musclesWorked: "Glutes, quads, and calves",
+            equipment: "Plyo box or sturdy bench",
+            difficulty: .moderate,
+            videoPlaceholder: "",
+            instructions: [
+                "Stand a short step back from the box.",
+                "Swing your arms and jump, landing softly with both feet fully on top.",
+                "Stand tall, then STEP down — don't jump down."
+            ],
+            formCue: "Land quiet, like the box is made of glass.",
+            commonMistakes: "Jumping down (hard on the knees) and using a box that's too high.",
+            beginnerModification: "Use a low step, or do step-ups instead.",
+            alternatives: ["Jump Squat", "Broad Jump"],
+            whyThisMatters: "Explosive triple extension — the jump that carries over to sprinting and sport."
+        ),
+        ExerciseReference(
+            id: "sprint-interval",
+            name: "Sprint Intervals",
+            muscleGroup: .conditioning,
+            movementPattern: "Run",
+            musclesWorked: "Whole body",
+            equipment: "Open space or treadmill",
+            difficulty: .moderate,
+            videoPlaceholder: "",
+            instructions: [
+                "Warm up thoroughly first — sprinting cold is how hamstrings get hurt.",
+                "Run hard for the work interval (about 15–30 seconds).",
+                "Walk or rest 2–3 times as long as you ran, then repeat."
+            ],
+            formCue: "Run tall — drive the knees and pump the arms.",
+            commonMistakes: "Going 100% on the first rep and dying by the third.",
+            beginnerModification: "Fast strides at ~80% effort instead of all-out sprints.",
+            alternatives: ["High Knees", "Stationary Bike"],
+            whyThisMatters: "Top-end speed work — the highest-intensity conditioning there is, in tiny doses."
+        ),
+        ExerciseReference(
+            id: "arm-swing-circles",
+            name: "Arm Swings & Circles",
+            muscleGroup: .shoulders,
+            movementPattern: "Dynamic stretch",
+            musclesWorked: "Shoulders, chest, and upper back",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "",
+            instructions: [
+                "Swing both arms out wide, then across your chest, letting them wrap.",
+                "Add slow full circles forward and backward.",
+                "Build the range gradually — bigger each swing."
+            ],
+            formCue: "Loose and rhythmic — momentum does the work.",
+            commonMistakes: "Forcing range instead of building into it.",
+            beginnerModification: "Smaller circles, one arm at a time.",
+            alternatives: ["World's Greatest Stretch", "Cat-Cow"],
+            whyThisMatters: "The swimmer's classic shoulder opener — it warms the joint through full range before work."
+        ),
+        ExerciseReference(
+            id: "bear-crawl",
+            name: "Bear Crawl",
+            muscleGroup: .core,
+            movementPattern: "Crawl",
+            musclesWorked: "Shoulders, core, and hips",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "",
+            instructions: [
+                "Start on hands and feet, knees hovering just off the floor.",
+                "Crawl forward moving opposite hand and foot together.",
+                "Keep your hips low and level."
+            ],
+            formCue: "Imagine a cup of water on your lower back — don't spill it.",
+            commonMistakes: "Hips piking high, which turns it into a walk.",
+            beginnerModification: "Crawl in place, lifting opposite hand and foot.",
+            alternatives: ["Mountain Climber", "Plank"],
+            whyThisMatters: "Total-body control under movement — core stability you can't fake."
         )
     ]
 
