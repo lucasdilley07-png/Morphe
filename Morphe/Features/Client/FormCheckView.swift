@@ -766,22 +766,25 @@ struct FormCheckView: View {
             CameraPreview(session: session.session).ignoresSafeArea()
             PoseOverlay(joints: session.joints, framing: session.framing).ignoresSafeArea()
 
-            // Per-rep grade pop-up (Poor / Good / Great / Excellent).
-            if let flashGrade {
-                Text(flashGrade.rawValue.uppercased())
-                    .font(.system(size: 42, design: .monospaced).weight(.heavy))
-                    .tracking(3)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 30).padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(flashGrade.color.opacity(0.92))
-                    )
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
-            }
-
             VStack {
                 header
+
+                // Per-rep grade pop-up at the top — clear of the framing pill
+                // and rep counter at the bottom.
+                if let flashGrade {
+                    Text(flashGrade.rawValue.uppercased())
+                        .font(.system(size: 34, design: .monospaced).weight(.heavy))
+                        .tracking(3)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 24).padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .fill(flashGrade.color.opacity(0.92))
+                        )
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                        .padding(.top, 10)
+                }
+
                 Spacer()
                 footer
             }
@@ -844,14 +847,6 @@ struct FormCheckView: View {
                     Spacer()
                 }
 
-                if let cue = session.liveCue {
-                    Text(cue.uppercased())
-                        .font(MorpheTheme.microLabel(11)).tracking(1.2)
-                        .foregroundStyle(MorpheTheme.accent)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .transition(.opacity)
-                }
-
                 HStack(spacing: 10) {
                     Button("Reset") { session.resetReps() }
                         .buttonStyle(SecondaryCTAButtonStyle())
@@ -872,9 +867,8 @@ struct FormCheckView: View {
             }
             .padding(16)
             .background(RoundedRectangle(cornerRadius: MorpheTheme.radius).fill(.black.opacity(0.55)))
-            .animation(.easeInOut(duration: 0.2), value: session.liveCue)
 
-            Text("Morphe reads what the front camera can see — depth, knee tracking, and tempo. It's a training aid, not a physical therapist.")
+            Text("Morphe reads what the front camera can see — depth, body tracking, and tempo. It's a training aid, not a physical therapist.")
                 .font(.caption2)
                 .foregroundStyle(MorpheTheme.textMuted)
                 .multilineTextAlignment(.center)
