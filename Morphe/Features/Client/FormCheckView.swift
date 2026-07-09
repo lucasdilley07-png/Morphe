@@ -107,6 +107,23 @@ struct FormCue: Equatable {
     var message: String
 }
 
+/// A single rep's overall form grade — the per-rep pop-up rating.
+enum FormRepGrade: String {
+    case poor = "Poor"
+    case good = "Good"
+    case great = "Great"
+    case excellent = "Excellent"
+
+    var color: Color {
+        switch self {
+        case .poor:      return Color(red: 0.92, green: 0.26, blue: 0.28)
+        case .good:      return Color(red: 0.98, green: 0.78, blue: 0.22)
+        case .great:     return Color(red: 0.45, green: 0.85, blue: 0.48)
+        case .excellent: return Color(red: 0.24, green: 0.95, blue: 0.55)
+        }
+    }
+}
+
 struct FormSetSummary: Equatable {
     var reps: Int
     var avgMinKneeAngle: CGFloat
@@ -168,6 +185,33 @@ enum FormAnalyzer {
         // At most three cues so it reads as coaching, not a wall of text.
         return FormSetSummary(reps: n, avgMinKneeAngle: avg, bestMinKneeAngle: best,
                               cues: Array(cues.prefix(3)))
+    }
+
+    /// Overall grade for one rep, from depth + (squat) knee tracking + tempo.
+    static func grade(_ m: FormRepMetrics, movement: FormCheckMovement) -> FormRepGrade {
+        var score = 0
+        // Depth / range of motion (the primary angle).
+        switch m.minKneeAngle {
+        case ..<95:  score += 2   // full, deep rep
+        case ..<110: score += 1   // solid
+        case ..<125: break        // a touch shallow
+        default:     score -= 1   // clearly short
+        }
+        // Knee tracking (squats only, when measured).
+        if movement.usesValgus, let v = m.valgusRatio {
+            if v >= 0.90 { score += 1 }
+            else if v < valgusRatio { score -= 1 }
+        }
+        // Tempo — controlled earns, dropping loses.
+        if m.descentSeconds >= 0.8 { score += 1 }
+        else if m.descentSeconds > 0, m.descentSeconds < 0.4 { score -= 1 }
+
+        switch score {
+        case 3...: return .excellent
+        case 2:    return .great
+        case 1:    return .good
+        default:   return .poor
+        }
     }
 
     /// One-line feedback for the rep that just finished (shown live).
@@ -277,6 +321,7 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     // Per-rep feedback (Phase 2).
     private(set) var repMetrics: [FormRepMetrics] = []
     private(set) var liveCue: String?
+    private(set) var lastRepGrade: FormRepGrade?
 
     // Rep-counting + metric-capture state machine (knee-angle based, squat).
     private var repPhase: RepPhase = .up
@@ -373,6 +418,7 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         recentAngles = []
         repMetrics = []
         liveCue = nil
+        lastRepGrade = nil
     }
 
     /// Ends the set, analyzes it, persists the result, and returns the summary
@@ -431,6 +477,7 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
             if let metrics = newRep {
                 self.repMetrics.append(metrics)
                 self.repCount += 1
+                self.lastRepGrade = FormAnalyzer.grade(metrics, movement: self.movement)
                 self.liveCue = FormAnalyzer.liveCue(for: metrics, repNumber: self.repCount, movement: self.movement)
                 Haptics.impact(.light)
             }
@@ -653,6 +700,12 @@ struct FormCheckView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var session: FormCheckSession
     @State private var summaryPayload: SummaryPayload?
+    @State private var flashGrade: FormRepGrade?
+    @State private var flashToken = 0
+
+    /// Called with the rep count when the user submits the set, so the live
+    /// workout can log the camera-counted reps.
+    var onFinish: (Int) -> Void = { _ in }
 
     private struct SummaryPayload: Identifiable {
         let id = UUID()
@@ -663,8 +716,10 @@ struct FormCheckView: View {
         let metrics: [FormRepMetrics]
     }
 
-    init(exerciseName: String = "Squat", movement: FormCheckMovement = .squat) {
+    init(exerciseName: String = "Squat", movement: FormCheckMovement = .squat,
+         onFinish: @escaping (Int) -> Void = { _ in }) {
         _session = State(initialValue: FormCheckSession(exerciseName: exerciseName, movement: movement))
+        self.onFinish = onFinish
     }
 
     var body: some View {
@@ -698,7 +753,9 @@ struct FormCheckView: View {
                 exerciseName: payload.exerciseName,
                 metrics: payload.metrics
             ) {
+                let reps = payload.summary.reps
                 summaryPayload = nil
+                onFinish(reps)
                 dismiss()
             }
         }
@@ -709,12 +766,38 @@ struct FormCheckView: View {
             CameraPreview(session: session.session).ignoresSafeArea()
             PoseOverlay(joints: session.joints, framing: session.framing).ignoresSafeArea()
 
+            // Per-rep grade pop-up (Poor / Good / Great / Excellent).
+            if let flashGrade {
+                Text(flashGrade.rawValue.uppercased())
+                    .font(.system(size: 42, design: .monospaced).weight(.heavy))
+                    .tracking(3)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 30).padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(flashGrade.color.opacity(0.92))
+                    )
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+            }
+
             VStack {
                 header
                 Spacer()
                 footer
             }
             .padding(20)
+        }
+        .onChange(of: session.repCount) { _, _ in
+            guard let grade = session.lastRepGrade else { return }
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) { flashGrade = grade }
+            flashToken += 1
+            let token = flashToken
+            Task {
+                try? await Task.sleep(for: .seconds(1.1))
+                if token == flashToken {
+                    withAnimation(.easeOut(duration: 0.3)) { flashGrade = nil }
+                }
+            }
         }
     }
 

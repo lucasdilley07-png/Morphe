@@ -2303,6 +2303,17 @@ final class FormAnalyzerTests: XCTestCase {
         XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Walking Lunge", muscleGroup: .legs), .squat)
     }
 
+    func testRepGrading() {
+        // Deep, controlled, knees stacked -> excellent.
+        XCTAssertEqual(FormAnalyzer.grade(rep(angle: 88, valgus: 0.95, descent: 1.5), movement: .squat), .excellent)
+        // Shallow, caved, dropping fast -> poor.
+        XCTAssertEqual(FormAnalyzer.grade(rep(angle: 130, valgus: 0.70, descent: 0.3), movement: .squat), .poor)
+        // Solid but not perfect -> good/great.
+        XCTAssertTrue([.good, .great].contains(FormAnalyzer.grade(rep(angle: 100, valgus: 0.87, descent: 1.0), movement: .squat)))
+        // Push-up deep + controlled, valgus not measured -> great/excellent.
+        XCTAssertTrue([.great, .excellent].contains(FormAnalyzer.grade(rep(angle: 88, valgus: nil, descent: 1.2), movement: .pushup)))
+    }
+
     func testPushupCuesUsePushLanguageAndSkipKnees() {
         // Shallow push-ups; the valgus value must be ignored for this movement.
         let m = Array(repeating: rep(angle: 130, valgus: 0.7), count: 5)

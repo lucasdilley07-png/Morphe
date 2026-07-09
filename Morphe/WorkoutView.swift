@@ -87,7 +87,15 @@ struct WorkoutView: View {
                 FormCheckView(
                     exerciseName: exercise.name,
                     movement: .infer(exerciseName: exercise.name, muscleGroup: exercise.muscleGroup)
-                )
+                ) { reps in
+                    // Log the camera-counted reps as a set on the active
+                    // exercise at the working weight (bodyweight if none).
+                    guard reps > 0 else { return }
+                    let weight = store.lastSessionWeight(for: exercise.id)
+                        ?? store.suggestedWorkingWeight(for: exercise)
+                        ?? 0
+                    store.completeTrackedSet(reps: reps, weight: weight)
+                }
             } else {
                 FormCheckView()
             }
