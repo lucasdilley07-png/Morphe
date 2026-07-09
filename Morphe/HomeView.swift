@@ -4,7 +4,6 @@ struct HomeView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var showAdjustments = false
     @State private var showSupport = false
-    @State private var doneDismissed = false
     @State private var showMessages = false
 
     private var morpheScoreTitle: String {
@@ -39,18 +38,26 @@ struct HomeView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                // "You're done for today" is a dismissible pop-up (see the
-                // overlay below), not a page takeover — the Today page keeps
-                // showing today's workout so the user can look at their plan or
-                // start a second session.
-                TodayNextMoveCard(
-                    workout: store.currentWorkout,
-                    minimumWinModeEnabled: store.minimumWinModeEnabled,
-                    showAssistRow: store.todayExperienceTier >= 1,
-                    onStart: { store.startTodayWorkout() },
-                    onActivateMinimumWin: { store.activateMinimumWinMode() },
-                    onSwitch: { store.cycleWorkout() }
-                )
+                // Once today's session is logged, the "Today's Workout" card
+                // becomes the "You're done for today" card in place — no
+                // overlay, no page takeover. "Do another session" keeps the
+                // second-workout path alive via the Train tab.
+                if store.isWorkoutLoggedToday {
+                    TodayDoneCard(
+                        workoutName: store.currentWorkout.name,
+                        onViewProgress: { store.openProgress() },
+                        onTrainAgain: { store.selectedClientTab = .train }
+                    )
+                } else {
+                    TodayNextMoveCard(
+                        workout: store.currentWorkout,
+                        minimumWinModeEnabled: store.minimumWinModeEnabled,
+                        showAssistRow: store.todayExperienceTier >= 1,
+                        onStart: { store.startTodayWorkout() },
+                        onActivateMinimumWin: { store.activateMinimumWinMode() },
+                        onSwitch: { store.cycleWorkout() }
+                    )
+                }
 
                 // Progressive disclosure: a first-run user sees the hero and
                 // who they are — no zero-metrics, no tools that need history.
@@ -184,16 +191,7 @@ struct HomeView: View {
             .padding(.top, 8)
             .padding(.bottom, 120)
         }
-        .overlay {
-            if store.isWorkoutLoggedToday && !doneDismissed {
-                doneOverlay
-            }
-        }
-        .animation(.easeInOut(duration: 0.25), value: doneDismissed)
-        .onChange(of: store.isWorkoutLoggedToday) { _, logged in
-            // A new day clears the flag so the pop-up shows after the next log.
-            if !logged { doneDismissed = false }
-        }
+        .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
         .sheet(isPresented: $showMessages) {
             NavigationStack {
                 CommunityView()
@@ -209,53 +207,6 @@ struct HomeView: View {
                     }
             }
             .background(PremiumBackground())
-        }
-    }
-
-    private var doneOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea()
-                .onTapGesture { doneDismissed = true }
-
-            GlassCard {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack {
-                        Text("You're done for today.")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
-                        Spacer()
-                        Button { doneDismissed = true } label: {
-                            Image(systemName: "xmark")
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                                .frame(width: 36, height: 36)
-                                .contentShape(Rectangle())
-                        }
-                        .accessibilityLabel("Close")
-                    }
-
-                    Text("You closed the loop on \(store.currentWorkout.name). Nice work — the rest of today is yours.")
-                        .foregroundStyle(MorpheTheme.textSecondary)
-
-                    HStack(spacing: 10) {
-                        ShareLink(item: "I just finished \(store.currentWorkout.name) on Morphe. Small wins, real transformation. 💪") {
-                            Text("Share Win").frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        Button("View Progress") {
-                            doneDismissed = true
-                            store.openProgress()
-                        }
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                    }
-
-                    Button("Back to Today") { doneDismissed = true }
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .padding(24)
-            .transition(.scale(scale: 0.92).combined(with: .opacity))
         }
     }
 
@@ -525,6 +476,45 @@ private struct TodayOverviewCard: View {
                             .foregroundStyle(MorpheTheme.textSecondary)
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Replaces TodayNextMoveCard in the hero slot once today's session is
+/// logged — same card, new state, instead of an overlay hiding the page.
+private struct TodayDoneCard: View {
+    let workoutName: String
+    let onViewProgress: () -> Void
+    let onTrainAgain: () -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accent)
+                    Text("You're done for today.")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                }
+
+                Text("You closed the loop on \(workoutName). Nice work — the rest of today is yours.")
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                HStack(spacing: 10) {
+                    ShareLink(item: "I just finished \(workoutName) on Morphe. Small wins, real transformation. 💪") {
+                        Text("Share Win").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    Button("View Progress", action: onViewProgress)
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                }
+
+                Button("Do another session", action: onTrainAgain)
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .frame(maxWidth: .infinity)
             }
         }
     }
