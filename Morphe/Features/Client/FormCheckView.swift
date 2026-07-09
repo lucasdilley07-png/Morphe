@@ -132,10 +132,13 @@ enum FormAnalyzer {
         var cues: [FormCue] = []
 
         // Knee tracking is squat-specific and leads (it's injury-relevant).
+        // A single front camera reads valgus unreliably, so this only fires on
+        // a strong, consistent signal — at least 3 measured reps and a clear
+        // majority caving — rather than flagging on noise.
         if movement.usesValgus {
             let valgusValues = metrics.compactMap(\.valgusRatio)
             let caved = valgusValues.filter { $0 < valgusRatio }.count
-            if valgusValues.count >= 2, Double(caved) / Double(valgusValues.count) > 0.3 {
+            if valgusValues.count >= 3, Double(caved) / Double(valgusValues.count) > 0.5 {
                 cues.append(FormCue(category: .knees, tone: .suggestion,
                     message: "Push your knees out — they drifted inward on \(caved) rep\(caved == 1 ? "" : "s"), often as you tire."))
             }
@@ -282,6 +285,7 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     private var minAngleThisRep: CGFloat = .greatestFiniteMagnitude
     private var bottomT: Double = 0
     private var bottomPose: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+    private var recentAngles: [CGFloat] = []   // median-of-3 smoothing buffer
     private let history = FormCheckFilePersistence()
 
     init(exerciseName: String, movement: FormCheckMovement) {
@@ -366,6 +370,7 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         repPhase = .up
         descentStartT = nil
         minAngleThisRep = .greatestFiniteMagnitude
+        recentAngles = []
         repMetrics = []
         liveCue = nil
     }
@@ -409,8 +414,10 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
 
         // Vision: normalized, bottom-left origin. Convert to top-left and
         // mirror X so the overlay lines up with the mirrored front preview.
+        // 0.5 confidence (up from 0.3) keeps low-certainty joints out of the
+        // angle math — the biggest source of inaccurate depth/knee readings.
         var mapped: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
-        for (name, point) in points where point.confidence > 0.3 {
+        for (name, point) in points where point.confidence > 0.5 {
             mapped[name] = CGPoint(x: 1 - point.location.x, y: 1 - point.location.y)
         }
 
@@ -460,7 +467,13 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
 
     private func updateReps(with joints: [VNHumanBodyPoseObservation.JointName: CGPoint],
                             time t: Double) -> FormRepMetrics? {
-        guard let angle = primaryAngle(from: joints) else { return nil }
+        guard let raw = primaryAngle(from: joints) else { return nil }
+
+        // Median-of-3 smoothing: rejects the single-frame angle spikes that
+        // otherwise make depth read far deeper or shallower than reality.
+        recentAngles.append(raw)
+        if recentAngles.count > 3 { recentAngles.removeFirst() }
+        let angle = recentAngles.sorted()[recentAngles.count / 2]
 
         switch repPhase {
         case .up:
