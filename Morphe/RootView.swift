@@ -3,6 +3,16 @@ import SwiftUI
 struct RootView: View {
     @Environment(MorpheAppStore.self) private var store
 
+    /// True only when the real app shell is showing — matches the routing in
+    /// `body` (past the launch sequence, the auth wall, and onboarding).
+    private var isInAppShell: Bool {
+        if store.isShowingLaunchSequence { return false }
+        if FeatureFlags.accountsEnabled && store.authUser == nil { return false }
+        if !store.hasCompletedOnboarding { return false }
+        if store.showWelcomeExperience { return false }
+        return true
+    }
+
     var body: some View {
         @Bindable var store = store
         return ZStack {
@@ -135,7 +145,9 @@ struct RootView: View {
             .padding(.horizontal, 20)
         }
         .overlay(alignment: .bottomTrailing) {
-            if !store.isShowingLaunchSequence && store.hasCompletedOnboarding && !store.showWelcomeExperience {
+            // Only in the real app shell — never over the sign-in or onboarding
+            // screens (a signed-out account still has hasCompletedOnboarding set).
+            if isInAppShell {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
                     .padding(.bottom, 102)

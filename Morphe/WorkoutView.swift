@@ -50,26 +50,33 @@ struct WorkoutView: View {
                 workoutPlanningMode
             }
         }
-        .sheet(item: $swapTarget) { exercise in
-            ExerciseSwapFlowSheet(exercise: exercise)
-                .environment(store)
-        }
-        .sheet(isPresented: $isShowingRepLogger) {
-            SetRepLoggingSheet(reps: $pendingRepCount, weight: $pendingWeight, rpe: $pendingRPE) {
-                if let editIndex = editingSetIndex, let exercise = store.activeWorkoutExercise {
-                    store.updateTrackedSet(exerciseID: exercise.id, setIndex: editIndex, reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE)
-                } else {
-                    // Opening the full logger is an explicit action, so it may
-                    // log past the planned set count ("Add extra set").
-                    store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true)
-                }
-                editingSetIndex = nil
-                isShowingRepLogger = false
+        // Each presentation lives on its own background view. SwiftUI
+        // mishandles multiple sheet/cover modifiers stacked on ONE view — the
+        // second sheet could fail or crash on present — so they're isolated.
+        .background(
+            EmptyView().sheet(item: $swapTarget) { exercise in
+                ExerciseSwapFlowSheet(exercise: exercise)
+                    .environment(store)
             }
-            .environment(store)
-            .presentationDetents([.height(540)])
-            .onDisappear { editingSetIndex = nil }
-        }
+        )
+        .background(
+            EmptyView().sheet(isPresented: $isShowingRepLogger) {
+                SetRepLoggingSheet(reps: $pendingRepCount, weight: $pendingWeight, rpe: $pendingRPE) {
+                    if let editIndex = editingSetIndex, let exercise = store.activeWorkoutExercise {
+                        store.updateTrackedSet(exerciseID: exercise.id, setIndex: editIndex, reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE)
+                    } else {
+                        // Opening the full logger is an explicit action, so it may
+                        // log past the planned set count ("Add extra set").
+                        store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true)
+                    }
+                    editingSetIndex = nil
+                    isShowingRepLogger = false
+                }
+                .environment(store)
+                .presentationDetents([.height(540)])
+                .onDisappear { editingSetIndex = nil }
+            }
+        )
         .onChange(of: store.weightUnit) { oldUnit, newUnit in
             // Keep the inline stepper value meaning the same physical load
             // when the unit flips (the store converts the logged sets).
@@ -77,29 +84,33 @@ struct WorkoutView: View {
             let factor = newUnit == .kilograms ? 0.45359237 : 2.20462262
             pendingWeight = ((pendingWeight * factor) * 10).rounded() / 10
         }
-        .sheet(isPresented: $showBuilder) {
-            WorkoutBuilderSheet()
-                .environment(store)
-        }
-        .fullScreenCover(isPresented: $showFormCheck) {
-            // Match Form Check to the exercise the user is actually on.
-            if let exercise = store.activeWorkoutExercise {
-                FormCheckView(
-                    exerciseName: exercise.name,
-                    movement: .infer(exerciseName: exercise.name, muscleGroup: exercise.muscleGroup)
-                ) { reps in
-                    // Log the camera-counted reps as a set on the active
-                    // exercise at the working weight (bodyweight if none).
-                    guard reps > 0 else { return }
-                    let weight = store.lastSessionWeight(for: exercise.id)
-                        ?? store.suggestedWorkingWeight(for: exercise)
-                        ?? 0
-                    store.completeTrackedSet(reps: reps, weight: weight)
-                }
-            } else {
-                FormCheckView()
+        .background(
+            EmptyView().sheet(isPresented: $showBuilder) {
+                WorkoutBuilderSheet()
+                    .environment(store)
             }
-        }
+        )
+        .background(
+            EmptyView().fullScreenCover(isPresented: $showFormCheck) {
+                // Match Form Check to the exercise the user is actually on.
+                if let exercise = store.activeWorkoutExercise {
+                    FormCheckView(
+                        exerciseName: exercise.name,
+                        movement: .infer(exerciseName: exercise.name, muscleGroup: exercise.muscleGroup)
+                    ) { reps in
+                        // Log the camera-counted reps as a set on the active
+                        // exercise at the working weight (bodyweight if none).
+                        guard reps > 0 else { return }
+                        let weight = store.lastSessionWeight(for: exercise.id)
+                            ?? store.suggestedWorkingWeight(for: exercise)
+                            ?? 0
+                        store.completeTrackedSet(reps: reps, weight: weight)
+                    }
+                } else {
+                    FormCheckView()
+                }
+            }
+        )
     }
 
     private var activeWorkoutMode: some View {
@@ -144,6 +155,7 @@ struct WorkoutView: View {
                             store.completeTrackedSet(reps: reps, weight: pendingWeight)
                         },
                         onOpenCustomRepLogger: {
+                            editingSetIndex = nil
                             pendingRepCount = suggestedRepCount(for: activeExercise)
                             pendingRPE = nil
                             isShowingRepLogger = true
