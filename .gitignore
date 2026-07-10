@@ -31,3 +31,6 @@ xcschememanagement.plist
 *.ipa
 *.dSYM.zip
 *.dSYM
+
+# Firebase app config (keep out of version control)
+GoogleService-Info.plist

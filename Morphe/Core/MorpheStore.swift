@@ -297,8 +297,9 @@ final class MorpheAppStore {
     private let profilePersistence: ProfilePersisting
 
     // MARK: - Accounts (v2 backend foundation)
-    /// Auth provider. LocalAuthService now; FirebaseAuthService once connected.
-    private let authService: AuthService = LocalAuthService()
+    /// Auth provider. The real app injects `FirebaseAuthService`; tests and
+    /// previews fall back to the on-device `LocalAuthService` default.
+    private let authService: AuthService
     /// The signed-in account, or nil when signed out.
     var authUser: AppUser?
     var authErrorMessage: String?
@@ -309,7 +310,8 @@ final class MorpheAppStore {
     /// Guards profile persistence while a saved profile is being applied at launch.
     private var isApplyingProfile = false
 
-    init() {
+    init(authService: AuthService = LocalAuthService()) {
+        self.authService = authService
         let templates = MorpheDemoContent.workoutTemplates
         let clients = MorpheDemoContent.coachClients
         let threads = MorpheDemoContent.messageThreads

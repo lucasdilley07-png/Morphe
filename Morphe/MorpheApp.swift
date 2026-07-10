@@ -1,9 +1,18 @@
 import SwiftUI
+import FirebaseCore
 
 @main
 struct MorpheApp: App {
-    @State private var store = MorpheAppStore()
+    @State private var store: MorpheAppStore
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        // Firebase must be configured before anything touches Auth/Firestore —
+        // assigning the store explicitly here (instead of a property default)
+        // guarantees configure() runs first.
+        FirebaseApp.configure()
+        _store = State(initialValue: MorpheAppStore(authService: FirebaseAuthService()))
+    }
 
     var body: some Scene {
         WindowGroup {
