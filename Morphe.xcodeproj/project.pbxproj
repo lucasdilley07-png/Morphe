@@ -29,6 +29,7 @@
 		1B20F6002C4000010010004A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */; };
 		1B20F6002C4000010010004B /* Accounts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100066 /* Accounts.swift */; };
 		1B20F6002C4000010010FA01 /* FirebaseAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */; };
+		1B20F6002C4000010010FC01 /* CloudBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FC02 /* CloudBackup.swift */; };
 		1B20F6002C4000010010FB01 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB02 /* FirebaseAuth */; };
 		1B20F6002C4000010010FB03 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB04 /* FirebaseFirestore */; };
 		1B20F6002C4000010010004C /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100067 /* AuthView.swift */; };
@@ -74,6 +75,7 @@
 		1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		1B20F6002C40000100100066 /* Accounts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Accounts.swift; sourceTree = "<group>"; };
 		1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAuthService.swift; sourceTree = "<group>"; };
+		1B20F6002C4000010010FC02 /* CloudBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackup.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100067 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100068 /* BookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100069 /* Resources/MorpheCatalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/MorpheCatalog.json; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 				1B20F6002C40000100100064 /* ProfilePersistence.swift */,
 				1B20F6002C40000100100066 /* Accounts.swift */,
 				1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */,
+				1B20F6002C4000010010FC02 /* CloudBackup.swift */,
 				1B20F6002C4000010010006A /* WorkoutCatalog.swift */,
 			);
 			path = Core;
@@ -329,6 +332,7 @@
 				1B20F6002C40000100100049 /* ProfilePersistence.swift in Sources */,
 				1B20F6002C4000010010004B /* Accounts.swift in Sources */,
 				1B20F6002C4000010010FA01 /* FirebaseAuthService.swift in Sources */,
+				1B20F6002C4000010010FC01 /* CloudBackup.swift in Sources */,
 				1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

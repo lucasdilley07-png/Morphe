@@ -11,7 +11,10 @@ struct MorpheApp: App {
         // assigning the store explicitly here (instead of a property default)
         // guarantees configure() runs first.
         FirebaseApp.configure()
-        _store = State(initialValue: MorpheAppStore(authService: FirebaseAuthService()))
+        _store = State(initialValue: MorpheAppStore(
+            authService: FirebaseAuthService(),
+            cloudBackup: FirebaseCloudBackup()
+        ))
     }
 
     var body: some Scene {

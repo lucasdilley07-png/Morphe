@@ -184,7 +184,12 @@ final class MorpheAppStore {
     var savedWorkouts: [SavedWorkoutLibraryItem]
     var currentWorkoutID: UUID { didSet { persistWorkoutSession() } }
     var workoutLogs: [WorkoutLog] {
-        didSet { workoutPersistence.saveLogs(workoutLogs) }
+        didSet {
+            workoutPersistence.saveLogs(workoutLogs)
+            // Mirror to the cloud only for a real, onboarded account — never the
+            // pre-onboarding demo seed.
+            if hasCompletedOnboarding { cloudBackup.pushLogs(workoutLogs) }
+        }
     }
     var workoutAccessGrants: [AthleteAccessGrant]
     var workoutHistory: [WorkoutHistoryEntry]
@@ -300,6 +305,9 @@ final class MorpheAppStore {
     /// Auth provider. The real app injects `FirebaseAuthService`; tests and
     /// previews fall back to the on-device `LocalAuthService` default.
     private let authService: AuthService
+    /// Cloud backup for profile + logs. Real app injects `FirebaseCloudBackup`;
+    /// the no-op default keeps the store offline-only for tests/previews.
+    private let cloudBackup: CloudBackingUp
     /// The signed-in account, or nil when signed out.
     var authUser: AppUser?
     var authErrorMessage: String?
@@ -310,8 +318,9 @@ final class MorpheAppStore {
     /// Guards profile persistence while a saved profile is being applied at launch.
     private var isApplyingProfile = false
 
-    init(authService: AuthService = LocalAuthService()) {
+    init(authService: AuthService = LocalAuthService(), cloudBackup: CloudBackingUp = NoOpCloudBackup()) {
         self.authService = authService
+        self.cloudBackup = cloudBackup
         let templates = MorpheDemoContent.workoutTemplates
         let clients = MorpheDemoContent.coachClients
         let threads = MorpheDemoContent.messageThreads
@@ -454,7 +463,12 @@ final class MorpheAppStore {
         }
 
         authUser = authService.currentUser
-        if let authUser { selectedRole = authUser.role.appRole }
+        if let authUser {
+            selectedRole = authUser.role.appRole
+            // Key cloud writes to the already-signed-in user so local saves this
+            // session mirror up. (A full pull happens on an explicit sign-in.)
+            cloudBackup.setUser(authUser.id)
+        }
 
         // Same-day relaunch: no-op (daily state was just restored). New day —
         // or first launch ever — starts the daily surfaces fresh.
@@ -470,6 +484,7 @@ final class MorpheAppStore {
         do {
             let user = try await authService.signUp(email: email, password: password, role: role, displayName: name)
             applySignedIn(user)
+            await restoreFromCloud()
         } catch {
             authErrorMessage = (error as? AuthError)?.errorDescription ?? error.localizedDescription
         }
@@ -482,6 +497,7 @@ final class MorpheAppStore {
         do {
             let user = try await authService.signIn(email: email, password: password)
             applySignedIn(user)
+            await restoreFromCloud()
         } catch {
             authErrorMessage = (error as? AuthError)?.errorDescription ?? error.localizedDescription
         }
@@ -489,15 +505,34 @@ final class MorpheAppStore {
 
     func signOut() {
         authService.signOut()
+        cloudBackup.setUser(nil)
         authUser = nil
     }
 
     private func applySignedIn(_ user: AppUser) {
         authUser = user
+        cloudBackup.setUser(user.id)
         selectedRole = user.role.appRole
         if !hasCompletedOnboarding, !user.displayName.isEmpty {
             onboardingDraft.name = user.displayName
         }
+    }
+
+    /// After sign-in, restore the account's cloud backup. A returning user
+    /// (cloud holds a completed profile) is restored wholesale — which also
+    /// replaces the local demo seed and prevents any cross-account bleed. A
+    /// brand-new user has no cloud state and just proceeds through onboarding;
+    /// their real data mirrors up afterward via the save hooks.
+    private func restoreFromCloud() async {
+        let cloud = await cloudBackup.pull()
+        guard let profile = cloud.profile, profile.hasCompletedOnboarding else { return }
+
+        // Logs first, so the derived-state rebuild at the end of
+        // applyPersistedProfile (history, streak, score) sees the restored
+        // history. Setting workoutLogs also writes them to the local file.
+        workoutLogs = (cloud.logs ?? []).sorted { $0.completedAt > $1.completedAt }
+        applyPersistedProfile(profile)
+        profilePersistence.saveProfile(profile)
     }
 
     /// Applies a saved local-profile snapshot over the seeded demo profile.
@@ -715,8 +750,7 @@ final class MorpheAppStore {
     /// Persists the current local profile snapshot to disk.
     private func persistLocalProfile() {
         guard !isApplyingProfile else { return }
-        profilePersistence.saveProfile(
-            LocalProfileSnapshot(
+        let snapshot = LocalProfileSnapshot(
                 hasCompletedOnboarding: hasCompletedOnboarding,
                 id: clientProfile.id.uuidString,
                 name: clientProfile.name,
@@ -777,8 +811,10 @@ final class MorpheAppStore {
                     PainReportSnapshot(area: $0.area, severity: $0.severity, triggerExercise: $0.triggerExercise, alternative: $0.alternative, note: $0.note)
                 },
                 prefersCompactExerciseView: prefersCompactExerciseView
-            )
         )
+        profilePersistence.saveProfile(snapshot)
+        // Mirror to the cloud once the account is real (onboarding done).
+        if hasCompletedOnboarding { cloudBackup.pushProfile(snapshot) }
     }
 
     // MARK: - User-built workouts
