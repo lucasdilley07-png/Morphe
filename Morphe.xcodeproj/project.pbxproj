@@ -33,6 +33,8 @@
 		1B20F6002C4000010010FB01 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB02 /* FirebaseAuth */; };
 		1B20F6002C4000010010FB03 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB04 /* FirebaseFirestore */; };
 		1B20F6002C4000010010004C /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100067 /* AuthView.swift */; };
+		1B20F6002C4000010010FD01 /* QRConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FD02 /* QRConnectView.swift */; };
+		1B20F6002C4000010010FE01 /* CoachDiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FE02 /* CoachDiscoverView.swift */; };
 		1B20F6002C4000010010004D /* BookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100068 /* BookingView.swift */; };
 		1B20F6002C4000010010004E /* Resources/MorpheCatalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100069 /* Resources/MorpheCatalog.json */; };
 		1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010006A /* WorkoutCatalog.swift */; };
@@ -77,6 +79,8 @@
 		1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAuthService.swift; sourceTree = "<group>"; };
 		1B20F6002C4000010010FC02 /* CloudBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackup.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100067 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		1B20F6002C4000010010FD02 /* QRConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRConnectView.swift; sourceTree = "<group>"; };
+		1B20F6002C4000010010FE02 /* CoachDiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachDiscoverView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100068 /* BookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100069 /* Resources/MorpheCatalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/MorpheCatalog.json; sourceTree = "<group>"; };
 		1B20F6002C4000010010006A /* WorkoutCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCatalog.swift; sourceTree = "<group>"; };
@@ -186,6 +190,7 @@
 			isa = PBXGroup;
 			children = (
 				1B20F6002C40000100100055 /* CoachDashboardView.swift */,
+				1B20F6002C4000010010FE02 /* CoachDiscoverView.swift */,
 			);
 			path = Coach;
 			sourceTree = "<group>";
@@ -195,6 +200,7 @@
 			children = (
 				1B20F6002C40000100100053 /* OnboardingView.swift */,
 				1B20F6002C40000100100067 /* AuthView.swift */,
+				1B20F6002C4000010010FD02 /* QRConnectView.swift */,
 				1B20F6002C40000100100068 /* BookingView.swift */,
 			);
 			path = Shared;
@@ -322,6 +328,8 @@
 				1B20F6002C40000100100042 /* MorpheStore.swift in Sources */,
 				1B20F6002C40000100100043 /* OnboardingView.swift in Sources */,
 				1B20F6002C4000010010004C /* AuthView.swift in Sources */,
+				1B20F6002C4000010010FD01 /* QRConnectView.swift in Sources */,
+				1B20F6002C4000010010FE01 /* CoachDiscoverView.swift in Sources */,
 				1B20F6002C4000010010004D /* BookingView.swift in Sources */,
 				1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */,
 				1B20F6002C400001001000D0 /* FormCheckView.swift in Sources */,
@@ -485,7 +493,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the front camera during Form Check to see your movement and count reps. Video is processed on your device and never leaves your phone.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device) and to scan Morphe connect codes. Video never leaves your phone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -516,7 +524,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the front camera during Form Check to see your movement and count reps. Video is processed on your device and never leaves your phone.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device) and to scan Morphe connect codes. Video never leaves your phone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

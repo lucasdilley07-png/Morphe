@@ -3088,7 +3088,8 @@ private struct YourWorkoutsCard: View {
     }
 }
 
-private struct WorkoutBuilderSheet: View {
+// Shared with the coach Discover tab, so not private.
+struct WorkoutBuilderSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(MorpheAppStore.self) private var store
 

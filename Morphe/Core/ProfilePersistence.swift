@@ -107,6 +107,12 @@ struct LocalProfileSnapshot: Codable, Equatable {
     // Durable safety + display preferences.
     var painReports: [PainReportSnapshot] = []
     var prefersCompactExerciseView: Bool = false
+    // Coach onboarding answers (coach accounts only) — rebuild the workspace
+    // headline on relaunch.
+    var coachTenure: String = ""
+    var coachRoster: String = ""
+    // People connected via QR code scan (both roles).
+    var scannedConnections: [ScannedConnection] = []
 }
 
 extension LocalProfileSnapshot {
@@ -184,6 +190,9 @@ extension LocalProfileSnapshot {
         recoveryPain = ((try? c.decodeIfPresent(Bool.self, forKey: .recoveryPain)) ?? nil) ?? false
         painReports = ((try? c.decodeIfPresent([PainReportSnapshot].self, forKey: .painReports)) ?? nil) ?? []
         prefersCompactExerciseView = ((try? c.decodeIfPresent(Bool.self, forKey: .prefersCompactExerciseView)) ?? nil) ?? false
+        coachTenure = str(.coachTenure)
+        coachRoster = str(.coachRoster)
+        scannedConnections = ((try? c.decodeIfPresent([ScannedConnection].self, forKey: .scannedConnections)) ?? nil) ?? []
     }
 }
 

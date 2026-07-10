@@ -149,6 +149,9 @@ final class MorpheAppStore {
     var painSeverity = 4
     var painTriggerExercise = "Walking Lunge"
     var painReports: [PainReport] = []
+    /// People connected via QR scan (both roles). Mutual rosters/messaging
+    /// arrive when the backend links the two accounts.
+    var scannedConnections: [ScannedConnection] = []
     var goalTranslation: GoalTranslation
     var personalRules: [PersonalRule]
     var roadmap: [RoadmapPhase]
@@ -465,6 +468,9 @@ final class MorpheAppStore {
         authUser = authService.currentUser
         if let authUser {
             selectedRole = authUser.role.appRole
+            // Keep the onboarding draft's role in sync on relaunch too, so a
+            // signed-in-but-not-onboarded coach resumes the coach flow.
+            onboardingDraft.accountType = authUser.role.appRole
             // Key cloud writes to the already-signed-in user so local saves this
             // session mirror up. (A full pull happens on an explicit sign-in.)
             cloudBackup.setUser(authUser.id)
@@ -509,10 +515,58 @@ final class MorpheAppStore {
         authUser = nil
     }
 
+    // MARK: - QR connect
+
+    /// Payload encoded into this user's Morphe connect code.
+    var qrConnectPayload: String {
+        var components = URLComponents()
+        components.scheme = "morphe"
+        components.host = "connect"
+        components.queryItems = [
+            URLQueryItem(name: "id", value: authUser?.id ?? clientProfile.id.uuidString),
+            URLQueryItem(name: "name", value: selectedRole == .coach ? coachProfile.name : clientProfile.name),
+            URLQueryItem(name: "handle", value: selectedRole == .coach ? coachProfile.username : profileShowcase.username),
+            URLQueryItem(name: "role", value: selectedRole == .coach ? "coach" : "athlete")
+        ]
+        return components.string ?? "morphe://connect"
+    }
+
+    /// Records a scanned Morphe connect code. Returns the connection when the
+    /// payload is a valid code (and not the user's own), nil otherwise.
+    @discardableResult
+    func recordScannedConnection(from payload: String) -> ScannedConnection? {
+        guard let components = URLComponents(string: payload),
+              components.scheme == "morphe", components.host == "connect" else { return nil }
+        func value(_ name: String) -> String {
+            components.queryItems?.first(where: { $0.name == name })?.value ?? ""
+        }
+        let id = value("id")
+        guard !id.isEmpty else { return nil }
+        let ownID = authUser?.id ?? clientProfile.id.uuidString
+        guard id != ownID else { return nil }
+        let connection = ScannedConnection(
+            id: id,
+            name: value("name").isEmpty ? "Morphe user" : value("name"),
+            handle: value("handle"),
+            role: value("role").isEmpty ? "athlete" : value("role"),
+            scannedAt: Date()
+        )
+        // Re-scanning someone refreshes their entry instead of duplicating it.
+        scannedConnections.removeAll { $0.id == connection.id }
+        scannedConnections.insert(connection, at: 0)
+        persistLocalProfile()
+        Haptics.impact(.medium)
+        showToast("Connected: \(connection.name)")
+        return connection
+    }
+
     private func applySignedIn(_ user: AppUser) {
         authUser = user
         cloudBackup.setUser(user.id)
         selectedRole = user.role.appRole
+        // The signed-up role drives onboarding: a coach account gets the coach
+        // flow and completeOnboarding stamps the coach workspace identity.
+        onboardingDraft.accountType = user.role.appRole
         if !hasCompletedOnboarding, !user.displayName.isEmpty {
             onboardingDraft.name = user.displayName
         }
@@ -575,11 +629,21 @@ final class MorpheAppStore {
             let handle = snapshot.username.isEmpty
                 ? snapshot.name.lowercased().filter { $0.isLetter || $0.isNumber }
                 : snapshot.username
+            // Round-trip the coach answers through the draft so later saves
+            // don't overwrite them with defaults.
+            if let tenure = CoachTenureOption(rawValue: snapshot.coachTenure) {
+                onboardingDraft.coachTenure = tenure
+            }
+            if let roster = CoachRosterOption(rawValue: snapshot.coachRoster) {
+                onboardingDraft.coachRoster = roster
+            }
             applyCoachIdentity(
                 name: snapshot.name,
                 handle: handle,
                 sports: snapshot.selectedSports.compactMap { SportFocus(rawValue: $0) },
-                goals: snapshot.selectedGoals
+                goals: snapshot.selectedGoals,
+                tenure: snapshot.coachTenure,
+                roster: snapshot.coachRoster
             )
         }
 
@@ -650,6 +714,7 @@ final class MorpheAppStore {
             nutrition.mode = mode
         }
         prefersCompactExerciseView = snapshot.prefersCompactExerciseView
+        scannedConnections = snapshot.scannedConnections
 
         rebuildPersonalRules()
         // The demo clear also wiped savedWorkouts — restore the user's own
@@ -810,7 +875,10 @@ final class MorpheAppStore {
                 painReports: painReports.map {
                     PainReportSnapshot(area: $0.area, severity: $0.severity, triggerExercise: $0.triggerExercise, alternative: $0.alternative, note: $0.note)
                 },
-                prefersCompactExerciseView: prefersCompactExerciseView
+                prefersCompactExerciseView: prefersCompactExerciseView,
+                coachTenure: onboardingDraft.coachTenure.rawValue,
+                coachRoster: onboardingDraft.coachRoster.rawValue,
+                scannedConnections: scannedConnections
         )
         profilePersistence.saveProfile(snapshot)
         // Mirror to the cloud once the account is real (onboarding done).
@@ -1183,6 +1251,8 @@ final class MorpheAppStore {
                 return ["Who needs attention today?", "Summarize this week's priorities", "Draft a quick outreach message", "Suggest a lighter plan adjustment"]
             case .athletes:
                 return ["Summarize this athlete", "What should I watch for?", "Draft a coach note", "What follow-up should I send?"]
+            case .discover:
+                return ["Find a conditioning workout", "What should I assign a beginner?", "Suggest a session for game week", "Help me build a workout"]
             case .programs:
                 if selectedCoachBuildSection == .library {
                     return ["Recommend a drill", "Find a warm-up progression", "What fits low readiness?", "Suggest a boxing finisher"]
@@ -1220,6 +1290,8 @@ final class MorpheAppStore {
                 return "Triage the day, spot risk fast, and turn alerts into action."
             case .athletes:
                 return "Read athlete context, coach notes, and next-best follow-up without leaving the roster."
+            case .discover:
+                return "Find workouts worth assigning, build your own, and grow your roster."
             case .programs:
                 return selectedCoachBuildSection == .library
                     ? "Search drills, templates, and playbooks with fast coaching context."
@@ -1254,6 +1326,8 @@ final class MorpheAppStore {
                 return "Ask about athlete risk, priorities, or next moves..."
             case .athletes:
                 return "Ask about this athlete's readiness, notes, or follow-up..."
+            case .discover:
+                return "Ask for a workout to assign or help building one..."
             case .programs:
                 return selectedCoachBuildSection == .library
                     ? "Ask for a drill, warm-up, or progression..."
@@ -1289,6 +1363,8 @@ final class MorpheAppStore {
                 return "Coach Home"
             case .athletes:
                 return "Athlete focus: \(athlete)"
+            case .discover:
+                return "Coach Discover"
             case .programs:
                 return selectedCoachBuildSection == .library
                     ? "Build Library"
@@ -1736,9 +1812,13 @@ final class MorpheAppStore {
     /// onboarding, the snapshot at relaunch) rather than read off clientProfile
     /// — reading clientProfile stamped the seeded demo athlete's sports into a
     /// coach's specialty whenever the coach had no sports of their own.
-    private func applyCoachIdentity(name: String, handle: String, sports: [SportFocus], goals: [String]) {
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        coachProfile.name = name
+    private func applyCoachIdentity(name: String, handle: String, sports: [SportFocus], goals: [String],
+                                    tenure: String = "", roster: String = "") {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        // The workspace addresses the user as a coach: "Coach Lucas" — unless
+        // they already typed the title themselves.
+        coachProfile.name = trimmed.lowercased().hasPrefix("coach") ? trimmed : "Coach \(trimmed)"
         if !handle.isEmpty {
             coachProfile.username = handle
         }
@@ -1747,7 +1827,11 @@ final class MorpheAppStore {
             ? "Personal coaching"
             : sports.prefix(3).map(\.rawValue).joined(separator: " / ")
         coachProfile.selectedGoals = goals
-        coachProfile.headline = "Coaching on Morphe."
+        // Honest headline from their own answers — no invented credentials.
+        var headlineParts: [String] = []
+        if !tenure.isEmpty { headlineParts.append("Coaching \(tenure.lowercased() == "just starting" ? "— just getting started" : "for \(tenure.lowercased())")") }
+        if !roster.isEmpty { headlineParts.append("works with \(roster.lowercased())") }
+        coachProfile.headline = headlineParts.isEmpty ? "Coaching on Morphe." : headlineParts.joined(separator: " · ")
         coachProfile.networkRank = "Coach"
         coachProfile.activeClients = 0
         coachProfile.groups = []
@@ -1763,7 +1847,9 @@ final class MorpheAppStore {
         let resolvedName = trimmedName.isEmpty ? clientProfile.name : trimmedName
 
         hasCompletedOnboarding = true
-        selectedRole = onboardingDraft.accountType
+        // The signed-up account role is the source of truth once accounts are
+        // real — the draft's default must never demote a coach to athlete.
+        selectedRole = authUser?.role.appRole ?? onboardingDraft.accountType
         clientProfile.name = resolvedName
         profileShowcase.displayName = resolvedName
         let handle = resolvedName.lowercased().filter { $0.isLetter || $0.isNumber }
@@ -1774,9 +1860,11 @@ final class MorpheAppStore {
         selectedCoachTab = .dashboard
         selectedCommunitySection = .forYou
         selectedSportMode = primarySport
-        // Gender is deliberately NOT copied: the step was cut from onboarding,
-        // so writing the draft's default would silently record "Male" for
-        // every user without asking.
+        // Gender is copied only when the user actually answered the step —
+        // never the draft's silent default.
+        if onboardingDraft.genderChosen {
+            clientProfile.gender = onboardingDraft.gender
+        }
         clientProfile.selectedSports = onboardingDraft.selectedSports
         clientProfile.selectedTrainingStyles = onboardingDraft.selectedTrainingStyles
         clientProfile.selectedGoals = selectedGoals
@@ -1811,12 +1899,14 @@ final class MorpheAppStore {
 
         // A coach account is the USER's practice, not demo "Coach Marcus" —
         // stamp their identity into the workspace and zero the seeded stats.
-        if onboardingDraft.accountType == .coach {
+        if selectedRole == .coach {
             applyCoachIdentity(
                 name: resolvedName,
                 handle: handle,
                 sports: onboardingDraft.selectedSports,
-                goals: selectedGoals
+                goals: selectedGoals,
+                tenure: onboardingDraft.coachTenure.rawValue,
+                roster: onboardingDraft.coachRoster.rawValue
             )
         }
 
@@ -3256,7 +3346,7 @@ final class MorpheAppStore {
             selectedAthleteThreadID = athleteMessageThreads[threadIndex].id
         }
         openCommunity(.contact)
-        showToast("Coach Marcus replied.")
+        showToast("\(clientProfile.coachName.isEmpty ? "Your coach" : clientProfile.coachName) replied.")
     }
 
     func sendAthleteMessage(to threadID: UUID, text: String) {
@@ -5554,6 +5644,10 @@ final class MorpheAppStore {
             if lowercasedPrompt.contains("summary") || lowercasedPrompt.contains("athlete") || lowercasedPrompt.contains("readiness") {
                 let recoverySummary = selectedCoachClient?.recoveryScore.reason ?? "consistency is holding but readiness wants moderation"
                 return "\(athleteName) is trending \(selectedCoachClient?.statusText.lowercased() ?? "steady"). Recovery is \(selectedCoachClient?.recoveryScore.score ?? 0) and the biggest context note is \(recoverySummary.lowercased())."
+            }
+        case .discover:
+            if lowercasedPrompt.contains("workout") || lowercasedPrompt.contains("assign") || lowercasedPrompt.contains("find") || lowercasedPrompt.contains("build") {
+                return "Search the catalog by name, goal, or training type, and bookmark anything worth assigning. For something exact, Build your own workout gives you full control over exercises, sets, and reps."
             }
         case .programs:
             if selectedCoachBuildSection == .library,

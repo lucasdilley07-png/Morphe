@@ -2083,11 +2083,12 @@ final class Audit4RegressionTests: XCTestCase {
         store.onboardingDraft.accountType = .coach
         store.onboardingDraft.selectedSports = [.soccer]
         store.completeOnboarding()
-        XCTAssertEqual(store.coachProfile.name, "Sam")
+        // The workspace addresses the user with the coach title by design.
+        XCTAssertEqual(store.coachProfile.name, "Coach Sam")
         XCTAssertTrue(store.coachProfile.specialty.contains("Soccer"), store.coachProfile.specialty)
 
         let reloaded = MorpheAppStore()
-        XCTAssertEqual(reloaded.coachProfile.name, "Sam",
+        XCTAssertEqual(reloaded.coachProfile.name, "Coach Sam",
                        "a relaunch must not revert the workspace to demo Coach Marcus")
         XCTAssertTrue(reloaded.coachProfile.specialty.contains("Soccer"),
                       "specialty must come from the coach's own sports, not the demo athlete's: \(reloaded.coachProfile.specialty)")

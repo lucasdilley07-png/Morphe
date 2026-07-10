@@ -63,9 +63,24 @@ struct OnboardingFlowView: View {
         // notes). The steps that collected write-only data — gender, body
         // info, equipment, motivation, confidence, obstacle, theme, avatar —
         // were cut; ~2 minutes to first value.
+        // A coach account (role comes from sign-up) gets its own flow: identity
+        // → what they coach → how long they've coached → practice size →
+        // coaching outcome → workspace review. No athlete plan questions.
+        if store.onboardingDraft.accountType == .coach {
+            return [
+                .welcome,
+                .name,
+                .sport,
+                .coachExperience,
+                .coachPractice,
+                .goal,
+                .review
+            ]
+        }
         let solo: [OnboardingStep] = [
             .welcome,
             .name,
+            .gender,
             .goal,
             .sport,
             .experience,
@@ -80,6 +95,10 @@ struct OnboardingFlowView: View {
         return multiUser
     }
 
+    private var isCoachFlow: Bool {
+        store.onboardingDraft.accountType == .coach
+    }
+
     private var currentStep: OnboardingStep {
         steps[stepIndex]
     }
@@ -87,6 +106,9 @@ struct OnboardingFlowView: View {
     private var canAdvance: Bool {
         if currentStep == .name {
             return !store.onboardingDraft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        if currentStep == .gender {
+            return store.onboardingDraft.genderChosen
         }
         return true
     }
@@ -96,7 +118,7 @@ struct OnboardingFlowView: View {
         case .welcome:
             return "Start"
         case .review:
-            return "Create My Plan"
+            return isCoachFlow ? "Create My Workspace" : "Create My Plan"
         default:
             return "Next"
         }
@@ -118,11 +140,13 @@ struct OnboardingFlowView: View {
                                         .tracking(1.4)
                                         .foregroundStyle(MorpheTheme.accent)
 
-                                    Text("Create your profile")
+                                    Text(isCoachFlow ? "Create your coach profile" : "Create your profile")
                                         .font(.title2.weight(.bold))
                                         .foregroundStyle(.white)
 
-                                    Text("A few simple choices make the plan feel personal without turning setup into homework.")
+                                    Text(isCoachFlow
+                                        ? "A few quick answers set up your coaching workspace — athletes, programs, and outreach in one place."
+                                        : "A few simple choices make the plan feel personal without turning setup into homework.")
                                         .font(.subheadline)
                                         .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -192,8 +216,14 @@ struct OnboardingFlowView: View {
             WelcomeLandingStep()
         case .name:
             NameStep(name: $store.onboardingDraft.name)
+        case .gender:
+            GenderStep()
         case .accountType:
             AccountTypeStep()
+        case .coachExperience:
+            CoachExperienceStep(selection: $store.onboardingDraft.coachTenure)
+        case .coachPractice:
+            CoachPracticeStep(selection: $store.onboardingDraft.coachRoster)
         case .goal:
             GoalSelectionStep()
         case .sport:
@@ -213,12 +243,15 @@ struct OnboardingFlowView: View {
 private enum OnboardingStep {
     case welcome
     case name
+    case gender
     case accountType
     case goal
     case sport
     case experience
     case schedule
     case injuryPain
+    case coachExperience
+    case coachPractice
     case review
 }
 
@@ -308,6 +341,79 @@ private struct NameStep: View {
     }
 }
 
+private struct GenderStep: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    var body: some View {
+        OnboardingCard(
+            title: "What's your gender?",
+            subtitle: "Keeps coaching language relevant to you. You can change it anytime from your profile."
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                WrapStack(spacing: 8) {
+                    ForEach(GenderOption.allCases) { option in
+                        Button(option.rawValue) {
+                            store.onboardingDraft.gender = option
+                            store.onboardingDraft.genderChosen = true
+                        }
+                        .buttonStyle(
+                            FilterChipStyle(
+                                isSelected: store.onboardingDraft.genderChosen && store.onboardingDraft.gender == option
+                            )
+                        )
+                    }
+                }
+
+                if !store.onboardingDraft.genderChosen {
+                    Text("Pick one to continue.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+        }
+    }
+}
+
+private struct CoachExperienceStep: View {
+    @Binding var selection: CoachTenureOption
+
+    var body: some View {
+        OnboardingCard(
+            title: "How long have you been coaching?",
+            subtitle: "Sets the tone of your workspace — nothing to prove, just where you are."
+        ) {
+            WrapStack(spacing: 8) {
+                ForEach(CoachTenureOption.allCases) { option in
+                    Button(option.rawValue) {
+                        selection = option
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: selection == option))
+                }
+            }
+        }
+    }
+}
+
+private struct CoachPracticeStep: View {
+    @Binding var selection: CoachRosterOption
+
+    var body: some View {
+        OnboardingCard(
+            title: "How many athletes do you work with?",
+            subtitle: "Your roster here starts empty and grows as athletes connect — this just sizes the workspace to your practice."
+        ) {
+            WrapStack(spacing: 8) {
+                ForEach(CoachRosterOption.allCases) { option in
+                    Button(option.rawValue) {
+                        selection = option
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: selection == option))
+                }
+            }
+        }
+    }
+}
+
 private struct AccountTypeStep: View {
     @Environment(MorpheAppStore.self) private var store
 
@@ -347,8 +453,10 @@ private struct GoalSelectionStep: View {
     var body: some View {
         @Bindable var store = store
         return OnboardingCard(
-            title: "What are you working toward?",
-            subtitle: "Pick up to 5 goals. Morphe will use the first one as your primary focus and keep the rest in view."
+            title: store.onboardingDraft.accountType == .coach ? "What do you coach athletes toward?" : "What are you working toward?",
+            subtitle: store.onboardingDraft.accountType == .coach
+                ? "Pick up to 5 outcomes your coaching drives. The first becomes your workspace's primary focus."
+                : "Pick up to 5 goals. Morphe will use the first one as your primary focus and keep the rest in view."
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("\(store.onboardingDraft.selectedGoals.count) of 5 selected")
@@ -404,10 +512,16 @@ private struct GoalSelectionStep: View {
 private struct SportSelectionStep: View {
     @Environment(MorpheAppStore.self) private var store
 
+    private var isCoach: Bool {
+        store.onboardingDraft.accountType == .coach
+    }
+
     var body: some View {
         OnboardingCard(
-            title: "What kind of training fits you best?",
-            subtitle: "Pick up to 5 sports or training styles. Morphe will make the first one your primary mode."
+            title: isCoach ? "What do you coach?" : "What kind of training fits you best?",
+            subtitle: isCoach
+                ? "Pick up to 5 sports or training styles you coach. The first becomes your workspace's primary mode."
+                : "Pick up to 5 sports or training styles. Morphe will make the first one your primary mode."
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("\(store.onboardingDraft.selectedSports.count) of 5 selected")

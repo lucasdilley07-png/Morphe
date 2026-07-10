@@ -33,6 +33,7 @@ enum AppRole: String, CaseIterable, Identifiable, Codable {
 enum GenderOption: String, CaseIterable, Identifiable {
     case male = "Male"
     case female = "Female"
+    case other = "Other"
 
     var id: String { rawValue }
 
@@ -42,8 +43,40 @@ enum GenderOption: String, CaseIterable, Identifiable {
             return "M"
         case .female:
             return "F"
+        case .other:
+            return "O"
         }
     }
+}
+
+/// How long the coach has been coaching — asked during coach onboarding.
+enum CoachTenureOption: String, CaseIterable, Identifiable {
+    case new = "Just starting"
+    case growing = "1-3 years"
+    case seasoned = "3-10 years"
+    case veteran = "10+ years"
+
+    var id: String { rawValue }
+}
+
+/// Roster size the coach works with today — asked during coach onboarding.
+enum CoachRosterOption: String, CaseIterable, Identifiable {
+    case justStarting = "0-3 athletes"
+    case small = "4-10 athletes"
+    case team = "11-25 athletes"
+    case program = "25+ athletes"
+
+    var id: String { rawValue }
+}
+
+/// A person scanned via a Morphe connect QR code. Stored on the scanner's
+/// account; mutual rosters/messaging arrive when the backend links accounts.
+struct ScannedConnection: Identifiable, Hashable, Codable {
+    var id: String
+    var name: String
+    var handle: String
+    var role: String
+    var scannedAt: Date
 }
 
 /// Feature gating for the solo-first v1 launch. The multi-user surfaces
@@ -107,23 +140,25 @@ enum ClientCommunitySection: String, CaseIterable, Identifiable {
 enum CoachTab: String, CaseIterable, MorpheTabItem {
     case dashboard
     case athletes
+    case discover
     case programs
     case network
     case messages
 
     var id: String { rawValue }
 
-    /// Coach tabs shown in the bottom nav. Coach v1 is deliberately lean —
-    /// track clients and reach out: Home · Athletes · Inbox. Build (programs)
-    /// and Network stay in code for coach v2; booking/payments are Phase 5.
+    /// Coach tabs shown in the bottom nav: Home · Athletes · Discover · Inbox.
+    /// Build (programs) and Network stay in code for coach v2; Discover folds
+    /// the workout library, builder, and connect tools into one place.
     static var visibleCases: [CoachTab] {
-        [.dashboard, .athletes, .messages]
+        [.dashboard, .athletes, .discover, .messages]
     }
 
     var title: String {
         switch self {
         case .dashboard: return "Home"
         case .athletes: return "Athletes"
+        case .discover: return "Discover"
         case .programs: return "Build"
         case .network: return "Network"
         case .messages: return "Inbox"
@@ -134,6 +169,7 @@ enum CoachTab: String, CaseIterable, MorpheTabItem {
         switch self {
         case .dashboard: return "waveform.path.ecg.rectangle.fill"
         case .athletes: return "person.3.fill"
+        case .discover: return "square.grid.2x2.fill"
         case .programs: return "list.bullet.clipboard.fill"
         case .network: return "person.2.wave.2.fill"
         case .messages: return "bubble.left.and.bubble.right.fill"
@@ -1464,6 +1500,12 @@ struct OnboardingDraft: Hashable {
     var accountType: AppRole = .client
     var name: String = ""
     var gender: GenderOption = .male
+    /// True once the user explicitly answers the gender step — the profile only
+    /// records gender when it was actually asked and answered, never a default.
+    var genderChosen: Bool = false
+    // Coach onboarding answers (coach accounts only).
+    var coachTenure: CoachTenureOption = .growing
+    var coachRoster: CoachRosterOption = .justStarting
     var age: Int = 25
     var height: String = ""
     var weight: String = ""

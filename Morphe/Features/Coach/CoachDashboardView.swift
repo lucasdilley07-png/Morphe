@@ -12,6 +12,9 @@ struct CoachDashboardView: View {
             CoachAthletesScreen()
                 .tag(CoachTab.athletes)
 
+            CoachDiscoverScreen()
+                .tag(CoachTab.discover)
+
             CoachProgramsScreen()
                 .tag(CoachTab.programs)
 

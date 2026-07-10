@@ -445,6 +445,8 @@ private struct AthleteContactInbox: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var draft = ""
     @State private var searchText = ""
+    @State private var showQRConnect = false
+    @State private var qrStartMode: QRConnectSheet.Mode = .show
 
     private var selectedThread: MessageThread? {
         store.selectedAthleteThread
@@ -486,6 +488,10 @@ private struct AthleteContactInbox: View {
             if newValue != nil, store.selectedAthleteThreadID != nil {
                 applyAthleteThreadDraftSeedIfNeeded()
             }
+        }
+        .sheet(isPresented: $showQRConnect) {
+            QRConnectSheet(mode: qrStartMode)
+                .environment(store)
         }
     }
 
@@ -540,9 +546,17 @@ private struct AthleteContactInbox: View {
                 .overlay(MorpheTheme.stroke.opacity(0.8))
 
             if filteredThreads.isEmpty {
-                AthleteContactEmptyState(isSearching: !searchText.trimmingCharacters(in: .whitespaces).isEmpty) {
-                    store.selectedCommunitySection = .forYou
-                }
+                AthleteContactEmptyState(
+                    isSearching: !searchText.trimmingCharacters(in: .whitespaces).isEmpty,
+                    onShowCode: {
+                        qrStartMode = .show
+                        showQRConnect = true
+                    },
+                    onScanCode: {
+                        qrStartMode = .scan
+                        showQRConnect = true
+                    }
+                )
                 .padding(20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             } else {
@@ -669,7 +683,8 @@ private struct AthleteContactInbox: View {
 
 private struct AthleteContactEmptyState: View {
     let isSearching: Bool
-    let onExploreFeed: () -> Void
+    let onShowCode: () -> Void
+    let onScanCode: () -> Void
 
     var body: some View {
         GlassCard {
@@ -684,18 +699,29 @@ private struct AthleteContactEmptyState: View {
 
                 Text(isSearching
                      ? "Nobody in your contacts matches that search."
-                     : "When you connect with athletes, coaches, or a training partner, your conversations land here.")
+                     : "Connect with your coach or a training partner in person — show your Morphe code or scan theirs.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if !isSearching {
-                    Button {
-                        onExploreFeed()
-                    } label: {
-                        Label("Find people to connect with", systemImage: "person.2.fill")
+                    HStack(spacing: 10) {
+                        Button {
+                            onShowCode()
+                        } label: {
+                            Label("My Code", systemImage: "qrcode")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+
+                        Button {
+                            onScanCode()
+                        } label: {
+                            Label("Scan", systemImage: "qrcode.viewfinder")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
                     }
-                    .buttonStyle(SecondaryCTAButtonStyle())
                 }
             }
         }
