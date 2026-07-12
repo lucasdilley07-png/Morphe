@@ -1475,6 +1475,8 @@ private struct DiscoverCatalogSection: View {
     @State private var levelFilter: DemoDifficulty?
     @State private var durationFilter: String?
     @State private var equipmentFilter: String?
+    @State private var showQRConnect = false
+    @State private var qrStartMode: QRConnectSheet.Mode = .show
 
     /// Time filters are ranges, not exact matches — sport sessions run
     /// 15/24/36/38-min lengths, so exact chips made Time + Sport-specific
@@ -1541,10 +1543,16 @@ private struct DiscoverCatalogSection: View {
     ]
 
     var body: some View {
-        if let selection {
-            detailView(selection)
-        } else {
-            landingGrid
+        Group {
+            if let selection {
+                detailView(selection)
+            } else {
+                landingGrid
+            }
+        }
+        .sheet(isPresented: $showQRConnect) {
+            QRConnectSheet(mode: qrStartMode)
+                .environment(store)
         }
     }
 
@@ -1625,11 +1633,55 @@ private struct DiscoverCatalogSection: View {
         }
     }
 
+    /// QR connect entry (moved here from the Messages empty state): show your
+    /// Morphe code or scan a coach's / training partner's.
+    private var connectCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Connect")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Train with people — show your Morphe code or scan a coach's.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                HStack(spacing: 10) {
+                    Button {
+                        qrStartMode = .show
+                        showQRConnect = true
+                    } label: {
+                        Label("My Code", systemImage: "qrcode")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+
+                    Button {
+                        qrStartMode = .scan
+                        showQRConnect = true
+                    } label: {
+                        Label("Scan", systemImage: "qrcode.viewfinder")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                }
+
+                if !store.scannedConnections.isEmpty {
+                    Text("\(store.scannedConnections.count) connection\(store.scannedConnections.count == 1 ? "" : "s") saved")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+        }
+    }
+
     private var landingGrid: some View {
         let byType = Dictionary(grouping: store.discoverWorkouts, by: \.trainingTypeTag)
         let legendsCount = store.discoverWorkouts.filter { $0.type == "Legends" }.count
 
         return VStack(alignment: .leading, spacing: 20) {
+            connectCard
+
             searchBar
 
             if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
