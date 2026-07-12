@@ -5055,7 +5055,7 @@ final class MorpheAppStore {
         }
 
         selectedClientID = intervention.athleteID
-        selectedCoachTab = .athletes
+        selectedCoachTab = .programs
         showToast("Opened \(intervention.athleteName)'s profile.")
     }
 

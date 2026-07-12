@@ -863,7 +863,7 @@ private struct NetworkProfilePreviewSheet: View {
         if store.selectedRole == .coach {
             if let athlete = store.coachClients.first(where: { $0.name == profile.name }) {
                 store.openClientHub(athlete)
-                store.selectedCoachTab = .athletes
+                store.selectedCoachTab = .programs
             } else {
                 store.selectedCoachTab = .network
                 store.notify("Opened \(profile.name)'s coach network.")

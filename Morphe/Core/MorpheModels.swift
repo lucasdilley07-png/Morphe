@@ -148,11 +148,12 @@ enum CoachTab: String, CaseIterable, MorpheTabItem {
 
     var id: String { rawValue }
 
-    /// Coach tabs shown in the bottom nav: Home · Athletes · Train · Discover
-    /// · Inbox. Train and Discover are the same surfaces the athlete gets —
-    /// coaches train too. Build (programs) and Network stay in code for v2.
+    /// Coach tabs shown in the bottom nav: Home · Build · Train · Discover
+    /// · Inbox. Build leads with the athlete roster, then the program builder
+    /// and library. Train and Discover are the same surfaces the athlete gets.
+    /// Network stays in code for v2.
     static var visibleCases: [CoachTab] {
-        [.dashboard, .athletes, .train, .discover, .messages]
+        [.dashboard, .programs, .train, .discover, .messages]
     }
 
     var title: String {

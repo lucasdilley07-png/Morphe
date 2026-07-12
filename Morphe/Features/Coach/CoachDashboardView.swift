@@ -9,8 +9,8 @@ struct CoachDashboardView: View {
             CoachCommandCenterScreen()
                 .tag(CoachTab.dashboard)
 
-            CoachAthletesScreen()
-                .tag(CoachTab.athletes)
+            // The athlete roster now leads the Build tab; all navigation that
+            // used to target .athletes redirects to .programs.
 
             // Coaches train too — the SAME Train and Discover surfaces the
             // athlete gets, not coach-flavored copies.
@@ -288,7 +288,7 @@ private struct CoachCommandCenterScreen: View {
                     showsRecoveryAction: recoveryIntervention != nil,
                     onReviewAI: {
                         guard let athlete = pendingAIReviewAthlete else { return }
-                        store.selectedCoachTab = .athletes
+                        store.selectedCoachTab = .programs
                         store.openClientHub(athlete)
                         store.announce("Opened \(athlete.name) for AI log review.")
                     },
@@ -324,7 +324,7 @@ private struct CoachCommandCenterScreen: View {
                         recommendations: followUpRecommendations,
                         onOpenAthlete: { recommendation in
                             if let athlete = store.coachClients.first(where: { $0.id == recommendation.athleteID }) {
-                                store.selectedCoachTab = .athletes
+                                store.selectedCoachTab = .programs
                                 store.openClientHub(athlete)
                             }
                         },
@@ -408,13 +408,13 @@ private struct CoachCommandCenterScreen: View {
         switch recommendation.type {
         case .reviewAI:
             if let athlete = store.coachClients.first(where: { $0.id == recommendation.athleteID }) {
-                store.selectedCoachTab = .athletes
+                store.selectedCoachTab = .programs
                 store.openClientHub(athlete)
                 store.announce("Opened \(athlete.name) for AI review.")
             }
         case .reviewBuddy:
             if let athlete = store.coachClients.first(where: { $0.id == recommendation.athleteID }) {
-                store.selectedCoachTab = .athletes
+                store.selectedCoachTab = .programs
                 store.openClientHub(athlete)
                 store.announce("Opened \(athlete.name)'s buddy-session logs.")
             }
@@ -442,56 +442,52 @@ private struct CoachCommandCenterScreen: View {
     }
 }
 
-private struct CoachAthletesScreen: View {
+/// The athlete roster, embeddable — leads the Build tab above the
+/// Build/Library section switcher.
+private struct CoachAthletesRosterSection: View {
     @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                SectionTitleView(
-                    title: "Athletes",
-                    subtitle: "Filter by sport, scan the risk level, and open the athlete hub for the full context."
-                )
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Athletes")
+                .font(.headline)
+                .foregroundStyle(.white)
 
-                if store.coachClients.isEmpty {
-                    // A brand-new coach has no roster — say so instead of
-                    // rendering a sport filter over a blank void.
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("No athletes yet")
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                            Text("Your roster starts empty. When Morphe accounts launch, athletes join with an invite code you share — their training, readiness, and messages land here.")
-                                .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            if store.coachClients.isEmpty {
+                // A brand-new coach has no roster — say so instead of
+                // rendering a sport filter over a blank void.
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("No athletes yet")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Text("Your roster starts empty — connect athletes with a QR code from Discover, and their training, readiness, and messages land here.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
                     }
-                } else {
-                    MultiSportCoachFilter(
-                        selected: store.coachSportFilter,
-                        sports: store.coachFilterOptions
-                    ) { sport in
-                        store.selectCoachSportFilter(sport)
-                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                MultiSportCoachFilter(
+                    selected: store.coachSportFilter,
+                    sports: store.coachFilterOptions
+                ) { sport in
+                    store.selectCoachSportFilter(sport)
+                }
 
-                    ForEach(store.filteredCoachClients) { athlete in
-                        CoachAthleteCard(
-                            athlete: athlete,
-                            onOpenHub: { store.openClientHub(athlete) },
-                            onMessage: {
-                                if let thread = store.messageThreads.first(where: { $0.participant == athlete.name }) {
-                                    store.selectedCoachTab = .messages
-                                    store.selectThread(thread)
-                                }
+                ForEach(store.filteredCoachClients) { athlete in
+                    CoachAthleteCard(
+                        athlete: athlete,
+                        onOpenHub: { store.openClientHub(athlete) },
+                        onMessage: {
+                            if let thread = store.messageThreads.first(where: { $0.participant == athlete.name }) {
+                                store.selectedCoachTab = .messages
+                                store.selectThread(thread)
                             }
-                        )
-                    }
+                        }
+                    )
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 120)
         }
     }
 }
@@ -524,8 +520,12 @@ private struct CoachProgramsScreen: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Build",
-                    subtitle: "Build around your coaching style, your athletes, and the sessions you reuse the most."
+                    subtitle: "Your athletes up top, then the sessions you build and reuse for them."
                 )
+
+                // The roster leads: who you're building for comes before what
+                // you're building.
+                CoachAthletesRosterSection()
 
                 Picker("Build Section", selection: $store.selectedCoachBuildSection) {
                     ForEach(CoachBuildSection.allCases) { section in
@@ -1817,7 +1817,7 @@ private struct CoachNetworkHighlightsRail: View {
                 ForEach(store.coachClients.prefix(4)) { athlete in
                     StoryRingCard(symbol: sportSymbol(for: athlete.sport), title: athlete.name, subtitle: athlete.statusText) {
                         store.openClientHub(athlete)
-                        store.selectedCoachTab = .athletes
+                        store.selectedCoachTab = .programs
                     }
                 }
 
