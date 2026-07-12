@@ -8,6 +8,7 @@ struct ProfileView: View {
     @State private var injuriesDraft = ""
     @State private var heightDraft = ""
     @State private var weightDraft = ""
+    @State private var showSignOutConfirm = false
 
     private var isCoach: Bool {
         store.selectedRole == .coach
@@ -307,9 +308,20 @@ struct ProfileView: View {
 
                 if FeatureFlags.accountsEnabled {
                     Button("Sign Out") {
-                        store.signOut()
+                        showSignOutConfirm = true
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
+                    .alert("Are you sure you want to sign out?", isPresented: $showSignOutConfirm) {
+                        Button("Sign Out", role: .destructive) {
+                            // Close the profile sheet first so the account
+                            // screen is immediately visible underneath.
+                            store.closeClientProfile()
+                            store.signOut()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("Your data stays backed up to your account — signing back in restores everything.")
+                    }
                 }
             }
         }
