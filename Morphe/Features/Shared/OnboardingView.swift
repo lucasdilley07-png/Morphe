@@ -641,43 +641,75 @@ private struct ProfileReviewStep: View {
                 ProfileBannerView(
                     banner: BannerProfile(
                         preset: bannerPreset,
-                        title: generatedPlan.phase,
+                        title: isCoach ? "Coach Workspace" : generatedPlan.phase,
                         subtitle: store.onboardingDraft.goal.rawValue
                     ),
                     theme: store.onboardingDraft.theme
                 )
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Starting level: \(store.onboardingDraft.experienceLevel.rawValue)")
+                    Text(isCoach
+                        ? "Coaching experience: \(store.onboardingDraft.coachTenure.rawValue)"
+                        : "Starting level: \(store.onboardingDraft.experienceLevel.rawValue)")
                         .font(.headline)
                         .foregroundStyle(.white)
-                    Text("Primary focus: \(store.onboardingDraft.sport.rawValue)")
+                    Text(isCoach
+                        ? "Coaching focus: \(store.onboardingDraft.sport.rawValue)"
+                        : "Primary focus: \(store.onboardingDraft.sport.rawValue)")
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
 
-                Text("What Morphe will build for you")
+                Text(isCoach ? "What your workspace includes" : "What Morphe will build for you")
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                ForEach(generatedPlan.goalTranslation.weeklyActions, id: \.self) { action in
-                    Text("- \(action)")
-                        .foregroundStyle(MorpheTheme.textPrimary)
+                if isCoach {
+                    // The coach reviews a WORKSPACE, not an athlete training
+                    // plan — these are the real surfaces they land in.
+                    ForEach([
+                        "An athlete roster that grows by QR connect",
+                        "The full workout library, saves, and your own builds",
+                        "An inbox for athlete outreach and follow-ups"
+                    ], id: \.self) { item in
+                        Text("- \(item)")
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                    }
+                } else {
+                    ForEach(generatedPlan.goalTranslation.weeklyActions, id: \.self) { action in
+                        Text("- \(action)")
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                    }
                 }
 
-                ProfileLine(title: "First phase", value: generatedPlan.phase)
+                if isCoach {
+                    ProfileLine(title: "Practice size", value: store.onboardingDraft.coachRoster.rawValue)
+                } else {
+                    ProfileLine(title: "First phase", value: generatedPlan.phase)
+                }
                 ProfileLine(title: "Sports selected", value: store.onboardingDraft.selectedSports.map(\.shortTitle).joined(separator: ", "))
                 ProfileLine(title: "Goals selected", value: store.onboardingDraft.selectedGoals.map(\.rawValue).joined(separator: ", "))
                 ProfileLine(title: isCoach ? "Physical outcome" : "Physical goal", value: store.onboardingDraft.physicalGoalTarget)
                 ProfileLine(title: "Weight goal", value: store.onboardingDraft.weightGoalTarget)
                 ProfileLine(title: "Deadline", value: store.onboardingDraft.goalDeadline)
-                ProfileLine(title: isCoach ? "Suggested structure" : "Weekly target", value: "\(store.onboardingDraft.trainingDaysPerWeek) training days")
+                if !isCoach {
+                    // The coach flow never asks for a weekly schedule — showing
+                    // the draft's default here would invent an answer.
+                    ProfileLine(title: "Weekly target", value: "\(store.onboardingDraft.trainingDaysPerWeek) training days")
+                }
                 if !store.onboardingDraft.injuries.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     ProfileLine(title: "Injuries & limits", value: store.onboardingDraft.injuries)
                 }
-                ProfileLine(title: isCoach ? "First action" : "Today's first task", value: generatedPlan.firstTask)
-                ProfileLine(title: isCoach ? "Workspace summary" : "Plan summary", value: generatedPlan.message)
-                Text("Tap Create My Plan and Morphe will turn this into your starting plan.")
+                if isCoach {
+                    ProfileLine(title: "First action", value: "Show your Morphe code to connect your first athlete")
+                    ProfileLine(title: "Workspace summary", value: "A \(store.onboardingDraft.sport.rawValue) coaching workspace sized for \(store.onboardingDraft.coachRoster.rawValue.lowercased()) — roster, library, and outreach in one place. Everything grows from the athletes you connect.")
+                } else {
+                    ProfileLine(title: "Today's first task", value: generatedPlan.firstTask)
+                    ProfileLine(title: "Plan summary", value: generatedPlan.message)
+                }
+                Text(isCoach
+                    ? "Tap Create My Workspace and Morphe will set up your coaching home."
+                    : "Tap Create My Plan and Morphe will turn this into your starting plan.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
             }
