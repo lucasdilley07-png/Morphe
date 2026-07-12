@@ -226,6 +226,7 @@ private struct CoachCommandCenterScreen: View {
     @State private var showSignals = false
     @State private var sessionRequest: CoachSessionLaunchRequest?
     @State private var coachPraiseDraft: CoachPublicPraiseDraft?
+    @State private var triageFocus: CoachTriageFocus?
 
     private var pendingAIReviewAthlete: CoachClient? {
         store.filteredCoachClients.first { athlete in
@@ -309,7 +310,8 @@ private struct CoachCommandCenterScreen: View {
                     onAssignRecovery: {
                         guard let intervention = recoveryIntervention else { return }
                         store.assignInterventionPlan(intervention)
-                    }
+                    },
+                    onFocus: { triageFocus = $0 }
                 )
 
                 if !followUpRecommendations.isEmpty {
@@ -389,6 +391,11 @@ private struct CoachCommandCenterScreen: View {
         .sheet(item: $coachPraiseDraft) { draft in
             CoachPublicPraiseSheet(draft: draft)
                 .environment(store)
+        }
+        .sheet(item: $triageFocus) { focus in
+            CoachTriageFocusSheet(focus: focus)
+                .environment(store)
+                .presentationDetents([.medium, .large])
         }
     }
 
@@ -2691,6 +2698,25 @@ private enum CoachNetworkSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// Which triage number the coach tapped — drives the who's-behind-it pop-up.
+enum CoachTriageFocus: String, Identifiable {
+    case needsAttention
+    case painFlags
+    case replyQueue
+    case nextSession
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .needsAttention: return "Needs attention"
+        case .painFlags: return "Pain flags"
+        case .replyQueue: return "Reply queue"
+        case .nextSession: return "Next session"
+        }
+    }
+}
+
 private struct CoachDashboardTriageCard: View {
     let coachName: String
     let atRiskCount: Int
@@ -2704,6 +2730,7 @@ private struct CoachDashboardTriageCard: View {
     let onMessageAthlete: () -> Void
     let onStartSession: () -> Void
     let onAssignRecovery: () -> Void
+    let onFocus: (CoachTriageFocus) -> Void
 
     private var headline: String {
         if let nextIntervention {
@@ -2755,13 +2782,27 @@ private struct CoachDashboardTriageCard: View {
                     )
                 }
 
+                // Each pill opens a simple pop-up listing WHO is behind the
+                // number, so the count is never a dead end.
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
-                    CoachTriageStatPill(label: "Needs attention", value: "\(atRiskCount)")
+                    Button { onFocus(.needsAttention) } label: {
+                        CoachTriageStatPill(label: "Needs attention", value: "\(atRiskCount)")
+                    }
+                    .buttonStyle(.plain)
                     // Pain flags are real data today; "AI reviews" advertised
                     // an import workflow that doesn't exist yet.
-                    CoachTriageStatPill(label: "Pain flags", value: "\(painFlagCount)")
-                    CoachTriageStatPill(label: "Reply queue", value: "\(replyQueueCount)")
-                    CoachTriageStatPill(label: "Next session", value: nextSession.map { "\($0.day) \($0.time)" } ?? "No live block")
+                    Button { onFocus(.painFlags) } label: {
+                        CoachTriageStatPill(label: "Pain flags", value: "\(painFlagCount)")
+                    }
+                    .buttonStyle(.plain)
+                    Button { onFocus(.replyQueue) } label: {
+                        CoachTriageStatPill(label: "Reply queue", value: "\(replyQueueCount)")
+                    }
+                    .buttonStyle(.plain)
+                    Button { onFocus(.nextSession) } label: {
+                        CoachTriageStatPill(label: "Next session", value: nextSession.map { "\($0.day) \($0.time)" } ?? "No live block")
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 VStack(spacing: 8) {
@@ -2800,6 +2841,106 @@ private struct CoachDashboardTriageCard: View {
                     }
                 }
             }
+        }
+    }
+}
+
+/// Simple pop-up behind each triage number: who's on the list, with just
+/// enough context to act. Rows are informational — the coach acts from the
+/// Athletes tab / inbox.
+private struct CoachTriageFocusSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let focus: CoachTriageFocus
+
+    private struct Row: Identifiable {
+        let id = UUID()
+        let symbol: String
+        let title: String
+        let detail: String
+    }
+
+    private var rows: [Row] {
+        switch focus {
+        case .needsAttention:
+            return store.coachClients
+                .filter { $0.risk != .low }
+                .map { Row(symbol: "exclamationmark.triangle.fill", title: $0.name, detail: $0.statusText) }
+        case .painFlags:
+            return store.coachClients
+                .filter { $0.recoveryScore.pain }
+                .map { Row(symbol: "cross.case.fill", title: $0.name, detail: $0.recoveryScore.reason) }
+        case .replyQueue:
+            return store.messageThreads
+                .filter(\.isUnread)
+                .map { Row(symbol: "bubble.left.fill", title: $0.participant, detail: $0.preview) }
+        case .nextSession:
+            return store.upcomingSessions
+                .map { Row(symbol: "calendar", title: $0.title, detail: "\($0.day) at \($0.time) · \($0.detail)") }
+        }
+    }
+
+    private var emptyText: String {
+        switch focus {
+        case .needsAttention:
+            return "Nobody needs attention right now — the board is clear."
+        case .painFlags:
+            return "No pain flags filed. When an athlete reports pain, they show up here."
+        case .replyQueue:
+            return "No messages waiting on a reply."
+        case .nextSession:
+            return "No sessions scheduled. Booked sessions land here."
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 12) {
+                    if rows.isEmpty {
+                        GlassCard {
+                            Text(emptyText)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                ForEach(rows) { row in
+                                    HStack(alignment: .top, spacing: 12) {
+                                        Image(systemName: row.symbol)
+                                            .foregroundStyle(MorpheTheme.accent)
+                                            .frame(width: 24)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(row.title)
+                                                .font(.subheadline.weight(.semibold))
+                                                .foregroundStyle(.white)
+                                            Text(row.detail)
+                                                .font(.caption)
+                                                .foregroundStyle(MorpheTheme.textSecondary)
+                                                .lineLimit(2)
+                                        }
+                                        Spacer(minLength: 0)
+                                    }
+                                    .padding(.vertical, 2)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(focus.title).font(.headline).foregroundStyle(.white)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }.foregroundStyle(.white)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
