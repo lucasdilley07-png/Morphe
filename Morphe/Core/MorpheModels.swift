@@ -140,6 +140,7 @@ enum ClientCommunitySection: String, CaseIterable, Identifiable {
 enum CoachTab: String, CaseIterable, MorpheTabItem {
     case dashboard
     case athletes
+    case train
     case discover
     case programs
     case network
@@ -147,17 +148,18 @@ enum CoachTab: String, CaseIterable, MorpheTabItem {
 
     var id: String { rawValue }
 
-    /// Coach tabs shown in the bottom nav: Home · Athletes · Discover · Inbox.
-    /// Build (programs) and Network stay in code for coach v2; Discover folds
-    /// the workout library, builder, and connect tools into one place.
+    /// Coach tabs shown in the bottom nav: Home · Athletes · Train · Discover
+    /// · Inbox. Train and Discover are the same surfaces the athlete gets —
+    /// coaches train too. Build (programs) and Network stay in code for v2.
     static var visibleCases: [CoachTab] {
-        [.dashboard, .athletes, .discover, .messages]
+        [.dashboard, .athletes, .train, .discover, .messages]
     }
 
     var title: String {
         switch self {
         case .dashboard: return "Home"
         case .athletes: return "Athletes"
+        case .train: return "Train"
         case .discover: return "Discover"
         case .programs: return "Build"
         case .network: return "Network"
@@ -169,6 +171,7 @@ enum CoachTab: String, CaseIterable, MorpheTabItem {
         switch self {
         case .dashboard: return "waveform.path.ecg.rectangle.fill"
         case .athletes: return "person.3.fill"
+        case .train: return "figure.run"
         case .discover: return "square.grid.2x2.fill"
         case .programs: return "list.bullet.clipboard.fill"
         case .network: return "person.2.wave.2.fill"

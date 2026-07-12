@@ -1571,12 +1571,62 @@ private struct DiscoverCatalogSection: View {
         }
     }
 
+    /// One person row in unified search results.
+    private struct PersonResult: Identifiable {
+        let id: String
+        let name: String
+        let detail: String
+        let isCoach: Bool
+    }
+
+    /// Coaches & people: QR connections on this account, plus the coach's own
+    /// roster. Real relationships only — a global directory arrives with
+    /// account linking.
+    private var peopleResults: [PersonResult] {
+        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return [] }
+        var results: [PersonResult] = store.scannedConnections
+            .filter { $0.name.localizedCaseInsensitiveContains(q) || $0.handle.localizedCaseInsensitiveContains(q) }
+            .map {
+                PersonResult(
+                    id: "connection-\($0.id)",
+                    name: $0.name,
+                    detail: $0.handle.isEmpty ? $0.role.capitalized : "@\($0.handle) · \($0.role.capitalized)",
+                    isCoach: $0.role == "coach"
+                )
+            }
+        if store.selectedRole == .coach {
+            results += store.coachClients
+                .filter { $0.name.localizedCaseInsensitiveContains(q) }
+                .map {
+                    PersonResult(
+                        id: "athlete-\($0.id.uuidString)",
+                        name: $0.name,
+                        detail: "\($0.sport.rawValue) · \($0.fitnessLevel)",
+                        isCoach: false
+                    )
+                }
+        }
+        return results
+    }
+
+    private var postResults: [ProgressPost] {
+        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return [] }
+        return store.communityPosts.filter {
+            $0.title.localizedCaseInsensitiveContains(q)
+                || $0.detail.localizedCaseInsensitiveContains(q)
+                || $0.author.localizedCaseInsensitiveContains(q)
+                || $0.tags.contains { $0.localizedCaseInsensitiveContains(q) }
+        }
+    }
+
     private var searchBar: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.subheadline)
                 .foregroundStyle(MorpheTheme.textMuted)
-            TextField("Search workouts", text: $searchQuery)
+            TextField("Search workouts, coaches, posts", text: $searchQuery)
                 .textFieldStyle(.plain)
                 .foregroundStyle(.white)
                 .autocorrectionDisabled()
@@ -1604,18 +1654,23 @@ private struct DiscoverCatalogSection: View {
 
     @ViewBuilder
     private var searchResultsList: some View {
-        let results = searchResults
-        sectionHeader(title: "Results", count: results.count)
-        if results.isEmpty {
+        let workouts = searchResults
+        let people = peopleResults
+        let posts = postResults
+
+        if workouts.isEmpty && people.isEmpty && posts.isEmpty {
             GlassCard {
-                Text("No workouts match \"\(searchQuery)\" — try a style like strength, boxing, or core.")
+                Text("Nothing matches \"\(searchQuery)\" — try a workout style like strength or boxing, a coach's name, or a post topic.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-        } else {
+        }
+
+        if !workouts.isEmpty {
+            sectionHeader(title: "Workouts", count: workouts.count)
             LazyVStack(spacing: 10) {
-                ForEach(results.prefix(30)) { template in
+                ForEach(workouts.prefix(30)) { template in
                     DiscoverProgramCard(
                         template: template,
                         typeName: Self.shortTypeNames[template.trainingTypeTag] ?? template.trainingTypeTag,
@@ -1625,10 +1680,58 @@ private struct DiscoverCatalogSection: View {
                     )
                 }
             }
-            if results.count > 30 {
-                Text("Showing the first 30 — keep typing to narrow it down.")
+            if workouts.count > 30 {
+                Text("Showing the first 30 workouts — keep typing to narrow it down.")
                     .font(.caption2)
                     .foregroundStyle(MorpheTheme.textMuted)
+            }
+        }
+
+        if !people.isEmpty {
+            sectionHeader(title: "Coaches & people", count: people.count)
+            GlassCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(people.prefix(10)) { person in
+                        HStack(spacing: 10) {
+                            Image(systemName: person.isCoach ? "figure.wave" : "figure.run")
+                                .foregroundStyle(MorpheTheme.accent)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(person.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                Text(person.detail)
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }
+            }
+        }
+
+        if !posts.isEmpty {
+            sectionHeader(title: "Posts", count: posts.count)
+            GlassCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(posts.prefix(10)) { post in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(post.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                            Text("\(post.author) · \(post.timeAgo)")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Text(post.detail)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .lineLimit(2)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
             }
         }
     }

@@ -474,6 +474,14 @@ final class MorpheAppStore {
             // Key cloud writes to the already-signed-in user so local saves this
             // session mirror up. (A full pull happens on an explicit sign-in.)
             cloudBackup.setUser(authUser.id)
+
+            // Session survived but local state didn't (reinstall that kept the
+            // keychain, storage cleanup): restore the cloud backup instead of
+            // sending an existing account back through onboarding — completing
+            // it again would overwrite their backup with a fresh profile.
+            if !hasCompletedOnboarding {
+                Task { await restoreFromCloud() }
+            }
         }
 
         // Same-day relaunch: no-op (daily state was just restored). New day —
@@ -513,6 +521,17 @@ final class MorpheAppStore {
         authService.signOut()
         cloudBackup.setUser(nil)
         authUser = nil
+    }
+
+    /// Lands on the Train surface for the CURRENT role. The coach workspace
+    /// has its own Train tab — writing only the athlete tab there would
+    /// navigate somewhere the coach can't see.
+    func showTrainTab() {
+        if selectedRole == .coach {
+            selectedCoachTab = .train
+        } else {
+            selectedClientTab = ClientTab.train
+        }
     }
 
     // MARK: - QR connect
@@ -1251,6 +1270,8 @@ final class MorpheAppStore {
                 return ["Who needs attention today?", "Summarize this week's priorities", "Draft a quick outreach message", "Suggest a lighter plan adjustment"]
             case .athletes:
                 return ["Summarize this athlete", "What should I watch for?", "Draft a coach note", "What follow-up should I send?"]
+            case .train:
+                return ["Start my workout", "Suggest a swap", "I'm short on time", "What can you do?"]
             case .discover:
                 return ["Find a conditioning workout", "What should I assign a beginner?", "Suggest a session for game week", "Help me build a workout"]
             case .programs:
@@ -1290,6 +1311,8 @@ final class MorpheAppStore {
                 return "Triage the day, spot risk fast, and turn alerts into action."
             case .athletes:
                 return "Read athlete context, coach notes, and next-best follow-up without leaving the roster."
+            case .train:
+                return "Get form help, swaps, and pain-safe suggestions without breaking workout flow."
             case .discover:
                 return "Find workouts worth assigning, build your own, and grow your roster."
             case .programs:
@@ -1326,6 +1349,8 @@ final class MorpheAppStore {
                 return "Ask about athlete risk, priorities, or next moves..."
             case .athletes:
                 return "Ask about this athlete's readiness, notes, or follow-up..."
+            case .train:
+                return "Ask for swaps, form help, or pain-safe options..."
             case .discover:
                 return "Ask for a workout to assign or help building one..."
             case .programs:
@@ -1363,6 +1388,11 @@ final class MorpheAppStore {
                 return "Coach Home"
             case .athletes:
                 return "Athlete focus: \(athlete)"
+            case .train:
+                if isWorkoutSessionActive {
+                    return "Active workout: \(activeWorkoutExercise?.name ?? currentWorkout.name)"
+                }
+                return "Train"
             case .discover:
                 return "Coach Discover"
             case .programs:
@@ -2567,7 +2597,7 @@ final class MorpheAppStore {
             )
         }
 
-        selectedClientTab = .train
+        showTrainTab()
         showToast(option.rawValue)
     }
 
@@ -2631,7 +2661,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
-        selectedClientTab = .train
+        showTrainTab()
         if partnerWorkoutEnabled, let partner = selectedWorkoutPartner {
             showToast("Today's workout is ready with \(partner.name).")
         } else {
@@ -2937,7 +2967,7 @@ final class MorpheAppStore {
     @discardableResult
     func finishTrackedWorkoutSession() -> Bool {
         guard hasStartedWorkoutFlow else {
-            selectedClientTab = .train
+            showTrainTab()
             showToast("Start the session in Train before finishing it.")
             return false
         }
@@ -3172,7 +3202,7 @@ final class MorpheAppStore {
         case .swapExercise:
             if let exercise = currentWorkout.exercises.first {
                 swapExercise(exercise)
-                selectedClientTab = .train
+                showTrainTab()
             }
         case .askAI:
             openAIAgent()
@@ -3191,7 +3221,7 @@ final class MorpheAppStore {
                 openProgress()
                 showToast("Today's workout is already logged.")
             } else {
-                selectedClientTab = .train
+                showTrainTab()
                 showToast("Finish the session in Train before logging it.")
             }
             return
@@ -3494,7 +3524,7 @@ final class MorpheAppStore {
         // Start first: "stop procrastinating and start my workout" is a start.
         if has("start", "begin", "let's train", "lets train") && has("workout", "session", "training", "today's plan", "todays plan") {
             guard !isWorkoutSessionActive else {
-                selectedClientTab = .train
+                showTrainTab()
                 closeAIAgent()
                 return "You're already mid-session — it's open in Train."
             }
@@ -3515,7 +3545,7 @@ final class MorpheAppStore {
         // points there instead of matching its way into data loss.
         if has("discard", "cancel", "quit", "stop") && has("workout", "session", "training") {
             guard isWorkoutSessionActive else { return "There's no live session right now." }
-            selectedClientTab = .train
+            showTrainTab()
             closeAIAgent()
             return "I don't discard sessions from chat — logged sets can't be recovered. Use Discard at the top of Train; it double-checks first. Running low instead? Say \"minimum win\" and I'll shrink today."
         }
@@ -3626,7 +3656,7 @@ final class MorpheAppStore {
         trackedSetReps = [:]
         trackedSetWeights = [:]
         trackedSetRPE = [:]
-        selectedClientTab = .train
+        showTrainTab()
         showToast("\(template.name) ready in Train.")
     }
 
@@ -3912,7 +3942,7 @@ final class MorpheAppStore {
         }
 
         partnerWorkoutEnabled = true
-        selectedClientTab = .train
+        showTrainTab()
 
         if let partner = selectedWorkoutPartner {
             showCelebration(title: "Partner invite ready", detail: partner.name, symbol: "person.2.fill")
@@ -5644,6 +5674,10 @@ final class MorpheAppStore {
             if lowercasedPrompt.contains("summary") || lowercasedPrompt.contains("athlete") || lowercasedPrompt.contains("readiness") {
                 let recoverySummary = selectedCoachClient?.recoveryScore.reason ?? "consistency is holding but readiness wants moderation"
                 return "\(athleteName) is trending \(selectedCoachClient?.statusText.lowercased() ?? "steady"). Recovery is \(selectedCoachClient?.recoveryScore.score ?? 0) and the biggest context note is \(recoverySummary.lowercased())."
+            }
+        case .train:
+            if lowercasedPrompt.contains("workout") || lowercasedPrompt.contains("start") || lowercasedPrompt.contains("session") {
+                return "Your own training works exactly like an athlete's: start the staged workout, log sets in the console, and rate the session when you lock it in."
             }
         case .discover:
             if lowercasedPrompt.contains("workout") || lowercasedPrompt.contains("assign") || lowercasedPrompt.contains("find") || lowercasedPrompt.contains("build") {

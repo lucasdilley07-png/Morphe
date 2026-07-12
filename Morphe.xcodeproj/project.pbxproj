@@ -28,18 +28,17 @@
 		1B20F6002C40000100100049 /* ProfilePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100064 /* ProfilePersistence.swift */; };
 		1B20F6002C4000010010004A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */; };
 		1B20F6002C4000010010004B /* Accounts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100066 /* Accounts.swift */; };
-		1B20F6002C4000010010FA01 /* FirebaseAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */; };
-		1B20F6002C4000010010FC01 /* CloudBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FC02 /* CloudBackup.swift */; };
-		1B20F6002C4000010010FB01 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB02 /* FirebaseAuth */; };
-		1B20F6002C4000010010FB03 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB04 /* FirebaseFirestore */; };
 		1B20F6002C4000010010004C /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100067 /* AuthView.swift */; };
-		1B20F6002C4000010010FD01 /* QRConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FD02 /* QRConnectView.swift */; };
-		1B20F6002C4000010010FE01 /* CoachDiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FE02 /* CoachDiscoverView.swift */; };
 		1B20F6002C4000010010004D /* BookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100068 /* BookingView.swift */; };
 		1B20F6002C4000010010004E /* Resources/MorpheCatalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100069 /* Resources/MorpheCatalog.json */; };
 		1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010006A /* WorkoutCatalog.swift */; };
 		1B20F6002C400001001000AA /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000A9 /* PersistenceTests.swift */; };
 		1B20F6002C400001001000D0 /* FormCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000D1 /* FormCheckView.swift */; };
+		1B20F6002C4000010010FA01 /* FirebaseAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */; };
+		1B20F6002C4000010010FB01 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB02 /* FirebaseAuth */; };
+		1B20F6002C4000010010FB03 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB04 /* FirebaseFirestore */; };
+		1B20F6002C4000010010FC01 /* CloudBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FC02 /* CloudBackup.swift */; };
+		1B20F6002C4000010010FD01 /* QRConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FD02 /* QRConnectView.swift */; };
 		A0F9E0963000DCBC00DAC2F6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A0F9E0953000DCBC00DAC2F6 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
@@ -76,17 +75,16 @@
 		1B20F6002C40000100100064 /* ProfilePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePersistence.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		1B20F6002C40000100100066 /* Accounts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Accounts.swift; sourceTree = "<group>"; };
-		1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAuthService.swift; sourceTree = "<group>"; };
-		1B20F6002C4000010010FC02 /* CloudBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackup.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100067 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
-		1B20F6002C4000010010FD02 /* QRConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRConnectView.swift; sourceTree = "<group>"; };
-		1B20F6002C4000010010FE02 /* CoachDiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachDiscoverView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100068 /* BookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100069 /* Resources/MorpheCatalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/MorpheCatalog.json; sourceTree = "<group>"; };
 		1B20F6002C4000010010006A /* WorkoutCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCatalog.swift; sourceTree = "<group>"; };
 		1B20F6002C400001001000A1 /* MorpheTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MorpheTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B20F6002C400001001000A9 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		1B20F6002C400001001000D1 /* FormCheckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormCheckView.swift; sourceTree = "<group>"; };
+		1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAuthService.swift; sourceTree = "<group>"; };
+		1B20F6002C4000010010FC02 /* CloudBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackup.swift; sourceTree = "<group>"; };
+		1B20F6002C4000010010FD02 /* QRConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRConnectView.swift; sourceTree = "<group>"; };
 		A0F9E0953000DCBC00DAC2F6 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -190,7 +188,6 @@
 			isa = PBXGroup;
 			children = (
 				1B20F6002C40000100100055 /* CoachDashboardView.swift */,
-				1B20F6002C4000010010FE02 /* CoachDiscoverView.swift */,
 			);
 			path = Coach;
 			sourceTree = "<group>";
@@ -229,11 +226,11 @@
 			);
 			dependencies = (
 			);
+			name = Morphe;
 			packageProductDependencies = (
 				1B20F6002C4000010010FB02 /* FirebaseAuth */,
 				1B20F6002C4000010010FB04 /* FirebaseFirestore */,
 			);
-			name = Morphe;
 			productName = Morphe;
 			productReference = 1B20F6002C40000100100010 /* Morphe.app */;
 			productType = "com.apple.product-type.application";
@@ -329,7 +326,6 @@
 				1B20F6002C40000100100043 /* OnboardingView.swift in Sources */,
 				1B20F6002C4000010010004C /* AuthView.swift in Sources */,
 				1B20F6002C4000010010FD01 /* QRConnectView.swift in Sources */,
-				1B20F6002C4000010010FE01 /* CoachDiscoverView.swift in Sources */,
 				1B20F6002C4000010010004D /* BookingView.swift in Sources */,
 				1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */,
 				1B20F6002C400001001000D0 /* FormCheckView.swift in Sources */,
@@ -614,6 +610,17 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		A0F9E0943000C27F00DAC2F6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.16.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		1B20F6002C4000010010FB02 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -626,17 +633,6 @@
 			productName = FirebaseFirestore;
 		};
 /* End XCSwiftPackageProductDependency section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		A0F9E0943000C27F00DAC2F6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 12.16.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 1B20F6002C40000100100028 /* Project object */;
 }

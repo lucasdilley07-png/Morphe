@@ -12,7 +12,12 @@ struct CoachDashboardView: View {
             CoachAthletesScreen()
                 .tag(CoachTab.athletes)
 
-            CoachDiscoverScreen()
+            // Coaches train too — the SAME Train and Discover surfaces the
+            // athlete gets, not coach-flavored copies.
+            WorkoutView()
+                .tag(CoachTab.train)
+
+            DiscoverScreenView()
                 .tag(CoachTab.discover)
 
             CoachProgramsScreen()
