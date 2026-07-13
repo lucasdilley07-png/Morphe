@@ -18,7 +18,7 @@ let golds: [(CGFloat, CGFloat, CGFloat)] = [
     (0.796, 0.573, 0.075),   // #CB9213 deep gold
 ]
 let gold = golds[min(variant, golds.count - 1)]
-let ink: (CGFloat, CGFloat, CGFloat) = (0.075, 0.075, 0.082) // near-black, matches app ink
+let ink: (CGFloat, CGFloat, CGFloat) = (0, 0, 0) // pure black
 
 guard let ctx = CGContext(data: nil, width: size, height: size,
                           bitsPerComponent: 8, bytesPerRow: 0,
@@ -61,35 +61,35 @@ ctx.setFillColor(CGColor(srgbRed: ink.0, green: ink.1, blue: ink.2, alpha: 1))
 // Left panel: outer edge vertical, top tilts up toward center, bottom tilts
 // down toward center.
 let left: [CGPoint] = [
-    CGPoint(x: 300, y: 338),   // top-left (outer)
-    CGPoint(x: 416, y: 306),   // top-right (inner, higher)
-    CGPoint(x: 416, y: 704),   // bottom-right (inner, lower)
-    CGPoint(x: 300, y: 654),   // bottom-left (outer)
+    CGPoint(x: 279, y: 321),   // top-left (outer)
+    CGPoint(x: 406, y: 286),   // top-right (inner, higher)
+    CGPoint(x: 406, y: 724),   // bottom-right (inner, lower)
+    CGPoint(x: 279, y: 669),   // bottom-left (outer)
 ]
-ctx.addPath(roundedPolygon(left, radius: 18))
+ctx.addPath(roundedPolygon(left, radius: 20))
 ctx.fillPath()
 
 // Right panel: mirror of the left around x = 512.
 let right: [CGPoint] = [
-    CGPoint(x: 608, y: 306),   // top-left (inner, higher)
-    CGPoint(x: 724, y: 338),   // top-right (outer)
-    CGPoint(x: 724, y: 654),   // bottom-right (outer)
-    CGPoint(x: 608, y: 704),   // bottom-left (inner, lower)
+    CGPoint(x: 618, y: 286),   // top-left (inner, higher)
+    CGPoint(x: 745, y: 321),   // top-right (outer)
+    CGPoint(x: 745, y: 669),   // bottom-right (outer)
+    CGPoint(x: 618, y: 724),   // bottom-left (inner, lower)
 ]
-ctx.addPath(roundedPolygon(right, radius: 18))
+ctx.addPath(roundedPolygon(right, radius: 20))
 ctx.fillPath()
 
 // Center stroke: chevron band pointing down — vertical sides, top V dip,
 // bottom V point.
 let center: [CGPoint] = [
-    CGPoint(x: 438, y: 400),   // top-left
-    CGPoint(x: 512, y: 472),   // top dip
-    CGPoint(x: 586, y: 400),   // top-right
-    CGPoint(x: 586, y: 548),   // right side bottom
-    CGPoint(x: 512, y: 624),   // bottom point
-    CGPoint(x: 438, y: 548),   // left side bottom
+    CGPoint(x: 431, y: 390),   // top-left
+    CGPoint(x: 512, y: 469),   // top dip
+    CGPoint(x: 593, y: 390),   // top-right
+    CGPoint(x: 593, y: 552),   // right side bottom
+    CGPoint(x: 512, y: 636),   // bottom point
+    CGPoint(x: 431, y: 552),   // left side bottom
 ]
-ctx.addPath(roundedPolygon(center, radius: 14))
+ctx.addPath(roundedPolygon(center, radius: 15))
 ctx.fillPath()
 
 guard let image = ctx.makeImage() else { fatalError("no image") }
