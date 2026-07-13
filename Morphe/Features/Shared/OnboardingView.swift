@@ -480,29 +480,32 @@ private struct GoalSelectionStep: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
 
+                    // 30/60/90-day horizons: short placeholders that never
+                    // truncate, and vertical-axis fields so anything longer
+                    // wraps into view instead of getting cut off.
                     TextField(
-                        store.onboardingDraft.accountType == .coach
-                            ? "Example: Help athletes get leaner, sharper, and more game ready."
-                            : "Example: Lean out, move better, and build real conditioning.",
+                        "Your 30-day goal",
                         text: $store.onboardingDraft.physicalGoalTarget,
                         axis: .vertical
                     )
                     .textFieldStyle(MorpheFieldStyle())
-                    .lineLimit(2...4)
+                    .lineLimit(1...4)
 
                     TextField(
-                        store.onboardingDraft.accountType == .coach
-                            ? "Example: Keep athletes in their target range"
-                            : "Example: Reach 205 lbs or maintain current range",
-                        text: $store.onboardingDraft.weightGoalTarget
+                        "Your 60-day goal",
+                        text: $store.onboardingDraft.weightGoalTarget,
+                        axis: .vertical
                     )
                     .textFieldStyle(MorpheFieldStyle())
+                    .lineLimit(1...4)
 
                     TextField(
-                        "Example: By August 15 or no hard deadline",
-                        text: $store.onboardingDraft.goalDeadline
+                        "Your 90-day goal",
+                        text: $store.onboardingDraft.goalDeadline,
+                        axis: .vertical
                     )
                     .textFieldStyle(MorpheFieldStyle())
+                    .lineLimit(1...4)
                 }
             }
         }
@@ -689,9 +692,9 @@ private struct ProfileReviewStep: View {
                 }
                 ProfileLine(title: "Sports selected", value: store.onboardingDraft.selectedSports.map(\.shortTitle).joined(separator: ", "))
                 ProfileLine(title: "Goals selected", value: store.onboardingDraft.selectedGoals.map(\.rawValue).joined(separator: ", "))
-                ProfileLine(title: isCoach ? "Physical outcome" : "Physical goal", value: store.onboardingDraft.physicalGoalTarget)
-                ProfileLine(title: "Weight goal", value: store.onboardingDraft.weightGoalTarget)
-                ProfileLine(title: "Deadline", value: store.onboardingDraft.goalDeadline)
+                ProfileLine(title: "30-day goal", value: store.onboardingDraft.physicalGoalTarget)
+                ProfileLine(title: "60-day goal", value: store.onboardingDraft.weightGoalTarget)
+                ProfileLine(title: "90-day goal", value: store.onboardingDraft.goalDeadline)
                 if !isCoach {
                     // The coach flow never asks for a weekly schedule — showing
                     // the draft's default here would invent an answer.

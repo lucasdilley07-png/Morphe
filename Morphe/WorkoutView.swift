@@ -188,6 +188,7 @@ struct WorkoutView: View {
                     exerciseIndex: store.activeWorkoutExerciseIndex,
                     totalExercises: max(store.currentWorkout.exercises.count, 1),
                     warmupText: warmupText(for: store.currentWorkout.sport),
+                    exerciseName: store.activeWorkoutExercise?.name ?? store.currentWorkout.name,
                     restSeconds: $restSeconds,
                     restRunning: $restRunning
                 )
@@ -841,6 +842,7 @@ private struct LiveWorkoutConsoleCard: View {
     let exerciseIndex: Int
     let totalExercises: Int
     let warmupText: String
+    var exerciseName: String = "Next set"
     @Binding var restSeconds: Int
     @Binding var restRunning: Bool
 
@@ -874,7 +876,7 @@ private struct LiveWorkoutConsoleCard: View {
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
 
-                WorkoutRestControlBar(seconds: $restSeconds, isRunning: $restRunning)
+                WorkoutRestControlBar(seconds: $restSeconds, isRunning: $restRunning, exerciseName: exerciseName)
             }
         }
     }
@@ -2243,7 +2245,12 @@ private struct PartnerSessionCard: View {
 private struct WorkoutRestControlBar: View {
     @Binding var seconds: Int
     @Binding var isRunning: Bool
+    var exerciseName: String = "Next set"
     @State private var countdownTask: Task<Void, Never>?
+    /// Wall-clock end of the running countdown — the Live Activity's anchor,
+    /// and the truth the in-app timer resyncs to after the app was suspended.
+    @State private var countdownEndDate: Date?
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -2261,6 +2268,11 @@ private struct WorkoutRestControlBar: View {
                 ForEach([30, 60, 120, 180], id: \.self) { preset in
                     Button("\(preset)s") {
                         seconds = preset
+                        // A mid-countdown change moves the lock-screen timer too.
+                        if isRunning {
+                            countdownEndDate = Date().addingTimeInterval(TimeInterval(preset))
+                            RestTimerActivityController.update(secondsRemaining: preset)
+                        }
                     }
                     .buttonStyle(FilterChipStyle(isSelected: seconds == preset))
                 }
@@ -2291,6 +2303,16 @@ private struct WorkoutRestControlBar: View {
         .onDisappear {
             cancelCountdown()
         }
+        // The 1s loop suspends with the app; the lock-screen Live Activity
+        // runs on wall clock. Coming back to the foreground, the in-app
+        // number resyncs to the same wall clock so they never disagree.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, isRunning, let end = countdownEndDate else { return }
+            seconds = max(Int(end.timeIntervalSinceNow.rounded()), 0)
+            if seconds == 0 {
+                isRunning = false
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Rest timer, \(timeString) remaining\(isRunning ? ", running" : "")")
     }
@@ -2303,6 +2325,9 @@ private struct WorkoutRestControlBar: View {
 
     private func startCountdown() {
         cancelCountdown()
+        countdownEndDate = Date().addingTimeInterval(TimeInterval(seconds))
+        // Mirror the countdown to the lock screen / Dynamic Island.
+        RestTimerActivityController.start(exerciseName: exerciseName, secondsRemaining: seconds)
         countdownTask = Task {
             while !Task.isCancelled && seconds > 0 {
                 try? await Task.sleep(for: .seconds(1))
@@ -2319,6 +2344,8 @@ private struct WorkoutRestControlBar: View {
     private func cancelCountdown() {
         countdownTask?.cancel()
         countdownTask = nil
+        countdownEndDate = nil
+        RestTimerActivityController.end()
     }
 }
 

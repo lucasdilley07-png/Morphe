@@ -624,17 +624,36 @@ private struct CameraPreview: UIViewRepresentable {
             attachSession()
         }
 
+        // The preview connection appears asynchronously after the session is
+        // assigned — setting the rotation only at attach time silently missed
+        // on device, leaving the camera image sideways. Re-assert on every
+        // layout pass and retry until the connection exists.
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            applyPortraitRotation()
+        }
+
         private func attachSession() {
             guard window != nil, let session = configuredSession else { return }
             if videoPreviewLayer.session !== session {
                 videoPreviewLayer.session = session
             }
             videoPreviewLayer.videoGravity = .resizeAspectFill
-            // Pin the preview to portrait; the front-camera preview layer is
-            // mirrored (selfie) by default, matching the pose overlay's coords.
-            if let connection = videoPreviewLayer.connection,
-               connection.isVideoRotationAngleSupported(90) {
-                connection.videoRotationAngle = 90
+            applyPortraitRotation(retry: true)
+        }
+
+        /// Pin the preview to portrait; the front-camera preview layer is
+        /// mirrored (selfie) by default, matching the pose overlay's coords.
+        private func applyPortraitRotation(retry: Bool = false) {
+            if let connection = videoPreviewLayer.connection {
+                if connection.isVideoRotationAngleSupported(90), connection.videoRotationAngle != 90 {
+                    connection.videoRotationAngle = 90
+                }
+            } else if retry {
+                // Connection not formed yet — try again shortly.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    self?.applyPortraitRotation(retry: true)
+                }
             }
         }
     }
