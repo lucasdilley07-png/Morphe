@@ -14,6 +14,9 @@ struct WorkoutView: View {
         var editIndex: Int?
     }
     @State private var repLoggerContext: RepLoggerContext?
+    /// The user's custom workout currently open in the editor.
+    private struct EditingWorkout: Identifiable { let id: UUID }
+    @State private var editingWorkout: EditingWorkout?
     @State private var pendingRepCount = 10
     @State private var pendingWeight: Double = 0
     @State private var pendingRPE: Int?
@@ -92,6 +95,12 @@ struct WorkoutView: View {
         .background(
             EmptyView().sheet(isPresented: $showBuilder) {
                 WorkoutBuilderSheet()
+                    .environment(store)
+            }
+        )
+        .background(
+            EmptyView().sheet(item: $editingWorkout) { editing in
+                WorkoutBuilderSheet(editingTemplateID: editing.id)
                     .environment(store)
             }
         )
@@ -185,6 +194,7 @@ struct WorkoutView: View {
                             restSeconds = 180
                             restRunning = true
                         },
+                        onOpenFormCheck: { showFormCheck = true },
                         canGoPrevious: store.activeWorkoutExerciseIndex > 0
                     )
                 }
@@ -487,6 +497,11 @@ struct WorkoutView: View {
                         },
                         onRemove: { item in
                             store.removeSavedWorkout(item)
+                        },
+                        onEdit: { item in
+                            if let templateID = store.editableTemplateID(for: item) {
+                                editingWorkout = EditingWorkout(id: templateID)
+                            }
                         }
                     )
                 }
@@ -1000,6 +1015,7 @@ private struct ActiveWorkoutTrackerCard: View {
     let onDeleteSet: (Int) -> Void
     let onNext: () -> Void
     let onStartRest: () -> Void
+    let onOpenFormCheck: () -> Void
     let canGoPrevious: Bool
 
     private var isExerciseComplete: Bool {
@@ -1115,16 +1131,41 @@ private struct ActiveWorkoutTrackerCard: View {
                 }
 
                 if let nextExercise {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Up next")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        Text(nextExercise.name)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Text("\(nextExercise.sets) • \(nextExercise.reps)")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
+                    HStack(alignment: .center, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Up next")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Text(nextExercise.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Text("\(nextExercise.sets) • \(nextExercise.reps)")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        // Quick jump into the camera form guide for the
+                        // CURRENT exercise, right where eyes already are.
+                        Button(action: onOpenFormCheck) {
+                            VStack(spacing: 3) {
+                                Image(systemName: "camera.viewfinder")
+                                    .font(.headline)
+                                Text("Form")
+                                    .font(MorpheTheme.microLabel(9))
+                                    .tracking(0.8)
+                            }
+                            .foregroundStyle(MorpheTheme.accent)
+                            .frame(width: 52, height: 48)
+                            .background(
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                    .stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1)
+                            )
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Open Form Check for \(exercise.name)")
                     }
                     .padding(12)
                     .background(
@@ -2803,6 +2844,7 @@ private struct SavedWorkoutsLibraryCard: View {
     let onDuplicate: (SavedWorkoutLibraryItem) -> Void
     let onTogglePin: (SavedWorkoutLibraryItem) -> Void
     let onRemove: (SavedWorkoutLibraryItem) -> Void
+    let onEdit: (SavedWorkoutLibraryItem) -> Void
 
     var body: some View {
         GlassCard {
@@ -3000,6 +3042,13 @@ private struct SavedWorkoutsLibraryCard: View {
                                 // Remove sits beside Pin, under Duplicate.
                                 Button("Remove") {
                                     onRemove(item)
+                                }
+                                .buttonStyle(SecondaryCTAButtonStyle())
+
+                                // Edits touch only the user's copy — a
+                                // catalog save becomes "My Copy" first.
+                                Button("Edit") {
+                                    onEdit(item)
                                 }
                                 .buttonStyle(SecondaryCTAButtonStyle())
                             }
@@ -3495,10 +3544,63 @@ struct WorkoutBuilderSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(MorpheAppStore.self) private var store
 
+    /// When set, the builder edits this custom workout in place instead of
+    /// creating a new one. Edits touch only the user's copy — never Discover.
+    var editingTemplateID: UUID? = nil
+
     @State private var name = ""
     @State private var sport: SportFocus = .generalFitness
     @State private var items: [CustomWorkoutItem] = []
     @State private var showExercisePicker = false
+    @State private var didPrefill = false
+
+    private var isEditing: Bool { editingTemplateID != nil }
+
+    /// Rebuilds builder rows from the edited template's exercises.
+    private func prefillIfNeeded() {
+        guard !didPrefill, let id = editingTemplateID,
+              let template = store.workoutTemplates.first(where: { $0.id == id }) else { return }
+        didPrefill = true
+        name = template.name
+        sport = template.sport
+        items = template.exercises.map { exercise in
+            CustomWorkoutItem(
+                exercise: resolveReference(for: exercise),
+                sets: min(max(firstInt(in: exercise.sets) ?? 3, 1), 10),
+                reps: min(max(firstInt(in: exercise.reps) ?? 10, 1), 50)
+            )
+        }
+    }
+
+    private func firstInt(in text: String) -> Int? {
+        Int(text.components(separatedBy: CharacterSet.decimalDigits.inverted)
+            .first(where: { !$0.isEmpty }) ?? "")
+    }
+
+    private func resolveReference(for exercise: WorkoutExercise) -> ExerciseReference {
+        if let match = store.allExercises.first(where: { $0.id == exercise.exerciseLibraryID })
+            ?? store.allExercises.first(where: { $0.name == exercise.name }) {
+            return match
+        }
+        // Not in the library (e.g. catalog-only movement): carry it through
+        // as-is so an edit never drops an exercise.
+        return ExerciseReference(
+            id: exercise.exerciseLibraryID.isEmpty ? exercise.name : exercise.exerciseLibraryID,
+            name: exercise.name,
+            muscleGroup: exercise.muscleGroup,
+            movementPattern: "",
+            musclesWorked: "",
+            equipment: "",
+            difficulty: exercise.difficulty,
+            videoPlaceholder: "",
+            instructions: [],
+            formCue: exercise.formCue,
+            commonMistakes: "",
+            beginnerModification: "",
+            alternatives: [],
+            whyThisMatters: ""
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -3575,8 +3677,12 @@ struct WorkoutBuilderSheet: View {
                         }
                     }
 
-                    Button("Create Workout") {
-                        store.createCustomWorkout(name: name, sport: sport, items: items)
+                    Button(isEditing ? "Save Changes" : "Create Workout") {
+                        if let editingTemplateID {
+                            store.updateCustomWorkout(id: editingTemplateID, name: name, sport: sport, items: items)
+                        } else {
+                            store.createCustomWorkout(name: name, sport: sport, items: items)
+                        }
                         dismiss()
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
@@ -3586,7 +3692,8 @@ struct WorkoutBuilderSheet: View {
                 .padding(20)
             }
             .background(PremiumBackground())
-            .navigationTitle("Build a workout")
+            .navigationTitle(isEditing ? "Edit workout" : "Build a workout")
+            .onAppear { prefillIfNeeded() }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

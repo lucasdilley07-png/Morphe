@@ -3749,6 +3749,79 @@ final class MorpheAppStore {
         showToast("Saved workout duplicated into your library.")
     }
 
+    /// Resolves the template a saved item should EDIT. The user's own custom
+    /// workouts edit in place; catalog/coach saves first become a personal
+    /// copy — the Discover catalog is never mutated by an edit.
+    func editableTemplateID(for item: SavedWorkoutLibraryItem) -> UUID? {
+        guard let template = workoutTemplates.first(where: { $0.id == item.workoutTemplateID }) else {
+            showToast("That saved workout is no longer available.")
+            return nil
+        }
+        if customWorkoutIDs.contains(template.id) {
+            return template.id
+        }
+
+        var copy = template
+        copy.id = UUID()
+        copy.name = uniqueWorkoutName("My Copy - \(template.name)")
+        copy.coachNote = "Personal copy built from \(item.sourceName)'s saved workout."
+        workoutTemplates.insert(copy, at: 0)
+        customWorkoutIDs.insert(copy.id)
+        savedWorkouts.insert(
+            SavedWorkoutLibraryItem(
+                workoutTemplateID: copy.id,
+                workoutName: copy.name,
+                sport: copy.sport,
+                sourceName: profileShowcase.displayName,
+                sourceRole: .client,
+                sourceContext: "Built by you",
+                bestFor: .customBuild,
+                note: "Personal copy of \(template.name)."
+            ),
+            at: 0
+        )
+        persistWorkoutLibrary()
+        showToast("Editing your own copy — the original stays in Discover.")
+        return copy.id
+    }
+
+    /// Applies builder edits to one of the user's custom workouts.
+    func updateCustomWorkout(id: UUID, name: String, sport: SportFocus, items: [CustomWorkoutItem]) {
+        guard customWorkoutIDs.contains(id),
+              let index = workoutTemplates.firstIndex(where: { $0.id == id }),
+              !items.isEmpty else { return }
+
+        let exercises = items.map { item in
+            WorkoutExercise(
+                id: "\(item.exercise.id)-\(UUID().uuidString.prefix(6))",
+                exerciseLibraryID: item.exercise.id,
+                name: item.exercise.name,
+                muscleGroup: item.exercise.muscleGroup,
+                sets: "\(item.sets) sets",
+                reps: "\(item.reps) reps",
+                difficulty: item.exercise.difficulty,
+                formCue: item.exercise.formCue
+            )
+        }
+
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty, trimmed != workoutTemplates[index].name {
+            workoutTemplates[index].name = uniqueWorkoutName(trimmed)
+        }
+        workoutTemplates[index].sport = sport
+        workoutTemplates[index].exercises = exercises
+        workoutTemplates[index].durationMinutes = max(15, items.count * 8)
+
+        let finalName = workoutTemplates[index].name
+        for savedIndex in savedWorkouts.indices where savedWorkouts[savedIndex].workoutTemplateID == id {
+            savedWorkouts[savedIndex].workoutName = finalName
+            savedWorkouts[savedIndex].sport = sport
+        }
+        persistWorkoutLibrary()
+        Haptics.impact(.light)
+        showToast("\(finalName) updated.")
+    }
+
     func removeSavedWorkout(_ item: SavedWorkoutLibraryItem) {
         savedWorkouts.removeAll { $0.id == item.id }
         persistedSavedCatalogIDs.removeAll { $0 == item.workoutTemplateID.uuidString }
