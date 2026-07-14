@@ -189,6 +189,9 @@ struct PrimaryCTAButtonStyle: ButtonStyle {
             .textCase(.uppercase)
             .font(.system(.subheadline, design: .monospaced).weight(.bold))
             .tracking(1.2)
+            // Never hyphenate a button label ("DIS-CARD") — shrink to fit.
+            .lineLimit(1)
+            .minimumScaleFactor(0.55)
             .foregroundStyle(.black)
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
@@ -207,6 +210,9 @@ struct SecondaryCTAButtonStyle: ButtonStyle {
             .textCase(.uppercase)
             .font(.system(.subheadline, design: .monospaced).weight(.bold))
             .tracking(1.2)
+            // Never hyphenate a button label — shrink to fit.
+            .lineLimit(1)
+            .minimumScaleFactor(0.55)
             .foregroundStyle(configuration.isPressed ? MorpheTheme.textSecondary : .white)
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
