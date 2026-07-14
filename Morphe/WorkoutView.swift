@@ -301,6 +301,27 @@ struct WorkoutView: View {
         }
     }
 
+    /// One concrete pick each for training, stretching, and recovery — shown
+    /// after today's workout is logged.
+    private var trySomethingNewPicks: [(category: String, template: WorkoutTemplate)] {
+        func pick(_ tags: [String]) -> WorkoutTemplate? {
+            store.discoverWorkouts.first {
+                tags.contains($0.trainingTypeTag) && $0.durationMinutes <= 45
+            }
+        }
+        var picks: [(String, WorkoutTemplate)] = []
+        if let training = pick(["Strength training", "HIIT", "Circuit training", "Cardiovascular endurance"]) {
+            picks.append(("Training", training))
+        }
+        if let stretching = pick(["Flexibility training", "Mobility training"]) {
+            picks.append(("Stretching", stretching))
+        }
+        if let recovery = pick(["Recovery training"]) {
+            picks.append(("Recovery", recovery))
+        }
+        return picks
+    }
+
     private var workoutPlanningMode: some View {
         @Bindable var store = store
         return ScrollView(showsIndicators: false) {
@@ -360,22 +381,35 @@ struct WorkoutView: View {
                 // ONE workout, one name: the same session the Today hero
                 // shows, with Morphe's readiness-based pick demoted to an
                 // inline suggestion instead of a competing second entry point.
-                TodaysWorkoutCard(
-                    workout: store.currentWorkout,
-                    suggestion: store.recommendedWorkoutDiffers ? goodForTodayRecommendation : nil,
-                    onStart: {
-                        // The store's session-work gate confirms before a
-                        // live session or unlogged recap gets destroyed.
-                        isShowingPainFlow = false
-                        store.startTodayWorkout()
-                    },
-                    onUseSuggestion: {
-                        store.applyRecommendedWorkout()
-                    },
-                    onSwitch: {
-                        store.cycleWorkout()
-                    }
-                )
+                if store.isWorkoutLoggedToday && !store.hasCompletedWorkoutFlow {
+                    // Today's session is in the books — offer something new
+                    // instead of re-showing the plan they already finished.
+                    TrySomethingNewCard(
+                        recommendations: trySomethingNewPicks,
+                        onStartPick: { template in
+                            isShowingPainFlow = false
+                            store.startCatalogWorkout(template)
+                        },
+                        onBrowse: { store.showDiscoverTab() }
+                    )
+                } else {
+                    TodaysWorkoutCard(
+                        workout: store.currentWorkout,
+                        suggestion: store.recommendedWorkoutDiffers ? goodForTodayRecommendation : nil,
+                        onStart: {
+                            // The store's session-work gate confirms before a
+                            // live session or unlogged recap gets destroyed.
+                            isShowingPainFlow = false
+                            store.startTodayWorkout()
+                        },
+                        onUseSuggestion: {
+                            store.applyRecommendedWorkout()
+                        },
+                        onSwitch: {
+                            store.cycleWorkout()
+                        }
+                    )
+                }
 
                 if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
                     PartnerSessionCard(
@@ -2100,6 +2134,68 @@ private struct DiscoverProgramCard: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// Replaces TodaysWorkoutCard once the day's session is logged: a nudge
+/// toward something NEW, with one concrete pick each for training,
+/// stretching, and recovery.
+private struct TrySomethingNewCard: View {
+    let recommendations: [(category: String, template: WorkoutTemplate)]
+    let onStartPick: (WorkoutTemplate) -> Void
+    let onBrowse: () -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Want to try something new?")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
+
+                Text("Today's workout is done. A second session, a stretch, or an easy recovery block all count extra.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                ForEach(recommendations, id: \.template.id) { rec in
+                    Button {
+                        onStartPick(rec.template)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Text(rec.category.uppercased())
+                                .font(MorpheTheme.microLabel(10))
+                                .tracking(1.2)
+                                .foregroundStyle(MorpheTheme.accent)
+                                .frame(width: 84, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(rec.template.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                Text("\(rec.template.durationMinutes) min")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                            Spacer()
+                            Image(systemName: "play.circle.fill")
+                                .foregroundStyle(MorpheTheme.accent)
+                        }
+                        .padding(10)
+                        .background(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .fill(Color.white.opacity(0.04))
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Start \(rec.template.name), \(rec.category)")
+                }
+
+                Button("Browse Discover") {
+                    onBrowse()
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+            }
+        }
     }
 }
 

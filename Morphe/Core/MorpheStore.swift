@@ -534,6 +534,16 @@ final class MorpheAppStore {
         }
     }
 
+    /// Lands on the Discover surface for the CURRENT role.
+    func showDiscoverTab() {
+        if selectedRole == .coach {
+            selectedCoachTab = .discover
+        } else {
+            selectedClientTab = .discover
+        }
+        Haptics.impact(.light)
+    }
+
     // MARK: - QR connect
 
     /// Payload encoded into this user's Morphe connect code.
