@@ -1246,9 +1246,19 @@ private struct QuickAddSheet: View {
                 } else {
                     QuickAddGridCard(items: [
                         QuickAddItem(
-                            title: store.hasCompletedWorkoutFlow ? "Log Workout" : (store.isWorkoutSessionActive ? "Resume Workout" : "Open Workout"),
-                            subtitle: store.hasCompletedWorkoutFlow ? "Close the loop now" : (store.isWorkoutSessionActive ? "Jump back into Train" : "Start today's plan in Train"),
-                            systemImage: store.hasCompletedWorkoutFlow ? "checkmark.circle.fill" : "figure.run"
+                            title: store.hasCompletedWorkoutFlow
+                                ? "Log Workout"
+                                : (store.isWorkoutSessionActive
+                                    ? "Resume Workout"
+                                    : (store.isWorkoutLoggedToday ? "Try a New Workout" : "Open Workout")),
+                            subtitle: store.hasCompletedWorkoutFlow
+                                ? "Close the loop now"
+                                : (store.isWorkoutSessionActive
+                                    ? "Jump back into Train"
+                                    : (store.isWorkoutLoggedToday ? "Today's done — browse Discover" : "Start today's plan in Train")),
+                            systemImage: store.hasCompletedWorkoutFlow
+                                ? "checkmark.circle.fill"
+                                : (store.isWorkoutLoggedToday && !store.isWorkoutSessionActive ? "square.grid.2x2.fill" : "figure.run")
                         ) {
                             if store.hasCompletedWorkoutFlow {
                                 store.logWorkout()
@@ -1257,6 +1267,10 @@ private struct QuickAddSheet: View {
                                 // path restarted the session and wiped every
                                 // logged set.
                                 store.selectedClientTab = .train
+                            } else if store.isWorkoutLoggedToday {
+                                // Today's workout is already in the books —
+                                // offer something new instead of a re-run.
+                                store.selectedClientTab = .discover
                             } else {
                                 store.startTodayWorkout()
                             }
