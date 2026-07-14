@@ -2777,12 +2777,13 @@ private struct SavedWorkoutsLibraryCard: View {
                                     onTogglePin(item)
                                 }
                                 .buttonStyle(SecondaryCTAButtonStyle())
-                            }
 
-                            Button("Remove") {
-                                onRemove(item)
+                                // Remove sits beside Pin, under Duplicate.
+                                Button("Remove") {
+                                    onRemove(item)
+                                }
+                                .buttonStyle(SecondaryCTAButtonStyle())
                             }
-                            .buttonStyle(SecondaryCTAButtonStyle())
                         }
                         .padding(.vertical, 4)
                     }
