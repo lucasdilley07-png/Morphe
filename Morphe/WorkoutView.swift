@@ -1513,6 +1513,8 @@ private struct DiscoverCatalogSection: View {
     @State private var equipmentFilter: String?
     @State private var showQRConnect = false
     @State private var qrStartMode: QRConnectSheet.Mode = .show
+    /// The workout whose exercises/sets/reps breakdown is open.
+    @State private var detailTemplate: WorkoutTemplate?
 
     /// Time filters are ranges, not exact matches — sport sessions run
     /// 15/24/36/38-min lengths, so exact chips made Time + Sport-specific
@@ -1588,6 +1590,10 @@ private struct DiscoverCatalogSection: View {
         }
         .sheet(isPresented: $showQRConnect) {
             QRConnectSheet(mode: qrStartMode)
+                .environment(store)
+        }
+        .sheet(item: $detailTemplate) { template in
+            DiscoverWorkoutDetailSheet(template: template, onStart: { onStart(template) })
                 .environment(store)
         }
     }
@@ -1712,7 +1718,8 @@ private struct DiscoverCatalogSection: View {
                         typeName: Self.shortTypeNames[template.trainingTypeTag] ?? template.trainingTypeTag,
                         isSaved: store.isCatalogWorkoutSaved(template),
                         onStart: { onStart(template) },
-                        onSave: { store.saveCatalogWorkout(template) }
+                        onSave: { store.saveCatalogWorkout(template) },
+                        onOpen: { detailTemplate = template }
                     )
                 }
             }
@@ -2007,7 +2014,8 @@ private struct DiscoverCatalogSection: View {
                             typeName: Self.shortTypeNames[template.trainingTypeTag] ?? template.trainingTypeTag,
                             isSaved: store.isCatalogWorkoutSaved(template),
                             onStart: { onStart(template) },
-                            onSave: { store.saveCatalogWorkout(template) }
+                            onSave: { store.saveCatalogWorkout(template) },
+                            onOpen: { detailTemplate = template }
                         )
                     }
                 }
@@ -2100,6 +2108,9 @@ private struct DiscoverProgramCard: View {
     let isSaved: Bool
     let onStart: () -> Void
     let onSave: () -> Void
+    /// Opens the exercises/sets/reps detail. Optional so older call sites
+    /// without a detail surface keep compiling.
+    var onOpen: (() -> Void)? = nil
 
     var body: some View {
         GlassCard {
@@ -2117,16 +2128,38 @@ private struct DiscoverProgramCard: View {
                     .accessibilityLabel(isSaved ? "\(template.name) saved" : "Save \(template.name) to My Library")
                 }
 
-                Text(template.name)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
+                // Tapping the body opens the exercise breakdown.
+                Button {
+                    onOpen?()
+                } label: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top, spacing: 6) {
+                            Text(template.name)
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(.white)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                            if onOpen != nil {
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .padding(.top, 3)
+                            }
+                        }
 
-                Text("\(template.durationMinutes) MIN • \(template.equipment.uppercased()) • \(typeName.uppercased())")
-                    .font(MorpheTheme.microLabel(9))
-                    .tracking(0.8)
-                    .foregroundStyle(MorpheTheme.textMuted)
-                    .lineLimit(1)
+                        Text("\(template.durationMinutes) MIN • \(template.equipment.uppercased()) • \(typeName.uppercased())")
+                            .font(MorpheTheme.microLabel(9))
+                            .tracking(0.8)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(onOpen == nil)
+                .accessibilityLabel("See what \(template.name) consists of")
 
                 Button("Start", action: onStart)
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
@@ -2134,6 +2167,95 @@ private struct DiscoverProgramCard: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// The exercises/sets/reps breakdown behind every Discover card.
+private struct DiscoverWorkoutDetailSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let template: WorkoutTemplate
+    let onStart: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(template.name)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(.white)
+                        Text("\(template.durationMinutes) min • \(template.difficulty.rawValue) • \(template.equipment)")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                        if !template.goal.isEmpty {
+                            Text(template.goal)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                        }
+                        if !template.coachNote.isEmpty {
+                            Text(template.coachNote)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                    }
+
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Exercises (\(template.exercises.count))")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+
+                            ForEach(Array(template.exercises.enumerated()), id: \.element.id) { index, exercise in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(alignment: .top) {
+                                        Text("\(index + 1). \(exercise.name)")
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                        Spacer()
+                                        Text("\(exercise.sets) × \(exercise.reps)")
+                                            .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                                            .foregroundStyle(MorpheTheme.accent)
+                                    }
+                                    Text(exercise.muscleGroup.rawValue)
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textSecondary)
+                                    if !exercise.formCue.isEmpty {
+                                        Text(exercise.formCue)
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.textMuted)
+                                    }
+                                }
+                                if index < template.exercises.count - 1 {
+                                    Divider().overlay(Color.white.opacity(0.08))
+                                }
+                            }
+                        }
+                    }
+
+                    HStack(spacing: 10) {
+                        Button("Start Workout") {
+                            dismiss()
+                            onStart()
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+
+                        Button(store.isCatalogWorkoutSaved(template) ? "Saved" : "Save") {
+                            store.saveCatalogWorkout(template)
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .frame(width: 110)
+                    }
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }.foregroundStyle(.white)
+                }
+            }
+        }
     }
 }
 
