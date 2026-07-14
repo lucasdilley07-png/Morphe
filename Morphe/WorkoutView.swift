@@ -8,11 +8,15 @@ struct WorkoutView: View {
     @State private var restRunning = false
     @State private var swapTarget: WorkoutExercise?
     @State private var isShowingPainFlow = false
-    @State private var isShowingRepLogger = false
+    /// Payload for the set logger sheet: nil editIndex = log a new/extra set.
+    private struct RepLoggerContext: Identifiable {
+        let id = UUID()
+        var editIndex: Int?
+    }
+    @State private var repLoggerContext: RepLoggerContext?
     @State private var pendingRepCount = 10
     @State private var pendingWeight: Double = 0
     @State private var pendingRPE: Int?
-    @State private var editingSetIndex: Int?
     @State private var showDiscardConfirm = false
     @State private var showLibrary = false
     @State private var showExerciseList = false
@@ -60,21 +64,22 @@ struct WorkoutView: View {
             }
         )
         .background(
-            EmptyView().sheet(isPresented: $isShowingRepLogger) {
+            // Item-based so every tap presents atomically with its payload —
+            // the Bool flavor could silently drop a present during state
+            // races, which read as "the More button does nothing".
+            EmptyView().sheet(item: $repLoggerContext) { context in
                 SetRepLoggingSheet(reps: $pendingRepCount, weight: $pendingWeight, rpe: $pendingRPE) {
-                    if let editIndex = editingSetIndex, let exercise = store.activeWorkoutExercise {
+                    if let editIndex = context.editIndex, let exercise = store.activeWorkoutExercise {
                         store.updateTrackedSet(exerciseID: exercise.id, setIndex: editIndex, reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE)
                     } else {
                         // Opening the full logger is an explicit action, so it may
                         // log past the planned set count ("Add extra set").
                         store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true)
                     }
-                    editingSetIndex = nil
-                    isShowingRepLogger = false
+                    repLoggerContext = nil
                 }
                 .environment(store)
                 .presentationDetents([.height(540)])
-                .onDisappear { editingSetIndex = nil }
             }
         )
         .onChange(of: store.weightUnit) { oldUnit, newUnit in
@@ -155,21 +160,22 @@ struct WorkoutView: View {
                             store.completeTrackedSet(reps: reps, weight: pendingWeight)
                         },
                         onOpenCustomRepLogger: {
-                            editingSetIndex = nil
-                            pendingRepCount = suggestedRepCount(for: activeExercise)
+                            // Clamp into the stepper's range — duration-based
+                            // moves can parse to values like 60 "reps".
+                            pendingRepCount = min(max(suggestedRepCount(for: activeExercise), 1), 50)
                             pendingRPE = nil
-                            isShowingRepLogger = true
+                            repLoggerContext = RepLoggerContext(editIndex: nil)
                         },
                         onEditSet: { index in
                             let repsLogged = store.trackedSetReps[activeExercise.id, default: []]
                             let weightsLogged = store.trackedSetWeights[activeExercise.id, default: []]
                             let rpesLogged = store.trackedSetRPE[activeExercise.id, default: []]
-                            pendingRepCount = repsLogged.indices.contains(index) ? repsLogged[index] : suggestedRepCount(for: activeExercise)
+                            let reps = repsLogged.indices.contains(index) ? repsLogged[index] : suggestedRepCount(for: activeExercise)
+                            pendingRepCount = min(max(reps, 1), 50)
                             pendingWeight = weightsLogged.indices.contains(index) ? weightsLogged[index] : 0
                             let storedRPE = rpesLogged.indices.contains(index) ? rpesLogged[index] : 0
                             pendingRPE = storedRPE > 0 ? storedRPE : nil
-                            editingSetIndex = index
-                            isShowingRepLogger = true
+                            repLoggerContext = RepLoggerContext(editIndex: index)
                         },
                         onDeleteSet: { index in
                             store.removeTrackedSet(exerciseID: activeExercise.id, setIndex: index)
@@ -1161,30 +1167,25 @@ private struct ActiveWorkoutTrackerCard: View {
                     }
                 }
 
+                // The same four controls for EVERY exercise — More always
+                // opens the custom set logger (as an extra set once the
+                // planned sets are done), and Prev disables instead of hiding
+                // so the row never reshuffles.
                 HStack(spacing: 8) {
-                    if isExerciseComplete {
-                        Button {
-                            onOpenCustomRepLogger()
-                        } label: {
-                            Label("Extra set", systemImage: "plus.circle")
-                        }
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                    } else {
-                        Button("More") {
-                            onOpenCustomRepLogger()
-                        }
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                        .accessibilityLabel("Log a custom set with RPE")
+                    Button("More") {
+                        onOpenCustomRepLogger()
                     }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityLabel(isExerciseComplete ? "Log an extra set" : "Log a custom set with RPE")
 
                     Button("Rest", action: onStartRest)
                         .buttonStyle(SecondaryCTAButtonStyle())
                         .accessibilityLabel("Start rest timer")
 
-                    if canGoPrevious {
-                        Button("Prev", action: onPrevious)
-                            .buttonStyle(SecondaryCTAButtonStyle())
-                    }
+                    Button("Prev", action: onPrevious)
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .disabled(!canGoPrevious)
+                        .opacity(canGoPrevious ? 1 : 0.4)
 
                     Button("Next", action: onNext)
                         .buttonStyle(SecondaryCTAButtonStyle())
