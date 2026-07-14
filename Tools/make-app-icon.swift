@@ -31,7 +31,7 @@ guard let ctx = CGContext(data: nil, width: size, height: size,
 ctx.translateBy(x: 0, y: CGFloat(size))
 ctx.scaleBy(x: 1, y: -1)
 
-ctx.setFillColor(CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 1))
+ctx.setFillColor(CGColor(srgbRed: ink.0, green: ink.1, blue: ink.2, alpha: 1))
 ctx.fill(CGRect(x: 0, y: 0, width: size, height: size))
 
 /// Rounded polygon path.
@@ -56,7 +56,7 @@ func roundedPolygon(_ pts: [CGPoint], radius: CGFloat) -> CGPath {
     return path
 }
 
-ctx.setFillColor(CGColor(srgbRed: ink.0, green: ink.1, blue: ink.2, alpha: 1))
+ctx.setFillColor(CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 1))
 
 // Left panel: outer edge vertical, top tilts up toward center, bottom tilts
 // down toward center.
