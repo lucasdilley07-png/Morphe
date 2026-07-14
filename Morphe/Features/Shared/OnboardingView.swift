@@ -73,6 +73,7 @@ struct OnboardingFlowView: View {
                 .sport,
                 .coachExperience,
                 .coachPractice,
+                .equipment,
                 .goal,
                 .review
             ]
@@ -85,6 +86,7 @@ struct OnboardingFlowView: View {
             .sport,
             .experience,
             .schedule,
+            .equipment,
             .injuryPain,
             .review
         ]
@@ -232,6 +234,8 @@ struct OnboardingFlowView: View {
             ExperienceLevelStep(selection: $store.onboardingDraft.experienceLevel)
         case .schedule:
             ScheduleStep(days: $store.onboardingDraft.trainingDaysPerWeek)
+        case .equipment:
+            EquipmentStep()
         case .injuryPain:
             InjuryPainStep(text: $store.onboardingDraft.injuries)
         case .review:
@@ -249,6 +253,7 @@ private enum OnboardingStep {
     case sport
     case experience
     case schedule
+    case equipment
     case injuryPain
     case coachExperience
     case coachPractice
@@ -369,6 +374,62 @@ private struct GenderStep: View {
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
+            }
+        }
+    }
+}
+
+private struct EquipmentStep: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    static let options = [
+        "Full gym", "Dumbbells", "Barbell & rack", "Kettlebells",
+        "Resistance bands", "Pull-up bar", "Cardio machines", "Bodyweight only"
+    ]
+
+    private var isCoach: Bool {
+        store.onboardingDraft.accountType == .coach
+    }
+
+    private var selected: Set<String> {
+        Set(store.onboardingDraft.equipment
+            .components(separatedBy: ", ")
+            .filter { !$0.isEmpty })
+    }
+
+    private func toggle(_ option: String) {
+        var current = selected
+        if current.contains(option) {
+            current.remove(option)
+        } else {
+            current.insert(option)
+        }
+        // Keep the canonical option order so the summary reads cleanly.
+        store.onboardingDraft.equipment = Self.options
+            .filter { current.contains($0) }
+            .joined(separator: ", ")
+    }
+
+    var body: some View {
+        OnboardingCard(
+            title: "What equipment do you have access to?",
+            subtitle: isCoach
+                ? "Pick everything your athletes can use — sessions you assign stay realistic."
+                : "Pick everything you can use. Your plan sticks to what you actually have."
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                WrapStack(spacing: 8) {
+                    ForEach(Self.options, id: \.self) { option in
+                        Button(option) {
+                            toggle(option)
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: selected.contains(option)))
+                    }
+                }
+
+                Text("Optional — skip it and Morphe assumes bodyweight-friendly sessions.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
             }
         }
     }
@@ -699,6 +760,9 @@ private struct ProfileReviewStep: View {
                     // The coach flow never asks for a weekly schedule — showing
                     // the draft's default here would invent an answer.
                     ProfileLine(title: "Weekly target", value: "\(store.onboardingDraft.trainingDaysPerWeek) training days")
+                }
+                if !store.onboardingDraft.equipment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    ProfileLine(title: "Equipment", value: store.onboardingDraft.equipment)
                 }
                 if !store.onboardingDraft.injuries.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     ProfileLine(title: "Injuries & limits", value: store.onboardingDraft.injuries)
