@@ -739,6 +739,11 @@ struct WorkoutExercise: Identifiable, Hashable {
     var reps: String
     var difficulty: DemoDifficulty
     var formCue: String
+    /// Prescribed effort ("80% 1RM", "RPE 8", "Zone 2") — empty for
+    /// non-catalog exercises.
+    var intensityLabel: String = ""
+    /// Prescribed rest between sets — nil for non-catalog exercises.
+    var restSeconds: Int? = nil
 }
 
 struct WorkoutTemplate: Identifiable, Hashable {
