@@ -387,6 +387,7 @@ struct OnboardingFlowView: View {
 private enum OnboardingStep {
     case welcome
     case name
+    case username
     case gender
     case accountType
     case goal
