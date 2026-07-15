@@ -461,6 +461,9 @@ struct WorkoutView: View {
                                 isShowingPainFlow = false
                                 store.beginLiveWorkout(template)
                             },
+                            onEdit: { template in
+                                editingWorkout = EditingWorkout(id: template.id)
+                            },
                             onDelete: { template in
                                 workoutPendingDelete = template
                             }
@@ -3553,6 +3556,7 @@ private enum ExerciseSwapReason: String, CaseIterable, Identifiable {
 private struct YourWorkoutsCard: View {
     let workouts: [WorkoutTemplate]
     let onStart: (WorkoutTemplate) -> Void
+    let onEdit: (WorkoutTemplate) -> Void
     let onDelete: (WorkoutTemplate) -> Void
 
     var body: some View {
@@ -3576,6 +3580,13 @@ private struct YourWorkoutsCard: View {
                         Button("Start") { onStart(workout) }
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                             .frame(width: 92)
+                        Button {
+                            onEdit(workout)
+                        } label: {
+                            Image(systemName: "pencil")
+                                .foregroundStyle(MorpheTheme.accent)
+                        }
+                        .accessibilityLabel("Edit \(workout.name)")
                         Button {
                             onDelete(workout)
                         } label: {
