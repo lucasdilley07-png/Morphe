@@ -77,16 +77,10 @@ struct RootView: View {
             store.closeClientProfile()
         }) {
             NavigationStack {
+                // ProfileView owns its Done button: it has to check for
+                // unsaved edits (drafts live in its @State) before closing.
                 ProfileView()
                     .environment(store)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") {
-                                store.closeClientProfile()
-                            }
-                            .foregroundStyle(.white)
-                        }
-                    }
             }
             .background(PremiumBackground())
             .presentationDragIndicator(.visible)

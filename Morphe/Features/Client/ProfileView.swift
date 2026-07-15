@@ -9,6 +9,7 @@ struct ProfileView: View {
     @State private var heightDraft = ""
     @State private var weightDraft = ""
     @State private var showSignOutConfirm = false
+    @State private var showUnsavedPrompt = false
 
     private var isCoach: Bool {
         store.selectedRole == .coach
@@ -49,6 +50,70 @@ struct ProfileView: View {
             heightDraft = store.clientProfile.height
             weightDraft = store.clientProfile.bodyWeight
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    if hasUnsavedEdits {
+                        showUnsavedPrompt = true
+                    } else {
+                        store.closeClientProfile()
+                    }
+                }
+                .foregroundStyle(.white)
+            }
+        }
+        // A swipe-down can't silently eat unsaved edits either — with edits
+        // pending the sheet stays put, and Done raises the save/discard ask.
+        .interactiveDismissDisabled(hasUnsavedEdits)
+        .confirmationDialog(
+            "Save your profile changes?",
+            isPresented: $showUnsavedPrompt,
+            titleVisibility: .visible
+        ) {
+            Button("Save Changes") {
+                saveAllEdits()
+                store.closeClientProfile()
+            }
+            Button("Discard Changes", role: .destructive) {
+                discardAllEdits()
+                store.closeClientProfile()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("You edited your profile but didn't save.")
+        }
+    }
+
+    /// Edits sitting in drafts that a dismissal would otherwise drop.
+    private var hasUnsavedEdits: Bool {
+        if bodyMetricsChanged { return true }
+        if isEditingName {
+            let trimmed = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty, trimmed != store.profileShowcase.displayName { return true }
+        }
+        if isEditingInjuries,
+           injuriesDraft.trimmingCharacters(in: .whitespacesAndNewlines) != store.clientProfile.limitations {
+            return true
+        }
+        return false
+    }
+
+    private func saveAllEdits() {
+        if isEditingName { saveName() }
+        if isEditingInjuries {
+            store.updateInjuryNote(injuriesDraft)
+            isEditingInjuries = false
+        }
+        if bodyMetricsChanged {
+            store.updateBodyMetrics(height: heightDraft, weight: weightDraft)
+        }
+    }
+
+    private func discardAllEdits() {
+        isEditingName = false
+        isEditingInjuries = false
+        heightDraft = store.clientProfile.height
+        weightDraft = store.clientProfile.bodyWeight
     }
 
     /// Everything about the user's training identity, editable in place —
