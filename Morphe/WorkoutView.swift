@@ -2536,6 +2536,7 @@ struct TrainTogetherSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var joinCode = ""
+    @State private var hostMode: PartyMode = .inPerson
 
     var body: some View {
         NavigationStack {
@@ -2574,8 +2575,21 @@ struct TrainTogetherSheet: View {
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
+                HStack(spacing: 8) {
+                    Button("Same gym") { hostMode = .inPerson }
+                        .buttonStyle(FilterChipStyle(isSelected: hostMode == .inPerson, selectedColor: MorpheTheme.accent))
+                    Button("Somewhere else") { hostMode = .virtualSession }
+                        .buttonStyle(FilterChipStyle(isSelected: hostMode == .virtualSession, selectedColor: MorpheTheme.accentAlt))
+                }
+
+                Text(hostMode == .inPerson
+                     ? "You're training side by side — the app stays out of the way and shares one recap at the end."
+                     : "Training apart: you'll see each other's exercise and sets live, trade nudges, and can FaceTime from the session. No video inside Morphe — FaceTime handles that.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+
                 Button(store.isPartyBusy ? "Starting…" : "Start a buddy session") {
-                    Task { await store.startTrainTogether(mode: .inPerson) }
+                    Task { await store.startTrainTogether(mode: hostMode) }
                 }
                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 .disabled(store.isPartyBusy)
@@ -2682,16 +2696,21 @@ struct TrainTogetherSheet: View {
 }
 
 /// Slim buddy roster above the live console — names and where they are.
+/// Virtual sessions add ready state, nudges, and a FaceTime handoff.
 /// Only rendered while a party is active.
 struct PartySessionStrip: View {
     @Environment(MorpheAppStore.self) private var store
+    @Environment(\.openURL) private var openURL
+
+    private var isVirtual: Bool { store.activeParty?.mode == .virtualSession }
 
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 8) {
                 if let party = store.activeParty {
                     HStack {
-                        Label("Training together", systemImage: "person.2.fill")
+                        Label(isVirtual ? "Training together · virtual" : "Training together",
+                              systemImage: "person.2.fill")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.accent)
                         Spacer()
@@ -2714,6 +2733,31 @@ struct PartySessionStrip: View {
                                 Text(buddyStatus(buddy))
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                        }
+                    }
+
+                    if isVirtual {
+                        HStack(spacing: 8) {
+                            if !store.partyIsReadySelf {
+                                Button("I'm ready") { store.markPartyReady() }
+                                    .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
+                            }
+                            ForEach(MorpheAppStore.partyNudgeEmojis, id: \.self) { emoji in
+                                Button(emoji) { store.sendPartyNudge(emoji) }
+                                    .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
+                                    .accessibilityLabel("Send \(emoji) to your buddy")
+                            }
+                            Spacer()
+                            if let email = store.partyBuddies.first(where: { !$0.email.isEmpty })?.email,
+                               let url = URL(string: "facetime://\(email)") {
+                                Button {
+                                    openURL(url)
+                                } label: {
+                                    Label("FaceTime", systemImage: "video.fill")
+                                        .font(.caption.weight(.semibold))
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
                             }
                         }
                     }

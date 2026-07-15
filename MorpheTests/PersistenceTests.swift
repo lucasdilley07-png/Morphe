@@ -2777,3 +2777,95 @@ final class TrainTogetherTests: XCTestCase {
                       "the log remembers who was there")
     }
 }
+
+/// Train Together Phase 2: live virtual-session sync through the party service.
+@MainActor
+final class TrainTogetherLiveSyncTests: XCTestCase {
+
+    final class RecordingPartyService: WorkoutPartying {
+        var progress: [(participantID: String, update: PartyProgressUpdate)] = []
+        var nudges: [(from: String, emoji: String)] = []
+        func createParty(_ party: WorkoutParty, host: PartyParticipant, workout: PartyWorkoutSnapshot) async -> Bool { true }
+        func fetchParty(code: String) async -> (party: WorkoutParty, workout: PartyWorkoutSnapshot)? { nil }
+        func join(partyID: String, participant: PartyParticipant) async -> Bool { true }
+        func leave(partyID: String, participantID: String) async {}
+        func publishProgress(partyID: String, participantID: String, progress update: PartyProgressUpdate) {
+            progress.append((participantID, update))
+        }
+        func publishSummary(partyID: String, participantID: String, summary: String) {}
+        func sendNudge(partyID: String, from participant: PartyParticipant, emoji: String) {
+            nudges.append((participant.name, emoji))
+        }
+        func listen(partyID: String,
+                    onMembers: @escaping ([PartyParticipant]) -> Void,
+                    onNudge: @escaping (PartyNudge) -> Void) {}
+        func stopListening() {}
+    }
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func virtualSessionStore(service: RecordingPartyService) async -> MorpheAppStore {
+        let store = MorpheAppStore(partyService: service)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+        _ = await store.startTrainTogether(mode: .virtualSession)
+        store.startTodayWorkout()
+        return store
+    }
+
+    func testLoggingASetPublishesLiveProgress() async {
+        let service = RecordingPartyService()
+        let store = await virtualSessionStore(service: service)
+        service.progress = []
+
+        store.completeTrackedSet(reps: 10, weight: 95)
+
+        let last = service.progress.last
+        XCTAssertNotNil(last, "each logged set mirrors progress to the party")
+        XCTAssertEqual(last?.participantID, "user-1")
+        // Logging can auto-advance to the next exercise (which publishes
+        // again), so the final update mirrors wherever the session actually
+        // is right now.
+        XCTAssertEqual(last?.update.exerciseName, store.activeWorkoutExercise?.name)
+        XCTAssertEqual(last?.update.setsDone,
+                       store.activeWorkoutExercise.map { store.completedWorkoutSets[$0.id, default: 0] })
+    }
+
+    func testReadyCheckPublishesAndSticks() async {
+        let service = RecordingPartyService()
+        let store = await virtualSessionStore(service: service)
+        service.progress = []
+
+        store.markPartyReady()
+
+        XCTAssertTrue(store.partyIsReadySelf)
+        XCTAssertEqual(service.progress.last?.update.isReady, true)
+    }
+
+    func testNudgeGoesThroughTheService() async {
+        let service = RecordingPartyService()
+        let store = await virtualSessionStore(service: service)
+
+        store.sendPartyNudge("🔥")
+
+        XCTAssertEqual(service.nudges.last?.emoji, "🔥")
+        XCTAssertEqual(service.nudges.last?.from, "Sarah")
+    }
+
+    func testSoloSessionsNeverPublish() {
+        let service = RecordingPartyService()
+        let store = MorpheAppStore(partyService: service)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.startTodayWorkout()
+        store.completeTrackedSet(reps: 10)
+
+        XCTAssertTrue(service.progress.isEmpty, "no party = nothing leaves the phone")
+    }
+}

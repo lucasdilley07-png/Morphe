@@ -227,7 +227,13 @@ final class MorpheAppStore {
     var isWorkoutSessionActive = false { didSet { persistWorkoutSession() } }
     var hasStartedWorkoutFlow = false { didSet { persistWorkoutSession() } }
     var hasCompletedWorkoutFlow = false { didSet { persistWorkoutSession() } }
-    var activeWorkoutExerciseIndex = 0 { didSet { persistWorkoutSession() } }
+    var activeWorkoutExerciseIndex = 0 {
+        didSet {
+            persistWorkoutSession()
+            // Buddies watching a virtual session see the move immediately.
+            publishPartyProgress()
+        }
+    }
     var completedWorkoutSets: [String: Int] = [:] { didSet { persistWorkoutSession() } }
     var trackedSetReps: [String: [Int]] = [:] { didSet { persistWorkoutSession() } }
     var trackedSetWeights: [String: [Double]] = [:] { didSet { persistWorkoutSession() } }
@@ -715,6 +721,7 @@ final class MorpheAppStore {
             return false
         }
         activeParty = party
+        partyIsReadySelf = false
         listenToActiveParty()
         Haptics.success()
         return true
@@ -747,6 +754,7 @@ final class MorpheAppStore {
         joined.participants.removeAll { $0.id == me.id }
         joined.participants.append(me)
         activeParty = joined
+        partyIsReadySelf = false
         listenToActiveParty()
 
         // Run the host's exact workout on this phone.
@@ -768,6 +776,7 @@ final class MorpheAppStore {
             Task { await service.leave(partyID: party.id, participantID: uid) }
         }
         activeParty = nil
+        partyIsReadySelf = false
         showToast("Left the session.")
     }
 
@@ -800,6 +809,56 @@ final class MorpheAppStore {
     /// One-line totals published to the party when this user logs the session.
     func partySummaryLine(exercises: Int, sets: Int, minutes: Int) -> String {
         "\(exercises) exercise\(exercises == 1 ? "" : "s") · \(sets) set\(sets == 1 ? "" : "s") · \(minutes) min"
+    }
+
+    // MARK: Train Together — live sync (virtual mode)
+
+    /// This user's ready flag, mirrored to buddies before the first set.
+    var partyIsReadySelf = false
+
+    /// The two nudges buddies can send each other mid-session.
+    static let partyNudgeEmojis = ["🔥", "💪"]
+
+    func markPartyReady() {
+        guard let party = activeParty, let uid = authUser?.id else { return }
+        partyIsReadySelf = true
+        partyService.publishProgress(
+            partyID: party.id,
+            participantID: uid,
+            progress: currentPartyProgress()
+        )
+        Haptics.success()
+        showToast("Your buddy can see you're ready.")
+    }
+
+    func sendPartyNudge(_ emoji: String) {
+        guard let party = activeParty, let me = partySelf else { return }
+        partyService.sendNudge(partyID: party.id, from: me, emoji: emoji)
+        Haptics.impact(.medium)
+        showToast("Sent \(emoji)")
+    }
+
+    /// Where this user is right now, in party terms.
+    private func currentPartyProgress() -> PartyProgressUpdate {
+        let exercise = isWorkoutSessionActive ? activeWorkoutExercise : nil
+        return PartyProgressUpdate(
+            exerciseName: exercise?.name ?? "",
+            setsDone: exercise.map { completedWorkoutSets[$0.id, default: 0] } ?? 0,
+            isReady: partyIsReadySelf,
+            isFinished: hasCompletedWorkoutFlow
+        )
+    }
+
+    /// Mirrors live progress to the party. No-op solo or between sessions,
+    /// so the set-logging path stays untouched for solo training.
+    func publishPartyProgress() {
+        guard let party = activeParty, let uid = authUser?.id,
+              isWorkoutSessionActive || hasCompletedWorkoutFlow else { return }
+        partyService.publishProgress(
+            partyID: party.id,
+            participantID: uid,
+            progress: currentPartyProgress()
+        )
     }
 
     private func applySignedIn(_ user: AppUser) {
@@ -3407,6 +3466,7 @@ final class MorpheAppStore {
         } else {
             showToast("\(reps) reps logged for set \(updatedCount) of \(targetSets).")
         }
+        publishPartyProgress()
     }
 
     /// Converts this session's logged weights into `unit` (lb <-> kg), rounded
@@ -3514,6 +3574,9 @@ final class MorpheAppStore {
 
         isWorkoutSessionActive = false
         hasCompletedWorkoutFlow = true
+        // Buddies see "finished" as soon as the session wraps, not only
+        // after the recap gets logged.
+        publishPartyProgress()
         Haptics.success()
         showToast("Session finished. Add feedback before logging it.")
         return true
@@ -3851,6 +3914,7 @@ final class MorpheAppStore {
         if activeParty != nil {
             partyService.stopListening()
             activeParty = nil
+            partyIsReadySelf = false
         }
         // Fold the fresh rating/duration into the difficulty engine so the
         // very next plan day already reflects this session.
