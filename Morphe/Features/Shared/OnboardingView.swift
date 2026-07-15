@@ -15,28 +15,30 @@ struct LaunchSequenceView: View {
     }
 
     var body: some View {
-        VStack(spacing: 18) {
-            Spacer()
+        ZStack {
+            // The launch beat matches the app icon: gold M on a black field.
+            Color.black.ignoresSafeArea()
 
-            MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 94)
+            VStack(spacing: 22) {
+                Spacer()
 
-            Text("MORPHE")
-                .font(.system(size: 28, design: .monospaced).weight(.bold))
-                .tracking(6)
-                .foregroundStyle(.white)
+                MorpheLoadingMark(size: 132)
 
-            Text(message.uppercased())
-                .font(MorpheTheme.microLabel(12))
-                .tracking(1.8)
-                .foregroundStyle(MorpheTheme.textSecondary)
-                .transition(.opacity)
+                Text("MORPHE")
+                    .font(.system(size: 28, design: .monospaced).weight(.bold))
+                    .tracking(6)
+                    .foregroundStyle(.white)
 
-            ProgressView()
-                .tint(MorpheTheme.accent)
+                Text(message.uppercased())
+                    .font(MorpheTheme.microLabel(12))
+                    .tracking(1.8)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .transition(.opacity)
 
-            Spacer()
+                Spacer()
+            }
+            .padding(24)
         }
-        .padding(24)
         .task {
             guard !hasStarted else { return }
             hasStarted = true
@@ -51,10 +53,121 @@ struct LaunchSequenceView: View {
     }
 }
 
+/// The app-icon M with a gold arc orbiting it — Morphe's loading spinner.
+struct MorpheLoadingMark: View {
+    var size: CGFloat = 132
+    @State private var isSpinning = false
+
+    var body: some View {
+        ZStack {
+            MorpheMarkShape()
+                .fill(MorpheTheme.accent)
+                .frame(width: size, height: size)
+
+            // The spinner: a quarter-ish arc sweeping a ring around the M.
+            Circle()
+                .trim(from: 0, to: 0.28)
+                .stroke(
+                    AngularGradient(
+                        colors: [MorpheTheme.accent.opacity(0), MorpheTheme.accent],
+                        center: .center,
+                        startAngle: .degrees(0),
+                        endAngle: .degrees(100)
+                    ),
+                    style: StrokeStyle(lineWidth: max(size * 0.04, 3), lineCap: .round)
+                )
+                .frame(width: size * 1.5, height: size * 1.5)
+                .rotationEffect(.degrees(isSpinning ? 360 : 0))
+                .animation(.linear(duration: 1.1).repeatForever(autoreverses: false), value: isSpinning)
+        }
+        // Reserve the ring's full footprint so surrounding layout never jumps.
+        .frame(width: size * 1.5, height: size * 1.5)
+        .onAppear { isSpinning = true }
+        .accessibilityLabel("Morphe is loading")
+    }
+}
+
+/// The Morphe "M" mark — the same three rounded strokes as the app icon,
+/// scaled from the icon's 1024-point design space (Tools/make-app-icon.swift)
+/// so the launch screen and the home-screen icon are pixel-for-pixel kin.
+struct MorpheMarkShape: Shape {
+    // Design-space geometry, verbatim from the icon generator.
+    private static let leftPanel: [CGPoint] = [
+        CGPoint(x: 244, y: 293), CGPoint(x: 390, y: 253),
+        CGPoint(x: 390, y: 757), CGPoint(x: 244, y: 694)
+    ]
+    private static let rightPanel: [CGPoint] = [
+        CGPoint(x: 634, y: 253), CGPoint(x: 780, y: 293),
+        CGPoint(x: 780, y: 694), CGPoint(x: 634, y: 757)
+    ]
+    private static let centerChevron: [CGPoint] = [
+        CGPoint(x: 419, y: 373), CGPoint(x: 512, y: 464), CGPoint(x: 605, y: 373),
+        CGPoint(x: 605, y: 559), CGPoint(x: 512, y: 656), CGPoint(x: 419, y: 559)
+    ]
+    // The mark's bounds inside the 1024 icon canvas.
+    private static let designBounds = CGRect(x: 244, y: 253, width: 536, height: 504)
+
+    func path(in rect: CGRect) -> Path {
+        let design = Self.designBounds
+        let scale = min(rect.width / design.width, rect.height / design.height)
+        let offsetX = rect.minX + (rect.width - design.width * scale) / 2
+        let offsetY = rect.minY + (rect.height - design.height * scale) / 2
+
+        func mapped(_ point: CGPoint) -> CGPoint {
+            CGPoint(
+                x: offsetX + (point.x - design.minX) * scale,
+                y: offsetY + (point.y - design.minY) * scale
+            )
+        }
+
+        var path = Path()
+        addRoundedPolygon(Self.leftPanel.map(mapped), radius: 23 * scale, to: &path)
+        addRoundedPolygon(Self.rightPanel.map(mapped), radius: 23 * scale, to: &path)
+        addRoundedPolygon(Self.centerChevron.map(mapped), radius: 17 * scale, to: &path)
+        return path
+    }
+
+    /// Same corner-rounding as the icon generator: each vertex becomes a quad
+    /// curve between points backed off along the adjoining edges.
+    private func addRoundedPolygon(_ points: [CGPoint], radius: CGFloat, to path: inout Path) {
+        let count = points.count
+        guard count >= 3 else { return }
+        for index in 0..<count {
+            let previous = points[(index + count - 1) % count]
+            let current = points[index]
+            let next = points[(index + 1) % count]
+            let incoming = CGVector(dx: current.x - previous.x, dy: current.y - previous.y)
+            let outgoing = CGVector(dx: next.x - current.x, dy: next.y - current.y)
+            let incomingLength = max(hypot(incoming.dx, incoming.dy), 0.001)
+            let outgoingLength = max(hypot(outgoing.dx, outgoing.dy), 0.001)
+            let cornerRadius = min(radius, incomingLength / 2, outgoingLength / 2)
+            let entry = CGPoint(
+                x: current.x - incoming.dx / incomingLength * cornerRadius,
+                y: current.y - incoming.dy / incomingLength * cornerRadius
+            )
+            let exit = CGPoint(
+                x: current.x + outgoing.dx / outgoingLength * cornerRadius,
+                y: current.y + outgoing.dy / outgoingLength * cornerRadius
+            )
+            if index == 0 {
+                path.move(to: entry)
+            } else {
+                path.addLine(to: entry)
+            }
+            path.addQuadCurve(to: exit, control: current)
+        }
+        path.closeSubpath()
+    }
+}
+
 struct OnboardingFlowView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var stepIndex = 0
     @State private var isGeneratingPlan = false
+    // Username step: what's typed, the round-trip state, and the last error.
+    @State private var usernameEntry = ""
+    @State private var isReservingUsername = false
+    @State private var usernameError: String?
 
     private var steps: [OnboardingStep] {
         // Lean by design: every remaining step feeds something the app
