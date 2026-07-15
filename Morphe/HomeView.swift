@@ -5,6 +5,7 @@ struct HomeView: View {
     @State private var showAdjustments = false
     @State private var showSupport = false
     @State private var showMessages = false
+    @State private var showEmptyLibraryNotice = false
 
     private var morpheScoreTitle: String {
         switch store.clientProfile.health.score {
@@ -55,7 +56,11 @@ struct HomeView: View {
                         showAssistRow: store.todayExperienceTier >= 1,
                         onStart: { store.startTodayWorkout() },
                         onActivateMinimumWin: { store.activateMinimumWinMode() },
-                        onSwitch: { store.cycleWorkout() }
+                        onSwitch: {
+                            if !store.requestWorkoutSwitch() {
+                                showEmptyLibraryNotice = true
+                            }
+                        }
                     )
                 }
 
@@ -192,6 +197,12 @@ struct HomeView: View {
             .padding(.bottom, 120)
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
+        .alert("Your library is empty", isPresented: $showEmptyLibraryNotice) {
+            Button("Browse Discover") { store.showDiscoverTab() }
+            Button("Got It", role: .cancel) {}
+        } message: {
+            Text("Save or start workouts from the Discover page, or build your own in Train under My Library.")
+        }
         .sheet(isPresented: $showMessages) {
             NavigationStack {
                 CommunityView()
@@ -564,7 +575,7 @@ private struct TodayNextMoveCard: View {
                         Button("Start Today's Plan", action: onStart)
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
-                        Button("Need a smaller win?", action: onActivateMinimumWin)
+                        Button("Switch workout", action: onSwitch)
                             .buttonStyle(SecondaryCTAButtonStyle())
                     }
                 }

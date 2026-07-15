@@ -549,6 +549,29 @@ final class MorpheAppStore {
         "\(id)-\(tabResetCounts[id, default: 0])"
     }
 
+    // MARK: - Switch workout → My Library
+
+    /// True when My Library holds anything — saved Discover workouts or
+    /// workouts the user built themselves.
+    var libraryHasWorkouts: Bool {
+        !savedWorkouts.isEmpty || workoutTemplates.contains { isCustomWorkout($0.id) }
+    }
+
+    /// One-shot signal: Train should expand My Library and scroll to it.
+    var pendingLibraryReveal = false
+
+    /// "Switch workout" on the Today or Train hero. With workouts in the
+    /// library it lands on Train's My Library; with an empty library it
+    /// returns false so the caller can explain where workouts come from.
+    @discardableResult
+    func requestWorkoutSwitch() -> Bool {
+        guard libraryHasWorkouts else { return false }
+        pendingLibraryReveal = true
+        showTrainTab()
+        Haptics.impact(.light)
+        return true
+    }
+
     /// Lands on the Discover surface for the CURRENT role.
     func showDiscoverTab() {
         if selectedRole == .coach {

@@ -28,6 +28,7 @@ struct WorkoutView: View {
     @State private var showHistory = false
     @State private var showBuilder = false
     @State private var showFormCheck = false
+    @State private var showEmptyLibraryNotice = false
 
     private var deleteWorkoutDialogTitle: String {
         guard let template = workoutPendingDelete else { return "Delete this workout?" }
@@ -340,7 +341,8 @@ struct WorkoutView: View {
 
     private var workoutPlanningMode: some View {
         @Bindable var store = store
-        return ScrollView(showsIndicators: false) {
+        return ScrollViewReader { proxy in
+        ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Train",
@@ -422,7 +424,9 @@ struct WorkoutView: View {
                             store.applyRecommendedWorkout()
                         },
                         onSwitch: {
-                            store.cycleWorkout()
+                            if !store.requestWorkoutSwitch() {
+                                showEmptyLibraryNotice = true
+                            }
                         }
                     )
                 }
@@ -505,6 +509,7 @@ struct WorkoutView: View {
                         }
                     )
                 }
+                .id("myLibrary")
 
                 TrainExpandableSection(
                     title: "Exercise list",
@@ -581,6 +586,30 @@ struct WorkoutView: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 120)
+        }
+        .onAppear { revealLibraryIfRequested(proxy) }
+        .onChange(of: store.pendingLibraryReveal) { _, _ in
+            revealLibraryIfRequested(proxy)
+        }
+        .alert("Your library is empty", isPresented: $showEmptyLibraryNotice) {
+            Button("Browse Discover") { store.showDiscoverTab() }
+            Button("Got It", role: .cancel) {}
+        } message: {
+            Text("Save or start workouts from the Discover page, or build your own right here in My Library.")
+        }
+        }
+    }
+
+    /// Consumes the store's one-shot "Switch workout" signal: expands My
+    /// Library and scrolls to it once the expansion has laid out.
+    private func revealLibraryIfRequested(_ proxy: ScrollViewProxy) {
+        guard store.pendingLibraryReveal else { return }
+        store.pendingLibraryReveal = false
+        showLibrary = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            withAnimation(.easeInOut(duration: 0.35)) {
+                proxy.scrollTo("myLibrary", anchor: .top)
+            }
         }
     }
 
