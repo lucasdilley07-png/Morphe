@@ -696,7 +696,9 @@ struct DiscoverScreenView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     SectionTitleView(
                         title: "Discover",
-                        subtitle: "\(store.discoverWorkouts.count) workouts — pick a training style."
+                        subtitle: store.discoverWorkouts.isEmpty
+                            ? "A new workout library is on the way."
+                            : "\(store.discoverWorkouts.count) workouts — pick a training style."
                     )
 
                     DiscoverCatalogSection(
@@ -1871,6 +1873,27 @@ private struct DiscoverCatalogSection: View {
             connectCard
 
             searchBar
+
+            // The v1 catalog is retired while the new library is built — say
+            // so honestly instead of rendering an empty grid.
+            if store.discoverWorkouts.isEmpty,
+               searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Image(systemName: "hammer.fill")
+                            .font(.title3)
+                            .foregroundStyle(MorpheTheme.accent)
+                        Text("New workouts are being built")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Text("The old library is retired. A fresh, personalized set of workouts is on the way — your saved workouts and daily plan still work from Train.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
 
             if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 searchResultsList

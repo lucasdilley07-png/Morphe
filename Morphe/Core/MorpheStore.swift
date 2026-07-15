@@ -2737,16 +2737,13 @@ final class MorpheAppStore {
     /// authored per-sport templates surfaced as "Sport-specific training"
     /// (real content — the 18th training type in the taxonomy).
     var discoverWorkouts: [WorkoutTemplate] {
-        let sportSpecific = workoutTemplates
-            .filter { $0.sport != .generalFitness && !isCustomWorkout($0.id) && $0.trainingTypeTag.isEmpty }
-            .map { template -> WorkoutTemplate in
-                var copy = template
-                copy.trainingTypeTag = "Sport-specific training"
-                copy.focusTag = template.sport.shortTitle
-                copy.type = "Sport Series"
-                return copy
-            }
-        return catalogWorkouts + sportSpecific
+        // Discover browsing is deliberately EMPTY right now: the v1 catalog
+        // was too generic, so it's retired from the browse/search surface
+        // while the new personalized library is built. The bundled catalog
+        // still loads (catalogWorkouts) because the Today plan engine and
+        // previously saved workouts depend on it — swap both when the v2
+        // library lands.
+        []
     }
 
     /// Rebuilds saved catalog items after a launch (or after the demo clear

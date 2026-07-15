@@ -748,21 +748,18 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertTrue(legends.contains { $0.name == "The Golden Six" })
     }
 
-    func testTrainingTypeTaxonomyCoversAllEighteenTypes() {
+    func testDiscoverBrowsingIsRetiredButCatalogStillPowersThePlan() {
         let store = MorpheAppStore()
 
-        let expected: Set<String> = [
-            "Strength training", "Hypertrophy training", "Muscular endurance",
-            "Cardiovascular endurance", "HIIT", "Power training",
-            "Speed & agility training", "Mobility training", "Flexibility training",
-            "Functional training", "Calisthenics", "Circuit training",
-            "Cross-training", "Plyometric training", "Balance & stability training",
-            "Core training", "Sport-specific training", "Recovery training"
-        ]
-        let present = Set(store.discoverWorkouts.map(\.trainingTypeTag))
+        // The v1 catalog is deliberately retired from Discover browsing while
+        // the personalized v2 library is built.
+        XCTAssertTrue(store.discoverWorkouts.isEmpty,
+                      "Discover browsing is intentionally empty pending the v2 library")
 
-        XCTAssertEqual(expected.subtracting(present), [],
-                       "every training type in the taxonomy must have at least one workout")
+        // But the bundled catalog must keep loading — the Today plan engine
+        // and previously saved workouts resolve against it.
+        XCTAssertFalse(store.catalogWorkouts.isEmpty,
+                       "the bundled catalog still powers the daily plan and saved workouts")
         XCTAssertTrue(store.catalogWorkouts.allSatisfy { !$0.trainingTypeTag.isEmpty },
                       "every catalog workout carries a training type")
     }
