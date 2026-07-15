@@ -2537,6 +2537,8 @@ struct TrainTogetherSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var joinCode = ""
     @State private var hostMode: PartyMode = .inPerson
+    @State private var hasClassTime = false
+    @State private var classTime = Date.now.addingTimeInterval(3600)
 
     var body: some View {
         NavigationStack {
@@ -2575,25 +2577,56 @@ struct TrainTogetherSheet: View {
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
-                HStack(spacing: 8) {
+                WrapStack(spacing: 8) {
                     Button("Same gym") { hostMode = .inPerson }
                         .buttonStyle(FilterChipStyle(isSelected: hostMode == .inPerson, selectedColor: MorpheTheme.accent))
                     Button("Somewhere else") { hostMode = .virtualSession }
                         .buttonStyle(FilterChipStyle(isSelected: hostMode == .virtualSession, selectedColor: MorpheTheme.accentAlt))
+                    Button("Group class") { hostMode = .group }
+                        .buttonStyle(FilterChipStyle(isSelected: hostMode == .group, selectedColor: MorpheTheme.warning))
                 }
 
-                Text(hostMode == .inPerson
-                     ? "You're training side by side — the app stays out of the way and shares one recap at the end."
-                     : "Training apart: you'll see each other's exercise and sets live, trade nudges, and can FaceTime from the session. No video inside Morphe — FaceTime handles that.")
+                Text(hostModeCaption)
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
 
-                Button(store.isPartyBusy ? "Starting…" : "Start a buddy session") {
-                    Task { await store.startTrainTogether(mode: hostMode) }
+                if hostMode == .group {
+                    Toggle("Set a class time", isOn: $hasClassTime)
+                        .font(.subheadline)
+                        .foregroundStyle(.white)
+                        .tint(MorpheTheme.accent)
+                    if hasClassTime {
+                        DatePicker("Class starts", selection: $classTime, displayedComponents: [.hourAndMinute])
+                            .font(.subheadline)
+                            .foregroundStyle(.white)
+                            .tint(MorpheTheme.accent)
+                    }
+                }
+
+                Button(store.isPartyBusy
+                       ? "Starting…"
+                       : (hostMode == .group ? "Open the class lobby" : "Start a buddy session")) {
+                    Task {
+                        await store.startTrainTogether(
+                            mode: hostMode,
+                            classTime: hostMode == .group && hasClassTime ? classTime : nil
+                        )
+                    }
                 }
                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 .disabled(store.isPartyBusy)
             }
+        }
+    }
+
+    private var hostModeCaption: String {
+        switch hostMode {
+        case .inPerson:
+            return "You're training side by side — the app stays out of the way and shares one recap at the end."
+        case .virtualSession:
+            return "Training apart: you'll see each other's exercise and sets live, trade nudges, and can FaceTime from the session. No video inside Morphe — FaceTime handles that."
+        case .group:
+            return "A class anyone can join with your code. Everyone waits in the lobby, you start the workout for the whole group at once, and the session shows a live set leaderboard."
         }
     }
 
@@ -2658,10 +2691,18 @@ struct TrainTogetherSheet: View {
                         .tracking(6)
                         .foregroundStyle(MorpheTheme.accent)
 
-                    Text("Have your buddy scan this, or read them the code.")
+                    Text(party.mode == .group
+                         ? "Anyone with this code joins your class."
+                         : "Have your buddy scan this, or read them the code.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
                         .multilineTextAlignment(.center)
+
+                    if let startsAt = party.startsAt {
+                        Label("Class time: \(startsAt.formatted(date: .omitted, time: .shortened))", systemImage: "clock")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentAlt)
+                    }
 
                     Divider().overlay(Color.white.opacity(0.08))
 
@@ -2675,13 +2716,28 @@ struct TrainTogetherSheet: View {
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.white)
                                 Spacer()
-                                Text(member.isFinished ? "Finished" : "In session")
+                                Text(memberStatus(member, party: party))
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
                             }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if party.mode == .group, party.status == .lobby {
+                        if store.isPartyHost {
+                            Button("Start the class") {
+                                store.startGroupClass()
+                                dismiss()
+                            }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        } else {
+                            Text("Waiting for \(party.hostName) to start the class — your workout launches automatically.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
 
                     Button("Leave session") {
                         store.leaveParty()
@@ -2693,6 +2749,12 @@ struct TrainTogetherSheet: View {
             .frame(maxWidth: .infinity)
         }
     }
+
+    private func memberStatus(_ member: PartyParticipant, party: WorkoutParty) -> String {
+        if member.isFinished { return "Finished" }
+        if party.status == .lobby { return "In lobby" }
+        return "In session"
+    }
 }
 
 /// Slim buddy roster above the live console — names and where they are.
@@ -2703,14 +2765,16 @@ struct PartySessionStrip: View {
     @Environment(\.openURL) private var openURL
 
     private var isVirtual: Bool { store.activeParty?.mode == .virtualSession }
+    private var isGroup: Bool { store.activeParty?.mode == .group }
+    /// Nudges apply whenever people train apart (virtual or class).
+    private var syncsLive: Bool { isVirtual || isGroup }
 
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 8) {
                 if let party = store.activeParty {
                     HStack {
-                        Label(isVirtual ? "Training together · virtual" : "Training together",
-                              systemImage: "person.2.fill")
+                        Label(stripTitle, systemImage: isGroup ? "person.3.fill" : "person.2.fill")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.accent)
                         Spacer()
@@ -2719,7 +2783,24 @@ struct PartySessionStrip: View {
                             .foregroundStyle(MorpheTheme.textMuted)
                     }
 
-                    if store.partyBuddies.isEmpty {
+                    if isGroup {
+                        // Leaderboard: everyone in the class by sets logged.
+                        ForEach(Array(store.partyLeaderboard.enumerated()), id: \.element.id) { rank, member in
+                            HStack(spacing: 8) {
+                                Text("\(rank + 1)")
+                                    .font(.caption.monospaced().weight(.bold))
+                                    .foregroundStyle(rank == 0 ? MorpheTheme.accent : MorpheTheme.textMuted)
+                                    .frame(width: 18, alignment: .leading)
+                                Text(member.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                Spacer()
+                                Text(member.isFinished ? "Finished" : "\(member.totalSetsDone) sets")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                        }
+                    } else if store.partyBuddies.isEmpty {
                         Text("Waiting for your buddy to join…")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -2737,7 +2818,7 @@ struct PartySessionStrip: View {
                         }
                     }
 
-                    if isVirtual {
+                    if syncsLive {
                         HStack(spacing: 8) {
                             if !store.partyIsReadySelf {
                                 Button("I'm ready") { store.markPartyReady() }
@@ -2766,12 +2847,17 @@ struct PartySessionStrip: View {
         }
     }
 
+    private var stripTitle: String {
+        if isGroup { return "Class · live" }
+        return isVirtual ? "Training together · virtual" : "Training together"
+    }
+
     private func buddyStatus(_ buddy: PartyParticipant) -> String {
         if buddy.isFinished { return "Finished" }
         if !buddy.exerciseName.isEmpty {
-            return "\(buddy.exerciseName) · set \(max(buddy.setsDone, 1))"
+            return "\(buddy.exerciseName) · set \(buddy.setsDone + 1)"
         }
-        return "In session"
+        return buddy.isReady ? "Ready" : "Getting set up"
     }
 }
 

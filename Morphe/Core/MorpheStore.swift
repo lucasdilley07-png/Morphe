@@ -645,6 +645,9 @@ final class MorpheAppStore {
     var activeParty: WorkoutParty?
     /// True while a create/join round-trip is in flight (drives spinners).
     var isPartyBusy = false
+    /// A group class joined while still in the lobby: the workout waits here
+    /// until the host starts everyone at once.
+    private var pendingPartyTemplate: WorkoutTemplate?
 
     var isPartyHost: Bool {
         guard let party = activeParty, let uid = authUser?.id else { return false }
@@ -656,6 +659,23 @@ final class MorpheAppStore {
         guard let party = activeParty else { return [] }
         let uid = authUser?.id
         return party.participants.filter { $0.id != uid }
+    }
+
+    /// Group-class ranking: everyone (this user included) by total sets
+    /// logged. This user's own row is patched with the local live count so
+    /// the leaderboard never lags behind their own logging.
+    var partyLeaderboard: [PartyParticipant] {
+        guard let party = activeParty else { return [] }
+        let uid = authUser?.id
+        return party.participants
+            .map { member in
+                var member = member
+                if member.id == uid {
+                    member.totalSetsDone = max(member.totalSetsDone, completedWorkoutSets.values.reduce(0, +))
+                }
+                return member
+            }
+            .sorted { $0.totalSetsDone != $1.totalSetsDone ? $0.totalSetsDone > $1.totalSetsDone : $0.name < $1.name }
     }
 
     /// Join codes avoid ambiguous characters (0/O, 1/I/L) — they get read
@@ -695,9 +715,11 @@ final class MorpheAppStore {
     }
 
     /// Creates a party around the current workout and shares it for joining.
-    /// The host still starts their own session with the normal Start button.
+    /// Buddy modes open live (the host starts their own session with the
+    /// normal Start button); a group class opens in a lobby the host later
+    /// starts for everyone at once.
     @discardableResult
-    func startTrainTogether(mode: PartyMode) async -> Bool {
+    func startTrainTogether(mode: PartyMode, classTime: Date? = nil) async -> Bool {
         guard var me = partySelf else {
             showToast("Sign in to train together.")
             return false
@@ -713,6 +735,8 @@ final class MorpheAppStore {
             hostID: me.id,
             hostName: me.name,
             workoutName: currentWorkout.name,
+            status: mode == .group ? .lobby : .live,
+            startsAt: mode == .group ? classTime : nil,
             participants: [me]
         )
         let snapshot = PartyWorkoutSnapshot(template: currentWorkout)
@@ -757,14 +781,32 @@ final class MorpheAppStore {
         partyIsReadySelf = false
         listenToActiveParty()
 
-        // Run the host's exact workout on this phone.
+        // The host's exact workout, ready to run on this phone.
         let template = workout.makeTemplate()
         if !workoutTemplates.contains(where: { $0.id == template.id }) {
             workoutTemplates.append(template)
         }
-        beginLiveWorkout(template)
-        showCelebration(title: "Joined \(party.hostName)'s session", detail: party.workoutName, symbol: "person.2.fill")
+
+        if party.mode == .group, party.status == .lobby {
+            // Class hasn't started — hold the workout until the host starts
+            // everyone at once (the status listener fires it).
+            pendingPartyTemplate = template
+            showToast("You're in \(party.hostName)'s class — waiting for the start.")
+        } else {
+            beginLiveWorkout(template)
+            showCelebration(title: "Joined \(party.hostName)'s session", detail: party.workoutName, symbol: "person.2.fill")
+        }
         return true
+    }
+
+    /// Host-only: starts the class for everyone. Members' status listeners
+    /// launch their held workout the moment the flip lands.
+    func startGroupClass() {
+        guard let party = activeParty, isPartyHost, party.status == .lobby else { return }
+        partyService.updateStatus(partyID: party.id, status: .live)
+        activeParty?.status = .live
+        startTodayWorkout()
+        showCelebration(title: "Class started", detail: "\(partyBuddies.count + 1) training \(party.workoutName)", symbol: "person.3.fill")
     }
 
     /// Leaves the party (and tells the backend, so the buddy's roster updates).
@@ -777,6 +819,7 @@ final class MorpheAppStore {
         }
         activeParty = nil
         partyIsReadySelf = false
+        pendingPartyTemplate = nil
         showToast("Left the session.")
     }
 
@@ -785,6 +828,22 @@ final class MorpheAppStore {
         guard let party = activeParty else { return }
         partyService.listen(
             partyID: party.id,
+            onStatus: { [weak self] status in
+                Task { @MainActor [weak self] in
+                    guard let self, self.activeParty?.id == party.id,
+                          self.activeParty?.status != status else { return }
+                    self.activeParty?.status = status
+                    // The host started the class — launch the workout this
+                    // phone has been holding since it joined the lobby.
+                    if status == .live, !self.isPartyHost,
+                       let template = self.pendingPartyTemplate,
+                       !self.isWorkoutSessionActive {
+                        self.pendingPartyTemplate = nil
+                        self.beginLiveWorkout(template)
+                        self.showCelebration(title: "Class started", detail: self.activeParty?.workoutName ?? "", symbol: "person.3.fill")
+                    }
+                }
+            },
             onMembers: { [weak self] members in
                 Task { @MainActor [weak self] in
                     guard let self, self.activeParty?.id == party.id else { return }
@@ -844,6 +903,7 @@ final class MorpheAppStore {
         return PartyProgressUpdate(
             exerciseName: exercise?.name ?? "",
             setsDone: exercise.map { completedWorkoutSets[$0.id, default: 0] } ?? 0,
+            totalSetsDone: completedWorkoutSets.values.reduce(0, +),
             isReady: partyIsReadySelf,
             isFinished: hasCompletedWorkoutFlow
         )

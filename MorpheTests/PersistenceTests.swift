@@ -2687,7 +2687,9 @@ final class TrainTogetherTests: XCTestCase {
             summaries.append((partyID, participantID, summary))
         }
         func sendNudge(partyID: String, from participant: PartyParticipant, emoji: String) {}
+        func updateStatus(partyID: String, status: PartyStatus) {}
         func listen(partyID: String,
+                    onStatus: @escaping (PartyStatus) -> Void,
                     onMembers: @escaping ([PartyParticipant]) -> Void,
                     onNudge: @escaping (PartyNudge) -> Void) {}
         func stopListening() {}
@@ -2796,7 +2798,9 @@ final class TrainTogetherLiveSyncTests: XCTestCase {
         func sendNudge(partyID: String, from participant: PartyParticipant, emoji: String) {
             nudges.append((participant.name, emoji))
         }
+        func updateStatus(partyID: String, status: PartyStatus) {}
         func listen(partyID: String,
+                    onStatus: @escaping (PartyStatus) -> Void,
                     onMembers: @escaping ([PartyParticipant]) -> Void,
                     onNudge: @escaping (PartyNudge) -> Void) {}
         func stopListening() {}
@@ -2867,5 +2871,125 @@ final class TrainTogetherLiveSyncTests: XCTestCase {
         store.completeTrackedSet(reps: 10)
 
         XCTAssertTrue(service.progress.isEmpty, "no party = nothing leaves the phone")
+    }
+}
+
+/// Train Together Phase 3: group classes — lobby, host start, leaderboard.
+@MainActor
+final class GroupClassTests: XCTestCase {
+
+    final class LobbyPartyService: WorkoutPartying {
+        var statusUpdates: [(partyID: String, status: PartyStatus)] = []
+        var capturedOnStatus: ((PartyStatus) -> Void)?
+        var fetchResult: (party: WorkoutParty, workout: PartyWorkoutSnapshot)?
+        var createdParty: WorkoutParty?
+
+        func createParty(_ party: WorkoutParty, host: PartyParticipant, workout: PartyWorkoutSnapshot) async -> Bool {
+            createdParty = party
+            return true
+        }
+        func fetchParty(code: String) async -> (party: WorkoutParty, workout: PartyWorkoutSnapshot)? { fetchResult }
+        func join(partyID: String, participant: PartyParticipant) async -> Bool { true }
+        func leave(partyID: String, participantID: String) async {}
+        func updateStatus(partyID: String, status: PartyStatus) {
+            statusUpdates.append((partyID, status))
+        }
+        func publishProgress(partyID: String, participantID: String, progress: PartyProgressUpdate) {}
+        func publishSummary(partyID: String, participantID: String, summary: String) {}
+        func sendNudge(partyID: String, from participant: PartyParticipant, emoji: String) {}
+        func listen(partyID: String,
+                    onStatus: @escaping (PartyStatus) -> Void,
+                    onMembers: @escaping ([PartyParticipant]) -> Void,
+                    onNudge: @escaping (PartyNudge) -> Void) {
+            capturedOnStatus = onStatus
+        }
+        func stopListening() {}
+    }
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func signedInStore(service: LobbyPartyService) -> MorpheAppStore {
+        let store = MorpheAppStore(partyService: service)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+        return store
+    }
+
+    func testGroupClassOpensInALobby() async {
+        let service = LobbyPartyService()
+        let store = signedInStore(service: service)
+
+        _ = await store.startTrainTogether(mode: .group)
+
+        XCTAssertEqual(service.createdParty?.status, .lobby, "a class opens in the lobby, not live")
+        XCTAssertEqual(store.activeParty?.status, .lobby)
+        XCTAssertFalse(store.isWorkoutSessionActive, "nobody trains until the host starts the class")
+    }
+
+    func testJoiningALobbyHoldsTheWorkoutUntilTheHostStarts() async {
+        let service = LobbyPartyService()
+        let store = signedInStore(service: service)
+
+        var classTemplate = store.currentWorkout
+        classTemplate.name = "Saturday Conditioning Class"
+        service.fetchResult = (
+            party: WorkoutParty(id: "C7KQ2M", mode: .group, hostID: "coach-9",
+                                hostName: "Coach Colt", workoutName: classTemplate.name,
+                                status: .lobby,
+                                participants: [PartyParticipant(id: "coach-9", name: "Coach Colt", email: "", isHost: true)]),
+            workout: PartyWorkoutSnapshot(template: classTemplate)
+        )
+
+        let joined = await store.joinParty(code: "C7KQ2M")
+
+        XCTAssertTrue(joined)
+        XCTAssertFalse(store.isWorkoutSessionActive, "the lobby holds the workout — no early starts")
+
+        // The host flips the class live; this phone's listener fires.
+        service.capturedOnStatus?(.live)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(store.activeParty?.status, .live)
+        XCTAssertTrue(store.isWorkoutSessionActive, "the held workout launches when the class goes live")
+        XCTAssertEqual(store.currentWorkout.name, "Saturday Conditioning Class")
+    }
+
+    func testHostStartFlipsStatusAndStartsTheirOwnSession() async {
+        let service = LobbyPartyService()
+        let store = signedInStore(service: service)
+        _ = await store.startTrainTogether(mode: .group)
+
+        store.startGroupClass()
+
+        XCTAssertEqual(service.statusUpdates.last?.status, .live, "the flip reaches the backend")
+        XCTAssertEqual(store.activeParty?.status, .live)
+        XCTAssertTrue(store.isWorkoutSessionActive, "the host trains too")
+    }
+
+    func testLeaderboardRanksByTotalSetsWithLocalSelfPatch() async {
+        let service = LobbyPartyService()
+        let store = signedInStore(service: service)
+        _ = await store.startTrainTogether(mode: .group)
+        store.startGroupClass()
+
+        store.activeParty?.participants = [
+            PartyParticipant(id: "user-1", name: "Sarah", email: "", isHost: true, totalSetsDone: 0),
+            PartyParticipant(id: "m2", name: "Colt", email: "", isHost: false, totalSetsDone: 3),
+            PartyParticipant(id: "m3", name: "Ava", email: "", isHost: false, totalSetsDone: 5)
+        ]
+        // Sarah logs 6 sets locally — her row must rank first even before the
+        // round-trip through the backend updates her synced count.
+        for _ in 0..<6 { store.completeTrackedSet(reps: 8, allowExtra: true) }
+
+        let board = store.partyLeaderboard
+        XCTAssertEqual(board.first?.name, "Sarah")
+        XCTAssertGreaterThanOrEqual(board.first?.totalSetsDone ?? 0, 6)
+        XCTAssertEqual(board.map(\.name), ["Sarah", "Ava", "Colt"])
     }
 }

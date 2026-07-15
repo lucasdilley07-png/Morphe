@@ -22,6 +22,14 @@ import FirebaseFirestore
 enum PartyMode: String {
     case inPerson = "inPerson"
     case virtualSession = "virtual"
+    case group = "group"
+}
+
+/// Buddy sessions are always live; group classes open in a lobby and go
+/// live when the host starts everyone at once.
+enum PartyStatus: String {
+    case lobby
+    case live
 }
 
 /// One person in the party. Progress fields stay at their defaults until the
@@ -34,6 +42,8 @@ struct PartyParticipant: Identifiable, Hashable {
     var isReady: Bool = false
     var exerciseName: String = ""
     var setsDone: Int = 0
+    /// Whole-session set count — the group leaderboard's ranking key.
+    var totalSetsDone: Int = 0
     var isFinished: Bool = false
     /// One-line totals ("5 exercises · 14 sets · 32 min"), written at log time.
     var summary: String = ""
@@ -53,6 +63,9 @@ struct WorkoutParty: Hashable {
     var hostID: String
     var hostName: String
     var workoutName: String
+    var status: PartyStatus = .live
+    /// Advertised class time (informational — the host still starts it).
+    var startsAt: Date?
     var participants: [PartyParticipant] = []
 }
 
@@ -132,6 +145,7 @@ struct PartyWorkoutSnapshot: Codable {
 struct PartyProgressUpdate {
     var exerciseName: String
     var setsDone: Int
+    var totalSetsDone: Int
     var isReady: Bool
     var isFinished: Bool
 }
@@ -143,11 +157,14 @@ protocol WorkoutPartying: AnyObject {
     func fetchParty(code: String) async -> (party: WorkoutParty, workout: PartyWorkoutSnapshot)?
     func join(partyID: String, participant: PartyParticipant) async -> Bool
     func leave(partyID: String, participantID: String) async
+    /// Host-only (enforced by the security rules): flips a lobby live.
+    func updateStatus(partyID: String, status: PartyStatus)
     func publishProgress(partyID: String, participantID: String, progress: PartyProgressUpdate)
     func publishSummary(partyID: String, participantID: String, summary: String)
     func sendNudge(partyID: String, from participant: PartyParticipant, emoji: String)
-    /// Streams member + nudge changes until `stopListening()`.
+    /// Streams status + member + nudge changes until `stopListening()`.
     func listen(partyID: String,
+                onStatus: @escaping (PartyStatus) -> Void,
                 onMembers: @escaping ([PartyParticipant]) -> Void,
                 onNudge: @escaping (PartyNudge) -> Void)
     func stopListening()
@@ -160,10 +177,12 @@ final class NoOpPartyService: WorkoutPartying {
     func fetchParty(code: String) async -> (party: WorkoutParty, workout: PartyWorkoutSnapshot)? { nil }
     func join(partyID: String, participant: PartyParticipant) async -> Bool { false }
     func leave(partyID: String, participantID: String) async {}
+    func updateStatus(partyID: String, status: PartyStatus) {}
     func publishProgress(partyID: String, participantID: String, progress: PartyProgressUpdate) {}
     func publishSummary(partyID: String, participantID: String, summary: String) {}
     func sendNudge(partyID: String, from participant: PartyParticipant, emoji: String) {}
     func listen(partyID: String,
+                onStatus: @escaping (PartyStatus) -> Void,
                 onMembers: @escaping ([PartyParticipant]) -> Void,
                 onNudge: @escaping (PartyNudge) -> Void) {}
     func stopListening() {}
@@ -171,6 +190,7 @@ final class NoOpPartyService: WorkoutPartying {
 
 final class FirebasePartyService: WorkoutPartying {
     private var db: Firestore { Firestore.firestore() }
+    private var partyListener: ListenerRegistration?
     private var memberListener: ListenerRegistration?
     private var nudgeListener: ListenerRegistration?
     /// Nudges that existed before we started listening (or that we already
@@ -185,18 +205,27 @@ final class FirebasePartyService: WorkoutPartying {
         guard let workoutData = try? JSONEncoder().encode(workout),
               let workoutJSON = String(data: workoutData, encoding: .utf8) else { return false }
         do {
-            try await partyDoc(party.id).setData([
+            var data: [String: Any] = [
                 "mode": party.mode.rawValue,
                 "hostID": party.hostID,
                 "hostName": party.hostName,
                 "workoutName": party.workoutName,
                 "workoutJSON": workoutJSON,
+                "status": party.status.rawValue,
                 "createdAt": FieldValue.serverTimestamp()
-            ])
+            ]
+            if let startsAt = party.startsAt {
+                data["startsAt"] = Timestamp(date: startsAt)
+            }
+            try await partyDoc(party.id).setData(data)
             return await join(partyID: party.id, participant: host)
         } catch {
             return false
         }
+    }
+
+    func updateStatus(partyID: String, status: PartyStatus) {
+        partyDoc(partyID).setData(["status": status.rawValue], merge: true)
     }
 
     func fetchParty(code: String) async -> (party: WorkoutParty, workout: PartyWorkoutSnapshot)? {
@@ -214,7 +243,9 @@ final class FirebasePartyService: WorkoutPartying {
             mode: mode,
             hostID: data["hostID"] as? String ?? "",
             hostName: data["hostName"] as? String ?? "",
-            workoutName: data["workoutName"] as? String ?? workout.name
+            workoutName: data["workoutName"] as? String ?? workout.name,
+            status: (data["status"] as? String).flatMap(PartyStatus.init(rawValue:)) ?? .live,
+            startsAt: (data["startsAt"] as? Timestamp)?.dateValue()
         )
         if let members = try? await partyDoc(code).collection("members").getDocuments() {
             party.participants = members.documents.map { Self.participant(from: $0) }
@@ -231,6 +262,7 @@ final class FirebasePartyService: WorkoutPartying {
                 "ready": false,
                 "exerciseName": "",
                 "setsDone": 0,
+                "totalSetsDone": 0,
                 "finished": false,
                 "summary": "",
                 "joinedAt": FieldValue.serverTimestamp()
@@ -250,6 +282,7 @@ final class FirebasePartyService: WorkoutPartying {
         partyDoc(partyID).collection("members").document(participantID).setData([
             "exerciseName": progress.exerciseName,
             "setsDone": progress.setsDone,
+            "totalSetsDone": progress.totalSetsDone,
             "ready": progress.isReady,
             "finished": progress.isFinished,
             "updatedAt": FieldValue.serverTimestamp()
@@ -274,9 +307,15 @@ final class FirebasePartyService: WorkoutPartying {
     }
 
     func listen(partyID: String,
+                onStatus: @escaping (PartyStatus) -> Void,
                 onMembers: @escaping ([PartyParticipant]) -> Void,
                 onNudge: @escaping (PartyNudge) -> Void) {
         stopListening()
+        partyListener = partyDoc(partyID).addSnapshotListener { snap, _ in
+            guard let raw = snap?.data()?["status"] as? String,
+                  let status = PartyStatus(rawValue: raw) else { return }
+            onStatus(status)
+        }
         memberListener = partyDoc(partyID).collection("members").addSnapshotListener { snap, _ in
             guard let snap else { return }
             onMembers(snap.documents.map { Self.participant(from: $0) })
@@ -300,8 +339,10 @@ final class FirebasePartyService: WorkoutPartying {
     }
 
     func stopListening() {
+        partyListener?.remove()
         memberListener?.remove()
         nudgeListener?.remove()
+        partyListener = nil
         memberListener = nil
         nudgeListener = nil
         seenNudgeIDs = []
@@ -317,6 +358,7 @@ final class FirebasePartyService: WorkoutPartying {
             isReady: data["ready"] as? Bool ?? false,
             exerciseName: data["exerciseName"] as? String ?? "",
             setsDone: data["setsDone"] as? Int ?? 0,
+            totalSetsDone: data["totalSetsDone"] as? Int ?? 0,
             isFinished: data["finished"] as? Bool ?? false,
             summary: data["summary"] as? String ?? ""
         )
