@@ -534,6 +534,21 @@ final class MorpheAppStore {
         }
     }
 
+    // MARK: - Tab pop-to-root
+
+    /// Bumped per tab id every time its bottom-bar icon is tapped. Screens key
+    /// their identity off this, so tapping a tab icon rebuilds that tab at its
+    /// root — scrolled to the top, drill-ins closed, searches cleared.
+    private(set) var tabResetCounts: [String: Int] = [:]
+
+    func popTabToRoot(_ id: String) {
+        tabResetCounts[id, default: 0] += 1
+    }
+
+    func tabResetKey(_ id: String) -> String {
+        "\(id)-\(tabResetCounts[id, default: 0])"
+    }
+
     /// Lands on the Discover surface for the CURRENT role.
     func showDiscoverTab() {
         if selectedRole == .coach {

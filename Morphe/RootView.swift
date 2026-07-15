@@ -278,13 +278,19 @@ private struct ClientExperienceShell: View {
     var body: some View {
         @Bindable var store = store
         return TabView(selection: $store.selectedClientTab) {
+            // Each screen's identity is keyed off tabResetKey, so tapping the
+            // tab icon rebuilds it at its root (top of page, drill-ins
+            // closed). Train is deliberately NOT keyed — a tab tap must never
+            // reset a live session or running rest timer.
             HomeView()
+                .id(store.tabResetKey("today"))
                 .tag(ClientTab.today)
 
             WorkoutView()
                 .tag(ClientTab.train)
 
             DiscoverScreenView()
+                .id(store.tabResetKey("discover"))
                 .tag(ClientTab.discover)
 
             if FeatureFlags.multiUserEnabled {
@@ -293,9 +299,11 @@ private struct ClientExperienceShell: View {
             }
 
             ProgressScreenView()
+                .id(store.tabResetKey("hub"))
                 .tag(ClientTab.hub)
 
             MoreView()
+                .id(store.tabResetKey("more"))
                 .tag(ClientTab.more)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
@@ -322,6 +330,9 @@ private struct ClientExperienceShell: View {
         .safeAreaInset(edge: .bottom) {
             BottomTabNavigation(items: ClientTab.visibleCases, selected: store.selectedClientTab) { tab in
                 store.selectedClientTab = tab
+                // Tapping the icon always lands at the top of that tab's
+                // first page.
+                store.popTabToRoot(tab.rawValue)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 8)

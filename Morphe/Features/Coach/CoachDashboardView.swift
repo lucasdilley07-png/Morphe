@@ -6,7 +6,11 @@ struct CoachDashboardView: View {
     var body: some View {
         @Bindable var store = store
         return TabView(selection: $store.selectedCoachTab) {
+            // Screens keyed off tabResetKey rebuild at their root when the tab
+            // icon is tapped. Train stays unkeyed so a tap can never reset a
+            // live session or rest timer.
             CoachCommandCenterScreen()
+                .id(store.tabResetKey("dashboard"))
                 .tag(CoachTab.dashboard)
 
             // The athlete roster now leads the Build tab; all navigation that
@@ -18,9 +22,11 @@ struct CoachDashboardView: View {
                 .tag(CoachTab.train)
 
             DiscoverScreenView()
+                .id(store.tabResetKey("discover"))
                 .tag(CoachTab.discover)
 
             CoachProgramsScreen()
+                .id(store.tabResetKey("programs"))
                 .tag(CoachTab.programs)
 
             if FeatureFlags.multiUserEnabled {
@@ -29,6 +35,7 @@ struct CoachDashboardView: View {
             }
 
             CoachMessagesScreen()
+                .id(store.tabResetKey("messages"))
                 .tag(CoachTab.messages)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
@@ -55,6 +62,9 @@ struct CoachDashboardView: View {
         .safeAreaInset(edge: .bottom) {
             BottomTabNavigation(items: CoachTab.visibleCases, selected: store.selectedCoachTab) { tab in
                 store.selectedCoachTab = tab
+                // Tapping the icon always lands at the top of that tab's
+                // first page.
+                store.popTabToRoot(tab.rawValue)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
