@@ -812,8 +812,13 @@ final class MorpheAppStore {
         // Daily state: a same-day relaunch keeps today's completed tasks
         // (re-offering them unchecked was an infinite XP faucet); a new day
         // starts fresh via handleDayRolloverIfNeeded at the end of init.
+        taskCompletionHistory = snapshot.taskHistory
         lastDailyResetDay = snapshot.dailyStateDay
         if snapshot.dailyStateDay == Self.dayKey() {
+            // Same day + same dial regenerate the same personalized list, so
+            // the saved completion titles land on the right rows.
+            todayTasks = personalizedDailyTasks()
+            minimumWinTasks = personalizedMinimumWinTasks()
             for index in todayTasks.indices {
                 todayTasks[index].isCompleted =
                     snapshot.completedTaskTitlesToday.contains(todayTasks[index].title)
@@ -863,6 +868,15 @@ final class MorpheAppStore {
                     previousSessionFeedback: recovery.previousSessionFeedback
                 )
             }
+        } else if !snapshot.dailyStateDay.isEmpty {
+            // The saved day already ended — bank its task results for the
+            // dial here, because the rollover at the end of init can't (the
+            // saved completion titles belong to a list that no longer exists).
+            recordTaskDay(
+                snapshot.dailyStateDay,
+                completed: snapshot.completedTaskTitlesToday.count,
+                total: max(snapshot.completedTaskTitlesToday.count, 4)
+            )
         }
         protectedDayKeys = Set(snapshot.protectedDayKeys)
         streakProtected = protectedDayKeys.contains(Self.dayKey())
@@ -945,7 +959,8 @@ final class MorpheAppStore {
                 prefersCompactExerciseView: prefersCompactExerciseView,
                 coachTenure: onboardingDraft.coachTenure.rawValue,
                 coachRoster: onboardingDraft.coachRoster.rawValue,
-                scannedConnections: scannedConnections
+                scannedConnections: scannedConnections,
+                taskHistory: taskCompletionHistory
         )
         profilePersistence.saveProfile(snapshot)
         // Mirror to the cloud once the account is real (onboarding done).
@@ -1543,6 +1558,10 @@ final class MorpheAppStore {
     func updateExperienceLevel(_ level: ExperienceLevelOption) {
         guard clientProfile.fitnessLevel != level.rawValue else { return }
         clientProfile.fitnessLevel = level.rawValue
+        // The level drives the difficulty engine: rebuild the plan rotation
+        // and today's task mix (keeping XP already earned today).
+        rebuildPersonalizedPlan()
+        regenerateDailyTasksPreservingCompletions()
         persistLocalProfile()
         Haptics.impact(.light)
     }
@@ -1995,6 +2014,10 @@ final class MorpheAppStore {
         // templates remain the fallback when the catalog isn't available.
         rebuildPersonalizedPlan()
         planDayIndex = 0
+        // Day-one tasks come from the engine too — matched to the level the
+        // user just chose, not the demo defaults.
+        todayTasks = personalizedDailyTasks()
+        minimumWinTasks = personalizedMinimumWinTasks()
         if !stagePlanWorkout() {
             if let firstWorkout = bestFirstWorkout(sport: primarySport, level: onboardingDraft.experienceLevel) {
                 currentWorkoutID = firstWorkout.id
@@ -2092,6 +2115,26 @@ final class MorpheAppStore {
             if !addedThisRound { break }
             round += 1
         }
+
+        // Adaptive difficulty: when the last sessions say push (rated easy,
+        // finished fast, weekly target hit) or ease off (too hard, pain),
+        // every third plan day is drawn from one difficulty step up or down
+        // instead of a hard swap — progression, not whiplash.
+        let bias = workoutIntensityBias
+        let blendLevel = Self.shiftDifficulty(level, by: bias)
+        if bias != 0, blendLevel != level {
+            let blendPool = catalogWorkouts
+                .filter { $0.difficulty == blendLevel && $0.durationMinutes >= 20 && $0.focusTag != "Recovery" }
+                .sorted { rank($0) != rank($1) ? rank($0) < rank($1) : $0.name < $1.name }
+            if !blendPool.isEmpty {
+                var blendIndex = 0
+                for position in stride(from: 2, to: sequence.count, by: 3) {
+                    sequence[position] = blendPool[blendIndex % blendPool.count].id
+                    blendIndex += 1
+                }
+            }
+        }
+
         personalizedPlanIDs = sequence
     }
 
@@ -2140,6 +2183,7 @@ final class MorpheAppStore {
         workoutLogs = []
         workoutHistory = []
         workoutConsistency = []
+        taskCompletionHistory = []
         workoutTemplates.removeAll { customWorkoutIDs.contains($0.id) }
         customWorkoutIDs = []
         customExercises = []
@@ -2423,6 +2467,263 @@ final class MorpheAppStore {
         persistLocalProfile()
     }
 
+    // MARK: - Personalized difficulty engine
+    //
+    // Tasks and the workout plan scale from signals the user actually
+    // produced: their experience level, which daily tasks they close, how
+    // they rate finished sessions, and how fast they finish them. Nothing
+    // here is invented — every adjustment is traceable to a logged action,
+    // and the notes below the cards say which signal moved the dial.
+
+    /// Rolling per-day task results (last 28 recorded days).
+    var taskCompletionHistory: [TaskDayRecord] = []
+
+    /// 0 gentle … 4 demanding. Base and ceiling come from the profile level
+    /// (beginner 0…2, intermediate 1…3, advanced 3…4); weeks of consistently
+    /// closed tasks raise it one step at a time, and a slipping recent close
+    /// rate trims it back.
+    var taskDifficultyDial: Int {
+        let level = clientProfile.fitnessLevel.lowercased()
+        let base: Int, cap: Int
+        if level.contains("begin") { base = 0; cap = 2 }
+        else if level.contains("adv") { base = 3; cap = 4 }
+        else { base = 1; cap = 3 }
+
+        // Long-arc growth: every ~10 strong days (60%+ closed) earns a step.
+        let strongDays = taskCompletionHistory
+            .filter { $0.total > 0 && Double($0.completed) / Double($0.total) >= 0.6 }
+            .count
+        var dial = base + min(strongDays / 10, 2)
+
+        // Short-arc correction from the last two recorded weeks.
+        let recent = taskCompletionHistory.suffix(14)
+        if recent.count >= 4 {
+            let done = recent.reduce(0) { $0 + $1.completed }
+            let total = max(recent.reduce(0) { $0 + $1.total }, 1)
+            let rate = Double(done) / Double(total)
+            if rate >= 0.8 { dial += 1 } else if rate < 0.35 { dial -= 1 }
+        }
+        return min(max(dial, 0), cap)
+    }
+
+    /// The recent-two-weeks task close rate, or nil with too little history.
+    private var recentTaskCloseRate: Double? {
+        let recent = taskCompletionHistory.suffix(14)
+        guard recent.count >= 4 else { return nil }
+        let done = recent.reduce(0) { $0 + $1.completed }
+        let total = recent.reduce(0) { $0 + $1.total }
+        guard total > 0 else { return nil }
+        return Double(done) / Double(total)
+    }
+
+    private static let easyTaskPool: [(String, Int)] = [
+        ("Drink 2 cups of water", 10),
+        ("Walk 10 minutes", 10),
+        ("Stand up and stretch for 2 minutes", 8),
+        ("Eat one protein-rich meal", 10),
+        ("Get 10 minutes of daylight", 8),
+        ("Do 10 slow air squats", 10)
+    ]
+
+    private static let steadyTaskPool: [(String, Int)] = [
+        ("Log your workout within 24 hours", 15),
+        ("Walk 20 minutes", 15),
+        ("Hit your water goal", 15),
+        ("Stretch for 10 minutes", 15),
+        ("Prep or plan tomorrow's meals", 15),
+        ("Take the stairs every chance today", 12)
+    ]
+
+    private static let stretchTaskPool: [(String, Int)] = [
+        ("Hit protein goal", 20),
+        ("Add one extra set to your hardest lift", 25),
+        ("Walk 8,000 steps", 20),
+        ("10-minute mobility flow after training", 18),
+        ("Write a short reflection on today's session", 12),
+        ("No missed meals today", 22)
+    ]
+
+    /// Builds today's 4-task plan around the workout anchor. The mix shifts
+    /// with the dial (all-easy at 0 → mostly stretch at 4) and rotates
+    /// through the pools by calendar day. Deterministic for a given day and
+    /// dial, so a same-day relaunch regenerates the identical list and
+    /// completions re-apply by title.
+    func personalizedDailyTasks(for date: Date = .now) -> [TaskItem] {
+        let mix: (easy: Int, steady: Int, stretch: Int)
+        switch taskDifficultyDial {
+        case 0: mix = (3, 0, 0)
+        case 1: mix = (2, 1, 0)
+        case 2: mix = (1, 2, 0)
+        case 3: mix = (1, 1, 1)
+        default: mix = (0, 1, 2)
+        }
+
+        let seed = Calendar.current.ordinality(of: .day, in: .year, for: date) ?? 0
+        func take(_ pool: [(String, Int)], _ count: Int, offset: Int, _ difficulty: TaskDifficulty) -> [TaskItem] {
+            (0..<count).map { i in
+                let entry = pool[(seed + offset + i) % pool.count]
+                return TaskItem(title: entry.0, difficulty: difficulty, isCompleted: false, xp: entry.1)
+            }
+        }
+
+        var tasks = take(Self.easyTaskPool, mix.easy, offset: 0, .easy)
+        // The anchor keeps its exact title: logging a session auto-completes
+        // it (markTaskCompleted), and the streak copy references it.
+        tasks.append(TaskItem(title: "Complete today's workout", difficulty: .steady, isCompleted: false, xp: 25))
+        tasks += take(Self.steadyTaskPool, mix.steady, offset: 1, .steady)
+        tasks += take(Self.stretchTaskPool, mix.stretch, offset: 2, .stretch)
+        return tasks
+    }
+
+    /// Minimum-win fallbacks scale gently with the dial: a smaller win for
+    /// an advanced, consistent user is still bigger than a beginner's.
+    func personalizedMinimumWinTasks() -> [TaskItem] {
+        switch taskDifficultyDial {
+        case 0, 1:
+            return MorpheDemoContent.minimumWinTasks
+        case 2, 3:
+            return [
+                TaskItem(title: "Walk 10 minutes", difficulty: .easy, isCompleted: false, xp: 10),
+                TaskItem(title: "Do 15 bodyweight squats", difficulty: .steady, isCompleted: false, xp: 12),
+                TaskItem(title: "5-minute mobility flow", difficulty: .easy, isCompleted: false, xp: 8),
+                TaskItem(title: "Drink water", difficulty: .easy, isCompleted: false, xp: 6),
+                TaskItem(title: "Log mood", difficulty: .easy, isCompleted: false, xp: 6),
+                TaskItem(title: "Watch one form tip", difficulty: .easy, isCompleted: false, xp: 6)
+            ]
+        default:
+            return [
+                TaskItem(title: "Walk 15 minutes", difficulty: .steady, isCompleted: false, xp: 12),
+                TaskItem(title: "25 squats + 10 push-ups", difficulty: .steady, isCompleted: false, xp: 15),
+                TaskItem(title: "10-minute mobility flow", difficulty: .steady, isCompleted: false, xp: 10),
+                TaskItem(title: "Hit your water goal", difficulty: .easy, isCompleted: false, xp: 8),
+                TaskItem(title: "Log mood", difficulty: .easy, isCompleted: false, xp: 6),
+                TaskItem(title: "Plan tomorrow's session", difficulty: .easy, isCompleted: false, xp: 8)
+            ]
+        }
+    }
+
+    /// One line under Today's Plan saying where the task mix comes from —
+    /// the dial is invisible otherwise and the list reads as generic.
+    var taskPlanNote: String {
+        let stage = ["a gentle start", "light with one step up", "a steady mix", "a challenging mix", "a demanding mix"][taskDifficultyDial]
+        if let rate = recentTaskCloseRate {
+            let percent = Int((rate * 100).rounded())
+            if rate >= 0.8 {
+                return "You've closed \(percent)% of your tasks lately, so today runs \(stage) — nudged up a level."
+            }
+            if rate < 0.35 {
+                return "Tasks have been slipping (\(percent)% closed lately), so today stays \(stage) to rebuild the rhythm."
+            }
+            return "Today's tasks run \(stage), matched to your \(levelWord) profile and \(percent)% recent close rate."
+        }
+        return "Today's tasks run \(stage), matched to your \(levelWord) profile — they grow as you keep closing them."
+    }
+
+    private var levelWord: String {
+        let level = clientProfile.fitnessLevel.lowercased()
+        if level.contains("begin") { return "beginner" }
+        if level.contains("adv") { return "advanced" }
+        return "intermediate"
+    }
+
+    /// Push/hold/ease signal from the last six logged sessions: ratings
+    /// (too easy pushes up; too hard or pain pulls down), finishing well
+    /// under the planned time, and hitting the weekly training target.
+    var workoutIntensityBias: Int {
+        let score = workoutIntensityScore
+        if score >= 2 { return 1 }
+        if score <= -2 { return -1 }
+        return 0
+    }
+
+    private var workoutIntensityScore: Double {
+        let recentLogs = workoutLogs
+            .filter { $0.athleteID == clientProfile.id }
+            .sorted { $0.completedAt > $1.completedAt }
+            .prefix(6)
+        guard !recentLogs.isEmpty else { return 0 }
+
+        var score = 0.0
+        for log in recentLogs {
+            switch log.sessionFeedback.flatMap(WorkoutFeedbackOption.init(rawValue:)) {
+            case .tooEasy: score += 1
+            case .justRight: score += 0.25
+            case .skippedParts: score -= 0.5
+            case .tooHard: score -= 1
+            case .pain: score -= 1.5
+            case nil: break
+            }
+            // A fast clean finish (≤70% of planned time, nothing skipped)
+            // reads as headroom.
+            if let templateID = log.workoutTemplateID,
+               let planned = (workoutTemplates.first(where: { $0.id == templateID })
+                    ?? catalogWorkouts.first(where: { $0.id == templateID }))?.durationMinutes,
+               planned > 0, log.durationMinutes > 0,
+               Double(log.durationMinutes) <= Double(planned) * 0.7,
+               log.sessionFeedback != WorkoutFeedbackOption.skippedParts.rawValue {
+                score += 0.4
+            }
+        }
+
+        let weekStart = Calendar.current.dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
+        let thisWeek = workoutLogs.filter { $0.athleteID == clientProfile.id && $0.completedAt >= weekStart }.count
+        if thisWeek >= clientProfile.trainingDaysPerWeek { score += 0.5 }
+        return score
+    }
+
+    /// Shown on the Today hero only when the plan is actually trending —
+    /// says which logged signal moved it.
+    var workoutIntensityNote: String? {
+        switch workoutIntensityBias {
+        case 1:
+            return "Trending up: your recent sessions rated easy or finished fast, so upcoming plan days push a bit harder."
+        case -1:
+            return "Recent sessions ran heavy, so Morphe is easing the next few plan days."
+        default:
+            return nil
+        }
+    }
+
+    /// One difficulty step up or down from the level's target, floored at
+    /// beginner and capped at advanced.
+    private static func shiftDifficulty(_ difficulty: DemoDifficulty, by bias: Int) -> DemoDifficulty {
+        let ladder: [DemoDifficulty] = [.beginner, .moderate, .advanced]
+        guard let index = ladder.firstIndex(of: difficulty) else { return difficulty }
+        return ladder[min(max(index + bias, 0), ladder.count - 1)]
+    }
+
+    /// Records one finished day of task results (replacing any earlier
+    /// record for the same day) and trims the rolling window.
+    private func recordTaskDay(_ day: String, completed: Int, total: Int) {
+        guard !day.isEmpty, total > 0 else { return }
+        // Never downgrade a day already banked with real completions to a
+        // zero — the launch-time rollover re-reports restored days as empty.
+        if completed == 0, taskCompletionHistory.contains(where: { $0.day == day }) { return }
+        taskCompletionHistory.removeAll { $0.day == day }
+        taskCompletionHistory.append(TaskDayRecord(day: day, completed: completed, total: total))
+        taskCompletionHistory.sort { $0.day < $1.day }
+        if taskCompletionHistory.count > 28 {
+            taskCompletionHistory.removeFirst(taskCompletionHistory.count - 28)
+        }
+    }
+
+    /// Rebuilds today's tasks (after a level edit) without dropping XP the
+    /// user already earned: completions carry over by title.
+    func regenerateDailyTasksPreservingCompletions() {
+        let closed = Set(todayTasks.filter(\.isCompleted).map(\.title))
+        todayTasks = personalizedDailyTasks().map { task in
+            var task = task
+            task.isCompleted = closed.contains(task.title)
+            return task
+        }
+        let closedWins = Set(minimumWinTasks.filter(\.isCompleted).map(\.title))
+        minimumWinTasks = personalizedMinimumWinTasks().map { task in
+            var task = task
+            task.isCompleted = closedWins.contains(task.title)
+            return task
+        }
+    }
+
     // MARK: - Day rollover
 
     /// Calendar-day key ("2026-07-05") for daily-state comparisons.
@@ -2438,12 +2739,24 @@ final class MorpheAppStore {
     func handleDayRolloverIfNeeded(now: Date = .now) {
         let today = Self.dayKey(for: now)
         guard today != lastDailyResetDay else { return }
+        let previousDay = lastDailyResetDay
         lastDailyResetDay = today
 
-        for index in todayTasks.indices { todayTasks[index].isCompleted = false }
-        // Fresh defaults, not just unchecked — so a Plan B response that ever
-        // swaps in reason-specific tasks can't leak them into the next day.
-        minimumWinTasks = MorpheDemoContent.minimumWinTasks
+        // Yesterday's results feed the difficulty dial before the board is
+        // wiped — the dial only learns from days that actually ended.
+        if hasCompletedOnboarding, !previousDay.isEmpty {
+            recordTaskDay(
+                previousDay,
+                completed: todayTasks.filter(\.isCompleted).count,
+                total: todayTasks.count
+            )
+        }
+
+        // Fresh personalized lists, not just unchecked — the mix follows the
+        // dial, and a Plan B response that ever swaps in reason-specific
+        // tasks can't leak them into the next day.
+        todayTasks = personalizedDailyTasks(for: now)
+        minimumWinTasks = personalizedMinimumWinTasks()
         minimumWinModeEnabled = false
         streakProtected = false
         didCompleteQuickCheckIn = false
@@ -3333,6 +3646,9 @@ final class MorpheAppStore {
         }
 
         didShareCurrentWorkoutHighlight = false
+        // Fold the fresh rating/duration into the difficulty engine so the
+        // very next plan day already reflects this session.
+        rebuildPersonalizedPlan()
         openProgress()
         showCelebration(title: "+50 XP", detail: "Workout logged", symbol: "sparkles")
         Haptics.success()

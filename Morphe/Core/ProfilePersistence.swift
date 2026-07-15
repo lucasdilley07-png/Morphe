@@ -21,6 +21,14 @@ struct MealSnapshot: Codable, Equatable {
     var protein: Int
 }
 
+/// One calendar day's task results — the difficulty engine's raw signal.
+/// Kept small (day key + two counts) and rolled over ~28 days.
+struct TaskDayRecord: Codable, Equatable {
+    var day: String
+    var completed: Int
+    var total: Int
+}
+
 /// A pain flag the user filed — safety data, kept across relaunches.
 struct PainReportSnapshot: Codable, Equatable {
     var area: String
@@ -113,6 +121,8 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var coachRoster: String = ""
     // People connected via QR code scan (both roles).
     var scannedConnections: [ScannedConnection] = []
+    // Rolling per-day task results feeding the personalized difficulty dial.
+    var taskHistory: [TaskDayRecord] = []
 }
 
 extension LocalProfileSnapshot {
@@ -193,6 +203,7 @@ extension LocalProfileSnapshot {
         coachTenure = str(.coachTenure)
         coachRoster = str(.coachRoster)
         scannedConnections = ((try? c.decodeIfPresent([ScannedConnection].self, forKey: .scannedConnections)) ?? nil) ?? []
+        taskHistory = ((try? c.decodeIfPresent([TaskDayRecord].self, forKey: .taskHistory)) ?? nil) ?? []
     }
 }
 

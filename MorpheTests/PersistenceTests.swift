@@ -1556,16 +1556,17 @@ final class MetricsTests: XCTestCase {
         store.hasCompletedWorkoutFlow = true
         store.logWorkout()
 
-        // 50 (workout) + 25 (complete task) + 15 (log task) = 90 — the
-        // auto-checked tasks used to advertise XP they never paid.
-        XCTAssertEqual(store.clientProfile.level.currentXP, 90)
+        // 50 (workout) + 25 (anchor task) = 75 — the auto-checked task used
+        // to advertise XP it never paid. (A beginner's day-one task mix has
+        // no "Log your workout" task; when the dial adds it, it pays too.)
+        XCTAssertEqual(store.clientProfile.level.currentXP, 75)
         XCTAssertTrue(store.todayTasks.first { $0.title == "Complete today's workout" }!.isCompleted)
 
         // And toggling an auto-completed task off/on nets exactly zero.
         let task = store.todayTasks.first { $0.title == "Complete today's workout" }!
         store.toggleTask(task)
         store.toggleTask(store.todayTasks.first { $0.title == task.title }!)
-        XCTAssertEqual(store.clientProfile.level.currentXP, 90, "toggle off/on is XP-neutral")
+        XCTAssertEqual(store.clientProfile.level.currentXP, 75, "toggle off/on is XP-neutral")
     }
 
     func testXPRefundDemotesThroughLevelBoundary() {
@@ -1573,19 +1574,22 @@ final class MetricsTests: XCTestCase {
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
 
-        // 90 XP from logging, +20 from the protein task → Level 2, 10/100.
+        // 75 XP from logging; closing the rest of the day's tasks crosses
+        // the 100-XP boundary into Level 2.
         store.startTodayWorkout()
         store.hasCompletedWorkoutFlow = true
         store.logWorkout()
-        let protein = store.todayTasks.first { $0.title == "Hit protein goal" }!
-        store.toggleTask(protein)
+        for task in store.todayTasks where !task.isCompleted {
+            store.toggleTask(task)
+        }
         XCTAssertEqual(store.currentLevelNumber, 2)
-        XCTAssertEqual(store.clientProfile.level.currentXP, 10)
+        let bankedXP = store.clientProfile.level.currentXP
 
         // Un-checking must demote back — the old clamp banked the level.
-        store.toggleTask(store.todayTasks.first { $0.title == protein.title }!)
+        let refund = store.todayTasks.first { $0.isCompleted && $0.title != "Complete today's workout" }!
+        store.toggleTask(refund)
         XCTAssertEqual(store.currentLevelNumber, 1, "refund crosses the boundary back down")
-        XCTAssertEqual(store.clientProfile.level.currentXP, 90)
+        XCTAssertEqual(store.clientProfile.level.currentXP, bankedXP + 100 - refund.xp)
     }
 
     func testPinnedCatalogSaveSurvivesRelaunch() {
@@ -2522,5 +2526,133 @@ final class HoldRepeaterTests: XCTestCase {
         // The boundary flips exactly at 2 seconds.
         XCTAssertEqual(HoldRepeater.interval(heldSeconds: 1.99), 0.16)
         XCTAssertEqual(HoldRepeater.interval(heldSeconds: 2.0), 0.04)
+    }
+}
+
+/// The personalized difficulty engine: tasks and the plan scale from the
+/// profile level and the user's actual results — never invented data.
+@MainActor
+final class DifficultyEngineTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func onboardedStore(level: ExperienceLevelOption) -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.onboardingDraft.experienceLevel = level
+        store.completeOnboarding()
+        return store
+    }
+
+    func testBeginnerStartsGentleAdvancedStartsChallenging() {
+        let beginner = onboardedStore(level: .beginner)
+        XCTAssertEqual(beginner.taskDifficultyDial, 0, "a fresh beginner starts at the gentlest dial")
+        XCTAssertEqual(beginner.todayTasks.count, 4, "the engine always builds a 4-task day")
+        XCTAssertTrue(beginner.todayTasks.contains { $0.title == "Complete today's workout" },
+                      "the workout anchor keeps its exact title (auto-completion matches on it)")
+        XCTAssertFalse(beginner.todayTasks.contains { $0.difficulty == .stretch },
+                       "no stretch tasks on a beginner's day one")
+
+        ProfileFilePersistence().clear()
+        WorkoutFilePersistence().clear()
+        let advanced = onboardedStore(level: .advanced)
+        XCTAssertEqual(advanced.taskDifficultyDial, 3, "a fresh advanced user starts challenging")
+        XCTAssertTrue(advanced.todayTasks.contains { $0.difficulty == .stretch },
+                      "an advanced day includes stretch work from the start")
+    }
+
+    func testConsistentTaskCompletionRaisesTheDial() {
+        let store = onboardedStore(level: .beginner)
+        let base = store.taskDifficultyDial
+        // Two strong weeks of closed tasks, recorded the way rollover records them.
+        for day in 1...14 {
+            store.taskCompletionHistory.append(
+                TaskDayRecord(day: String(format: "2026-06-%02d", day), completed: 4, total: 4)
+            )
+        }
+        XCTAssertGreaterThan(store.taskDifficultyDial, base,
+                             "closing tasks for two weeks must raise the dial")
+        XCTAssertLessThanOrEqual(store.taskDifficultyDial, 2,
+                                 "a beginner's dial is capped — it grows slowly, not to advanced-tier")
+    }
+
+    func testSlippingTasksTrimTheDial() {
+        let store = onboardedStore(level: .intermediate)
+        for day in 1...14 {
+            store.taskCompletionHistory.append(
+                TaskDayRecord(day: String(format: "2026-06-%02d", day), completed: 0, total: 4)
+            )
+        }
+        XCTAssertEqual(store.taskDifficultyDial, 0,
+                       "an intermediate user who stops closing tasks drops to the gentlest mix")
+    }
+
+    func testEasyRatedFastSessionsPushThePlanUp() {
+        let store = onboardedStore(level: .beginner)
+        XCTAssertEqual(store.workoutIntensityBias, 0, "no logs = no bias")
+
+        let template = store.currentWorkout
+        for offset in 0..<3 {
+            store.workoutLogs.append(
+                WorkoutLog(
+                    athleteID: store.clientProfile.id,
+                    athleteName: "Sarah",
+                    workoutTemplateID: template.id,
+                    workoutTitle: template.name,
+                    sport: template.sport,
+                    completedAt: Date.now.addingTimeInterval(TimeInterval(-offset * 86_400)),
+                    durationMinutes: max(template.durationMinutes / 2, 1),
+                    exercises: [],
+                    notes: "",
+                    source: .athleteManual,
+                    enteredByUserID: store.clientProfile.id,
+                    enteredByRole: .client,
+                    enteredByName: "Sarah",
+                    verificationStatus: .athleteSubmitted,
+                    sessionFeedback: WorkoutFeedbackOption.tooEasy.rawValue
+                )
+            )
+        }
+        XCTAssertEqual(store.workoutIntensityBias, 1,
+                       "three too-easy, fast-finished sessions must tilt the plan up")
+        XCTAssertNotNil(store.workoutIntensityNote, "a tilted plan explains itself on the Today card")
+    }
+
+    func testPainPullsThePlanDown() {
+        let store = onboardedStore(level: .advanced)
+        for offset in 0..<2 {
+            store.workoutLogs.append(
+                WorkoutLog(
+                    athleteID: store.clientProfile.id,
+                    athleteName: "Sarah",
+                    workoutTemplateID: nil,
+                    workoutTitle: "Heavy Day",
+                    sport: .generalFitness,
+                    completedAt: Date.now.addingTimeInterval(TimeInterval(-offset * 86_400)),
+                    durationMinutes: 40,
+                    exercises: [],
+                    notes: "",
+                    source: .athleteManual,
+                    enteredByUserID: store.clientProfile.id,
+                    enteredByRole: .client,
+                    enteredByName: "Sarah",
+                    verificationStatus: .athleteSubmitted,
+                    sessionFeedback: WorkoutFeedbackOption.pain.rawValue
+                )
+            )
+        }
+        XCTAssertEqual(store.workoutIntensityBias, -1,
+                       "repeated pain reports must ease the plan off")
+    }
+
+    func testSameDayRegenerationIsDeterministic() {
+        let store = onboardedStore(level: .intermediate)
+        let titles = store.todayTasks.map(\.title)
+        XCTAssertEqual(store.personalizedDailyTasks().map(\.title), titles,
+                       "same day + same dial must regenerate the identical list, or restored completions miss their rows")
     }
 }

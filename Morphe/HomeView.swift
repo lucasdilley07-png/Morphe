@@ -101,6 +101,7 @@ struct HomeView: View {
                         // complete before the metrics exist.
                         TodayPlanCard(
                             todayWinText: todayWinText,
+                            personalizationNote: store.taskPlanNote,
                             tasks: store.todayTasks,
                             onToggleTask: { store.toggleTask($0) }
                         )
@@ -569,6 +570,13 @@ private struct TodayNextMoveCard: View {
                             .foregroundStyle(.white)
                         Text("\(workout.durationMinutes) min • \(workout.goal)")
                             .foregroundStyle(MorpheTheme.textSecondary)
+                        // Present only when recent ratings/finish times have
+                        // actually tilted the plan — silence means holding.
+                        if let intensityNote = store.workoutIntensityNote {
+                            Text(intensityNote)
+                                .font(.footnote)
+                                .foregroundStyle(MorpheTheme.accent.opacity(0.9))
+                        }
                     }
 
                     HStack(spacing: 10) {
@@ -1044,6 +1052,7 @@ private struct RecoveryCheckInSheet: View {
 
 private struct TodayPlanCard: View {
     let todayWinText: String
+    let personalizationNote: String
     let tasks: [TaskItem]
     let onToggleTask: (TaskItem) -> Void
 
@@ -1062,6 +1071,11 @@ private struct TodayPlanCard: View {
                         onToggleTask(task)
                     }
                 }
+
+                // Why THIS mix: the difficulty engine's one-line receipt.
+                Text(personalizationNote)
+                    .font(.footnote)
+                    .foregroundStyle(MorpheTheme.accent.opacity(0.9))
             }
         }
     }
