@@ -378,6 +378,8 @@ struct OnboardingFlowView: View {
             EquipmentStep()
         case .injuryPain:
             InjuryPainStep(text: $store.onboardingDraft.injuries)
+        case .coachCode:
+            CoachCodeStep(code: $store.onboardingDraft.coachInviteCode)
         case .review:
             ProfileReviewStep()
         }

@@ -1529,6 +1529,10 @@ struct OnboardingDraft: Hashable {
     var selectedTrainingStyles: [TrainingStyleOption] = [.conditioning]
     var injuries: String = ""
     var equipment: String = ""
+    /// Invite code from a coach who pre-created this athlete's profile —
+    /// entered (optionally) during onboarding; the claim runs right after
+    /// `completeOnboarding()` so the reset can't wipe the imported history.
+    var coachInviteCode: String = ""
     var trainingDaysPerWeek: Int = 3
     var preferredWorkoutLength: Int = 30
     var coachingTone: CoachingTone = .direct
