@@ -29,6 +29,7 @@ struct WorkoutView: View {
     @State private var showBuilder = false
     @State private var showFormCheck = false
     @State private var showEmptyLibraryNotice = false
+    @State private var showTrainTogether = false
 
     private var deleteWorkoutDialogTitle: String {
         guard let template = workoutPendingDelete else { return "Delete this workout?" }
@@ -100,6 +101,12 @@ struct WorkoutView: View {
             }
         )
         .background(
+            EmptyView().sheet(isPresented: $showTrainTogether) {
+                TrainTogetherSheet()
+                    .environment(store)
+            }
+        )
+        .background(
             EmptyView().sheet(item: $editingWorkout) { editing in
                 WorkoutBuilderSheet(editingTemplateID: editing.id)
                     .environment(store)
@@ -139,6 +146,12 @@ struct WorkoutView: View {
         // below the work surface.
         return ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
+                // Training together: buddies live in one slim strip. Solo
+                // sessions never see it.
+                if store.activeParty != nil {
+                    PartySessionStrip()
+                }
+
                 if store.isTrackedWorkoutComplete {
                     WorkoutCompleteCard(
                         workoutName: store.currentWorkout.name,
@@ -362,6 +375,12 @@ struct WorkoutView: View {
                         weightUnit: store.weightUnit
                     )
 
+                    // Shared recap: who trained with you and their totals
+                    // (published to the party as each person logs).
+                    if store.activeParty != nil, !store.partyBuddies.isEmpty {
+                        PartyRecapCard(buddies: store.partyBuddies)
+                    }
+
                     WorkoutDifficultyFeedbackCard(
                         selected: store.selectedWorkoutFeedback,
                         response: store.workoutFeedbackResponse
@@ -414,6 +433,11 @@ struct WorkoutView: View {
                     TodaysWorkoutCard(
                         workout: store.currentWorkout,
                         suggestion: store.recommendedWorkoutDiffers ? goodForTodayRecommendation : nil,
+                        partyStatus: store.activeParty.map { party in
+                            store.partyBuddies.isEmpty
+                                ? "Code \(party.id) · waiting for your buddy"
+                                : "Code \(party.id) · \(store.partyBuddies.count + 1) training"
+                        },
                         onStart: {
                             // The store's session-work gate confirms before a
                             // live session or unlogged recap gets destroyed.
@@ -427,7 +451,8 @@ struct WorkoutView: View {
                             if !store.requestWorkoutSwitch() {
                                 showEmptyLibraryNotice = true
                             }
-                        }
+                        },
+                        onTrainTogether: { showTrainTogether = true }
                     )
                 }
 
@@ -2424,9 +2449,12 @@ private struct TrySomethingNewCard: View {
 private struct TodaysWorkoutCard: View {
     let workout: WorkoutTemplate
     let suggestion: GoodForTodayWorkoutRecommendation?
+    /// Non-nil once a party exists ("Code F7KQ2M · waiting for your buddy").
+    let partyStatus: String?
     let onStart: () -> Void
     let onUseSuggestion: () -> Void
     let onSwitch: () -> Void
+    let onTrainTogether: () -> Void
 
     var body: some View {
         GlassCard {
@@ -2461,6 +2489,14 @@ private struct TodaysWorkoutCard: View {
                         .accessibilityLabel("Switch to a different workout")
                 }
 
+                Button {
+                    onTrainTogether()
+                } label: {
+                    Label(partyStatus ?? "Train together", systemImage: "person.2")
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .accessibilityLabel(partyStatus == nil ? "Train together with a buddy" : "Show your session code")
+
                 if let suggestion {
                     Divider().overlay(Color.white.opacity(0.08))
 
@@ -2483,6 +2519,243 @@ private struct TodaysWorkoutCard: View {
                         Button("Use this instead", action: onUseSuggestion)
                             .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
                             .accessibilityLabel("Switch today's workout to \(suggestion.workoutName)")
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Train Together
+
+/// One sheet for every way of training with someone: host a session (QR +
+/// code to share) or join one (scan or type the code). Once a party exists
+/// the sheet shows the roster; everything else about the session is the
+/// normal workout flow.
+struct TrainTogetherSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var joinCode = ""
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    if store.activeParty != nil {
+                        activePartyCard
+                    } else {
+                        hostCard
+                        joinCard
+                    }
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Train Together").font(.headline).foregroundStyle(.white)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }.foregroundStyle(.white)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private var hostCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Host a session", systemImage: "person.2.fill")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Train \(store.currentWorkout.name) with a buddy. They scan your code (or type it) and the exact same workout starts on their phone — everyone logs their own sets.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                Button(store.isPartyBusy ? "Starting…" : "Start a buddy session") {
+                    Task { await store.startTrainTogether(mode: .inPerson) }
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                .disabled(store.isPartyBusy)
+            }
+        }
+    }
+
+    private var joinCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Join a session", systemImage: "qrcode.viewfinder")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                QRScannerView { payload in
+                    guard let code = MorpheAppStore.partyCode(fromScanned: payload) else { return }
+                    Task {
+                        if await store.joinParty(code: code) { dismiss() }
+                    }
+                }
+                .frame(height: 200)
+                .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+
+                HStack(spacing: 10) {
+                    TextField("Or type the code (e.g. F7KQ2M)", text: $joinCode)
+                        .textFieldStyle(MorpheFieldStyle())
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                    Button("Join") {
+                        Task {
+                            if await store.joinParty(code: joinCode) { dismiss() }
+                        }
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .frame(width: 80)
+                    .disabled(joinCode.trimmingCharacters(in: .whitespaces).isEmpty || store.isPartyBusy)
+                }
+            }
+        }
+    }
+
+    private var activePartyCard: some View {
+        GlassCard {
+            VStack(spacing: 14) {
+                if let party = store.activeParty {
+                    Text(party.workoutName)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+
+                    if let payload = store.partyQRPayload,
+                       let image = QRCodeRenderer.image(for: payload) {
+                        Image(uiImage: image)
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 200)
+                            .padding(10)
+                            .background(
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                    .fill(.white)
+                            )
+                    }
+
+                    Text(party.id)
+                        .font(.system(size: 30, design: .monospaced).weight(.bold))
+                        .tracking(6)
+                        .foregroundStyle(MorpheTheme.accent)
+
+                    Text("Have your buddy scan this, or read them the code.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .multilineTextAlignment(.center)
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(party.participants) { member in
+                            HStack(spacing: 10) {
+                                Image(systemName: member.isHost ? "star.fill" : "figure.run")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.accent)
+                                Text(member.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                Spacer()
+                                Text(member.isFinished ? "Finished" : "In session")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Button("Leave session") {
+                        store.leaveParty()
+                        dismiss()
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+/// Slim buddy roster above the live console — names and where they are.
+/// Only rendered while a party is active.
+struct PartySessionStrip: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 8) {
+                if let party = store.activeParty {
+                    HStack {
+                        Label("Training together", systemImage: "person.2.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accent)
+                        Spacer()
+                        Text("Code \(party.id)")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+
+                    if store.partyBuddies.isEmpty {
+                        Text("Waiting for your buddy to join…")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    } else {
+                        ForEach(store.partyBuddies) { buddy in
+                            HStack(spacing: 8) {
+                                Text(buddy.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                Spacer()
+                                Text(buddyStatus(buddy))
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func buddyStatus(_ buddy: PartyParticipant) -> String {
+        if buddy.isFinished { return "Finished" }
+        if !buddy.exerciseName.isEmpty {
+            return "\(buddy.exerciseName) · set \(max(buddy.setsDone, 1))"
+        }
+        return "In session"
+    }
+}
+
+/// End-of-session shared recap: each buddy's published totals, or a note
+/// that they're still going.
+private struct PartyRecapCard: View {
+    let buddies: [PartyParticipant]
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Trained with")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                ForEach(buddies) { buddy in
+                    HStack(spacing: 10) {
+                        Image(systemName: "figure.run")
+                            .foregroundStyle(MorpheTheme.accent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(buddy.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Text(buddy.summary.isEmpty ? "Still training — totals land when they log." : buddy.summary)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                        Spacer()
                     }
                 }
             }

@@ -2656,3 +2656,124 @@ final class DifficultyEngineTests: XCTestCase {
                        "same day + same dial must regenerate the identical list, or restored completions miss their rows")
     }
 }
+
+/// Train Together (buddy sessions): the store side, backed by a mock service
+/// so nothing touches the network.
+@MainActor
+final class TrainTogetherTests: XCTestCase {
+
+    final class MockPartyService: WorkoutPartying {
+        var createdParty: WorkoutParty?
+        var createdWorkout: PartyWorkoutSnapshot?
+        var joins: [(partyID: String, participant: PartyParticipant)] = []
+        var summaries: [(partyID: String, participantID: String, summary: String)] = []
+        var fetchResult: (party: WorkoutParty, workout: PartyWorkoutSnapshot)?
+        var leaves: [String] = []
+
+        func createParty(_ party: WorkoutParty, host: PartyParticipant, workout: PartyWorkoutSnapshot) async -> Bool {
+            createdParty = party
+            createdWorkout = workout
+            joins.append((party.id, host))
+            return true
+        }
+        func fetchParty(code: String) async -> (party: WorkoutParty, workout: PartyWorkoutSnapshot)? { fetchResult }
+        func join(partyID: String, participant: PartyParticipant) async -> Bool {
+            joins.append((partyID, participant))
+            return true
+        }
+        func leave(partyID: String, participantID: String) async { leaves.append(participantID) }
+        func publishProgress(partyID: String, participantID: String, progress: PartyProgressUpdate) {}
+        func publishSummary(partyID: String, participantID: String, summary: String) {
+            summaries.append((partyID, participantID, summary))
+        }
+        func sendNudge(partyID: String, from participant: PartyParticipant, emoji: String) {}
+        func listen(partyID: String,
+                    onMembers: @escaping ([PartyParticipant]) -> Void,
+                    onNudge: @escaping (PartyNudge) -> Void) {}
+        func stopListening() {}
+    }
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func signedInStore(service: MockPartyService) -> MorpheAppStore {
+        let store = MorpheAppStore(partyService: service)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+        return store
+    }
+
+    func testHostingCreatesPartyAroundTheCurrentWorkout() async {
+        let service = MockPartyService()
+        let store = signedInStore(service: service)
+
+        let started = await store.startTrainTogether(mode: .inPerson)
+
+        XCTAssertTrue(started)
+        XCTAssertNotNil(store.activeParty, "hosting puts the user in a live party")
+        XCTAssertTrue(store.isPartyHost)
+        XCTAssertEqual(store.activeParty?.id.count, 6, "join codes are six characters")
+        XCTAssertEqual(service.createdWorkout?.name, store.currentWorkout.name,
+                       "the party carries a snapshot of the host's workout")
+        XCTAssertEqual(service.createdWorkout?.exercises.count, store.currentWorkout.exercises.count)
+    }
+
+    func testTrainTogetherRequiresSignIn() async {
+        let service = MockPartyService()
+        let store = MorpheAppStore(partyService: service)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = nil
+
+        let started = await store.startTrainTogether(mode: .inPerson)
+        XCTAssertFalse(started, "no anonymous parties — Firestore needs an authed user")
+        XCTAssertNil(store.activeParty)
+    }
+
+    func testJoiningRunsTheHostsExactWorkout() async {
+        let service = MockPartyService()
+        let store = signedInStore(service: service)
+
+        var hostTemplate = store.currentWorkout
+        hostTemplate.name = "Colt's Heavy Push Day"
+        service.fetchResult = (
+            party: WorkoutParty(id: "F7KQ2M", mode: .inPerson, hostID: "host-9",
+                                hostName: "Colt", workoutName: hostTemplate.name,
+                                participants: [PartyParticipant(id: "host-9", name: "Colt", email: "colt@morphe.app", isHost: true)]),
+            workout: PartyWorkoutSnapshot(template: hostTemplate)
+        )
+
+        let joined = await store.joinParty(code: "f7kq2m")
+
+        XCTAssertTrue(joined, "codes are case-insensitive")
+        XCTAssertEqual(store.activeParty?.id, "F7KQ2M")
+        XCTAssertFalse(store.isPartyHost)
+        XCTAssertEqual(store.currentWorkout.name, "Colt's Heavy Push Day",
+                       "joining stages the host's workout on this phone")
+        XCTAssertTrue(store.isWorkoutSessionActive, "the session starts immediately on join")
+        XCTAssertEqual(service.joins.last?.participant.name, "Sarah")
+    }
+
+    func testLoggingPublishesTotalsAndClosesTheParty() async {
+        let service = MockPartyService()
+        let store = signedInStore(service: service)
+        _ = await store.startTrainTogether(mode: .inPerson)
+        store.activeParty?.participants.append(
+            PartyParticipant(id: "buddy-2", name: "Colt", email: "colt@morphe.app", isHost: false)
+        )
+
+        store.startTodayWorkout()
+        store.hasCompletedWorkoutFlow = true
+        store.logWorkout()
+
+        XCTAssertEqual(service.summaries.count, 1, "logging publishes this user's totals to the party")
+        XCTAssertEqual(service.summaries.first?.participantID, "user-1")
+        XCTAssertNil(store.activeParty, "the party clears locally once the session is logged")
+        XCTAssertTrue(store.workoutLogs.first?.notes.contains("Trained with Colt") ?? false,
+                      "the log remembers who was there")
+    }
+}

@@ -311,6 +311,9 @@ final class MorpheAppStore {
     /// Cloud backup for profile + logs. Real app injects `FirebaseCloudBackup`;
     /// the no-op default keeps the store offline-only for tests/previews.
     private let cloudBackup: CloudBackingUp
+    /// Train Together sessions. Real app injects `FirebasePartyService`; the
+    /// no-op default keeps tests/previews off the network.
+    private let partyService: WorkoutPartying
     /// The signed-in account, or nil when signed out.
     var authUser: AppUser?
     var authErrorMessage: String?
@@ -321,9 +324,12 @@ final class MorpheAppStore {
     /// Guards profile persistence while a saved profile is being applied at launch.
     private var isApplyingProfile = false
 
-    init(authService: AuthService = LocalAuthService(), cloudBackup: CloudBackingUp = NoOpCloudBackup()) {
+    init(authService: AuthService = LocalAuthService(),
+         cloudBackup: CloudBackingUp = NoOpCloudBackup(),
+         partyService: WorkoutPartying = NoOpPartyService()) {
         self.authService = authService
         self.cloudBackup = cloudBackup
+        self.partyService = partyService
         let templates = MorpheDemoContent.workoutTemplates
         let clients = MorpheDemoContent.coachClients
         let threads = MorpheDemoContent.messageThreads
@@ -625,6 +631,175 @@ final class MorpheAppStore {
         Haptics.impact(.medium)
         showToast("Connected: \(connection.name)")
         return connection
+    }
+
+    // MARK: - Train Together (buddy sessions)
+
+    /// The party this user is currently in (nil = training solo).
+    var activeParty: WorkoutParty?
+    /// True while a create/join round-trip is in flight (drives spinners).
+    var isPartyBusy = false
+
+    var isPartyHost: Bool {
+        guard let party = activeParty, let uid = authUser?.id else { return false }
+        return party.hostID == uid
+    }
+
+    /// Everyone in the party except this user.
+    var partyBuddies: [PartyParticipant] {
+        guard let party = activeParty else { return [] }
+        let uid = authUser?.id
+        return party.participants.filter { $0.id != uid }
+    }
+
+    /// Join codes avoid ambiguous characters (0/O, 1/I/L) — they get read
+    /// aloud across a gym floor.
+    static func makePartyCode() -> String {
+        let alphabet = Array("ABCDEFGHJKMNPQRSTUVWXYZ23456789")
+        return String((0..<6).map { _ in alphabet.randomElement() ?? "X" })
+    }
+
+    /// QR payload a buddy scans to join this party.
+    var partyQRPayload: String? {
+        guard let party = activeParty else { return nil }
+        var components = URLComponents()
+        components.scheme = "morphe"
+        components.host = "party"
+        components.queryItems = [URLQueryItem(name: "code", value: party.id)]
+        return components.string
+    }
+
+    /// Extracts a join code from a scanned Morphe party QR (nil otherwise).
+    static func partyCode(fromScanned payload: String) -> String? {
+        guard let components = URLComponents(string: payload),
+              components.scheme == "morphe", components.host == "party",
+              let code = components.queryItems?.first(where: { $0.name == "code" })?.value,
+              !code.isEmpty else { return nil }
+        return code
+    }
+
+    private var partySelf: PartyParticipant? {
+        guard let user = authUser else { return nil }
+        return PartyParticipant(
+            id: user.id,
+            name: clientProfile.name.isEmpty ? user.displayName : clientProfile.name,
+            email: user.email,
+            isHost: false
+        )
+    }
+
+    /// Creates a party around the current workout and shares it for joining.
+    /// The host still starts their own session with the normal Start button.
+    @discardableResult
+    func startTrainTogether(mode: PartyMode) async -> Bool {
+        guard var me = partySelf else {
+            showToast("Sign in to train together.")
+            return false
+        }
+        guard !isPartyBusy else { return false }
+        me.isHost = true
+        isPartyBusy = true
+        defer { isPartyBusy = false }
+
+        let party = WorkoutParty(
+            id: Self.makePartyCode(),
+            mode: mode,
+            hostID: me.id,
+            hostName: me.name,
+            workoutName: currentWorkout.name,
+            participants: [me]
+        )
+        let snapshot = PartyWorkoutSnapshot(template: currentWorkout)
+        guard await partyService.createParty(party, host: me, workout: snapshot) else {
+            showToast("Couldn't start the session — check your connection.")
+            return false
+        }
+        activeParty = party
+        listenToActiveParty()
+        Haptics.success()
+        return true
+    }
+
+    /// Joins an existing party by code (typed or scanned) and starts the
+    /// host's workout on this phone.
+    @discardableResult
+    func joinParty(code rawCode: String) async -> Bool {
+        guard let me = partySelf else {
+            showToast("Sign in to train together.")
+            return false
+        }
+        guard !isPartyBusy else { return false }
+        let code = rawCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !code.isEmpty else { return false }
+        isPartyBusy = true
+        defer { isPartyBusy = false }
+
+        guard let (party, workout) = await partyService.fetchParty(code: code) else {
+            showToast("No session found for code \(code).")
+            return false
+        }
+        guard await partyService.join(partyID: party.id, participant: me) else {
+            showToast("Couldn't join — check your connection.")
+            return false
+        }
+
+        var joined = party
+        joined.participants.removeAll { $0.id == me.id }
+        joined.participants.append(me)
+        activeParty = joined
+        listenToActiveParty()
+
+        // Run the host's exact workout on this phone.
+        let template = workout.makeTemplate()
+        if !workoutTemplates.contains(where: { $0.id == template.id }) {
+            workoutTemplates.append(template)
+        }
+        beginLiveWorkout(template)
+        showCelebration(title: "Joined \(party.hostName)'s session", detail: party.workoutName, symbol: "person.2.fill")
+        return true
+    }
+
+    /// Leaves the party (and tells the backend, so the buddy's roster updates).
+    func leaveParty() {
+        guard let party = activeParty else { return }
+        partyService.stopListening()
+        if let uid = authUser?.id {
+            let service = partyService
+            Task { await service.leave(partyID: party.id, participantID: uid) }
+        }
+        activeParty = nil
+        showToast("Left the session.")
+    }
+
+    /// Keeps the member roster (and their finish summaries) fresh.
+    private func listenToActiveParty() {
+        guard let party = activeParty else { return }
+        partyService.listen(
+            partyID: party.id,
+            onMembers: { [weak self] members in
+                Task { @MainActor [weak self] in
+                    guard let self, self.activeParty?.id == party.id else { return }
+                    let known = Set(self.activeParty?.participants.map(\.id) ?? [])
+                    self.activeParty?.participants = members
+                    // Announce newly-joined buddies to the host.
+                    for member in members where !known.contains(member.id) && member.id != self.authUser?.id {
+                        self.showToast("\(member.name) joined the session.")
+                        Haptics.success()
+                    }
+                }
+            },
+            onNudge: { [weak self] nudge in
+                Task { @MainActor [weak self] in
+                    guard let self, nudge.fromID != self.authUser?.id else { return }
+                    self.showCelebration(title: nudge.emoji, detail: "\(nudge.fromName) is cheering you on", symbol: "hands.clap.fill")
+                }
+            }
+        )
+    }
+
+    /// One-line totals published to the party when this user logs the session.
+    func partySummaryLine(exercises: Int, sets: Int, minutes: Int) -> String {
+        "\(exercises) exercise\(exercises == 1 ? "" : "s") · \(sets) set\(sets == 1 ? "" : "s") · \(minutes) min"
     }
 
     private func applySignedIn(_ user: AppUser) {
@@ -3593,7 +3768,31 @@ final class MorpheAppStore {
         // appendWorkoutLog -> refreshWorkoutLogDerivedState; no manual edits here.
         let loggedExercises = makeLoggedExercisesFromCurrentWorkout()
         let isBuddySession = partnerWorkoutEnabled && selectedWorkoutPartner != nil
-        let sessionNotes = partnerWorkoutSessionNote()
+        var sessionNotes = partnerWorkoutSessionNote()
+
+        // Train Together: publish this user's totals to the party so buddies
+        // see them in their shared recap, and stamp the log with who was there.
+        if let party = activeParty {
+            let buddyNames = partyBuddies.map(\.name)
+            if !buddyNames.isEmpty {
+                let trainedWith = "Trained with \(buddyNames.joined(separator: ", "))."
+                sessionNotes = sessionNotes.isEmpty ? trainedWith : "\(sessionNotes) \(trainedWith)"
+            }
+            if let uid = authUser?.id {
+                let setCount = loggedExercises.reduce(0) { total, exercise in
+                    total + max(Int(exercise.sets.components(separatedBy: CharacterSet.decimalDigits.inverted).first { !$0.isEmpty } ?? "") ?? 0, 0)
+                }
+                partyService.publishSummary(
+                    partyID: party.id,
+                    participantID: uid,
+                    summary: partySummaryLine(
+                        exercises: loggedExercises.count,
+                        sets: setCount,
+                        minutes: completedSessionMinutes ?? currentWorkout.durationMinutes
+                    )
+                )
+            }
+        }
 
         appendWorkoutLog(
             WorkoutLog(
@@ -3646,6 +3845,13 @@ final class MorpheAppStore {
         }
 
         didShareCurrentWorkoutHighlight = false
+        // Train Together: the session is in the books — leave the party
+        // locally but keep the membership doc, so buddies still mid-workout
+        // keep this user's summary in their shared recap.
+        if activeParty != nil {
+            partyService.stopListening()
+            activeParty = nil
+        }
         // Fold the fresh rating/duration into the difficulty engine so the
         // very next plan day already reflects this session.
         rebuildPersonalizedPlan()
