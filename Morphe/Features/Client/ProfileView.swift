@@ -6,6 +6,8 @@ struct ProfileView: View {
     @State private var nameDraft = ""
     @State private var isEditingInjuries = false
     @State private var injuriesDraft = ""
+    @State private var isEditingUsername = false
+    @State private var usernameDraft = ""
     @State private var heightDraft = ""
     @State private var weightDraft = ""
     @State private var showSignOutConfirm = false
@@ -95,11 +97,17 @@ struct ProfileView: View {
            injuriesDraft.trimmingCharacters(in: .whitespacesAndNewlines) != store.clientProfile.limitations {
             return true
         }
+        if isEditingUsername {
+            let entered = UsernameRules.normalize(usernameDraft)
+            let current = isCoach ? store.coachProfile.username : store.profileShowcase.username
+            if !entered.isEmpty, entered != current { return true }
+        }
         return false
     }
 
     private func saveAllEdits() {
         if isEditingName { saveName() }
+        if isEditingUsername { saveUsername() }
         if isEditingInjuries {
             store.updateInjuryNote(injuriesDraft)
             isEditingInjuries = false
@@ -111,6 +119,7 @@ struct ProfileView: View {
 
     private func discardAllEdits() {
         isEditingName = false
+        isEditingUsername = false
         isEditingInjuries = false
         heightDraft = store.clientProfile.height
         weightDraft = store.clientProfile.bodyWeight
@@ -295,6 +304,52 @@ struct ProfileView: View {
                         nameDraft = store.profileShowcase.displayName
                         isEditingName = true
                     }
+                    if let next = store.nextNameChangeDate {
+                        Text("Names change once every 14 days — next change \(next.formatted(date: .abbreviated, time: .omitted)).")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+
+                Divider().overlay(Color.white.opacity(0.08))
+
+                if isEditingUsername {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            TextField("username", text: $usernameDraft)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                            Button("Save") {
+                                saveUsername()
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.accent)
+                            .accessibilityLabel("Save username")
+                            Button("Cancel") {
+                                isEditingUsername = false
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .accessibilityLabel("Cancel username edit")
+                        }
+                        Text("Usernames are unique across Morphe and change once every 14 days.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                } else {
+                    settingsRow(
+                        "Username",
+                        value: "@\(isCoach ? store.coachProfile.username : store.profileShowcase.username)"
+                    ) {
+                        usernameDraft = isCoach ? store.coachProfile.username : store.profileShowcase.username
+                        isEditingUsername = true
+                    }
+                    if let next = store.nextUsernameChangeDate {
+                        Text("Usernames change once every 14 days — next change \(next.formatted(date: .abbreviated, time: .omitted)).")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
                 }
 
                 Divider().overlay(Color.white.opacity(0.08))
@@ -399,6 +454,16 @@ struct ProfileView: View {
         // (old name kept, no feedback) can't recur.
         if !trimmed.isEmpty {
             isEditingName = false
+        }
+    }
+
+    private func saveUsername() {
+        let entered = usernameDraft
+        isEditingUsername = false
+        Task {
+            // The store handles the 14-day cooldown, validation, and the
+            // atomic uniqueness claim — and reports each outcome as a toast.
+            await store.changeUsername(to: entered)
         }
     }
 

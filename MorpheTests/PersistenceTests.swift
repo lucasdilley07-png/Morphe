@@ -838,7 +838,7 @@ final class WorkoutSessionTests: XCTestCase {
                       "the discard ask is answered with the safe path")
     }
 
-    func testRenameRegeneratesHandleAndCapsLength() {
+    func testRenameKeepsClaimedUsernameAndCapsLength() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Lucas"
         store.completeOnboarding()
@@ -2991,5 +2991,147 @@ final class GroupClassTests: XCTestCase {
         XCTAssertEqual(board.first?.name, "Sarah")
         XCTAssertGreaterThanOrEqual(board.first?.totalSetsDone ?? 0, 6)
         XCTAssertEqual(board.map(\.name), ["Sarah", "Ava", "Colt"])
+    }
+}
+
+/// Unique usernames, 14-day rename cooldowns, and the terms gate.
+@MainActor
+final class IdentityAndTermsTests: XCTestCase {
+
+    final class MockUsernameDirectory: UsernameDirectoryService {
+        var taken: Set<String> = []
+        var claims: [(name: String, uid: String, released: String?)] = []
+
+        func isAvailable(_ username: String, for uid: String) async -> Bool {
+            !taken.contains(username)
+        }
+        func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult {
+            if taken.contains(username) { return .taken }
+            claims.append((username, uid, previous))
+            taken.insert(username)
+            if let previous { taken.remove(previous) }
+            return .claimed
+        }
+    }
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func makeStore(directory: MockUsernameDirectory = MockUsernameDirectory()) -> MorpheAppStore {
+        let store = MorpheAppStore(usernameDirectory: directory)
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+        return store
+    }
+
+    func testUsernameRulesNormalizeAndValidate() {
+        XCTAssertEqual(UsernameRules.normalize("Sarah Lifts!"), "sarahlifts")
+        XCTAssertEqual(UsernameRules.normalize("IRON_mike99"), "iron_mike99")
+        XCTAssertNotNil(UsernameRules.validationError("ab"), "too short")
+        XCTAssertNotNil(UsernameRules.validationError("_sneaky"), "must start with a letter")
+        XCTAssertNil(UsernameRules.validationError("sarahlifts"))
+    }
+
+    func testOnboardingReservesTheChosenUsername() async {
+        let directory = MockUsernameDirectory()
+        let store = makeStore(directory: directory)
+
+        let error = await store.checkAndReserveUsername("Sarah_Lifts")
+        XCTAssertNil(error)
+        XCTAssertEqual(store.onboardingDraft.username, "sarah_lifts")
+        XCTAssertEqual(directory.claims.last?.uid, "user-1")
+
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        XCTAssertEqual(store.profileShowcase.username, "sarah_lifts",
+                       "the profile carries the reserved username, not a name-derived handle")
+    }
+
+    func testTakenUsernameIsRejected() async {
+        let directory = MockUsernameDirectory()
+        directory.taken = ["sarahlifts"]
+        let store = makeStore(directory: directory)
+
+        let error = await store.checkAndReserveUsername("sarahlifts")
+        XCTAssertNotNil(error, "a name someone else owns can never be claimed twice")
+        XCTAssertTrue(error?.contains("taken") ?? false)
+    }
+
+    func testUsernameChangeReleasesOldNameAndStartsCooldown() async {
+        let directory = MockUsernameDirectory()
+        let store = makeStore(directory: directory)
+        store.onboardingDraft.name = "Sarah"
+        _ = await store.checkAndReserveUsername("sarahlifts")
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+
+        let changed = await store.changeUsername(to: "ironsarah")
+        XCTAssertTrue(changed)
+        XCTAssertEqual(store.profileShowcase.username, "ironsarah")
+        XCTAssertEqual(directory.claims.last?.released, "sarahlifts",
+                       "the old name is released in the same claim — an account never holds two")
+
+        // Second change inside 14 days is blocked.
+        let again = await store.changeUsername(to: "sarahstrong")
+        XCTAssertFalse(again, "username changes are limited to once every 14 days")
+        XCTAssertEqual(store.profileShowcase.username, "ironsarah")
+        XCTAssertNotNil(store.nextUsernameChangeDate)
+
+        // ...and frees up after the window passes.
+        store.usernameChangedAtEpoch = Date.now.addingTimeInterval(-15 * 24 * 3600).timeIntervalSince1970
+        let afterWindow = await store.changeUsername(to: "sarahstrong")
+        XCTAssertTrue(afterWindow)
+    }
+
+    func testNameChangeCooldown() {
+        let store = makeStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.updateDisplayName("Sarah D")
+        XCTAssertEqual(store.profileShowcase.displayName, "Sarah D", "the first change is free")
+
+        store.updateDisplayName("Sarah Dee")
+        XCTAssertEqual(store.profileShowcase.displayName, "Sarah D",
+                       "a second change inside 14 days is blocked")
+        XCTAssertNotNil(store.nextNameChangeDate)
+
+        store.nameChangedAtEpoch = Date.now.addingTimeInterval(-15 * 24 * 3600).timeIntervalSince1970
+        store.updateDisplayName("Sarah Dee")
+        XCTAssertEqual(store.profileShowcase.displayName, "Sarah Dee", "free again after the window")
+    }
+
+    func testTermsGateShowsAfterOnboardingUntilAccepted() {
+        let store = makeStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertTrue(store.needsTermsAcceptance, "the gate follows onboarding")
+        XCTAssertFalse(store.showWelcomeExperience, "the celebration waits behind the gate")
+
+        store.acceptTerms()
+        XCTAssertFalse(store.needsTermsAcceptance)
+        XCTAssertTrue(store.showWelcomeExperience, "accepting releases the welcome beat")
+
+        // Accepted once = remembered across relaunch.
+        let reloaded = MorpheAppStore()
+        XCTAssertTrue(reloaded.hasAcceptedTerms, "acceptance persists — the popup never returns")
+    }
+
+    func testDecliningTermsSignsOutAndGateReturns() {
+        let store = makeStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+
+        store.declineTerms()
+        XCTAssertNil(store.authUser, "declining signs the account out")
+        XCTAssertFalse(store.hasAcceptedTerms)
+
+        // Signing back in (still unaccepted) puts the gate right back up.
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+        XCTAssertTrue(store.needsTermsAcceptance, "the gate returns on every open until they agree")
     }
 }

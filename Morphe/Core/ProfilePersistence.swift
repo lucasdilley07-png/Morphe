@@ -123,6 +123,11 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var scannedConnections: [ScannedConnection] = []
     // Rolling per-day task results feeding the personalized difficulty dial.
     var taskHistory: [TaskDayRecord] = []
+    // Terms of use: accepted once, never asked again.
+    var hasAcceptedTerms: Bool = false
+    // Rename rate limiting (epoch seconds; 0 = never changed).
+    var nameChangedAtEpoch: Double = 0
+    var usernameChangedAtEpoch: Double = 0
 }
 
 extension LocalProfileSnapshot {
@@ -204,6 +209,9 @@ extension LocalProfileSnapshot {
         coachRoster = str(.coachRoster)
         scannedConnections = ((try? c.decodeIfPresent([ScannedConnection].self, forKey: .scannedConnections)) ?? nil) ?? []
         taskHistory = ((try? c.decodeIfPresent([TaskDayRecord].self, forKey: .taskHistory)) ?? nil) ?? []
+        hasAcceptedTerms = ((try? c.decodeIfPresent(Bool.self, forKey: .hasAcceptedTerms)) ?? nil) ?? false
+        nameChangedAtEpoch = ((try? c.decodeIfPresent(Double.self, forKey: .nameChangedAtEpoch)) ?? nil) ?? 0
+        usernameChangedAtEpoch = ((try? c.decodeIfPresent(Double.self, forKey: .usernameChangedAtEpoch)) ?? nil) ?? 0
     }
 }
 

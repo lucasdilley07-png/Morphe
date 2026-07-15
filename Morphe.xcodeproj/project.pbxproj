@@ -38,8 +38,9 @@
 		1B20F6002C4000010010FB01 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB02 /* FirebaseAuth */; };
 		1B20F6002C4000010010FB03 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB04 /* FirebaseFirestore */; };
 		1B20F6002C4000010010FC01 /* CloudBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FC02 /* CloudBackup.swift */; };
-		1B20F6002C4000010010FF01 /* WorkoutParty.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FF02 /* WorkoutParty.swift */; };
 		1B20F6002C4000010010FD01 /* QRConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FD02 /* QRConnectView.swift */; };
+		1B20F6002C4000010010FF01 /* WorkoutParty.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FF02 /* WorkoutParty.swift */; };
+		1B20F6002C4000010010FF03 /* UsernameDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FF04 /* UsernameDirectory.swift */; };
 		1B20F6002C4000010020000B /* MorpheWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010020000A /* MorpheWidgetsBundle.swift */; };
 		1B20F6002C4000010020000D /* RestTimerAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010020000C /* RestTimerAttributes.swift */; };
 		1B20F6002C4000010020000E /* RestTimerAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010020000C /* RestTimerAttributes.swift */; };
@@ -111,8 +112,9 @@
 		1B20F6002C400001001000D1 /* FormCheckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormCheckView.swift; sourceTree = "<group>"; };
 		1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAuthService.swift; sourceTree = "<group>"; };
 		1B20F6002C4000010010FC02 /* CloudBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackup.swift; sourceTree = "<group>"; };
-		1B20F6002C4000010010FF02 /* WorkoutParty.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutParty.swift; sourceTree = "<group>"; };
 		1B20F6002C4000010010FD02 /* QRConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRConnectView.swift; sourceTree = "<group>"; };
+		1B20F6002C4000010010FF02 /* WorkoutParty.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutParty.swift; sourceTree = "<group>"; };
+		1B20F6002C4000010010FF04 /* UsernameDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsernameDirectory.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100200002 /* MorpheWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MorpheWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B20F6002C4000010020000A /* MorpheWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheWidgetsBundle.swift; sourceTree = "<group>"; };
 		1B20F6002C4000010020000C /* RestTimerAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerAttributes.swift; sourceTree = "<group>"; };
@@ -202,6 +204,7 @@
 				1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */,
 				1B20F6002C4000010010FC02 /* CloudBackup.swift */,
 				1B20F6002C4000010010FF02 /* WorkoutParty.swift */,
+				1B20F6002C4000010010FF04 /* UsernameDirectory.swift */,
 				1B20F6002C4000010020000C /* RestTimerAttributes.swift */,
 				1B20F6002C4000010020000F /* RestTimerActivityController.swift */,
 				1B20F6002C4000010010006A /* WorkoutCatalog.swift */,
@@ -419,6 +422,7 @@
 				1B20F6002C4000010010FA01 /* FirebaseAuthService.swift in Sources */,
 				1B20F6002C4000010010FC01 /* CloudBackup.swift in Sources */,
 				1B20F6002C4000010010FF01 /* WorkoutParty.swift in Sources */,
+				1B20F6002C4000010010FF03 /* UsernameDirectory.swift in Sources */,
 				1B20F6002C4000010020000D /* RestTimerAttributes.swift in Sources */,
 				1B20F6002C40000100200010 /* RestTimerActivityController.swift in Sources */,
 				1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */,

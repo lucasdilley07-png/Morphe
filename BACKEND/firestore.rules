@@ -51,12 +51,18 @@ service cloud.firestore {
     }
 
     // Username uniqueness map. Readable by all (to check availability at
-    // sign-up), claimable only by the signed-in user for their own uid, and
-    // immutable from the client once taken.
+    // sign-up), claimable only by the signed-in user for their own uid.
+    // Owners may re-write their own entry (a same-name re-claim is a no-op
+    // write) and delete it — that's how a rename releases the old name in
+    // the same transaction that claims the new one. A name someone ELSE
+    // holds stays untouchable.
     match /usernames/{username} {
-      allow read:           if true;
-      allow create:         if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
+      allow read:   if true;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
     }
 
     // Coach codes: ONE reusable, shareable code per coach (e.g. MORPHE-4X2K9).

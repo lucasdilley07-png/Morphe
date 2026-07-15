@@ -1503,6 +1503,8 @@ struct ProfileShowcase: Hashable {
 struct OnboardingDraft: Hashable {
     var accountType: AppRole = .client
     var name: String = ""
+    /// The @username picked (and reserved in the directory) during onboarding.
+    var username: String = ""
     var gender: GenderOption = .male
     /// True once the user explicitly answers the gender step — the profile only
     /// records gender when it was actually asked and answered, never a default.

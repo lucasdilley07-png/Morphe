@@ -14,7 +14,8 @@ struct MorpheApp: App {
         _store = State(initialValue: MorpheAppStore(
             authService: FirebaseAuthService(),
             cloudBackup: FirebaseCloudBackup(),
-            partyService: FirebasePartyService()
+            partyService: FirebasePartyService(),
+            usernameDirectory: FirebaseUsernameDirectory()
         ))
     }
 

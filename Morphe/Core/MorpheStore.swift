@@ -320,6 +320,12 @@ final class MorpheAppStore {
     /// Train Together sessions. Real app injects `FirebasePartyService`; the
     /// no-op default keeps tests/previews off the network.
     private let partyService: WorkoutPartying
+    /// Global username uniqueness. Real app injects
+    /// `FirebaseUsernameDirectory`; the no-op default claims everything so
+    /// tests/previews stay offline.
+    private let usernameDirectory: UsernameDirectoryService
+    /// Coach-created client profiles + claim handoff. Real app injects
+    /// Client profiles this coach created for people not on Morphe yet.
     /// The signed-in account, or nil when signed out.
     var authUser: AppUser?
     var authErrorMessage: String?
@@ -332,10 +338,12 @@ final class MorpheAppStore {
 
     init(authService: AuthService = LocalAuthService(),
          cloudBackup: CloudBackingUp = NoOpCloudBackup(),
-         partyService: WorkoutPartying = NoOpPartyService()) {
+         partyService: WorkoutPartying = NoOpPartyService(),
+         usernameDirectory: UsernameDirectoryService = NoOpUsernameDirectory()) {
         self.authService = authService
         self.cloudBackup = cloudBackup
         self.partyService = partyService
+        self.usernameDirectory = usernameDirectory
         let templates = MorpheDemoContent.workoutTemplates
         let clients = MorpheDemoContent.coachClients
         let threads = MorpheDemoContent.messageThreads
@@ -637,6 +645,113 @@ final class MorpheAppStore {
         Haptics.impact(.medium)
         showToast("Connected: \(connection.name)")
         return connection
+    }
+
+    // MARK: - Identity: username + name change rules, terms of use
+
+    /// Renames are rate-limited: name and username each change at most once
+    /// every 14 days.
+    static let identityChangeCooldown: TimeInterval = 14 * 24 * 60 * 60
+
+    /// Epoch seconds of the last post-onboarding change (0 = never changed,
+    /// so the first edit is always free).
+    var nameChangedAtEpoch: Double = 0
+    var usernameChangedAtEpoch: Double = 0
+
+    /// Terms of use: accepted once, remembered forever (locally + cloud).
+    var hasAcceptedTerms = false
+    /// The welcome celebration queued by onboarding waits behind the terms
+    /// gate instead of racing it.
+    private var welcomeAwaitsTermsAcceptance = false
+
+    /// The terms gate shows for any signed-in, onboarded account that hasn't
+    /// accepted yet — including every reopen until they do.
+    var needsTermsAcceptance: Bool {
+        hasCompletedOnboarding && !hasAcceptedTerms
+            && (!FeatureFlags.accountsEnabled || authUser != nil)
+    }
+
+    func acceptTerms() {
+        hasAcceptedTerms = true
+        if welcomeAwaitsTermsAcceptance {
+            welcomeAwaitsTermsAcceptance = false
+            showWelcomeExperience = true
+        }
+        persistLocalProfile()
+        Haptics.success()
+    }
+
+    /// Declining means no app: sign the account out. The gate returns on the
+    /// next sign-in and keeps returning until they agree.
+    func declineTerms() {
+        welcomeAwaitsTermsAcceptance = false
+        signOut()
+        showToast("You need to accept the terms to use Morphe.")
+    }
+
+    private func nextAllowedChange(after epoch: Double) -> Date? {
+        guard epoch > 0 else { return nil }
+        let next = Date(timeIntervalSince1970: epoch).addingTimeInterval(Self.identityChangeCooldown)
+        return next > .now ? next : nil
+    }
+
+    /// Non-nil = locked until that date.
+    var nextNameChangeDate: Date? { nextAllowedChange(after: nameChangedAtEpoch) }
+    var nextUsernameChangeDate: Date? { nextAllowedChange(after: usernameChangedAtEpoch) }
+
+    /// Onboarding: validates and RESERVES the username in the directory (the
+    /// availability check and the claim are one transaction, so two people
+    /// racing for a name can't both pass). Returns nil on success, or the
+    /// message to show.
+    func checkAndReserveUsername(_ raw: String) async -> String? {
+        let name = UsernameRules.normalize(raw)
+        if let error = UsernameRules.validationError(name) { return error }
+        let uid = authUser?.id ?? clientProfile.id.uuidString
+        switch await usernameDirectory.claim(name, for: uid, releasing: nil) {
+        case .claimed:
+            onboardingDraft.username = name
+            return nil
+        case .taken:
+            return "@\(name) is taken — try another."
+        case .failed:
+            return "Couldn't check that name — check your connection and try again."
+        }
+    }
+
+    /// Profile: changes the username (cooldown + validation + atomic claim
+    /// that releases the old name).
+    @discardableResult
+    func changeUsername(to raw: String) async -> Bool {
+        if let next = nextUsernameChangeDate {
+            showToast("You can change your username again on \(next.formatted(date: .abbreviated, time: .omitted)).")
+            return false
+        }
+        let name = UsernameRules.normalize(raw)
+        if let error = UsernameRules.validationError(name) {
+            showToast(error)
+            return false
+        }
+        guard name != profileShowcase.username else {
+            showToast("That's already your username.")
+            return false
+        }
+        let uid = authUser?.id ?? clientProfile.id.uuidString
+        switch await usernameDirectory.claim(name, for: uid, releasing: profileShowcase.username) {
+        case .claimed:
+            profileShowcase.username = name
+            // A coach's workspace identity carries the same handle.
+            if selectedRole == .coach { coachProfile.username = name }
+            usernameChangedAtEpoch = Date.now.timeIntervalSince1970
+            persistLocalProfile()
+            showToast("You're @\(name) now.")
+            return true
+        case .taken:
+            showToast("@\(name) is taken — try another.")
+            return false
+        case .failed:
+            showToast("Couldn't update your username — try again.")
+            return false
+        }
     }
 
     // MARK: - Train Together (buddy sessions)
@@ -1107,6 +1222,9 @@ final class MorpheAppStore {
         // (re-offering them unchecked was an infinite XP faucet); a new day
         // starts fresh via handleDayRolloverIfNeeded at the end of init.
         taskCompletionHistory = snapshot.taskHistory
+        hasAcceptedTerms = snapshot.hasAcceptedTerms
+        nameChangedAtEpoch = snapshot.nameChangedAtEpoch
+        usernameChangedAtEpoch = snapshot.usernameChangedAtEpoch
         lastDailyResetDay = snapshot.dailyStateDay
         if snapshot.dailyStateDay == Self.dayKey() {
             // Same day + same dial regenerate the same personalized list, so
@@ -1254,7 +1372,10 @@ final class MorpheAppStore {
                 coachTenure: onboardingDraft.coachTenure.rawValue,
                 coachRoster: onboardingDraft.coachRoster.rawValue,
                 scannedConnections: scannedConnections,
-                taskHistory: taskCompletionHistory
+                taskHistory: taskCompletionHistory,
+                hasAcceptedTerms: hasAcceptedTerms,
+                nameChangedAtEpoch: nameChangedAtEpoch,
+                usernameChangedAtEpoch: usernameChangedAtEpoch
         )
         profilePersistence.saveProfile(snapshot)
         // Mirror to the cloud once the account is real (onboarding done).
@@ -2243,7 +2364,13 @@ final class MorpheAppStore {
         selectedRole = authUser?.role.appRole ?? onboardingDraft.accountType
         clientProfile.name = resolvedName
         profileShowcase.displayName = resolvedName
-        let handle = resolvedName.lowercased().filter { $0.isLetter || $0.isNumber }
+        // The @username the user picked (and the directory reserved) during
+        // onboarding. The name-derived handle survives only as the offline
+        // fallback — accounts always pass through the username step.
+        let chosenUsername = UsernameRules.normalize(onboardingDraft.username)
+        let handle = chosenUsername.isEmpty
+            ? resolvedName.lowercased().filter { $0.isLetter || $0.isNumber }
+            : chosenUsername
         if !handle.isEmpty {
             profileShowcase.username = handle
         }
@@ -2318,9 +2445,9 @@ final class MorpheAppStore {
             }
         }
 
-        // The welcome sheet IS the completion celebration — the toast overlay
-        // rendered underneath it and expired unseen.
-        showWelcomeExperience = true
+        // The welcome sheet IS the completion celebration — but the terms
+        // gate comes first, so the celebration waits behind acceptance.
+        welcomeAwaitsTermsAcceptance = true
         persistLocalProfile()
     }
 
@@ -4808,14 +4935,17 @@ final class MorpheAppStore {
             showToast("Your name can't be empty.")
             return
         }
+        guard trimmed != profileShowcase.displayName else { return }
+        // Renames are rate-limited; a no-op save above never burns the window.
+        if let next = nextNameChangeDate {
+            showToast("You can change your name again on \(next.formatted(date: .abbreviated, time: .omitted)).")
+            return
+        }
         clientProfile.name = trimmed
         profileShowcase.displayName = trimmed
-        // The @handle follows the name — a rename must not strand the old
-        // handle on every surface. (Local only; uniqueness comes with accounts.)
-        let handle = trimmed.lowercased().filter { $0.isLetter || $0.isNumber }
-        if !handle.isEmpty {
-            profileShowcase.username = handle
-        }
+        // The @username is its own claimed identity now — a rename never
+        // touches it (change it separately, on its own 14-day clock).
+        nameChangedAtEpoch = Date.now.timeIntervalSince1970
         persistLocalProfile()
         showToast("Name updated.")
     }

@@ -1,5 +1,88 @@
 import SwiftUI
 
+/// Terms of use + liability waiver. Shown once after onboarding (and on every
+/// reopen until accepted). Agree → remembered forever, locally and in the
+/// cloud backup. Disagree → signed out; the gate returns on the next sign-in.
+struct TermsGateView: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var showDeclineConfirm = false
+
+    private static let sections: [(title: String, body: String)] = [
+        ("Not medical advice",
+         "Morphe provides general fitness content and tracking tools. It is not medical advice, diagnosis, or treatment, and no part of the app creates a provider–patient relationship. Consult a physician before starting this or any exercise program, especially if you have a medical condition, injury, or are pregnant."),
+        ("You assume the risk",
+         "Exercise carries inherent risks, including serious injury. You are responsible for training within your own limits, using equipment safely, and stopping immediately if you feel pain, dizziness, or discomfort. You voluntarily assume all risks arising from your use of Morphe."),
+        ("Limitation of liability",
+         "To the maximum extent permitted by law, Morphe and its creators are not liable for any injury, loss, or damage — direct or indirect — arising from your use of the app, its workouts, its recommendations, or training sessions with other users, whether in person, virtual, or in a group."),
+        ("Form Check and AI features",
+         "Camera-based form feedback and AI-generated guidance are automated aids, not a substitute for qualified, in-person coaching. They can be wrong. You remain responsible for your own technique and safety."),
+        ("Your data",
+         "Your profile and training history are stored on your device and backed up to your account so you can restore them. Don't share your account credentials."),
+        ("As is",
+         "Morphe is provided \"as is\", without warranties of any kind. Features may change, break, or be removed as the app evolves.")
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("TERMS OF USE")
+                        .font(MorpheTheme.microLabel())
+                        .tracking(1.4)
+                        .foregroundStyle(MorpheTheme.accent)
+                        .padding(.top, 24)
+
+                    Text("Before you train")
+                        .font(.title.weight(.bold))
+                        .foregroundStyle(.white)
+
+                    Text("Quick but important: read and accept these terms to use Morphe.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+
+                    ForEach(Self.sections, id: \.title) { section in
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(section.title)
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+                                Text(section.body)
+                                    .font(.subheadline)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
+            }
+
+            VStack(spacing: 10) {
+                Button("I Agree") {
+                    store.acceptTerms()
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+
+                Button("I Disagree") {
+                    showDeclineConfirm = true
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(.black.opacity(0.35))
+        }
+        .alert("Decline the terms?", isPresented: $showDeclineConfirm) {
+            Button("Sign Out", role: .destructive) {
+                store.declineTerms()
+            }
+            Button("Go Back", role: .cancel) {}
+        } message: {
+            Text("Morphe can't be used without accepting the terms. You'll be signed out — your data stays backed up to your account.")
+        }
+    }
+}
+
 struct RootView: View {
     @Environment(MorpheAppStore.self) private var store
 
@@ -9,6 +92,7 @@ struct RootView: View {
         if store.isShowingLaunchSequence { return false }
         if FeatureFlags.accountsEnabled && store.authUser == nil { return false }
         if !store.hasCompletedOnboarding { return false }
+        if store.needsTermsAcceptance { return false }
         if store.showWelcomeExperience { return false }
         return true
     }
@@ -25,6 +109,10 @@ struct RootView: View {
                     AuthView()
                 } else if !store.hasCompletedOnboarding {
                     OnboardingFlowView()
+                } else if store.needsTermsAcceptance {
+                    // Terms gate: the app is unreachable until they agree, on
+                    // this open and every reopen. Declining signs out.
+                    TermsGateView()
                 } else {
                     AppShell {
                         Group {

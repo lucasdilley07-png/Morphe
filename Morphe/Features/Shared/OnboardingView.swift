@@ -183,6 +183,7 @@ struct OnboardingFlowView: View {
             return [
                 .welcome,
                 .name,
+                .username,
                 .sport,
                 .coachExperience,
                 .coachPractice,
@@ -194,6 +195,7 @@ struct OnboardingFlowView: View {
         let solo: [OnboardingStep] = [
             .welcome,
             .name,
+            .username,
             .gender,
             .goal,
             .sport,
@@ -221,6 +223,10 @@ struct OnboardingFlowView: View {
     private var canAdvance: Bool {
         if currentStep == .name {
             return !store.onboardingDraft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        if currentStep == .username {
+            return UsernameRules.normalize(usernameEntry).count >= UsernameRules.minLength
+                && !isReservingUsername
         }
         if currentStep == .gender {
             return store.onboardingDraft.genderChosen
@@ -295,7 +301,22 @@ struct OnboardingFlowView: View {
                             }
 
                             Button(nextButtonTitle) {
-                                if currentStep == .review {
+                                if currentStep == .username {
+                                    // Advancing IS the claim: availability check
+                                    // and reservation are one transaction, so
+                                    // two people can never pass with one name.
+                                    isReservingUsername = true
+                                    Task {
+                                        let error = await store.checkAndReserveUsername(usernameEntry)
+                                        isReservingUsername = false
+                                        usernameError = error
+                                        if error == nil {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                stepIndex += 1
+                                            }
+                                        }
+                                    }
+                                } else if currentStep == .review {
                                     isGeneratingPlan = true
                                 } else {
                                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -331,6 +352,12 @@ struct OnboardingFlowView: View {
             WelcomeLandingStep()
         case .name:
             NameStep(name: $store.onboardingDraft.name)
+        case .username:
+            UsernameStep(
+                entry: $usernameEntry,
+                isChecking: isReservingUsername,
+                error: usernameError
+            )
         case .gender:
             GenderStep()
         case .accountType:
@@ -368,9 +395,96 @@ private enum OnboardingStep {
     case schedule
     case equipment
     case injuryPain
+    case coachCode
     case coachExperience
     case coachPractice
     case review
+}
+
+/// Everyone picks a unique @username — the directory reserves it the moment
+/// the step advances, so no two accounts can ever share one.
+private struct UsernameStep: View {
+    @Binding var entry: String
+    let isChecking: Bool
+    let error: String?
+
+    private var preview: String { UsernameRules.normalize(entry) }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("CLAIM YOUR USERNAME")
+                    .font(MorpheTheme.microLabel())
+                    .tracking(1.4)
+                    .foregroundStyle(MorpheTheme.accent)
+
+                Text("Pick your @name")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.white)
+
+                Text("This is how coaches and training partners find you. Letters, numbers, and underscores — every username is one of a kind.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                TextField("username", text: $entry)
+                    .textFieldStyle(MorpheFieldStyle())
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
+                if !preview.isEmpty {
+                    Text("@\(preview)")
+                        .font(.subheadline.weight(.semibold).monospaced())
+                        .foregroundStyle(MorpheTheme.accent)
+                }
+
+                if isChecking {
+                    Label("Checking availability…", systemImage: "hourglass")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                } else if let error {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.warning)
+                }
+            }
+        }
+    }
+}
+
+/// Optional step: an athlete whose coach pre-created their profile enters the
+/// invite code here — the claim itself runs right after onboarding completes,
+/// pulling the coach-logged history into the brand-new account.
+private struct CoachCodeStep: View {
+    @Binding var code: String
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("TRAIN WITH A COACH")
+                    .font(MorpheTheme.microLabel())
+                    .tracking(1.4)
+                    .foregroundStyle(MorpheTheme.accent)
+
+                Text("Did a coach set you up?")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.white)
+
+                Text("If your coach already created your profile on Morphe, enter the invite code they shared — the workouts they logged for you become your training history. No code? Just tap Next.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                TextField("Invite code (e.g. 7KQ4TX)", text: $code)
+                    .font(.system(.title3, design: .monospaced).weight(.semibold))
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.white.opacity(0.06))
+                    )
+            }
+        }
+    }
 }
 
 private struct WelcomeLandingStep: View {
