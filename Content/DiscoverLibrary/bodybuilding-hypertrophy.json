@@ -1,0 +1,674 @@
+{
+  "version": 2,
+  "category": "Bodybuilding & Hypertrophy",
+  "workouts": [
+    {
+      "slug": "hyp-wl-giant-set-upper",
+      "name": "Upper-Body Giant Set Burner",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "Six movements run as giant sets with minimal rest — hypertrophy volume at a fat-loss pace. Keep every set 2-3 reps shy of failure; when the last round feels smooth, add a rep per station before adding weight.",
+      "exercises": [
+        {
+          "libraryID": "push-up",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "dumbbell-bench-press",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "dumbbell-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "lateral-raise",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bicep-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "tricep-pushdown",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "hyp-wl-leg-superset-burner",
+      "name": "Leg-Day Superset Burner",
+      "goal": "weightLoss",
+      "focus": "Legs",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "High-rep leg training with short rests — the fastest calorie burn in the weight room. Superset the extension and curl back to back, and treat the jump squats as a finisher, not a max-effort test.",
+      "exercises": [
+        {
+          "libraryID": "goblet-squat",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 3,
+          "reps": 20,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "leg-extension",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "hamstring-curl",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 20,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "hyp-sb-ppl-push",
+      "name": "PPL — Push Day",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 65,
+      "equipmentProfile": "Full Gym",
+      "notes": "The push leg of a classic push/pull/legs split: heavy bench sixes first, then pressing and isolation volume for chest, shoulders, and triceps. Add reps within the 8-12 range before adding weight.",
+      "exercises": [
+        {
+          "libraryID": "barbell-bench-press",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 75 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "overhead-press",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "percent1RM", "value": 67 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "incline-dumbbell-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "cable-lateral-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "overhead-cable-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dip",
+          "sets": 2,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "hyp-sb-ppl-pull",
+      "name": "PPL — Pull Day",
+      "goal": "strengthBuilding",
+      "focus": "Pull",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 65,
+      "equipmentProfile": "Full Gym",
+      "notes": "The pull leg of the split: heavy rows to anchor the day, then width, rear delts, and arms. Everything here rows or curls — run it 48 hours after push day and your biceps get two growth days a week.",
+      "exercises": [
+        {
+          "libraryID": "bent-over-row",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 72 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "lat-pulldown",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "chest-supported-row",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "face-pull",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bicep-curl",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "hammer-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "hyp-sb-ppl-legs",
+      "name": "PPL — Leg Day",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 70,
+      "equipmentProfile": "Full Gym",
+      "notes": "The leg day that completes the split: heavy squat sixes, a hip hinge, then machine volume to failure-adjacent territory. If your PPL runs six days a week, alternate this with a lighter pump version of itself.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 75 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "percent1RM", "value": 65 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "leg-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "percent1RM", "value": 70 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "hamstring-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 4,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "hyp-sb-upper",
+      "name": "Upper Day — U/L Split",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 65,
+      "equipmentProfile": "Full Gym",
+      "notes": "Half of a 4-day upper/lower split — the best structure for lifters who can train four days, no more. Press and row heavy in the 8s, then finish arms as a superset to save ten minutes.",
+      "exercises": [
+        {
+          "libraryID": "barbell-bench-press",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "percent1RM", "value": 70 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "bent-over-row",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "percent1RM", "value": 68 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "seated-dumbbell-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "lat-pulldown",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "skullcrusher",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bicep-curl",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "hyp-sb-lower",
+      "name": "Lower Day — U/L Split",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 65,
+      "equipmentProfile": "Full Gym",
+      "notes": "The lower half of the 4-day split: front squats keep the trunk honest, hip thrusts drive the glutes, and single-leg work cleans up imbalances. Run upper/lower/rest/upper/lower and grow on the weekend.",
+      "exercises": [
+        {
+          "libraryID": "glute-bridge",
+          "sets": 2,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "front-squat",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "percent1RM", "value": 68 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "hip-thrust",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "percent1RM", "value": 70 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "bulgarian-split-squat",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "hamstring-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hanging-knee-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "hyp-lo-chest-day",
+      "name": "Chest Day — Bro Split",
+      "goal": "leanOut",
+      "focus": "Push",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "A full chest session hitting incline, flat, and fly angles with short rests to keep the density high while leaning out. Chase the stretch on flyes and crossovers — that lengthened tension is where chests grow.",
+      "exercises": [
+        {
+          "libraryID": "incline-dumbbell-press",
+          "sets": 4,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "machine-chest-press",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "percent1RM", "value": 65 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "dumbbell-chest-fly",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "cable-crossover",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dip",
+          "sets": 2,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 2,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "hyp-lo-back-day",
+      "name": "Back Day — Bro Split",
+      "goal": "leanOut",
+      "focus": "Pull",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Width first, thickness second: pull-ups and pulldown-style work before rows, finishing with lower back and traps. If strict pull-ups fall under 6 reps, swap them for lat pulldowns and earn them back.",
+      "exercises": [
+        {
+          "libraryID": "pull-up",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "seated-cable-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "dumbbell-row",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "straight-arm-pulldown",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "back-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dumbbell-shrug",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "hyp-lo-shoulder-day",
+      "name": "Shoulder Day — Bro Split",
+      "goal": "leanOut",
+      "focus": "Push",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "All three delt heads plus the rear-delt and trap work most people skip. Lateral raises earn their four sets — go lighter than pride wants and make every rep float, no swinging.",
+      "exercises": [
+        {
+          "libraryID": "seated-dumbbell-press",
+          "sets": 4,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "lateral-raise",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "rear-delt-fly",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "front-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "face-pull",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dumbbell-shrug",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "hyp-lo-arm-day",
+      "name": "Arm Day — Bro Split",
+      "goal": "leanOut",
+      "focus": "Push",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "One heavy pressing anchor, then biceps and triceps traded superset-style with a minute of rest. Arms recover fast — this slots in anywhere in the week without stealing from bigger days.",
+      "exercises": [
+        {
+          "libraryID": "close-grip-bench-press",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "percent1RM", "value": 70 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "preacher-curl",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "skullcrusher",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "hammer-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "overhead-tricep-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "concentration-curl",
+          "sets": 2,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hyp-rec-pump-flush",
+      "name": "Pump & Stretch Flush Day",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Recovery training",
+      "level": "Recovery",
+      "durationMinutes": 30,
+      "equipmentProfile": "Dumbbells",
+      "notes": "For the day after a brutal session: very light, high-rep movement to push blood through sore muscle, then stretch what got hammered. Nothing here should feel harder than a warm-up — if it does, go lighter.",
+      "exercises": [
+        {
+          "libraryID": "incline-push-up",
+          "sets": 2,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 2,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bicep-curl",
+          "sets": 2,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 3 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ],
+  "newExercises": []
+}

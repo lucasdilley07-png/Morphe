@@ -1,0 +1,651 @@
+{
+  "version": 2,
+  "category": "Running & Cardio",
+  "workouts": [
+    {
+      "slug": "cardio-wl-incline-crusher",
+      "name": "Incline Crusher — Treadmill Intervals",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Cardio intervals",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "For anyone who wants a big calorie burn without pounding their joints. Warm up flat, then hit 10 x 1-minute steep-incline pushes (10-12% grade, hands off the rails) with a 1-minute flat walk between. Progress by adding incline before you add speed.",
+      "exercises": [
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 10,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "cardio-wl-bike-pyramid",
+      "name": "Bike Pyramid — Up and Over",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Cardio intervals",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "A classic pyramid: intervals climb 60-90-120 seconds and back down, with rest matching work the whole way. The long middle reps are where the burn happens — hold a pace you could NOT sustain for 5 minutes. Progress by adding one rung to the top of the pyramid.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "stationary-bike",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "stationary-bike",
+          "sets": 2,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "stationary-bike",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "stationary-bike",
+          "sets": 2,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "cardio-wl-row-run-brick",
+      "name": "Row-Run Brick",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Mixed cardio",
+      "level": "Advanced",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "Triathlon-style brick for people who get bored on one machine: after the warm-up, alternate a hard 5-minute row with a hard 5-minute run, three rounds each, then cap it with rope sprints. The transition off the rower onto heavy legs is the point — embrace it. Progress by cutting the between-piece rest from 60 to 45 seconds.",
+      "exercises": [
+        {
+          "libraryID": "rowing-machine",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "rowing-machine",
+          "sets": 3,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 3,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "jump-rope",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "cardio-wl-walk-run-101",
+      "name": "Walk-Run 101",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Cardio base building",
+      "level": "Beginner",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "Day one of running, done right: 8 easy 1-minute jog surges, each followed by a 2-minute walk to bring your breathing back down. If you can't hold a conversation during the walk, slow the jog. Progress week to week by stretching the jogs toward 90 seconds before you ever touch the walk breaks.",
+      "exercises": [
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 8,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "cardio-sb-runners-strength",
+      "name": "Runner's Strength Day",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "The lifting day that makes you a faster, more durable runner: heavy hinge first, then single-leg work and calves — the muscles that actually absorb impact. Run easy or rest the day after. Progress the RDL 2.5 kg at a time while everything else stays honest at its RPE.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "step-up",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "cardio-sb-hill-sprint-power",
+      "name": "Hill Sprint Power Day",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Sprint & power",
+      "level": "Advanced",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "Sprints are a strength exercise — 8 x 20-second all-out efforts (steep treadmill or hill) with FULL 3-minute recoveries. If the last sprint is slower than the first, you rested too little, not too much. Progress by adding one sprint per week up to 10 before touching the duration.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 8,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "cardio-lo-tempo-core",
+      "name": "Tempo 20 + Core Finish",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Tempo run",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "A 20-minute 'comfortably hard' tempo — you can speak in short phrases, not sentences — followed by 10 minutes of anti-rotation core so your midsection keeps up with your engine. Progress the tempo pace, not the duration, until zone 3 feels routine.",
+      "exercises": [
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 1200,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "russian-twist",
+          "sets": 3,
+          "reps": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "cardio-lo-zone2-rope-finisher",
+      "name": "Zone-2 Base + Rope Finisher",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Steady-state cardio",
+      "level": "Beginner",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "The unsexy workout that actually leans people out: 30 minutes of true zone 2 on the bike (nose-breathing pace), then four 1-minute rope sprints to spike the burn on the way out. Do this 2-3x per week. Progress the zone-2 block toward 40 minutes before making the finisher harder.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 1800,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "jump-rope",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bicycle-crunch",
+          "sets": 2,
+          "reps": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "cardio-lo-machine-mixer",
+      "name": "Cross-Trainer Mixer",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Mixed cardio",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "Three machines, 10 minutes each, effort climbing as you go — row easy, bike moderate, finish with the hardest 10 on the treadmill, then short rope rounds. Great for people who quit steady cardio out of boredom. Progress by nudging each block's zone target up half a zone.",
+      "exercises": [
+        {
+          "libraryID": "rowing-machine",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "jump-rope",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "cardio-rec-easy-spin",
+      "name": "Easy Spin Flush",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "The day-after-leg-day flush: 25 minutes of genuinely easy spinning (zone 1 — you should feel slightly lazy) to move blood through sore legs, then hit the hips and hamstrings. If your heart rate drifts up, back the resistance off. There is nothing to progress here — that's the point.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 1500,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "cardio-rec-walk-reset",
+      "name": "Recovery Walk + Full Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "A 20-minute flat, easy walk to downshift the nervous system, then a head-to-toe stretch sequence — spine, hips, hamstrings, chest. Ideal the day after a hard run or as a rest-day habit. Breathe slowly through your nose during every stretch; the exhale is where the release happens.",
+      "exercises": [
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 1200,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ],
+  "newExercises": []
+}

@@ -334,19 +334,19 @@ struct WorkoutView: View {
     /// One concrete pick each for training, stretching, and recovery — shown
     /// after today's workout is logged.
     private var trySomethingNewPicks: [(category: String, template: WorkoutTemplate)] {
-        func pick(_ tags: [String]) -> WorkoutTemplate? {
+        func pick(_ categories: [String]) -> WorkoutTemplate? {
             store.discoverWorkouts.first {
-                tags.contains($0.trainingTypeTag) && $0.durationMinutes <= 45
+                categories.contains($0.categoryTag) && $0.durationMinutes <= 45
             }
         }
         var picks: [(String, WorkoutTemplate)] = []
-        if let training = pick(["Strength training", "HIIT", "Circuit training", "Cardiovascular endurance"]) {
+        if let training = pick(["Strength & Powerlifting", "HIIT & Conditioning", "Kettlebell & Dumbbell"]) {
             picks.append(("Training", training))
         }
-        if let stretching = pick(["Flexibility training", "Mobility training"]) {
+        if let stretching = pick(["Yoga, Mobility & Flexibility"]) {
             picks.append(("Stretching", stretching))
         }
-        if let recovery = pick(["Recovery training"]) {
+        if let recovery = pick(["Recovery & Longevity"]) {
             picks.append(("Recovery", recovery))
         }
         return picks
@@ -1603,12 +1603,12 @@ private struct DiscoverCatalogSection: View {
     var onSelectionChange: () -> Void = {}
 
     private enum Selection: Equatable {
-        case legends
-        case type(String)
+        case category(String)
     }
 
     @State private var selection: Selection?
     @State private var searchQuery = ""
+    @State private var goalFilter: String?
     @State private var levelFilter: DemoDifficulty?
     @State private var durationFilter: String?
     @State private var equipmentFilter: String?
@@ -1628,58 +1628,59 @@ private struct DiscoverCatalogSection: View {
         return "Over 40 min"
     }
 
-    /// The product's canonical 18-type taxonomy, grouped into families.
-    private static let families: [(name: String, types: [String])] = [
-        ("Build", ["Strength training", "Hypertrophy training", "Muscular endurance", "Power training", "Calisthenics"]),
-        ("Condition", ["Cardiovascular endurance", "HIIT", "Circuit training", "Cross-training"]),
-        ("Move", ["Mobility training", "Flexibility training", "Balance & stability training", "Core training", "Functional training"]),
-        ("Athletic", ["Speed & agility training", "Plyometric training", "Sport-specific training"]),
-        ("Recover", ["Recovery training"])
+    /// The v2 library's 10 categories, grouped into families for the grid.
+    private static let families: [(name: String, categories: [String])] = [
+        ("Build", ["Strength & Powerlifting", "Bodybuilding & Hypertrophy", "Calisthenics & Bodyweight", "Kettlebell & Dumbbell"]),
+        ("Condition", ["HIIT & Conditioning", "Functional & CrossFit-Style", "Running & Cardio", "Boxing & Combat Conditioning"]),
+        ("Restore", ["Yoga, Mobility & Flexibility", "Recovery & Longevity"])
     ]
 
-    /// Tile-length names for the full taxonomy tags.
-    private static let shortTypeNames: [String: String] = [
-        "Strength training": "Strength",
-        "Hypertrophy training": "Hypertrophy",
-        "Muscular endurance": "Muscular Endurance",
-        "Cardiovascular endurance": "Cardio",
-        "HIIT": "HIIT",
-        "Power training": "Power",
-        "Speed & agility training": "Speed & Agility",
-        "Mobility training": "Mobility",
-        "Flexibility training": "Flexibility",
-        "Functional training": "Functional",
-        "Calisthenics": "Calisthenics",
-        "Circuit training": "Circuits",
-        "Cross-training": "Cross-Training",
-        "Plyometric training": "Plyometrics",
-        "Balance & stability training": "Balance",
-        "Core training": "Core",
-        "Sport-specific training": "Sport-Specific",
-        "Recovery training": "Recovery"
+    /// Tile-length names for the category tags.
+    private static let shortCategoryNames: [String: String] = [
+        "Strength & Powerlifting": "Powerlifting",
+        "Bodybuilding & Hypertrophy": "Bodybuilding",
+        "Calisthenics & Bodyweight": "Calisthenics",
+        "Kettlebell & Dumbbell": "Kettlebell & DB",
+        "HIIT & Conditioning": "HIIT",
+        "Functional & CrossFit-Style": "Functional",
+        "Running & Cardio": "Running & Cardio",
+        "Boxing & Combat Conditioning": "Boxing",
+        "Yoga, Mobility & Flexibility": "Yoga & Mobility",
+        "Recovery & Longevity": "Recovery"
     ]
 
-    /// One pictogram per training style — the tile reads by icon first.
-    private static let typeSymbols: [String: String] = [
-        "Strength training": "dumbbell.fill",
-        "Hypertrophy training": "figure.strengthtraining.traditional",
-        "Muscular endurance": "figure.rower",
-        "Cardiovascular endurance": "heart.fill",
-        "HIIT": "bolt.fill",
-        "Power training": "bolt.circle.fill",
-        "Speed & agility training": "figure.run",
-        "Mobility training": "figure.flexibility",
-        "Flexibility training": "figure.cooldown",
-        "Functional training": "figure.cross.training",
-        "Calisthenics": "figure.gymnastics",
-        "Circuit training": "arrow.triangle.2.circlepath",
-        "Cross-training": "figure.mixed.cardio",
-        "Plyometric training": "figure.jumprope",
-        "Balance & stability training": "figure.mind.and.body",
-        "Core training": "figure.core.training",
-        "Sport-specific training": "sportscourt.fill",
-        "Recovery training": "leaf.fill"
+    /// One pictogram per category — the tile reads by icon first.
+    private static let categorySymbols: [String: String] = [
+        "Strength & Powerlifting": "dumbbell.fill",
+        "Bodybuilding & Hypertrophy": "figure.strengthtraining.traditional",
+        "Calisthenics & Bodyweight": "figure.gymnastics",
+        "Kettlebell & Dumbbell": "figure.strengthtraining.functional",
+        "HIIT & Conditioning": "bolt.fill",
+        "Functional & CrossFit-Style": "figure.cross.training",
+        "Running & Cardio": "figure.run",
+        "Boxing & Combat Conditioning": "figure.boxing",
+        "Yoga, Mobility & Flexibility": "figure.yoga",
+        "Recovery & Longevity": "leaf.fill"
     ]
+
+    /// The four result targets every v2 workout carries — the goal lens
+    /// applies to the landing counts, drill-ins, and search alike.
+    private static let goalOptions: [(tag: String, label: String)] = [
+        ("weightLoss", "Weight Loss"),
+        ("strengthBuilding", "Strength"),
+        ("leanOut", "Lean Out"),
+        ("recovery", "Recovery")
+    ]
+
+    static func goalDisplayName(_ tag: String) -> String? {
+        goalOptions.first { $0.tag == tag }?.label
+    }
+
+    /// Everything browsable, narrowed by the goal chip when one is active.
+    private var goalFilteredWorkouts: [WorkoutTemplate] {
+        guard let goalFilter else { return store.discoverWorkouts }
+        return store.discoverWorkouts.filter { $0.goalTag == goalFilter }
+    }
 
     var body: some View {
         Group {
@@ -1701,13 +1702,14 @@ private struct DiscoverCatalogSection: View {
 
     // MARK: - Landing: icon tile grid
 
-    /// Search matches name, style, focus, and goal so "boxing", "core", or a
-    /// workout's own name all land.
+    /// Search matches name, category, style, focus, and goal so "boxing",
+    /// "core", or a workout's own name all land. The goal chip narrows it.
     private var searchResults: [WorkoutTemplate] {
         let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return [] }
-        return store.discoverWorkouts.filter {
+        return goalFilteredWorkouts.filter {
             $0.name.localizedCaseInsensitiveContains(q)
+                || $0.categoryTag.localizedCaseInsensitiveContains(q)
                 || $0.trainingTypeTag.localizedCaseInsensitiveContains(q)
                 || $0.focusTag.localizedCaseInsensitiveContains(q)
                 || $0.goal.localizedCaseInsensitiveContains(q)
@@ -1816,7 +1818,7 @@ private struct DiscoverCatalogSection: View {
                 ForEach(workouts.prefix(30)) { template in
                     DiscoverProgramCard(
                         template: template,
-                        typeName: Self.shortTypeNames[template.trainingTypeTag] ?? template.trainingTypeTag,
+                        typeName: Self.shortCategoryNames[template.categoryTag] ?? template.categoryTag,
                         isSaved: store.isCatalogWorkoutSaved(template),
                         onStart: { onStart(template) },
                         onSave: { store.saveCatalogWorkout(template) },
@@ -1923,57 +1925,54 @@ private struct DiscoverCatalogSection: View {
     }
 
     private var landingGrid: some View {
-        let byType = Dictionary(grouping: store.discoverWorkouts, by: \.trainingTypeTag)
-        let legendsCount = store.discoverWorkouts.filter { $0.type == "Legends" }.count
+        let byCategory = Dictionary(grouping: goalFilteredWorkouts, by: \.categoryTag)
 
         return VStack(alignment: .leading, spacing: 20) {
             connectCard
 
             searchBar
 
-            // The v1 catalog is retired while the new library is built — say
-            // so honestly instead of rendering an empty grid.
+            // Empty here means the bundled catalog failed to load — the v2
+            // library ships in the bundle, so say so instead of a bare grid.
             if store.discoverWorkouts.isEmpty,
                searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 GlassCard {
                     VStack(alignment: .leading, spacing: 8) {
-                        Image(systemName: "hammer.fill")
+                        Image(systemName: "exclamationmark.triangle.fill")
                             .font(.title3)
                             .foregroundStyle(MorpheTheme.accent)
-                        Text("New workouts are being built")
+                        Text("The workout library couldn't load")
                             .font(.headline)
                             .foregroundStyle(.white)
-                        Text("The old library is retired. A fresh, personalized set of workouts is on the way — your saved workouts and daily plan still work from Train.")
+                        Text("Restart the app to reload it — your saved workouts and daily plan still work from Train.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+            } else {
+                goalChipRow
             }
 
             if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 searchResultsList
             } else {
-            if legendsCount > 0 {
-                legendsTile(count: legendsCount)
-            }
-
             ForEach(Self.families, id: \.name) { family in
-                let presentTypes = family.types.filter { !(byType[$0] ?? []).isEmpty }
-                if !presentTypes.isEmpty {
+                let presentCategories = family.categories.filter { !(byCategory[$0] ?? []).isEmpty }
+                if !presentCategories.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         sectionHeader(
                             title: family.name,
-                            count: presentTypes.reduce(0) { $0 + (byType[$1]?.count ?? 0) }
+                            count: presentCategories.reduce(0) { $0 + (byCategory[$1]?.count ?? 0) }
                         )
 
                         LazyVGrid(
                             columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
                             spacing: 10
                         ) {
-                            ForEach(presentTypes, id: \.self) { type in
-                                typeTile(type, count: byType[type]?.count ?? 0)
+                            ForEach(presentCategories, id: \.self) { category in
+                                categoryTile(category, count: byCategory[category]?.count ?? 0)
                             }
                         }
                     }
@@ -1983,21 +1982,56 @@ private struct DiscoverCatalogSection: View {
         }
     }
 
-    private func typeTile(_ type: String, count: Int) -> some View {
+    /// Result-goal lens: All / Weight Loss / Strength / Lean Out / Recovery.
+    private var goalChipRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                goalChip(nil, label: "All")
+                ForEach(Self.goalOptions, id: \.tag) { option in
+                    goalChip(option.tag, label: option.label)
+                }
+            }
+        }
+    }
+
+    private func goalChip(_ tag: String?, label: String) -> some View {
+        let isOn = goalFilter == tag
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) { goalFilter = tag }
+        } label: {
+            Text(label.uppercased())
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.2)
+                .lineLimit(1)
+                .foregroundStyle(isOn ? .black : MorpheTheme.textSecondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(isOn ? MorpheTheme.accent : MorpheTheme.panelStrong)
+                        .overlay(Capsule().stroke(Color.white.opacity(isOn ? 0 : 0.14), lineWidth: 1))
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(label) goal filter")
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+
+    private func categoryTile(_ category: String, count: Int) -> some View {
         Button {
             withAnimation(.easeInOut(duration: 0.2)) {
-                selection = .type(type)
+                selection = .category(category)
             }
             onSelectionChange()
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: Self.typeSymbols[type] ?? "square.grid.2x2")
+                Image(systemName: Self.categorySymbols[category] ?? "square.grid.2x2")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(MorpheTheme.accent)
                     .frame(width: 26)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text((Self.shortTypeNames[type] ?? type).uppercased())
+                    Text((Self.shortCategoryNames[category] ?? category).uppercased())
                         .font(MorpheTheme.microLabel(10))
                         .tracking(1.0)
                         .foregroundStyle(.white)
@@ -2023,51 +2057,7 @@ private struct DiscoverCatalogSection: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(Self.shortTypeNames[type] ?? type), \(count) workouts")
-    }
-
-    private func legendsTile(count: Int) -> some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                selection = .legends
-            }
-            onSelectionChange()
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "trophy.fill")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(MorpheTheme.accent)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("LEGENDS COLLECTION")
-                        .font(MorpheTheme.microLabel(11))
-                        .tracking(1.6)
-                        .foregroundStyle(.white)
-                    Text(String(format: "%03d CURATED PROGRAMS", count))
-                        .font(MorpheTheme.microLabel(9))
-                        .tracking(1.0)
-                        .foregroundStyle(MorpheTheme.accentAlt)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(MorpheTheme.textMuted)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                    .fill(MorpheTheme.panelStrong)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .stroke(MorpheTheme.accent.opacity(0.45), lineWidth: 1)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Legends Collection, \(count) curated programs")
+        .accessibilityLabel("\(Self.shortCategoryNames[category] ?? category), \(count) workouts")
     }
 
     // MARK: - Drill-in: one style's programs
@@ -2076,10 +2066,8 @@ private struct DiscoverCatalogSection: View {
     private func detailView(_ selection: Selection) -> some View {
         let all: [WorkoutTemplate] = {
             switch selection {
-            case .legends:
-                return store.discoverWorkouts.filter { $0.type == "Legends" }
-            case .type(let tag):
-                return store.discoverWorkouts.filter { $0.trainingTypeTag == tag }
+            case .category(let tag):
+                return goalFilteredWorkouts.filter { $0.categoryTag == tag }
             }
         }()
         let filtered = all.filter { template in
@@ -2089,8 +2077,7 @@ private struct DiscoverCatalogSection: View {
         }
         let title: String = {
             switch selection {
-            case .legends: return "Legends Collection"
-            case .type(let tag): return Self.shortTypeNames[tag] ?? tag
+            case .category(let tag): return Self.shortCategoryNames[tag] ?? tag
             }
         }()
 
@@ -2119,6 +2106,8 @@ private struct DiscoverCatalogSection: View {
 
             sectionHeader(title: title, count: filtered.count)
 
+            goalChipRow
+
             filterBar(equipmentOptions: Array(Set(all.map(\.equipment))).sorted())
 
             if filtered.isEmpty {
@@ -2133,7 +2122,7 @@ private struct DiscoverCatalogSection: View {
                     ForEach(filtered) { template in
                         DiscoverProgramCard(
                             template: template,
-                            typeName: Self.shortTypeNames[template.trainingTypeTag] ?? template.trainingTypeTag,
+                            typeName: Self.shortCategoryNames[template.categoryTag] ?? template.categoryTag,
                             isSaved: store.isCatalogWorkoutSaved(template),
                             onStart: { onStart(template) },
                             onSave: { store.saveCatalogWorkout(template) },
@@ -2239,6 +2228,9 @@ private struct DiscoverProgramCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top) {
                     StatusBadge(text: template.difficulty.rawValue, color: MorpheTheme.accentAlt)
+                    if !template.goal.isEmpty {
+                        StatusBadge(text: template.goal, color: MorpheTheme.accent)
+                    }
                     Spacer()
                     Button(action: onSave) {
                         Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
@@ -2339,7 +2331,15 @@ private struct DiscoverWorkoutDetailSheet: View {
                                             .font(.system(.subheadline, design: .monospaced).weight(.semibold))
                                             .foregroundStyle(MorpheTheme.accent)
                                     }
-                                    Text(exercise.muscleGroup.rawValue)
+                                    // Prescription line: effort + rest, when
+                                    // the catalog carries them.
+                                    let prescription = [
+                                        exercise.intensityLabel,
+                                        exercise.restSeconds.map { "rest \($0)s" } ?? ""
+                                    ].filter { !$0.isEmpty }.joined(separator: " · ")
+                                    Text(prescription.isEmpty
+                                         ? exercise.muscleGroup.rawValue
+                                         : "\(exercise.muscleGroup.rawValue) · \(prescription)")
                                         .font(.caption)
                                         .foregroundStyle(MorpheTheme.textSecondary)
                                     if !exercise.formCue.isEmpty {
@@ -2830,7 +2830,8 @@ struct PartySessionStrip: View {
                                     .accessibilityLabel("Send \(emoji) to your buddy")
                             }
                             Spacer()
-                            if let email = store.partyBuddies.first(where: { !$0.email.isEmpty })?.email,
+                            if isVirtual,
+                               let email = store.partyBuddies.first(where: { !$0.email.isEmpty })?.email,
                                let url = URL(string: "facetime://\(email)") {
                                 Button {
                                     openURL(url)

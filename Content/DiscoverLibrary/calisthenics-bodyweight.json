@@ -1,0 +1,751 @@
+{
+  "version": 2,
+  "category": "Calisthenics & Bodyweight",
+  "workouts": [
+    {
+      "slug": "cali-wl-total-body-circuit",
+      "name": "Total-Body Bodyweight Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Beginner",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "For anyone who wants to burn calories with zero equipment: run the five working moves as a circuit, 3 rounds, resting only where marked. Progress by trimming each rest 5 seconds per week until you're at 30s.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "reverse-lunge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "cali-wl-emom-18",
+      "name": "EMOM 18: Bodyweight Density",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Moderate",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "18-minute EMOM for people short on time: minute 1 burpees, minute 2 jump squats, minute 3 mountain climbers, repeated for 6 rounds — whatever is left of each minute is your rest. Progress by adding 1 burpee or 2 jump squats per round when you finish with 20+ seconds to spare.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 1,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 6,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 6,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 6,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "cali-wl-low-impact-circuit",
+      "name": "Low-Impact Fat-Loss Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Beginner",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "No jumping, no floor-slamming — built for beginners, bad knees, or downstairs neighbors. Move briskly between stations and keep rests honest at 45–60s; progress by adding 2 reps per exercise each week before cutting rest.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "step-up",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "incline-push-up",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "wall-sit",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "cali-sb-pullup-progression",
+      "name": "Pull-Up Progression Day",
+      "goal": "strengthBuilding",
+      "focus": "Pull",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "For anyone stuck under 8 strict pull-ups — you need a bar, nothing else. Keep every pull-up set 1–2 reps shy of failure; when all 5 sets of 4 feel crisp, move to 5x5 before adding negatives. The negatives are the progression engine: 4–5 seconds down, every rep.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "scapular-pull-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 5,
+          "reps": 4,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "pull-up-negative",
+          "sets": 3,
+          "reps": 4,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "inverted-row",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "hanging-knee-raise",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "cali-sb-push-progression",
+      "name": "Push Progression: Dips, Diamonds & Pikes",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Pressing strength without a barbell: dips lead while you're fresh, then diamond and pike variations attack triceps and shoulders. Own 5x5 dips with a 2-second pause at the bottom before adding reps; if dips are too much yet, do them on a low bar with feet assisting.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "incline-push-up",
+          "sets": 1,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dip",
+          "sets": 5,
+          "reps": 5,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "diamond-push-up",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "pike-push-up",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "decline-push-up",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "cali-sb-legs-core-strength",
+      "name": "Bodyweight Legs & Core Strength",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Single-leg work is how you build real leg strength without a bar — split squats do the heavy lifting, jump squats keep you explosive. Progress by slowing the split-squat descent to 3 seconds, then elevating the front foot; holds progress by 5 seconds per week.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bulgarian-split-squat",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "side-plank",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "cali-sb-skill-strength",
+      "name": "Skill Strength: Handstands & Holds",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Strength training",
+      "level": "Advanced",
+      "durationMinutes": 45,
+      "equipmentProfile": "Bodyweight",
+      "notes": "For calisthenics athletes chasing skills, not just reps: wall handstands and hollow holds build the positions, pikes and pull-ups build the pressing and pulling under them. Accumulate the handstand time in as few sets as possible; when 5x30s is easy, take one foot off the wall.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "wall-handstand-hold",
+          "sets": 5,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "pike-push-up",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 4,
+          "reps": 5,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 4,
+          "reps": 3,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        }
+      ]
+    },
+    {
+      "slug": "cali-lo-push-hypertrophy",
+      "name": "Push Hypertrophy — No Weights Needed",
+      "goal": "leanOut",
+      "focus": "Push",
+      "trainingType": "Calisthenics",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Chest, shoulders and triceps volume for leaning out — every push-up rep on a 3-second descent, no bouncing. Take each set within 2 reps of failure; when you clear the top of every rep range, elevate your feet another notch rather than adding endless reps.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "dip",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "decline-push-up",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "diamond-push-up",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "pike-push-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "cali-lo-pull-hypertrophy",
+      "name": "Pull Hypertrophy — Tempo Bar Work",
+      "goal": "leanOut",
+      "focus": "Pull",
+      "trainingType": "Calisthenics",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Back and biceps volume on a bar and a low rail: chin-ups while fresh, rows for the bulk of the work, every negative controlled for 2–3 seconds. If chin-up sets collapse below 6 reps, swap the last sets for extra inverted rows instead of grinding singles.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "scapular-pull-up",
+          "sets": 2,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "chin-up",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "inverted-row",
+          "sets": 4,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 3,
+          "reps": 6,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "hanging-knee-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bird-dog",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "cali-lo-leg-hypertrophy",
+      "name": "Leg Hypertrophy Burnout",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Calisthenics",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "High-rep leg volume that keeps muscle while you drop fat — squats and lunges done slow and deep, wall-sit to finish when your quads are already cooked. Progress by adding a 2-second pause at the bottom of every squat rep before you ever add reps.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 4,
+          "reps": 20,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "bulgarian-split-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 20,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "wall-sit",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "cali-rec-mobility-holds",
+      "name": "Mobility Reset + Easy Holds",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "For the day after a hard session: slow stretches to reopen hips and spine, then two easy holds to keep the core awake — nothing here should feel harder than a 4 out of 10. Breathe long and slow through every position; if anything pinches, back the range off.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 2,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plank",
+          "sets": 2,
+          "durationSeconds": 20,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ],
+  "newExercises": [
+    {
+      "id": "scapular-pull-up",
+      "name": "Scapular Pull-Up",
+      "muscleGroup": "Back",
+      "movementPattern": "Scapular depression and retraction from a dead hang",
+      "musclesWorked": "Lower traps, lats, rhomboids, grip",
+      "equipment": "Pull-up bar",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-scapular-pull-up",
+      "instructions": [
+        "Hang from the bar with straight arms, hands just outside shoulder width.",
+        "Without bending your elbows, pull your shoulder blades down and back so your chest lifts an inch or two.",
+        "Pause for one second at the top of the shrug-down position.",
+        "Slowly release back to a full dead hang and repeat."
+      ],
+      "formCue": "Arms straight — shoulders away from your ears.",
+      "commonMistakes": "Bending the elbows and turning it into a mini pull-up, or rushing the reps so the shoulder blades never actually move.",
+      "beginnerModification": "Keep your feet on a box and press lightly through them to take some bodyweight off the hang.",
+      "alternatives": ["inverted-row", "lat-pulldown"],
+      "whyThisMatters": "It teaches the shoulder-blade motion that starts every strong pull-up and bulletproofs the shoulders for hanging work.",
+      "formGuide": {
+        "description": "Hang from a bar with completely straight arms. Pull your shoulder blades down toward your back pockets so your body rises slightly, pause, then lower back into a relaxed hang. The elbows never bend — all the movement comes from the shoulder blades.",
+        "diagramPrompt": "Side-view illustration of an athlete hanging from a pull-up bar with straight arms, shown in two positions: relaxed dead hang and shoulder blades depressed with chest slightly lifted. Highlight the shoulder blades with directional arrows pointing down and back; keep elbows visibly locked in both frames."
+      }
+    },
+    {
+      "id": "pull-up-negative",
+      "name": "Negative Pull-Up",
+      "muscleGroup": "Back",
+      "movementPattern": "Eccentric-only vertical pull",
+      "musclesWorked": "Lats, biceps, mid-back, grip",
+      "equipment": "Pull-up bar, box or bench to jump from",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-pull-up-negative",
+      "instructions": [
+        "Stand on a box so your chin starts above the bar and grip just outside shoulder width.",
+        "Step or jump off the box and hold the top position for one second.",
+        "Lower yourself as slowly as you can — aim for a 4 to 5 second descent all the way to straight arms.",
+        "Step back onto the box and reset for the next rep."
+      ],
+      "formCue": "Fight every inch on the way down.",
+      "commonMistakes": "Dropping fast through the middle of the range, and skipping the full dead-hang finish at the bottom.",
+      "beginnerModification": "Shorten the range: lower only from chin-over-bar to elbows at 90 degrees, then step back up.",
+      "alternatives": ["inverted-row", "chin-up"],
+      "whyThisMatters": "Slow negatives build the exact strength and control that turn zero pull-ups into your first strict rep.",
+      "formGuide": {
+        "description": "Start with your chin over the bar by stepping off a box, then lower yourself to straight arms as slowly as possible — four to five seconds per rep. The controlled descent trains the same muscles as a pull-up while you build the strength to do full reps.",
+        "diagramPrompt": "Side-view three-frame sequence of an athlete at a pull-up bar: chin over the bar at the top, halfway down with elbows at 90 degrees, and a full dead hang at the bottom. Add a downward arrow with a clock icon indicating a slow 4–5 second descent."
+      }
+    },
+    {
+      "id": "wall-handstand-hold",
+      "name": "Wall Handstand Hold",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Inverted overhead isometric support",
+      "musclesWorked": "Shoulders, triceps, upper traps, core, wrists",
+      "equipment": "Wall",
+      "difficulty": "Advanced",
+      "videoPlaceholder": "demo-wall-handstand-hold",
+      "instructions": [
+        "Place your hands shoulder-width on the floor about 15–25 cm from the wall, fingers spread.",
+        "Kick up one leg at a time until your heels rest lightly on the wall.",
+        "Push tall through your shoulders, squeeze your glutes and ribs down, and look at a spot between your hands.",
+        "Hold with steady breathing, then lower one leg at a time under control."
+      ],
+      "formCue": "Push the floor away — get tall through your shoulders.",
+      "commonMistakes": "A banana-back arch from flared ribs, and collapsing through the shoulders instead of actively pushing up.",
+      "beginnerModification": "Do a pike hold instead: feet on a box, hips stacked over shoulders, holding the same vertical pressing position at half the load.",
+      "alternatives": ["pike-push-up", "plank"],
+      "whyThisMatters": "It builds the overhead strength, balance and body tension that every advanced calisthenics pressing skill is built on.",
+      "formGuide": {
+        "description": "Kick up into a handstand with your heels resting on a wall, hands shoulder-width and about a hand-length from the base. Push tall through the shoulders, keep ribs tucked and glutes tight so the body forms one straight line, and breathe steadily for the hold.",
+        "diagramPrompt": "Side-view illustration of an athlete holding a handstand with heels against a wall: straight line from wrists through shoulders, hips and heels. Highlight the stacked alignment with a vertical guide line, an arrow at the shoulders pointing upward for the push-tall cue, and a small marker showing hands placed a hand-length from the wall."
+      }
+    }
+  ]
+}

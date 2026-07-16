@@ -1,0 +1,556 @@
+{
+  "version": 2,
+  "category": "Strength & Powerlifting",
+  "workouts": [
+    {
+      "slug": "strength-wl-barbell-complex",
+      "name": "Barbell Complex Burner",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "For lifters who want conditioning without leaving the barbell behind. Move through all five lifts without setting the bar down, rest only after the press, and add 2.5 kg to the complex when all rounds feel crisp.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "conventional-deadlift",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 40 },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "bent-over-row",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 40 },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "front-squat",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 40 },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "overhead-press",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 40 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "strength-wl-strongman-circuit",
+      "name": "Strongman Sweat Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "Loaded-carry conditioning for people who hate treadmills. Keep the swings and carries heavy but unbroken; when every station finishes with reps in the tank, cut the rest by 10 seconds before adding load.",
+      "exercises": [
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 4,
+          "durationSeconds": 40,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 4,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 4,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "rowing-machine",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "strength-sb-5x5-lower",
+      "name": "5x5 Lower — Squat Day",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 65,
+      "equipmentProfile": "Full Gym",
+      "notes": "The classic intermediate squat day: five heavy fives, then hinge and single-leg work to shore up the posterior chain. Add 2.5 kg to the squat whenever you complete all 25 reps.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 5,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 80 },
+          "restSeconds": 210
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "percent1RM", "value": 60 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "bulgarian-split-squat",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "strength-sb-heavy-bench",
+      "name": "Heavy Bench Day",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Strength training",
+      "level": "Advanced",
+      "durationMinutes": 65,
+      "equipmentProfile": "Full Gym",
+      "notes": "Top-end bench work for lifters chasing a PR: heavy triples, then close-grip volume and upper-back balance so your shoulders stay healthy. When all five triples move fast, add 2.5 kg.",
+      "exercises": [
+        {
+          "libraryID": "push-up",
+          "sets": 2,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "barbell-bench-press",
+          "sets": 5,
+          "reps": 3,
+          "intensity": { "type": "percent1RM", "value": 87 },
+          "restSeconds": 240
+        },
+        {
+          "libraryID": "close-grip-bench-press",
+          "sets": 3,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 70 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "chest-supported-row",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "face-pull",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "strength-sb-deadlift-peak",
+      "name": "Deadlift Peak — Heavy Doubles",
+      "goal": "strengthBuilding",
+      "focus": "Pull",
+      "trainingType": "Strength training",
+      "level": "Advanced",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "A peaking pull day: heavy doubles at 90% with full recoveries, then light front squats and trunk work — nothing that steals from the next pull. Run it no more than once a week in the final month before testing a max.",
+      "exercises": [
+        {
+          "libraryID": "glute-bridge",
+          "sets": 2,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "conventional-deadlift",
+          "sets": 5,
+          "reps": 2,
+          "intensity": { "type": "percent1RM", "value": 90 },
+          "restSeconds": 240
+        },
+        {
+          "libraryID": "front-squat",
+          "sets": 3,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 70 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "back-extension",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "hanging-knee-raise",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "strength-sb-press-day",
+      "name": "Overhead Press Day",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "A dedicated pressing day for a stubborn overhead lift: heavy fives, incline volume, and enough pulling to keep the shoulder girdle balanced. Progress 1-2.5 kg at a time — the press rewards patience.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "overhead-press",
+          "sets": 5,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 77 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "incline-dumbbell-press",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 3,
+          "reps": 6,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "lateral-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "strength-sb-linear-day-a",
+      "name": "Beginner Linear Progression — Day A",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Strength training",
+      "level": "Beginner",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "Day A of a 3x/week full-body template for new lifters: squat, bench, row. Alternate with Day B, add 2.5 kg to each lift every session while the bar keeps moving well — that is the whole program.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 3,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 75 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "barbell-bench-press",
+          "sets": 3,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 75 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "bent-over-row",
+          "sets": 3,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 70 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "strength-sb-linear-day-b",
+      "name": "Beginner Linear Progression — Day B",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Strength training",
+      "level": "Beginner",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "Day B of the 3x/week template: squat again, press, and pull from the floor. Deadlift stays at one heavy set of five — beginners recover slowly from volume deadlifting, and one crisp set is enough to progress.",
+      "exercises": [
+        {
+          "libraryID": "glute-bridge",
+          "sets": 2,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 3,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 75 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "overhead-press",
+          "sets": 3,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 75 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "conventional-deadlift",
+          "sets": 1,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 80 },
+          "restSeconds": 240
+        },
+        {
+          "libraryID": "chin-up",
+          "sets": 3,
+          "reps": 5,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        }
+      ]
+    },
+    {
+      "slug": "strength-lo-powerbuilding-upper",
+      "name": "Powerbuilding Upper",
+      "goal": "leanOut",
+      "focus": "Push",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Strength first, physique second: one heavy bench slot, then hypertrophy volume with short rests to keep the burn rate up while cutting. Hold the top sets heavy even in a deficit — that is what keeps the muscle.",
+      "exercises": [
+        {
+          "libraryID": "barbell-bench-press",
+          "sets": 4,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 80 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "incline-dumbbell-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "seated-cable-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "lateral-raise",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "tricep-pushdown",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bicep-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "strength-lo-powerbuilding-lower",
+      "name": "Powerbuilding Lower",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "The lower-body twin of Powerbuilding Upper: heavy squat fives, then machine volume with tight rests. Pair the two days twice a week each while leaning out and you will not lose your lifts.",
+      "exercises": [
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 4,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 80 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "percent1RM", "value": 60 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "leg-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hamstring-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "strength-rec-deload-technique",
+      "name": "Deload — Technique Day",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Recovery training",
+      "level": "Recovery",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "Every fourth or fifth week, trade heavy for perfect: crisp fives at 50-55% on the big three, filming your sets, then stretch what lifting shortens. Leave the gym feeling better than you arrived — that is the goal.",
+      "exercises": [
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 3,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 55 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "barbell-bench-press",
+          "sets": 3,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 55 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "conventional-deadlift",
+          "sets": 2,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 50 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ],
+  "newExercises": []
+}

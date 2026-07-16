@@ -14,21 +14,34 @@ import Foundation
 /// One workout document in the bundled catalog.
 struct CatalogWorkout: Codable, Identifiable, Hashable {
     struct CatalogExercise: Codable, Hashable {
+        /// Honest intensity prescription: percent1RM only where a true 1RM
+        /// exists (barbell/machine lifts), rpe for dumbbell/kettlebell/cable,
+        /// heartRateZone/maxEffort for cardio, bodyweight for calisthenics.
+        struct Intensity: Codable, Hashable {
+            var type: String       // percent1RM / rpe / bodyweight / heartRateZone / maxEffort
+            var value: Double?
+        }
+
         var libraryID: String
         var sets: Int
-        var reps: Int
+        var reps: Int?             // rep-based work; timed work uses durationSeconds
+        var durationSeconds: Int?
+        var restSeconds: Int?
+        var intensity: Intensity?
     }
 
-    var id: String                 // stable UUID string (uuid5 of the combo key)
+    var id: String                 // stable UUID string (uuid5 of "v2:<slug>")
     var name: String
     var focus: String              // Full Body / Push / Pull / Legs / Core / Conditioning / Recovery
-    var trainingType: String?      // primary taxonomy ("Strength training", "HIIT", …)
+    var trainingType: String?      // descriptive style ("Strength training", "Cardio intervals", …)
+    var category: String?          // v2 organizing spine ("Strength & Powerlifting", …)
+    var goalTag: String?           // weightLoss / strengthBuilding / leanOut / recovery
     var level: String              // DemoDifficulty rawValue
     var durationMinutes: Int
     var equipmentProfile: String   // Bodyweight / Dumbbells / Full Gym
     var goal: String
     var notes: String
-    /// Curated collection name ("Legends"); nil = generated Morphe Program.
+    /// Curated collection name; nil = Morphe Program.
     var collection: String?
     var exercises: [CatalogExercise]
 }
@@ -67,9 +80,11 @@ enum WorkoutCatalog {
                     name: reference.name,
                     muscleGroup: reference.muscleGroup,
                     sets: "\(entry.sets) sets",
-                    reps: "\(entry.reps) reps",
+                    reps: repsLabel(for: entry),
                     difficulty: reference.difficulty,
-                    formCue: reference.formCue
+                    formCue: reference.formCue,
+                    intensityLabel: intensityLabel(for: entry.intensity),
+                    restSeconds: entry.restSeconds
                 )
             )
         }
@@ -87,6 +102,8 @@ enum WorkoutCatalog {
             equipment: workout.equipmentProfile,
             focusTag: workout.focus,
             trainingTypeTag: workout.trainingType ?? "",
+            categoryTag: workout.category ?? "",
+            goalTag: workout.goalTag ?? "",
             exercises: exercises,
             notes: workout.notes,
             coachNote: workout.notes
@@ -98,6 +115,33 @@ enum WorkoutCatalog {
         case "Conditioning": return .conditioning
         case "Recovery": return .recovery
         default: return .strength
+        }
+    }
+
+    /// "8 reps" for rep work; "45 sec" / "20 min" for timed work.
+    private static func repsLabel(for entry: CatalogWorkout.CatalogExercise) -> String {
+        if let reps = entry.reps { return "\(reps) reps" }
+        let seconds = entry.durationSeconds ?? 0
+        if seconds >= 120 && seconds % 60 == 0 { return "\(seconds / 60) min" }
+        return "\(seconds) sec"
+    }
+
+    /// Short prescription shown next to sets × reps ("80% 1RM", "RPE 8", …).
+    private static func intensityLabel(for intensity: CatalogWorkout.CatalogExercise.Intensity?) -> String {
+        guard let intensity else { return "" }
+        switch intensity.type {
+        case "percent1RM":
+            guard let value = intensity.value else { return "" }
+            return "\(Int(value))% 1RM"
+        case "rpe":
+            guard let value = intensity.value else { return "" }
+            return "RPE \(Int(value))"
+        case "heartRateZone":
+            guard let value = intensity.value else { return "" }
+            return "Zone \(Int(value))"
+        case "maxEffort": return "Max effort"
+        case "bodyweight": return "Bodyweight"
+        default: return ""
         }
     }
 }

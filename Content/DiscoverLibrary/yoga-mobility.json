@@ -1,0 +1,841 @@
+{
+  "version": 2,
+  "category": "Yoga, Mobility & Flexibility",
+  "workouts": [
+    {
+      "slug": "yoga-power-flow-burner",
+      "name": "Power Flow Burner",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Power yoga",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "notes": "For anyone who wants a sweat without a single jump or weight — strength holds strung into a continuous flow keep your heart rate up the whole time. Progress by adding 10 seconds to each hold before you shorten the rests.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "downward-dog",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "chair-pose",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "crescent-lunge",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "warrior-two",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "yoga-dynamic-mobility-sweat",
+      "name": "Dynamic Mobility Sweat Circuit",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Mobility circuit",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Mobility work programmed like a conditioning circuit — you drill full ranges of motion while your heart rate climbs, so stiff hips and a calorie burn get handled in one session. Progress by trimming the rests toward 20 seconds.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "yoga-strength-holds-balance",
+      "name": "Yoga Strength: Holds & Balance",
+      "goal": "strengthBuilding",
+      "focus": "Core",
+      "trainingType": "Yoga strength",
+      "level": "Advanced",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Isometric strength for lifters and yogis alike — long holds, single-leg balance, and pike pressing build shoulders and a midline that carry over to every barbell lift. Progress by extending holds 5 seconds a week before adding reps.",
+      "exercises": [
+        {
+          "libraryID": "downward-dog",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "chair-pose",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "warrior-three",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "pike-push-up",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "side-plank",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "yoga-vinyasa-flow-foundations",
+      "name": "Vinyasa Flow: Foundations",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Vinyasa yoga",
+      "level": "Beginner",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A repeatable flow day for lifters cutting calories — enough movement to keep the deficit honest without eating into recovery from your strength sessions. Progress by holding each pose one breath longer each week.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "downward-dog",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "cobra-pose",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "crescent-lunge",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 25
+        },
+        {
+          "libraryID": "warrior-two",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 25
+        },
+        {
+          "libraryID": "chair-pose",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "yoga-vinyasa-balance-hips",
+      "name": "Vinyasa Flow: Balance & Hips",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Vinyasa yoga",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The flow day for people whose squats feel stiff — single-leg balance plus deep hip openers, with just enough work density to count toward the week's activity. Progress by moving from fingertip support to hands-free on the balance holds.",
+      "exercises": [
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "downward-dog",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "warrior-three",
+          "sets": 3,
+          "durationSeconds": 25,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "crescent-lunge",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 25
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "pigeon-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "cobra-pose",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "yoga-core-hip-control",
+      "name": "Core + Hip Control",
+      "goal": "leanOut",
+      "focus": "Core",
+      "trainingType": "Core & mobility",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Anti-extension and anti-rotation core work paired with hip openers — the session that makes your waist look trained and your hips move like they should. Progress the holds before the reps: quality beats quantity here.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 25,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "side-plank",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bird-dog",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "pigeon-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "yoga-morning-wake-up",
+      "name": "Morning Full-Body Wake-Up",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 15,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Fifteen unhurried minutes to shake off sleep stiffness before coffee — spine, hips, and shoulders all get a pass. Nothing here should feel like effort; if it does, back off the range.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "downward-dog",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "yoga-desk-reset",
+      "name": "Desk Reset: Hips + T-Spine",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Built for anyone who sits eight hours a day — every drill targets the two areas a chair locks up: hip flexors and the mid-back. Do it on lunch breaks or after work; consistency matters more than depth.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "pigeon-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "yoga-hamstring-posterior-release",
+      "name": "Hamstring & Posterior Chain Release",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Stretching",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The day-after-deadlifts session — long, easy stretches down the whole back line from calves to lats. Ease into each hold over the first 10 seconds; you should be able to breathe slowly the entire time.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "downward-dog",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "yoga-yin-long-holds",
+      "name": "Yin: Long Deep Holds",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Yin yoga",
+      "level": "Recovery",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Two-minute passive holds that let connective tissue actually let go — the deepest flexibility work in the catalog. Settle to about 70 percent of your max stretch and stay there; sinking deeper happens on its own.",
+      "exercises": [
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "pigeon-pose",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "cobra-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "yoga-pre-sleep-wind-down",
+      "name": "Pre-Sleep Wind-Down",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Stretching",
+      "level": "Recovery",
+      "durationMinutes": 15,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The last fifteen minutes before bed — slow, floor-based shapes that downshift the nervous system so you fall asleep faster. Dim the lights, breathe out longer than you breathe in, and never push into a stretch.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 75,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ],
+  "newExercises": [
+    {
+      "id": "downward-dog",
+      "name": "Downward Dog",
+      "muscleGroup": "Core",
+      "movementPattern": "Hinge + overhead reach",
+      "musclesWorked": "Hamstrings, calves, shoulders, lats",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-downward-dog",
+      "instructions": [
+        "Start on hands and knees with hands shoulder-width and feet hip-width.",
+        "Tuck your toes and lift your hips up and back until your body forms an inverted V.",
+        "Press the floor away through your palms and let your head hang between your arms.",
+        "Work your heels toward the floor with a soft bend in the knees, and hold while breathing slowly."
+      ],
+      "formCue": "Push the floor away and send your hips to the ceiling.",
+      "commonMistakes": "Rounding the back to force heels down, and collapsing through the shoulders instead of pressing long.",
+      "beginnerModification": "Keep a generous knee bend and lift the heels — a long spine matters more than straight legs.",
+      "alternatives": ["cat-cow", "childs-pose"],
+      "whyThisMatters": "One shape that stretches the whole back line while building shoulder endurance.",
+      "formGuide": {
+        "description": "From all fours you lift your hips high so your body makes an upside-down V. The goal is a long, straight spine from wrists to tailbone — bend the knees as much as needed to keep it. Press through your hands and breathe.",
+        "diagramPrompt": "Side-view illustration of a person in downward dog: body forming a clear inverted V, arms and spine in one straight line, knees slightly bent, heels slightly lifted. Highlight the straight line from hands through hips with an accent line, and add a small arrow showing hips lifting up and back."
+      }
+    },
+    {
+      "id": "cobra-pose",
+      "name": "Cobra Pose",
+      "muscleGroup": "Back",
+      "movementPattern": "Prone spinal extension",
+      "musclesWorked": "Spinal erectors, glutes, chest and hip flexors (stretched)",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-cobra-pose",
+      "instructions": [
+        "Lie face down with legs extended and hands flat under your shoulders, elbows tucked.",
+        "Press the tops of your feet and your hips gently into the floor.",
+        "Push through your hands to peel your chest off the floor, leading with the breastbone.",
+        "Keep elbows softly bent and shoulders away from your ears; hold, then lower with control."
+      ],
+      "formCue": "Lead with your chest, not your chin.",
+      "commonMistakes": "Cranking the lower back by pushing to full arm lockout, and shrugging the shoulders up to the ears.",
+      "beginnerModification": "Stay on your forearms (sphinx pose) for a gentler extension.",
+      "alternatives": ["cat-cow", "back-extension"],
+      "whyThisMatters": "Restores the spinal extension that sitting steals, and opens the hip flexors and chest at the same time.",
+      "formGuide": {
+        "description": "Lying face down, you press through your hands to lift your chest while your hips stay grounded. The arch should spread evenly through the whole spine, not fold into the lower back. Elbows stay bent and shoulders stay low.",
+        "diagramPrompt": "Side-view illustration of a person lying prone in cobra pose: chest lifted, elbows bent, hips and thighs pressed to the mat. Highlight the smooth even curve of the spine with an accent arc, and mark the hips staying in contact with the floor."
+      }
+    },
+    {
+      "id": "pigeon-pose",
+      "name": "Pigeon Pose",
+      "muscleGroup": "Legs",
+      "movementPattern": "Deep hip external rotation stretch",
+      "musclesWorked": "Glutes, piriformis, hip flexors of the rear leg",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-pigeon-pose",
+      "instructions": [
+        "From all fours, bring your right knee forward behind your right wrist with the shin angled across your body.",
+        "Slide your left leg straight back until the hip settles toward the floor.",
+        "Square your hips forward and stay tall, or fold your chest over the front shin to deepen.",
+        "Breathe slowly for the full hold, then switch sides."
+      ],
+      "formCue": "Square your hips — don't tip onto the front-leg side.",
+      "commonMistakes": "Collapsing onto one hip so the stretch disappears, and forcing the front shin parallel before the hips are ready.",
+      "beginnerModification": "Do it on your back instead: figure-four position with the ankle over the opposite knee.",
+      "alternatives": ["hip-flexor-stretch", "worlds-greatest-stretch"],
+      "whyThisMatters": "The deepest common glute and hip-rotation stretch — direct relief for squat-day hips and desk-bound glutes.",
+      "formGuide": {
+        "description": "One shin folds in front of you while the other leg extends straight behind, and gravity sinks your hips toward the floor. Keep the hips level and square to the front. Fold forward only once the hips feel settled.",
+        "diagramPrompt": "Three-quarter view illustration of a person in pigeon pose: front shin folded on the mat, rear leg extended straight back, torso upright. Highlight level, squared hips with a horizontal accent line and mark the front-leg glute as the target of the stretch."
+      }
+    },
+    {
+      "id": "warrior-two",
+      "name": "Warrior Two",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static lunge hold with arm reach",
+      "musclesWorked": "Quads, glutes, hip adductors, shoulders",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-warrior-two",
+      "instructions": [
+        "Step into a wide stance, front toes pointing forward and back foot turned out about 90 degrees.",
+        "Bend the front knee until it stacks over the ankle, thigh working toward parallel.",
+        "Reach both arms out at shoulder height, one forward and one back, palms down.",
+        "Press the outer edge of the back foot into the floor and gaze over the front fingertips; hold, then switch sides."
+      ],
+      "formCue": "Front knee chases the little toe — never lets it cave in.",
+      "commonMistakes": "Letting the front knee collapse inward, and leaning the torso over the front leg instead of stacking it upright.",
+      "beginnerModification": "Shorten the stance and bend the front knee less until the hold feels stable.",
+      "alternatives": ["reverse-lunge", "wall-sit"],
+      "whyThisMatters": "Builds isometric leg strength and hip endurance in a deep stance most training never visits.",
+      "formGuide": {
+        "description": "A wide, grounded lunge held still: front knee bent over the ankle, back leg straight and strong, arms stretched in opposite directions at shoulder height. Your torso stays stacked over your hips, not tipped forward. The burn in the front thigh is the point.",
+        "diagramPrompt": "Front-side view illustration of a person in warrior two: wide stance, front knee bent to 90 degrees over the ankle, back leg straight, arms extended horizontally in opposite directions. Highlight the front knee tracking over the foot and a vertical accent line through the upright torso."
+      }
+    },
+    {
+      "id": "warrior-three",
+      "name": "Warrior Three",
+      "muscleGroup": "Legs",
+      "movementPattern": "Single-leg hinge balance",
+      "musclesWorked": "Glutes, hamstrings, spinal erectors, ankle stabilizers",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "videoPlaceholder": "demo-warrior-three",
+      "instructions": [
+        "Stand tall, shift your weight onto one leg, and fix your eyes on a point ahead.",
+        "Hinge at the hips, tipping your torso forward while the free leg extends straight behind you.",
+        "Keep hips level until your body forms a T — arms reaching forward or back along your sides.",
+        "Hold with a micro-bend in the standing knee, then rise with control and switch sides."
+      ],
+      "formCue": "One straight line from fingertips to back heel.",
+      "commonMistakes": "Letting the raised-leg hip hike open toward the ceiling, and rounding the back to get lower.",
+      "beginnerModification": "Rest fingertips on a wall or chair, or keep the back toes lightly touching the floor.",
+      "alternatives": ["single-leg-rdl", "bird-dog"],
+      "whyThisMatters": "Single-leg balance plus posterior-chain strength — the pose version of an RDL, and one of the best fall-proofing drills there is.",
+      "formGuide": {
+        "description": "Balancing on one leg, you hinge until your torso and rear leg are parallel to the floor, making a capital T. Hips stay square to the ground the whole time. A soft standing knee and a fixed gaze keep you steady.",
+        "diagramPrompt": "Side-view illustration of a person in warrior three: balancing on one slightly bent leg, torso and rear leg horizontal, arms extended forward. Highlight the single straight line from fingertips through the back heel with an accent line, and mark both hip points level with the floor."
+      }
+    },
+    {
+      "id": "chair-pose",
+      "name": "Chair Pose",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static squat hold with overhead reach",
+      "musclesWorked": "Quads, glutes, spinal erectors, shoulders",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-chair-pose",
+      "instructions": [
+        "Stand with feet together or hip-width apart.",
+        "Bend your knees and sit your hips back and down as if lowering into an invisible chair.",
+        "Sweep your arms overhead alongside your ears, keeping your chest lifted.",
+        "Keep weight in your heels — you should be able to wiggle your toes — and hold while breathing steadily."
+      ],
+      "formCue": "Sit back into the chair, weight in your heels.",
+      "commonMistakes": "Knees drifting far past the toes with weight on the forefoot, and the lower back over-arching as the arms rise.",
+      "beginnerModification": "Keep hands at your chest and sink only a quarter of the way down.",
+      "alternatives": ["wall-sit", "bodyweight-squat"],
+      "whyThisMatters": "A squat you can load with nothing but time — pure quad and glute endurance plus a shoulder and posture challenge.",
+      "formGuide": {
+        "description": "You hold the bottom half of a squat with arms reaching overhead, hips sitting back like there's a chair just behind you. Weight lives in the heels and the chest stays proudly lifted. The longer you hold, the harder it works.",
+        "diagramPrompt": "Side-view illustration of a person in chair pose: knees bent, hips sitting back, torso leaning slightly forward with arms extended overhead in line with the ears. Highlight the weight over the heels with a downward accent arrow and the straight line from hands to hips."
+      }
+    },
+    {
+      "id": "crescent-lunge",
+      "name": "Crescent Lunge",
+      "muscleGroup": "Legs",
+      "movementPattern": "Split-stance lunge hold",
+      "musclesWorked": "Quads, glutes, hip flexors (stretched), core",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-crescent-lunge",
+      "instructions": [
+        "From standing, step one foot back into a long split stance, staying on the ball of the back foot.",
+        "Bend the front knee to about 90 degrees, stacked over the ankle.",
+        "Reach both arms overhead and tuck the tailbone slightly to feel a stretch in the rear hip.",
+        "Hold with a tall torso and steady breath, then switch sides."
+      ],
+      "formCue": "Tuck the tail — the stretch shows up in the back hip.",
+      "commonMistakes": "Arching the lower back instead of tucking the pelvis, and letting the front knee wobble inward.",
+      "beginnerModification": "Lower the back knee to the floor for a supported low lunge.",
+      "alternatives": ["hip-flexor-stretch", "reverse-lunge"],
+      "whyThisMatters": "Strengthens the front leg while opening the opposite hip flexor — two things every runner and lifter needs in one hold.",
+      "formGuide": {
+        "description": "A high split-stance hold: front knee bent over the ankle, back leg long and strong on the ball of the foot, arms reaching to the ceiling. A slight tailbone tuck turns it from a leg exercise into a deep hip-flexor stretch too.",
+        "diagramPrompt": "Side-view illustration of a person in crescent lunge: long split stance, front knee at 90 degrees, back heel lifted, arms extended straight overhead. Highlight the rear hip flexor as the stretch target and add a small arrow showing the pelvis tucking under."
+      }
+    },
+    {
+      "id": "supine-twist",
+      "name": "Supine Twist",
+      "muscleGroup": "Core",
+      "movementPattern": "Lying spinal rotation stretch",
+      "musclesWorked": "Obliques, lower-back muscles, glutes, chest",
+      "equipment": "None (mat optional)",
+      "difficulty": "Recovery",
+      "videoPlaceholder": "demo-supine-twist",
+      "instructions": [
+        "Lie on your back and hug one knee in toward your chest.",
+        "Guide that knee across your body toward the floor on the opposite side.",
+        "Extend the same-side arm out at shoulder height and turn your gaze toward it.",
+        "Keep both shoulders heavy on the floor, breathe slowly for the hold, then switch sides."
+      ],
+      "formCue": "Shoulders stay glued to the floor — let the knee hang.",
+      "commonMistakes": "Letting the opposite shoulder peel off the floor, and yanking the knee down instead of letting gravity do it.",
+      "beginnerModification": "Rest the crossing knee on a pillow so it doesn't have to reach the floor.",
+      "alternatives": ["thread-the-needle", "cat-cow"],
+      "whyThisMatters": "A zero-effort spinal unwind that releases the lower back and signals the nervous system to downshift.",
+      "formGuide": {
+        "description": "Lying on your back, one bent knee drops across your body toward the floor while both shoulders stay grounded. The gentle wringing along the spine is the goal — gravity does all the work. Perfect as the second-to-last shape before rest.",
+        "diagramPrompt": "Top-down illustration of a person lying supine in a twist: one knee crossed over the body toward the floor, opposite arm extended at shoulder height, head turned toward the extended arm. Highlight both shoulders in contact with the mat and a gentle rotation arc along the spine."
+      }
+    }
+  ]
+}

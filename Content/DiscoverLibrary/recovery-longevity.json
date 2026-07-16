@@ -1,0 +1,667 @@
+{
+  "version": 2,
+  "category": "Recovery & Longevity",
+  "workouts": [
+    {
+      "slug": "recovery-zone2-walk-plus-circuit",
+      "name": "Zone-2 Walk + Light Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Cardio + strength",
+      "level": "Beginner",
+      "durationMinutes": 55,
+      "equipmentProfile": "Dumbbells",
+      "notes": "The most sustainable fat-loss session in the catalog: a long conversational-pace walk to burn calories without wrecking your appetite, capped by a short circuit to protect muscle. Progress by adding treadmill incline before adding speed.",
+      "exercises": [
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 1800,
+          "intensity": { "type": "heartRateZone", "value": 2 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 6 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "incline-push-up",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dumbbell-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 6 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "plank",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "recovery-easy-machine-circuit",
+      "name": "Easy Full-Body Machine Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Beginner",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "For beginners or anyone easing back in — machines guide the movement path so you can focus on breathing and effort, not balance. Nothing should approach failure; add one rep per exercise each week before touching the weight stack.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": { "type": "heartRateZone", "value": 2 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "leg-press",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "percent1RM", "value": 55 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "machine-chest-press",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "percent1RM", "value": 55 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "lat-pulldown",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "percent1RM", "value": 55 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "seated-cable-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "percent1RM", "value": 55 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "hamstring-curl",
+          "sets": 2,
+          "reps": 12,
+          "intensity": { "type": "percent1RM", "value": 55 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "recovery-longevity-strength-balance-carries",
+      "name": "Longevity Strength: Balance & Carries",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Strength for the decades ahead: single-leg work trains the balance that prevents falls, and loaded carries build the grip and trunk that predict healthy aging. Progress the carries by distance first, then load.",
+      "exercises": [
+        {
+          "libraryID": "bird-dog",
+          "sets": 2,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "step-up",
+          "sets": 3,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 4,
+          "durationSeconds": 40,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 120
+        }
+      ]
+    },
+    {
+      "slug": "recovery-bone-density-basics",
+      "name": "Bone Density Basics",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Strength training",
+      "level": "Beginner",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "Bones adapt to load the same way muscle does — this session hits the hips and spine with the axial loading that keeps them dense. Add a little weight every week or two; slow, permanent progress is the whole game here.",
+      "exercises": [
+        {
+          "libraryID": "glute-bridge",
+          "sets": 2,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 3,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 75 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "step-up",
+          "sets": 3,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 120
+        }
+      ]
+    },
+    {
+      "slug": "recovery-low-impact-lean-circuit-a",
+      "name": "Low-Impact Lean Circuit A",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Hypertrophy-style volume with zero jumping — kind to knees and quiet enough for an apartment floor, but the short rests still make it earn its keep. Progress by nudging each dumbbell up once all sets hit the top reps.",
+      "exercises": [
+        {
+          "libraryID": "goblet-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dumbbell-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": { "type": "heartRateZone", "value": 3 },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "recovery-low-impact-lean-circuit-b",
+      "name": "Low-Impact Lean Circuit B",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "notes": "The partner to Circuit A — lunge patterns and hinges take the lead so alternating A and B covers the whole body twice a week, still with no impact. Progress reps to the top of the range before adding load.",
+      "exercises": [
+        {
+          "libraryID": "reverse-lunge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "seated-dumbbell-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 75
+        }
+      ]
+    },
+    {
+      "slug": "recovery-flush-spin-stretch",
+      "name": "Active Recovery: Flush Spin + Stretch",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "The classic flush: fifteen easy minutes on the bike to push blood through sore legs, then unhurried stretching while the tissue is warm. If you can't hold a conversation on the bike, you're pedaling too hard.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 900,
+          "intensity": { "type": "heartRateZone", "value": 1 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "recovery-rest-day-mobility-20",
+      "name": "Rest-Day Mobility in 20",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A complete head-to-toe mobility pass that fits any rest day — spine, hips, and shoulders each get their turn with nothing to set up. Treat it as movement practice, not training: smooth and easy every rep.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "bird-dog",
+          "sets": 2,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "recovery-post-leg-day",
+      "name": "Post-Leg-Day Recovery",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 25,
+      "equipmentProfile": "Full Gym",
+      "notes": "Do this the day after squats or deadlifts — an easy walk gets blood moving, then every stretch targets exactly what leg day beat up: quads, hamstrings, glutes, and hip flexors. Sore muscles want gentle length, not depth.",
+      "exercises": [
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": { "type": "heartRateZone", "value": 1 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "standing-quad-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "recovery-post-upper-day",
+      "name": "Post-Upper-Day Recovery",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The morning-after answer to bench and rows — easy arm circles to warm the joints, then stretches for the chest, lats, and rear shoulders that pressing day shortens. Great between sets of nothing: no equipment, no sweat.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "cross-body-shoulder-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "recovery-full-body-unwind",
+      "name": "Full-Body Unwind",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Stretching",
+      "level": "Recovery",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "No foam roller needed — a five-minute spin warms the tissue, then long stretches sweep every major area from quads to chest. Use it after a heavy training week or any time you feel generally beat up rather than sore in one spot.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": { "type": "heartRateZone", "value": 1 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-quad-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ],
+  "newExercises": [
+    {
+      "id": "standing-quad-stretch",
+      "name": "Standing Quad Stretch",
+      "muscleGroup": "Legs",
+      "movementPattern": "Standing knee-flexion stretch",
+      "musclesWorked": "Quadriceps, hip flexors",
+      "equipment": "None (wall or chair for balance)",
+      "difficulty": "Recovery",
+      "videoPlaceholder": "demo-standing-quad-stretch",
+      "instructions": [
+        "Stand tall, holding a wall or chair with one hand if you need balance.",
+        "Bend one knee and catch the top of that foot behind you with the same-side hand.",
+        "Gently pull the heel toward your glute, keeping knees close together.",
+        "Tuck your tailbone slightly to deepen the stretch along the front of the thigh; hold, then switch sides."
+      ],
+      "formCue": "Knees together, tail tucked — the stretch lives in the front of the thigh.",
+      "commonMistakes": "Letting the bent knee flare out to the side, and arching the lower back instead of tucking the pelvis.",
+      "beginnerModification": "Lie on your side and pull the top foot toward your glute, or rest the foot on a low bench behind you.",
+      "alternatives": ["hip-flexor-stretch", "worlds-greatest-stretch"],
+      "whyThisMatters": "The simplest direct release for quads fried by squats, lunges, or a long run.",
+      "formGuide": {
+        "description": "Standing on one leg, you pull the other heel toward your glute to lengthen the front of the thigh. Knees stay side by side and the pelvis tucks slightly under. Hold onto something if balance wobbles — this is a stretch, not a balance test.",
+        "diagramPrompt": "Side-view illustration of a person standing on one leg, other heel pulled to the glute by the same-side hand, opposite hand resting on a wall. Highlight the stretched front of the bent-leg thigh and show both knees aligned side by side."
+      }
+    },
+    {
+      "id": "figure-four-stretch",
+      "name": "Figure-Four Stretch",
+      "muscleGroup": "Legs",
+      "movementPattern": "Supine hip external rotation stretch",
+      "musclesWorked": "Glutes, piriformis, outer hip",
+      "equipment": "None (mat optional)",
+      "difficulty": "Recovery",
+      "videoPlaceholder": "demo-figure-four-stretch",
+      "instructions": [
+        "Lie on your back with both knees bent and feet flat on the floor.",
+        "Cross one ankle over the opposite knee so your legs form a 4 shape.",
+        "Reach through and clasp behind the supporting thigh, then draw it gently toward your chest.",
+        "Keep your head and shoulders relaxed on the floor; hold, then switch sides."
+      ],
+      "formCue": "Pull the thigh in, press the crossed knee gently away.",
+      "commonMistakes": "Lifting the head and shoulders off the floor to reach, and letting the crossed ankle slide onto the shin instead of above the knee.",
+      "beginnerModification": "Skip the pull — rest the crossed foot against a wall and let gravity open the hip.",
+      "alternatives": ["hip-flexor-stretch", "worlds-greatest-stretch"],
+      "whyThisMatters": "Targets the deep glute and piriformis that get cranky from squats, running, and long sitting — lying down, with zero strain.",
+      "formGuide": {
+        "description": "On your back, one ankle crosses the opposite knee and you hug that supporting thigh toward you. The stretch shows up deep in the crossed leg's glute and outer hip. Everything above the waist stays heavy and relaxed.",
+        "diagramPrompt": "Side-view illustration of a person lying on their back with one ankle crossed over the opposite knee forming a 4, hands clasped behind the supporting thigh pulling it toward the chest. Highlight the crossed leg's glute as the stretch target and keep the head resting on the mat."
+      }
+    },
+    {
+      "id": "cross-body-shoulder-stretch",
+      "name": "Cross-Body Shoulder Stretch",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Horizontal adduction stretch",
+      "musclesWorked": "Rear deltoid, upper back, rotator cuff",
+      "equipment": "None",
+      "difficulty": "Recovery",
+      "videoPlaceholder": "demo-cross-body-shoulder-stretch",
+      "instructions": [
+        "Stand or sit tall and reach one arm straight across your chest.",
+        "Hook the opposite forearm above the elbow of the reaching arm.",
+        "Gently pull the arm closer to your chest, keeping the shoulder pressed down away from the ear.",
+        "Hold while breathing slowly, then switch arms."
+      ],
+      "formCue": "Shoulder down, then pull — never shrug into it.",
+      "commonMistakes": "Shrugging the stretched shoulder up toward the ear, and grabbing at the elbow joint instead of above it.",
+      "beginnerModification": "Reduce the pull and simply hold the arm across the chest with light pressure.",
+      "alternatives": ["thread-the-needle", "chest-doorway-stretch"],
+      "whyThisMatters": "Keeps the rear shoulder and cuff supple after pressing days — thirty easy seconds that pay off on your next bench session.",
+      "formGuide": {
+        "description": "One arm reaches across your chest while the other forearm hugs it in closer. Keeping the stretched shoulder pulled down away from your ear is what aims the stretch into the rear delt. Gentle pressure and slow breathing do the rest.",
+        "diagramPrompt": "Front-view illustration of a standing person with one arm extended horizontally across the chest, opposite forearm hooked above the elbow pulling it inward. Highlight the rear deltoid of the stretched arm and add a small downward arrow at that shoulder showing it staying away from the ear."
+      }
+    }
+  ]
+}

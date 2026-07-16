@@ -1,0 +1,696 @@
+{
+  "version": 2,
+  "category": "Kettlebell & Dumbbell",
+  "workouts": [
+    {
+      "slug": "kbdb-swing-interval-engine",
+      "name": "Swing Interval Engine",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Ten rounds of 30 seconds on / 30 seconds off on the swing — the single best fat-loss tool one kettlebell offers (a heavy dumbbell held by one end works too). Goblet squats and climbers finish the legs and lungs. Progress by holding 15+ crisp swings every round before sizing up the bell.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 10,
+          "durationSeconds": 30,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "kbdb-grind-and-go-complex",
+      "name": "The Grind & Go — DB Complex",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Advanced",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "notes": "A five-round dumbbell complex: 6 snatches per arm, 8 thrusters, 8 rows, 8 reverse lunges per side — the dumbbells never touch the floor until the round ends, then 90 seconds to breathe. Pick a weight you could snatch 10 times fresh. Progress by finishing all 5 rounds before adding load.",
+      "exercises": [
+        {
+          "libraryID": "dumbbell-snatch",
+          "sets": 5,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "dumbbell-thruster",
+          "sets": 5,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "dumbbell-row",
+          "sets": 5,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "reverse-lunge",
+          "sets": 5,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "kbdb-full-body-forty",
+      "name": "Full-Body Forty Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Beginner",
+      "durationMinutes": 40,
+      "equipmentProfile": "Dumbbells",
+      "notes": "The beginner-friendly fat-loss circuit: squat, push, pull, press, swing, plank — three laps with just enough rest to keep form honest. Ideal 3x per week for someone new to weights who wants to lose fat without living in the gym. Progress by cutting rest to 30 seconds, then adding weight.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 1,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "dumbbell-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "shoulder-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "kbdb-strength-a-squat-press",
+      "name": "Full-Body Strength A — Squat & Press",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Day A of a two-day dumbbell strength split: heavy goblet squats, flat presses, rows and a loaded carry. RPE 8 means two reps left in the tank — when all four work sets hit 6 clean reps, grab the next dumbbell up. Alternate with Strength B, 48 hours apart.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "dumbbell-bench-press",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "dumbbell-row",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        }
+      ]
+    },
+    {
+      "slug": "kbdb-strength-b-hinge-pull",
+      "name": "Full-Body Strength B — Hinge & Pull",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Day B pairs with Strength A: goblet cleans for explosive hinging, single-leg RDLs, chest-supported rows, and Turkish get-ups (3 per side) to bulletproof the shoulders. Get-ups are graded on control, not speed — earn a heavier bell by owning every position.",
+      "exercises": [
+        {
+          "libraryID": "glute-bridge",
+          "sets": 2,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "kettlebell-goblet-clean",
+          "sets": 5,
+          "reps": 5,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "chest-supported-row",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "kettlebell-turkish-get-up",
+          "sets": 3,
+          "reps": 3,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 150
+        }
+      ]
+    },
+    {
+      "slug": "kbdb-single-leg-strength",
+      "name": "Single-Leg Strength Day",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Dumbbells",
+      "notes": "For athletes and anyone whose squat is stronger than their balance: Bulgarian split squats lead while you're fresh, then single-leg RDLs, step-ups and glute work. All reps are per side. Progress load only when the weaker leg matches the stronger one for reps.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bulgarian-split-squat",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "step-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "kbdb-press-focused-strength",
+      "name": "Press-Focused Strength Day",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Dumbbells",
+      "notes": "A dedicated pressing day for building shoulders that push real weight: heavy seated presses first, then incline and Arnold presses from different angles, capped with lateral raises and tricep work. When 5x5 at RPE 8 feels like RPE 7, the dumbbells go up.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "seated-dumbbell-press",
+          "sets": 5,
+          "reps": 5,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "incline-dumbbell-press",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "arnold-press",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "lateral-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "overhead-tricep-extension",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "kbdb-upper-hypertrophy",
+      "name": "DB Upper Hypertrophy",
+      "goal": "leanOut",
+      "focus": "Push",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Upper-body volume with short rests to hold muscle while cutting: presses and rows in the 10-12 range, then delts and arms to finish. Every set stops 1-2 reps shy of failure — leaner-out training only works if the last rep still looks like the first. Add a rep per week before adding weight.",
+      "exercises": [
+        {
+          "libraryID": "dumbbell-bench-press",
+          "sets": 4,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "dumbbell-row",
+          "sets": 4,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "incline-dumbbell-press",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "rear-delt-fly",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "hammer-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "overhead-tricep-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "kbdb-lower-hypertrophy",
+      "name": "DB Lower Hypertrophy",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Dumbbells",
+      "notes": "The lower-body partner to DB Upper Hypertrophy: squats, hinges, lunges and hip thrusts in the 10-12 range with 75-90 seconds rest. Hold a dumbbell on your hips for the thrusts. Legs respond to honest depth and full range — shorten the rest before you shorten the squat.",
+      "exercises": [
+        {
+          "libraryID": "glute-bridge",
+          "sets": 2,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 4,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hip-thrust",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "kbdb-flow-circuit",
+      "name": "Kettlebell Flow Circuit",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Four rounds of a five-move kettlebell flow — clean, squat, halo, swing, lunge — moving from one straight into the next, 90 seconds between rounds. It keeps muscle on while the constant motion drives the burn. One bell is all you need; progress by making the flow seamless before making it heavier.",
+      "exercises": [
+        {
+          "libraryID": "kettlebell-goblet-clean",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "kettlebell-halo",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 6 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "reverse-lunge",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "kbdb-light-swing-reset",
+      "name": "Light Swings & Carry Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Recovery",
+      "level": "Recovery",
+      "durationMinutes": 25,
+      "equipmentProfile": "Dumbbells",
+      "notes": "An active-recovery session for the day after heavy training: light swings and easy carries to move blood through stiff hips and shoulders, then slow floor stretches. Use a bell at least two sizes below your working weight — if anything feels like effort, it's too heavy today.",
+      "exercises": [
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 3 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "rpe", "value": 3 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "kettlebell-halo",
+          "sets": 2,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 2 },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ],
+  "newExercises": [
+    {
+      "id": "kettlebell-goblet-clean",
+      "name": "Kettlebell Goblet Clean",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge + clean to goblet rack",
+      "musclesWorked": "Glutes, hamstrings, traps, biceps, core",
+      "equipment": "Kettlebell",
+      "difficulty": "Moderate",
+      "videoPlaceholder": "demo-kettlebell-goblet-clean",
+      "instructions": [
+        "Stand over the bell, hinge down with a flat back and grip the horns with both hands.",
+        "Hike the bell slightly back between your legs, then snap your hips forward.",
+        "As the bell rises, pull it close and catch it in the goblet position at your chest, elbows tucked.",
+        "Lower it back between your legs in one smooth arc and go straight into the next rep."
+      ],
+      "formCue": "Hips throw it, hands just catch it.",
+      "commonMistakes": "Curling the bell up with the arms instead of using hip drive, and letting it crash against the chest on the catch.",
+      "beginnerModification": "Deadlift the bell to standing, then curl it deliberately into the goblet position — groove the catch before adding the hip snap.",
+      "alternatives": ["kettlebell-swing", "goblet-squat"],
+      "whyThisMatters": "It turns hip power into a loaded front-rack position, unlocking squats, presses and flows from one clean movement.",
+      "formGuide": {
+        "description": "A two-handed kettlebell clean that finishes in the goblet position at your chest. The hips generate all the power — the arms simply guide the bell into a soft catch. It is the gateway movement for kettlebell flows and front-loaded squats.",
+        "diagramPrompt": "Side-view two-panel illustration: panel 1 shows a flat-back hinge with a kettlebell hiked between the legs, panel 2 shows standing tall with the bell caught in a goblet position at the chest, elbows tucked. Draw the bell's arc as a curved dotted line and highlight the hip-snap with an arrow."
+      }
+    },
+    {
+      "id": "kettlebell-turkish-get-up",
+      "name": "Kettlebell Turkish Get-Up",
+      "muscleGroup": "Core",
+      "movementPattern": "Loaded ground-to-standing transition",
+      "musclesWorked": "Shoulders, core, glutes, hip stabilizers",
+      "equipment": "Kettlebell",
+      "difficulty": "Advanced",
+      "videoPlaceholder": "demo-kettlebell-turkish-get-up",
+      "instructions": [
+        "Lie on your back, press the bell over your right shoulder with a locked elbow, right knee bent, left arm and leg out at 45 degrees.",
+        "Roll onto your left elbow, then your left hand, driving through the right foot — eyes on the bell.",
+        "Lift your hips, sweep the left leg back to a kneeling lunge, then square up your torso.",
+        "Stand up with the bell still locked out overhead, then reverse every step back to the floor."
+      ],
+      "formCue": "Eyes on the bell, elbow locked the whole way.",
+      "commonMistakes": "Rushing through positions without owning each one, and letting the elbow bend or the shoulder shrug toward the ear.",
+      "beginnerModification": "Practice with no weight or a shoe balanced on your fist; break the movement into halves (floor to kneeling, kneeling to standing) before chaining them.",
+      "alternatives": ["dead-bug", "side-plank"],
+      "whyThisMatters": "No single exercise builds shoulder stability, core control and total-body coordination at once like the get-up.",
+      "formGuide": {
+        "description": "A slow, deliberate journey from lying on the floor to standing tall — all while holding a kettlebell locked out overhead. Each of the seven positions is a checkpoint: own it before moving to the next. Three reps per side at a controlled pace is a genuine strength set.",
+        "diagramPrompt": "Storyboard illustration with five sequential side-view frames of a Turkish get-up: lying press-up, roll to elbow, tall-hand hip bridge, kneeling lunge, standing lockout. Kettlebell held overhead in every frame with a vertical alignment line through wrist, elbow and shoulder."
+      }
+    },
+    {
+      "id": "dumbbell-thruster",
+      "name": "Dumbbell Thruster",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Front squat + overhead press",
+      "musclesWorked": "Quads, glutes, shoulders, triceps",
+      "equipment": "Pair of dumbbells",
+      "difficulty": "Moderate",
+      "videoPlaceholder": "demo-dumbbell-thruster",
+      "instructions": [
+        "Hold two dumbbells at your shoulders, palms facing in, feet shoulder-width apart.",
+        "Squat until your hips drop below parallel, keeping your torso tall and elbows up.",
+        "Drive out of the bottom and use the momentum to press both dumbbells straight overhead.",
+        "Lower the bells back to your shoulders as you sink into the next squat — one fluid cycle."
+      ],
+      "formCue": "One motion — the squat launches the press.",
+      "commonMistakes": "Pausing at the top of the squat then pressing separately (wastes the leg drive), and letting the heels lift out of the bottom.",
+      "beginnerModification": "Split it into a front squat then a push press until the timing clicks, or use light bells and half-depth squats.",
+      "alternatives": ["goblet-squat", "shoulder-press"],
+      "whyThisMatters": "The thruster crams a squat and a press into one rep, making it the highest-value conditioning move you can do with dumbbells.",
+      "formGuide": {
+        "description": "A front squat that flows directly into an overhead press, using leg drive to launch the dumbbells up. There is no pause between squat and press — the whole rep is one continuous wave of effort from heels to hands.",
+        "diagramPrompt": "Side-view two-panel illustration of a dumbbell thruster: panel 1 shows a below-parallel squat with dumbbells racked at the shoulders, panel 2 shows full standing extension with both dumbbells locked out overhead. Add an upward motion arrow from heels through hands to show the power transfer."
+      }
+    },
+    {
+      "id": "kettlebell-halo",
+      "name": "Kettlebell Halo",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Overhead circular mobility",
+      "musclesWorked": "Shoulders, upper back, core",
+      "equipment": "Kettlebell",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-kettlebell-halo",
+      "instructions": [
+        "Hold the kettlebell upside-down by the horns at chest height, elbows tucked.",
+        "Circle the bell slowly around your head, keeping it as close to your neck as comfortable.",
+        "Keep your ribs down and hips still — only the arms and shoulders move.",
+        "Complete the circle back at your chest, then reverse direction on the next rep."
+      ],
+      "formCue": "Tight circle, quiet hips.",
+      "commonMistakes": "Flaring the ribs and arching the low back as the bell passes behind the head, and circling so fast the shoulders never work through range.",
+      "beginnerModification": "Use a light plate or no weight, and make wider, slower circles until the shoulders loosen up.",
+      "alternatives": ["arm-swing-circles", "face-pull"],
+      "whyThisMatters": "Halos lubricate the shoulder girdle through a full circle of loaded motion — the perfect warm-up, cooldown or flow-connector.",
+      "formGuide": {
+        "description": "Holding the bell upside-down at your chest, trace a slow, tight circle around your head and return to the start. The core stays braced and the hips stay dead still; all the motion comes from the shoulders. Alternate direction each rep.",
+        "diagramPrompt": "Front-view illustration of an athlete holding an inverted kettlebell by the horns at chest height, with a dotted circular path showing the bell's orbit around the head. Highlight braced core and level hips with callout labels."
+      }
+    },
+    {
+      "id": "dumbbell-snatch",
+      "name": "Dumbbell Snatch",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Hinge + explosive overhead pull",
+      "musclesWorked": "Glutes, hamstrings, traps, shoulders, core",
+      "equipment": "Single dumbbell",
+      "difficulty": "Advanced",
+      "videoPlaceholder": "demo-dumbbell-snatch",
+      "instructions": [
+        "Stand over the dumbbell, hinge down with a flat back and grip it with one hand.",
+        "Drive your hips forward explosively, pulling the bell close up the body like zipping a jacket.",
+        "As it passes your chest, punch your hand through so the bell lands locked out overhead.",
+        "Lower it back to the floor (or swing it between your legs) under control, then switch sides."
+      ],
+      "formCue": "Zip it up the body, punch through at the top.",
+      "commonMistakes": "Swinging the bell in a wide arc away from the body, and muscling it up with the arm instead of finishing the hips.",
+      "beginnerModification": "Start from a hang position (bell at knee height) with a lighter dumbbell, or do a two-hand swing to build the hip snap first.",
+      "alternatives": ["kettlebell-swing", "kettlebell-goblet-clean"],
+      "whyThisMatters": "One dumbbell, floor to overhead, in one explosive rep — the most complete power move a minimalist setup can buy.",
+      "formGuide": {
+        "description": "An explosive one-arm lift that takes a dumbbell from the floor to locked out overhead in a single motion. The hips do the work; the arm just guides the bell close to the body and punches through at the top. Alternate arms each rep or each set.",
+        "diagramPrompt": "Side-view three-panel illustration of a dumbbell snatch: panel 1 flat-back hinge gripping the dumbbell, panel 2 full hip extension with the bell traveling close to the torso, panel 3 standing with one arm locked out overhead. Draw the bell path as a straight vertical dotted line close to the body."
+      }
+    }
+  ]
+}

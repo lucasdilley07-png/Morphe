@@ -1997,6 +1997,513 @@ enum MorpheDemoContent {
             alternatives: ["Bodyweight Squat", "Plank"],
             whyThisMatters: "Isometric leg strength that builds the tolerance hard sets demand."
         )
+,
+
+        // MARK: v2 library additions (Discover catalog v2 — form diagrams pending)
+        ExerciseReference(
+            id: "boxer-slip-and-roll",
+            name: "Boxer Slip & Roll",
+            muscleGroup: .conditioning,
+            movementPattern: "Lateral flexion + squat shift",
+            musclesWorked: "Quads, glutes, obliques, neck stabilizers",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "From your stance you move your head off the center line — short slips left and right, then a rolling duck that traces a 'U' under an imaginary punch. All the movement comes from the knees and hips while the hands stay up and the eyes stay forward.",
+            instructions: [
+                "Start in your boxing stance with hands high and eyes forward.",
+                "Slip: bend slightly at the knees and shift your head just outside your lead shoulder, then back past the rear shoulder — small, sharp movements.",
+                "Roll: drop into a shallow squat and trace a U-shape with your head from one side to the other, as if ducking under a rope at shoulder height.",
+                "Alternate slips and rolls in rhythm, keeping your hands glued to your cheeks and your eyes on an imaginary opponent."
+            ],
+            formCue: "Bend the knees, not the back — eyes stay on the target.",
+            commonMistakes: "Bowing at the waist and dropping the eyes to the floor, which turns a defensive move into a balance fault.",
+            beginnerModification: "Hold onto slow, exaggerated slips only, adding the rolling U-shape once the legs stop burning.",
+            alternatives: ["Shadow Boxing", "Lateral Shuffle", "Bodyweight Squat"],
+            whyThisMatters: "Slipping and rolling builds legs, obliques, and reactive balance at once — it's a leg workout disguised as head movement."
+        ),
+        ExerciseReference(
+            id: "chair-pose",
+            name: "Chair Pose",
+            muscleGroup: .legs,
+            movementPattern: "Static squat hold with overhead reach",
+            musclesWorked: "Quads, glutes, spinal erectors, shoulders",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "You hold the bottom half of a squat with arms reaching overhead, hips sitting back like there's a chair just behind you. Weight lives in the heels and the chest stays proudly lifted. The longer you hold, the harder it works.",
+            instructions: [
+                "Stand with feet together or hip-width apart.",
+                "Bend your knees and sit your hips back and down as if lowering into an invisible chair.",
+                "Sweep your arms overhead alongside your ears, keeping your chest lifted.",
+                "Keep weight in your heels — you should be able to wiggle your toes — and hold while breathing steadily."
+            ],
+            formCue: "Sit back into the chair, weight in your heels.",
+            commonMistakes: "Knees drifting far past the toes with weight on the forefoot, and the lower back over-arching as the arms rise.",
+            beginnerModification: "Keep hands at your chest and sink only a quarter of the way down.",
+            alternatives: ["Wall Sit", "Bodyweight Squat"],
+            whyThisMatters: "A squat you can load with nothing but time — pure quad and glute endurance plus a shoulder and posture challenge."
+        ),
+        ExerciseReference(
+            id: "cobra-pose",
+            name: "Cobra Pose",
+            muscleGroup: .back,
+            movementPattern: "Prone spinal extension",
+            musclesWorked: "Spinal erectors, glutes, chest and hip flexors (stretched)",
+            equipment: "None (mat optional)",
+            difficulty: .beginner,
+            videoPlaceholder: "Lying face down, you press through your hands to lift your chest while your hips stay grounded. The arch should spread evenly through the whole spine, not fold into the lower back. Elbows stay bent and shoulders stay low.",
+            instructions: [
+                "Lie face down with legs extended and hands flat under your shoulders, elbows tucked.",
+                "Press the tops of your feet and your hips gently into the floor.",
+                "Push through your hands to peel your chest off the floor, leading with the breastbone.",
+                "Keep elbows softly bent and shoulders away from your ears; hold, then lower with control."
+            ],
+            formCue: "Lead with your chest, not your chin.",
+            commonMistakes: "Cranking the lower back by pushing to full arm lockout, and shrugging the shoulders up to the ears.",
+            beginnerModification: "Stay on your forearms (sphinx pose) for a gentler extension.",
+            alternatives: ["Cat-Cow", "Back Extension"],
+            whyThisMatters: "Restores the spinal extension that sitting steals, and opens the hip flexors and chest at the same time."
+        ),
+        ExerciseReference(
+            id: "crescent-lunge",
+            name: "Crescent Lunge",
+            muscleGroup: .legs,
+            movementPattern: "Split-stance lunge hold",
+            musclesWorked: "Quads, glutes, hip flexors (stretched), core",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "A high split-stance hold: front knee bent over the ankle, back leg long and strong on the ball of the foot, arms reaching to the ceiling. A slight tailbone tuck turns it from a leg exercise into a deep hip-flexor stretch too.",
+            instructions: [
+                "From standing, step one foot back into a long split stance, staying on the ball of the back foot.",
+                "Bend the front knee to about 90 degrees, stacked over the ankle.",
+                "Reach both arms overhead and tuck the tailbone slightly to feel a stretch in the rear hip.",
+                "Hold with a tall torso and steady breath, then switch sides."
+            ],
+            formCue: "Tuck the tail — the stretch shows up in the back hip.",
+            commonMistakes: "Arching the lower back instead of tucking the pelvis, and letting the front knee wobble inward.",
+            beginnerModification: "Lower the back knee to the floor for a supported low lunge.",
+            alternatives: ["Kneeling Hip Flexor Stretch", "Reverse Lunge"],
+            whyThisMatters: "Strengthens the front leg while opening the opposite hip flexor — two things every runner and lifter needs in one hold."
+        ),
+        ExerciseReference(
+            id: "cross-body-shoulder-stretch",
+            name: "Cross-Body Shoulder Stretch",
+            muscleGroup: .shoulders,
+            movementPattern: "Horizontal adduction stretch",
+            musclesWorked: "Rear deltoid, upper back, rotator cuff",
+            equipment: "None",
+            difficulty: .recovery,
+            videoPlaceholder: "One arm reaches across your chest while the other forearm hugs it in closer. Keeping the stretched shoulder pulled down away from your ear is what aims the stretch into the rear delt. Gentle pressure and slow breathing do the rest.",
+            instructions: [
+                "Stand or sit tall and reach one arm straight across your chest.",
+                "Hook the opposite forearm above the elbow of the reaching arm.",
+                "Gently pull the arm closer to your chest, keeping the shoulder pressed down away from the ear.",
+                "Hold while breathing slowly, then switch arms."
+            ],
+            formCue: "Shoulder down, then pull — never shrug into it.",
+            commonMistakes: "Shrugging the stretched shoulder up toward the ear, and grabbing at the elbow joint instead of above it.",
+            beginnerModification: "Reduce the pull and simply hold the arm across the chest with light pressure.",
+            alternatives: ["Thread the Needle", "Doorway Chest Stretch"],
+            whyThisMatters: "Keeps the rear shoulder and cuff supple after pressing days — thirty easy seconds that pay off on your next bench session."
+        ),
+        ExerciseReference(
+            id: "downward-dog",
+            name: "Downward Dog",
+            muscleGroup: .core,
+            movementPattern: "Hinge + overhead reach",
+            musclesWorked: "Hamstrings, calves, shoulders, lats",
+            equipment: "None (mat optional)",
+            difficulty: .beginner,
+            videoPlaceholder: "From all fours you lift your hips high so your body makes an upside-down V. The goal is a long, straight spine from wrists to tailbone — bend the knees as much as needed to keep it. Press through your hands and breathe.",
+            instructions: [
+                "Start on hands and knees with hands shoulder-width and feet hip-width.",
+                "Tuck your toes and lift your hips up and back until your body forms an inverted V.",
+                "Press the floor away through your palms and let your head hang between your arms.",
+                "Work your heels toward the floor with a soft bend in the knees, and hold while breathing slowly."
+            ],
+            formCue: "Push the floor away and send your hips to the ceiling.",
+            commonMistakes: "Rounding the back to force heels down, and collapsing through the shoulders instead of pressing long.",
+            beginnerModification: "Keep a generous knee bend and lift the heels — a long spine matters more than straight legs.",
+            alternatives: ["Cat-Cow", "Child's Pose"],
+            whyThisMatters: "One shape that stretches the whole back line while building shoulder endurance."
+        ),
+        ExerciseReference(
+            id: "dumbbell-snatch",
+            name: "Dumbbell Snatch",
+            muscleGroup: .conditioning,
+            movementPattern: "Hinge + explosive overhead pull",
+            musclesWorked: "Glutes, hamstrings, traps, shoulders, core",
+            equipment: "Single dumbbell",
+            difficulty: .advanced,
+            videoPlaceholder: "An explosive one-arm lift that takes a dumbbell from the floor to locked out overhead in a single motion. The hips do the work; the arm just guides the bell close to the body and punches through at the top. Alternate arms each rep or each set.",
+            instructions: [
+                "Stand over the dumbbell, hinge down with a flat back and grip it with one hand.",
+                "Drive your hips forward explosively, pulling the bell close up the body like zipping a jacket.",
+                "As it passes your chest, punch your hand through so the bell lands locked out overhead.",
+                "Lower it back to the floor (or swing it between your legs) under control, then switch sides."
+            ],
+            formCue: "Zip it up the body, punch through at the top.",
+            commonMistakes: "Swinging the bell in a wide arc away from the body, and muscling it up with the arm instead of finishing the hips.",
+            beginnerModification: "Start from a hang position (bell at knee height) with a lighter dumbbell, or do a two-hand swing to build the hip snap first.",
+            alternatives: ["Kettlebell Swing", "Kettlebell Goblet Clean"],
+            whyThisMatters: "One dumbbell, floor to overhead, in one explosive rep — the most complete power move a minimalist setup can buy."
+        ),
+        ExerciseReference(
+            id: "dumbbell-thruster",
+            name: "Dumbbell Thruster",
+            muscleGroup: .conditioning,
+            movementPattern: "Front squat + overhead press",
+            musclesWorked: "Quads, glutes, shoulders, triceps",
+            equipment: "Pair of dumbbells",
+            difficulty: .moderate,
+            videoPlaceholder: "A front squat that flows directly into an overhead press, using leg drive to launch the dumbbells up. There is no pause between squat and press — the whole rep is one continuous wave of effort from heels to hands.",
+            instructions: [
+                "Hold two dumbbells at your shoulders, palms facing in, feet shoulder-width apart.",
+                "Squat until your hips drop below parallel, keeping your torso tall and elbows up.",
+                "Drive out of the bottom and use the momentum to press both dumbbells straight overhead.",
+                "Lower the bells back to your shoulders as you sink into the next squat — one fluid cycle."
+            ],
+            formCue: "One motion — the squat launches the press.",
+            commonMistakes: "Pausing at the top of the squat then pressing separately (wastes the leg drive), and letting the heels lift out of the bottom.",
+            beginnerModification: "Split it into a front squat then a push press until the timing clicks, or use light bells and half-depth squats.",
+            alternatives: ["Goblet Squat", "Shoulder Press"],
+            whyThisMatters: "The thruster crams a squat and a press into one rep, making it the highest-value conditioning move you can do with dumbbells."
+        ),
+        ExerciseReference(
+            id: "figure-four-stretch",
+            name: "Figure-Four Stretch",
+            muscleGroup: .legs,
+            movementPattern: "Supine hip external rotation stretch",
+            musclesWorked: "Glutes, piriformis, outer hip",
+            equipment: "None (mat optional)",
+            difficulty: .recovery,
+            videoPlaceholder: "On your back, one ankle crosses the opposite knee and you hug that supporting thigh toward you. The stretch shows up deep in the crossed leg's glute and outer hip. Everything above the waist stays heavy and relaxed.",
+            instructions: [
+                "Lie on your back with both knees bent and feet flat on the floor.",
+                "Cross one ankle over the opposite knee so your legs form a 4 shape.",
+                "Reach through and clasp behind the supporting thigh, then draw it gently toward your chest.",
+                "Keep your head and shoulders relaxed on the floor; hold, then switch sides."
+            ],
+            formCue: "Pull the thigh in, press the crossed knee gently away.",
+            commonMistakes: "Lifting the head and shoulders off the floor to reach, and letting the crossed ankle slide onto the shin instead of above the knee.",
+            beginnerModification: "Skip the pull — rest the crossed foot against a wall and let gravity open the hip.",
+            alternatives: ["Kneeling Hip Flexor Stretch", "World's Greatest Stretch"],
+            whyThisMatters: "Targets the deep glute and piriformis that get cranky from squats, running, and long sitting — lying down, with zero strain."
+        ),
+        ExerciseReference(
+            id: "heavy-bag-rounds",
+            name: "Heavy Bag Rounds",
+            muscleGroup: .conditioning,
+            movementPattern: "Striking + footwork",
+            musclesWorked: "Shoulders, chest, back, core, hips, calves",
+            equipment: "Heavy bag, boxing gloves or wraps",
+            difficulty: .moderate,
+            videoPlaceholder: "You strike a hanging heavy bag in timed 3-minute rounds, mixing straight punches, hooks, and body shots while stepping and pivoting around the bag between combinations. Power comes from hip rotation and a sharp exhale on impact, with the wrists kept straight behind every punch.",
+            instructions: [
+                "Wrap your hands or glove up, and set a round timer for 3 minutes of work.",
+                "Work the bag in combinations — jabs, crosses, hooks to head and body — moving your feet between exchanges instead of standing square.",
+                "Sit down on your punches: exhale sharply on impact and rotate the hip behind every power shot.",
+                "Keep output in waves — 15 seconds of hard bursts, 15 seconds of jabs and movement — until the bell."
+            ],
+            formCue: "Hit through the bag, don't push it — and move your feet after every combo.",
+            commonMistakes: "Pushing the bag until it swings wildly, and planting flat-footed in front of it, which kills power and invites sloppy wrists.",
+            beginnerModification: "Shorten to 2-minute rounds and stick to straight punches (jab-cross only) at half power while the wrists adapt.",
+            alternatives: ["Shadow Boxing", "Jab-Cross Combo", "Kettlebell Swing"],
+            whyThisMatters: "Bag rounds deliver full-body power endurance with impact feedback you can't fake — the closest thing to fighting without a partner."
+        ),
+        ExerciseReference(
+            id: "jab-cross-combo",
+            name: "Jab-Cross Combo",
+            muscleGroup: .conditioning,
+            movementPattern: "Rotational strike",
+            musclesWorked: "Shoulders, chest, core, hips, calves",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "From a staggered boxing stance, you throw a straight lead-hand jab followed instantly by a rear-hand cross, rotating the rear hip and pivoting the back foot to drive the second punch. Both hands recover to the cheeks after every combination, and the feet stay under the shoulders throughout.",
+            instructions: [
+                "Stand in your boxing stance: lead foot forward, hands at your cheeks, elbows tucked, knees soft.",
+                "Snap the jab — extend your lead hand straight out, rotating the fist palm-down, and bring it straight back to your cheek.",
+                "Fire the cross — drive off your rear foot, rotate your hip and shoulder through, and extend the rear hand along the same line.",
+                "Return to your stance immediately and repeat the 1-2 in rhythm, exhaling sharply on each punch."
+            ],
+            formCue: "Punch from the hips — hands come back to your face every time.",
+            commonMistakes: "Dropping the non-punching hand, and pushing punches with the arm instead of rotating the hip through the cross.",
+            beginnerModification: "Slow the tempo and pause between the jab and cross until each punch returns to guard cleanly.",
+            alternatives: ["Shadow Boxing", "Mountain Climber"],
+            whyThisMatters: "The 1-2 is boxing's fundamental combination and turns whole-body rotation into a high-output, joint-friendly conditioning tool."
+        ),
+        ExerciseReference(
+            id: "kettlebell-goblet-clean",
+            name: "Kettlebell Goblet Clean",
+            muscleGroup: .legs,
+            movementPattern: "Hinge + clean to goblet rack",
+            musclesWorked: "Glutes, hamstrings, traps, biceps, core",
+            equipment: "Kettlebell",
+            difficulty: .moderate,
+            videoPlaceholder: "A two-handed kettlebell clean that finishes in the goblet position at your chest. The hips generate all the power — the arms simply guide the bell into a soft catch. It is the gateway movement for kettlebell flows and front-loaded squats.",
+            instructions: [
+                "Stand over the bell, hinge down with a flat back and grip the horns with both hands.",
+                "Hike the bell slightly back between your legs, then snap your hips forward.",
+                "As the bell rises, pull it close and catch it in the goblet position at your chest, elbows tucked.",
+                "Lower it back between your legs in one smooth arc and go straight into the next rep."
+            ],
+            formCue: "Hips throw it, hands just catch it.",
+            commonMistakes: "Curling the bell up with the arms instead of using hip drive, and letting it crash against the chest on the catch.",
+            beginnerModification: "Deadlift the bell to standing, then curl it deliberately into the goblet position — groove the catch before adding the hip snap.",
+            alternatives: ["Kettlebell Swing", "Goblet Squat"],
+            whyThisMatters: "It turns hip power into a loaded front-rack position, unlocking squats, presses and flows from one clean movement."
+        ),
+        ExerciseReference(
+            id: "kettlebell-halo",
+            name: "Kettlebell Halo",
+            muscleGroup: .shoulders,
+            movementPattern: "Overhead circular mobility",
+            musclesWorked: "Shoulders, upper back, core",
+            equipment: "Kettlebell",
+            difficulty: .beginner,
+            videoPlaceholder: "Holding the bell upside-down at your chest, trace a slow, tight circle around your head and return to the start. The core stays braced and the hips stay dead still; all the motion comes from the shoulders. Alternate direction each rep.",
+            instructions: [
+                "Hold the kettlebell upside-down by the horns at chest height, elbows tucked.",
+                "Circle the bell slowly around your head, keeping it as close to your neck as comfortable.",
+                "Keep your ribs down and hips still — only the arms and shoulders move.",
+                "Complete the circle back at your chest, then reverse direction on the next rep."
+            ],
+            formCue: "Tight circle, quiet hips.",
+            commonMistakes: "Flaring the ribs and arching the low back as the bell passes behind the head, and circling so fast the shoulders never work through range.",
+            beginnerModification: "Use a light plate or no weight, and make wider, slower circles until the shoulders loosen up.",
+            alternatives: ["Arm Swings & Circles", "Face Pull"],
+            whyThisMatters: "Halos lubricate the shoulder girdle through a full circle of loaded motion — the perfect warm-up, cooldown or flow-connector."
+        ),
+        ExerciseReference(
+            id: "kettlebell-turkish-get-up",
+            name: "Kettlebell Turkish Get-Up",
+            muscleGroup: .core,
+            movementPattern: "Loaded ground-to-standing transition",
+            musclesWorked: "Shoulders, core, glutes, hip stabilizers",
+            equipment: "Kettlebell",
+            difficulty: .advanced,
+            videoPlaceholder: "A slow, deliberate journey from lying on the floor to standing tall — all while holding a kettlebell locked out overhead. Each of the seven positions is a checkpoint: own it before moving to the next. Three reps per side at a controlled pace is a genuine strength set.",
+            instructions: [
+                "Lie on your back, press the bell over your right shoulder with a locked elbow, right knee bent, left arm and leg out at 45 degrees.",
+                "Roll onto your left elbow, then your left hand, driving through the right foot — eyes on the bell.",
+                "Lift your hips, sweep the left leg back to a kneeling lunge, then square up your torso.",
+                "Stand up with the bell still locked out overhead, then reverse every step back to the floor."
+            ],
+            formCue: "Eyes on the bell, elbow locked the whole way.",
+            commonMistakes: "Rushing through positions without owning each one, and letting the elbow bend or the shoulder shrug toward the ear.",
+            beginnerModification: "Practice with no weight or a shoe balanced on your fist; break the movement into halves (floor to kneeling, kneeling to standing) before chaining them.",
+            alternatives: ["Dead Bug", "Side Plank"],
+            whyThisMatters: "No single exercise builds shoulder stability, core control and total-body coordination at once like the get-up."
+        ),
+        ExerciseReference(
+            id: "pigeon-pose",
+            name: "Pigeon Pose",
+            muscleGroup: .legs,
+            movementPattern: "Deep hip external rotation stretch",
+            musclesWorked: "Glutes, piriformis, hip flexors of the rear leg",
+            equipment: "None (mat optional)",
+            difficulty: .beginner,
+            videoPlaceholder: "One shin folds in front of you while the other leg extends straight behind, and gravity sinks your hips toward the floor. Keep the hips level and square to the front. Fold forward only once the hips feel settled.",
+            instructions: [
+                "From all fours, bring your right knee forward behind your right wrist with the shin angled across your body.",
+                "Slide your left leg straight back until the hip settles toward the floor.",
+                "Square your hips forward and stay tall, or fold your chest over the front shin to deepen.",
+                "Breathe slowly for the full hold, then switch sides."
+            ],
+            formCue: "Square your hips — don't tip onto the front-leg side.",
+            commonMistakes: "Collapsing onto one hip so the stretch disappears, and forcing the front shin parallel before the hips are ready.",
+            beginnerModification: "Do it on your back instead: figure-four position with the ankle over the opposite knee.",
+            alternatives: ["Kneeling Hip Flexor Stretch", "World's Greatest Stretch"],
+            whyThisMatters: "The deepest common glute and hip-rotation stretch — direct relief for squat-day hips and desk-bound glutes."
+        ),
+        ExerciseReference(
+            id: "pull-up-negative",
+            name: "Negative Pull-Up",
+            muscleGroup: .back,
+            movementPattern: "Eccentric-only vertical pull",
+            musclesWorked: "Lats, biceps, mid-back, grip",
+            equipment: "Pull-up bar, box or bench to jump from",
+            difficulty: .beginner,
+            videoPlaceholder: "Start with your chin over the bar by stepping off a box, then lower yourself to straight arms as slowly as possible — four to five seconds per rep. The controlled descent trains the same muscles as a pull-up while you build the strength to do full reps.",
+            instructions: [
+                "Stand on a box so your chin starts above the bar and grip just outside shoulder width.",
+                "Step or jump off the box and hold the top position for one second.",
+                "Lower yourself as slowly as you can — aim for a 4 to 5 second descent all the way to straight arms.",
+                "Step back onto the box and reset for the next rep."
+            ],
+            formCue: "Fight every inch on the way down.",
+            commonMistakes: "Dropping fast through the middle of the range, and skipping the full dead-hang finish at the bottom.",
+            beginnerModification: "Shorten the range: lower only from chin-over-bar to elbows at 90 degrees, then step back up.",
+            alternatives: ["Inverted Row", "Chin-Up"],
+            whyThisMatters: "Slow negatives build the exact strength and control that turn zero pull-ups into your first strict rep."
+        ),
+        ExerciseReference(
+            id: "sandbag-to-shoulder",
+            name: "Sandbag to Shoulder",
+            muscleGroup: .legs,
+            movementPattern: "Hinge + clean to shoulder",
+            musclesWorked: "Glutes, hamstrings, back, biceps, core",
+            equipment: "Sandbag (or heavy duffel)",
+            difficulty: .advanced,
+            videoPlaceholder: "Deadlift a sandbag from the floor to your lap, then explosively extend your hips to roll it up onto one shoulder. It looks crude but the sequence matters: flat-back pickup, lap, hip pop, shoulder. Alternate sides every rep.",
+            instructions: [
+                "Straddle the bag, hinge down with a flat back and get your hands or forearms underneath it.",
+                "Deadlift the bag to your lap as you sink into a quarter squat, hugging it to your torso.",
+                "Extend hips hard and pull the bag up your body, rolling it onto one shoulder.",
+                "Stand tall and controlled, then lower the bag back to the floor and alternate shoulders each rep."
+            ],
+            formCue: "Lap it first — hips do the throwing.",
+            commonMistakes: "Rounding the low back on the pickup, and trying to muscle the bag up with arms instead of lapping it and using hip drive.",
+            beginnerModification: "Use a lighter bag and stop at the lap position (deadlift to lap) until the hinge is solid.",
+            alternatives: ["Conventional Deadlift", "Kettlebell Swing"],
+            whyThisMatters: "Odd-object lifting builds real-world total-body strength that a barbell can't fully replicate — awkward loads force your core and grip to work overtime."
+        ),
+        ExerciseReference(
+            id: "scapular-pull-up",
+            name: "Scapular Pull-Up",
+            muscleGroup: .back,
+            movementPattern: "Scapular depression and retraction from a dead hang",
+            musclesWorked: "Lower traps, lats, rhomboids, grip",
+            equipment: "Pull-up bar",
+            difficulty: .beginner,
+            videoPlaceholder: "Hang from a bar with completely straight arms. Pull your shoulder blades down toward your back pockets so your body rises slightly, pause, then lower back into a relaxed hang. The elbows never bend — all the movement comes from the shoulder blades.",
+            instructions: [
+                "Hang from the bar with straight arms, hands just outside shoulder width.",
+                "Without bending your elbows, pull your shoulder blades down and back so your chest lifts an inch or two.",
+                "Pause for one second at the top of the shrug-down position.",
+                "Slowly release back to a full dead hang and repeat."
+            ],
+            formCue: "Arms straight — shoulders away from your ears.",
+            commonMistakes: "Bending the elbows and turning it into a mini pull-up, or rushing the reps so the shoulder blades never actually move.",
+            beginnerModification: "Keep your feet on a box and press lightly through them to take some bodyweight off the hang.",
+            alternatives: ["Inverted Row", "Lat Pulldown"],
+            whyThisMatters: "It teaches the shoulder-blade motion that starts every strong pull-up and bulletproofs the shoulders for hanging work."
+        ),
+        ExerciseReference(
+            id: "standing-quad-stretch",
+            name: "Standing Quad Stretch",
+            muscleGroup: .legs,
+            movementPattern: "Standing knee-flexion stretch",
+            musclesWorked: "Quadriceps, hip flexors",
+            equipment: "None (wall or chair for balance)",
+            difficulty: .recovery,
+            videoPlaceholder: "Standing on one leg, you pull the other heel toward your glute to lengthen the front of the thigh. Knees stay side by side and the pelvis tucks slightly under. Hold onto something if balance wobbles — this is a stretch, not a balance test.",
+            instructions: [
+                "Stand tall, holding a wall or chair with one hand if you need balance.",
+                "Bend one knee and catch the top of that foot behind you with the same-side hand.",
+                "Gently pull the heel toward your glute, keeping knees close together.",
+                "Tuck your tailbone slightly to deepen the stretch along the front of the thigh; hold, then switch sides."
+            ],
+            formCue: "Knees together, tail tucked — the stretch lives in the front of the thigh.",
+            commonMistakes: "Letting the bent knee flare out to the side, and arching the lower back instead of tucking the pelvis.",
+            beginnerModification: "Lie on your side and pull the top foot toward your glute, or rest the foot on a low bench behind you.",
+            alternatives: ["Kneeling Hip Flexor Stretch", "World's Greatest Stretch"],
+            whyThisMatters: "The simplest direct release for quads fried by squats, lunges, or a long run."
+        ),
+        ExerciseReference(
+            id: "supine-twist",
+            name: "Supine Twist",
+            muscleGroup: .core,
+            movementPattern: "Lying spinal rotation stretch",
+            musclesWorked: "Obliques, lower-back muscles, glutes, chest",
+            equipment: "None (mat optional)",
+            difficulty: .recovery,
+            videoPlaceholder: "Lying on your back, one bent knee drops across your body toward the floor while both shoulders stay grounded. The gentle wringing along the spine is the goal — gravity does all the work. Perfect as the second-to-last shape before rest.",
+            instructions: [
+                "Lie on your back and hug one knee in toward your chest.",
+                "Guide that knee across your body toward the floor on the opposite side.",
+                "Extend the same-side arm out at shoulder height and turn your gaze toward it.",
+                "Keep both shoulders heavy on the floor, breathe slowly for the hold, then switch sides."
+            ],
+            formCue: "Shoulders stay glued to the floor — let the knee hang.",
+            commonMistakes: "Letting the opposite shoulder peel off the floor, and yanking the knee down instead of letting gravity do it.",
+            beginnerModification: "Rest the crossing knee on a pillow so it doesn't have to reach the floor.",
+            alternatives: ["Thread the Needle", "Cat-Cow"],
+            whyThisMatters: "A zero-effort spinal unwind that releases the lower back and signals the nervous system to downshift."
+        ),
+        ExerciseReference(
+            id: "wall-ball-shot",
+            name: "Wall Ball Shot",
+            muscleGroup: .conditioning,
+            movementPattern: "Squat + overhead throw",
+            musclesWorked: "Quads, glutes, shoulders, triceps",
+            equipment: "Medicine ball, wall with a 9-10 ft target",
+            difficulty: .moderate,
+            videoPlaceholder: "A full-depth squat holding a medicine ball at the chest, then a powerful stand-and-throw to a target above head height. The legs generate the power; the arms just guide the ball. Catch and sink straight into the next rep without pausing.",
+            instructions: [
+                "Hold the medicine ball at your chest, feet shoulder-width, facing the wall about arm's length away.",
+                "Squat until your hips drop below parallel, keeping the ball tight to your chest and elbows in.",
+                "Drive up hard through your heels and use that momentum to throw the ball at the target.",
+                "Catch the ball as it drops, absorbing it straight into the next squat — one continuous rhythm."
+            ],
+            formCue: "Ride the ball down, throw with your legs.",
+            commonMistakes: "Catching the ball high then squatting separately (kills the rhythm), and cutting the squat depth as fatigue sets in.",
+            beginnerModification: "Use a lighter ball and pause between reps, or do a goblet squat to press without the throw.",
+            alternatives: ["Goblet Squat", "Jump Squat"],
+            whyThisMatters: "One movement that trains legs, shoulders and lungs together — the fastest way to turn squat strength into conditioning."
+        ),
+        ExerciseReference(
+            id: "wall-handstand-hold",
+            name: "Wall Handstand Hold",
+            muscleGroup: .shoulders,
+            movementPattern: "Inverted overhead isometric support",
+            musclesWorked: "Shoulders, triceps, upper traps, core, wrists",
+            equipment: "Wall",
+            difficulty: .advanced,
+            videoPlaceholder: "Kick up into a handstand with your heels resting on a wall, hands shoulder-width and about a hand-length from the base. Push tall through the shoulders, keep ribs tucked and glutes tight so the body forms one straight line, and breathe steadily for the hold.",
+            instructions: [
+                "Place your hands shoulder-width on the floor about 15–25 cm from the wall, fingers spread.",
+                "Kick up one leg at a time until your heels rest lightly on the wall.",
+                "Push tall through your shoulders, squeeze your glutes and ribs down, and look at a spot between your hands.",
+                "Hold with steady breathing, then lower one leg at a time under control."
+            ],
+            formCue: "Push the floor away — get tall through your shoulders.",
+            commonMistakes: "A banana-back arch from flared ribs, and collapsing through the shoulders instead of actively pushing up.",
+            beginnerModification: "Do a pike hold instead: feet on a box, hips stacked over shoulders, holding the same vertical pressing position at half the load.",
+            alternatives: ["Pike Push-Up", "Plank"],
+            whyThisMatters: "It builds the overhead strength, balance and body tension that every advanced calisthenics pressing skill is built on."
+        ),
+        ExerciseReference(
+            id: "warrior-three",
+            name: "Warrior Three",
+            muscleGroup: .legs,
+            movementPattern: "Single-leg hinge balance",
+            musclesWorked: "Glutes, hamstrings, spinal erectors, ankle stabilizers",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "Balancing on one leg, you hinge until your torso and rear leg are parallel to the floor, making a capital T. Hips stay square to the ground the whole time. A soft standing knee and a fixed gaze keep you steady.",
+            instructions: [
+                "Stand tall, shift your weight onto one leg, and fix your eyes on a point ahead.",
+                "Hinge at the hips, tipping your torso forward while the free leg extends straight behind you.",
+                "Keep hips level until your body forms a T — arms reaching forward or back along your sides.",
+                "Hold with a micro-bend in the standing knee, then rise with control and switch sides."
+            ],
+            formCue: "One straight line from fingertips to back heel.",
+            commonMistakes: "Letting the raised-leg hip hike open toward the ceiling, and rounding the back to get lower.",
+            beginnerModification: "Rest fingertips on a wall or chair, or keep the back toes lightly touching the floor.",
+            alternatives: ["Single-Leg Romanian Deadlift", "Bird Dog"],
+            whyThisMatters: "Single-leg balance plus posterior-chain strength — the pose version of an RDL, and one of the best fall-proofing drills there is."
+        ),
+        ExerciseReference(
+            id: "warrior-two",
+            name: "Warrior Two",
+            muscleGroup: .legs,
+            movementPattern: "Static lunge hold with arm reach",
+            musclesWorked: "Quads, glutes, hip adductors, shoulders",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "A wide, grounded lunge held still: front knee bent over the ankle, back leg straight and strong, arms stretched in opposite directions at shoulder height. Your torso stays stacked over your hips, not tipped forward. The burn in the front thigh is the point.",
+            instructions: [
+                "Step into a wide stance, front toes pointing forward and back foot turned out about 90 degrees.",
+                "Bend the front knee until it stacks over the ankle, thigh working toward parallel.",
+                "Reach both arms out at shoulder height, one forward and one back, palms down.",
+                "Press the outer edge of the back foot into the floor and gaze over the front fingertips; hold, then switch sides."
+            ],
+            formCue: "Front knee chases the little toe — never lets it cave in.",
+            commonMistakes: "Letting the front knee collapse inward, and leaning the torso over the front leg instead of stacking it upright.",
+            beginnerModification: "Shorten the stance and bend the front knee less until the hold feels stable.",
+            alternatives: ["Reverse Lunge", "Wall Sit"],
+            whyThisMatters: "Builds isometric leg strength and hip endurance in a deep stance most training never visits."
+        )
     ]
 
     static let drillLibrary: [DrillReference] = [

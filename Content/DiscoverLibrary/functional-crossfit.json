@@ -1,0 +1,600 @@
+{
+  "version": 2,
+  "category": "Functional & CrossFit-Style",
+  "workouts": [
+    {
+      "slug": "func-engine-room-amrap",
+      "name": "The Engine Room — AMRAP 18",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "AMRAP 18 for anyone chasing a big calorie burn without burning out: 15 swings, 10 box jumps, 10 push-ups, then a 60-second row, repeat. The 5 sets here are your 5-round target — beat it, then add 5 lb to the bell next time. Rest only after the row.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 5,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "box-jump",
+          "sets": 5,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 5,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "rowing-machine",
+          "sets": 5,
+          "durationSeconds": 60,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "func-carry-push-pull-chain",
+      "name": "Carry-Push-Pull Chain",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Functional training",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "A loaded-carry circuit for people who hate cardio but want the same fat-loss effect: carry, push, pull, crawl, burpee, back to the top — 4 unbroken chains. Progress by adding weight to the carry before adding rounds; grip should be the limiter, not your lungs.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "inverted-row",
+          "sets": 4,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 4,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "func-sprint-sweat-circuit",
+      "name": "Sprint & Sweat Mixed Circuit",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Advanced",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "For conditioned athletes who want maximum burn in 30 minutes: six all-out 30-second sprints, then wall balls and climbers to finish the tank off. Sprints come first while you're fresh — quality over survival. Progress by trimming sprint rest from 90 toward 60 seconds.",
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": { "type": "heartRateZone", "value": 2 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "durationSeconds": 30,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "wall-ball-shot",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "func-front-squat-metcon",
+      "name": "Front Squat + Metcon Combo",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Strength training",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "Classic CrossFit strength-day template: heavy front squat triples while you're fresh, then a short 3-round metcon (swings, burpees, fast rope) that won't eat into recovery. Add 2.5 kg to the bar when all 5 triples move well; never chase the metcon at the cost of squat quality.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "front-squat",
+          "sets": 5,
+          "reps": 3,
+          "intensity": { "type": "percent1RM", "value": 84 },
+          "restSeconds": 210
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "jump-rope",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "func-deadlift-gymnastics",
+      "name": "Deadlift + Gymnastics Pairing",
+      "goal": "strengthBuilding",
+      "focus": "Pull",
+      "trainingType": "Strength training",
+      "level": "Advanced",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Heavy pulls plus strict gymnastics — the combination that builds a CrossFit engine that also moves real weight. Deadlift triples at 85%, then strict pull-ups, dips and a hollow hold to own your midline. Progress the deadlift 2.5 kg at a time; add a rep to the gymnastics sets before adding load.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "conventional-deadlift",
+          "sets": 5,
+          "reps": 3,
+          "intensity": { "type": "percent1RM", "value": 85 },
+          "restSeconds": 240
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "dip",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "func-overhead-strength",
+      "name": "Overhead Strength Day",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "For lifters whose overhead press has stalled: heavy strict press fives, close-grip bench for tricep drive, then pike push-ups, face pulls and a plank to keep shoulders healthy. When 5x5 at 78% feels crisp, add 1-2% — the strict press moves in small jumps, be patient.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "overhead-press",
+          "sets": 5,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 78 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "close-grip-bench-press",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "percent1RM", "value": 75 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "pike-push-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "face-pull",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "func-strongman-odd-object",
+      "name": "Odd-Object Strongman Day",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Functional training",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "Strongman-flavored strength for people who want to be useful outside the gym: sandbag over the shoulder, heavy farmer carries, sumo pulls, back extensions. The bag and the carry are graded by feel — RPE 8-9 means you could do one more clean rep, no more. Progress the carry distance first, then the load.",
+      "exercises": [
+        {
+          "libraryID": "bear-crawl",
+          "sets": 1,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "sandbag-to-shoulder",
+          "sets": 5,
+          "reps": 3,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 5,
+          "durationSeconds": 40,
+          "intensity": { "type": "rpe", "value": 9 },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "sumo-deadlift",
+          "sets": 4,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 80 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "back-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "func-chipper-150",
+      "name": "The 150-Rep Chipper",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "One long chipper for leaning out while keeping muscle: open with a 3-minute row, then chip through 50 squats, 40 swings, 30 push-ups, 20 lunges and 10 burpees in order — break sets any way you like, rest only when you must. Log your finish time and beat it by 30 seconds next week.",
+      "exercises": [
+        {
+          "libraryID": "rowing-machine",
+          "sets": 1,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 3 },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 1,
+          "reps": 50,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 1,
+          "reps": 40,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 1,
+          "reps": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 1,
+          "reps": 20,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 1,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "func-emom-20-mixed",
+      "name": "EMOM 20 Mixed-Modal",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "EMOM 20: minute 1 row hard, minute 2 wall balls, minute 3 swings, minute 4 knee raises — five times through. Each station's 5 sets are your 5 minutes; finish the work in ~40 seconds and breathe for the rest of the minute. Progress by adding 1-2 reps per station, not by rushing.",
+      "exercises": [
+        {
+          "libraryID": "rowing-machine",
+          "sets": 5,
+          "durationSeconds": 45,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "wall-ball-shot",
+          "sets": 5,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 5,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "hanging-knee-raise",
+          "sets": 5,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "func-gymnastics-density",
+      "name": "Gymnastics Density Blocks",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Functional training",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "Bodyweight strength volume with short rests — the lean-out day that still builds pull-ups and dips. Keep every set 2 reps shy of failure; when all sets hit the target reps with 75 seconds rest, add a rep everywhere. Great second workout of the week after a heavy barbell day.",
+      "exercises": [
+        {
+          "libraryID": "pull-up",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "dip",
+          "sets": 4,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 4,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "v-up",
+          "sets": 4,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "side-plank",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "func-skill-mobility-reset",
+      "name": "Skill & Mobility Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Recovery",
+      "level": "Recovery",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The day after a hard metcon: three easy minutes of rope skipping as skill practice (no rope? shadow skip), then slow spinal and hip mobility. Nothing here should raise your breathing past conversational — if it does, back off. Do this weekly and your hard days get harder.",
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 1,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 1 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bird-dog",
+          "sets": 2,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ],
+  "newExercises": [
+    {
+      "id": "wall-ball-shot",
+      "name": "Wall Ball Shot",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Squat + overhead throw",
+      "musclesWorked": "Quads, glutes, shoulders, triceps",
+      "equipment": "Medicine ball, wall with a 9-10 ft target",
+      "difficulty": "Moderate",
+      "videoPlaceholder": "demo-wall-ball-shot",
+      "instructions": [
+        "Hold the medicine ball at your chest, feet shoulder-width, facing the wall about arm's length away.",
+        "Squat until your hips drop below parallel, keeping the ball tight to your chest and elbows in.",
+        "Drive up hard through your heels and use that momentum to throw the ball at the target.",
+        "Catch the ball as it drops, absorbing it straight into the next squat — one continuous rhythm."
+      ],
+      "formCue": "Ride the ball down, throw with your legs.",
+      "commonMistakes": "Catching the ball high then squatting separately (kills the rhythm), and cutting the squat depth as fatigue sets in.",
+      "beginnerModification": "Use a lighter ball and pause between reps, or do a goblet squat to press without the throw.",
+      "alternatives": ["goblet-squat", "jump-squat"],
+      "whyThisMatters": "One movement that trains legs, shoulders and lungs together — the fastest way to turn squat strength into conditioning.",
+      "formGuide": {
+        "description": "A full-depth squat holding a medicine ball at the chest, then a powerful stand-and-throw to a target above head height. The legs generate the power; the arms just guide the ball. Catch and sink straight into the next rep without pausing.",
+        "diagramPrompt": "Side-view illustration of an athlete mid wall-ball rep: bottom frame shows a below-parallel squat holding a medicine ball at the chest, top frame shows full hip extension throwing the ball to a target line 9 feet up a wall. Highlight the ball path as a vertical arrow and the hip drive with a motion arc."
+      }
+    },
+    {
+      "id": "sandbag-to-shoulder",
+      "name": "Sandbag to Shoulder",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge + clean to shoulder",
+      "musclesWorked": "Glutes, hamstrings, back, biceps, core",
+      "equipment": "Sandbag (or heavy duffel)",
+      "difficulty": "Advanced",
+      "videoPlaceholder": "demo-sandbag-to-shoulder",
+      "instructions": [
+        "Straddle the bag, hinge down with a flat back and get your hands or forearms underneath it.",
+        "Deadlift the bag to your lap as you sink into a quarter squat, hugging it to your torso.",
+        "Extend hips hard and pull the bag up your body, rolling it onto one shoulder.",
+        "Stand tall and controlled, then lower the bag back to the floor and alternate shoulders each rep."
+      ],
+      "formCue": "Lap it first — hips do the throwing.",
+      "commonMistakes": "Rounding the low back on the pickup, and trying to muscle the bag up with arms instead of lapping it and using hip drive.",
+      "beginnerModification": "Use a lighter bag and stop at the lap position (deadlift to lap) until the hinge is solid.",
+      "alternatives": ["conventional-deadlift", "kettlebell-swing"],
+      "whyThisMatters": "Odd-object lifting builds real-world total-body strength that a barbell can't fully replicate — awkward loads force your core and grip to work overtime.",
+      "formGuide": {
+        "description": "Deadlift a sandbag from the floor to your lap, then explosively extend your hips to roll it up onto one shoulder. It looks crude but the sequence matters: flat-back pickup, lap, hip pop, shoulder. Alternate sides every rep.",
+        "diagramPrompt": "Three-panel side-view illustration of sandbag to shoulder: panel 1 flat-back hinge gripping the bag on the floor, panel 2 bag hugged in the lap with a quarter squat, panel 3 standing tall with the bag resting on one shoulder. Highlight the neutral spine in panel 1 and the hip-extension arrow in panel 3."
+      }
+    }
+  ]
+}

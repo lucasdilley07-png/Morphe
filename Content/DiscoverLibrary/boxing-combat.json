@@ -1,0 +1,590 @@
+{
+  "version": 2,
+  "category": "Boxing & Combat Conditioning",
+  "workouts": [
+    {
+      "slug": "combat-wl-shadow-circuit",
+      "name": "Shadow Rounds — Fat-Burn Circuit",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Boxing conditioning",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Five 3-minute shadow-boxing rounds with a 1-minute corner rest — fight pacing, no bag needed. Stay on your toes and throw in combinations, not single punches; the round should feel busy from bell to bell. Progress by upping punch output in the final 30 seconds of each round, then finish the workout with burpees and core.",
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 1,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 2 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 5,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 4 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bicycle-crunch",
+          "sets": 3,
+          "reps": 20,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "combat-wl-boxer-bodyweight-rounds",
+      "name": "Boxer's Mixed Rounds",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Boxing conditioning",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Fight-camp style: a 3-minute shadow round, then a bodyweight station, then back to the round — legs and lungs never get a free minute. Treat the shadow rounds as your 'active rest' and the burpees and jump squats as the work, and you'll finish honest. Progress by cutting station rest to 45 seconds.",
+      "exercises": [
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 3,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 4 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "reps": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "combat-wl-rope-and-rounds",
+      "name": "Rope & Rounds Conditioning",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Boxing conditioning",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The oldest boxing conditioning pairing there is: three rounds of rope, three rounds of shadow work, then rope sprints and a high-knees burnout. Keep the rope relaxed in the wrists — if your shoulders burn out before your lungs, you're gripping too hard. Progress by making the rope sprints double-unders.",
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 3,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 3 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 3,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 4 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "jump-rope",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "combat-wl-heavy-bag-burner",
+      "name": "Heavy Bag Burner",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Boxing conditioning",
+      "level": "Advanced",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "Six 3-minute rounds on the heavy bag with 1-minute corners — the single biggest calorie burner in this category. Work in bursts: 15 seconds of hard output, 15 seconds of movement and jabs, repeat. Sit down on your punches instead of arm-slapping the bag; then close with core and burpees.",
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 1,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 2 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "heavy-bag-rounds",
+          "sets": 6,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 4 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bicycle-crunch",
+          "sets": 3,
+          "reps": 20,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 2,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "combat-sb-fighter-strength",
+      "name": "Fighter Strength — Push, Pull, Rotate",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Punching power comes from the floor up: express speed first with box jumps, then build the engine with heavy horizontal push and pull, and finish with rotation — the pattern every strike lives on. Keep bar speed crisp; if a rep grinds, the weight is too heavy for this day. Add 2.5 kg to the bench and row when all sets move fast.",
+      "exercises": [
+        {
+          "libraryID": "box-jump",
+          "sets": 4,
+          "reps": 3,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "barbell-bench-press",
+          "sets": 4,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 80 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "bent-over-row",
+          "sets": 4,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 77 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "overhead-press",
+          "sets": 3,
+          "reps": 5,
+          "intensity": { "type": "percent1RM", "value": 75 },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "russian-twist",
+          "sets": 3,
+          "reps": 16,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "combat-sb-explosive-power",
+      "name": "Explosive Power Day",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Power training",
+      "level": "Advanced",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "Pure rate-of-force work with nothing loading the neck or spine overhead: jumps and swings first while you're fresh, explosive push-ups, then carries to build the grip and trunk a fighter clinches with. Every rep should be maximal intent — stop a set the moment you slow down. Progress broad-jump distance, not volume.",
+      "exercises": [
+        {
+          "libraryID": "broad-jump",
+          "sets": 5,
+          "reps": 3,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 4,
+          "reps": 5,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "decline-push-up",
+          "sets": 4,
+          "reps": 6,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "combat-lo-fight-round-metcon",
+      "name": "Fight-Round Metcon",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Metcon",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "Built on the fight clock: 3-minute shadow rounds broken up by kettlebell, squat, and push-up stations at hypertrophy reps — you keep muscle while the density burns fat. Hold RPE 8 on the loaded work; the last two reps should be hard but never ugly. Progress by adding a fifth shadow round before adding load.",
+      "exercises": [
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 4,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 4 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "combat-lo-rotation-core-rounds",
+      "name": "Rotation Core Rounds",
+      "goal": "leanOut",
+      "focus": "Core",
+      "trainingType": "Core training",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Fighters don't do sit-up marathons — they train rotation, anti-rotation, and hip flexion, which is exactly this session after two easy shadow rounds to warm the spine. Move with control on the twists: rotate from the ribs, not by swinging the arms. Progress by holding a light plate on the russian twists.",
+      "exercises": [
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 2,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 3 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "russian-twist",
+          "sets": 4,
+          "reps": 20,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bicycle-crunch",
+          "sets": 4,
+          "reps": 20,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "side-plank",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "v-up",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "combat-lo-footwork-agility",
+      "name": "Footwork & Agility Rounds",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Agility training",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Everything below the waist: rope for rhythm, shuffle and skater bursts for lateral speed, and movement-only shadow rounds where you throw almost nothing and just cut angles. Stay in your stance the entire time — the moment your feet cross, reset. Progress by shrinking the shuffle rest to 30 seconds.",
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": { "type": "heartRateZone", "value": 3 },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 4,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 3,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 3 },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "combat-lo-slip-and-strike",
+      "name": "Slip & Strike Rounds",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Boxing technique & conditioning",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Offense and defense in alternating blocks: four rounds of nonstop jab-cross combinations, each followed by a minute of slips and rolls to keep the legs loaded and the head moving. Slip with the knees, not by bending at the waist. Progress by adding a pivot after every cross in the later rounds.",
+      "exercises": [
+        {
+          "libraryID": "jab-cross-combo",
+          "sets": 4,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 4 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "boxer-slip-and-roll",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "reps": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "combat-rec-flow-mobility",
+      "name": "Flow Rounds + Mobility Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Three easy 2-minute shadow rounds at conversation pace — think tai chi with punches, grooving technique with zero snap — then open up the shoulders, thoracic spine, and chest that boxing tightens. Perfect the day after a hard bag or sparring session. Nothing here should raise your breathing.",
+      "exercises": [
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 3,
+          "durationSeconds": 120,
+          "intensity": { "type": "heartRateZone", "value": 1 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ],
+  "newExercises": [
+    {
+      "id": "jab-cross-combo",
+      "name": "Jab-Cross Combo",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Rotational strike",
+      "musclesWorked": "Shoulders, chest, core, hips, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-jab-cross-combo",
+      "instructions": [
+        "Stand in your boxing stance: lead foot forward, hands at your cheeks, elbows tucked, knees soft.",
+        "Snap the jab — extend your lead hand straight out, rotating the fist palm-down, and bring it straight back to your cheek.",
+        "Fire the cross — drive off your rear foot, rotate your hip and shoulder through, and extend the rear hand along the same line.",
+        "Return to your stance immediately and repeat the 1-2 in rhythm, exhaling sharply on each punch."
+      ],
+      "formCue": "Punch from the hips — hands come back to your face every time.",
+      "commonMistakes": "Dropping the non-punching hand, and pushing punches with the arm instead of rotating the hip through the cross.",
+      "beginnerModification": "Slow the tempo and pause between the jab and cross until each punch returns to guard cleanly.",
+      "alternatives": ["shadow-boxing", "mountain-climber"],
+      "whyThisMatters": "The 1-2 is boxing's fundamental combination and turns whole-body rotation into a high-output, joint-friendly conditioning tool.",
+      "formGuide": {
+        "description": "From a staggered boxing stance, you throw a straight lead-hand jab followed instantly by a rear-hand cross, rotating the rear hip and pivoting the back foot to drive the second punch. Both hands recover to the cheeks after every combination, and the feet stay under the shoulders throughout.",
+        "diagramPrompt": "Side-angle illustration of an athlete in a boxing stance mid jab-cross combination: lead arm fully extended on the jab in frame one, rear arm extended with hip rotated and back heel raised on the cross in frame two. Highlight the rotation arrow through the rear hip and the returning hand path to the chin."
+      }
+    },
+    {
+      "id": "boxer-slip-and-roll",
+      "name": "Boxer Slip & Roll",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Lateral flexion + squat shift",
+      "musclesWorked": "Quads, glutes, obliques, neck stabilizers",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "videoPlaceholder": "demo-boxer-slip-and-roll",
+      "instructions": [
+        "Start in your boxing stance with hands high and eyes forward.",
+        "Slip: bend slightly at the knees and shift your head just outside your lead shoulder, then back past the rear shoulder — small, sharp movements.",
+        "Roll: drop into a shallow squat and trace a U-shape with your head from one side to the other, as if ducking under a rope at shoulder height.",
+        "Alternate slips and rolls in rhythm, keeping your hands glued to your cheeks and your eyes on an imaginary opponent."
+      ],
+      "formCue": "Bend the knees, not the back — eyes stay on the target.",
+      "commonMistakes": "Bowing at the waist and dropping the eyes to the floor, which turns a defensive move into a balance fault.",
+      "beginnerModification": "Hold onto slow, exaggerated slips only, adding the rolling U-shape once the legs stop burning.",
+      "alternatives": ["shadow-boxing", "lateral-shuffle", "bodyweight-squat"],
+      "whyThisMatters": "Slipping and rolling builds legs, obliques, and reactive balance at once — it's a leg workout disguised as head movement.",
+      "formGuide": {
+        "description": "From your stance you move your head off the center line — short slips left and right, then a rolling duck that traces a 'U' under an imaginary punch. All the movement comes from the knees and hips while the hands stay up and the eyes stay forward.",
+        "diagramPrompt": "Front-facing three-frame illustration of a boxer in stance: frame one slipping the head left of center, frame two at the bottom of a shallow squat mid-roll, frame three finishing the U-path on the right side. Highlight the dotted U-shaped head path and arrows at the knees showing where the bend comes from."
+      }
+    },
+    {
+      "id": "heavy-bag-rounds",
+      "name": "Heavy Bag Rounds",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Striking + footwork",
+      "musclesWorked": "Shoulders, chest, back, core, hips, calves",
+      "equipment": "Heavy bag, boxing gloves or wraps",
+      "difficulty": "Moderate",
+      "videoPlaceholder": "demo-heavy-bag-rounds",
+      "instructions": [
+        "Wrap your hands or glove up, and set a round timer for 3 minutes of work.",
+        "Work the bag in combinations — jabs, crosses, hooks to head and body — moving your feet between exchanges instead of standing square.",
+        "Sit down on your punches: exhale sharply on impact and rotate the hip behind every power shot.",
+        "Keep output in waves — 15 seconds of hard bursts, 15 seconds of jabs and movement — until the bell."
+      ],
+      "formCue": "Hit through the bag, don't push it — and move your feet after every combo.",
+      "commonMistakes": "Pushing the bag until it swings wildly, and planting flat-footed in front of it, which kills power and invites sloppy wrists.",
+      "beginnerModification": "Shorten to 2-minute rounds and stick to straight punches (jab-cross only) at half power while the wrists adapt.",
+      "alternatives": ["shadow-boxing", "jab-cross-combo", "kettlebell-swing"],
+      "whyThisMatters": "Bag rounds deliver full-body power endurance with impact feedback you can't fake — the closest thing to fighting without a partner.",
+      "formGuide": {
+        "description": "You strike a hanging heavy bag in timed 3-minute rounds, mixing straight punches, hooks, and body shots while stepping and pivoting around the bag between combinations. Power comes from hip rotation and a sharp exhale on impact, with the wrists kept straight behind every punch.",
+        "diagramPrompt": "Three-quarter view illustration of an athlete in gloves striking a hanging heavy bag with a rear-hand cross: hip rotated through, back heel pivoted, opposite hand guarding the chin. Highlight the straight wrist alignment from knuckle to elbow and a foot-path arrow showing circling around the bag."
+      }
+    }
+  ]
+}

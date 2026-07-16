@@ -1,0 +1,667 @@
+{
+  "version": 2,
+  "category": "HIIT & Conditioning",
+  "workouts": [
+    {
+      "slug": "hiit-wl-tabata-classic",
+      "name": "Tabata Classic — Four Rounds of Work",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Moderate",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The original 20s-on / 10s-off protocol, run as four separate Tabatas — 8 rounds of one movement, one minute to breathe, then the next. Every 20-second interval is all-out or it isn't Tabata; if you can't hold pace, this workout is telling you to start with just two of the four blocks.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 8,
+          "durationSeconds": 20,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 8,
+          "durationSeconds": 20,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 8,
+          "durationSeconds": 20,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 8,
+          "durationSeconds": 20,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-30-30-intervals",
+      "name": "30/30 Bodyweight Intervals",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Equal work and rest — 30 seconds hard, 30 seconds off — cycled through four movements for 4 rounds (16 work intervals total). The even ratio lets you keep the intervals genuinely hard from first to last; progress to 35/25, then 40/20, only when your last round matches your first.",
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plank",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-full-body-burner",
+      "name": "Full-Body Burner Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A rep-based circuit for days you want to sweat without watching a clock: 3 rounds of six movements, resting 45s between stations. Move with intent but keep form crisp — progress by finishing all 3 rounds faster week to week, not by getting sloppier.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "russian-twist",
+          "sets": 3,
+          "reps": 20,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-row-bike-sprints",
+      "name": "Rower & Bike Sprint Intervals",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "Machine intervals for big calorie burn with zero impact: 6 x 60s hard on the rower, then 6 x 60s hard on the bike, each with a full minute to recover. Hold a pace you could just barely repeat for all six — progress by nudging the pace, not by cutting the rest.",
+      "exercises": [
+        {
+          "libraryID": "rowing-machine",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": { "type": "heartRateZone", "value": 2 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "rowing-machine",
+          "sets": 6,
+          "durationSeconds": 60,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "stationary-bike",
+          "sets": 6,
+          "durationSeconds": 60,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": { "type": "heartRateZone", "value": 1 },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-jump-rope-pyramid",
+      "name": "Jump-Rope Pyramid",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Moderate",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "All you need is a rope: climb the pyramid 20s–40s–60s of fast skipping, then back down 60s–40s–20s (each entry below covers one up leg and one down leg), with easy shadow-boxing rounds woven in to keep the heart rate honest. Trip on the rope? Keep bouncing in place until the interval ends.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "jump-rope",
+          "sets": 2,
+          "durationSeconds": 20,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "jump-rope",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "jump-rope",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plank",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-beginner-low-impact",
+      "name": "Beginner Low-Impact HIIT",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "HIIT",
+      "level": "Beginner",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Interval training with no jumping — built for true beginners, heavier bodies, and anyone easing back in. Work at a 6–7 out of 10 effort: breathing hard but never gasping. Progress by shrinking the rests from 60s toward 30s over a few weeks before you ever add intensity.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "step-up",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "incline-push-up",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 20,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-sb-power-intervals-a",
+      "name": "Power Intervals A — Jump & Swing",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Power training",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "This builds explosive strength, not a sweat puddle: low reps, maximum intent, and long rests so every jump and swing stays crisp. If a set slows down visibly, you're done for that movement. Progress the box height and kettlebell weight, never the reps.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 1,
+          "reps": 12,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "box-jump",
+          "sets": 5,
+          "reps": 5,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 4,
+          "reps": 3,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 5,
+          "reps": 8,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 120
+        }
+      ]
+    },
+    {
+      "slug": "hiit-sb-sprint-power",
+      "name": "Power Intervals B — Sprint Day",
+      "goal": "strengthBuilding",
+      "focus": "Conditioning",
+      "trainingType": "Power training",
+      "level": "Advanced",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "Short all-out sprints with near-full recovery build power that carries straight into your lifts — 8 x 15s at true max effort with 3 minutes between, because speed dies the moment you shortchange the rest. Advanced only: warm up thoroughly and cut the session the first rep you feel your stride tighten.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 8,
+          "durationSeconds": 15,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 4,
+          "reps": 5,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 120
+        }
+      ]
+    },
+    {
+      "slug": "hiit-lo-metcon-30",
+      "name": "Metcon 30: Squat, Push, Row",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "HIIT",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "A classic mixed-modal circuit for keeping muscle while cutting: goblet squats and push-ups carry the load, hard 60-second row pieces spike the heart rate between them. Run it as 4 rounds through all five stations; pick a goblet weight you could squat 15 times and stop every set at 12.",
+      "exercises": [
+        {
+          "libraryID": "rowing-machine",
+          "sets": 1,
+          "durationSeconds": 180,
+          "intensity": { "type": "heartRateZone", "value": 2 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 4,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "rowing-machine",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "sit-up",
+          "sets": 4,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-lo-emom-ladder-20",
+      "name": "EMOM Ladder 20",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Moderate",
+      "durationMinutes": 25,
+      "equipmentProfile": "Full Gym",
+      "notes": "A 20-minute EMOM cycling four stations — goblet squats, burpees, kettlebell swings, hard row — for 5 rounds each; whatever remains of the minute is your rest. The ladder: start round 1 two reps under the listed targets and add one rep per round, so round 5 is a fight. Scale by holding reps flat instead.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 5,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 5,
+          "reps": 8,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 5,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "rowing-machine",
+          "sets": 5,
+          "durationSeconds": 40,
+          "intensity": { "type": "maxEffort" },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "hiit-lo-dumbbell-conditioning",
+      "name": "Dumbbell Lean-Out Circuit",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "notes": "One pair of dumbbells, six stations, 3 rounds — hypertrophy-honest reps with conditioning-honest rests. Hold the lunges and carries with the same dumbbells you squat with to keep transitions fast. Progress the weight when every station finishes at RPE 7 or easier.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dumbbell-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": { "type": "rpe", "value": 8 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "reverse-lunge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 3,
+          "reps": 15,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": { "type": "rpe", "value": 7 },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-rec-zone2-flush",
+      "name": "Zone-2 Flush + Mobility",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Recovery",
+      "level": "Recovery",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "The day-after antidote to hard intervals: 20 easy minutes on the bike at a pace where you can hold a full conversation, a short walk, then unhurried stretching for hips and spine. If your heart rate drifts above zone 2, slow down — the whole point is leaving fresher than you arrived.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 1200,
+          "intensity": { "type": "heartRateZone", "value": 2 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": { "type": "heartRateZone", "value": 1 },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": { "type": "bodyweight" },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ],
+  "newExercises": []
+}
