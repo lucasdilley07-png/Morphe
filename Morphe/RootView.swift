@@ -1,4 +1,6 @@
 import SwiftUI
+import Speech
+import AVFoundation
 
 /// Terms of use + liability waiver. Shown once after onboarding (and on every
 /// reopen until accepted). Agree → remembered forever, locally and in the
@@ -663,6 +665,7 @@ private struct MorpheAIAgentSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var prompt = ""
+    @State private var dictation = DictationEngine()
     @FocusState private var inputFocused: Bool
 
     private var messages: [ThreadMessage] {
@@ -752,6 +755,17 @@ private struct MorpheAIAgentSheet: View {
                 .textFieldStyle(MorpheFieldStyle())
                 .focused($inputFocused)
 
+                Button {
+                    toggleDictation()
+                } label: {
+                    Image(systemName: dictation.isRecording ? "mic.fill" : "mic")
+                        .font(.system(size: 22))
+                        .foregroundStyle(dictation.isRecording ? MorpheTheme.accent : MorpheTheme.textSecondary)
+                        .symbolEffect(.pulse, isActive: dictation.isRecording)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(dictation.isRecording ? "Stop dictation" : "Dictate message")
+
                 Button(action: send) {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 32))
@@ -760,6 +774,13 @@ private struct MorpheAIAgentSheet: View {
                 .buttonStyle(.plain)
                 .disabled(trimmedPrompt.isEmpty)
                 .accessibilityLabel("Send")
+            }
+
+            if let notice = dictation.notice {
+                Text(notice)
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(.horizontal, 16)
@@ -774,12 +795,27 @@ private struct MorpheAIAgentSheet: View {
                 }
                 .ignoresSafeArea(edges: .bottom)
         )
+        .onDisappear { dictation.stop() }
     }
 
     private func send() {
-        guard !trimmedPrompt.isEmpty else { return }
-        store.sendAIAgentPrompt(trimmedPrompt)
+        let text = trimmedPrompt
+        guard !text.isEmpty else { return }
+        // Clear FIRST — the box must be empty the instant the arrow is hit,
+        // even when the prompt triggers navigation that tears the sheet down.
         prompt = ""
+        dictation.stop()
+        store.sendAIAgentPrompt(text)
+    }
+
+    private func toggleDictation() {
+        if dictation.isRecording {
+            dictation.stop()
+        } else {
+            // Dictation APPENDS to whatever is already typed — switching from
+            // thumbs to voice mid-thought must not eat the typed half.
+            dictation.start(baseText: prompt) { prompt = $0 }
+        }
     }
 }
 
@@ -801,7 +837,119 @@ private struct AIAgentMessageRow: View {
                     RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(message.sender == .user ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
                 )
+                .contextMenu {
+                    Button {
+                        UIPasteboard.general.string = message.text
+                    } label: {
+                        Label("Copy", systemImage: "doc.on.doc")
+                    }
+                }
         }
+    }
+}
+
+// MARK: - Speech dictation (talk-to-text for the AI composer)
+
+/// Live speech-to-text: streams partial transcriptions into the composer as
+/// the user talks. On-device where the hardware supports it, so gym-floor
+/// dead zones don't kill dictation.
+@Observable
+final class DictationEngine: NSObject {
+    private(set) var isRecording = false
+    /// One-line status for the composer ("Listening…", permission help). Nil
+    /// when there is nothing worth saying.
+    private(set) var notice: String?
+
+    private let audioEngine = AVAudioEngine()
+    private var recognizer: SFSpeechRecognizer?
+    private var request: SFSpeechAudioBufferRecognitionRequest?
+    private var task: SFSpeechRecognitionTask?
+
+    /// Starts dictation, appending to `baseText`. Each partial result calls
+    /// `onText` with the full combined string.
+    func start(baseText: String, onText: @escaping (String) -> Void) {
+        SFSpeechRecognizer.requestAuthorization { [weak self] status in
+            DispatchQueue.main.async {
+                guard status == .authorized else {
+                    self?.notice = "Enable Speech Recognition for Morphe in Settings to dictate."
+                    return
+                }
+                AVAudioApplication.requestRecordPermission { granted in
+                    DispatchQueue.main.async {
+                        guard granted else {
+                            self?.notice = "Enable the Microphone for Morphe in Settings to dictate."
+                            return
+                        }
+                        self?.beginRecognition(baseText: baseText, onText: onText)
+                    }
+                }
+            }
+        }
+    }
+
+    private func beginRecognition(baseText: String, onText: @escaping (String) -> Void) {
+        stop()
+
+        guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else {
+            notice = "Dictation isn't available right now."
+            return
+        }
+        self.recognizer = recognizer
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        if recognizer.supportsOnDeviceRecognition {
+            request.requiresOnDeviceRecognition = true
+        }
+        self.request = request
+
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            let inputNode = audioEngine.inputNode
+            let format = inputNode.outputFormat(forBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+                request.append(buffer)
+            }
+            audioEngine.prepare()
+            try audioEngine.start()
+        } catch {
+            notice = "Couldn't start the microphone."
+            stop()
+            return
+        }
+
+        isRecording = true
+        notice = "Listening… tap the mic to stop."
+
+        let prefix = baseText.trimmingCharacters(in: .whitespacesAndNewlines)
+        task = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            DispatchQueue.main.async {
+                if let result {
+                    let spoken = result.bestTranscription.formattedString
+                    onText(prefix.isEmpty ? spoken : "\(prefix) \(spoken)")
+                }
+                if error != nil || (result?.isFinal ?? false) {
+                    self?.stop()
+                }
+            }
+        }
+    }
+
+    func stop() {
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        request?.endAudio()
+        task?.cancel()
+        task = nil
+        request = nil
+        isRecording = false
+        notice = nil
+        // Hand the audio session back to the reward sounds' ambient setup.
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
     }
 }
 

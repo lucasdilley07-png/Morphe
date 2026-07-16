@@ -3690,6 +3690,13 @@ private struct CoachMessageRow: View {
                     RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(message.sender == .coach ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
                 )
+                .contextMenu {
+                    Button {
+                        UIPasteboard.general.string = message.text
+                    } label: {
+                        Label("Copy", systemImage: "doc.on.doc")
+                    }
+                }
         }
     }
 }
