@@ -203,6 +203,7 @@ struct OnboardingFlowView: View {
             .schedule,
             .equipment,
             .injuryPain,
+            .coachCode,
             .review
         ]
         guard FeatureFlags.multiUserEnabled else { return solo }

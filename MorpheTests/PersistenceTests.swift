@@ -740,28 +740,38 @@ final class WorkoutSessionTests: XCTestCase {
 
         // Facets are populated.
         XCTAssertTrue(store.catalogWorkouts.allSatisfy { !$0.focusTag.isEmpty })
-
-        // The curated Legends collection ships alongside the generated
-        // programs, era-named (no celebrity names without a license).
-        let legends = store.catalogWorkouts.filter { $0.type == "Legends" }
-        XCTAssertGreaterThanOrEqual(legends.count, 7)
-        XCTAssertTrue(legends.contains { $0.name == "The Golden Six" })
     }
 
-    func testDiscoverBrowsingIsRetiredButCatalogStillPowersThePlan() {
+    func testDiscoverBrowsesTheV2LibraryByCategoryAndGoal() {
         let store = MorpheAppStore()
 
-        // The v1 catalog is deliberately retired from Discover browsing while
-        // the personalized v2 library is built.
-        XCTAssertTrue(store.discoverWorkouts.isEmpty,
-                      "Discover browsing is intentionally empty pending the v2 library")
+        // The v2 library is browsable again: hand-authored workouts across
+        // the ten training-style categories.
+        XCTAssertEqual(store.discoverWorkouts.count, 112, "the v2 library ships 112 workouts")
 
-        // But the bundled catalog must keep loading — the Today plan engine
-        // and previously saved workouts resolve against it.
+        let categories = Set(store.discoverWorkouts.map(\.categoryTag))
+        XCTAssertEqual(categories.count, 10, "ten category spines")
+        XCTAssertTrue(categories.contains("Strength & Powerlifting"))
+        XCTAssertTrue(categories.contains("Recovery & Longevity"))
+
+        // Every workout carries a result goal — the Discover goal lens.
+        let goals = Set(store.discoverWorkouts.map(\.goalTag))
+        XCTAssertEqual(goals, ["weightLoss", "strengthBuilding", "leanOut", "recovery"],
+                       "all four goals are represented and nothing is untagged")
+
+        // The catalog still powers the Today plan engine.
         XCTAssertFalse(store.catalogWorkouts.isEmpty,
                        "the bundled catalog still powers the daily plan and saved workouts")
         XCTAssertTrue(store.catalogWorkouts.allSatisfy { !$0.trainingTypeTag.isEmpty },
                       "every catalog workout carries a training type")
+
+        // Intensity prescriptions survive the loader: a heavy strength lift
+        // shows an honest %1RM, and rest carries through.
+        let benchDay = store.discoverWorkouts.first { $0.name == "Heavy Bench Day" }
+        XCTAssertNotNil(benchDay)
+        let heavyBench = benchDay?.exercises.first { $0.exerciseLibraryID == "barbell-bench-press" }
+        XCTAssertEqual(heavyBench?.intensityLabel, "87% 1RM")
+        XCTAssertEqual(heavyBench?.restSeconds, 240)
     }
 
     func testSavedCatalogWorkoutSurvivesRelaunch() {
@@ -846,9 +856,12 @@ final class WorkoutSessionTests: XCTestCase {
 
         store.updateDisplayName("Maria Lopez")
         XCTAssertEqual(store.profileShowcase.displayName, "Maria Lopez")
-        XCTAssertEqual(store.profileShowcase.username, "marialopez",
-                       "the @handle must follow a rename, not strand the old name")
+        XCTAssertEqual(store.profileShowcase.username, "lucas",
+                       "the @username is a claimed identity — a rename must never touch it")
 
+        // Long names truncate to 40 (reset the rename cooldown so this
+        // change isn't blocked by the 14-day rule).
+        store.nameChangedAtEpoch = 0
         store.updateDisplayName(String(repeating: "x", count: 300))
         XCTAssertEqual(store.profileShowcase.displayName.count, 40, "names cap at 40 chars")
 
@@ -2299,15 +2312,14 @@ final class FormAnalyzerTests: XCTestCase {
 
     func testEveryCatalogWorkoutResolvesToATemplate() {
         // A workout whose exercise isn't in the library is silently dropped by
-        // the loader — this pins the full catalog (incl. the athlete-inspired
-        // Legends) as resolvable, so a bad libraryID fails here, not in prod.
+        // the loader — this pins the full v2 catalog as resolvable, so a bad
+        // libraryID fails here, not in prod.
         let catalog = WorkoutCatalog.loadBundled()
-        XCTAssertEqual(catalog.count, 358, "bundled catalog size")
+        XCTAssertEqual(catalog.count, 112, "bundled v2 catalog size")
         let resolved = catalog.compactMap {
             WorkoutCatalog.template(from: $0, library: MorpheDemoContent.exerciseDatabase)
         }
         XCTAssertEqual(resolved.count, catalog.count, "every catalog workout must resolve")
-        XCTAssertEqual(resolved.filter { $0.type == "Legends" }.count, 17, "7 classic + 10 athlete-inspired legends")
     }
 
     func testMovementInference() {

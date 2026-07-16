@@ -43,6 +43,169 @@ final class NoOpCloudBackup: CloudBackingUp {
     func pull() async -> CloudSnapshot { CloudSnapshot() }
 }
 
+// MARK: - Coach-managed client handoff
+//
+// A coach creates a client profile before that person has a Morphe account,
+// logs workouts against it, and shares an invite code. When the client signs
+// up and enters the code during onboarding, the profile is atomically claimed
+// and the coach-logged history imports into their brand-new account.
+//
+// Firestore layout (managedClients rules in BACKEND/firestore.rules):
+//   managedClients/{code}  { coachUid, coachName, athleteID, name, email,
+//                            sport, notes, status, claimedByUid, claimedByName,
+//                            logsJSON, logCount, createdAt, updatedAt }
+//
+// Logs ride in the parent doc as ONE JSON string (`logsJSON`) — the same
+// snapshot pattern as CloudBackup above, and it makes the claim a single
+// get + a single guarded update, no subcollection rules. Possession of the
+// code is the authorization, exactly like party join codes.
+
+enum ManagedClientClaimError: Error, Equatable {
+    case notFound
+    case alreadyClaimed
+    case network
+
+    var message: String {
+        switch self {
+        case .notFound: return "No client profile matches that code. Double-check it with your coach."
+        case .alreadyClaimed: return "That invite code has already been used."
+        case .network: return "Couldn't reach Morphe — check your connection and try again."
+        }
+    }
+}
+
+/// Abstraction so tests/previews run without Firebase; the real app injects
+/// `FirebaseManagedClientService`.
+protocol ManagedClientSyncing: AnyObject {
+    /// Create or update a managed client (including its logs snapshot).
+    func push(_ client: ManagedClient)
+    /// All managed clients created by this coach, or nil when offline/unavailable.
+    func fetchMine(coachUid: String) async -> [ManagedClient]?
+    /// Atomically claim an unclaimed profile for the signed-in athlete.
+    func claim(code: String, athleteUid: String, athleteName: String) async -> Result<ManagedClient, ManagedClientClaimError>
+    /// Remove an (unclaimed) managed client.
+    func delete(code: String)
+}
+
+final class NoOpManagedClientService: ManagedClientSyncing {
+    func push(_ client: ManagedClient) {}
+    func fetchMine(coachUid: String) async -> [ManagedClient]? { nil }
+    func claim(code: String, athleteUid: String, athleteName: String) async -> Result<ManagedClient, ManagedClientClaimError> {
+        .failure(.network)
+    }
+    func delete(code: String) {}
+}
+
+final class FirebaseManagedClientService: ManagedClientSyncing {
+    private let encoder: JSONEncoder
+    private let decoder: JSONDecoder
+    private var db: Firestore { Firestore.firestore() }
+
+    init() {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        self.encoder = encoder
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        self.decoder = decoder
+    }
+
+    private func doc(_ code: String) -> DocumentReference {
+        db.collection("managedClients").document(code)
+    }
+
+    func push(_ client: ManagedClient) {
+        let logsJSON = (try? encoder.encode(client.logs))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        // Fire-and-forget like the party/backup writes: Firestore queues it
+        // offline and syncs when the network returns.
+        doc(client.id).setData([
+            "schemaVersion": 1,
+            "coachUid": client.coachUid,
+            "coachName": client.coachName,
+            "athleteID": client.athleteID.uuidString,
+            "name": client.name,
+            "email": client.email,
+            "sport": client.sport.rawValue,
+            "notes": client.notes,
+            "status": client.status.rawValue,
+            "claimedByName": client.claimedByName,
+            "logsJSON": logsJSON,
+            "logCount": client.logs.count,
+            "createdAt": Timestamp(date: client.createdAt),
+            "updatedAt": FieldValue.serverTimestamp()
+        ])
+    }
+
+    func fetchMine(coachUid: String) async -> [ManagedClient]? {
+        guard let snapshot = try? await db.collection("managedClients")
+            .whereField("coachUid", isEqualTo: coachUid)
+            .getDocuments()
+        else { return nil }
+        return snapshot.documents
+            .compactMap { client(from: $0.documentID, data: $0.data()) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    func claim(code: String, athleteUid: String, athleteName: String) async -> Result<ManagedClient, ManagedClientClaimError> {
+        let reference = doc(code)
+        guard let snap = try? await reference.getDocument() else { return .failure(.network) }
+        guard snap.exists, let data = snap.data(),
+              var client = client(from: code, data: data) else { return .failure(.notFound) }
+        guard client.status == .unclaimed else { return .failure(.alreadyClaimed) }
+
+        do {
+            // The rules only allow this transition (unclaimed → claimed, by the
+            // claimer, everything else unchanged), so a second device racing
+            // this claim loses at the rules layer, not just here.
+            try await reference.updateData([
+                "status": ManagedClientStatus.claimed.rawValue,
+                "claimedByUid": athleteUid,
+                "claimedByName": athleteName,
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+        } catch {
+            return .failure(.network)
+        }
+
+        client.status = .claimed
+        client.claimedByName = athleteName
+        return .success(client)
+    }
+
+    func delete(code: String) {
+        doc(code).delete()
+    }
+
+    /// Tolerant hand-decode, same per-field-defaults style as the party
+    /// service — one malformed field never hides a whole client.
+    private func client(from id: String, data: [String: Any]) -> ManagedClient? {
+        guard let coachUid = data["coachUid"] as? String,
+              let name = data["name"] as? String else { return nil }
+        var logs: [WorkoutLog] = []
+        if let json = data["logsJSON"] as? String,
+           let bytes = json.data(using: .utf8),
+           let elements = try? decoder.decode([FailableElement<WorkoutLog>].self, from: bytes) {
+            logs = elements.compactMap(\.value)
+        }
+        return ManagedClient(
+            id: id,
+            athleteID: (data["athleteID"] as? String).flatMap(UUID.init(uuidString:)) ?? UUID(),
+            coachUid: coachUid,
+            coachName: data["coachName"] as? String ?? "",
+            name: name,
+            email: data["email"] as? String ?? "",
+            sport: (data["sport"] as? String).flatMap(SportFocus.init(rawValue:)) ?? .generalFitness,
+            notes: data["notes"] as? String ?? "",
+            status: (data["status"] as? String).flatMap(ManagedClientStatus.init(rawValue:)) ?? .unclaimed,
+            claimedByName: data["claimedByName"] as? String ?? "",
+            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? .now,
+            logs: logs
+        )
+    }
+}
+
 final class FirebaseCloudBackup: CloudBackingUp {
     private var uid: String?
     private let encoder: JSONEncoder

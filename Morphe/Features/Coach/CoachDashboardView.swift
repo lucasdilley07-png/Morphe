@@ -457,25 +457,54 @@ private struct CoachCommandCenterScreen: View {
 private struct CoachAthletesRosterSection: View {
     @Environment(MorpheAppStore.self) private var store
 
+    /// Sheet-item wrapper: a bare String isn't Identifiable.
+    private struct ManagedClientSelection: Identifiable {
+        var id: String
+    }
+
+    @State private var isAddingClient = false
+    @State private var selectedManagedClient: ManagedClientSelection?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Athletes")
-                .font(.headline)
-                .foregroundStyle(.white)
+            HStack {
+                Text("Athletes")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Spacer()
+                Button {
+                    isAddingClient = true
+                } label: {
+                    Label("Add Client", systemImage: "person.badge.plus")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(MorpheTheme.accent)
+            }
+
+            // Clients this coach manages directly — created before the person
+            // ever installed Morphe. Real data only: name, sport, logged work.
+            ForEach(store.managedClients) { client in
+                ManagedClientCard(client: client) {
+                    selectedManagedClient = ManagedClientSelection(id: client.id)
+                }
+            }
 
             if store.coachClients.isEmpty {
-                // A brand-new coach has no roster — say so instead of
-                // rendering a sport filter over a blank void.
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("No athletes yet")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                        Text("Your roster starts empty — connect athletes with a QR code from Discover, and their training, readiness, and messages land here.")
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
+                // A brand-new coach has no connected roster — say so instead
+                // of rendering a sport filter over a blank void.
+                if store.managedClients.isEmpty {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("No athletes yet")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                            Text("Add a client to start logging their training today — they don't need the app yet. When they join Morphe, their invite code carries everything you logged into their new account.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
                 MultiSportCoachFilter(
@@ -499,6 +528,321 @@ private struct CoachAthletesRosterSection: View {
                 }
             }
         }
+        .sheet(isPresented: $isAddingClient) {
+            AddManagedClientSheet()
+        }
+        .sheet(item: $selectedManagedClient) { selection in
+            ManagedClientDetailSheet(clientID: selection.id)
+        }
+    }
+}
+
+/// One managed client in the roster: who they are, whether they've claimed
+/// their account, and how much history is waiting for them.
+private struct ManagedClientCard: View {
+    let client: ManagedClient
+    var onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(client.name)
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Text(client.isClaimed ? "On Morphe" : "Invite \(client.id)")
+                            .font(MorpheTheme.microLabel(10))
+                            .tracking(1.2)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule().fill(
+                                    client.isClaimed
+                                        ? Color.green.opacity(0.22)
+                                        : MorpheTheme.accent.opacity(0.22)
+                                )
+                            )
+                            .foregroundStyle(client.isClaimed ? .green : MorpheTheme.accent)
+                    }
+
+                    HStack(spacing: 12) {
+                        Label(client.sport.rawValue, systemImage: "figure.strengthtraining.traditional")
+                        Label(
+                            client.logs.isEmpty
+                                ? "No workouts yet"
+                                : "\(client.logs.count) workout\(client.logs.count == 1 ? "" : "s")",
+                            systemImage: "checklist"
+                        )
+                    }
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Create a client who isn't on Morphe yet, then hand the coach the code to
+/// share. Two phases in one sheet: the form, then the success + share view.
+private struct AddManagedClientSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var email = ""
+    @State private var sport: SportFocus = .generalFitness
+    @State private var notes = ""
+    @State private var created: ManagedClient?
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let created {
+                    createdView(created)
+                } else {
+                    form
+                }
+            }
+            .navigationTitle(created == nil ? "Add Client" : "Client Added")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(created == nil ? "Cancel" : "Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    private var form: some View {
+        Form {
+            Section("Who are they?") {
+                TextField("Name", text: $name)
+                TextField("Email (optional)", text: $email)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Picker("Sport", selection: $sport) {
+                    ForEach(SportFocus.allCases) { sport in
+                        Text(sport.rawValue).tag(sport)
+                    }
+                }
+            }
+            Section("Setup notes (optional)") {
+                TextField("Injuries, goals, anything they told you…", text: $notes, axis: .vertical)
+                    .lineLimit(3...6)
+            }
+            Section {
+                Button("Create Client Profile") {
+                    created = store.addManagedClient(name: name, email: email, sport: sport, notes: notes)
+                }
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            } footer: {
+                Text("You can log their workouts right away. When they download Morphe, they enter your invite code during setup and everything you logged becomes their training history.")
+            }
+        }
+    }
+
+    private func createdView(_ client: ManagedClient) -> some View {
+        VStack(spacing: 20) {
+            Image(systemName: "person.crop.circle.badge.checkmark")
+                .font(.system(size: 56))
+                .foregroundStyle(MorpheTheme.accent)
+
+            Text("\(client.name) is on your roster")
+                .font(.title3.weight(.bold))
+
+            VStack(spacing: 6) {
+                Text("INVITE CODE")
+                    .font(MorpheTheme.microLabel())
+                    .tracking(1.4)
+                    .foregroundStyle(.secondary)
+                Text(client.id)
+                    .font(.system(.largeTitle, design: .monospaced).weight(.bold))
+                    .textSelection(.enabled)
+            }
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity)
+            .background(RoundedRectangle(cornerRadius: 16).fill(.quaternary.opacity(0.5)))
+
+            Text("Share this code with \(client.name). When they sign up, everything you log transfers to their account.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            ShareLink(
+                item: "Join me on Morphe! Download the app and enter invite code \(client.id) during setup — your training history is already waiting."
+            ) {
+                Label("Share Invite", systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+
+            Spacer()
+        }
+        .padding(24)
+    }
+}
+
+/// The managed client's hub: invite code, logged history, log + delete actions.
+private struct ManagedClientDetailSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let clientID: String
+    @State private var isLoggingWorkout = false
+    @State private var isConfirmingDelete = false
+
+    private var client: ManagedClient? {
+        store.managedClients.first(where: { $0.id == clientID })
+    }
+
+    var body: some View {
+        NavigationStack {
+            if let client {
+                List {
+                    Section {
+                        LabeledContent("Sport", value: client.sport.rawValue)
+                        if !client.email.isEmpty {
+                            LabeledContent("Email", value: client.email)
+                        }
+                        if !client.notes.isEmpty {
+                            LabeledContent("Notes", value: client.notes)
+                        }
+                        LabeledContent("Status", value: client.isClaimed
+                            ? "Claimed by \(client.claimedByName.isEmpty ? client.name : client.claimedByName)"
+                            : "Awaiting sign-up")
+                    }
+
+                    if !client.isClaimed {
+                        Section("Invite code") {
+                            HStack {
+                                Text(client.id)
+                                    .font(.system(.title3, design: .monospaced).weight(.bold))
+                                    .textSelection(.enabled)
+                                Spacer()
+                                ShareLink(
+                                    item: "Join me on Morphe! Download the app and enter invite code \(client.id) during setup — your training history is already waiting."
+                                ) {
+                                    Image(systemName: "square.and.arrow.up")
+                                }
+                            }
+                        }
+                    }
+
+                    Section("Logged workouts") {
+                        if client.logs.isEmpty {
+                            Text("Nothing logged yet.")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(client.logs) { log in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(log.workoutTitle)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("\(log.completedAt.formatted(date: .abbreviated, time: .omitted)) · \(log.durationMinutes) min")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+
+                    if !client.isClaimed {
+                        Section {
+                            Button("Log a Workout") { isLoggingWorkout = true }
+                            Button("Remove Client", role: .destructive) { isConfirmingDelete = true }
+                        }
+                    }
+                }
+                .navigationTitle(client.name)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { dismiss() }
+                    }
+                }
+                .sheet(isPresented: $isLoggingWorkout) {
+                    LogManagedWorkoutSheet(clientID: client.id, sport: client.sport)
+                }
+                .confirmationDialog(
+                    "Remove \(client.name)? Their invite code stops working and logged workouts are deleted.",
+                    isPresented: $isConfirmingDelete,
+                    titleVisibility: .visible
+                ) {
+                    Button("Remove Client", role: .destructive) {
+                        store.deleteManagedClient(client.id)
+                        dismiss()
+                    }
+                }
+            } else {
+                // Deleted (or claimed away) out from under the sheet.
+                Text("This client is no longer on your roster.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .presentationDetents([.large])
+    }
+}
+
+/// Manual workout entry for a managed client — template optional; title,
+/// duration and notes carry the record.
+private struct LogManagedWorkoutSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let clientID: String
+    let sport: SportFocus
+    @State private var title = ""
+    @State private var durationMinutes = 45
+    @State private var notes = ""
+    @State private var templateID: UUID?
+
+    private var matchingTemplates: [WorkoutTemplate] {
+        let sportMatches = store.workoutTemplates.filter { $0.sport == sport }
+        return sportMatches.isEmpty ? store.workoutTemplates : sportMatches
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Session") {
+                    TextField("Workout title", text: $title)
+                    Stepper("Duration: \(durationMinutes) min", value: $durationMinutes, in: 5...240, step: 5)
+                    Picker("Template", selection: $templateID) {
+                        Text("No template").tag(UUID?.none)
+                        ForEach(matchingTemplates) { template in
+                            Text(template.name).tag(UUID?.some(template.id))
+                        }
+                    }
+                }
+                Section("Notes") {
+                    TextField("How did it go?", text: $notes, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+                Section {
+                    Button("Save Workout") {
+                        store.logWorkoutForManagedClient(
+                            clientID,
+                            template: matchingTemplates.first(where: { $0.id == templateID }),
+                            workoutTitle: title,
+                            durationMinutes: durationMinutes,
+                            notes: notes
+                        )
+                        dismiss()
+                    }
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && templateID == nil)
+                }
+            }
+            .navigationTitle("Log Workout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.large])
     }
 }
 

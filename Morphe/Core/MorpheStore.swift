@@ -325,7 +325,10 @@ final class MorpheAppStore {
     /// tests/previews stay offline.
     private let usernameDirectory: UsernameDirectoryService
     /// Coach-created client profiles + claim handoff. Real app injects
+    /// `FirebaseManagedClientService`; no-op default for tests/previews.
+    private let managedClientService: ManagedClientSyncing
     /// Client profiles this coach created for people not on Morphe yet.
+    var managedClients: [ManagedClient] = []
     /// The signed-in account, or nil when signed out.
     var authUser: AppUser?
     var authErrorMessage: String?
@@ -339,10 +342,12 @@ final class MorpheAppStore {
     init(authService: AuthService = LocalAuthService(),
          cloudBackup: CloudBackingUp = NoOpCloudBackup(),
          partyService: WorkoutPartying = NoOpPartyService(),
+         managedClientService: ManagedClientSyncing = NoOpManagedClientService(),
          usernameDirectory: UsernameDirectoryService = NoOpUsernameDirectory()) {
         self.authService = authService
         self.cloudBackup = cloudBackup
         self.partyService = partyService
+        self.managedClientService = managedClientService
         self.usernameDirectory = usernameDirectory
         let templates = MorpheDemoContent.workoutTemplates
         let clients = MorpheDemoContent.coachClients
@@ -502,6 +507,12 @@ final class MorpheAppStore {
             if !hasCompletedOnboarding {
                 Task { await restoreFromCloud() }
             }
+
+            // A returning coach's managed roster lives in the cloud — pull it
+            // fresh each launch (offline keeps the Firestore cache copy).
+            if selectedRole == .coach {
+                Task { await refreshManagedClients() }
+            }
         }
 
         // Same-day relaunch: no-op (daily state was just restored). New day —
@@ -541,6 +552,8 @@ final class MorpheAppStore {
         authService.signOut()
         cloudBackup.setUser(nil)
         authUser = nil
+        // Another account on this device must never see this coach's roster.
+        managedClients = []
     }
 
     /// Lands on the Train surface for the CURRENT role. The coach workspace
@@ -1045,6 +1058,9 @@ final class MorpheAppStore {
         onboardingDraft.accountType = user.role.appRole
         if !hasCompletedOnboarding, !user.displayName.isEmpty {
             onboardingDraft.name = user.displayName
+        }
+        if user.role == .coach {
+            Task { await refreshManagedClients() }
         }
     }
 
@@ -2449,6 +2465,15 @@ final class MorpheAppStore {
         // gate comes first, so the celebration waits behind acceptance.
         welcomeAwaitsTermsAcceptance = true
         persistLocalProfile()
+
+        // A coach invite code claims AFTER the reset above — the imported
+        // history lands in the fresh account instead of being wiped with the
+        // demo data. Athlete accounts only; a coach signing up has no coach.
+        let inviteCode = onboardingDraft.coachInviteCode
+            .trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if selectedRole == .client, !inviteCode.isEmpty {
+            Task { await claimCoachInvite(code: inviteCode) }
+        }
     }
 
     /// Best seeded template for a brand-new user: their sport at their level,
@@ -3505,17 +3530,12 @@ final class MorpheAppStore {
         savedWorkouts.contains { $0.workoutTemplateID == template.id }
     }
 
-    /// Everything browsable in Discover: the bundled catalog plus the
-    /// authored per-sport templates surfaced as "Sport-specific training"
-    /// (real content — the 18th training type in the taxonomy).
+    /// Everything browsable in Discover.
     var discoverWorkouts: [WorkoutTemplate] {
-        // Discover browsing is deliberately EMPTY right now: the v1 catalog
-        // was too generic, so it's retired from the browse/search surface
-        // while the new personalized library is built. The bundled catalog
-        // still loads (catalogWorkouts) because the Today plan engine and
-        // previously saved workouts depend on it — swap both when the v2
-        // library lands.
-        []
+        // The v2 library: 112 hand-authored workouts across 10 categories,
+        // each tagged with a result goal (categoryTag / goalTag). Sport
+        // templates stay out of Discover — they live in Train.
+        catalogWorkouts
     }
 
     /// Rebuilds saved catalog items after a launch (or after the demo clear
@@ -5378,6 +5398,139 @@ final class MorpheAppStore {
         }
 
         return "Solo sessions still lead the month, with buddy workouts working best as a consistency boost."
+    }
+
+    // MARK: - Coach-managed clients (pre-signup profiles + claim handoff)
+
+    /// Creates a client profile for someone who isn't on Morphe yet. Returns
+    /// the new client so the UI can immediately show the shareable code.
+    @discardableResult
+    func addManagedClient(name: String, email: String, sport: SportFocus, notes: String) -> ManagedClient? {
+        guard selectedRole == .coach else { return nil }
+        guard let coachUid = authUser?.id else {
+            showToast("Sign in to add clients — their profile syncs to the cloud.")
+            return nil
+        }
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else {
+            showToast("Give your client a name first.")
+            return nil
+        }
+
+        let client = ManagedClient(
+            id: Self.makePartyCode(),
+            coachUid: coachUid,
+            coachName: coachProfile.name,
+            name: cleanName,
+            email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+            sport: sport,
+            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        managedClients.insert(client, at: 0)
+        managedClientService.push(client)
+        showToast("\(cleanName) added — share code \(client.id) when they join Morphe.")
+        return client
+    }
+
+    /// Logs a workout on a managed client's record. History lives on the
+    /// client object (not in `workoutLogs`) so the coach's own training data
+    /// and backup never mix with a client's.
+    func logWorkoutForManagedClient(
+        _ clientID: String,
+        template: WorkoutTemplate?,
+        workoutTitle: String,
+        durationMinutes: Int,
+        notes: String
+    ) {
+        guard let index = managedClients.firstIndex(where: { $0.id == clientID }) else { return }
+        var client = managedClients[index]
+        guard !client.isClaimed else {
+            showToast("\(client.name) has claimed their account — they own their log now.")
+            return
+        }
+
+        let cleanTitle = workoutTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackTitle = template?.name ?? "\(client.sport.rawValue) session"
+        let log = WorkoutLog(
+            athleteID: client.athleteID,
+            athleteName: client.name,
+            workoutTemplateID: template?.id,
+            workoutTitle: cleanTitle.isEmpty ? fallbackTitle : cleanTitle,
+            sport: template?.sport ?? client.sport,
+            completedAt: .now,
+            durationMinutes: max(durationMinutes, 5),
+            exercises: exerciseLogs(from: template),
+            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "\(coachProfile.name) logged this session."
+                : notes,
+            source: .coachManual,
+            enteredByUserID: coachProfile.id,
+            enteredByRole: .coach,
+            enteredByName: coachProfile.name,
+            verificationStatus: .coachSubmitted
+        )
+
+        client.logs.insert(log, at: 0)
+        client.logs.sort { $0.completedAt > $1.completedAt }
+        managedClients[index] = client
+        managedClientService.push(client)
+        showCelebration(title: "Workout logged", detail: "\(log.workoutTitle) -> \(client.name)", symbol: "plus.circle.fill")
+    }
+
+    /// Removes an UNCLAIMED managed client (a claimed one is the athlete's
+    /// account history now — the coach can't take it back).
+    func deleteManagedClient(_ clientID: String) {
+        guard let index = managedClients.firstIndex(where: { $0.id == clientID }),
+              !managedClients[index].isClaimed else { return }
+        let removed = managedClients.remove(at: index)
+        managedClientService.delete(code: removed.id)
+        showToast("\(removed.name) removed.")
+    }
+
+    /// Pulls this coach's managed clients from the cloud (launch + sign-in).
+    /// A nil fetch (offline, not signed in) keeps whatever is already local.
+    func refreshManagedClients() async {
+        guard selectedRole == .coach, let coachUid = authUser?.id else { return }
+        if let fetched = await managedClientService.fetchMine(coachUid: coachUid) {
+            managedClients = fetched
+        }
+    }
+
+    /// Athlete side of the handoff: claims the coach-created profile and
+    /// imports its history into THIS account, re-keyed to the new identity.
+    /// Coach attribution on each log is preserved (`enteredByName`), so the
+    /// history stays honest about who recorded it.
+    func claimCoachInvite(code: String) async {
+        guard let uid = authUser?.id else { return }
+        let result = await managedClientService.claim(
+            code: code,
+            athleteUid: uid,
+            athleteName: clientProfile.name
+        )
+        switch result {
+        case .failure(let error):
+            showToast(error.message)
+        case .success(let claimed):
+            for var log in claimed.logs.sorted(by: { $0.completedAt < $1.completedAt }) {
+                log.athleteID = clientProfile.id
+                log.athleteName = clientProfile.name
+                appendWorkoutLog(log)
+            }
+            if clientProfile.limitations.isEmpty, !claimed.notes.isEmpty {
+                // The coach's setup notes are a head start, not gospel — they
+                // only fill fields the athlete left blank.
+                clientProfile.limitations = claimed.notes
+            }
+            persistLocalProfile()
+            let count = claimed.logs.count
+            showCelebration(
+                title: "Welcome aboard",
+                detail: count > 0
+                    ? "\(claimed.coachName) already logged \(count) workout\(count == 1 ? "" : "s") for you — your history starts full."
+                    : "You're connected to \(claimed.coachName)'s roster.",
+                symbol: "person.2.fill"
+            )
+        }
     }
 
     func coachAddManualWorkoutLog(

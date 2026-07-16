@@ -15,6 +15,7 @@ struct MorpheApp: App {
             authService: FirebaseAuthService(),
             cloudBackup: FirebaseCloudBackup(),
             partyService: FirebasePartyService(),
+            managedClientService: FirebaseManagedClientService(),
             usernameDirectory: FirebaseUsernameDirectory()
         ))
     }

@@ -759,9 +759,15 @@ struct WorkoutTemplate: Identifiable, Hashable {
     var equipment: String
     /// Catalog facet ("Full Body", "Push", …) — empty for non-catalog templates.
     var focusTag: String = ""
-    /// Primary taxonomy ("Strength training", "HIIT", …) — the Discover
-    /// organizing spine; empty for non-catalog templates.
+    /// Descriptive style ("Strength training", "Cardio intervals", …);
+    /// empty for non-catalog templates.
     var trainingTypeTag: String = ""
+    /// v2 catalog category ("Strength & Powerlifting", …) — the Discover
+    /// organizing spine; empty for non-catalog templates.
+    var categoryTag: String = ""
+    /// Result goal (weightLoss / strengthBuilding / leanOut / recovery) —
+    /// the Discover goal filter; empty for non-catalog templates.
+    var goalTag: String = ""
     var exercises: [WorkoutExercise]
     var defaultSets: String = "3 sets"
     var defaultReps: String = "10 reps"
@@ -1802,6 +1808,40 @@ struct EventPrepPlan: Hashable {
     var weightTarget: String
     var recoveryPriority: String
     var coachAlert: String
+}
+
+// MARK: - Coach-managed clients (pre-signup)
+
+/// Lifecycle of a coach-created client profile: it starts unclaimed (the coach
+/// logs training against it) and becomes claimed the moment the real person
+/// signs up and enters the invite code — at which point the history transfers
+/// into their own account.
+enum ManagedClientStatus: String, Codable {
+    case unclaimed
+    case claimed
+}
+
+/// A client profile the coach created for someone who doesn't have a Morphe
+/// account yet. Deliberately lean — real fields only, no invented readiness
+/// scores. `id` doubles as the shareable invite code (party-code alphabet) and
+/// the Firestore document id; `athleteID` is the UUID coach-entered logs are
+/// keyed to, so the claim import can re-key them to the new account.
+struct ManagedClient: Identifiable, Codable, Hashable {
+    var id: String
+    var athleteID: UUID = UUID()
+    var coachUid: String
+    var coachName: String
+    var name: String
+    var email: String = ""
+    var sport: SportFocus = .generalFitness
+    var notes: String = ""
+    var status: ManagedClientStatus = .unclaimed
+    var claimedByName: String = ""
+    var createdAt: Date = .now
+    var logs: [WorkoutLog] = []
+
+    var isClaimed: Bool { status == .claimed }
+    var lastLoggedAt: Date? { logs.map(\.completedAt).max() }
 }
 
 struct CoachClient: Identifiable, Hashable {
