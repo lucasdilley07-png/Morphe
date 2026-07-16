@@ -9,10 +9,12 @@ import UniformTypeIdentifiers
 let size = 1024
 let args = CommandLine.arguments
 let outPath = args.count > 1 ? args[1] : "icon.png"
-// gold variants: 0 = reference-ish, 1 = darker gold, 2 = deep gold
-let variant = args.count > 2 ? Int(args[2]) ?? 1 : 1
+// gold variants: 0 = brand yellow (DEFAULT — matches every in-app button),
+// 1 = reference gold, 2 = darker gold, 3 = deep gold
+let variant = args.count > 2 ? Int(args[2]) ?? 0 : 0
 
 let golds: [(CGFloat, CGFloat, CGFloat)] = [
+    (1.0, 0.839, 0.0),       // #FFD600 brand yellow — MorpheTheme.accent
     (0.941, 0.706, 0.161),   // #F0B429 reference
     (0.871, 0.647, 0.110),   // #DEA51C darker gold
     (0.796, 0.573, 0.075),   // #CB9213 deep gold
