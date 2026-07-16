@@ -3281,6 +3281,7 @@ final class MorpheAppStore {
         updateXP(for: todayTasks[index].xp, add: todayTasks[index].isCompleted)
 
         if todayTasks[index].isCompleted {
+            SoundEffects.play(.star)
             showCelebration(
                 title: "+\(todayTasks[index].xp) XP",
                 detail: todayTasks[index].title,
@@ -3300,6 +3301,7 @@ final class MorpheAppStore {
         if minimumWinTasks[index].isCompleted {
             streakProtected = true
             recordProtectedDay()
+            SoundEffects.play(.star)
             showCelebration(title: "Momentum protected", detail: task.title, symbol: "flame.fill")
             showToast("Momentum protected.")
         } else {
@@ -3785,6 +3787,7 @@ final class MorpheAppStore {
         // after the recap gets logged.
         publishPartyProgress()
         Haptics.success()
+        SoundEffects.play(.star)
         showToast("Session finished. Add feedback before logging it.")
         return true
     }
@@ -4031,6 +4034,7 @@ final class MorpheAppStore {
         }
 
         isWorkoutLoggedToday = true
+        SoundEffects.play(.ding)
         markTaskCompleted(named: "Complete today's workout")
         markTaskCompleted(named: "Log your workout within 24 hours")
         updateXP(for: 50, add: true)
@@ -4176,6 +4180,7 @@ final class MorpheAppStore {
             if !completedQuizIDs.contains(quiz.id) {
                 completedQuizIDs.insert(quiz.id)
                 updateXP(for: quiz.rewardXP, add: true)
+                SoundEffects.play(.star)
                 showCelebration(title: "Quiz complete", detail: "+\(quiz.rewardXP) XP", symbol: "brain.head.profile")
                 persistLocalProfile()
             }
@@ -5105,6 +5110,7 @@ final class MorpheAppStore {
             ),
             at: 0
         )
+        SoundEffects.play(.ding)
         showToast("Comment added to the network.")
     }
 
@@ -5244,6 +5250,7 @@ final class MorpheAppStore {
         )
 
         communityPosts.insert(post, at: 0)
+        SoundEffects.play(.ding)
         showCelebration(title: "Post shared", detail: role == .coach ? "Coach network updated" : "Athlete network updated", symbol: "bubble.left.and.exclamationmark.bubble.right.fill")
     }
 
@@ -5251,6 +5258,7 @@ final class MorpheAppStore {
         guard let draft = pendingPartnerSessionPost else { return }
         publishPartnerSessionPost(draft)
         pendingPartnerSessionPost = nil
+        SoundEffects.play(.ding)
         showCelebration(title: "Partner post shared", detail: "\(draft.partnerName) is in the loop.", symbol: "person.2.wave.2.fill")
     }
 
@@ -5474,6 +5482,7 @@ final class MorpheAppStore {
         client.logs.sort { $0.completedAt > $1.completedAt }
         managedClients[index] = client
         managedClientService.push(client)
+        SoundEffects.play(.ding)
         showCelebration(title: "Workout logged", detail: "\(log.workoutTitle) -> \(client.name)", symbol: "plus.circle.fill")
     }
 
@@ -5575,6 +5584,7 @@ final class MorpheAppStore {
             detail: "Saved \(log.workoutTitle) for \(athlete.name) and kept the progress record current.",
             tags: [athlete.sport.shortTitle, "Coach Log", "Shared Progress"]
         )
+        SoundEffects.play(.ding)
         showCelebration(title: "Workout added", detail: "\(log.workoutTitle) -> \(athlete.name)", symbol: "plus.circle.fill")
         showToast("Coach workout log saved.")
     }
@@ -7949,6 +7959,7 @@ final class MorpheAppStore {
             at: 0
         )
         persistWorkoutLibrary()
+        SoundEffects.play(.ding)
         showToast("Saved \(template.name) to your library.")
     }
 

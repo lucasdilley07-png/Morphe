@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import AVFoundation
 
 enum MorpheTheme {
     // MORPHE telemetry palette — flat black + #FFD600 yellow. HUD language:
@@ -164,6 +165,108 @@ enum Haptics {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(.success)
+    }
+}
+
+/// Two tiny UI sounds, synthesized in memory — no bundled audio assets.
+/// `star` (a rising four-note sparkle) marks a COMPLETION: task, workout,
+/// quiz. `ding` (one soft bell hit) marks a CONTRIBUTION: saving a workout,
+/// posting, commenting, sharing a win, logging a workout. The `.ambient`
+/// session mixes with the user's own music and respects the silent switch —
+/// a gym app must never barge into someone's playlist.
+enum SoundEffects {
+    enum Cue {
+        case star
+        case ding
+    }
+
+    private static var players: [Cue: AVAudioPlayer] = [:]
+    private static var sessionConfigured = false
+
+    static func play(_ cue: Cue) {
+        if !sessionConfigured {
+            try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+            sessionConfigured = true
+        }
+        if players[cue] == nil {
+            players[cue] = try? AVAudioPlayer(data: waveData(for: cue))
+            players[cue]?.prepareToPlay()
+        }
+        guard let player = players[cue] else { return }
+        player.currentTime = 0
+        player.play()
+    }
+
+    // MARK: - Synthesis
+
+    private static let sampleRate = 44_100.0
+
+    /// Each cue is a sum of decaying sine strikes (fundamental + two soft
+    /// harmonics). The star staggers four notes up a major arpeggio; the
+    /// ding is a single B5 bell hit.
+    private static func waveData(for cue: Cue) -> Data {
+        // (frequency Hz, start seconds, ring seconds)
+        let notes: [(Double, Double, Double)]
+        switch cue {
+        case .star:
+            notes = [
+                (1046.50, 0.000, 0.30),   // C6
+                (1318.51, 0.065, 0.30),   // E6
+                (1567.98, 0.130, 0.32),   // G6
+                (2093.00, 0.195, 0.38)    // C7
+            ]
+        case .ding:
+            notes = [(987.77, 0.0, 0.40)] // B5
+        }
+
+        let total = notes.map { $0.1 + $0.2 }.max()! + 0.05
+        let frameCount = Int(total * sampleRate)
+        var samples = [Double](repeating: 0, count: frameCount)
+
+        for (frequency, start, ring) in notes {
+            let startFrame = Int(start * sampleRate)
+            let ringFrames = Int(ring * sampleRate)
+            for i in 0..<ringFrames where startFrame + i < frameCount {
+                let t = Double(i) / sampleRate
+                // 4ms attack so the strike doesn't click; exponential decay.
+                let attack = min(t / 0.004, 1)
+                let envelope = attack * exp(-t * 10)
+                let phase = 2 * Double.pi * frequency * t
+                let tone = sin(phase) + 0.35 * sin(2 * phase) + 0.12 * sin(3 * phase)
+                samples[startFrame + i] += tone * envelope * 0.28
+            }
+        }
+
+        return wav(from: samples)
+    }
+
+    /// Minimal 16-bit mono WAV wrapper around raw samples.
+    private static func wav(from samples: [Double]) -> Data {
+        var pcm = Data(capacity: samples.count * 2)
+        for sample in samples {
+            let clipped = Int16(max(-1, min(1, sample)) * 32_766)
+            withUnsafeBytes(of: clipped.littleEndian) { pcm.append(contentsOf: $0) }
+        }
+
+        var data = Data()
+        func append(_ value: UInt32) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
+        func append16(_ value: UInt16) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
+
+        data.append(contentsOf: Array("RIFF".utf8))
+        append(UInt32(36 + pcm.count))
+        data.append(contentsOf: Array("WAVE".utf8))
+        data.append(contentsOf: Array("fmt ".utf8))
+        append(16)                                   // fmt chunk size
+        append16(1)                                  // PCM
+        append16(1)                                  // mono
+        append(UInt32(sampleRate))                   // sample rate
+        append(UInt32(sampleRate * 2))               // byte rate
+        append16(2)                                  // block align
+        append16(16)                                 // bits per sample
+        data.append(contentsOf: Array("data".utf8))
+        append(UInt32(pcm.count))
+        data.append(pcm)
+        return data
     }
 }
 
