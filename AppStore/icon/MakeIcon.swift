@@ -15,8 +15,10 @@ func c(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1) -> CGColor {
 }
 
 let f = Double(S) / 1024.0
+// The mark is FLAT #FFD600 — the exact accent every button in the app uses.
+// (An earlier gradient faded the bottom toward orange-gold and made the icon
+// read as a different brand color than the UI.)
 let yellow = c(1.0, 0.839, 0.0)            // #FFD600
-let yellowDeep = c(0.96, 0.74, 0.0)        // warmer lower edge
 
 // --- Background: near-black vertical gradient (MorpheTheme ink range) ---
 let bgTop = c(0.086, 0.086, 0.094)         // ~#161618
@@ -69,15 +71,10 @@ ctx.setStrokeColor(yellow)
 ctx.strokePath()
 ctx.restoreGState()
 
-// Solid mark with a subtle top->bottom gradient for depth.
-ctx.saveGState()
+// Solid mark, flat brand yellow.
 ctx.addPath(mPath)
 ctx.setStrokeColor(yellow)
-ctx.replacePathWithStrokedPath()
-ctx.clip()
-let markGrad = CGGradient(colorsSpace: cs, colors: [yellow, yellowDeep] as CFArray, locations: [0, 1])!
-ctx.drawLinearGradient(markGrad, start: CGPoint(x: 0, y: Double(S)), end: CGPoint(x: 0, y: 0), options: [])
-ctx.restoreGState()
+ctx.strokePath()
 
 guard let img = ctx.makeImage() else { fatalError("img") }
 let outURL = URL(fileURLWithPath: CommandLine.arguments[1])
