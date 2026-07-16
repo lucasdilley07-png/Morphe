@@ -114,6 +114,67 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Train Together parties. The 6-char doc id is the join code — knowing it
+    // is the invite (read by code; no listing). Hosts create/steer the party;
+    // every member owns exactly their own member doc.
+    match /parties/{code} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.hostID == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.hostID == request.auth.uid;
+      allow delete: if false;
+
+      match /members/{uid} {
+        allow read: if isSignedIn();
+        allow write: if isOwner(uid);
+      }
+
+      match /nudges/{nudgeId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.fromID == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // Coach-managed client profiles (pre-signup) + claim handoff.
+    // The document id IS the invite code — possession of the code is the
+    // authorization to claim, exactly like party join codes. The coach owns
+    // the profile until the athlete claims it; after that it's frozen (the
+    // history has moved into the athlete's own account).
+    match /managedClients/{code} {
+      // GET requires knowing the code (unguessable enough at 31^6); LIST is
+      // restricted to the owning coach's own roster query.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.coachUid == request.auth.uid;
+
+      // Only a coach creates one, for themself, unclaimed.
+      allow create: if isSignedIn()
+        && request.resource.data.coachUid == request.auth.uid
+        && request.resource.data.status == 'unclaimed';
+
+      // Two legal updates:
+      //   1. The owning coach edits/logs while the profile is unclaimed.
+      //   2. Any signed-in athlete atomically claims an unclaimed profile for
+      //      THEMSELF — flipping status and stamping claimedByUid, nothing else.
+      allow update: if isSignedIn()
+        && request.resource.data.coachUid == resource.data.coachUid
+        && (
+          (request.auth.uid == resource.data.coachUid
+            && resource.data.status == 'unclaimed')
+          || (resource.data.status == 'unclaimed'
+            && request.resource.data.status == 'claimed'
+            && request.resource.data.claimedByUid == request.auth.uid
+            && request.resource.data.logsJSON == resource.data.logsJSON
+            && request.resource.data.athleteID == resource.data.athleteID)
+        );
+
+      // A coach can delete an unclaimed profile; a claimed one is the
+      // athlete's history now.
+      allow delete: if isSignedIn()
+        && request.auth.uid == resource.data.coachUid
+        && resource.data.status == 'unclaimed';
+    }
+
     // Default deny for anything not matched above.
     match /{document=**} {
       allow read, write: if false;
