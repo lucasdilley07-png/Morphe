@@ -615,6 +615,21 @@ private struct CameraPreview: UIViewRepresentable {
             didSet { attachSession() }
         }
 
+        // RotationCoordinator is Apple's fix for exactly our bug: it knows the
+        // camera's true portrait angle per device and publishes changes via
+        // KVO. A hand-set 90 could be silently undone when the session's
+        // commitConfiguration recreated the preview connection AFTER the layer
+        // attached — with no later layout pass, the default (sideways) stuck.
+        private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
+        private var rotationObservation: NSKeyValueObservation?
+        private var startObserver: NSObjectProtocol?
+
+        deinit {
+            if let startObserver {
+                NotificationCenter.default.removeObserver(startObserver)
+            }
+        }
+
         // Assigning the session to the preview layer BEFORE the view is in the
         // window hierarchy can leave the preview connection inactive — a black
         // screen even though the session is running. Re-attaching once the view
@@ -624,10 +639,8 @@ private struct CameraPreview: UIViewRepresentable {
             attachSession()
         }
 
-        // The preview connection appears asynchronously after the session is
-        // assigned — setting the rotation only at attach time silently missed
-        // on device, leaving the camera image sideways. Re-assert on every
-        // layout pass and retry until the connection exists.
+        // Re-assert on layout too — belt and suspenders alongside the
+        // coordinator and the did-start-running observer.
         override func layoutSubviews() {
             super.layoutSubviews()
             applyPortraitRotation()
@@ -639,21 +652,57 @@ private struct CameraPreview: UIViewRepresentable {
                 videoPreviewLayer.session = session
             }
             videoPreviewLayer.videoGravity = .resizeAspectFill
+
+            // The session (re)creates its preview connection when configuration
+            // commits, which wipes any angle set earlier. It always starts
+            // running right after committing, so re-applying on this
+            // notification closes the ordering hole for good.
+            if startObserver == nil {
+                startObserver = NotificationCenter.default.addObserver(
+                    forName: .AVCaptureSessionDidStartRunning,
+                    object: session,
+                    queue: .main
+                ) { [weak self] _ in
+                    self?.applyPortraitRotation(retry: true)
+                }
+            }
             applyPortraitRotation(retry: true)
         }
 
-        /// Pin the preview to portrait; the front-camera preview layer is
-        /// mirrored (selfie) by default, matching the pose overlay's coords.
+        /// Pin the preview to portrait via the device's RotationCoordinator;
+        /// the front-camera preview layer stays mirrored (selfie) by default,
+        /// matching the pose overlay's coords.
         private func applyPortraitRotation(retry: Bool = false) {
-            if let connection = videoPreviewLayer.connection {
-                if connection.isVideoRotationAngleSupported(90), connection.videoRotationAngle != 90 {
-                    connection.videoRotationAngle = 90
+            guard let connection = videoPreviewLayer.connection else {
+                if retry {
+                    // Connection not formed yet — try again shortly.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                        self?.applyPortraitRotation(retry: true)
+                    }
                 }
-            } else if retry {
-                // Connection not formed yet — try again shortly.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                    self?.applyPortraitRotation(retry: true)
+                return
+            }
+
+            if rotationCoordinator == nil,
+               let device = (configuredSession?.inputs.first as? AVCaptureDeviceInput)?.device {
+                let coordinator = AVCaptureDevice.RotationCoordinator(
+                    device: device,
+                    previewLayer: videoPreviewLayer
+                )
+                rotationCoordinator = coordinator
+                rotationObservation = coordinator.observe(
+                    \.videoRotationAngleForHorizonLevelPreview,
+                    options: [.new]
+                ) { [weak self] _, _ in
+                    DispatchQueue.main.async { self?.applyPortraitRotation() }
                 }
+            }
+
+            // Coordinator angle when available; 90 as the portrait fallback
+            // until the session's input exists.
+            let angle = rotationCoordinator?.videoRotationAngleForHorizonLevelPreview ?? 90
+            if connection.isVideoRotationAngleSupported(angle), connection.videoRotationAngle != angle {
+                connection.videoRotationAngle = angle
             }
         }
     }
