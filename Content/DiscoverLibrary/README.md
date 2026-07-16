@@ -70,5 +70,8 @@ gets wired into the app.)
 3. ✅ 10 files merged into `Resources/MorpheCatalog.json` via
    `Tools/build_catalog_v2.py` (deterministic UUID5 ids, `v2:<slug>`).
 4. ✅ Discover browses by category with a goal-chip lens.
-5. ⏳ Remaining: generate the 24 form diagrams from each JSON's
-   `newExercises[].formGuide.diagramPrompt`.
+5. ✅ 24 form diagrams generated (2026-07-15) from each JSON's
+   `newExercises[].formGuide.diagramPrompt` → `FormDiagrams/<exercise-id>.png`
+   (1K square, Nano Banana Pro, consistent style: gray figure on charcoal,
+   gold accent cues). Not yet bundled into the app — the form guide screen
+   still shows `videoPlaceholder`; wiring the images in is the next step.

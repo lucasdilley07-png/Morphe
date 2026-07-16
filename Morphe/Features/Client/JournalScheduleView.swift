@@ -14,6 +14,18 @@ struct ExerciseDetailView: View {
         }
     }
 
+    /// The exercise's form diagram from the bundled FormDiagrams folder.
+    /// Nil (and the card simply doesn't render) for exercises without one —
+    /// custom user-created exercises have no diagram.
+    private var formDiagram: UIImage? {
+        guard let url = Bundle.main.url(
+            forResource: exercise.id,
+            withExtension: "heic",
+            subdirectory: "FormDiagrams"
+        ) else { return nil }
+        return UIImage(contentsOfFile: url.path)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
@@ -36,6 +48,22 @@ struct ExerciseDetailView: View {
                                     .font(.subheadline)
                                     .foregroundStyle(MorpheTheme.textSecondary)
                                     .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+
+                    if let formDiagram {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Form Diagram")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+
+                                Image(uiImage: formDiagram)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .accessibilityLabel("Form diagram for \(exercise.name)")
                             }
                         }
                     }
