@@ -239,6 +239,13 @@ final class MorpheAppStore {
     var trackedSetWeights: [String: [Double]] = [:] { didSet { persistWorkoutSession() } }
     /// Per-set RPE (6–10), parallel to trackedSetReps; 0 = not rated.
     var trackedSetRPE: [String: [Int]] = [:] { didSet { persistWorkoutSession() } }
+    /// Per-set style label, parallel to trackedSetReps ("" = standard set;
+    /// e.g. "Dropset 80×8 → 60×6" or "Superset + Push-Up ×12"). A superset
+    /// or dropset counts as ONE set, with its sub-work described here.
+    var trackedSetLabels: [String: [String]] = [:] { didSet { persistWorkoutSession() } }
+    /// Unsaved draft from the custom set logger, per exercise id — everything
+    /// typed into the "More" sheet survives dismissal and app relaunch.
+    var pendingSetDrafts: [String: PendingSetDraft] = [:] { didSet { persistWorkoutSession() } }
     /// When the live session actually began, so logs carry time trained —
     /// not the template's advertised length.
     var workoutSessionStartedAt: Date? { didSet { persistWorkoutSession() } }
@@ -1709,6 +1716,8 @@ final class MorpheAppStore {
         trackedSetReps = snapshot.trackedSetReps
         trackedSetWeights = snapshot.trackedSetWeights
         trackedSetRPE = snapshot.trackedSetRPE
+        trackedSetLabels = snapshot.trackedSetLabels
+        pendingSetDrafts = snapshot.pendingSetDrafts
         workoutSessionStartedAt = snapshot.workoutSessionStartedAt
         completedSessionMinutes = snapshot.completedSessionMinutes
     }
@@ -1727,6 +1736,8 @@ final class MorpheAppStore {
                 trackedSetReps: trackedSetReps,
                 trackedSetWeights: trackedSetWeights,
                 trackedSetRPE: trackedSetRPE,
+                trackedSetLabels: trackedSetLabels,
+                pendingSetDrafts: pendingSetDrafts,
                 workoutSessionStartedAt: workoutSessionStartedAt,
                 completedSessionMinutes: completedSessionMinutes,
                 isWorkoutLoggedToday: isWorkoutLoggedToday,
@@ -2601,6 +2612,7 @@ final class MorpheAppStore {
         trackedSetReps = [:]
         trackedSetWeights = [:]
         trackedSetRPE = [:]
+        trackedSetLabels = [:]
         return true
     }
 
@@ -3468,6 +3480,7 @@ final class MorpheAppStore {
         trackedSetReps = [:]
         trackedSetWeights = [:]
         trackedSetRPE = [:]
+        trackedSetLabels = [:]
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         showTrainTab()
@@ -3641,7 +3654,7 @@ final class MorpheAppStore {
 
     /// `allowExtra` lets an explicit user action log past the target set count
     /// (the quick-log buttons stay guarded so a stray tap can't over-log).
-    func completeTrackedSet(reps: Int, weight: Double? = nil, rpe: Int? = nil, allowExtra: Bool = false) {
+    func completeTrackedSet(reps: Int, weight: Double? = nil, rpe: Int? = nil, allowExtra: Bool = false, label: String = "") {
         guard let exercise = activeWorkoutExercise else { return }
         let targetSets = targetSetCount(for: exercise)
         let currentCount = completedWorkoutSets[exercise.id, default: 0]
@@ -3657,6 +3670,10 @@ final class MorpheAppStore {
         // Record weight per set (0 = bodyweight) so logs carry real load, not "As logged".
         trackedSetWeights[exercise.id, default: []].append(max(0, weight ?? 0))
         trackedSetRPE[exercise.id, default: []].append(rpe ?? 0)
+        // A superset/dropset is ONE set — the label carries its sub-work.
+        trackedSetLabels[exercise.id, default: []].append(label)
+        // The set logged; its draft is spent.
+        pendingSetDrafts[exercise.id] = nil
         Haptics.impact(.light)
 
         if updatedCount == targetSets {
@@ -3716,6 +3733,10 @@ final class MorpheAppStore {
             rpesLogged.remove(at: setIndex)
             trackedSetRPE[exerciseID] = rpesLogged
         }
+        if var labelsLogged = trackedSetLabels[exerciseID], labelsLogged.indices.contains(setIndex) {
+            labelsLogged.remove(at: setIndex)
+            trackedSetLabels[exerciseID] = labelsLogged
+        }
         completedWorkoutSets[exerciseID] = repsLogged.count
         showToast("Set removed.")
     }
@@ -3732,6 +3753,7 @@ final class MorpheAppStore {
         trackedSetReps = [:]
         trackedSetWeights = [:]
         trackedSetRPE = [:]
+        trackedSetLabels = [:]
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         showToast("Workout discarded.")
@@ -4499,8 +4521,19 @@ final class MorpheAppStore {
         trackedSetReps = [:]
         trackedSetWeights = [:]
         trackedSetRPE = [:]
+        trackedSetLabels = [:]
         showTrainTab()
         showToast("\(template.name) ready in Train.")
+    }
+
+    /// Queues a saved workout as TODAY's workout — staged in Train, session
+    /// not started. Mirrors openWorkoutTemplate (same discard guard).
+    func queueSavedWorkout(_ item: SavedWorkoutLibraryItem) {
+        guard let template = workoutTemplates.first(where: { $0.id == item.workoutTemplateID }) else {
+            showToast("That workout is no longer available.")
+            return
+        }
+        openWorkoutTemplate(template)
     }
 
     func startSavedWorkout(_ item: SavedWorkoutLibraryItem) {
@@ -6280,6 +6313,7 @@ final class MorpheAppStore {
         trackedSetReps = [:]
         trackedSetWeights = [:]
         trackedSetRPE = [:]
+        trackedSetLabels = [:]
     }
 
     private func updateCurrentWorkout(_ update: (inout WorkoutTemplate) -> Void) {
@@ -7534,12 +7568,21 @@ final class MorpheAppStore {
             let weightSummary = topWeight > 0 ? weightUnit.format(topWeight) : "Bodyweight"
             let rpesLogged = trackedSetRPE[exercise.id, default: []]
             let ratedRPEs = rpesLogged.filter { $0 > 0 }
+            // Superset/dropset sub-work rides in the note — each labeled set
+            // spelled out so the history stays honest about what was done.
+            let labelsLogged = trackedSetLabels[exercise.id, default: []]
+            let labelNotes = labelsLogged.enumerated()
+                .filter { !$0.element.isEmpty }
+                .map { "Set \($0.offset + 1): \($0.element)" }
+            let note = labelNotes.isEmpty
+                ? exercise.formCue
+                : labelNotes.joined(separator: " · ")
             return LoggedExercise(
                 name: exercise.name,
                 sets: setSummary,
                 reps: repSummary,
                 weight: weightSummary,
-                note: exercise.formCue,
+                note: note,
                 rpe: ratedRPEs.isEmpty ? nil : ratedRPEs.map(String.init).joined(separator: ", "),
                 // Keep the raw per-set arrays so strength-over-time can be
                 // computed later; the strings above are display-only.

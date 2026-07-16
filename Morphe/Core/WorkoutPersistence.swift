@@ -14,6 +14,15 @@ import Foundation
 
 /// Codable snapshot of an in-progress workout session, so a session in flight
 /// survives backgrounding or a relaunch.
+/// What the user has typed into the custom set logger but not logged yet —
+/// persisted per exercise so a dismissed sheet (or an app relaunch mid-set)
+/// never eats their numbers.
+struct PendingSetDraft: Codable, Equatable {
+    var reps: Int = 10
+    var weight: Double = 0
+    var rpe: Int?
+}
+
 struct WorkoutSessionSnapshot: Codable, Equatable {
     /// Explicit migration hook for future non-additive schema changes.
     var schemaVersion: Int = 1
@@ -28,6 +37,11 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
     /// Per-set RPE, parallel to trackedSetReps (0 = not rated). Tolerantly
     /// decoded so sessions saved before this field existed still restore.
     var trackedSetRPE: [String: [Int]]
+    /// Per-set style labels ("" = standard; superset/dropset sub-work text).
+    /// Tolerantly decoded.
+    var trackedSetLabels: [String: [String]]
+    /// Unsaved custom-logger drafts per exercise. Tolerantly decoded.
+    var pendingSetDrafts: [String: PendingSetDraft]
     /// Session timing (tolerantly decoded): when the live session started and
     /// the elapsed minutes captured at finish.
     var workoutSessionStartedAt: Date?
@@ -42,6 +56,8 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
          hasCompletedWorkoutFlow: Bool, activeWorkoutExerciseIndex: Int,
          completedWorkoutSets: [String: Int], trackedSetReps: [String: [Int]],
          trackedSetWeights: [String: [Double]], trackedSetRPE: [String: [Int]],
+         trackedSetLabels: [String: [String]] = [:],
+         pendingSetDrafts: [String: PendingSetDraft] = [:],
          workoutSessionStartedAt: Date?, completedSessionMinutes: Int?,
          isWorkoutLoggedToday: Bool, currentWorkoutName: String = "") {
         self.currentWorkoutName = currentWorkoutName
@@ -54,6 +70,8 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
         self.trackedSetReps = trackedSetReps
         self.trackedSetWeights = trackedSetWeights
         self.trackedSetRPE = trackedSetRPE
+        self.trackedSetLabels = trackedSetLabels
+        self.pendingSetDrafts = pendingSetDrafts
         self.workoutSessionStartedAt = workoutSessionStartedAt
         self.completedSessionMinutes = completedSessionMinutes
         self.isWorkoutLoggedToday = isWorkoutLoggedToday
@@ -71,6 +89,8 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
         trackedSetReps = try c.decode([String: [Int]].self, forKey: .trackedSetReps)
         trackedSetWeights = try c.decode([String: [Double]].self, forKey: .trackedSetWeights)
         trackedSetRPE = ((try? c.decodeIfPresent([String: [Int]].self, forKey: .trackedSetRPE)) ?? nil) ?? [:]
+        trackedSetLabels = ((try? c.decodeIfPresent([String: [String]].self, forKey: .trackedSetLabels)) ?? nil) ?? [:]
+        pendingSetDrafts = ((try? c.decodeIfPresent([String: PendingSetDraft].self, forKey: .pendingSetDrafts)) ?? nil) ?? [:]
         workoutSessionStartedAt = ((try? c.decodeIfPresent(Date.self, forKey: .workoutSessionStartedAt)) ?? nil)
         completedSessionMinutes = ((try? c.decodeIfPresent(Int.self, forKey: .completedSessionMinutes)) ?? nil)
         isWorkoutLoggedToday = try c.decode(Bool.self, forKey: .isWorkoutLoggedToday)

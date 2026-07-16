@@ -73,18 +73,23 @@ struct WorkoutView: View {
             // the Bool flavor could silently drop a present during state
             // races, which read as "the More button does nothing".
             EmptyView().sheet(item: $repLoggerContext) { context in
-                SetRepLoggingSheet(reps: $pendingRepCount, weight: $pendingWeight, rpe: $pendingRPE) {
+                SetRepLoggingSheet(
+                    reps: $pendingRepCount,
+                    weight: $pendingWeight,
+                    rpe: $pendingRPE,
+                    isEditing: context.editIndex != nil
+                ) { label in
                     if let editIndex = context.editIndex, let exercise = store.activeWorkoutExercise {
                         store.updateTrackedSet(exerciseID: exercise.id, setIndex: editIndex, reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE)
                     } else {
                         // Opening the full logger is an explicit action, so it may
                         // log past the planned set count ("Add extra set").
-                        store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true)
+                        store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true, label: label)
                     }
                     repLoggerContext = nil
                 }
                 .environment(store)
-                .presentationDetents([.height(540)])
+                .presentationDetents([.height(620)])
             }
         )
         .onChange(of: store.weightUnit) { oldUnit, newUnit in
@@ -183,10 +188,18 @@ struct WorkoutView: View {
                             store.completeTrackedSet(reps: reps, weight: pendingWeight)
                         },
                         onOpenCustomRepLogger: {
-                            // Clamp into the stepper's range — duration-based
-                            // moves can parse to values like 60 "reps".
-                            pendingRepCount = min(max(suggestedRepCount(for: activeExercise), 1), 50)
-                            pendingRPE = nil
+                            // A saved draft wins — whatever was typed last time
+                            // comes back exactly. Otherwise suggest, clamped
+                            // into the stepper's range (duration-based moves
+                            // can parse to values like 60 "reps").
+                            if let draft = store.pendingSetDrafts[activeExercise.id] {
+                                pendingRepCount = min(max(draft.reps, 1), 50)
+                                pendingWeight = draft.weight
+                                pendingRPE = draft.rpe
+                            } else {
+                                pendingRepCount = min(max(suggestedRepCount(for: activeExercise), 1), 50)
+                                pendingRPE = nil
+                            }
                             repLoggerContext = RepLoggerContext(editIndex: nil)
                         },
                         onEditSet: { index in
@@ -517,6 +530,9 @@ struct WorkoutView: View {
                         onStart: { item in
                             isShowingPainFlow = false
                             store.startSavedWorkout(item)
+                        },
+                        onQueue: { item in
+                            store.queueSavedWorkout(item)
                         },
                         onWithBuddy: { item in
                             store.startSavedWorkoutWithBuddy(item)
@@ -3131,15 +3147,44 @@ private struct PainFlaggingCard: View {
 }
 
 private struct SetRepLoggingSheet: View {
+    /// How this set was performed. Dropset/superset log as ONE set whose
+    /// sub-work rides in the label.
+    enum SetStyle: String, CaseIterable, Identifiable {
+        case standard = "Standard"
+        case dropset = "Dropset"
+        case superset = "Superset"
+        var id: String { rawValue }
+    }
+
+    /// One extra piece of work inside a dropset (lighter weight) or a
+    /// superset (different movement).
+    struct SubEntry: Identifiable {
+        let id = UUID()
+        var weightText = ""
+        var name = ""
+        var reps = 10
+    }
+
     @Environment(\.dismiss) private var dismiss
     @Environment(MorpheAppStore.self) private var store
     @Binding var reps: Int
     @Binding var weight: Double
     @Binding var rpe: Int?
-    let onSave: () -> Void
+    var isEditing = false
+    let onSave: (String) -> Void
 
     @State private var weightText = ""
     @State private var showRPEHelp = false
+    @State private var style: SetStyle = .standard
+    @State private var subEntries: [SubEntry] = []
+
+    private var logButtonTitle: String {
+        switch style {
+        case .standard: return "Log Set"
+        case .dropset: return "Log Dropset as 1 Set"
+        case .superset: return "Log Superset as 1 Set"
+        }
+    }
 
     var body: some View {
         @Bindable var store = store
@@ -3158,6 +3203,29 @@ private struct SetRepLoggingSheet: View {
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 110)
+                }
+
+                // Edits fix one already-logged set; restyling it after the
+                // fact would rewrite history, so the picker hides.
+                if !isEditing {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Picker("Set style", selection: $style) {
+                            ForEach(SetStyle.allCases) { option in
+                                Text(option.rawValue).tag(option)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        if style == .dropset {
+                            Text("Strip weight and keep going — every drop below counts inside this ONE set.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        } else if style == .superset {
+                            Text("Pair movements back-to-back — everything below counts inside this ONE set.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -3190,6 +3258,51 @@ private struct SetRepLoggingSheet: View {
                             }
                             .buttonStyle(FilterChipStyle(isSelected: reps == preset, selectedColor: MorpheTheme.accentAlt))
                         }
+                    }
+                }
+
+                if style != .standard, !isEditing {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(style == .dropset ? "Drops" : "Paired movements")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textSecondary)
+
+                        ForEach($subEntries) { $entry in
+                            HStack(spacing: 10) {
+                                if style == .dropset {
+                                    TextField("Weight", text: $entry.weightText)
+                                        .keyboardType(.decimalPad)
+                                        .textFieldStyle(MorpheFieldStyle())
+                                        .frame(width: 90)
+                                    Text(store.weightUnit.label)
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                } else {
+                                    TextField("Exercise (e.g. Push-Up)", text: $entry.name)
+                                        .textFieldStyle(MorpheFieldStyle())
+                                }
+                                Stepper("\(entry.reps)", value: $entry.reps, in: 1...50)
+                                    .foregroundStyle(.white)
+                                    .fixedSize()
+                                Button {
+                                    subEntries.removeAll { $0.id == entry.id }
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Remove")
+                            }
+                        }
+
+                        Button {
+                            subEntries.append(SubEntry())
+                        } label: {
+                            Label(style == .dropset ? "Add Drop" : "Add Movement", systemImage: "plus.circle")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.accentAlt)
                     }
                 }
 
@@ -3244,10 +3357,8 @@ private struct SetRepLoggingSheet: View {
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
 
-                    Button("Log Set") {
-                        weight = Double(weightText.trimmingCharacters(in: .whitespaces)) ?? 0
-                        onSave()
-                        dismiss()
+                    Button(logButtonTitle) {
+                        logAndDismiss()
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 }
@@ -3257,7 +3368,58 @@ private struct SetRepLoggingSheet: View {
             }
             .background(PremiumBackground())
             .onAppear { weightText = weight > 0 ? String(weight) : "" }
+            // Everything typed here auto-saves as a draft — dismissing the
+            // sheet (or getting a call mid-set) never loses the numbers.
+            .onChange(of: weightText) { saveDraft() }
+            .onChange(of: reps) { saveDraft() }
+            .onChange(of: rpe) { saveDraft() }
         }
+    }
+
+    private func saveDraft() {
+        guard !isEditing, let exercise = store.activeWorkoutExercise else { return }
+        store.pendingSetDrafts[exercise.id] = PendingSetDraft(
+            reps: reps,
+            weight: Double(weightText.trimmingCharacters(in: .whitespaces)) ?? 0,
+            rpe: rpe
+        )
+    }
+
+    private func logAndDismiss() {
+        let mainWeight = Double(weightText.trimmingCharacters(in: .whitespaces)) ?? 0
+        let unit = store.weightUnit.label
+
+        func fmt(_ value: Double) -> String {
+            value == value.rounded() ? String(Int(value)) : String(value)
+        }
+
+        var label = ""
+        switch style {
+        case .standard:
+            weight = mainWeight
+        case .dropset:
+            let drops = subEntries.compactMap { entry -> (Double, Int)? in
+                let w = Double(entry.weightText.trimmingCharacters(in: .whitespaces)) ?? 0
+                return entry.reps > 0 ? (w, entry.reps) : nil
+            }
+            let chain = ([(mainWeight, reps)] + drops)
+                .map { "\(fmt($0.0))×\($0.1)" }
+                .joined(separator: " → ")
+            label = drops.isEmpty ? "" : "Dropset \(chain) \(unit)"
+            // One set, honest totals: all reps counted, top weight carried.
+            reps += drops.reduce(0) { $0 + $1.1 }
+            weight = max(mainWeight, drops.map(\.0).max() ?? 0)
+        case .superset:
+            let partners = subEntries.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
+            label = partners.isEmpty ? "" : "Superset " + partners
+                .map { "+ \($0.name.trimmingCharacters(in: .whitespaces)) ×\($0.reps)" }
+                .joined(separator: " ")
+            reps += partners.reduce(0) { $0 + $1.reps }
+            weight = mainWeight
+        }
+
+        onSave(label)
+        dismiss()
     }
 }
 
@@ -3299,6 +3461,7 @@ private struct SavedWorkoutsLibraryCard: View {
     let items: [SavedWorkoutLibraryItem]
     let insightFor: (SavedWorkoutLibraryItem) -> SavedWorkoutLibraryInsight
     let onStart: (SavedWorkoutLibraryItem) -> Void
+    let onQueue: (SavedWorkoutLibraryItem) -> Void
     let onWithBuddy: (SavedWorkoutLibraryItem) -> Void
     let onDuplicate: (SavedWorkoutLibraryItem) -> Void
     let onTogglePin: (SavedWorkoutLibraryItem) -> Void
@@ -3478,6 +3641,13 @@ private struct SavedWorkoutsLibraryCard: View {
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
                                 Button("Start") {
                                     onStart(item)
+                                }
+                                .buttonStyle(SecondaryCTAButtonStyle())
+
+                                // Queue = make it today's workout, staged in
+                                // Train without starting the session.
+                                Button("Queue") {
+                                    onQueue(item)
                                 }
                                 .buttonStyle(SecondaryCTAButtonStyle())
 
