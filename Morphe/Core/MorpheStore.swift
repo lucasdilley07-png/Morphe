@@ -334,6 +334,15 @@ final class MorpheAppStore {
     /// Coach-created client profiles + claim handoff. Real app injects
     /// `FirebaseManagedClientService`; no-op default for tests/previews.
     private let managedClientService: ManagedClientSyncing
+    /// Verification requests + badge status. Real app injects
+    /// `FirebaseVerificationService`; no-op default for tests/previews.
+    private let verificationService: VerificationSyncing
+    /// Server-granted verified badge (users/{uid}.verified) — local mirror,
+    /// refreshed on launch/sign-in. The client can never set the source.
+    var isVerifiedUser = false
+    /// Where the user's verification request stands (drives the profile card).
+    var verificationRequestStatus: VerificationRequestStatus = .none
+    var isSubmittingVerification = false
     /// Client profiles this coach created for people not on Morphe yet.
     var managedClients: [ManagedClient] = []
     /// The signed-in account, or nil when signed out.
@@ -350,12 +359,14 @@ final class MorpheAppStore {
          cloudBackup: CloudBackingUp = NoOpCloudBackup(),
          partyService: WorkoutPartying = NoOpPartyService(),
          managedClientService: ManagedClientSyncing = NoOpManagedClientService(),
-         usernameDirectory: UsernameDirectoryService = NoOpUsernameDirectory()) {
+         usernameDirectory: UsernameDirectoryService = NoOpUsernameDirectory(),
+         verificationService: VerificationSyncing = NoOpVerificationService()) {
         self.authService = authService
         self.cloudBackup = cloudBackup
         self.partyService = partyService
         self.managedClientService = managedClientService
         self.usernameDirectory = usernameDirectory
+        self.verificationService = verificationService
         let templates = MorpheDemoContent.workoutTemplates
         let clients = MorpheDemoContent.coachClients
         let threads = MorpheDemoContent.messageThreads
@@ -520,6 +531,8 @@ final class MorpheAppStore {
             if selectedRole == .coach {
                 Task { await refreshManagedClients() }
             }
+            // The badge is server-owned; mirror it on every launch.
+            Task { await refreshVerificationStatus() }
         }
 
         // Same-day relaunch: no-op (daily state was just restored). New day —
@@ -561,6 +574,9 @@ final class MorpheAppStore {
         authUser = nil
         // Another account on this device must never see this coach's roster.
         managedClients = []
+        // The badge belongs to the signed-out account, not the device.
+        isVerifiedUser = false
+        verificationRequestStatus = .none
     }
 
     /// Lands on the Train surface for the CURRENT role. The coach workspace
@@ -1069,6 +1085,7 @@ final class MorpheAppStore {
         if user.role == .coach {
             Task { await refreshManagedClients() }
         }
+        Task { await refreshVerificationStatus() }
     }
 
     /// After sign-in, restore the account's cloud backup. A returning user
@@ -1336,6 +1353,54 @@ final class MorpheAppStore {
     }
 
     /// Persists the current local profile snapshot to disk.
+    // MARK: - Verification (ask → human review → server-granted badge)
+
+    /// Submits the selfie + note; the badge itself only ever arrives via
+    /// `refreshVerificationStatus` after the Morphe team grants it.
+    func submitVerificationRequest(selfieJPEG: Data, note: String) async {
+        guard let uid = authUser?.id else {
+            showToast("Sign in to request verification.")
+            return
+        }
+        isSubmittingVerification = true
+        defer { isSubmittingVerification = false }
+        let ok = await verificationService.submitRequest(
+            uid: uid,
+            name: selectedRole == .coach ? coachProfile.name : profileShowcase.displayName,
+            username: selectedRole == .coach ? coachProfile.username : profileShowcase.username,
+            role: selectedRole.rawValue,
+            note: String(note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(300)),
+            selfieJPEG: selfieJPEG
+        )
+        if ok {
+            verificationRequestStatus = .pending
+            showCelebration(
+                title: "Request sent",
+                detail: "The Morphe team reviews verifications — your badge appears once approved.",
+                symbol: "checkmark.seal"
+            )
+        } else {
+            showToast("Couldn't send the request — check your connection and try again.")
+        }
+    }
+
+    /// Mirrors the server-owned facts (badge + request status) locally.
+    func refreshVerificationStatus() async {
+        guard let uid = authUser?.id else { return }
+        if let status = await verificationService.fetchStatus(uid: uid) {
+            let wasVerified = isVerifiedUser
+            isVerifiedUser = status.verified
+            verificationRequestStatus = status.request
+            if status.verified, !wasVerified {
+                showCelebration(
+                    title: "You're verified",
+                    detail: "The blue check now shows on your profile.",
+                    symbol: "checkmark.seal.fill"
+                )
+            }
+        }
+    }
+
     // MARK: - Profile page extras (photo + custom bio)
 
     /// User-written bio; when non-empty it wins over the generated one.

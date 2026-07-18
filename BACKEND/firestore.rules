@@ -24,10 +24,14 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/connections/$(request.auth.uid + '_' + athleteUid)).data.status == 'active';
     }
 
-    // True when the write does NOT try to flip coach.verified to true.
-    // (The flag flips only via a Function/console once credential checks exist.)
+    // True when the write does NOT try to flip a verification flag to true.
+    // Both the coach credential flag and the account-level verified badge are
+    // granted ONLY from the console/a Function — a client-set checkmark would
+    // be a forged trust signal. A client may keep an already-granted true
+    // (checked at the call sites via resource) but never mint one.
     function keepsVerifiedHonest() {
-      return request.resource.data.get('coach', {}).get('verified', false) != true;
+      return request.resource.data.get('coach', {}).get('verified', false) != true
+        && request.resource.data.get('verified', false) != true;
     }
 
     // The user's profile document. Private to its owner, plus read access
@@ -35,9 +39,12 @@ service cloud.firestore {
     match /users/{uid} {
       allow read:   if isOwner(uid) || isActiveCoachOf(uid);
       allow create: if isOwner(uid) && keepsVerifiedHonest();
+      // Per-flag: a client may CARRY an already-granted true, never mint one.
       allow update: if isOwner(uid)
-        && (keepsVerifiedHonest()
-            || resource.data.get('coach', {}).get('verified', false) == true);
+        && (request.resource.data.get('coach', {}).get('verified', false) != true
+            || resource.data.get('coach', {}).get('verified', false) == true)
+        && (request.resource.data.get('verified', false) != true
+            || resource.data.get('verified', false) == true);
       allow delete: if false;   // account deletion goes through a Function later
 
       // The user's own workout data. Linked coaches read, never write.
@@ -134,6 +141,25 @@ service cloud.firestore {
         allow create: if isSignedIn() && request.resource.data.fromID == request.auth.uid;
         allow update, delete: if false;
       }
+    }
+
+    // Verification requests (one per user, doc id = uid). The user submits a
+    // selfie + note; the Morphe team reviews in the console and grants
+    // users/{uid}.verified there — the client can only ever ask. Status is
+    // console-managed after submission: the client writes exactly 'pending'
+    // and may resubmit only while still pending (or after a 'declined').
+    match /verificationRequests/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(
+             ['uid', 'name', 'username', 'role', 'note', 'selfieJPEG', 'status', 'createdAt'])
+        && request.resource.data.uid == uid;
+      allow update: if isOwner(uid)
+        && resource.data.status in ['pending', 'declined']
+        && request.resource.data.status == 'pending'
+        && request.resource.data.uid == uid;
+      allow delete: if isOwner(uid);
     }
 
     // Coach-managed client profiles (pre-signup) + claim handoff.

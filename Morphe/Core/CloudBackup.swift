@@ -43,6 +43,69 @@ final class NoOpCloudBackup: CloudBackingUp {
     func pull() async -> CloudSnapshot { CloudSnapshot() }
 }
 
+// MARK: - Verification (manual review → server-granted badge)
+//
+// The client can only ASK: it writes a request (selfie + note) to
+// verificationRequests/{uid} and reads back two server-owned facts — the
+// request's status and users/{uid}.verified. The badge flag itself is granted
+// exclusively from the Firebase console (rules: keepsVerifiedHonest), so no
+// client, bot, or jailbreak can mint a checkmark.
+
+enum VerificationRequestStatus: String {
+    case none          // never asked
+    case pending       // submitted, awaiting review
+    case declined      // reviewed and not granted (may resubmit)
+}
+
+protocol VerificationSyncing: AnyObject {
+    /// Submits (or resubmits) the user's verification request.
+    func submitRequest(uid: String, name: String, username: String, role: String,
+                       note: String, selfieJPEG: Data) async -> Bool
+    /// (verified badge granted?, current request status)
+    func fetchStatus(uid: String) async -> (verified: Bool, request: VerificationRequestStatus)?
+}
+
+final class NoOpVerificationService: VerificationSyncing {
+    func submitRequest(uid: String, name: String, username: String, role: String,
+                       note: String, selfieJPEG: Data) async -> Bool { false }
+    func fetchStatus(uid: String) async -> (verified: Bool, request: VerificationRequestStatus)? { nil }
+}
+
+final class FirebaseVerificationService: VerificationSyncing {
+    private var db: Firestore { Firestore.firestore() }
+
+    func submitRequest(uid: String, name: String, username: String, role: String,
+                       note: String, selfieJPEG: Data) async -> Bool {
+        do {
+            try await db.collection("verificationRequests").document(uid).setData([
+                "uid": uid,
+                "name": name,
+                "username": username,
+                "role": role,
+                "note": note,
+                "selfieJPEG": selfieJPEG.base64EncodedString(),
+                "status": VerificationRequestStatus.pending.rawValue,
+                "createdAt": FieldValue.serverTimestamp()
+            ])
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    func fetchStatus(uid: String) async -> (verified: Bool, request: VerificationRequestStatus)? {
+        guard let userSnap = try? await db.collection("users").document(uid).getDocument() else { return nil }
+        let verified = (userSnap.data()?["verified"] as? Bool) ?? false
+        var requestStatus = VerificationRequestStatus.none
+        if let reqSnap = try? await db.collection("verificationRequests").document(uid).getDocument(),
+           reqSnap.exists,
+           let raw = reqSnap.data()?["status"] as? String {
+            requestStatus = VerificationRequestStatus(rawValue: raw) ?? .pending
+        }
+        return (verified, requestStatus)
+    }
+}
+
 // MARK: - Coach-managed client handoff
 //
 // A coach creates a client profile before that person has a Morphe account,

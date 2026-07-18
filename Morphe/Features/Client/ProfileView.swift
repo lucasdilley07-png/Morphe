@@ -12,6 +12,7 @@ struct ProfileView: View {
     @State private var isEditingBio = false
     @State private var bioDraft = ""
     @State private var photoPickerItem: PhotosPickerItem?
+    @State private var showVerificationCamera = false
     @State private var heightDraft = ""
     @State private var weightDraft = ""
     @State private var showSignOutConfirm = false
@@ -71,6 +72,17 @@ struct ProfileView: View {
         // A swipe-down can't silently eat unsaved edits either — with edits
         // pending the sheet stays put, and Done raises the save/discard ask.
         .interactiveDismissDisabled(hasUnsavedEdits)
+        // Live capture only (no library) — the selfie the Morphe team reviews
+        // must come from THIS camera, not the photo roll.
+        .fullScreenCover(isPresented: $showVerificationCamera) {
+            VerificationSelfieCamera { image in
+                showVerificationCamera = false
+                guard let image,
+                      let jpeg = Self.processedVerificationSelfie(image) else { return }
+                Task { await store.submitVerificationRequest(selfieJPEG: jpeg, note: "") }
+            }
+            .ignoresSafeArea()
+        }
         .confirmationDialog(
             "Save your profile changes?",
             isPresented: $showUnsavedPrompt,
@@ -262,9 +274,19 @@ struct ProfileView: View {
                     profilePhotoView
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(isCoach ? store.coachProfile.name : store.profileShowcase.displayName)
-                            .font(.title2.weight(.bold))
-                            .foregroundStyle(.white)
+                        HStack(spacing: 6) {
+                            Text(isCoach ? store.coachProfile.name : store.profileShowcase.displayName)
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(.white)
+                            if store.isVerifiedUser {
+                                // Verification blue — a universal trust signal,
+                                // deliberately outside the yellow palette.
+                                Image(systemName: "checkmark.seal.fill")
+                                    .font(.subheadline)
+                                    .foregroundStyle(Color(red: 0.25, green: 0.56, blue: 0.96))
+                                    .accessibilityLabel("Verified")
+                            }
+                        }
                         Text("@\(isCoach ? store.coachProfile.username : store.profileShowcase.username)")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(MorpheTheme.accent)
@@ -278,6 +300,8 @@ struct ProfileView: View {
                 }
 
                 bioSection
+
+                verificationSection
             }
         }
         .onChange(of: photoPickerItem) {
@@ -387,6 +411,68 @@ struct ProfileView: View {
     private func saveBio() {
         store.updateProfileBio(bioDraft)
         isEditingBio = false
+    }
+
+    /// The verification strip under the identity: ask → pending → badge.
+    /// Honest copy throughout — a human reviews; nothing is auto-granted.
+    @ViewBuilder
+    private var verificationSection: some View {
+        Divider().overlay(Color.white.opacity(0.08))
+
+        if store.isVerifiedUser {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundStyle(Color(red: 0.25, green: 0.56, blue: 0.96))
+                Text("Verified — reviewed by the Morphe team.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+            }
+        } else {
+            switch store.verificationRequestStatus {
+            case .pending:
+                HStack(spacing: 8) {
+                    Image(systemName: "hourglass")
+                        .foregroundStyle(MorpheTheme.warning)
+                    Text("Verification under review — your badge appears once the Morphe team approves it.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            case .none, .declined:
+                VStack(alignment: .leading, spacing: 8) {
+                    if store.verificationRequestStatus == .declined {
+                        Text("Your last request wasn't approved. You can try again with a clearer selfie.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.warning)
+                    }
+                    Text("Get the blue check: take a quick selfie and the Morphe team confirms you're a real person — not a bot.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    Button {
+                        showVerificationCamera = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.seal")
+                            Text(store.isSubmittingVerification ? "Sending…" : "Get Verified")
+                        }
+                        .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color(red: 0.25, green: 0.56, blue: 0.96))
+                    .disabled(store.isSubmittingVerification)
+                }
+            }
+        }
+    }
+
+    /// Review selfie: 640px max, mild compression — the reviewer needs to see
+    /// a face clearly; the doc still stays far under Firestore's 1MB cap.
+    private static func processedVerificationSelfie(_ image: UIImage) -> Data? {
+        let maxSide: CGFloat = 640
+        let scale = min(1, maxSide / max(image.size.width, image.size.height))
+        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+        return resized.jpegData(compressionQuality: 0.7)
     }
 
     /// Downscales to 512px max and compresses — a profile photo that rides in
@@ -883,3 +969,41 @@ private struct AthleteRecentLogsCard: View {
     }
 }
 
+
+// MARK: - Verification selfie capture
+
+/// Front-camera-first UIImagePickerController wrapper. Live capture only — a
+/// library photo can't stand in for "this person is at this device right now."
+private struct VerificationSelfieCamera: UIViewControllerRepresentable {
+    let onCapture: (UIImage?) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            picker.sourceType = .camera
+            if UIImagePickerController.isCameraDeviceAvailable(.front) {
+                picker.cameraDevice = .front
+            }
+        }
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onCapture: onCapture) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onCapture: (UIImage?) -> Void
+        init(onCapture: @escaping (UIImage?) -> Void) { self.onCapture = onCapture }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            onCapture(info[.originalImage] as? UIImage)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onCapture(nil)
+        }
+    }
+}
