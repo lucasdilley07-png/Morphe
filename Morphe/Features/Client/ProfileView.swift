@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct ProfileView: View {
     @Environment(MorpheAppStore.self) private var store
@@ -8,6 +9,9 @@ struct ProfileView: View {
     @State private var injuriesDraft = ""
     @State private var isEditingUsername = false
     @State private var usernameDraft = ""
+    @State private var isEditingBio = false
+    @State private var bioDraft = ""
+    @State private var photoPickerItem: PhotosPickerItem?
     @State private var heightDraft = ""
     @State private var weightDraft = ""
     @State private var showSignOutConfirm = false
@@ -102,6 +106,10 @@ struct ProfileView: View {
             let current = isCoach ? store.coachProfile.username : store.profileShowcase.username
             if !entered.isEmpty, entered != current { return true }
         }
+        if isEditingBio,
+           bioDraft.trimmingCharacters(in: .whitespacesAndNewlines) != store.profileCustomBio {
+            return true
+        }
         return false
     }
 
@@ -112,6 +120,7 @@ struct ProfileView: View {
             store.updateInjuryNote(injuriesDraft)
             isEditingInjuries = false
         }
+        if isEditingBio { saveBio() }
         if bodyMetricsChanged {
             store.updateBodyMetrics(height: heightDraft, weight: weightDraft)
         }
@@ -121,6 +130,7 @@ struct ProfileView: View {
         isEditingName = false
         isEditingUsername = false
         isEditingInjuries = false
+        isEditingBio = false
         heightDraft = store.clientProfile.height
         weightDraft = store.clientProfile.bodyWeight
     }
@@ -249,6 +259,8 @@ struct ProfileView: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 14) {
+                    profilePhotoView
+
                     VStack(alignment: .leading, spacing: 4) {
                         Text(isCoach ? store.coachProfile.name : store.profileShowcase.displayName)
                             .font(.title2.weight(.bold))
@@ -264,8 +276,129 @@ struct ProfileView: View {
                     }
                     Spacer()
                 }
+
+                bioSection
             }
         }
+        .onChange(of: photoPickerItem) {
+            guard let item = photoPickerItem else { return }
+            Task {
+                if let raw = try? await item.loadTransferable(type: Data.self),
+                   let jpeg = Self.processedProfilePhoto(raw) {
+                    store.updateProfilePhoto(jpeg)
+                }
+                photoPickerItem = nil
+            }
+        }
+    }
+
+    /// The photo circle: real photo when set, initials art otherwise. Tapping
+    /// opens the system photo picker; long-press offers removal.
+    private var profilePhotoView: some View {
+        PhotosPicker(selection: $photoPickerItem, matching: .images) {
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if let data = store.profilePhotoData, let image = UIImage(data: data) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        ZStack {
+                            Circle().fill(MorpheTheme.accent.opacity(0.18))
+                            Text(profileInitials)
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(MorpheTheme.accent)
+                        }
+                    }
+                }
+                .frame(width: 72, height: 72)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1.5))
+
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.black)
+                    .padding(5)
+                    .background(Circle().fill(MorpheTheme.accent))
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(store.profilePhotoData == nil ? "Add profile photo" : "Change profile photo")
+        .contextMenu {
+            if store.profilePhotoData != nil {
+                Button(role: .destructive) {
+                    store.updateProfilePhoto(nil)
+                } label: {
+                    Label("Remove Photo", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    private var profileInitials: String {
+        let name = isCoach ? store.coachProfile.name : store.profileShowcase.displayName
+        let parts = name.split(separator: " ").prefix(2)
+        let initials = parts.compactMap(\.first).map(String.init).joined()
+        return initials.isEmpty ? "M" : initials.uppercased()
+    }
+
+    /// Bio: shown for everyone, editable in place for athletes (a coach's
+    /// public blurb is their headline, edited in the coach workspace).
+    @ViewBuilder
+    private var bioSection: some View {
+        if !isCoach {
+            VStack(alignment: .leading, spacing: 8) {
+                if isEditingBio {
+                    TextField("Say something about your training…", text: $bioDraft, axis: .vertical)
+                        .lineLimit(2...5)
+                        .textFieldStyle(MorpheFieldStyle())
+                    HStack(spacing: 12) {
+                        Button("Save") { saveBio() }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.accent)
+                            .accessibilityLabel("Save bio")
+                        Button("Cancel") { isEditingBio = false }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        Spacer()
+                        Text("\(bioDraft.count)/220")
+                            .font(.caption2)
+                            .foregroundStyle(bioDraft.count > 220 ? MorpheTheme.danger : MorpheTheme.textMuted)
+                    }
+                } else {
+                    Text(store.profileShowcase.bio)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Edit Bio") {
+                        // Editing starts from the CUSTOM bio: clearing a
+                        // generated one back to "" keeps the generator active.
+                        bioDraft = store.profileCustomBio.isEmpty ? "" : store.profileCustomBio
+                        isEditingBio = true
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentAlt)
+                }
+            }
+        }
+    }
+
+    private func saveBio() {
+        store.updateProfileBio(bioDraft)
+        isEditingBio = false
+    }
+
+    /// Downscales to 512px max and compresses — a profile photo that rides in
+    /// the cloud snapshot must stay far under Firestore's document limit.
+    private static func processedProfilePhoto(_ raw: Data) -> Data? {
+        guard let image = UIImage(data: raw) else { return nil }
+        let maxSide: CGFloat = 512
+        let scale = min(1, maxSide / max(image.size.width, image.size.height))
+        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+        return resized.jpegData(compressionQuality: 0.75)
     }
 
     private var settingsCard: some View {

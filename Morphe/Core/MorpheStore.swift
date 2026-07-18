@@ -1158,6 +1158,13 @@ final class MorpheAppStore {
         if !snapshot.username.isEmpty {
             profileShowcase.username = snapshot.username
         }
+        profileCustomBio = snapshot.profileBio
+        if !snapshot.profileBio.isEmpty {
+            profileShowcase.bio = snapshot.profileBio
+        }
+        profilePhotoData = snapshot.profilePhotoBase64.isEmpty
+            ? nil
+            : Data(base64Encoded: snapshot.profilePhotoBase64)
         if let theme = ThemePreset(rawValue: snapshot.theme) {
             profileShowcase.theme = theme
         }
@@ -1329,9 +1336,37 @@ final class MorpheAppStore {
     }
 
     /// Persists the current local profile snapshot to disk.
+    // MARK: - Profile page extras (photo + custom bio)
+
+    /// User-written bio; when non-empty it wins over the generated one.
+    var profileCustomBio: String = ""
+    /// The user's profile photo (compressed JPEG bytes). Nil = avatar art.
+    var profilePhotoData: Data?
+
+    /// Saves the user's bio. Empty text hands the bio back to the generator.
+    func updateProfileBio(_ text: String) {
+        let clean = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(220))
+        profileCustomBio = clean
+        profileShowcase.bio = clean.isEmpty
+            ? profileBio(for: clientProfile.sportMode,
+                         trainingStyles: clientProfile.selectedTrainingStyles,
+                         goals: clientProfile.selectedGoals)
+            : clean
+        persistLocalProfile()
+        showToast(clean.isEmpty ? "Bio reset to the generated one." : "Bio updated.")
+    }
+
+    /// Sets (or clears, with nil) the profile photo. Caller hands over
+    /// already-compressed JPEG bytes — the store stays UIKit-free.
+    func updateProfilePhoto(_ data: Data?) {
+        profilePhotoData = data
+        persistLocalProfile()
+        showToast(data == nil ? "Photo removed." : "Photo updated.")
+    }
+
     private func persistLocalProfile() {
         guard !isApplyingProfile else { return }
-        let snapshot = LocalProfileSnapshot(
+        var snapshot = LocalProfileSnapshot(
                 hasCompletedOnboarding: hasCompletedOnboarding,
                 id: clientProfile.id.uuidString,
                 name: clientProfile.name,
@@ -1400,6 +1435,8 @@ final class MorpheAppStore {
                 nameChangedAtEpoch: nameChangedAtEpoch,
                 usernameChangedAtEpoch: usernameChangedAtEpoch
         )
+        snapshot.profileBio = profileCustomBio
+        snapshot.profilePhotoBase64 = profilePhotoData?.base64EncodedString() ?? ""
         profilePersistence.saveProfile(snapshot)
         // Mirror to the cloud once the account is real (onboarding done).
         if hasCompletedOnboarding { cloudBackup.pushProfile(snapshot) }
@@ -6634,7 +6671,11 @@ final class MorpheAppStore {
             sportMetrics = MorpheDemoContent.sportMetrics(for: sport)
         }
         profileShowcase.banner = bannerProfile(for: sport)
-        profileShowcase.bio = profileBio(for: sport, trainingStyles: clientProfile.selectedTrainingStyles, goals: clientProfile.selectedGoals)
+        // A user-written bio survives sport changes; only the generated
+        // fallback re-derives.
+        profileShowcase.bio = profileCustomBio.isEmpty
+            ? profileBio(for: sport, trainingStyles: clientProfile.selectedTrainingStyles, goals: clientProfile.selectedGoals)
+            : profileCustomBio
     }
 
     private func moveToFront<Value: Equatable>(_ value: Value, in selections: inout [Value]) {

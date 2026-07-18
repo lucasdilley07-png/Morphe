@@ -128,6 +128,11 @@ struct LocalProfileSnapshot: Codable, Equatable {
     // Rename rate limiting (epoch seconds; 0 = never changed).
     var nameChangedAtEpoch: Double = 0
     var usernameChangedAtEpoch: Double = 0
+    // Profile page extras. The user-written bio ("" = use the generated one)
+    // and the profile photo as base64 JPEG ("" = none) — small enough to ride
+    // in the cloud snapshot, so a reinstall restores the face too.
+    var profileBio: String = ""
+    var profilePhotoBase64: String = ""
 }
 
 extension LocalProfileSnapshot {
@@ -210,6 +215,8 @@ extension LocalProfileSnapshot {
         scannedConnections = ((try? c.decodeIfPresent([ScannedConnection].self, forKey: .scannedConnections)) ?? nil) ?? []
         taskHistory = ((try? c.decodeIfPresent([TaskDayRecord].self, forKey: .taskHistory)) ?? nil) ?? []
         hasAcceptedTerms = ((try? c.decodeIfPresent(Bool.self, forKey: .hasAcceptedTerms)) ?? nil) ?? false
+        profileBio = str(.profileBio)
+        profilePhotoBase64 = str(.profilePhotoBase64)
         nameChangedAtEpoch = ((try? c.decodeIfPresent(Double.self, forKey: .nameChangedAtEpoch)) ?? nil) ?? 0
         usernameChangedAtEpoch = ((try? c.decodeIfPresent(Double.self, forKey: .usernameChangedAtEpoch)) ?? nil) ?? 0
     }
