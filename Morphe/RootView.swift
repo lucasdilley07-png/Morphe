@@ -1034,9 +1034,10 @@ private struct NetworkProfilePreviewSheet: View {
                             Button {
                                 showBooking = true
                             } label: {
-                                Label("Book a session", systemImage: "calendar.badge.plus")
+                                Label("Book", systemImage: "calendar.badge.plus")
                             }
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                            .accessibilityLabel("Book a session with this coach")
                         }
                     }
                 }
@@ -1094,7 +1095,7 @@ private struct NetworkProfilePreviewSheet: View {
             if store.coachClients.contains(where: { $0.name == profile.name }) {
                 return "Open Athlete"
             }
-            return "Open Coach Network"
+            return "Open Network"
         }
 
         return profile.role == .coach ? "Open Support" : "Open Network"
@@ -1491,7 +1492,7 @@ private struct QuickAddSheet: View {
                                 ? "Log Workout"
                                 : (store.isWorkoutSessionActive
                                     ? "Resume Workout"
-                                    : (store.isWorkoutLoggedToday ? "Try a New Workout" : "Open Workout")),
+                                    : (store.isWorkoutLoggedToday ? "New Workout" : "Open Workout")),
                             subtitle: store.hasCompletedWorkoutFlow
                                 ? "Close the loop now"
                                 : (store.isWorkoutSessionActive
@@ -1737,7 +1738,7 @@ private struct WelcomeExperienceView: View {
                         }
                     }
 
-                    Button(isCoach ? "Open Coach Home" : "Start Training") {
+                    Button(isCoach ? "Open Home" : "Start Training") {
                         store.dismissWelcomeExperience()
                         dismiss()
                     }
@@ -1786,13 +1787,13 @@ private struct SessionWorkGateDialog: ViewModifier {
             // the isPresented binding clearing the store's pending slot.
             Button(
                 store.isWorkoutSessionActive
-                    ? "Discard live session and continue"
-                    : "Discard recap and continue",
+                    ? "Discard Session"
+                    : "Discard Recap",
                 role: .destructive
             ) {
                 change.action()
             }
-            Button("Keep what I have", role: .cancel) {}
+            Button("Keep Current", role: .cancel) {}
         } message: { _ in
             Text(store.isWorkoutSessionActive
                 ? "Your workout is in progress — its logged sets will be lost."

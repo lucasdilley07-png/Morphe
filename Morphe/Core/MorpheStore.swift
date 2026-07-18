@@ -6944,7 +6944,7 @@ final class MorpheAppStore {
                 detail: aiPendingCount == 1
                     ? "\(athleteName) has 1 AI-parsed log waiting for coach review."
                     : "\(athleteName) has \(aiPendingCount) AI-parsed logs waiting for coach review.",
-                actionLabel: "Show AI Logs",
+                actionLabel: "Show Logs",
                 type: .reviewAI,
                 priority: 100
             )
@@ -6959,7 +6959,7 @@ final class MorpheAppStore {
                           recoveryEffectiveness?.insightLine ]
                     .compactMap { $0 }
                     .joined(separator: " "),
-                actionLabel: "Load Recovery Plan",
+                actionLabel: "Load Recovery",
                 type: .assignRecovery,
                 priority: 95
             )
@@ -6974,7 +6974,7 @@ final class MorpheAppStore {
                           painCheckEffectiveness?.insightLine ]
                     .compactMap { $0 }
                     .joined(separator: " "),
-                actionLabel: "Draft Pain Check-In",
+                actionLabel: "Pain Check",
                 type: .askPainUpdate,
                 priority: 93
             )
@@ -6989,7 +6989,7 @@ final class MorpheAppStore {
                         athleteName: athleteName,
                         title: "Use the accountability lever that lands",
                         detail: "There are no logged sessions yet this week. \(bestRestartOutreach.insightLine)",
-                        actionLabel: "Draft Partner Prompt",
+                        actionLabel: "Draft Prompt",
                         type: .partnerPrompt,
                         priority: 90
                     )
@@ -6999,7 +6999,7 @@ final class MorpheAppStore {
                         athleteName: athleteName,
                         title: "Open the fastest line back in",
                         detail: "There are no logged sessions yet this week. \(bestRestartOutreach.insightLine)",
-                        actionLabel: "Open Message Thread",
+                        actionLabel: "Open Thread",
                         type: .messageAthlete,
                         priority: 90
                     )
@@ -7029,7 +7029,7 @@ final class MorpheAppStore {
                     athleteName: athleteName,
                     title: "Restart athlete ownership with a partner prompt",
                     detail: "\(athleteName) has coach-entered sessions this week, but no athlete-submitted logs yet. \(bestRestartOutreach.insightLine)",
-                    actionLabel: "Draft Partner Prompt",
+                    actionLabel: "Draft Prompt",
                     type: .partnerPrompt,
                     priority: 86
                 )
@@ -7043,7 +7043,7 @@ final class MorpheAppStore {
                           coachOutreachEffectiveness(for: athleteID, kind: .generalCheckIn)?.insightLine ]
                     .compactMap { $0 }
                     .joined(separator: " "),
-                actionLabel: "Open Message Thread",
+                actionLabel: "Open Thread",
                 type: .messageAthlete,
                 priority: 86
             )
@@ -7060,7 +7060,7 @@ final class MorpheAppStore {
                           coachOutreachEffectiveness(for: athleteID, kind: .partnerPrompt)?.insightLine ]
                     .compactMap { $0 }
                     .joined(separator: " "),
-                actionLabel: "Draft Partner Prompt",
+                actionLabel: "Draft Prompt",
                 type: .partnerPrompt,
                 priority: 82
             )
@@ -7072,7 +7072,7 @@ final class MorpheAppStore {
                 athleteName: athleteName,
                 title: "Lean into partner accountability",
                 detail: "Buddy sessions are carrying more of the adherence signal this week. Review those logs before changing the plan.",
-                actionLabel: "View Buddy Logs",
+                actionLabel: "Buddy Logs",
                 type: .reviewBuddy,
                 priority: 78
             )

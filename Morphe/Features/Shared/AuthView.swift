@@ -88,6 +88,9 @@ struct AuthView: View {
                                 } label: {
                                     HStack(spacing: 8) {
                                         Image(systemName: "apple.logo")
+                                        // Apple MANDATES this exact wording for
+                                        // SIWA buttons (HIG) — exempt from the
+                                        // 2-word button rule.
                                         Text("Sign in with Apple")
                                     }
                                     .frame(maxWidth: .infinity)
@@ -103,12 +106,13 @@ struct AuthView: View {
                         }
                     }
 
-                    Button(isSignUp ? "Already have an account? Sign in" : "New here? Create an account") {
+                    Button(isSignUp ? "Sign In" : "Create Account") {
                         withAnimation {
                             isSignUp.toggle()
                             store.authErrorMessage = nil
                         }
                     }
+                    .accessibilityLabel(isSignUp ? "Already have an account? Sign in" : "New here? Create an account")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(MorpheTheme.accent)
                     .frame(maxWidth: .infinity)

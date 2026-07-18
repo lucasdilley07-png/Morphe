@@ -1179,12 +1179,13 @@ private struct WorkoutHistoryCard: View {
                     }
 
                     if logs.count > 5 {
-                        Button(showAll ? "Show recent only" : "Show all \(logs.count)") {
+                        Button(showAll ? "Show Recent" : "Show All") {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 showAll.toggle()
                             }
                         }
                         .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityLabel(showAll ? "Show recent workouts only" : "Show all \(logs.count) workouts")
                     }
                 }
             }

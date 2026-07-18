@@ -422,9 +422,10 @@ struct WorkoutView: View {
                         }
                     }
 
-                    Button("Log Workout and View Progress") {
+                    Button("Log Workout") {
                         store.logWorkout()
                     }
+                    .accessibilityLabel("Log workout and view progress")
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 }
 
@@ -487,9 +488,10 @@ struct WorkoutView: View {
                     Button {
                         showBuilder = true
                     } label: {
-                        Label("Build your own workout", systemImage: "plus.circle.fill")
+                        Label("Build Workout", systemImage: "plus.circle.fill")
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityLabel("Build your own workout")
 
                     let myWorkouts = store.workoutTemplates.filter { store.isCustomWorkout($0.id) }
                     if !myWorkouts.isEmpty {
@@ -614,10 +616,11 @@ struct WorkoutView: View {
                             Text("Open Learn for the exercise library and beginner-friendly form help, or swap a move right from today's plan.")
                                 .foregroundStyle(MorpheTheme.textSecondary)
                             HStack(spacing: 10) {
-                                Button("Open Exercise Library") {
+                                Button("Library") {
                                     store.openMore(.library)
                                 }
                                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
+                                .accessibilityLabel("Open exercise library")
 
                                 Button("Quick Tools") {
                                     store.openMore(.tools)
@@ -808,7 +811,7 @@ private enum PostWorkoutPromptAction: String, CaseIterable, Identifiable {
     case messageCoach = "Message Coach"
     case share = "Share"
     case inviteBuddy = "Invite Buddy"
-    case saveFavorite = "Save as Favorite"
+    case saveFavorite = "Save Favorite"
     case recoveryReset = "Recovery Reset"
 
     var id: String { rawValue }
@@ -1121,9 +1124,9 @@ private struct ActiveWorkoutTrackerCard: View {
         weight > 0 ? weightUnit.format(weight) : "Bodyweight"
     }
 
-    /// The button says exactly what it will log — no surprises.
+    /// Short CTA — the accessibility label carries the exact reps and weight.
     private var logButtonTitle: String {
-        weight > 0 ? "Log set · \(repsToLog) × \(weightUnit.format(weight))" : "Log set · \(repsToLog) reps"
+        "Log Set"
     }
 
     var body: some View {
@@ -1512,19 +1515,19 @@ private struct LiveWorkoutSupportToolsCard: View {
 
                 WrapStack(spacing: 8) {
                     if canGoPrevious {
-                        Button("Previous exercise", action: onPrevious)
+                        Button("Previous Exercise", action: onPrevious)
                             .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.panelStrong))
                     }
 
-                    Button("Swap exercise", action: onSwap)
+                    Button("Swap Exercise", action: onSwap)
                         .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
 
                     // Form questions happen mid-set — the full guide (steps,
                     // mistakes, alternatives) opens right here now.
-                    Button("Form guide", action: onViewForm)
+                    Button("Form Guide", action: onViewForm)
                         .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
 
-                    Button("Pain flag", action: onPain)
+                    Button("Pain Flag", action: onPain)
                         .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.warning))
                 }
 
@@ -1534,53 +1537,53 @@ private struct LiveWorkoutSupportToolsCard: View {
                         .foregroundStyle(MorpheTheme.textMuted)
 
                     WrapStack(spacing: 8) {
-                        Button("Explain cue") {
+                        Button("Explain Cue") {
                             showInlineAIReply(
-                                title: "Explain cue",
+                                title: "Explain Cue",
                                 prompt: "Explain the main cue for \(exercise.name) in one short sentence for an athlete mid-workout."
                             )
                         }
-                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Explain cue", selectedColor: MorpheTheme.accentAlt))
+                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Explain Cue", selectedColor: MorpheTheme.accentAlt))
 
-                        Button("Safer option") {
+                        Button("Safer Option") {
                             showInlineAIReply(
-                                title: "Safer option",
+                                title: "Safer Option",
                                 prompt: "Give me a safer option for \(exercise.name) in one short sentence without derailing the workout."
                             )
                         }
-                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Safer option", selectedColor: MorpheTheme.warning))
+                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Safer Option", selectedColor: MorpheTheme.warning))
 
-                        Button("Adjust next set") {
+                        Button("Adjust Set") {
                             showInlineAIReply(
-                                title: "Adjust next set",
+                                title: "Adjust Set",
                                 prompt: "I have completed \(completedSets) of \(totalSets) sets for \(exercise.name). Tell me how to adjust the next set in one short sentence."
                             )
                         }
-                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Adjust next set", selectedColor: MorpheTheme.accent))
+                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Adjust Set", selectedColor: MorpheTheme.accent))
 
-                        Button("Too easy") {
+                        Button("Too Easy") {
                             showInlineAIReply(
-                                title: "Too easy",
+                                title: "Too Easy",
                                 prompt: "\(exercise.name) feels too easy. Adjust the next set in one short sentence."
                             )
                         }
-                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Too easy", selectedColor: MorpheTheme.accent))
+                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Too Easy", selectedColor: MorpheTheme.accent))
 
-                        Button("Too hard") {
+                        Button("Too Hard") {
                             showInlineAIReply(
-                                title: "Too hard",
+                                title: "Too Hard",
                                 prompt: "\(exercise.name) feels too hard. Give me a lighter next set in one short sentence."
                             )
                         }
-                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Too hard", selectedColor: MorpheTheme.warning))
+                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Too Hard", selectedColor: MorpheTheme.warning))
 
-                        Button("Short on time") {
+                        Button("No Time") {
                             showInlineAIReply(
-                                title: "Short on time",
+                                title: "No Time",
                                 prompt: "I'm short on time. Tell me how to finish the rest of \(workout.name) cleanly in one short sentence."
                             )
                         }
-                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "Short on time", selectedColor: MorpheTheme.lavender))
+                        .buttonStyle(FilterChipStyle(isSelected: inlineAIContextTitle == "No Time", selectedColor: MorpheTheme.lavender))
                     }
                 }
 
@@ -2535,7 +2538,7 @@ private struct TodaysWorkoutCard: View {
                             Spacer(minLength: 0)
                         }
 
-                        Button("Use this instead", action: onUseSuggestion)
+                        Button("Use This", action: onUseSuggestion)
                             .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
                             .accessibilityLabel("Switch today's workout to \(suggestion.workoutName)")
                     }
@@ -2597,11 +2600,11 @@ struct TrainTogetherSheet: View {
                     .foregroundStyle(MorpheTheme.textSecondary)
 
                 WrapStack(spacing: 8) {
-                    Button("Same gym") { hostMode = .inPerson }
+                    Button("Same Gym") { hostMode = .inPerson }
                         .buttonStyle(FilterChipStyle(isSelected: hostMode == .inPerson, selectedColor: MorpheTheme.accent))
-                    Button("Somewhere else") { hostMode = .virtualSession }
+                    Button("Somewhere Else") { hostMode = .virtualSession }
                         .buttonStyle(FilterChipStyle(isSelected: hostMode == .virtualSession, selectedColor: MorpheTheme.accentAlt))
-                    Button("Group class") { hostMode = .group }
+                    Button("Group Class") { hostMode = .group }
                         .buttonStyle(FilterChipStyle(isSelected: hostMode == .group, selectedColor: MorpheTheme.warning))
                 }
 
@@ -2624,7 +2627,7 @@ struct TrainTogetherSheet: View {
 
                 Button(store.isPartyBusy
                        ? "Starting…"
-                       : (hostMode == .group ? "Open the class lobby" : "Start a buddy session")) {
+                       : (hostMode == .group ? "Open Lobby" : "Start Session")) {
                     Task {
                         await store.startTrainTogether(
                             mode: hostMode,
@@ -2634,6 +2637,7 @@ struct TrainTogetherSheet: View {
                 }
                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 .disabled(store.isPartyBusy)
+                .accessibilityLabel(hostMode == .group ? "Open the class lobby" : "Start a buddy session")
             }
         }
     }
@@ -2745,7 +2749,7 @@ struct TrainTogetherSheet: View {
 
                     if party.mode == .group, party.status == .lobby {
                         if store.isPartyHost {
-                            Button("Start the class") {
+                            Button("Start Class") {
                                 store.startGroupClass()
                                 dismiss()
                             }
@@ -2758,7 +2762,7 @@ struct TrainTogetherSheet: View {
                         }
                     }
 
-                    Button("Leave session") {
+                    Button("Leave Session") {
                         store.leaveParty()
                         dismiss()
                     }
@@ -2840,7 +2844,7 @@ struct PartySessionStrip: View {
                     if syncsLive {
                         HStack(spacing: 8) {
                             if !store.partyIsReadySelf {
-                                Button("I'm ready") { store.markPartyReady() }
+                                Button("I'm Ready") { store.markPartyReady() }
                                     .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
                             }
                             ForEach(MorpheAppStore.partyNudgeEmojis, id: \.self) { emoji in
@@ -2973,8 +2977,9 @@ private struct PartnerSessionCard: View {
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textPrimary)
 
-                Button("Send Ready Check", action: onReadyCheck)
+                Button("Ready Check", action: onReadyCheck)
                     .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityLabel("Send a ready check to your buddy")
             }
         }
     }
@@ -3142,8 +3147,9 @@ private struct PainFlaggingCard: View {
                 TextField("Did it happen during a specific exercise or drill?", text: $triggerExercise)
                     .textFieldStyle(MorpheFieldStyle())
 
-                Button("Save Pain Flag", action: onSave)
+                Button("Save Flag", action: onSave)
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.warning))
+                    .accessibilityLabel("Save pain flag")
             }
         }
     }
@@ -3184,8 +3190,8 @@ private struct SetRepLoggingSheet: View {
     private var logButtonTitle: String {
         switch style {
         case .standard: return "Log Set"
-        case .dropset: return "Log Dropset as 1 Set"
-        case .superset: return "Log Superset as 1 Set"
+        case .dropset: return "Log Dropset"
+        case .superset: return "Log Superset"
         }
     }
 
@@ -4441,9 +4447,10 @@ private struct ExercisePickerSheet: View {
                     Button {
                         withAnimation { showCustomForm.toggle() }
                     } label: {
-                        Label("Create custom exercise", systemImage: "plus.circle")
+                        Label("Create Exercise", systemImage: "plus.circle")
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityLabel("Create custom exercise")
 
                     if showCustomForm {
                         GlassCard {
@@ -4457,7 +4464,7 @@ private struct ExercisePickerSheet: View {
                                 }
                                 .pickerStyle(.menu)
                                 .tint(MorpheTheme.accent)
-                                Button("Add custom exercise") {
+                                Button("Add Exercise") {
                                     let created = store.addCustomExercise(name: customName, muscleGroup: customMuscle)
                                     items.append(CustomWorkoutItem(exercise: created))
                                     customName = ""

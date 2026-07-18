@@ -160,9 +160,12 @@ struct CoachBookingSheet: View {
                 store.requestSessionBooking(package: package, slot: slot, coachName: coachName)
                 dismiss()
             } label: {
-                Text(store.paymentsEnabled ? "Book & pay \(selectedPackage?.price ?? "")" : "Request to book")
+                Text(store.paymentsEnabled ? "Book" : "Request Booking")
             }
             .buttonStyle(PrimaryCTAButtonStyle())
+            .accessibilityLabel(store.paymentsEnabled
+                ? "Book and pay \(selectedPackage?.price ?? "")"
+                : "Request to book, no charge")
             .disabled(!canBook)
             .opacity(canBook ? 1 : 0.5)
         }
@@ -479,7 +482,8 @@ struct CoachBusinessView: View {
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("Set up payouts") {}
+                Button("Payouts") {}
+                    .accessibilityLabel("Set up payouts")
                     .buttonStyle(SecondaryCTAButtonStyle())
                     .disabled(true)
                     .opacity(0.5)

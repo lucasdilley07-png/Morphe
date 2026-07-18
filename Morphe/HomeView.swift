@@ -278,10 +278,11 @@ private struct HomePatternInsightCard: View {
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
-                Button("See More Patterns") {
+                Button("See Patterns") {
                     onOpenProgress()
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
+                .accessibilityLabel("See more patterns in Progress")
             }
         }
     }
@@ -524,9 +525,10 @@ private struct TodayDoneCard: View {
                         .buttonStyle(SecondaryCTAButtonStyle())
                 }
 
-                Button("Do another session", action: onTrainAgain)
+                Button("Go Again", action: onTrainAgain)
                     .buttonStyle(SecondaryCTAButtonStyle())
                     .frame(maxWidth: .infinity)
+                    .accessibilityLabel("Do another session")
             }
         }
     }
@@ -555,10 +557,11 @@ private struct TodayNextMoveCard: View {
                         .foregroundStyle(MorpheTheme.textSecondary)
 
                     HStack(spacing: 10) {
-                        Button("Keep Minimum Win") {
+                        Button("Keep Fallback") {
                             onActivateMinimumWin()
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
+                        .accessibilityLabel("Keep Minimum Win mode")
 
                         Button("Switch Workout", action: onSwitch)
                             .buttonStyle(SecondaryCTAButtonStyle())
@@ -580,10 +583,11 @@ private struct TodayNextMoveCard: View {
                     }
 
                     HStack(spacing: 10) {
-                        Button("Start Today's Plan", action: onStart)
+                        Button("Start", action: onStart)
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                            .accessibilityLabel("Start today's plan")
 
-                        Button("Switch workout", action: onSwitch)
+                        Button("Switch Workout", action: onSwitch)
                             .buttonStyle(SecondaryCTAButtonStyle())
                     }
                 }
@@ -598,15 +602,17 @@ private struct TodayNextMoveCard: View {
                             .foregroundStyle(.white)
 
                         WrapStack(spacing: 8) {
-                            Button("Why this plan?") {
+                            Button("Why This?") {
                                 inlineReply = store.previewAIAgentReply(for: "Why is this the right plan for today?")
                             }
                             .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
+                            .accessibilityLabel("Why this plan?")
 
-                            Button("Adjust my day") {
+                            Button("Adjust Day") {
                                 inlineReply = store.previewAIAgentReply(for: "Adjust today's plan for me")
                             }
                             .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
+                            .accessibilityLabel("Adjust my day")
                         }
 
                         if let inlineReply {
@@ -818,7 +824,7 @@ private struct TierZeroCheckInCard: View {
                      : "A 30-second check-in helps Morphe size today's workout to how you actually feel.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
-                Button(isComplete ? "Update check-in" : "Do a quick check-in") {
+                Button(isComplete ? "Update Check-In" : "Check In") {
                     showCheckIn = true
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
@@ -859,7 +865,7 @@ private struct DailyCheckInPlannerCard: View {
                 Text(isComplete ? "Readiness \(store.recovery.score) • \(store.recovery.status.rawValue). \(store.recovery.reason)" : "A quick check-in lets Morphe read your recovery and adjust today.")
                     .foregroundStyle(MorpheTheme.textSecondary)
 
-                Button(isComplete ? "Update Check-In" : "Do Recovery Check-In") {
+                Button(isComplete ? "Update Check-In" : "Check In") {
                     showCheckIn = true
                 }
                 .buttonStyle(PrimaryCTAButtonStyle(accent: isComplete ? MorpheTheme.accentAlt : MorpheTheme.accent))
@@ -888,7 +894,7 @@ private struct DailyCheckInPlannerCard: View {
                         .font(.headline)
                         .foregroundStyle(.white)
                     Spacer()
-                    Button(showPlanBOptions ? "Hide" : "Show options") {
+                    Button(showPlanBOptions ? "Hide" : "Show Options") {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             showPlanBOptions.toggle()
                         }
@@ -912,18 +918,20 @@ private struct DailyCheckInPlannerCard: View {
                         }
                     }
 
-                    Button("Minimum Win Mode", action: onMinimumWin)
+                    Button("Minimum Win", action: onMinimumWin)
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .accessibilityLabel("Switch to Minimum Win mode")
 
                     HStack(spacing: 10) {
-                        Button("Shorter workout", action: onShorterWorkout)
+                        Button("Shorter Workout", action: onShorterWorkout)
                             .buttonStyle(SecondaryCTAButtonStyle())
-                        Button("Recovery session", action: onRecoveryWorkout)
+                        Button("Recovery Session", action: onRecoveryWorkout)
                             .buttonStyle(SecondaryCTAButtonStyle())
                     }
 
-                    Button("Move workout to tomorrow", action: onReschedule)
+                    Button("Tomorrow", action: onReschedule)
                         .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityLabel("Move workout to tomorrow")
                 }
             }
         }

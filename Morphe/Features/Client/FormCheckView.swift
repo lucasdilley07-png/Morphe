@@ -918,7 +918,7 @@ struct FormCheckView: View {
                 HStack(spacing: 10) {
                     Button("Reset") { session.resetReps() }
                         .buttonStyle(SecondaryCTAButtonStyle())
-                    Button("Finish & Review") {
+                    Button("Finish") {
                         let result = session.finishSet()
                         summaryPayload = SummaryPayload(
                             summary: result.summary,
@@ -929,6 +929,7 @@ struct FormCheckView: View {
                         )
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .accessibilityLabel("Finish set and review")
                     .disabled(session.repCount == 0)
                     .opacity(session.repCount == 0 ? 0.5 : 1)
                 }
@@ -1079,7 +1080,7 @@ private struct FormSummarySheet: View {
                         Text(aiError)
                             .font(.caption).foregroundStyle(Color(red: 0.92, green: 0.40, blue: 0.40))
                     }
-                    Button(aiLoading ? "Reviewing…" : "Get AI coaching") {
+                    Button(aiLoading ? "Reviewing…" : "Get Coaching") {
                         Task { await runAIReview() }
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))

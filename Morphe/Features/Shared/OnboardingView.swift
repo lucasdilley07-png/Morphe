@@ -240,7 +240,7 @@ struct OnboardingFlowView: View {
         case .welcome:
             return "Start"
         case .review:
-            return isCoachFlow ? "Create My Workspace" : "Create My Plan"
+            return isCoachFlow ? "Create Workspace" : "Create Plan"
         default:
             return "Next"
         }
@@ -1006,8 +1006,8 @@ private struct ProfileReviewStep: View {
                     ProfileLine(title: "Plan summary", value: generatedPlan.message)
                 }
                 Text(isCoach
-                    ? "Tap Create My Workspace and Morphe will set up your coaching home."
-                    : "Tap Create My Plan and Morphe will turn this into your starting plan.")
+                    ? "Tap Create Workspace and Morphe will set up your coaching home."
+                    : "Tap Create Plan and Morphe will turn this into your starting plan.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
             }

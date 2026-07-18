@@ -311,13 +311,15 @@ enum CalendarEventType: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+// Button copy: 2 words max app-wide; these render directly as menu buttons.
+// Raw values are display-only (never persisted), so renaming is safe.
 enum WorkoutAdjustmentOption: String, CaseIterable, Identifiable {
-    case easier = "Make it easier"
-    case shorter = "Make it shorter"
-    case home = "Use the home version"
-    case gym = "Use the gym version"
-    case recovery = "Replace with recovery session"
-    case reschedule = "Move to another day"
+    case easier = "Easier"
+    case shorter = "Shorter"
+    case home = "Home Version"
+    case gym = "Gym Version"
+    case recovery = "Recovery"
+    case reschedule = "Reschedule"
 
     var id: String { rawValue }
 }

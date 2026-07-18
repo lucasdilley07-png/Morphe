@@ -414,7 +414,7 @@ struct AthleteProfileView: View {
                     draft: draft,
                     title: "Review AI Import",
                     subtitle: "Check the workout title, duration, and parsed exercises before saving this to the athlete profile.",
-                    confirmLabel: "Confirm and Save to Athlete Profile"
+                    confirmLabel: "Confirm Save"
                 ) { approvedDraft in
                     store.confirmAIParsedWorkoutLog(approvedDraft)
                     aiPhotoLabel = ""
@@ -426,7 +426,7 @@ struct AthleteProfileView: View {
                     draft: log,
                     title: "Edit Shared Log",
                     subtitle: "Update the workout title, duration, notes, and exercise details before this log rolls into athlete progress.",
-                    confirmLabel: "Save Log Changes"
+                    confirmLabel: "Save Changes"
                 ) { updatedLog in
                     store.updateWorkoutLog(updatedLog)
                     editingLog = nil
@@ -904,11 +904,12 @@ private struct CoachAthleteAssignWorkoutSheet: View {
                                         MetricPill(label: "Gear", value: template.equipment)
                                     }
 
-                                    Button("Assign for \(scheduledLabel)") {
+                                    Button("Assign") {
                                         store.assignWorkoutTemplate(template, to: athlete, scheduledLabel: scheduledLabel)
                                         dismiss()
                                     }
                                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                                    .accessibilityLabel("Assign \(template.name) for \(scheduledLabel)")
                                 }
                             }
                         }
@@ -1056,8 +1057,9 @@ private struct CoachWorkoutLogEntryCard: View {
                     .textFieldStyle(MorpheFieldStyle())
                     .lineLimit(3...5)
 
-                Button("Save Manual Workout Log", action: onSaveManual)
+                Button("Save Log", action: onSaveManual)
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
+                    .accessibilityLabel("Save manual workout log")
 
                 Divider()
                     .overlay(Color.white.opacity(0.08))
@@ -1069,8 +1071,9 @@ private struct CoachWorkoutLogEntryCard: View {
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
-                Button("Review Workout From Photo", action: onImportPhoto)
+                Button("Review Photo", action: onImportPhoto)
                     .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityLabel("Review workout from photo")
             }
         }
     }
@@ -1300,9 +1303,10 @@ private struct AthleteWorkoutLogListCard: View {
                                     if canEditLog(log) || canApproveLog(log) {
                                         Menu {
                                             if canApproveLog(log) {
-                                                Button("Approve AI Log") {
+                                                Button("Approve") {
                                                     onApprove(log)
                                                 }
+                                                .accessibilityLabel("Approve AI-imported log")
                                             }
 
                                             if canEditLog(log) {

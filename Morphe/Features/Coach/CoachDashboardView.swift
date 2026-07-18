@@ -636,7 +636,7 @@ private struct AddManagedClientSheet: View {
                     .lineLimit(3...6)
             }
             Section {
-                Button("Create Client Profile") {
+                Button("Create Client") {
                     created = store.addManagedClient(name: name, email: email, sport: sport, notes: notes)
                 }
                 .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -751,7 +751,7 @@ private struct ManagedClientDetailSheet: View {
 
                     if !client.isClaimed {
                         Section {
-                            Button("Log a Workout") { isLoggingWorkout = true }
+                            Button("Log Workout") { isLoggingWorkout = true }
                             Button("Remove Client", role: .destructive) { isConfirmingDelete = true }
                         }
                     }
@@ -1118,7 +1118,7 @@ private struct CoachProgramsScreen: View {
                     ) {
                         GlassCard {
                             VStack(alignment: .leading, spacing: 12) {
-                                Button("Save Draft to Archive") {
+                                Button("Save Draft") {
                                     store.createProgram(from: draft)
                                 }
                                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
@@ -1477,10 +1477,11 @@ private struct CoachBuildLibraryPanel: View {
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
 
-                                Button("Assign From Library") {
+                                Button("Assign") {
                                     onAssignSavedWorkout(item)
                                 }
                                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
+                                .accessibilityLabel("Assign \(item.workoutName) from saved workout library")
                             }
                         }
                     }
@@ -1657,7 +1658,7 @@ private struct CoachRescheduleSheet: View {
                     .datePickerStyle(.graphical)
                     .tint(MorpheTheme.accent)
 
-                Button("Save New Time") {
+                Button("Save Time") {
                     onSave(date)
                     dismiss()
                 }
@@ -1851,7 +1852,7 @@ private struct AssignSavedWorkoutSheet: View {
                     .datePickerStyle(.graphical)
                     .tint(MorpheTheme.accent)
 
-                Button("Assign Saved Workout") {
+                Button("Assign Saved") {
                     guard let selectedClientID,
                           let athlete = store.coachClients.first(where: { $0.id == selectedClientID })
                     else { return }
@@ -3166,7 +3167,7 @@ private struct CoachDashboardTriageCard: View {
 
                 VStack(spacing: 8) {
                     CoachTriageActionButton(
-                        title: pendingAIReviewCount > 0 ? "Review AI logs" : "Open Messages",
+                        title: pendingAIReviewCount > 0 ? "Review Logs" : "Open Messages",
                         subtitle: pendingAIReviewCount > 0
                             ? "Clear imported workout reviews before the queue gets noisy."
                             : "Use the inbox for the next clean follow-up.",
@@ -3176,14 +3177,14 @@ private struct CoachDashboardTriageCard: View {
 
                     if nextSession != nil {
                         CoachTriageActionButton(
-                            title: "Start next session",
+                            title: "Start Session",
                             subtitle: "Jump straight into the next live coaching block from here.",
                             accent: MorpheTheme.accent,
                             action: onStartSession
                         )
                     } else if nextIntervention != nil {
                         CoachTriageActionButton(
-                            title: "Message athlete",
+                            title: "Message Athlete",
                             subtitle: "Move straight into the thread that needs a fast response.",
                             accent: MorpheTheme.accent,
                             action: onMessageAthlete
@@ -3192,7 +3193,7 @@ private struct CoachDashboardTriageCard: View {
 
                     if showsRecoveryAction {
                         CoachTriageActionButton(
-                            title: "Assign recovery",
+                            title: "Assign Recovery",
                             subtitle: "Use a lighter reset session when the issue is pain, fatigue, or overload.",
                             accent: MorpheTheme.warning,
                             action: onAssignRecovery
@@ -3825,10 +3826,11 @@ private struct TeamGroupCoachingCard: View {
                         Text(group.groupMessage)
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
-                        Button("Send Group Announcement") {
+                        Button("Announce") {
                             onSendAnnouncement(group)
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .accessibilityLabel("Send group announcement to \(group.name)")
                     }
                     .padding(.vertical, 4)
                 }
