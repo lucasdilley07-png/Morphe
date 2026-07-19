@@ -34,3 +34,4 @@ xcschememanagement.plist
 
 # Firebase app config (keep out of version control)
 GoogleService-Info.plist
+BACKEND/serviceAccount.json
