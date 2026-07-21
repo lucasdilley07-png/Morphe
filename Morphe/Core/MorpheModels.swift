@@ -656,6 +656,20 @@ enum TrainingStyleOption: String, CaseIterable, Identifiable {
     case hypertrophy = "Hypertrophy"
     case fatLoss = "Fat Loss"
     case hybrid = "Hybrid"
+    case yoga = "Yoga"
+    case pilates = "Pilates"
+    case dance = "Dance"
+    case aerobics = "Aerobics"
+
+    var id: String { rawValue }
+}
+
+/// Meal-prep habit asked during onboarding — feeds nutrition personalization.
+enum MealPrepOption: String, CaseIterable, Identifiable {
+    case never = "Never"
+    case occasionally = "Occasionally"
+    case weekly = "Weekly"
+    case mostMeals = "Most Meals"
 
     var id: String { rawValue }
 }
@@ -1537,6 +1551,13 @@ struct OnboardingDraft: Hashable {
     var selectedTrainingStyles: [TrainingStyleOption] = [.conditioning]
     var injuries: String = ""
     var equipment: String = ""
+    /// Meal-prep habit + whether they'd like to start (asked when they don't
+    /// prep yet). Feeds nutrition guidance.
+    var mealPrepFrequency: MealPrepOption = .occasionally
+    var mealPrepInterested: Bool = false
+    /// Required consent on the review step — completing onboarding with this
+    /// true ALSO satisfies the standalone terms gate.
+    var agreedToTerms: Bool = false
     /// Invite code from a coach who pre-created this athlete's profile —
     /// entered (optionally) during onboarding; the claim runs right after
     /// `completeOnboarding()` so the reset can't wipe the imported history.
@@ -1565,6 +1586,9 @@ struct ClientProfile: Hashable {
     var id: UUID = UUID()
     var name: String
     var gender: GenderOption = .male
+    /// Meal-prep habit from onboarding ("" = never asked, pre-dates the step).
+    var mealPrepHabit: String = ""
+    var mealPrepInterested: Bool = false
     var welcomeMessage: String
     var oneLiner: String
     var coachName: String

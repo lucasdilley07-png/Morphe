@@ -133,6 +133,9 @@ struct LocalProfileSnapshot: Codable, Equatable {
     // in the cloud snapshot, so a reinstall restores the face too.
     var profileBio: String = ""
     var profilePhotoBase64: String = ""
+    // Meal-prep onboarding answers ("" = pre-dates the question).
+    var mealPrepHabit: String = ""
+    var mealPrepInterested: Bool = false
 }
 
 extension LocalProfileSnapshot {
@@ -217,6 +220,8 @@ extension LocalProfileSnapshot {
         hasAcceptedTerms = ((try? c.decodeIfPresent(Bool.self, forKey: .hasAcceptedTerms)) ?? nil) ?? false
         profileBio = str(.profileBio)
         profilePhotoBase64 = str(.profilePhotoBase64)
+        mealPrepHabit = str(.mealPrepHabit)
+        mealPrepInterested = ((try? c.decodeIfPresent(Bool.self, forKey: .mealPrepInterested)) ?? nil) ?? false
         nameChangedAtEpoch = ((try? c.decodeIfPresent(Double.self, forKey: .nameChangedAtEpoch)) ?? nil) ?? 0
         usernameChangedAtEpoch = ((try? c.decodeIfPresent(Double.self, forKey: .usernameChangedAtEpoch)) ?? nil) ?? 0
     }

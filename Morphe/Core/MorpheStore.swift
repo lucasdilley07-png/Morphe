@@ -1182,6 +1182,8 @@ final class MorpheAppStore {
         profilePhotoData = snapshot.profilePhotoBase64.isEmpty
             ? nil
             : Data(base64Encoded: snapshot.profilePhotoBase64)
+        clientProfile.mealPrepHabit = snapshot.mealPrepHabit
+        clientProfile.mealPrepInterested = snapshot.mealPrepInterested
         if let theme = ThemePreset(rawValue: snapshot.theme) {
             profileShowcase.theme = theme
         }
@@ -1502,6 +1504,8 @@ final class MorpheAppStore {
         )
         snapshot.profileBio = profileCustomBio
         snapshot.profilePhotoBase64 = profilePhotoData?.base64EncodedString() ?? ""
+        snapshot.mealPrepHabit = clientProfile.mealPrepHabit
+        snapshot.mealPrepInterested = clientProfile.mealPrepInterested
         profilePersistence.saveProfile(snapshot)
         // Mirror to the cloud once the account is real (onboarding done).
         if hasCompletedOnboarding { cloudBackup.pushProfile(snapshot) }
@@ -2542,6 +2546,13 @@ final class MorpheAppStore {
         // previously discarded and the demo knee complaint persisted instead.
         clientProfile.limitations = onboardingDraft.injuries.trimmingCharacters(in: .whitespacesAndNewlines)
         clientProfile.equipment = onboardingDraft.equipment.trimmingCharacters(in: .whitespacesAndNewlines)
+        clientProfile.mealPrepHabit = onboardingDraft.mealPrepFrequency.rawValue
+        clientProfile.mealPrepInterested = onboardingDraft.mealPrepInterested
+        // Agreeing on the review step IS accepting the terms — the standalone
+        // gate only appears for accounts that predate the in-flow consent.
+        if onboardingDraft.agreedToTerms {
+            hasAcceptedTerms = true
+        }
         rebuildPersonalRules()
 
         // A coach account is the USER's practice, not demo "Coach Marcus" —

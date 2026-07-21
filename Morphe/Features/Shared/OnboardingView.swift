@@ -202,6 +202,7 @@ struct OnboardingFlowView: View {
             .experience,
             .schedule,
             .equipment,
+            .mealPrep,
             .injuryPain,
             .coachCode,
             .review
@@ -231,6 +232,10 @@ struct OnboardingFlowView: View {
         }
         if currentStep == .gender {
             return store.onboardingDraft.genderChosen
+        }
+        if currentStep == .review {
+            // Can't finish onboarding without agreeing to the terms.
+            return store.onboardingDraft.agreedToTerms
         }
         return true
     }
@@ -379,6 +384,11 @@ struct OnboardingFlowView: View {
             EquipmentStep()
         case .injuryPain:
             InjuryPainStep(text: $store.onboardingDraft.injuries)
+        case .mealPrep:
+            MealPrepStep(
+                frequency: $store.onboardingDraft.mealPrepFrequency,
+                interested: $store.onboardingDraft.mealPrepInterested
+            )
         case .coachCode:
             CoachCodeStep(code: $store.onboardingDraft.coachInviteCode)
         case .review:
@@ -398,11 +408,46 @@ private enum OnboardingStep {
     case experience
     case schedule
     case equipment
+    case mealPrep
     case injuryPain
     case coachCode
     case coachExperience
     case coachPractice
     case review
+}
+
+/// Meal-prep habit — the one nutrition question onboarding asks. When the
+/// answer is "not really", a follow-up asks if they'd like to start.
+private struct MealPrepStep: View {
+    @Binding var frequency: MealPrepOption
+    @Binding var interested: Bool
+
+    var body: some View {
+        OnboardingCard(
+            title: "How often do you meal prep?",
+            subtitle: "Food carries half the result. Morphe tunes its nutrition guidance to where you actually are."
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                WrapStack(spacing: 8) {
+                    ForEach(MealPrepOption.allCases) { option in
+                        Button(option.rawValue) {
+                            frequency = option
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: frequency == option))
+                    }
+                }
+
+                if frequency == .never || frequency == .occasionally {
+                    Toggle(isOn: $interested) {
+                        Text("I'd like to start meal prepping")
+                            .font(.subheadline)
+                            .foregroundStyle(.white)
+                    }
+                    .tint(MorpheTheme.accent)
+                }
+            }
+        }
+    }
 }
 
 /// Everyone picks a unique @username — the directory reserves it the moment
@@ -615,7 +660,8 @@ private struct EquipmentStep: View {
 
     static let options = [
         "Full gym", "Dumbbells", "Barbell & rack", "Kettlebells",
-        "Resistance bands", "Pull-up bar", "Cardio machines", "Bodyweight only"
+        "Resistance bands", "Pull-up bar", "Cardio machines", "Pool",
+        "Bodyweight only"
     ]
 
     private var isCoach: Bool {
@@ -866,10 +912,10 @@ private struct InjuryPainStep: View {
 
     var body: some View {
         OnboardingCard(
-            title: "Any injuries, pain, or movement concerns?",
-            subtitle: "Morphe uses this to suggest safer options and clearer coaching."
+            title: "Any injuries, pain, or health considerations?",
+            subtitle: "Include past surgeries, implants, or medications that affect training. Morphe uses this to suggest safer options — it never replaces your doctor's advice."
         ) {
-            TextField("Example: Knee discomfort during lunges", text: $text, axis: .vertical)
+            TextField("Example: Knee surgery 2024, blood-pressure medication", text: $text, axis: .vertical)
                 .textFieldStyle(MorpheFieldStyle())
                 .lineLimit(3...5)
         }
@@ -928,7 +974,8 @@ private struct ProfileReviewStep: View {
     }
 
     var body: some View {
-        OnboardingCard(
+        @Bindable var store = store
+        return OnboardingCard(
             title: isCoach ? "Review your coach profile" : "Review your profile",
             subtitle: isCoach ? "One last look before Morphe builds your first workspace." : "One last look before Morphe builds your starting plan."
         ) {
@@ -1010,6 +1057,15 @@ private struct ProfileReviewStep: View {
                     : "Tap Create Plan and Morphe will turn this into your starting plan.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
+
+                // Required consent — the finish button stays disabled until
+                // checked, and agreeing here satisfies the terms gate too.
+                Toggle(isOn: $store.onboardingDraft.agreedToTerms) {
+                    Text("I agree to Morphe's Terms of Use and Privacy Policy")
+                        .font(.subheadline)
+                        .foregroundStyle(.white)
+                }
+                .tint(MorpheTheme.accent)
             }
         }
     }
