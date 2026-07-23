@@ -178,7 +178,6 @@ struct WorkoutView: View {
                         totalSets: targetSetCount(for: activeExercise),
                         nextExercise: nextTrackedExercise,
                         suggestedReps: suggestedRepCount(for: activeExercise),
-                        quickRepOptions: quickRepOptions(for: activeExercise),
                         repsLogged: store.trackedSetReps[activeExercise.id, default: []],
                         weightsLogged: store.trackedSetWeights[activeExercise.id, default: []],
                         weight: $pendingWeight,
@@ -230,49 +229,43 @@ struct WorkoutView: View {
                     workout: store.currentWorkout,
                     exerciseIndex: store.activeWorkoutExerciseIndex,
                     totalExercises: max(store.currentWorkout.exercises.count, 1),
-                    warmupText: warmupText(for: store.currentWorkout.sport),
+                    warmupText: liveWarmupText,
                     exerciseName: store.activeWorkoutExercise?.name ?? store.currentWorkout.name,
                     restSeconds: $restSeconds,
                     restRunning: $restRunning
                 )
 
-                // Form Check available mid-set, not just before the session.
-                Button {
-                    showFormCheck = true
-                } label: {
-                    Label("Form Check", systemImage: "camera.viewfinder")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(SecondaryCTAButtonStyle())
-                .accessibilityHint("Open the front camera to check your form and count reps")
-
-                HStack(spacing: 10) {
-                    Button("Finish Session") {
-                        if store.finishTrackedWorkoutSession() {
-                            restRunning = false
+                // Once everything is logged, WorkoutCompleteCard owns Finish
+                // — a second Finish/Discard row here would just compete.
+                if !store.isTrackedWorkoutComplete {
+                    HStack(spacing: 10) {
+                        Button("Finish Session") {
+                            if store.finishTrackedWorkoutSession() {
+                                restRunning = false
+                            }
                         }
-                    }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
-                    Button("Discard") {
-                        showDiscardConfirm = true
+                        Button("Discard") {
+                            showDiscardConfirm = true
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .frame(width: 110)
+                        .accessibilityLabel("Discard workout")
                     }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .frame(width: 110)
-                    .accessibilityLabel("Discard workout")
-                }
-                .confirmationDialog(
-                    store.trackedSetTotalCount > 0
-                        ? "Discard this workout? \(store.trackedSetTotalCount) logged set\(store.trackedSetTotalCount == 1 ? "" : "s") will be lost."
-                        : "Discard this workout?",
-                    isPresented: $showDiscardConfirm,
-                    titleVisibility: .visible
-                ) {
-                    Button("Discard Workout", role: .destructive) {
-                        restRunning = false
-                        store.cancelTrackedWorkoutSession()
+                    .confirmationDialog(
+                        store.trackedSetTotalCount > 0
+                            ? "Discard this workout? \(store.trackedSetTotalCount) logged set\(store.trackedSetTotalCount == 1 ? "" : "s") will be lost."
+                            : "Discard this workout?",
+                        isPresented: $showDiscardConfirm,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Discard Workout", role: .destructive) {
+                            restRunning = false
+                            store.cancelTrackedWorkoutSession()
+                        }
+                        Button("Keep Training", role: .cancel) {}
                     }
-                    Button("Keep Training", role: .cancel) {}
                 }
 
                 TrainExpandableSection(
@@ -693,10 +686,14 @@ struct WorkoutView: View {
         ) ?? 10
     }
 
-    private func quickRepOptions(for exercise: WorkoutExercise) -> [Int] {
-        let suggested = suggestedRepCount(for: exercise)
-        let options = [max(suggested - 2, 1), suggested, min(suggested + 2, 30)]
-        return Array(NSOrderedSet(array: options)) as? [Int] ?? options
+    // Warm-up guidance is pre-work context: once the first set is logged
+    // (or the lifter moves past exercise one) it's just scroll weight.
+    private var liveWarmupText: String? {
+        guard store.activeWorkoutExerciseIndex == 0,
+              let firstExercise = store.currentWorkout.exercises.first,
+              store.completedWorkoutSets[firstExercise.id, default: 0] == 0
+        else { return nil }
+        return warmupText(for: store.currentWorkout.sport)
     }
 
     private var postWorkoutPrompt: PostWorkoutPromptConfiguration? {
@@ -977,7 +974,9 @@ private struct LiveWorkoutConsoleCard: View {
     let workout: WorkoutTemplate
     let exerciseIndex: Int
     let totalExercises: Int
-    let warmupText: String
+    // nil once the session is under way — warm-up guidance only matters
+    // before the first set of the first exercise.
+    let warmupText: String?
     var exerciseName: String = "Next set"
     @Binding var restSeconds: Int
     @Binding var restRunning: Bool
@@ -1003,13 +1002,15 @@ private struct LiveWorkoutConsoleCard: View {
                     )
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Warm-up")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                    Text(warmupText)
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
+                if let warmupText {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Warm-up")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                        Text(warmupText)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
                 }
 
                 WorkoutRestControlBar(seconds: $restSeconds, isRunning: $restRunning, exerciseName: exerciseName)
@@ -1084,7 +1085,6 @@ private struct ActiveWorkoutTrackerCard: View {
     let totalSets: Int
     let nextExercise: WorkoutExercise?
     let suggestedReps: Int
-    let quickRepOptions: [Int]
     let repsLogged: [Int]
     let weightsLogged: [Double]
     @Binding var weight: Double
@@ -3467,6 +3467,9 @@ private struct WorkoutHistoryCard: View {
 
 private struct SavedWorkoutsLibraryCard: View {
     @State private var selectedFilter: SavedWorkoutLibraryFilter = .all
+    // Remove is destructive from the menu's point of view — same
+    // confirm-first pattern as deleting a custom workout.
+    @State private var pendingRemoval: SavedWorkoutLibraryItem?
     let items: [SavedWorkoutLibraryItem]
     let insightFor: (SavedWorkoutLibraryItem) -> SavedWorkoutLibraryInsight
     let onStart: (SavedWorkoutLibraryItem) -> Void
@@ -3647,48 +3650,55 @@ private struct SavedWorkoutsLibraryCard: View {
                                 }
                             }
 
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
+                            // Start is THE action on a saved workout; the
+                            // long tail lives behind one ellipsis instead of
+                            // a grid of seven equal buttons.
+                            HStack(spacing: 8) {
                                 Button("Start") {
                                     onStart(item)
                                 }
                                 .buttonStyle(SecondaryCTAButtonStyle())
 
-                                // Queue = make it today's workout, staged in
-                                // Train without starting the session.
-                                Button("Queue") {
-                                    onQueue(item)
-                                }
-                                .buttonStyle(SecondaryCTAButtonStyle())
+                                Spacer()
 
-                                if FeatureFlags.multiUserEnabled {
-                                    Button("With Buddy") {
-                                        onWithBuddy(item)
+                                Menu {
+                                    // Queue = make it today's workout, staged
+                                    // in Train without starting the session.
+                                    Button("Queue") {
+                                        onQueue(item)
                                     }
-                                    .buttonStyle(SecondaryCTAButtonStyle())
-                                }
 
-                                Button("Duplicate") {
-                                    onDuplicate(item)
-                                }
-                                .buttonStyle(SecondaryCTAButtonStyle())
+                                    if FeatureFlags.multiUserEnabled {
+                                        Button("With Buddy") {
+                                            onWithBuddy(item)
+                                        }
+                                    }
 
-                                Button(item.isPinned ? "Unpin" : "Pin") {
-                                    onTogglePin(item)
-                                }
-                                .buttonStyle(SecondaryCTAButtonStyle())
+                                    Button("Duplicate") {
+                                        onDuplicate(item)
+                                    }
 
-                                // Remove sits beside Pin, under Duplicate.
-                                Button("Remove") {
-                                    onRemove(item)
-                                }
-                                .buttonStyle(SecondaryCTAButtonStyle())
+                                    Button(item.isPinned ? "Unpin" : "Pin") {
+                                        onTogglePin(item)
+                                    }
 
-                                // Edits touch only the user's copy — a
-                                // catalog save becomes "My Copy" first.
-                                Button("Edit") {
-                                    onEdit(item)
+                                    // Edits touch only the user's copy — a
+                                    // catalog save becomes "My Copy" first.
+                                    Button("Edit") {
+                                        onEdit(item)
+                                    }
+
+                                    Button("Remove", role: .destructive) {
+                                        pendingRemoval = item
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                        .font(.title3)
+                                        .foregroundStyle(MorpheTheme.textSecondary)
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
                                 }
-                                .buttonStyle(SecondaryCTAButtonStyle())
+                                .accessibilityLabel("More actions for \(item.workoutName)")
                             }
                         }
                         .padding(.vertical, 4)
@@ -3696,6 +3706,25 @@ private struct SavedWorkoutsLibraryCard: View {
                 }
             }
         }
+        .confirmationDialog(
+            removeWorkoutDialogTitle,
+            isPresented: Binding(
+                get: { pendingRemoval != nil },
+                set: { if !$0 { pendingRemoval = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingRemoval
+        ) { item in
+            Button("Remove Workout", role: .destructive) {
+                onRemove(item)
+            }
+            Button("Keep It", role: .cancel) {}
+        }
+    }
+
+    private var removeWorkoutDialogTitle: String {
+        guard let item = pendingRemoval else { return "Remove this workout from your library?" }
+        return "Remove \(item.workoutName) from your library?"
     }
 
     private var filteredItems: [SavedWorkoutLibraryItem] {

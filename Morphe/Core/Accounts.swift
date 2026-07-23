@@ -54,6 +54,9 @@ protocol AuthService: AnyObject {
     func signUp(email: String, password: String, role: UserRole, displayName: String) async throws -> AppUser
     func signIn(email: String, password: String) async throws -> AppUser
     func signOut()
+    /// Emails the user a password-reset link. Only a real backend can do this;
+    /// the local service throws `.notConfigured`.
+    func sendPasswordReset(email: String) async throws
 }
 
 extension AuthService {
@@ -115,6 +118,12 @@ final class LocalAuthService: AuthService {
 
     func signOut() {
         currentUser = nil
+    }
+
+    /// The device account never had a real password to reset — be honest
+    /// about it instead of pretending an email went out.
+    func sendPasswordReset(email: String) async throws {
+        throw AuthError.notConfigured
     }
 
     /// Removes the stored device account entirely (used by tests).

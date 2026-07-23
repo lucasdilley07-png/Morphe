@@ -128,9 +128,12 @@ struct LocalProfileSnapshot: Codable, Equatable {
     // Rename rate limiting (epoch seconds; 0 = never changed).
     var nameChangedAtEpoch: Double = 0
     var usernameChangedAtEpoch: Double = 0
-    // Profile page extras. The user-written bio ("" = use the generated one)
-    // and the profile photo as base64 JPEG ("" = none) — small enough to ride
-    // in the cloud snapshot, so a reinstall restores the face too.
+    // Profile page extras. The user-written bio ("" = use the generated one).
+    // The photo is NOT stored in the local snapshot — as base64 it multiplied
+    // every profile save (water taps included) by the JPEG's size. Locally it
+    // lives in its own profile-photo.jpg file; `profilePhotoBase64` stays only
+    // so the CLOUD snapshot can carry it ("" locally, injected at push time),
+    // and a reinstall still restores the face.
     var profileBio: String = ""
     var profilePhotoBase64: String = ""
     // Meal-prep onboarding answers ("" = pre-dates the question).
@@ -231,18 +234,26 @@ extension LocalProfileSnapshot {
 protocol ProfilePersisting: AnyObject {
     func loadProfile() -> LocalProfileSnapshot?
     func saveProfile(_ snapshot: LocalProfileSnapshot)
+    /// The profile photo rides in its own file (raw JPEG bytes, no base64,
+    /// no JSON) so routine profile saves never re-encode it.
+    func savePhoto(_ data: Data)
+    func loadPhoto() -> Data?
+    func clearPhoto()
     func clear()
 }
 
 /// File-based implementation writing JSON atomically into Application Support.
 final class ProfileFilePersistence: ProfilePersisting {
     private let profileURL: URL
+    private let photoURL: URL
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
     init(directoryName: String = "MorpheStore") {
         let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        // sortedKeys keeps saves byte-stable for identical state; prettyPrinted
+        // was dropped — it only inflated a file no human reads, on every save.
+        encoder.outputFormatting = [.sortedKeys]
         self.encoder = encoder
         self.decoder = JSONDecoder()
 
@@ -257,6 +268,7 @@ final class ProfileFilePersistence: ProfilePersisting {
         try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
 
         self.profileURL = directory.appendingPathComponent("local-profile.json")
+        self.photoURL = directory.appendingPathComponent("profile-photo.jpg")
     }
 
     func loadProfile() -> LocalProfileSnapshot? {
@@ -269,7 +281,22 @@ final class ProfileFilePersistence: ProfilePersisting {
         try? data.write(to: profileURL, options: [.atomic])
     }
 
+    func savePhoto(_ data: Data) {
+        try? data.write(to: photoURL, options: [.atomic])
+    }
+
+    func loadPhoto() -> Data? {
+        try? Data(contentsOf: photoURL)
+    }
+
+    func clearPhoto() {
+        try? FileManager.default.removeItem(at: photoURL)
+    }
+
     func clear() {
         try? FileManager.default.removeItem(at: profileURL)
+        // The photo belongs to the profile being cleared — a fresh account
+        // must never inherit the previous user's face.
+        clearPhoto()
     }
 }

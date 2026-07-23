@@ -636,36 +636,6 @@ struct RecoveryScoreCard: View {
     }
 }
 
-struct ConfidenceRatingCard: View {
-    let selected: ConfidenceLevel?
-    let onSelect: (ConfidenceLevel) -> Void
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("How confident are you that you can complete this today?")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                HStack(spacing: 8) {
-                    ForEach(ConfidenceLevel.allCases) { level in
-                        Button(level.rawValue) {
-                            onSelect(level)
-                        }
-                        .buttonStyle(FilterChipStyle(isSelected: selected == level, selectedColor: MorpheTheme.accent))
-                    }
-                }
-
-                if selected == .notConfident {
-                    Text("Let's make this easier today.")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.warning)
-                }
-            }
-        }
-    }
-}
-
 struct SmartPlanAdjustmentCard: View {
     let adjustment: PlanAdjustment
 
@@ -1302,7 +1272,7 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                             .fill(selected == item ? MorpheTheme.accent : .clear)
                             .frame(width: 26, height: 2)
                     }
-                    .foregroundStyle(selected == item ? MorpheTheme.accent : Color.white.opacity(0.55))
+                    .foregroundStyle(selected == item ? MorpheTheme.accent : Color.white.opacity(0.70))
                     .frame(maxWidth: .infinity)
                     .padding(.top, 10)
                     .padding(.bottom, 6)

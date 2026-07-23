@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Sign-in / create-account screen (v2 backend foundation). Talks to the store's
-/// AuthService — local today, Firebase once connected. Sign in with Apple is
-/// stubbed until the backend is wired.
+/// AuthService — local today, Firebase once connected. Sign in with Apple
+/// arrives once the backend can verify it.
 struct AuthView: View {
     @Environment(MorpheAppStore.self) private var store
 
@@ -51,7 +51,9 @@ struct AuthView: View {
                             }
 
                             labeledField("Email") {
-                                TextField("you@example.com", text: $email)
+                                // A plain word, not an example address — the
+                                // system paints addresses link-blue.
+                                TextField("Email", text: $email)
                                     .textContentType(.emailAddress)
                                     .keyboardType(.emailAddress)
                                     .textInputAutocapitalization(.never)
@@ -62,6 +64,16 @@ struct AuthView: View {
                                 SecureField("At least 6 characters", text: $password)
                                     .textContentType(isSignUp ? .newPassword : .password)
                                     .textFieldStyle(MorpheFieldStyle())
+                            }
+
+                            if !isSignUp {
+                                Button("Forgot password?") {
+                                    Task { await store.requestPasswordReset(email: email) }
+                                }
+                                .buttonStyle(.plain)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.accent)
+                                .accessibilityLabel("Send a password reset email")
                             }
 
                             if let error = store.authErrorMessage {
@@ -82,27 +94,9 @@ struct AuthView: View {
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                             .disabled(store.isAuthBusy)
 
-                            VStack(spacing: 6) {
-                                Button {
-                                    // Wired once the Firebase backend is connected.
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: "apple.logo")
-                                        // Apple MANDATES this exact wording for
-                                        // SIWA buttons (HIG) — exempt from the
-                                        // 2-word button rule.
-                                        Text("Sign in with Apple")
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                }
-                                .buttonStyle(SecondaryCTAButtonStyle())
-                                .disabled(true)
-                                .opacity(0.5)
-
-                                Text("Apple sign-in turns on once the backend is connected.")
-                                    .font(.caption)
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                            }
+                            // Sign in with Apple returns here once it's wired
+                            // to the backend — a permanently disabled button
+                            // is an App Review flag, not a feature preview.
                         }
                     }
 

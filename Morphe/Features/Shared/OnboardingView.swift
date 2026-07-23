@@ -8,10 +8,10 @@ struct LaunchSequenceView: View {
     /// A fresh install has no recovery, goals, or plan to "read" — claiming
     /// otherwise was the app's first lie. New users get one honest brand beat;
     /// returning users get their plan status.
-    private var launchMessages: [String] {
+    private var launchMessage: String {
         store.hasCompletedOnboarding
-            ? ["Loading your training...", "Today's plan is ready."]
-            : ["TRANSFORM. EVOLVE. BECOME."]
+            ? "Today's plan is ready."
+            : "TRANSFORM. EVOLVE. BECOME."
     }
 
     var body: some View {
@@ -43,10 +43,10 @@ struct LaunchSequenceView: View {
             guard !hasStarted else { return }
             hasStarted = true
 
-            for item in launchMessages {
-                message = item
-                try? await Task.sleep(for: .milliseconds(650))
-            }
+            // Returning users open this app daily — they get one quick beat,
+            // not a ceremony. Only a first launch earns the full brand pause.
+            message = launchMessage
+            try? await Task.sleep(for: .milliseconds(store.hasCompletedOnboarding ? 350 : 650))
 
             store.finishLaunchSequence()
         }

@@ -14,7 +14,7 @@ enum MorpheTheme {
     static let panelInteractive = Color.white.opacity(0.13)
     static let textPrimary = Color.white
     static let textSecondary = Color.white.opacity(0.66)
-    static let textMuted = Color.white.opacity(0.44)
+    static let textMuted = Color.white.opacity(0.56)
     static let stroke = Color.white.opacity(0.10)
     static let strokeSubtle = Color.white.opacity(0.05)
     static let warning = Color(red: 0.98, green: 0.70, blue: 0.25)         // amber, distinct from accent

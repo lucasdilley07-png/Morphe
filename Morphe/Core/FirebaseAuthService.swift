@@ -113,6 +113,15 @@ final class FirebaseAuthService: AuthService {
         currentUser = nil
     }
 
+    func sendPasswordReset(email: String) async throws {
+        let normalized = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        do {
+            try await Auth.auth().sendPasswordReset(withEmail: normalized)
+        } catch {
+            throw Self.mapError(error)
+        }
+    }
+
     // MARK: - Firestore <-> AppUser mapping
 
     private static func document(from user: AppUser) -> [String: Any] {

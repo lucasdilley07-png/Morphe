@@ -285,49 +285,74 @@ private struct CoachCommandCenterScreen: View {
                     subtitle: "See who needs attention first, what changed, and the next coaching move."
                 )
 
-                CoachDashboardTriageCard(
-                    coachName: store.coachProfile.name,
-                    atRiskCount: store.coachOverview.atRiskClients,
-                    pendingAIReviewCount: pendingAIReviewAthlete.map { athlete in
-                        store.workoutLogs(for: athlete.id).filter { $0.verificationStatus == .aiPendingReview }.count
-                    } ?? 0,
-                    painFlagCount: store.coachOverview.painFlags,
-                    replyQueueCount: store.coachOverview.messagesNeedingResponse,
-                    nextSession: nextUpcomingSession,
-                    nextIntervention: nextInterventionNeedingAction,
-                    showsRecoveryAction: recoveryIntervention != nil,
-                    onReviewAI: {
-                        guard let athlete = pendingAIReviewAthlete else { return }
-                        store.selectedCoachTab = .programs
-                        store.openClientHub(athlete)
-                        store.announce("Opened \(athlete.name) for AI log review.")
-                    },
-                    onMessageAthlete: {
-                        if let thread = messageTargetThread {
-                            store.selectedCoachTab = .messages
-                            store.selectThread(thread)
-                        } else {
-                            store.selectedCoachTab = .messages
-                            store.announce("Inbox open for the next follow-up.")
+                if store.coachClients.isEmpty && store.managedClients.isEmpty {
+                    // Day-1 command center: a real coach account starts with
+                    // zero athletes, so a triage board over nothing reads as
+                    // broken. Show the one move that matters instead.
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Start Here")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Text("Add your first client")
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(.white)
+                            Text("Your workspace is ready — add a client to start coaching. You can log their training today; when they join Morphe, their invite code carries everything into their account.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+
+                            Button("Add Client") {
+                                store.openAddClient()
+                            }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                         }
-                    },
-                    onStartSession: {
-                        guard let event = nextUpcomingSession else { return }
-                        sessionRequest = CoachSessionLaunchRequest(
-                            title: "Start Session",
-                            subtitle: "Choose the workout you want to run for this session right now.",
-                            preferredSport: store.athleteForUpcomingSession(event)?.sport ?? .generalFitness,
-                            athleteID: event.athleteID,
-                            groupID: event.groupID,
-                            eventID: event.id
-                        )
-                    },
-                    onAssignRecovery: {
-                        guard let intervention = recoveryIntervention else { return }
-                        store.assignInterventionPlan(intervention)
-                    },
-                    onFocus: { triageFocus = $0 }
-                )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    CoachDashboardTriageCard(
+                        coachName: store.coachProfile.name,
+                        atRiskCount: store.coachOverview.atRiskClients,
+                        pendingAIReviewCount: pendingAIReviewAthlete.map { athlete in
+                            store.workoutLogs(for: athlete.id).filter { $0.verificationStatus == .aiPendingReview }.count
+                        } ?? 0,
+                        painFlagCount: store.coachOverview.painFlags,
+                        replyQueueCount: store.coachOverview.messagesNeedingResponse,
+                        nextSession: nextUpcomingSession,
+                        nextIntervention: nextInterventionNeedingAction,
+                        showsRecoveryAction: recoveryIntervention != nil,
+                        onReviewAI: {
+                            guard let athlete = pendingAIReviewAthlete else { return }
+                            store.selectedCoachTab = .programs
+                            store.openClientHub(athlete)
+                            store.announce("Opened \(athlete.name) for AI log review.")
+                        },
+                        onMessageAthlete: {
+                            if let thread = messageTargetThread {
+                                store.selectedCoachTab = .messages
+                                store.selectThread(thread)
+                            } else {
+                                store.selectedCoachTab = .messages
+                                store.announce("Inbox open for the next follow-up.")
+                            }
+                        },
+                        onStartSession: {
+                            guard let event = nextUpcomingSession else { return }
+                            sessionRequest = CoachSessionLaunchRequest(
+                                title: "Start Session",
+                                subtitle: "Choose the workout you want to run for this session right now.",
+                                preferredSport: store.athleteForUpcomingSession(event)?.sport ?? .generalFitness,
+                                athleteID: event.athleteID,
+                                groupID: event.groupID,
+                                eventID: event.id
+                            )
+                        },
+                        onAssignRecovery: {
+                            guard let intervention = recoveryIntervention else { return }
+                            store.assignInterventionPlan(intervention)
+                        },
+                        onFocus: { triageFocus = $0 }
+                    )
+                }
 
                 if !followUpRecommendations.isEmpty {
                     CoachFollowUpQueueCard(
@@ -344,16 +369,24 @@ private struct CoachCommandCenterScreen: View {
                     )
                 }
 
-                MultiSportCoachFilter(
-                    selected: store.coachSportFilter,
-                    sports: store.coachFilterOptions
-                ) { sport in
-                    store.selectCoachSportFilter(sport)
+                // A one-sport (or empty) roster has nothing to filter — the
+                // chip row would just restate the obvious.
+                if store.coachFilterOptions.count >= 2 {
+                    MultiSportCoachFilter(
+                        selected: store.coachSportFilter,
+                        sports: store.coachFilterOptions
+                    ) { sport in
+                        store.selectCoachSportFilter(sport)
+                    }
                 }
 
-                CoachUpcomingSessionsCard(events: store.upcomingSessions)
+                if !store.upcomingSessions.isEmpty {
+                    CoachUpcomingSessionsCard(events: store.upcomingSessions)
+                }
 
-                CoachInterventionQueueCard(interventions: store.coachInterventions)
+                if !store.coachInterventions.isEmpty {
+                    CoachInterventionQueueCard(interventions: store.coachInterventions)
+                }
 
                 CoachCommandDisclosureSection(
                     title: "Overview + metrics",
@@ -373,26 +406,32 @@ private struct CoachCommandCenterScreen: View {
                     }
                 }
 
-                CoachCommandDisclosureSection(
-                    title: "Team view",
-                    subtitle: "Groups and readiness stay here when you want the broader coaching picture, not just the next action.",
-                    isExpanded: $showTeamView
-                ) {
-                    TeamGroupCoachingCard(groups: store.teamGroups) { group in
-                        store.selectGroup(group)
-                        store.sendGroupAnnouncement(for: group)
-                    }
+                // Both disclosure sections vanish when there's nothing behind
+                // them — an expandable header over empty cards is a dead end.
+                if !store.teamGroups.isEmpty || !store.filteredCoachClients.isEmpty {
+                    CoachCommandDisclosureSection(
+                        title: "Team view",
+                        subtitle: "Groups and readiness stay here when you want the broader coaching picture, not just the next action.",
+                        isExpanded: $showTeamView
+                    ) {
+                        TeamGroupCoachingCard(groups: store.teamGroups) { group in
+                            store.selectGroup(group)
+                            store.sendGroupAnnouncement(for: group)
+                        }
 
-                    AthleteReadinessDashboardCard(athletes: store.filteredCoachClients)
+                        AthleteReadinessDashboardCard(athletes: store.filteredCoachClients)
+                    }
                 }
 
-                CoachCommandDisclosureSection(
-                    title: "Signals + wins",
-                    subtitle: "Open the wider coaching signals once the urgent work is already under control.",
-                    isExpanded: $showSignals
-                ) {
-                    CoachBulletCard(title: "Priority Alerts", items: store.coachOverview.sportAlerts)
-                    CoachBulletCard(title: "Athlete Wins", items: store.coachOverview.wins)
+                if !store.coachOverview.sportAlerts.isEmpty || !store.coachOverview.wins.isEmpty {
+                    CoachCommandDisclosureSection(
+                        title: "Signals + wins",
+                        subtitle: "Open the wider coaching signals once the urgent work is already under control.",
+                        isExpanded: $showSignals
+                    ) {
+                        CoachBulletCard(title: "Priority Alerts", items: store.coachOverview.sportAlerts)
+                        CoachBulletCard(title: "Athlete Wins", items: store.coachOverview.wins)
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -534,6 +573,22 @@ private struct CoachAthletesRosterSection: View {
         .sheet(item: $selectedManagedClient) { selection in
             ManagedClientDetailSheet(clientID: selection.id)
         }
+        // The Command Center's "Add Client" hero lands here via the store
+        // flag: it switches to the Build tab, then this section opens the
+        // sheet. onAppear covers the tab switch racing this view into
+        // existence; onChange covers the already-on-tab case.
+        .onAppear {
+            if store.requestAddClientSheet {
+                isAddingClient = true
+                store.requestAddClientSheet = false
+            }
+        }
+        .onChange(of: store.requestAddClientSheet) {
+            if store.requestAddClientSheet {
+                isAddingClient = true
+                store.requestAddClientSheet = false
+            }
+        }
     }
 }
 
@@ -660,9 +715,23 @@ private struct AddManagedClientSheet: View {
                     .font(MorpheTheme.microLabel())
                     .tracking(1.4)
                     .foregroundStyle(.secondary)
-                Text(client.id)
-                    .font(.system(.largeTitle, design: .monospaced).weight(.bold))
-                    .textSelection(.enabled)
+                HStack(spacing: 10) {
+                    Text(client.id)
+                        .font(.system(.largeTitle, design: .monospaced).weight(.bold))
+                        .textSelection(.enabled)
+                    Button {
+                        UIPasteboard.general.string = client.id
+                        Haptics.impact(.light)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                            .font(.title3)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.accent)
+                    .accessibilityLabel("Copy invite code")
+                }
             }
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
@@ -723,6 +792,17 @@ private struct ManagedClientDetailSheet: View {
                                     .font(.system(.title3, design: .monospaced).weight(.bold))
                                     .textSelection(.enabled)
                                 Spacer()
+                                Button {
+                                    UIPasteboard.general.string = client.id
+                                    Haptics.impact(.light)
+                                } label: {
+                                    Image(systemName: "doc.on.doc")
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.accent)
+                                .accessibilityLabel("Copy invite code")
                                 ShareLink(
                                     item: "Join me on Morphe! Download the app and enter invite code \(client.id) during setup — your training history is already waiting."
                                 ) {
@@ -754,6 +834,19 @@ private struct ManagedClientDetailSheet: View {
                             Button("Log Workout") { isLoggingWorkout = true }
                             Button("Remove Client", role: .destructive) { isConfirmingDelete = true }
                         }
+                    } else {
+                        // A claimed client gets an honest explanation instead
+                        // of a silent dead end.
+                        // TODO: "Remove from Roster" for claimed clients needs
+                        // store support — deleteManagedClient guards
+                        // !isClaimed, and a claimed profile is the athlete's
+                        // account history now, so removal must only drop the
+                        // coach's roster reference, not the data.
+                        Section {
+                            Text("They own their training log now — coach tools for connected athletes arrive with account sync.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 .navigationTitle(client.name)
@@ -782,6 +875,11 @@ private struct ManagedClientDetailSheet: View {
                     .foregroundStyle(.secondary)
             }
         }
+        // Fresh claim status on open — the client may have signed up since
+        // the roster was last fetched.
+        .task {
+            await store.refreshManagedClients()
+        }
         .presentationDetents([.large])
     }
 }
@@ -797,6 +895,9 @@ private struct LogManagedWorkoutSheet: View {
     @State private var durationMinutes = 45
     @State private var notes = ""
     @State private var templateID: UUID?
+    // Defaults to today; capped at now — a coach back-fills missed sessions,
+    // they don't log the future.
+    @State private var completedAt = Date.now
 
     private var matchingTemplates: [WorkoutTemplate] {
         let sportMatches = store.workoutTemplates.filter { $0.sport == sport }
@@ -808,6 +909,7 @@ private struct LogManagedWorkoutSheet: View {
             Form {
                 Section("Session") {
                     TextField("Workout title", text: $title)
+                    DatePicker("Date", selection: $completedAt, in: ...Date.now, displayedComponents: .date)
                     Stepper("Duration: \(durationMinutes) min", value: $durationMinutes, in: 5...240, step: 5)
                     Picker("Template", selection: $templateID) {
                         Text("No template").tag(UUID?.none)
@@ -827,7 +929,8 @@ private struct LogManagedWorkoutSheet: View {
                             template: matchingTemplates.first(where: { $0.id == templateID }),
                             workoutTitle: title,
                             durationMinutes: durationMinutes,
-                            notes: notes
+                            notes: notes,
+                            completedAt: completedAt
                         )
                         dismiss()
                     }
@@ -1123,7 +1226,7 @@ private struct CoachProgramsScreen: View {
                                 }
                                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
-                                Text("Saved sessions stay here so you can reopen them, assign them, or keep tuning them later.")
+                                Text("Drafts you save land in the templates list below, ready to reopen or assign.")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
                             }
@@ -1131,9 +1234,17 @@ private struct CoachProgramsScreen: View {
 
                         GlassCard {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Workout archive")
+                                // Honest label: most of this list ships with
+                                // Morphe — it's starter material, not the
+                                // coach's own saved work (though saved drafts
+                                // join the same list).
+                                Text("Starter Templates")
                                     .font(.headline)
                                     .foregroundStyle(.white)
+
+                                Text("Ready-made Morphe sessions you can assign as-is or open as a draft and adapt. Drafts you save appear here too.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
 
                                 ForEach(groupedTemplates.keys.sorted(), id: \.self) { key in
                                     VStack(alignment: .leading, spacing: 10) {
@@ -1203,6 +1314,11 @@ private struct CoachProgramsScreen: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 120)
+        }
+        // Pull to re-check the roster — claim status changes on a server the
+        // coach can't see from here.
+        .refreshable {
+            await store.refreshManagedClients()
         }
         .sheet(item: $selectedTemplateForAssignment) { template in
             AssignWorkoutSheet(template: template)
@@ -2241,7 +2357,6 @@ private struct CoachMessagesScreen: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var draftMessage = ""
     @State private var searchText = ""
-    @State private var showAIAgentThread = false
     @State private var coachPraiseDraft: CoachPublicPraiseDraft?
 
     private var selectedThread: MessageThread? {
@@ -2297,9 +2412,7 @@ private struct CoachMessagesScreen: View {
             .padding(.horizontal, 20)
 
             Group {
-                if showAIAgentThread {
-                    coachAIConversationView
-                } else if let thread = selectedThread {
+                if let thread = selectedThread {
                     coachConversationView(thread: thread)
                 } else {
                     coachThreadListView
@@ -2310,9 +2423,6 @@ private struct CoachMessagesScreen: View {
         .padding(.top, 8)
         .padding(.bottom, 120)
         .onChange(of: store.selectedThreadID) { _, newValue in
-            if newValue != nil {
-                showAIAgentThread = false
-            }
             if let seed = store.coachThreadDraftSeed, newValue != nil {
                 draftMessage = seed
                 store.coachThreadDraftSeed = nil
@@ -2362,11 +2472,16 @@ private struct CoachMessagesScreen: View {
                 LazyVStack(spacing: 0) {
                     if showsAIContact {
                         Button {
+                            // One AI surface, not two: this row opens the same
+                            // full-screen Morphe AI sheet as everywhere else.
                             store.selectedThreadID = nil
-                            showAIAgentThread = true
+                            store.openAIAgent()
                         } label: {
                             CoachAIContactListRow(
-                                unreadCount: max(store.coachAIAgentConversation.count - 1, 0),
+                                // Always 0: the AI never "messages" the coach
+                                // unprompted, so an unread badge here would be
+                                // a fake signal.
+                                unreadCount: 0,
                                 preview: store.coachAIAgentConversation.last?.text ?? "Open Morphe AI",
                                 contextBadge: coachAIContextBadge,
                                 contextDetail: coachAIContextDetail
@@ -2383,7 +2498,6 @@ private struct CoachMessagesScreen: View {
 
                     ForEach(Array(filteredThreads.enumerated()), id: \.element.id) { index, thread in
                         Button {
-                            showAIAgentThread = false
                             store.selectThread(thread)
                         } label: {
                             CoachContactListRow(
@@ -2416,7 +2530,6 @@ private struct CoachMessagesScreen: View {
 
             ForEach(threads) { thread in
                 Button {
-                    showAIAgentThread = false
                     store.selectThread(thread)
                 } label: {
                     CoachInboxThreadRow(
@@ -2565,27 +2678,6 @@ private struct CoachMessagesScreen: View {
         case .strength: return "🏋️"
         case .weightLoss: return "🔥"
         default: return "💬"
-        }
-    }
-
-    private var coachAISection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Morphe AI")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(MorpheTheme.textMuted)
-
-            Button {
-                store.selectedThreadID = nil
-                showAIAgentThread = true
-            } label: {
-                CoachAIContactRow(
-                    unreadCount: max(store.coachAIAgentConversation.count - 1, 0),
-                    preview: store.coachAIAgentConversation.last?.text ?? "Open Morphe AI",
-                    contextBadge: coachAIContextBadge,
-                    contextDetail: coachAIContextDetail
-                )
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -2741,80 +2833,6 @@ private struct CoachMessagesScreen: View {
         }
     }
 
-    private var coachAIConversationView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
-                Button {
-                    showAIAgentThread = false
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 34, height: 34)
-                        .background(
-                            Circle()
-                                .fill(MorpheTheme.panelStrong)
-                        )
-                }
-                .buttonStyle(.plain)
-
-                Circle()
-                    .fill(MorpheTheme.panelStrong)
-                    .frame(width: 42, height: 42)
-                    .overlay(
-                        Image(systemName: "sparkles")
-                            .foregroundStyle(.white)
-                    )
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Morphe AI")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                    Text("Coach assistant")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                }
-
-                Spacer()
-
-                StatusBadge(text: "AI", color: MorpheTheme.accentAlt)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-
-            Divider()
-                .overlay(MorpheTheme.stroke.opacity(0.8))
-
-            VStack(spacing: 0) {
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(alignment: .leading, spacing: 12) {
-                        ForEach(store.coachAIAgentConversation) { message in
-                            CoachMessageRow(message: message)
-                        }
-                    }
-                    .padding(16)
-                    .padding(.bottom, 8)
-                }
-
-                Divider()
-                    .overlay(MorpheTheme.stroke.opacity(0.8))
-
-                HStack(spacing: 10) {
-                    TextField("Ask Morphe AI", text: $draftMessage, axis: .vertical)
-                        .lineLimit(1...3)
-                        .textFieldStyle(MorpheFieldStyle())
-
-                    Button("Send") {
-                        store.sendAIAgentPrompt(draftMessage)
-                        draftMessage = ""
-                    }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    .frame(width: 84)
-                }
-                .padding(16)
-            }
-        }
-    }
 }
 
 private struct CoachInboxThreadRow: View {
@@ -2934,61 +2952,6 @@ private struct CoachContactListRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .contentShape(Rectangle())
-    }
-}
-
-private struct CoachAIContactRow: View {
-    let unreadCount: Int
-    let preview: String
-    let contextBadge: String?
-    let contextDetail: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(MorpheTheme.panelStrong)
-                .frame(width: 46, height: 46)
-                .overlay(
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(.white)
-                )
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Morphe AI")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                    Spacer()
-                    if unreadCount > 0 {
-                        Circle()
-                            .fill(MorpheTheme.accent)
-                            .frame(width: 8, height: 8)
-                    }
-                }
-
-                if let contextBadge {
-                    HStack(spacing: 6) {
-                        StatusBadge(text: contextBadge, color: MorpheTheme.accentAlt)
-                        Text(preview)
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .lineLimit(1)
-                    }
-                } else {
-                    Text(preview)
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .lineLimit(1)
-                }
-
-                Text(contextDetail)
-                    .font(.caption2)
-                    .foregroundStyle(MorpheTheme.textMuted)
-                    .lineLimit(2)
-            }
-        }
-        .padding(.vertical, 4)
         .contentShape(Rectangle())
     }
 }
@@ -3676,29 +3639,43 @@ private struct CoachAthleteCard: View {
 private struct CoachMessageRow: View {
     let message: ThreadMessage
 
-    var body: some View {
-        VStack(alignment: message.sender == .coach ? .trailing : .leading, spacing: 4) {
-            Text(message.senderName)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(MorpheTheme.textMuted)
+    private var isFromCoach: Bool {
+        message.sender == .coach
+    }
 
-            Text(message.text)
-                .font(.subheadline)
-                .foregroundStyle(.white)
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: message.sender == .coach ? .trailing : .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .fill(message.sender == .coach ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
-                )
-                .contextMenu {
-                    Button {
-                        UIPasteboard.general.string = message.text
-                    } label: {
-                        Label("Copy", systemImage: "doc.on.doc")
+    var body: some View {
+        // Spacer on the opposite side pushes the bubble to the sender's edge;
+        // the bubble itself hugs its text (capped ~75% width) instead of
+        // stretching the background across the whole row.
+        HStack(spacing: 0) {
+            if isFromCoach { Spacer(minLength: 40) }
+
+            VStack(alignment: isFromCoach ? .trailing : .leading, spacing: 4) {
+                Text(message.senderName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+
+                Text(message.text)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(isFromCoach ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
+                    )
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = message.text
+                        } label: {
+                            Label("Copy", systemImage: "doc.on.doc")
+                        }
                     }
-                }
+            }
+            .frame(maxWidth: 300, alignment: isFromCoach ? .trailing : .leading)
+
+            if !isFromCoach { Spacer(minLength: 40) }
         }
+        .frame(maxWidth: .infinity, alignment: isFromCoach ? .trailing : .leading)
     }
 }
 

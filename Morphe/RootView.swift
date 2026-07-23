@@ -361,6 +361,9 @@ private struct ClientExperienceShell: View {
 
     var body: some View {
         @Bindable var store = store
+        // The custom bottom bar is the only navigator — the system tab bar is
+        // hidden per tab, and the page style is gone so horizontal chip rows
+        // and carousels don't fight an edge-swipe pager.
         return TabView(selection: $store.selectedClientTab) {
             // Each screen's identity is keyed off tabResetKey, so tapping the
             // tab icon rebuilds it at its root (top of page, drill-ins
@@ -368,29 +371,34 @@ private struct ClientExperienceShell: View {
             // reset a live session or running rest timer.
             HomeView()
                 .id(store.tabResetKey("today"))
+                .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.today)
 
             WorkoutView()
+                .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.train)
 
             DiscoverScreenView()
                 .id(store.tabResetKey("discover"))
+                .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.discover)
 
             if FeatureFlags.multiUserEnabled {
                 CommunityView()
+                    .toolbar(.hidden, for: .tabBar)
                     .tag(ClientTab.community)
             }
 
             ProgressScreenView()
                 .id(store.tabResetKey("hub"))
+                .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.hub)
 
             MoreView()
                 .id(store.tabResetKey("more"))
+                .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.more)
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
         .safeAreaInset(edge: .top) {
             ClientPinnedHeader()
                 .padding(.horizontal, 16)
@@ -690,9 +698,12 @@ private struct MorpheAIAgentSheet: View {
                         .multilineTextAlignment(.center)
                         .padding(.bottom, 4)
 
-                    ForEach(messages) { message in
-                        AIAgentMessageRow(message: message)
-                            .id(message.id)
+                    ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
+                        AIAgentMessageRow(
+                            message: message,
+                            isFirstInRun: index == 0 || messages[index - 1].sender != message.sender
+                        )
+                        .id(message.id)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -762,6 +773,10 @@ private struct MorpheAIAgentSheet: View {
                         .font(.system(size: 22))
                         .foregroundStyle(dictation.isRecording ? MorpheTheme.accent : MorpheTheme.textSecondary)
                         .symbolEffect(.pulse, isActive: dictation.isRecording)
+                        // 44pt minimum hit target — the glyph alone is too
+                        // small to tap reliably mid-workout.
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(dictation.isRecording ? "Stop dictation" : "Dictate message")
@@ -770,6 +785,8 @@ private struct MorpheAIAgentSheet: View {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 32))
                         .foregroundStyle(trimmedPrompt.isEmpty ? MorpheTheme.textMuted : MorpheTheme.accent)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(trimmedPrompt.isEmpty)
@@ -821,30 +838,47 @@ private struct MorpheAIAgentSheet: View {
 
 private struct AIAgentMessageRow: View {
     let message: ThreadMessage
+    /// True when this message starts a run from its sender. Only run leaders
+    /// carry the name caption, so back-to-back replies read as one voice.
+    var isFirstInRun: Bool = true
+
+    private var isUser: Bool { message.sender == .user }
 
     var body: some View {
-        VStack(alignment: message.sender == .user ? .trailing : .leading, spacing: 4) {
-            Text(message.senderName)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(MorpheTheme.textMuted)
+        // iMessage shape: the bubble hugs its text (capped at ~75% of the
+        // row) and sits on its sender's side — full-width slabs made every
+        // message look like the same speaker.
+        HStack(spacing: 0) {
+            if isUser { Spacer(minLength: 0) }
 
-            Text(message.text)
-                .font(.subheadline)
-                .foregroundStyle(.white)
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: message.sender == .user ? .trailing : .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .fill(message.sender == .user ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
-                )
-                .contextMenu {
-                    Button {
-                        UIPasteboard.general.string = message.text
-                    } label: {
-                        Label("Copy", systemImage: "doc.on.doc")
-                    }
+            VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
+                if isFirstInRun {
+                    Text(message.senderName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
                 }
+
+                Text(message.text)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(isUser ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
+                    )
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = message.text
+                        } label: {
+                            Label("Copy", systemImage: "doc.on.doc")
+                        }
+                    }
+            }
+            .frame(maxWidth: UIScreen.main.bounds.width * 0.75, alignment: isUser ? .trailing : .leading)
+
+            if !isUser { Spacer(minLength: 0) }
         }
+        .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
     }
 }
 
@@ -1467,21 +1501,19 @@ private struct QuickAddSheet: View {
                 )
 
                 if store.selectedRole == .coach {
+                    // Every tile leads to a real screen — no phantom CRM or
+                    // calendar writes that vanish on the next launch.
                     QuickAddGridCard(items: [
-                        QuickAddItem(title: "Add Lead", subtitle: "Drop a new athlete into CRM", systemImage: "person.crop.circle.badge.plus") {
-                            store.quickAddCoachLead()
+                        QuickAddItem(title: "Add Client", subtitle: "Create a managed athlete profile", systemImage: "person.crop.circle.badge.plus") {
+                            store.openAddClient()
                             dismissQuickAdd()
                         },
-                        QuickAddItem(title: "Assign Plan", subtitle: "Push the current program fast", systemImage: "checklist") {
-                            store.quickAssignProgram()
+                        QuickAddItem(title: "Build Program", subtitle: "Open the program builder", systemImage: "checklist") {
+                            store.selectedCoachTab = .programs
                             dismissQuickAdd()
                         },
-                        QuickAddItem(title: "Post Update", subtitle: "Share a coach note to the network", systemImage: "megaphone.fill") {
-                            store.quickAddCoachUpdate()
-                            dismissQuickAdd()
-                        },
-                        QuickAddItem(title: "Schedule Check-In", subtitle: "Add a touchpoint to the calendar", systemImage: "calendar.badge.plus") {
-                            store.scheduleQuickCheckIn()
+                        QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {
+                            store.openAIAgent()
                             dismissQuickAdd()
                         }
                     ])

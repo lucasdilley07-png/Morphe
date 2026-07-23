@@ -114,6 +114,9 @@ final class MorpheAppStore {
     var showUniversalSearch = false
     var showQuickAdd = false
     var showAIAgent = false
+    /// Set by the coach Quick Add grid; the Build tab's client roster observes
+    /// it to present AddManagedClientSheet (a real client, not a fake lead).
+    var requestAddClientSheet = false
     /// Pop-up shown when Switch has nothing to rotate to (no saved workouts,
     /// or the only saved workout is already staged).
     var showSwitchNeedsSavedWorkouts = false
@@ -355,12 +358,38 @@ final class MorpheAppStore {
     /// Guards profile persistence while a saved profile is being applied at launch.
     private var isApplyingProfile = false
 
+    // MARK: Coalesced persistence
+    // One user action used to mean one full encode+atomic-write PER mutated
+    // property (completeTrackedSet touches six session dictionaries = seven
+    // write cycles per set logged, all on the main actor). The didSet hooks
+    // now only mark dirty; a single Task per runloop turn performs the actual
+    // encode+save — one write per user action.
+    private var needsSessionPersist = false
+    private var needsProfilePersist = false
+    private var isPersistFlushScheduled = false
+    /// Cloud profile pushes are rate-limited — a full Firestore snapshot per
+    /// water tap is waste. At most one push per interval, trailing-edge so the
+    /// last state in a burst still lands. Onboarding completion and photo
+    /// changes bypass the limit via `forceNextProfileCloudPush`.
+    private static let profileCloudPushInterval: TimeInterval = 30
+    private var lastProfileCloudPushAt: Date = .distantPast
+    private var isProfileCloudPushScheduled = false
+    private var forceNextProfileCloudPush = false
+    /// The live store. A second `MorpheAppStore` in one process only happens in
+    /// tests simulating a relaunch — `init` flushes the previous instance's
+    /// coalesced writes first, so the "relaunch" reads everything the real app
+    /// would have written by that point.
+    private static weak var mostRecentInstance: MorpheAppStore?
+
     init(authService: AuthService = LocalAuthService(),
          cloudBackup: CloudBackingUp = NoOpCloudBackup(),
          partyService: WorkoutPartying = NoOpPartyService(),
          managedClientService: ManagedClientSyncing = NoOpManagedClientService(),
          usernameDirectory: UsernameDirectoryService = NoOpUsernameDirectory(),
          verificationService: VerificationSyncing = NoOpVerificationService()) {
+        // Tests build a second store to simulate a relaunch — land the live
+        // store's pending coalesced writes before this instance reads the files.
+        Self.mostRecentInstance?.flushPendingPersists()
         self.authService = authService
         self.cloudBackup = cloudBackup
         self.partyService = partyService
@@ -538,6 +567,8 @@ final class MorpheAppStore {
         // Same-day relaunch: no-op (daily state was just restored). New day —
         // or first launch ever — starts the daily surfaces fresh.
         handleDayRolloverIfNeeded()
+
+        Self.mostRecentInstance = self
     }
 
     // MARK: - Auth actions
@@ -565,6 +596,23 @@ final class MorpheAppStore {
             await restoreFromCloud()
         } catch {
             authErrorMessage = (error as? AuthError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    /// Emails a password-reset link via the auth provider. Success is worded
+    /// carefully — with email-enumeration protection on, "sent" only means
+    /// "sent if that account exists".
+    func requestPasswordReset(email: String) async {
+        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            showToast("Enter your email first.")
+            return
+        }
+        do {
+            try await authService.sendPasswordReset(email: trimmed)
+            showToast("Reset email sent — check your inbox.")
+        } catch {
+            showToast((error as? AuthError)?.errorDescription ?? error.localizedDescription)
         }
     }
 
@@ -1102,7 +1150,15 @@ final class MorpheAppStore {
         // history. Setting workoutLogs also writes them to the local file.
         workoutLogs = (cloud.logs ?? []).sorted { $0.completedAt > $1.completedAt }
         applyPersistedProfile(profile)
-        profilePersistence.saveProfile(profile)
+        // The photo rides the cloud snapshot as base64 but lives locally as
+        // its own file — decode it back out and keep the local JSON photo-free.
+        if !profile.profilePhotoBase64.isEmpty,
+           let photo = Data(base64Encoded: profile.profilePhotoBase64) {
+            profilePersistence.savePhoto(photo)
+        }
+        var localProfile = profile
+        localProfile.profilePhotoBase64 = ""
+        profilePersistence.saveProfile(localProfile)
     }
 
     /// Applies a saved local-profile snapshot over the seeded demo profile.
@@ -1179,8 +1235,11 @@ final class MorpheAppStore {
         if !snapshot.profileBio.isEmpty {
             profileShowcase.bio = snapshot.profileBio
         }
+        // Local snapshots never carry the photo (it lives in its own file);
+        // only a CLOUD snapshot still arrives with base64 — restoreFromCloud
+        // writes those bytes back out to the file afterward.
         profilePhotoData = snapshot.profilePhotoBase64.isEmpty
-            ? nil
+            ? profilePersistence.loadPhoto()
             : Data(base64Encoded: snapshot.profilePhotoBase64)
         clientProfile.mealPrepHabit = snapshot.mealPrepHabit
         clientProfile.mealPrepInterested = snapshot.mealPrepInterested
@@ -1424,15 +1483,47 @@ final class MorpheAppStore {
     }
 
     /// Sets (or clears, with nil) the profile photo. Caller hands over
-    /// already-compressed JPEG bytes — the store stays UIKit-free.
+    /// already-compressed JPEG bytes — the store stays UIKit-free. The bytes
+    /// go straight to their own file (never the JSON snapshot), and the cloud
+    /// mirror pushes immediately — a face change must not wait out the
+    /// rate-limit window.
     func updateProfilePhoto(_ data: Data?) {
         profilePhotoData = data
+        if let data {
+            profilePersistence.savePhoto(data)
+        } else {
+            profilePersistence.clearPhoto()
+        }
+        forceNextProfileCloudPush = true
         persistLocalProfile()
+        flushPendingPersists()
         showToast(data == nil ? "Photo removed." : "Photo updated.")
     }
 
+    /// Marks the local profile dirty and schedules the coalesced write — same
+    /// once-per-runloop-turn batching as the workout session (~40 call sites,
+    /// water taps included, used to each encode the full snapshot).
     private func persistLocalProfile() {
         guard !isApplyingProfile else { return }
+        needsProfilePersist = true
+        schedulePersistFlush()
+    }
+
+    /// The actual profile encode+save, plus the rate-limited cloud mirror.
+    private func flushProfilePersistIfNeeded() {
+        guard needsProfilePersist else { return }
+        needsProfilePersist = false
+        let snapshot = makeProfileSnapshot()
+        profilePersistence.saveProfile(snapshot)
+        // Mirror to the cloud once the account is real (onboarding done).
+        if hasCompletedOnboarding { pushProfileToCloud(snapshot) }
+    }
+
+    /// Builds the local snapshot. `profilePhotoBase64` stays empty here on
+    /// purpose: the photo lives in its own profile-photo.jpg file, so routine
+    /// profile saves stop base64-encoding JPEG bytes into JSON. Only the cloud
+    /// push injects the base64 (see `pushProfileToCloud`).
+    private func makeProfileSnapshot() -> LocalProfileSnapshot {
         var snapshot = LocalProfileSnapshot(
                 hasCompletedOnboarding: hasCompletedOnboarding,
                 id: clientProfile.id.uuidString,
@@ -1503,12 +1594,38 @@ final class MorpheAppStore {
                 usernameChangedAtEpoch: usernameChangedAtEpoch
         )
         snapshot.profileBio = profileCustomBio
-        snapshot.profilePhotoBase64 = profilePhotoData?.base64EncodedString() ?? ""
         snapshot.mealPrepHabit = clientProfile.mealPrepHabit
         snapshot.mealPrepInterested = clientProfile.mealPrepInterested
-        profilePersistence.saveProfile(snapshot)
-        // Mirror to the cloud once the account is real (onboarding done).
-        if hasCompletedOnboarding { cloudBackup.pushProfile(snapshot) }
+        return snapshot
+    }
+
+    /// Pushes the profile to Firestore at most once per
+    /// `profileCloudPushInterval`, trailing-edge: a burst of edits inside the
+    /// window schedules ONE later push that reads the store fresh, so the last
+    /// state always lands. The photo's base64 is injected here — cloud only —
+    /// so a reinstall restores the face without the local file carrying it.
+    private func pushProfileToCloud(_ snapshot: LocalProfileSnapshot) {
+        let now = Date.now
+        if forceNextProfileCloudPush || now.timeIntervalSince(lastProfileCloudPushAt) >= Self.profileCloudPushInterval {
+            forceNextProfileCloudPush = false
+            lastProfileCloudPushAt = now
+            var cloudSnapshot = snapshot
+            cloudSnapshot.profilePhotoBase64 = profilePhotoData?.base64EncodedString() ?? ""
+            cloudBackup.pushProfile(cloudSnapshot)
+        } else if !isProfileCloudPushScheduled {
+            isProfileCloudPushScheduled = true
+            let wait = Self.profileCloudPushInterval - now.timeIntervalSince(lastProfileCloudPushAt)
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(wait))
+                guard let self else { return }
+                self.isProfileCloudPushScheduled = false
+                guard self.hasCompletedOnboarding else { return }
+                self.lastProfileCloudPushAt = .now
+                var cloudSnapshot = self.makeProfileSnapshot()
+                cloudSnapshot.profilePhotoBase64 = self.profilePhotoData?.base64EncodedString() ?? ""
+                self.cloudBackup.pushProfile(cloudSnapshot)
+            }
+        }
     }
 
     // MARK: - User-built workouts
@@ -1828,9 +1945,42 @@ final class MorpheAppStore {
         completedSessionMinutes = snapshot.completedSessionMinutes
     }
 
-    /// Persists the current in-progress session snapshot to disk.
+    /// Marks the in-progress session dirty and schedules the coalesced write.
+    /// Still the didSet hook on every session property, so nothing persists
+    /// less than before — just once per runloop turn instead of once per
+    /// property mutation.
     private func persistWorkoutSession() {
         guard !isRestoringWorkoutSession else { return }
+        needsSessionPersist = true
+        schedulePersistFlush()
+    }
+
+    /// Schedules exactly ONE flush per runloop turn; every didSet in a burst
+    /// lands in that single write. `[weak self]` so a store abandoned with a
+    /// flush in flight (tests) can't write stale state over a newer instance's
+    /// files after it has been replaced.
+    private func schedulePersistFlush() {
+        guard !isPersistFlushScheduled else { return }
+        isPersistFlushScheduled = true
+        Task { @MainActor [weak self] in
+            self?.flushPendingPersists()
+        }
+    }
+
+    /// Performs any pending coalesced writes right now. The scheduled Task
+    /// calls this at the end of the runloop turn; moments that must hit disk
+    /// synchronously (onboarding completion, a photo change, a simulated
+    /// relaunch in tests) call it directly.
+    func flushPendingPersists() {
+        isPersistFlushScheduled = false
+        flushSessionPersistIfNeeded()
+        flushProfilePersistIfNeeded()
+    }
+
+    /// The actual session encode+save — once per batch of mutations.
+    private func flushSessionPersistIfNeeded() {
+        guard needsSessionPersist else { return }
+        needsSessionPersist = false
         workoutPersistence.saveSession(
             WorkoutSessionSnapshot(
                 currentWorkoutID: currentWorkoutID,
@@ -2588,6 +2738,11 @@ final class MorpheAppStore {
         // The welcome sheet IS the completion celebration — but the terms
         // gate comes first, so the celebration waits behind acceptance.
         welcomeAwaitsTermsAcceptance = true
+        // First real save of the account — and push it to the cloud
+        // immediately: the rate limit is for routine edits, not for the
+        // moment the account starts existing. (The actual write happens in
+        // the flush at the end of this method, after the plan is staged.)
+        forceNextProfileCloudPush = true
         persistLocalProfile()
 
         // A coach invite code claims AFTER the reset above — the imported
@@ -2598,6 +2753,11 @@ final class MorpheAppStore {
         if selectedRole == .client, !inviteCode.isEmpty {
             Task { await claimCoachInvite(code: inviteCode) }
         }
+
+        // Everything onboarding decided (profile AND the freshly staged
+        // session) lands on disk before this method returns — a crash a
+        // second later must not send the user through onboarding again.
+        flushPendingPersists()
     }
 
     /// Best seeded template for a brand-new user: their sport at their level,
@@ -2758,6 +2918,10 @@ final class MorpheAppStore {
         workoutTemplates.removeAll { customWorkoutIDs.contains($0.id) }
         customWorkoutIDs = []
         customExercises = []
+        // A photo file left by a previous account on this device must not
+        // become the new user's face on the next relaunch.
+        profilePhotoData = nil
+        profilePersistence.clearPhoto()
 
         clearSeededDemoData()
         // Derive starting metrics (score 0, streak 0) from the now-empty logs.
@@ -2870,6 +3034,12 @@ final class MorpheAppStore {
         coachInterventions = []
         outreachSuggestions = []
         leadRecords = []
+        // Same every-user-is-Lucas class of bug: the seeded playbooks and the
+        // fabricated analytics ("94% retention") are the demo coach's record,
+        // not this user's — zeroed so the UI can hide them instead of
+        // flattering a brand-new coach with invented numbers.
+        playbooks = []
+        coachAnalytics = .empty
         teamGroups = []
         selectedGroupID = nil
         sportSessions = []
@@ -3358,6 +3528,9 @@ final class MorpheAppStore {
         advancePlanForNewDayIfOnPlan()
 
         if hasCompletedOnboarding { persistLocalProfile() }
+        // Rollover is an action boundary (launch/foreground) — land the new
+        // day's state (profile AND the rotated session) on disk right away.
+        flushPendingPersists()
     }
 
     /// Honest, general training tips rotated by calendar day — the same tip
@@ -5594,7 +5767,8 @@ final class MorpheAppStore {
         template: WorkoutTemplate?,
         workoutTitle: String,
         durationMinutes: Int,
-        notes: String
+        notes: String,
+        completedAt: Date = .now
     ) {
         guard let index = managedClients.firstIndex(where: { $0.id == clientID }) else { return }
         var client = managedClients[index]
@@ -5611,7 +5785,9 @@ final class MorpheAppStore {
             workoutTemplateID: template?.id,
             workoutTitle: cleanTitle.isEmpty ? fallbackTitle : cleanTitle,
             sport: template?.sport ?? client.sport,
-            completedAt: .now,
+            // Backdating is allowed (a coach records yesterday's session);
+            // the future is not.
+            completedAt: min(completedAt, .now),
             durationMinutes: max(durationMinutes, 5),
             exercises: exerciseLogs(from: template),
             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -6164,43 +6340,17 @@ final class MorpheAppStore {
         showToast("Choose a message for \(intervention.athleteName).")
     }
 
-    func quickAddCoachLead() {
-        let newLead = LeadRecord(
-            name: "New Athlete Lead",
-            sport: .generalFitness,
-            status: .newLead,
-            note: "Interested in consistency coaching and accountability.",
-            aiSuggestion: "Send a warm intro and offer a short consult."
-        )
-
-        leadRecords.insert(newLead, at: 0)
-        selectedCoachTab = .messages
-        showCelebration(title: "Lead added", detail: newLead.name, symbol: "person.crop.circle.badge.plus")
+    /// Quick Add → the REAL add-client flow (replaces the old fake-lead
+    /// insert): lands on Build and asks the roster to present
+    /// AddManagedClientSheet via `requestAddClientSheet`.
+    func openAddClient() {
+        selectedCoachTab = .programs
+        requestAddClientSheet = true
     }
 
     func quickAddCoachUpdate() {
         shareCommunityPost("Coach note: this week's focus is cleaner adherence, lighter recovery work when needed, and stronger follow-through on the basics.", as: .coach)
         selectedCoachTab = .messages
-    }
-
-    func scheduleQuickCheckIn() {
-        let targetClient = selectedCoachClient ?? coachClients.first
-        let targetName = targetClient?.name ?? "Athlete"
-        upcomingSessions.insert(
-            CalendarEvent(
-                day: "Friday",
-                time: "4:00 PM",
-                title: "\(targetName) check-in",
-                detail: "Quick accountability reset and plan review.",
-                type: .checkIn,
-                athleteID: targetClient?.id,
-                attendance: [
-                    TeamMemberAttendance(athleteName: targetName, status: .present, note: "Check-in ready")
-                ]
-            ),
-            at: 0
-        )
-        showToast("Check-in scheduled for \(targetName).")
     }
 
     func assignInterventionPlan(_ intervention: CoachIntervention) {
@@ -9113,4 +9263,22 @@ final class MorpheAppStore {
             }
         }
     }
+}
+
+extension CoachAnalytics {
+    /// Zeroed analytics for a real coach account with no client history yet.
+    /// Exists for the demo-data purge (`clearSeededDemoData`): empty strings
+    /// and zeros let the UI hide the card rather than show fake performance.
+    static let empty = CoachAnalytics(
+        clientRetention: 0,
+        averageCompliance: 0,
+        averageProgress: "",
+        dropOffRate: 0,
+        painFlags: 0,
+        messageResponseRate: 0,
+        programSuccessRate: 0,
+        sessionCompletion: 0,
+        groupAttendance: 0,
+        insight: ""
+    )
 }

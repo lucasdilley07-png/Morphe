@@ -188,9 +188,13 @@ struct HomeView: View {
                 }
                 }
 
-                MessagesCard(latest: store.athleteMessageThreads.first) {
-                    store.selectedCommunitySection = .contact
-                    showMessages = true
+                // Solo v1 has nobody to message — the card returns with
+                // accounts/coach linking, same gate as the header.
+                if FeatureFlags.multiUserEnabled {
+                    MessagesCard(latest: store.athleteMessageThreads.first) {
+                        store.selectedCommunitySection = .contact
+                        showMessages = true
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -286,14 +290,6 @@ private struct HomePatternInsightCard: View {
             }
         }
     }
-}
-
-private enum HomeDashboardPanel: String, CaseIterable, Identifiable {
-    case plan = "Plan"
-    case adjust = "Adjust"
-    case support = "Support"
-
-    var id: String { rawValue }
 }
 
 private struct TodayStatusStrip: View {
@@ -420,80 +416,6 @@ private struct HomeExpandableSection<Content: View>: View {
     }
 }
 
-private struct TodayOverviewCard: View {
-    let showcase: ProfileShowcase
-    let goal: String
-    let fitnessLevel: String
-    let coachName: String
-    let recovery: RecoverySnapshot
-    let morpheScore: Int
-    let morpheTier: String
-    let morpheDetail: String
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 12) {
-                    MorpheAvatarView(avatar: showcase.avatar, size: 64)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(showcase.displayName)
-                            .font(.headline.weight(.bold))
-                            .foregroundStyle(.white)
-                        Text("@\(showcase.username)")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentAlt)
-                        Text("\(goal) • \(fitnessLevel)")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("Plan by")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        Text(coachName)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    MetricPill(label: "Readiness", value: "\(recovery.score)")
-                    MetricPill(label: "Score", value: "\(morpheScore)")
-                    MetricPill(label: "Sleep", value: String(format: "%.1f hr", recovery.sleepHours))
-                    MetricPill(label: "Energy", value: "\(recovery.energy)/10")
-                }
-
-                HStack(alignment: .top, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(recovery.status.rawValue)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Text(recovery.reason)
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text(morpheTier)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Text(morpheDetail)
-                            .font(.caption)
-                            .multilineTextAlignment(.trailing)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// Replaces TodayNextMoveCard in the hero slot once today's session is
 /// logged — same card, new state, instead of an overlay hiding the page.
 private struct TodayDoneCard: View {
@@ -557,11 +479,10 @@ private struct TodayNextMoveCard: View {
                         .foregroundStyle(MorpheTheme.textSecondary)
 
                     HStack(spacing: 10) {
-                        Button("Keep Fallback") {
-                            onActivateMinimumWin()
-                        }
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
-                        .accessibilityLabel("Keep Minimum Win mode")
+                        // The mode is already on — re-activating it did
+                        // nothing, so this reads as state, not a button.
+                        StatusBadge(text: "Fallback Active", color: MorpheTheme.accentAlt)
+                            .accessibilityLabel("Minimum Win mode is active")
 
                         Button("Switch Workout", action: onSwitch)
                             .buttonStyle(SecondaryCTAButtonStyle())
@@ -696,103 +617,6 @@ private struct WorkoutPlanByCoachMiniCard: View {
                 Text("\(profile.currentProgram) was built from your goal, sport, and schedule. Morphe adjusts the daily plan as you check in and log.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
-            }
-        }
-    }
-}
-
-private struct TodayIdentityCard: View {
-    let showcase: ProfileShowcase
-    let goal: String
-    let fitnessLevel: String
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 14) {
-                ProfileBannerView(banner: showcase.banner, theme: showcase.theme)
-
-                HStack(spacing: 12) {
-                    MorpheAvatarView(avatar: showcase.avatar, size: 72)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(showcase.displayName)
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
-                        Text("@\(showcase.username)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentAlt)
-                        Text("\(goal) - \(fitnessLevel)")
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                }
-            }
-        }
-    }
-}
-
-private struct TodayStatusDeckCard: View {
-    let recovery: RecoverySnapshot
-    let morpheScore: Int
-    let morpheTier: String
-    let morpheDetail: String
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Today's Status")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Readiness")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        Text("\(recovery.score) - \(recovery.status.rawValue)")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
-                        Text(recovery.reason)
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Morphe Score")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        Text("\(morpheScore) - \(morpheTier)")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
-                        Text(morpheDetail)
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    MetricPill(label: "Sleep", value: String(format: "%.1f hr", recovery.sleepHours))
-                    MetricPill(label: "Energy", value: "\(recovery.energy)/10")
-                    MetricPill(label: "Soreness", value: "\(recovery.soreness)/10")
-                }
-            }
-        }
-    }
-}
-
-private struct DailyMotivationCard: View {
-    let text: String
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Daily Motivation")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                Text(text)
-                    .foregroundStyle(MorpheTheme.textPrimary)
             }
         }
     }
@@ -1085,42 +909,6 @@ private struct TodayPlanCard: View {
                     .font(.footnote)
                     .foregroundStyle(MorpheTheme.accent.opacity(0.9))
             }
-        }
-    }
-}
-
-private struct HomeDashboardPanelSwitcher: View {
-    @Binding var selectedPanel: HomeDashboardPanel
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Keep the day simple")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                Picker("Home Panel", selection: $selectedPanel) {
-                    ForEach(HomeDashboardPanel.allCases) { panel in
-                        Text(panel.rawValue).tag(panel)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                Text(subtitle(for: selectedPanel))
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-            }
-        }
-    }
-
-    private func subtitle(for panel: HomeDashboardPanel) -> String {
-        switch panel {
-        case .plan:
-            return "See today's tasks, your next goal, and where to go for deeper progress."
-        case .adjust:
-            return "Check in, adjust the load, and let Morphe keep the day realistic."
-        case .support:
-            return "Coach context, partner mode, and momentum protection stay here when you need them."
         }
     }
 }
