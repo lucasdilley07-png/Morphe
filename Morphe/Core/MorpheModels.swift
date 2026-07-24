@@ -100,11 +100,14 @@ enum ClientTab: String, CaseIterable, MorpheTabItem {
 
     var id: String { rawValue }
 
-    /// Tabs shown in the bottom navigation. v1 is Today · Train · Discover ·
-    /// Progress · Learn; the Network (community) tab returns when multi-user
-    /// ships.
+    /// Tabs shown in the bottom navigation. The Network (community) tab is
+    /// back in v1: its For You feed is REAL now (Firestore posts/* — publish,
+    /// react, save, repost). The other multi-user surfaces (coach networking,
+    /// demo inbox, payments) stay individually gated on `multiUserEnabled`.
     static var visibleCases: [ClientTab] {
-        FeatureFlags.multiUserEnabled ? allCases : [.today, .train, .discover, .hub, .more]
+        FeatureFlags.multiUserEnabled
+            ? allCases
+            : [.today, .train, .discover, .community, .hub, .more]
     }
 
     var title: String {
@@ -1569,6 +1572,62 @@ struct AvailabilitySlot: Identifiable, Hashable {
     var isOpen: Bool = true
 }
 
+/// What a personal appointment is for — drives the icon and the picker label.
+enum AppointmentKind: String, Codable, CaseIterable, Identifiable {
+    case session
+    case checkIn
+    case assessment
+    case custom
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .session: return "Session"
+        case .checkIn: return "Check-in"
+        case .assessment: return "Assessment"
+        case .custom: return "Custom"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .session: return "figure.strengthtraining.traditional"
+        case .checkIn: return "checkmark.bubble"
+        case .assessment: return "list.clipboard"
+        case .custom: return "calendar"
+        }
+    }
+}
+
+/// A REAL personal schedule item that syncs per account (one Firestore doc
+/// each under users/{uid}/appointments/{id}). Deliberately not a booking:
+/// there is no live coach↔client account link yet, so this is the honest
+/// scope — "my schedule", visible only to me. `withName` is free text (or a
+/// managed-client name) precisely because the other person may not be a
+/// Morphe account.
+struct Appointment: Identifiable, Codable, Hashable {
+    /// Status values — plain strings so the Firestore docs stay hand-readable.
+    static let statusScheduled = "scheduled"
+    static let statusCompleted = "completed"
+    static let statusCancelled = "cancelled"
+
+    var id: String = UUID().uuidString
+    var title: String
+    var notes: String = ""
+    var date: Date
+    var durationMinutes: Int = 60
+    var kind: AppointmentKind = .session
+    /// Who it's with — free text, or a managed client's name on the coach side.
+    var withName: String = ""
+    /// "client"/"coach" — which role created it (AppRole rawValue).
+    var createdByRole: String = ""
+    var status: String = Appointment.statusScheduled
+
+    var isScheduled: Bool { status == Appointment.statusScheduled }
+    var endDate: Date { date.addingTimeInterval(TimeInterval(durationMinutes) * 60) }
+}
+
 struct CelebrationMoment: Identifiable, Hashable {
     var id = UUID()
     var title: String
@@ -1939,12 +1998,69 @@ struct ManagedClient: Identifiable, Codable, Hashable {
     var sport: SportFocus = .generalFitness
     var notes: String = ""
     var status: ManagedClientStatus = .unclaimed
+    /// The uid of the account that claimed this profile ("" while unclaimed).
+    /// Stamped server-side by the claim update; the coach needs it to open a
+    /// real message thread with the athlete who claimed the code.
+    var claimedByUid: String = ""
     var claimedByName: String = ""
     var createdAt: Date = .now
     var logs: [WorkoutLog] = []
 
     var isClaimed: Bool { status == .claimed }
     var lastLoggedAt: Date? { logs.map(\.completedAt).max() }
+}
+
+// MARK: - Real 1:1 messaging (coach ↔ claimed client)
+
+/// One REAL Firestore-backed message thread between a coach and the athlete
+/// who claimed one of their managed-client codes. `id` is deterministic —
+/// "{coachUid}_{athleteUid}" — mirroring the connections scheme. Distinct
+/// from the flag-gated demo `MessageThread`/`ThreadMessage` types on purpose.
+struct MessageThreadSummary: Identifiable, Hashable {
+    var id: String
+    var coachUid: String
+    var athleteUid: String
+    var coachName: String
+    var athleteName: String
+    var lastMessage: String = ""
+    var lastSender: String = ""
+    var updatedAt: Date = .now
+
+    /// The OTHER person's name from the given viewer's perspective.
+    func counterpartName(for uid: String) -> String {
+        uid == coachUid ? athleteName : coachName
+    }
+}
+
+/// One immutable sent message inside a real thread.
+struct ChatMessage: Identifiable, Hashable {
+    var id: String
+    var senderUid: String
+    var text: String
+    var sentAt: Date
+}
+
+// MARK: - Real community feed
+
+/// One REAL Firestore-backed feed post (posts/{id}) — the For You surface.
+/// Distinct from the flag-gated demo `ProgressPost` on purpose. `verified`
+/// is an honest mirror: the rules only accept true when the server granted
+/// users/{authorUid}.verified, so the blue seal here can't be self-minted.
+struct FeedPost: Identifiable, Hashable {
+    var id: String
+    var authorUid: String
+    var authorName: String
+    var verified: Bool = false
+    var text: String
+    /// Optional workout attached to the win ("" = none), rendered as a pill.
+    var workoutName: String = ""
+    /// When non-empty this post is a repost: the original post's id + author,
+    /// with `text` carrying the reposter's own commentary.
+    var repostOfId: String = ""
+    var repostOfAuthor: String = ""
+    var createdAt: Date = .now
+
+    var isRepost: Bool { !repostOfId.isEmpty }
 }
 
 struct CoachClient: Identifiable, Hashable {
@@ -2156,4 +2272,89 @@ struct CoachSessionLaunchRequest: Identifiable, Hashable {
     var athleteID: UUID? = nil
     var groupID: UUID? = nil
     var eventID: UUID? = nil
+}
+
+// MARK: - Weekly leaderboard + challenges (real multi-user competition)
+//
+// Every value here renders from real Firestore data written by real signed-in
+// accounts — no seeded rows, no fabricated ranks. (The older `LeaderboardEntry`
+// and `Challenge` structs above are demo-content types used by the community
+// discovery mock cards; these are the live-backend replacements and keep
+// distinct names so the demo surfaces stay untouched.)
+
+/// One user's row on a weekly board — Firestore
+/// leaderboards/{weekKey}/entries/{uid}. `verified` mirrors the server-granted
+/// badge (users/{uid}.verified) as an honest trust signal; the rules refuse a
+/// claimed badge the server never granted.
+struct WeeklyLeaderboardEntry: Identifiable, Hashable, Codable {
+    var uid: String
+    var name: String
+    var verified: Bool
+    /// Total sets logged this ISO week, derived from the user's own logs.
+    var score: Int
+    /// Workouts logged this ISO week.
+    var workouts: Int
+    var updatedAt: Date?
+
+    var id: String { uid }
+}
+
+/// What a challenge counts. Raw values are the Firestore wire strings.
+enum ChallengeMetric: String, Codable, CaseIterable, Identifiable {
+    case sets
+    case workouts
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .sets: return "Sets"
+        case .workouts: return "Workouts"
+        }
+    }
+
+    /// Unit word for score lines ("Top: 41 sets").
+    var unit: String { rawValue }
+}
+
+/// One member of a challenge — challenges/{code}/members/{uid}.
+struct ChallengeMember: Identifiable, Hashable, Codable {
+    var uid: String
+    var name: String
+    var verified: Bool
+    var score: Int
+    var updatedAt: Date?
+
+    var id: String { uid }
+}
+
+/// A code-joinable challenge — challenges/{code} plus its members
+/// subcollection. The 6-char code doubles as the Firestore document id,
+/// exactly like party join codes.
+struct ChallengeSummary: Identifiable, Hashable, Codable {
+    var code: String
+    var hostUid: String
+    var hostName: String
+    var title: String
+    var metric: ChallengeMetric
+    var startsAt: Date
+    var endsAt: Date
+    var members: [ChallengeMember] = []
+
+    var id: String { code }
+
+    var isExpired: Bool { Date.now > endsAt }
+
+    /// Whole days remaining, floored at zero — shown as "N days left".
+    var daysLeft: Int {
+        max(0, Int(ceil(endsAt.timeIntervalSince(.now) / 86_400)))
+    }
+
+    /// Highest member score, or nil while nobody has posted — the UI names
+    /// the unlock instead of showing a fake zero-leader.
+    var topMember: ChallengeMember? {
+        members.max { lhs, rhs in
+            lhs.score != rhs.score ? lhs.score < rhs.score : lhs.name > rhs.name
+        }
+    }
 }

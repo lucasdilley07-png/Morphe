@@ -763,6 +763,9 @@ private struct ManagedClientDetailSheet: View {
     let clientID: String
     @State private var isLoggingWorkout = false
     @State private var isConfirmingDelete = false
+    /// The real thread with this claimed client, once opened.
+    @State private var messagingThread: MessageThreadSummary?
+    @State private var isOpeningThread = false
 
     private var client: ManagedClient? {
         store.managedClients.first(where: { $0.id == clientID })
@@ -835,15 +838,38 @@ private struct ManagedClientDetailSheet: View {
                             Button("Remove Client", role: .destructive) { isConfirmingDelete = true }
                         }
                     } else {
-                        // A claimed client gets an honest explanation instead
-                        // of a silent dead end.
+                        // A claimed client is a REAL account now — open the
+                        // real Firestore-backed conversation with them.
                         // TODO: "Remove from Roster" for claimed clients needs
                         // store support — deleteManagedClient guards
                         // !isClaimed, and a claimed profile is the athlete's
                         // account history now, so removal must only drop the
                         // coach's roster reference, not the data.
                         Section {
-                            Text("They own their training log now — coach tools for connected athletes arrive with account sync.")
+                            Button {
+                                isOpeningThread = true
+                                Task {
+                                    defer { isOpeningThread = false }
+                                    if await store.startThreadWithClaimedClient(client),
+                                       let threadId = store.activeThreadId {
+                                        messagingThread = store.liveThreads
+                                            .first(where: { $0.id == threadId })
+                                    }
+                                }
+                            } label: {
+                                if isOpeningThread {
+                                    HStack {
+                                        Text("Message")
+                                        Spacer()
+                                        SwiftUI.ProgressView()
+                                    }
+                                } else {
+                                    Text("Message")
+                                }
+                            }
+                            .disabled(isOpeningThread)
+
+                            Text("They own their training log now — messages go straight to their account.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -858,6 +884,23 @@ private struct ManagedClientDetailSheet: View {
                 }
                 .sheet(isPresented: $isLoggingWorkout) {
                     LogManagedWorkoutSheet(clientID: client.id, sport: client.sport)
+                }
+                .sheet(item: $messagingThread) { thread in
+                    NavigationStack {
+                        ThreadChatView(thread: thread)
+                            .background(PremiumBackground())
+                            .toolbar {
+                                ToolbarItem(placement: .principal) {
+                                    Text("Messages").font(.headline).foregroundStyle(.white)
+                                }
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    Button("Done") { messagingThread = nil }
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            .navigationBarTitleDisplayMode(.inline)
+                    }
+                    .environment(store)
                 }
                 .confirmationDialog(
                     "Remove \(client.name)? Their invite code stops working and logged workouts are deleted.",
@@ -1157,7 +1200,7 @@ private struct CoachProgramsScreen: View {
                             GlassCard {
                                 VStack(alignment: .leading, spacing: 12) {
                                     HStack {
-                                        Text("Current draft")
+                                        Text("Current Draft")
                                             .font(.headline)
                                             .foregroundStyle(.white)
                                         Spacer()
@@ -2358,6 +2401,9 @@ private struct CoachMessagesScreen: View {
     @State private var draftMessage = ""
     @State private var searchText = ""
     @State private var coachPraiseDraft: CoachPublicPraiseDraft?
+    /// The open REAL thread (Firestore-backed, claimed clients) — separate
+    /// from the demo `selectedThread` machinery on purpose.
+    @State private var activeLiveThread: MessageThreadSummary?
 
     private var selectedThread: MessageThread? {
         store.selectedThread
@@ -2412,7 +2458,9 @@ private struct CoachMessagesScreen: View {
             .padding(.horizontal, 20)
 
             Group {
-                if let thread = selectedThread {
+                if let liveThread = activeLiveThread {
+                    ThreadChatView(thread: liveThread, onBack: { activeLiveThread = nil })
+                } else if let thread = selectedThread {
                     coachConversationView(thread: thread)
                 } else {
                     coachThreadListView
@@ -2422,6 +2470,8 @@ private struct CoachMessagesScreen: View {
         }
         .padding(.top, 8)
         .padding(.bottom, 120)
+        // Real threads live in Firestore — fresh on every Inbox visit.
+        .task { await store.refreshThreads() }
         .onChange(of: store.selectedThreadID) { _, newValue in
             if let seed = store.coachThreadDraftSeed, newValue != nil {
                 draftMessage = seed
@@ -2470,6 +2520,34 @@ private struct CoachMessagesScreen: View {
 
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 0) {
+                    // REAL conversations first: athletes who claimed one of
+                    // this coach's invite codes. Firestore-backed, both ways.
+                    if !store.liveThreads.isEmpty {
+                        Text("Clients")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 10)
+                            .padding(.bottom, 2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        ForEach(store.liveThreads) { thread in
+                            Button {
+                                activeLiveThread = thread
+                            } label: {
+                                LiveThreadRow(
+                                    thread: thread,
+                                    viewerUid: store.authUser?.id ?? ""
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Divider()
+                            .overlay(MorpheTheme.stroke.opacity(0.5))
+                            .padding(.leading, 72)
+                    }
+
                     if showsAIContact {
                         Button {
                             // One AI surface, not two: this row opens the same

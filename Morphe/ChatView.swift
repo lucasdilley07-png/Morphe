@@ -27,7 +27,12 @@ struct CommunityView: View {
                     subtitle: "For You keeps the training feed useful. Contact keeps coaches, partners, and support close."
                 )
 
-                if store.hasNetworkActivity {
+                if store.isRealFeedActive {
+                    // The REAL feed (Firestore posts/*) replaces the demo
+                    // rankedCommunityPosts list for signed-in users. The demo
+                    // sections below stay intact for the flag-gated path.
+                    RealFeedSection()
+                } else if store.hasNetworkActivity {
                     communityHeaderControls
 
                     CommunityNetworkFeed(perspective: .client)
@@ -58,6 +63,9 @@ struct CommunityView: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 120)
+        }
+        .refreshable {
+            await store.refreshFeed()
         }
     }
 
@@ -1307,6 +1315,615 @@ private struct LeaderboardCard: View {
                 .foregroundStyle(MorpheTheme.textSecondary)
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - REAL community feed (Firestore posts/*, For You)
+//
+// Everything in this section renders the real thing — live `posts/*`
+// documents from real accounts: publish, react (one per user, counted
+// server-side), save, repost with commentary, delete-own. The demo feed
+// types above stay untouched (flag-gated demo content).
+
+/// The verification blue — a universal trust signal, deliberately outside
+/// the yellow palette (same constant as the leaderboard/profile seals).
+private let feedVerifiedSealBlue = Color(red: 0.25, green: 0.56, blue: 0.96)
+
+/// The signed-in For You surface: section switcher, composer, Saved filter,
+/// and the real post list. A stories rail would mount at the top of this
+/// section — DEFERRED: it needs Firebase Storage (there is none yet, so no
+/// image/video hosting) and a moderation pipeline (none yet either) before
+/// user-submitted media can ship.
+private struct RealFeedSection: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var draft = ""
+    @State private var showSavedOnly = false
+    @State private var repostTarget: FeedPost?
+
+    private static let postLimit = 1000
+
+    private var visiblePosts: [FeedPost] {
+        showSavedOnly
+            ? store.feedPosts.filter { store.savedPostIds.contains($0.id) }
+            : store.feedPosts
+    }
+
+    private var cleanDraft: String {
+        draft.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        @Bindable var store = store
+        return VStack(alignment: .leading, spacing: 14) {
+            Picker("Community Section", selection: $store.selectedCommunitySection) {
+                ForEach(ClientCommunitySection.allCases) { section in
+                    Text(section.rawValue).tag(section)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            composer
+
+            HStack(spacing: 8) {
+                Button("All") {
+                    showSavedOnly = false
+                }
+                .buttonStyle(FilterChipStyle(isSelected: !showSavedOnly, selectedColor: MorpheTheme.accent))
+
+                Button("Saved") {
+                    showSavedOnly = true
+                }
+                .buttonStyle(FilterChipStyle(isSelected: showSavedOnly, selectedColor: MorpheTheme.accent))
+
+                Spacer()
+            }
+
+            if visiblePosts.isEmpty {
+                emptyState
+            } else {
+                ForEach(visiblePosts) { post in
+                    FeedPostCard(post: post) {
+                        repostTarget = post
+                    }
+                }
+            }
+        }
+        .sheet(item: $repostTarget) { post in
+            RepostSheet(post: post)
+        }
+        .task {
+            await store.refreshFeed()
+        }
+    }
+
+    private var composer: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                TextField("Share a win…", text: $draft, axis: .vertical)
+                    .lineLimit(2...5)
+                    .textFieldStyle(MorpheFieldStyle())
+
+                HStack {
+                    Text("\(draft.count)/\(Self.postLimit)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(draft.count > Self.postLimit ? MorpheTheme.warning : MorpheTheme.textMuted)
+
+                    Spacer()
+
+                    Button("Post") {
+                        let text = cleanDraft
+                        draft = ""
+                        Task { await store.publishPost(text: text) }
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    // Same send control as the chat composer (ThreadChatView):
+                    // 84x44 primary CTA next to a MorpheFieldStyle field.
+                    .frame(width: 84, height: 44)
+                    .disabled(cleanDraft.isEmpty || draft.count > Self.postLimit)
+                }
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: showSavedOnly ? "bookmark" : "sparkles")
+                    .font(.title2)
+                    .foregroundStyle(MorpheTheme.accentAlt)
+
+                Text(showSavedOnly ? "Nothing saved yet" : "No posts yet — share the first win")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text(showSavedOnly
+                     ? "Tap Save on any post and it lands here for later."
+                     : "This feed is real people's real training. Your post can be the one that starts it.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+/// One real feed post: author (blue seal when server-verified), relative
+/// time, text, optional workout pill, repost attribution, and the real
+/// action row. Own posts delete via the context menu.
+private struct FeedPostCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    let post: FeedPost
+    let onRepost: () -> Void
+
+    private var isMine: Bool { post.authorUid == (store.authUser?.id ?? "") }
+    private var hasReacted: Bool { store.myReactedPostIds.contains(post.id) }
+    private var isSaved: Bool { store.savedPostIds.contains(post.id) }
+    private var reactionCount: Int { store.feedReactionCounts[post.id] ?? 0 }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(MorpheTheme.panelStrong)
+                        .frame(width: 40, height: 40)
+                        .overlay(
+                            Text(String(post.authorName.prefix(1)).uppercased())
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                        )
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 5) {
+                            Text(post.authorName)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+
+                            if post.verified {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(feedVerifiedSealBlue)
+                                    .accessibilityLabel("Verified")
+                            }
+                        }
+
+                        Text(post.createdAt.formatted(.relative(presentation: .named)))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+
+                    Spacer()
+                }
+
+                if post.isRepost {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.2.squarepath")
+                            .font(.caption.weight(.semibold))
+                        Text("Reposted from \(post.repostOfAuthor.isEmpty ? "the feed" : post.repostOfAuthor)")
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(MorpheTheme.accentAlt)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(MorpheTheme.panel)
+                    )
+                }
+
+                Text(post.text)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !post.workoutName.isEmpty {
+                    HStack(spacing: 6) {
+                        Image(systemName: "figure.run")
+                            .font(.caption2.weight(.semibold))
+                        Text(post.workoutName)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(MorpheTheme.panelStrong)
+                    )
+                }
+
+                HStack(spacing: 8) {
+                    Button {
+                        store.toggleReaction(post)
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: hasReacted ? "heart.fill" : "heart")
+                            Text("\(reactionCount)")
+                        }
+                    }
+                    .buttonStyle(FeedActionButtonStyle(isActive: hasReacted, activeColor: MorpheTheme.accent))
+                    .accessibilityLabel(hasReacted ? "Remove reaction" : "React")
+
+                    Button {
+                        store.toggleSaved(post)
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                            Text(isSaved ? "Saved" : "Save")
+                        }
+                    }
+                    .buttonStyle(FeedActionButtonStyle(isActive: isSaved, activeColor: MorpheTheme.accentAlt))
+
+                    Button {
+                        onRepost()
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "arrow.2.squarepath")
+                            Text("Repost")
+                        }
+                    }
+                    .buttonStyle(FeedActionButtonStyle(isActive: false, activeColor: MorpheTheme.accent))
+
+                    Spacer()
+                }
+            }
+        }
+        .contextMenu {
+            if isMine {
+                Button(role: .destructive) {
+                    store.deleteMyPost(post)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
+    }
+}
+
+private struct FeedActionButtonStyle: ButtonStyle {
+    let isActive: Bool
+    let activeColor: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(isActive ? activeColor : .white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(configuration.isPressed ? MorpheTheme.panelStrong : MorpheTheme.panel)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(
+                        isActive ? activeColor.opacity(0.6) : MorpheTheme.strokeStrong.opacity(0.45),
+                        lineWidth: 1
+                    )
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeInOut(duration: 0.16), value: configuration.isPressed)
+    }
+}
+
+/// Small commentary sheet for reposting: your take rides on top, the
+/// original stays attributed underneath.
+private struct RepostSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let post: FeedPost
+    @State private var commentary = ""
+
+    private var originalAuthor: String {
+        post.isRepost ? post.repostOfAuthor : post.authorName
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Repost \(originalAuthor)'s win")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+
+                    Text("Add your take — it publishes as your post, credited to \(originalAuthor).")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    TextField("Say something about it…", text: $commentary, axis: .vertical)
+                        .lineLimit(2...5)
+                        .textFieldStyle(MorpheFieldStyle())
+
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(post.authorName)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Text(post.text)
+                                .font(.subheadline)
+                                .foregroundStyle(.white)
+                                .lineLimit(4)
+                        }
+                    }
+
+                    Button("Repost") {
+                        let text = commentary
+                        dismiss()
+                        Task { await store.repost(post, commentary: text) }
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundStyle(.white)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}
+
+// MARK: - REAL messaging (coach ↔ claimed client, Firestore-backed)
+//
+// Everything below is the real thing — live `threads/*` documents between a
+// coach and the athlete who claimed one of their invite codes. The demo
+// inbox types above stay untouched (flag-gated demo content).
+
+/// The shared 1:1 chat screen — the SAME view serves the coach (from the
+/// Inbox / client detail) and the athlete (from the home Coach card). Opens
+/// the live listener on appear and closes it on disappear via the store.
+struct ThreadChatView: View {
+    @Environment(MorpheAppStore.self) private var store
+    let thread: MessageThreadSummary
+    /// In-place back navigation (list ↔ conversation swaps); nil hides the
+    /// chevron when the view is presented on its own (single-thread sheet).
+    var onBack: (() -> Void)? = nil
+    @State private var draft = ""
+
+    private var myUid: String { store.authUser?.id ?? "" }
+    private var counterpart: String { thread.counterpartName(for: myUid) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                if let onBack {
+                    Button {
+                        onBack()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(Circle().fill(MorpheTheme.panelStrong))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Back")
+                }
+
+                Circle()
+                    .fill(MorpheTheme.panelStrong)
+                    .frame(width: 42, height: 42)
+                    .overlay(
+                        Text(String(counterpart.prefix(1)).uppercased())
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                    )
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(counterpart)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text("Conversation")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+
+            Divider()
+                .overlay(MorpheTheme.stroke.opacity(0.8))
+
+            ScrollViewReader { proxy in
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        if store.activeThreadMessages.isEmpty {
+                            Text("No messages yet — say hello. This conversation is private to you and \(counterpart).")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 24)
+                        }
+
+                        ForEach(Array(store.activeThreadMessages.enumerated()), id: \.element.id) { index, message in
+                            LiveMessageBubble(
+                                message: message,
+                                isMine: message.senderUid == myUid,
+                                senderName: message.senderUid == myUid ? "You" : counterpart,
+                                // Sender-run captions: name only where a run starts.
+                                showsSender: index == 0
+                                    || store.activeThreadMessages[index - 1].senderUid != message.senderUid
+                            )
+                            .id(message.id)
+                        }
+                    }
+                    .padding(16)
+                    .padding(.bottom, 8)
+                }
+                .onChange(of: store.activeThreadMessages.count) { _, _ in
+                    if let last = store.activeThreadMessages.last {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    }
+                }
+            }
+
+            Divider()
+                .overlay(MorpheTheme.stroke.opacity(0.8))
+
+            HStack(spacing: 10) {
+                TextField("Type a message", text: $draft, axis: .vertical)
+                    .lineLimit(1...3)
+                    .textFieldStyle(MorpheFieldStyle())
+
+                Button("Send") {
+                    // Clear first so a slow network never eats a retype.
+                    let text = draft
+                    draft = ""
+                    Task { await store.sendMessage(text) }
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                .frame(width: 84, height: 44)
+                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding(16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onAppear { store.openThread(thread) }
+        .onDisappear { store.closeThread() }
+    }
+}
+
+/// One real chat bubble: content-hugging, capped at ~75% of the row, pushed
+/// to the sender's edge — the same visual language as the demo chat rows.
+private struct LiveMessageBubble: View {
+    let message: ChatMessage
+    let isMine: Bool
+    let senderName: String
+    let showsSender: Bool
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if isMine { Spacer(minLength: 40) }
+
+            VStack(alignment: isMine ? .trailing : .leading, spacing: 4) {
+                if showsSender {
+                    Text(senderName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+                Text(message.text)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(isMine ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
+                    )
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = message.text
+                        } label: {
+                            Label("Copy", systemImage: "doc.on.doc")
+                        }
+                    }
+            }
+            .frame(maxWidth: 300, alignment: isMine ? .trailing : .leading)
+
+            if !isMine { Spacer(minLength: 40) }
+        }
+        .frame(maxWidth: .infinity, alignment: isMine ? .trailing : .leading)
+    }
+}
+
+/// Athlete inbox: the real threads this account participates in (in practice
+/// their coach). Mounted from the home "Coach" card — an athlete with no
+/// claimed link never sees this surface at all.
+struct AthleteInboxView: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var openedThread: MessageThreadSummary?
+
+    private var myUid: String { store.authUser?.id ?? "" }
+
+    var body: some View {
+        Group {
+            if let openedThread {
+                ThreadChatView(thread: openedThread, onBack: { self.openedThread = nil })
+            } else {
+                threadList
+            }
+        }
+        .task { await store.refreshThreads() }
+    }
+
+    private var threadList: some View {
+        ScrollView(showsIndicators: false) {
+            LazyVStack(spacing: 0) {
+                ForEach(Array(store.liveThreads.enumerated()), id: \.element.id) { index, thread in
+                    Button {
+                        openedThread = thread
+                    } label: {
+                        LiveThreadRow(thread: thread, viewerUid: myUid)
+                    }
+                    .buttonStyle(.plain)
+
+                    if index < store.liveThreads.count - 1 {
+                        Divider()
+                            .overlay(MorpheTheme.stroke.opacity(0.5))
+                            .padding(.leading, 72)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// One real-thread inbox row: counterpart name, honest last-message preview,
+/// relative time. No unread badges — Morphe doesn't track read state, so it
+/// doesn't pretend to.
+struct LiveThreadRow: View {
+    let thread: MessageThreadSummary
+    let viewerUid: String
+
+    private var name: String { thread.counterpartName(for: viewerUid) }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(MorpheTheme.panelStrong)
+                .frame(width: 44, height: 44)
+                .overlay(
+                    Text(String(name.prefix(1)).uppercased())
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                )
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Text(thread.updatedAt.formatted(.relative(presentation: .named)))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+                Text(thread.lastMessage.isEmpty ? "No messages yet" : thread.lastMessage)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
     }
 }
 

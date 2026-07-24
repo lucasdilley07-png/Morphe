@@ -1,0 +1,915 @@
+{
+  "version": 2,
+  "category": "Dance & Aerobics",
+  "workouts": [
+    {
+      "slug": "dance-cardio-party",
+      "name": "Dance Cardio Party",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Dance cardio",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Queue up four songs of roughly three minutes each — every move runs 45 seconds and you cycle the whole set once per song. It's cardio for people who hate cardio: if you're smiling and slightly out of breath, you're doing it right. Progress by adding bounce and bigger arms, not by rushing the steps.",
+      "exercises": [
+        {
+          "libraryID": "step-touch",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "dance-squat-groove",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "side-step-punch",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "front-kick-step",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "arm-wave-reach",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "dance-step-style-intervals",
+      "name": "Step-Style Intervals",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Aerobic intervals",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Classic step-class energy without the choreography degree — hard 30-second pushes on the step and knees, with dance steps as your active recovery. Use a sturdy step, bench or bottom stair. Progress by raising the step height before you shorten the rests.",
+      "exercises": [
+        {
+          "libraryID": "step-touch",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "step-up",
+          "sets": 5,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 5,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "jumping-jack",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "dance-low-impact-aerobics",
+      "name": "Low-Impact Aerobics",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Low-impact aerobics",
+      "level": "Beginner",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "One foot stays on the floor at all times — zero jumping, full calorie burn — which makes this the pick for beginners, bad knees, downstairs neighbours and big bodies getting started. Keep a pace where you could talk but wouldn't want to. Progress by extending each block toward 75 seconds.",
+      "exercises": [
+        {
+          "libraryID": "step-touch",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "arm-wave-reach",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "side-step-punch",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "front-kick-step",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "dance-hiit-fusion",
+      "name": "HIIT-Dance Fusion",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "HIIT dance",
+      "level": "Advanced",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Dance moves at sprint intensity — 30 seconds all-out, 30 seconds to breathe, five moves deep. This is the shortest, sharpest session in the category; if you can chat during the work intervals, you're leaving results on the floor. Progress by trimming the rests toward 20 seconds.",
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "dance-squat-groove",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "front-kick-step",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "jumping-jack",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "dance-retro-aerobics",
+      "name": "Retro Aerobics Throwback",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Aerobics",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "notes": "An 80s-studio format: long steady blocks of jacks, grapevines and kicks with two short high-energy pushes dropped in the middle. Sweatband optional, commitment mandatory. Progress by keeping the bounce big and springy through the final block instead of shuffling home.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "step-touch",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "front-kick-step",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "arm-wave-reach",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "dance-barre-hips-posterior",
+      "name": "Barre Strength: Hips & Posterior",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Barre strength",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Barre-style strength for the hips and the whole posterior chain — chair-pose pulses, calf raises and bridge work done to a burn, not to a beat. The reps are small and the ranges are honest; when your glutes shake, that's the exercise working. Progress by adding a 2-second squeeze at the top of every bridge and raise.",
+      "exercises": [
+        {
+          "libraryID": "step-touch",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "chair-pose",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 4,
+          "reps": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 4,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "reverse-lunge",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "wall-sit",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "dance-sculpt-sweat-fusion",
+      "name": "Sculpt & Sweat Fusion",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Dance sculpt",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Alternating format: a dance-cardio block, then a light-dumbbell sculpt block, back and forth so your heart rate never fully settles while the muscles still get real volume. Pick dumbbells you could press 20 times — light is correct here. Progress by nudging the weights up only when RPE 7 starts feeling like RPE 5.",
+      "exercises": [
+        {
+          "libraryID": "step-touch",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "lateral-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dance-squat-groove",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "bicep-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "front-kick-step",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "dance-light-dumbbell-tone",
+      "name": "Light-Dumbbell Tone Party",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Dance sculpt",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "notes": "The arms-and-legs day of the sculpt pair — curls, raises and loaded lunges stacked between cardio bursts so you finish pumped and out of breath at the same time. Keep the dumbbells light enough to stay smooth on rep twelve. Progress by shortening the cardio-block rests toward 15 seconds.",
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "hammer-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "front-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "step-touch",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "arm-wave-reach",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "dance-cooldown-stretch-flow",
+      "name": "Cooldown Stretch Flow",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Stretching",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The stretch sequence to run straight after any cardio party in this category — quads, hamstrings, hips and shoulders, each held long enough to actually change something. Breathe slower than feels natural and let the heart rate step down with you.",
+      "exercises": [
+        {
+          "libraryID": "standing-quad-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "cross-body-shoulder-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "dance-full-release",
+      "name": "Dancer's Full Release",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Stretching",
+      "level": "Recovery",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The deeper floor-based release for rest days or the evening after a hard dance week — hips, spine and chest each get long, quiet holds. If a position bites, back out ten percent and breathe there instead; recovery never earns a grimace.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "downward-dog",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "pigeon-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ],
+  "newExercises": [
+    {
+      "id": "grapevine-step",
+      "name": "Grapevine Step",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Lateral traveling step",
+      "musclesWorked": "Calves, hip abductors, quads, coordination",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-grapevine-step",
+      "instructions": [
+        "Stand tall with feet together and step your right foot out to the side.",
+        "Cross your left foot behind the right, then step the right foot out again.",
+        "Close with a tap of the left foot beside the right, adding a clap or arm swing on the tap.",
+        "Reverse direction immediately, traveling left with the same step-behind-step pattern."
+      ],
+      "formCue": "Step, behind, step, tap — keep it springy.",
+      "commonMistakes": "Staring at the feet with a hunched posture, and stepping so flat-footed that the move loses all bounce.",
+      "beginnerModification": "Drop the crossing step and simply step-together, step-together in each direction until the rhythm is automatic.",
+      "alternatives": [
+        "lateral-shuffle",
+        "step-touch"
+      ],
+      "whyThisMatters": "Side-to-side travel trains hips, ankles and coordination that straight-ahead cardio never touches.",
+      "formGuide": {
+        "description": "You travel sideways in a four-count pattern — step out, cross behind, step out, tap together — then reverse. Kept light and bouncy it turns into effortless-feeling cardio; the arms swing freely to lift the intensity. The footwork becomes automatic within a song or two.",
+        "diagramPrompt": "Front-view four-stage footwork sequence of a grapevine step: figure stepping right, left foot crossing behind, right foot stepping out again, feet closing with a tap. Number the stages 1-4, draw dashed footprint paths along the floor showing the sideways travel, and add a direction arrow indicating the lateral movement."
+      }
+    },
+    {
+      "id": "step-touch",
+      "name": "Step Touch",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Rhythmic lateral step with weight shift",
+      "musclesWorked": "Calves, quads, hip abductors, cardiovascular system",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-step-touch",
+      "instructions": [
+        "Stand with feet hip-width apart, knees soft and chest tall.",
+        "Step your right foot out to the side and shift your weight onto it.",
+        "Bring the left foot in to tap lightly beside the right.",
+        "Immediately step left and tap right, settling into a continuous side-to-side rhythm with the arms swinging naturally."
+      ],
+      "formCue": "Push off the floor — bounce, don't shuffle.",
+      "commonMistakes": "Going flat and lifeless through the feet, and letting the arms hang instead of driving the rhythm.",
+      "beginnerModification": "Slow the tempo and shrink the step width; the weight shift matters more than the speed.",
+      "alternatives": [
+        "jumping-jack",
+        "lateral-shuffle"
+      ],
+      "whyThisMatters": "The base step of every aerobics class — a joint-friendly way to keep the heart rate up between harder moves.",
+      "formGuide": {
+        "description": "A continuous side-to-side rhythm: step out, tap the other foot in, step back the other way. It's the move you return to between harder blocks — low impact but never lazy, with a springy push off the floor and arms that keep the beat.",
+        "diagramPrompt": "Front-view two-stage illustration of a step touch: figure stepping to the right with weight shifted onto the right leg and left toes tapping in beside it, then mirrored to the left. Draw a horizontal double-headed arrow under the feet showing the side-to-side rhythm and small motion arcs at the swinging arms."
+      }
+    },
+    {
+      "id": "dance-squat-groove",
+      "name": "Dance Squat Groove",
+      "muscleGroup": "Legs",
+      "movementPattern": "Rhythmic squat with pulse and arm drive",
+      "musclesWorked": "Quads, glutes, calves, cardiovascular system",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-dance-squat-groove",
+      "instructions": [
+        "Stand with feet slightly wider than shoulder-width, toes turned out a touch.",
+        "Sit into a half-squat and bounce to the beat, staying low as you pulse.",
+        "Drive the arms — pump, punch or wave — in time with the bounce.",
+        "Every fourth beat, stand tall and roll the shoulders back, then drop back into the groove."
+      ],
+      "formCue": "Stay low and keep the bounce in your hips, not your knees.",
+      "commonMistakes": "Standing up out of the squat between pulses, and letting the knees cave inward as fatigue builds.",
+      "beginnerModification": "Shrink to a quarter-squat depth and slow the pulse to every other beat.",
+      "alternatives": [
+        "bodyweight-squat",
+        "jump-squat"
+      ],
+      "whyThisMatters": "Sneaks real leg volume into a cardio session — your quads and glutes work a full song without a single counted rep.",
+      "formGuide": {
+        "description": "You hold a half-squat and bounce it to the music, arms pumping, standing tall every few beats before dropping back in. It reads as dancing and works like a squat finisher — the legs stay under tension for the whole track.",
+        "diagramPrompt": "Front-view illustration of a figure in a half-squat with feet wider than shoulders and toes slightly out, arms bent and pumping. Add small vertical double-headed arrows at the hips showing the rhythmic pulse, highlight the knees tracking over the toes with accent lines, and shade the thighs as the working muscles."
+      }
+    },
+    {
+      "id": "front-kick-step",
+      "name": "Front Kick Step",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Alternating front kick with rhythm step",
+      "musclesWorked": "Hip flexors, quads, core, cardiovascular system",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-front-kick-step",
+      "instructions": [
+        "Stand tall with fists loosely guarding at chest height.",
+        "Kick your right leg to the front at a comfortable height, knee leading then leg extending.",
+        "Land softly and take a quick step or bounce between kicks.",
+        "Alternate legs in rhythm, keeping the torso upright and the core braced on every kick."
+      ],
+      "formCue": "Kick from the knee up — height comes later, rhythm comes first.",
+      "commonMistakes": "Leaning way back to fake a higher kick, and locking the kicking knee out hard at full extension.",
+      "beginnerModification": "Kick to shin height or swap in a marching knee lift until balance feels solid.",
+      "alternatives": [
+        "high-knees",
+        "walking-lunge"
+      ],
+      "whyThisMatters": "Kicks braid hip flexor strength, balance and cardio into one move that leaves your legs and lungs equally taxed.",
+      "formGuide": {
+        "description": "Alternating front kicks strung together with a light step or bounce between them, hands up like a kickboxer. The knee leads, the leg extends, and you land soft and already moving. Kick height is negotiable; staying on the beat is not.",
+        "diagramPrompt": "Side-view illustration of a figure mid front-kick: standing leg slightly bent, kicking leg extended forward at hip height with knee shown leading in a ghosted intermediate position, fists guarding at chest. Draw an arced arrow tracing the kick path and highlight the upright torso with a vertical accent line."
+      }
+    },
+    {
+      "id": "arm-wave-reach",
+      "name": "Arm Wave Reach",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Overhead reach with rhythmic arm waves",
+      "musclesWorked": "Deltoids, upper back, core, cardiovascular system",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-arm-wave-reach",
+      "instructions": [
+        "Stand with feet hip-width, knees soft, bouncing gently to the beat.",
+        "Sweep both arms out and up until you're reaching fully overhead.",
+        "Wave the arms down through a big circle, letting the ribs and waist follow the motion.",
+        "Keep the reach-and-wave cycling with the bounce, alternating both-arm and single-arm reaches."
+      ],
+      "formCue": "Reach for the ceiling like you mean it — big beats small.",
+      "commonMistakes": "Tiny half-hearted arm circles that never get overhead, and shrugging the shoulders up around the ears.",
+      "beginnerModification": "Reach to shoulder height instead of overhead, or plant the feet and drop the bounce.",
+      "alternatives": [
+        "arm-swing-circles",
+        "shadow-boxing"
+      ],
+      "whyThisMatters": "Arms held and moved overhead spike the heart rate more than people expect — free cardio hiding in your shoulders.",
+      "formGuide": {
+        "description": "With a gentle bounce in the legs, you sweep both arms up to a full overhead reach and wave them back down in big circles, the waist following along. It looks like celebration and functions as shoulder endurance plus a surprising heart-rate lift.",
+        "diagramPrompt": "Front-view illustration of a figure with both arms sweeping fully overhead, knees softly bent mid-bounce. Draw large curved arrows tracing the arms' circular reach-and-wave path from hips to overhead and back, and highlight the tall spine and relaxed, un-shrugged shoulders with accent marks."
+      }
+    },
+    {
+      "id": "side-step-punch",
+      "name": "Side-Step Punch",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Lateral step with cross-body punch",
+      "musclesWorked": "Shoulders, obliques, calves, cardiovascular system",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-side-step-punch",
+      "instructions": [
+        "Stand with fists guarding at chin height and knees soft.",
+        "Step your right foot out to the side and punch your left fist across your body.",
+        "Bring the feet together, then step left and punch the right fist across.",
+        "Keep stepping and punching in rhythm, rotating through the waist with each punch."
+      ],
+      "formCue": "Punch from the hips — the step and the fist land together.",
+      "commonMistakes": "Punching with just the arm while the hips stay frozen, and letting the guard hand drop to the waist.",
+      "beginnerModification": "Slow the tempo and punch straight forward instead of across the body.",
+      "alternatives": [
+        "shadow-boxing",
+        "lateral-shuffle"
+      ],
+      "whyThisMatters": "Pairing footwork with cross-body punches works the waist and coordination while the legs keep the calorie meter running.",
+      "formGuide": {
+        "description": "You step side to side and throw a cross-body punch with the opposite fist on every step, rotating through the waist so the whole body drives the fist. Step and punch land on the same beat. It's boxing rhythm borrowed for the dance floor.",
+        "diagramPrompt": "Front-view illustration of a figure stepping to the right while the left fist punches across the body, right fist guarding at the chin. Draw a horizontal arrow at the feet showing the side step, an arced arrow at the punching arm crossing the midline, and a small rotation arrow at the waist showing the hips driving the punch."
+      }
+    }
+  ]
+}

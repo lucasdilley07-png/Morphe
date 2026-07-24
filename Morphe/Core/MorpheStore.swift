@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import UserNotifications
 
 @MainActor
 @Observable
@@ -340,6 +341,20 @@ final class MorpheAppStore {
     /// Verification requests + badge status. Real app injects
     /// `FirebaseVerificationService`; no-op default for tests/previews.
     private let verificationService: VerificationSyncing
+    /// Personal appointments (one Firestore doc each). Real app injects
+    /// `FirebaseAppointmentService`; no-op default for tests/previews.
+    private let appointmentService: AppointmentSyncing
+    /// Weekly leaderboard + challenges. Resolved in `init` (injected, or
+    /// inferred Firebase/no-op alongside the party service).
+    private let leaderboardService: LeaderboardSyncing
+    /// Real 1:1 coach↔claimed-client messaging. Resolved in `init` (injected,
+    /// or inferred Firebase/no-op alongside the party service — same pattern
+    /// as `leaderboardService`, so MorpheApp.swift needs no change).
+    private let messagingService: MessagingSyncing
+    /// Real community feed (posts, reactions, saves). Resolved in `init`
+    /// (injected, or inferred Firebase/no-op alongside the party service —
+    /// same pattern as `messagingService`, so MorpheApp.swift needs no change).
+    private let feedService: FeedSyncing
     /// Server-granted verified badge (users/{uid}.verified) — local mirror,
     /// refreshed on launch/sign-in. The client can never set the source.
     var isVerifiedUser = false
@@ -348,6 +363,56 @@ final class MorpheAppStore {
     var isSubmittingVerification = false
     /// Client profiles this coach created for people not on Morphe yet.
     var managedClients: [ManagedClient] = []
+    // MARK: Real messaging state (coach ↔ claimed client)
+    /// REAL Firestore threads this account participates in (either role),
+    /// newest first. Distinct from the flag-gated demo `messageThreads` /
+    /// `athleteMessageThreads` on purpose. Empty = no claimed link yet, and
+    /// the athlete home renders no messaging surface at all.
+    var liveThreads: [MessageThreadSummary] = []
+    /// The open thread's messages, streamed live while a thread is open.
+    var activeThreadMessages: [ChatMessage] = []
+    /// The currently open real thread, or nil when none is open.
+    var activeThreadId: String?
+    // MARK: Real community feed state
+    /// REAL Firestore posts (newest first) as last fetched — the For You
+    /// surface. Distinct from the flag-gated demo `communityPosts` on purpose.
+    var feedPosts: [FeedPost] = []
+    /// Post ids this account bookmarked (users/{uid}/savedPosts mirror).
+    var savedPostIds: Set<String> = []
+    /// Real reaction counts per post id, from server-side count() aggregation.
+    var feedReactionCounts: [String: Int] = [:]
+    /// Posts THIS session reacted to — tracked locally per session (kept
+    /// simple on purpose: no per-post own-reaction fetch; the server doc is
+    /// still one-per-uid, so honesty holds regardless).
+    var myReactedPostIds: Set<String> = []
+    /// The user's REAL personal schedule (kept sorted by date). Lives in
+    /// memory + the Firestore offline cache only — deliberately no file
+    /// persistence: each appointment is its own users/{uid}/appointments doc,
+    /// so Firestore's local cache IS the offline store here, and a second
+    /// on-disk copy would just be a divergence risk.
+    var appointments: [Appointment] = []
+    // MARK: Weekly board + challenges state
+    /// This week's board as last FETCHED (top 50, score-desc) — real Firestore
+    /// rows written by real accounts, never seeded. Empty until refreshed.
+    var weeklyLeaderboard: [WeeklyLeaderboardEntry] = []
+    /// The user's own entry as last fetched — present even when they sit
+    /// outside the fetched top 50 (their honest "you posted" proof).
+    var weeklyLeaderboardSelfEntry: WeeklyLeaderboardEntry?
+    /// Weekly-board opt-in. Persisted in UserDefaults (documented exception —
+    /// see `loadCompetitionState`).
+    var leaderboardOptIn = false {
+        didSet { persistCompetitionState() }
+    }
+    /// Challenges this user hosts or joined, refreshed from Firestore by code.
+    /// Membership (the codes) persists in UserDefaults; the data never does.
+    var activeChallenges: [ChallengeSummary] = []
+    /// Codes of joined challenges — the only competition fact stored locally.
+    private var joinedChallengeCodes: [String] = [] {
+        didSet { persistCompetitionState() }
+    }
+    /// Guards the two didSets above while `loadCompetitionState` restores them.
+    private var isLoadingCompetitionState = false
+    var isCompetitionBusy = false
     /// The signed-in account, or nil when signed out.
     var authUser: AppUser?
     var authErrorMessage: String?
@@ -386,7 +451,11 @@ final class MorpheAppStore {
          partyService: WorkoutPartying = NoOpPartyService(),
          managedClientService: ManagedClientSyncing = NoOpManagedClientService(),
          usernameDirectory: UsernameDirectoryService = NoOpUsernameDirectory(),
-         verificationService: VerificationSyncing = NoOpVerificationService()) {
+         verificationService: VerificationSyncing = NoOpVerificationService(),
+         appointmentService: AppointmentSyncing = NoOpAppointmentService(),
+         leaderboardService: LeaderboardSyncing? = nil,
+         messagingService: MessagingSyncing? = nil,
+         feedService: FeedSyncing? = nil) {
         // Tests build a second store to simulate a relaunch — land the live
         // store's pending coalesced writes before this instance reads the files.
         Self.mostRecentInstance?.flushPendingPersists()
@@ -396,6 +465,27 @@ final class MorpheAppStore {
         self.managedClientService = managedClientService
         self.usernameDirectory = usernameDirectory
         self.verificationService = verificationService
+        self.appointmentService = appointmentService
+        // MorpheApp.swift (owned by another work stream) builds the store with
+        // the pre-competition parameter list, so nil infers the right service:
+        // Firebase alongside a Firebase party service, no-op everywhere else
+        // (tests/previews). Tests can still inject a mock explicitly.
+        self.leaderboardService = leaderboardService
+            ?? (partyService is FirebasePartyService
+                ? FirebaseLeaderboardService()
+                : NoOpLeaderboardService())
+        // Same nil-infers-Firebase pattern as the leaderboard service above:
+        // MorpheApp.swift keeps its existing parameter list, tests/previews
+        // stay off the network, and mocks can still inject explicitly.
+        self.messagingService = messagingService
+            ?? (partyService is FirebasePartyService
+                ? FirebaseMessagingService()
+                : NoOpMessagingService())
+        // Same nil-infers-Firebase pattern again for the real community feed.
+        self.feedService = feedService
+            ?? (partyService is FirebasePartyService
+                ? FirebaseFeedService()
+                : NoOpFeedService())
         let templates = MorpheDemoContent.workoutTemplates
         let clients = MorpheDemoContent.coachClients
         let threads = MorpheDemoContent.messageThreads
@@ -562,11 +652,24 @@ final class MorpheAppStore {
             }
             // The badge is server-owned; mirror it on every launch.
             Task { await refreshVerificationStatus() }
+            // The schedule lives per-doc in the cloud — pull it fresh each
+            // launch (offline serves the Firestore cache copy).
+            Task { await refreshAppointments() }
+            // Real message threads (both roles) — pull fresh each launch,
+            // same pattern as the managed roster above.
+            Task { await refreshThreads() }
+            // The real For You feed — pull fresh each launch too.
+            Task { await refreshFeed() }
         }
 
         // Same-day relaunch: no-op (daily state was just restored). New day —
         // or first launch ever — starts the daily surfaces fresh.
         handleDayRolloverIfNeeded()
+
+        // Board opt-in + joined challenge codes for the restored profile.
+        // (applyPersistedProfile also loads these — this call covers the
+        // fresh-install path where no profile snapshot existed yet.)
+        loadCompetitionState()
 
         Self.mostRecentInstance = self
     }
@@ -622,9 +725,25 @@ final class MorpheAppStore {
         authUser = nil
         // Another account on this device must never see this coach's roster.
         managedClients = []
+        // Same cross-account rule for the personal schedule.
+        appointments = []
         // The badge belongs to the signed-out account, not the device.
         isVerifiedUser = false
         verificationRequestStatus = .none
+        // Fetched competition data belongs to the signed-out account too.
+        // (Opt-in + joined codes stay in their per-profile defaults keys.)
+        weeklyLeaderboard = []
+        weeklyLeaderboardSelfEntry = nil
+        activeChallenges = []
+        // Real message threads belong to the signed-out account — stop the
+        // listener and drop every trace before another account signs in.
+        closeThread()
+        liveThreads = []
+        // The fetched feed, bookmarks, and reaction state too.
+        feedPosts = []
+        savedPostIds = []
+        feedReactionCounts = [:]
+        myReactedPostIds = []
     }
 
     /// Lands on the Train surface for the CURRENT role. The coach workspace
@@ -1134,6 +1253,9 @@ final class MorpheAppStore {
             Task { await refreshManagedClients() }
         }
         Task { await refreshVerificationStatus() }
+        Task { await refreshAppointments() }
+        Task { await refreshThreads() }
+        Task { await refreshFeed() }
     }
 
     /// After sign-in, restore the account's cloud backup. A returning user
@@ -1415,6 +1537,10 @@ final class MorpheAppStore {
         // History/consistency/score/streak were derived in init against the seeded
         // id; rebuild them now that the user's real identity is restored.
         refreshWorkoutLogDerivedState(for: clientProfile.id)
+
+        // The competition prefs are keyed by profile id, which this restore
+        // may have just changed — re-read them for the restored identity.
+        loadCompetitionState()
     }
 
     /// Persists the current local profile snapshot to disk.
@@ -2253,10 +2379,338 @@ final class MorpheAppStore {
     func updateBodyMetrics(height: String, weight: String) {
         clientProfile.height = String(height.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
         clientProfile.bodyWeight = String(weight.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
+        // Each genuinely new weight becomes a dated reading, so Progress can
+        // chart a REAL history instead of faking one from a single value.
+        recordBodyWeightReadingIfChanged(clientProfile.bodyWeight)
         // A new logged weight moves the nutrition goal numbers immediately.
         applyNutritionTargets()
         persistLocalProfile()
         showToast("Details saved.")
+    }
+
+    // MARK: - Body weight history
+
+    /// One saved body-weight reading. Always stored in pounds so the series
+    /// stays comparable when the display unit flips; the UI converts.
+    private struct BodyWeightHistoryEntry: Codable {
+        var date: Date
+        var weightLb: Double
+    }
+
+    /// UserDefaults key for the weight history, scoped per profile id so a
+    /// fresh-user reset or account switch never inherits another profile's
+    /// readings.
+    private var bodyWeightHistoryDefaultsKey: String {
+        "morphe.bodyWeightHistory.\(clientProfile.id.uuidString)"
+    }
+
+    /// Deliberate persistence exception: this lives in UserDefaults
+    /// (JSON-encoded) instead of LocalProfileSnapshot. ProfilePersistence is
+    /// a shared file owned by other work streams, and its tolerant decoder
+    /// must not grow fields casually (see the snapshot-decode gotcha) — a
+    /// small append-only array capped at 200 entries is a safe fit for
+    /// defaults storage.
+    private func loadBodyWeightHistoryEntries() -> [BodyWeightHistoryEntry] {
+        guard let data = UserDefaults.standard.data(forKey: bodyWeightHistoryDefaultsKey),
+              let entries = try? JSONDecoder().decode([BodyWeightHistoryEntry].self, from: data)
+        else { return [] }
+        return entries
+    }
+
+    /// The user's real body-weight readings over time (in lb), oldest first —
+    /// one appended each time the Profile weight is saved with a NEW value.
+    /// A single reading is never charted: one point is not a trend.
+    var bodyWeightHistory: [(date: Date, weightLb: Double)] {
+        loadBodyWeightHistoryEntries().map { ($0.date, $0.weightLb) }
+    }
+
+    /// Appends a reading when the newly saved weight parses and actually
+    /// differs from the last recorded one — re-saving "175" unchanged is
+    /// not a data point.
+    private func recordBodyWeightReadingIfChanged(_ weightText: String) {
+        guard let weightLb = Self.parsedBodyWeightLb(weightText) else { return }
+        var entries = loadBodyWeightHistoryEntries()
+        if let last = entries.last, abs(last.weightLb - weightLb) < 0.05 { return }
+        entries.append(BodyWeightHistoryEntry(date: .now, weightLb: weightLb))
+        if entries.count > 200 {
+            entries.removeFirst(entries.count - 200)
+        }
+        if let data = try? JSONEncoder().encode(entries) {
+            UserDefaults.standard.set(data, forKey: bodyWeightHistoryDefaultsKey)
+        }
+    }
+
+    // MARK: - Weekly board + challenges (opt-in competition, real scores only)
+
+    /// One JSON blob in UserDefaults, keyed per profile id (same scoping as
+    /// bodyWeightHistory so an account switch never inherits another
+    /// profile's memberships).
+    private struct CompetitionStateSnapshot: Codable {
+        var optIn: Bool
+        var challengeCodes: [String]
+    }
+
+    private var competitionStateDefaultsKey: String {
+        "morphe.competition.\(clientProfile.id.uuidString)"
+    }
+
+    /// Deliberate persistence exception: this lives in UserDefaults instead
+    /// of LocalProfileSnapshot. ProfilePersistence is a shared file owned by
+    /// other work streams, and its tolerant decoder must not grow fields
+    /// casually (see the snapshot-decode gotcha) — one flag plus a handful of
+    /// 6-char codes is a safe fit for defaults storage, exactly like
+    /// bodyWeightHistory above.
+    private func loadCompetitionState() {
+        isLoadingCompetitionState = true
+        defer { isLoadingCompetitionState = false }
+        guard let data = UserDefaults.standard.data(forKey: competitionStateDefaultsKey),
+              let snapshot = try? JSONDecoder().decode(CompetitionStateSnapshot.self, from: data)
+        else {
+            leaderboardOptIn = false
+            joinedChallengeCodes = []
+            return
+        }
+        leaderboardOptIn = snapshot.optIn
+        joinedChallengeCodes = snapshot.challengeCodes
+        // Joined challenges refresh from Firestore — the codes are the only
+        // locally-persisted fact; every score/member shown is fetched real.
+        if !snapshot.challengeCodes.isEmpty {
+            Task { await refreshChallenges() }
+        }
+    }
+
+    private func persistCompetitionState() {
+        guard !isLoadingCompetitionState else { return }
+        let snapshot = CompetitionStateSnapshot(optIn: leaderboardOptIn, challengeCodes: joinedChallengeCodes)
+        if let data = try? JSONEncoder().encode(snapshot) {
+            UserDefaults.standard.set(data, forKey: competitionStateDefaultsKey)
+        }
+    }
+
+    /// The identity competition rows carry: uid + display name. Nil while
+    /// signed out — no account, no board.
+    private var competitionSelf: (uid: String, name: String)? {
+        guard let user = authUser else { return nil }
+        let name = !profileShowcase.displayName.isEmpty ? profileShowcase.displayName
+            : !clientProfile.name.isEmpty ? clientProfile.name
+            : user.displayName
+        return (user.id, name.isEmpty ? "Athlete" : name)
+    }
+
+    /// Set count of one log — same derivation `weeklySetVolume` charts, so
+    /// the board number always matches the user's own volume chart.
+    private static func loggedSetCount(of log: WorkoutLog) -> Int {
+        log.exercises.reduce(0) { total, exercise in
+            if let reps = exercise.repsPerSet, !reps.isEmpty {
+                return total + reps.count
+            }
+            // Older logs carry only the display string ("3 sets" / "4").
+            return total + (Int(exercise.sets.prefix(while: \.isNumber)) ?? 0)
+        }
+    }
+
+    /// Sets + workouts this user logged inside `interval`, from their real
+    /// logs — the only place a competition score can come from.
+    func competitionTotals(in interval: DateInterval) -> (sets: Int, workouts: Int) {
+        var sets = 0
+        var workouts = 0
+        for log in currentAthleteWorkoutLogs where interval.contains(log.completedAt) {
+            workouts += 1
+            sets += Self.loggedSetCount(of: log)
+        }
+        return (sets, workouts)
+    }
+
+    /// The current Monday-anchored ISO week — the window the board scores.
+    private var currentBoardWeekInterval: DateInterval {
+        DateInterval(start: LeaderboardWeek.start(), duration: 7 * 86_400)
+    }
+
+    // MARK: Weekly board actions
+
+    /// Opts in, posts the honest current score (0 is a real score), and pulls
+    /// the board.
+    func joinWeeklyBoard() {
+        guard competitionSelf != nil else {
+            showToast("Sign in to join the weekly board.")
+            return
+        }
+        leaderboardOptIn = true
+        postWeeklyBoardScore()
+        Task { await refreshLeaderboard() }
+        showToast("You're on this week's board.")
+    }
+
+    /// Stops posting. Already-posted entries for the current week remain —
+    /// the rules allow no client deletes (and the opt-in copy disclosed it);
+    /// the week key rolls over on Monday and the old board simply ages out.
+    func leaveWeeklyBoard() {
+        leaderboardOptIn = false
+        weeklyLeaderboardSelfEntry = nil
+        showToast("Left the board. This week's posted entry stays until Monday.")
+    }
+
+    /// Pulls the top of this week's board, plus the user's own entry (which
+    /// may sit outside the fetched top — shown honestly as unranked).
+    func refreshLeaderboard() async {
+        let weekKey = LeaderboardWeek.key()
+        if let top = await leaderboardService.fetchTop(weekKey: weekKey, limit: 50) {
+            weeklyLeaderboard = top
+        }
+        if leaderboardOptIn, let me = competitionSelf {
+            weeklyLeaderboardSelfEntry = await leaderboardService.fetchEntry(weekKey: weekKey, uid: me.uid)
+        } else {
+            weeklyLeaderboardSelfEntry = nil
+        }
+    }
+
+    /// Upserts the user's own entry from their real weekly totals. Fire and
+    /// forget — Firestore queues offline like every other social write.
+    private func postWeeklyBoardScore() {
+        guard leaderboardOptIn, let me = competitionSelf else { return }
+        let totals = competitionTotals(in: currentBoardWeekInterval)
+        leaderboardService.postScore(
+            weekKey: LeaderboardWeek.key(),
+            entry: WeeklyLeaderboardEntry(
+                uid: me.uid,
+                name: me.name,
+                // Mirror of the server-granted badge; the rules re-check it.
+                verified: isVerifiedUser,
+                score: totals.sets,
+                workouts: totals.workouts,
+                updatedAt: nil
+            )
+        )
+    }
+
+    // MARK: Challenge actions
+
+    /// The user's member row for one challenge, scored from their own logs
+    /// inside the challenge window.
+    private func challengeSelfMember(for challenge: ChallengeSummary) -> ChallengeMember? {
+        guard let me = competitionSelf else { return nil }
+        let window = DateInterval(start: challenge.startsAt, end: max(challenge.endsAt, challenge.startsAt))
+        let totals = competitionTotals(in: window)
+        return ChallengeMember(
+            uid: me.uid,
+            name: me.name,
+            verified: isVerifiedUser,
+            score: challenge.metric == .sets ? totals.sets : totals.workouts,
+            updatedAt: nil
+        )
+    }
+
+    /// Creates a code-joinable challenge (host is member #1) and returns it —
+    /// the UI shows the share code from the result. Duration is clamped to
+    /// the 30-day cap the rules enforce.
+    @discardableResult
+    func createChallenge(title: String, metric: ChallengeMetric, days: Int) async -> ChallengeSummary? {
+        guard competitionSelf != nil else {
+            showToast("Sign in to create a challenge.")
+            return nil
+        }
+        let trimmed = String(title.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
+        guard !trimmed.isEmpty else {
+            showToast("Give the challenge a title.")
+            return nil
+        }
+        guard !isCompetitionBusy else { return nil }
+        isCompetitionBusy = true
+        defer { isCompetitionBusy = false }
+
+        let start = Date.now
+        var challenge = ChallengeSummary(
+            code: Self.makePartyCode(),
+            hostUid: competitionSelf?.uid ?? "",
+            hostName: competitionSelf?.name ?? "",
+            title: trimmed,
+            metric: metric,
+            startsAt: start,
+            endsAt: start.addingTimeInterval(TimeInterval(min(max(days, 1), 30)) * 86_400)
+        )
+        guard let host = challengeSelfMember(for: challenge) else { return nil }
+        guard await leaderboardService.createChallenge(challenge, host: host) else {
+            showToast("Couldn't create the challenge — check your connection.")
+            return nil
+        }
+        challenge.members = [host]
+        activeChallenges.removeAll { $0.code == challenge.code }
+        activeChallenges.append(challenge)
+        activeChallenges.sort { $0.endsAt < $1.endsAt }
+        if !joinedChallengeCodes.contains(challenge.code) {
+            joinedChallengeCodes.append(challenge.code)
+        }
+        Haptics.success()
+        return challenge
+    }
+
+    /// Joins a challenge by its 6-char code (typed or pasted).
+    @discardableResult
+    func joinChallenge(code rawCode: String) async -> Bool {
+        guard competitionSelf != nil else {
+            showToast("Sign in to join a challenge.")
+            return false
+        }
+        let code = rawCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !code.isEmpty else { return false }
+        guard !isCompetitionBusy else { return false }
+        isCompetitionBusy = true
+        defer { isCompetitionBusy = false }
+
+        if activeChallenges.contains(where: { $0.code == code }) {
+            showToast("You're already in that challenge.")
+            return false
+        }
+        // Fetch first so an expired challenge is refused honestly instead of
+        // silently accepting a member who can never score.
+        guard let fetched = await leaderboardService.fetchChallenge(code: code) else {
+            showToast("No challenge found for code \(code).")
+            return false
+        }
+        guard !fetched.isExpired else {
+            showToast("That challenge has already ended.")
+            return false
+        }
+        guard let member = challengeSelfMember(for: fetched),
+              let joined = await leaderboardService.joinChallenge(code: code, member: member) else {
+            showToast("Couldn't join — check your connection.")
+            return false
+        }
+        activeChallenges.removeAll { $0.code == joined.code }
+        activeChallenges.append(joined)
+        activeChallenges.sort { $0.endsAt < $1.endsAt }
+        if !joinedChallengeCodes.contains(joined.code) {
+            joinedChallengeCodes.append(joined.code)
+        }
+        showCelebration(title: "Challenge joined", detail: joined.title, symbol: "flag.checkered")
+        return true
+    }
+
+    /// Re-fetches every joined challenge. A code that can't be fetched right
+    /// now (offline) keeps its last-known data instead of vanishing.
+    func refreshChallenges() async {
+        guard !joinedChallengeCodes.isEmpty else { return }
+        var refreshed: [ChallengeSummary] = []
+        for code in joinedChallengeCodes {
+            if let challenge = await leaderboardService.fetchChallenge(code: code) {
+                refreshed.append(challenge)
+            } else if let known = activeChallenges.first(where: { $0.code == code }) {
+                refreshed.append(known)
+            }
+        }
+        activeChallenges = refreshed.sorted { $0.endsAt < $1.endsAt }
+    }
+
+    /// After a real log lands: mirror the new totals to the weekly board
+    /// (when opted in) and to every joined, still-running challenge. Reads
+    /// only the user's own logs — the score IS the training, nothing else.
+    func publishCompetitionScores() {
+        postWeeklyBoardScore()
+        guard competitionSelf != nil else { return }
+        for challenge in activeChallenges where !challenge.isExpired {
+            guard let member = challengeSelfMember(for: challenge) else { continue }
+            leaderboardService.postChallengeScore(code: challenge.code, member: member)
+        }
     }
 
     /// Updates the goal targets shown on Profile (physical / weight /
@@ -2425,6 +2879,131 @@ final class MorpheAppStore {
             )
         }
         .sorted { $0.latestDate > $1.latestDate }
+    }
+
+    // MARK: - Progress chart data (derived from real per-set log data)
+
+    /// Normalizes a logged weight into the current display unit. Logs keep
+    /// the unit they were recorded in (`LoggedExercise.weightUnit`), so a
+    /// lb-era log stays honest after the user flips the app to kg.
+    private func normalizedLoggedWeight(_ value: Double, recordedUnit: String?) -> Double {
+        let recorded = WeightUnit(rawValue: recordedUnit ?? "") ?? weightUnit
+        guard recorded != weightUnit else { return value }
+        let factor = weightUnit == .kilograms ? 0.45359237 : 2.20462262
+        return ((value * factor) * 10).rounded() / 10
+    }
+
+    /// The user's most-logged exercises (sessions with real weighted sets
+    /// only) — feeds the strength-over-time picker so it offers movements
+    /// that can actually draw a line.
+    func mostLoggedExerciseNames(limit: Int = 6) -> [String] {
+        var sessionCounts: [String: Int] = [:]
+        for log in currentAthleteWorkoutLogs {
+            for exercise in log.exercises {
+                guard let weights = exercise.weightsPerSet,
+                      weights.contains(where: { $0 > 0 }) else { continue }
+                sessionCounts[exercise.name, default: 0] += 1
+            }
+        }
+        return sessionCounts
+            .sorted { lhs, rhs in
+                if lhs.value == rhs.value { return lhs.key < rhs.key }
+                return lhs.value > rhs.value
+            }
+            .prefix(max(limit, 0))
+            .map(\.key)
+    }
+
+    /// Top-set weight per session for one exercise, oldest first, in the
+    /// current display unit. One point per session (the heaviest set), so
+    /// the chart reads as progression rather than intra-session noise.
+    func strengthProgression(for exerciseName: String) -> [(date: Date, topWeight: Double)] {
+        currentAthleteWorkoutLogs
+            .sorted { $0.completedAt < $1.completedAt }
+            .compactMap { log in
+                let sessionTop = log.exercises
+                    .filter { $0.name == exerciseName }
+                    .compactMap { exercise -> Double? in
+                        guard let weights = exercise.weightsPerSet,
+                              let top = weights.max(), top > 0 else { return nil }
+                        return normalizedLoggedWeight(top, recordedUnit: exercise.weightUnit)
+                    }
+                    .max()
+                guard let sessionTop else { return nil }
+                return (date: log.completedAt, topWeight: sessionTop)
+            }
+    }
+
+    /// Total logged sets per week for the last `weeks` weeks (current week
+    /// included), oldest first. Weeks with no training report zero so the
+    /// bar chart shows honest gaps instead of compressing them away.
+    func weeklySetVolume(weeks: Int = 8) -> [(weekStart: Date, sets: Int)] {
+        let calendar = Calendar.current
+        guard weeks > 0,
+              let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: .now)?.start
+        else { return [] }
+
+        var buckets: [Date: Int] = [:]
+        for log in currentAthleteWorkoutLogs {
+            guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: log.completedAt)?.start
+            else { continue }
+            let sets = log.exercises.reduce(0) { total, exercise in
+                if let reps = exercise.repsPerSet, !reps.isEmpty {
+                    return total + reps.count
+                }
+                // Older logs carry only the display string ("3 sets" / "4").
+                return total + (Int(exercise.sets.prefix(while: \.isNumber)) ?? 0)
+            }
+            buckets[weekStart, default: 0] += sets
+        }
+
+        return (0..<weeks).reversed().compactMap { offset in
+            guard let weekStart = calendar.date(byAdding: .weekOfYear, value: -offset, to: currentWeekStart)
+            else { return nil }
+            return (weekStart: weekStart, sets: buckets[weekStart] ?? 0)
+        }
+    }
+
+    /// Average rated RPE per session for the last `sessions` sessions where
+    /// at least one set was rated, oldest first. Unrated sets (0) are
+    /// excluded rather than dragging the average toward zero.
+    func rpeTrendPerSession(sessions: Int = 15) -> [(date: Date, averageRPE: Double)] {
+        let points: [(date: Date, averageRPE: Double)] = currentAthleteWorkoutLogs
+            .sorted { $0.completedAt < $1.completedAt }
+            .compactMap { log in
+                let rated = log.exercises
+                    .flatMap { $0.rpePerSet ?? [] }
+                    .filter { $0 > 0 }
+                guard !rated.isEmpty else { return nil }
+                let average = Double(rated.reduce(0, +)) / Double(rated.count)
+                return (date: log.completedAt, averageRPE: (average * 10).rounded() / 10)
+            }
+        return Array(points.suffix(max(sessions, 0)))
+    }
+
+    /// The last `limit` personal records, newest first: for each exercise,
+    /// its all-time top set and the FIRST session that hit it. Matching an
+    /// existing record later is not a new PR, so the original date sticks.
+    func recentPersonalRecords(limit: Int = 5) -> [(date: Date, exerciseName: String, weight: Double)] {
+        var best: [String: (weight: Double, date: Date)] = [:]
+        for log in currentAthleteWorkoutLogs.sorted(by: { $0.completedAt < $1.completedAt }) {
+            for exercise in log.exercises {
+                guard let weights = exercise.weightsPerSet,
+                      let top = weights.max(), top > 0 else { continue }
+                let normalized = normalizedLoggedWeight(top, recordedUnit: exercise.weightUnit)
+                if normalized > (best[exercise.name]?.weight ?? 0) {
+                    best[exercise.name] = (normalized, log.completedAt)
+                }
+            }
+        }
+        return best
+            .map { (date: $0.value.date, exerciseName: $0.key, weight: $0.value.weight) }
+            .sorted { lhs, rhs in
+                if lhs.date == rhs.date { return lhs.exerciseName < rhs.exerciseName }
+                return lhs.date > rhs.date
+            }
+            .prefix(max(limit, 0))
+            .map { $0 }
     }
 
     var currentAthleteWorkoutSummary: WorkoutLogSummary {
@@ -2921,8 +3500,13 @@ final class MorpheAppStore {
     private func equipmentPreferenceOrder() -> [String] {
         let e = clientProfile.equipment.lowercased()
         if e.contains("gym") { return ["Full Gym", "Dumbbells", "Bodyweight"] }
-        if e.contains("dumbbell") || e.contains("home") { return ["Dumbbells", "Bodyweight", "Full Gym"] }
-        if e.contains("body") || e.isEmpty { return ["Bodyweight", "Dumbbells", "Full Gym"] }
+        if e.contains("dumbbell") || e.contains("kettlebell") || e.contains("home") { return ["Dumbbells", "Bodyweight", "Full Gym"] }
+        // Pool-only (or bands/bar-only) selections have no barbell access —
+        // bodyweight-first is the honest ordering until the catalog carries
+        // pool-specific sessions.
+        if e.contains("body") || e.contains("pool") || e.contains("band") || e.isEmpty {
+            return ["Bodyweight", "Dumbbells", "Full Gym"]
+        }
         return ["Dumbbells", "Bodyweight", "Full Gym"]
     }
 
@@ -2999,17 +3583,42 @@ final class MorpheAppStore {
         _ candidates: [WorkoutTemplate],
         sport: SportFocus,
         equipmentOrder: [String],
-        flaggedAreas: Set<String>
+        flaggedAreas: Set<String>,
+        trainingStyles: [TrainingStyleOption] = []
     ) -> [WorkoutTemplate] {
-        func key(_ t: WorkoutTemplate) -> (Int, Int, Int, String) {
+        // The user's chosen training styles map to catalog vocabulary — a
+        // yoga/pilates/dance pick should actually surface those categories.
+        // Soft preference like sport: styles reorder, never exclude. (Passed
+        // in — this is a static ranking helper with no instance state.)
+        let styleKeywords: [String] = trainingStyles.flatMap { style -> [String] in
+            switch style {
+            case .yoga: return ["yoga"]
+            case .pilates: return ["pilates"]
+            case .dance, .aerobics: return ["dance", "aerobics"]
+            case .strength: return ["strength", "powerlifting"]
+            case .hypertrophy: return ["hypertrophy", "bodybuilding"]
+            case .conditioning: return ["hiit", "conditioning"]
+            case .endurance, .speed: return ["cardio", "running", "sport"]
+            case .mobility, .recovery: return ["mobility", "recovery"]
+            case .skillWork: return ["calisthenics", "functional"]
+            case .fatLoss: return ["hiit", "conditioning"]
+            case .hybrid: return []
+            }
+        }
+
+        func key(_ t: WorkoutTemplate) -> (Int, Int, Int, Int, String) {
             // generalFitness templates count as a match: they're the sport-
             // agnostic backbone of the catalog, not a mismatch to bury.
             let sportRank = (t.sport == sport || t.sport == .generalFitness) ? 0 : 1
+            let haystack = "\(t.categoryTag) \(t.focusTag) \(t.trainingTypeTag) \(t.type)".lowercased()
+            let styleRank = (styleKeywords.isEmpty
+                || styleKeywords.contains(where: { haystack.contains($0) })) ? 0 : 1
             let equipmentRank = equipmentOrder.firstIndex(of: t.equipment) ?? equipmentOrder.count
-            return (injuryPenalty(for: t, areas: flaggedAreas), sportRank, equipmentRank, t.name)
+            return (injuryPenalty(for: t, areas: flaggedAreas), sportRank, styleRank, equipmentRank, t.name)
         }
         return candidates.sorted { key($0) < key($1) }
     }
+
 
     /// Rebuilds the daily-plan rotation from the catalog: filtered to the
     /// user's level, ranked by injury safety + sport preference + equipment
@@ -3033,7 +3642,8 @@ final class MorpheAppStore {
                     trainable.filter { $0.focusTag == focus },
                     sport: clientProfile.sportMode,
                     equipmentOrder: pref,
-                    flaggedAreas: areas
+                    flaggedAreas: areas,
+                    trainingStyles: clientProfile.selectedTrainingStyles
                 )
             }
             .filter { !$0.isEmpty }
@@ -3064,7 +3674,8 @@ final class MorpheAppStore {
                 catalogWorkouts.filter { $0.difficulty == blendLevel && $0.durationMinutes >= 20 && $0.focusTag != "Recovery" },
                 sport: clientProfile.sportMode,
                 equipmentOrder: pref,
-                flaggedAreas: areas
+                flaggedAreas: areas,
+                trainingStyles: clientProfile.selectedTrainingStyles
             )
             if !blendPool.isEmpty {
                 var blendIndex = 0
@@ -4652,6 +5263,10 @@ final class MorpheAppStore {
             appendWorkoutLog(partnerLog)
         }
 
+        // Weekly board + joined challenges: the freshly-appended log is now
+        // part of the weekly totals — mirror them up (opt-in gated inside).
+        publishCompetitionScores()
+
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false
         hasCompletedWorkoutFlow = false
@@ -5033,8 +5648,10 @@ final class MorpheAppStore {
     }
 
     func openCommunity(_ section: ClientCommunitySection = .forYou) {
-        // Networking is a v2 (multi-user) surface, hidden in v1.
-        guard FeatureFlags.multiUserEnabled else { return }
+        // The Network tab's For You feed is REAL in v1, so navigation to it
+        // is always allowed. Only Contact deep-links stay flag-gated: their
+        // callers seed the demo inbox threads, which are multi-user surfaces.
+        guard section == .forYou || FeatureFlags.multiUserEnabled else { return }
         selectedCommunitySection = section
         selectedClientTab = .community
         Haptics.impact(.light)
@@ -5523,6 +6140,18 @@ final class MorpheAppStore {
         Haptics.impact(.light)
     }
 
+    /// Applies a new accent palette app-wide and persists it. Contract with
+    /// the Profile appearance picker (ProfileView owns the UI only): set
+    /// profileShowcase.accentPalette, call MorpheTheme.apply(accentPalette:),
+    /// persist the profile.
+    func updateAccentPalette(_ palette: AccentPalette) {
+        guard profileShowcase.accentPalette != palette else { return }
+        profileShowcase.accentPalette = palette
+        MorpheTheme.apply(accentPalette: palette)
+        persistLocalProfile()
+        Haptics.impact(.light)
+    }
+
     func updateDisplayName(_ newName: String) {
         let trimmed = String(newName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
         guard !trimmed.isEmpty else {
@@ -5821,6 +6450,14 @@ final class MorpheAppStore {
         communityPosts.insert(post, at: 0)
         SoundEffects.play(.ding)
         showCelebration(title: "Post shared", detail: role == .coach ? "Coach network updated" : "Athlete network updated", symbol: "bubble.left.and.exclamationmark.bubble.right.fill")
+
+        // When the REAL feed is live for this signed-in account, a shared win
+        // ALSO publishes to Firestore (quiet path — the celebration above
+        // already fired). The demo insert stays untouched for every other
+        // caller (previews, tests, the flag-gated surfaces).
+        if isRealFeedActive {
+            Task { await publishToRealFeed(text: cleanText) }
+        }
     }
 
     func sharePendingPartnerSessionPost() {
@@ -6112,6 +6749,328 @@ final class MorpheAppStore {
                 symbol: "person.2.fill"
             )
         }
+    }
+
+    // MARK: - Real 1:1 messaging (coach ↔ claimed client)
+
+    /// Pulls every real thread this account participates in — either role —
+    /// on launch and sign-in (same pattern as `refreshManagedClients`). A nil
+    /// fetch (offline, signed out, no-op service) keeps whatever is local.
+    func refreshThreads() async {
+        guard let uid = authUser?.id else { return }
+        if let fetched = await messagingService.fetchThreads(for: uid) {
+            liveThreads = fetched
+        }
+    }
+
+    /// Opens a thread: clears stale messages and starts the live listener.
+    /// Safe to call for a thread that's already open (listener restarts).
+    func openThread(_ thread: MessageThreadSummary) {
+        activeThreadId = thread.id
+        activeThreadMessages = []
+        messagingService.listenMessages(threadId: thread.id) { [weak self] messages in
+            Task { @MainActor [weak self] in
+                guard let self, self.activeThreadId == thread.id else { return }
+                self.activeThreadMessages = messages
+            }
+        }
+    }
+
+    /// Stops the live listener and clears the open-thread state.
+    func closeThread() {
+        messagingService.stopListening()
+        activeThreadId = nil
+        activeThreadMessages = []
+    }
+
+    /// Sends one immutable message into the open thread. The listener streams
+    /// it back into `activeThreadMessages`; the local inbox preview rolls
+    /// forward immediately so the list is honest without a refetch.
+    func sendMessage(_ text: String) async {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        guard let uid = authUser?.id, let threadId = activeThreadId else { return }
+        guard await messagingService.send(threadId: threadId, senderUid: uid,
+                                          text: String(clean.prefix(2000))) else {
+            showToast("Message didn't send — check your connection.")
+            return
+        }
+        if let index = liveThreads.firstIndex(where: { $0.id == threadId }) {
+            liveThreads[index].lastMessage = String(clean.prefix(300))
+            liveThreads[index].lastSender = uid
+            liveThreads[index].updatedAt = .now
+            liveThreads.sort { $0.updatedAt > $1.updatedAt }
+        }
+    }
+
+    /// Coach side: opens (creating if needed) the real thread with the
+    /// athlete who CLAIMED this managed client. Returns false when the link
+    /// isn't real yet (unclaimed / missing uid) or the network said no.
+    @discardableResult
+    func startThreadWithClaimedClient(_ client: ManagedClient) async -> Bool {
+        guard selectedRole == .coach, let coachUid = authUser?.id else { return false }
+        guard client.isClaimed, !client.claimedByUid.isEmpty else {
+            showToast("\(client.name) hasn't claimed their invite yet.")
+            return false
+        }
+        let athleteName = client.claimedByName.isEmpty ? client.name : client.claimedByName
+        guard let threadId = await messagingService.ensureThread(
+            coachUid: coachUid,
+            athleteUid: client.claimedByUid,
+            coachName: coachProfile.name,
+            athleteName: athleteName
+        ) else {
+            showToast("Couldn't open the conversation — check your connection.")
+            return false
+        }
+        await refreshThreads()
+        let thread = liveThreads.first(where: { $0.id == threadId })
+            ?? MessageThreadSummary(
+                id: threadId,
+                coachUid: coachUid,
+                athleteUid: client.claimedByUid,
+                coachName: coachProfile.name,
+                athleteName: athleteName
+            )
+        openThread(thread)
+        return true
+    }
+
+    // MARK: - Real community feed (posts, reactions, saves, reposts)
+
+    /// True when a REAL Firestore feed backs the For You surface this
+    /// session — signed in with a live feed service. Drives the UI branch
+    /// between the real feed and the flag-gated demo sections.
+    var isRealFeedActive: Bool {
+        authUser != nil && !(feedService is NoOpFeedService)
+    }
+
+    /// The display name posts publish under for the current role.
+    private var feedAuthorName: String {
+        let name = selectedRole == .coach ? coachProfile.name : clientProfile.name
+        return name.isEmpty ? (authUser?.displayName ?? "Athlete") : name
+    }
+
+    /// Pulls the newest posts + their real reaction counts + this account's
+    /// bookmarks. Runs on launch/sign-in (same pattern as `refreshThreads`)
+    /// and from pull-to-refresh. A nil fetch (offline, signed out, no-op
+    /// service) keeps whatever is local.
+    func refreshFeed() async {
+        guard let uid = authUser?.id else { return }
+        if let fetched = await feedService.fetchRecent(limit: 50) {
+            feedPosts = fetched
+            feedReactionCounts = await feedService.fetchReactionCounts(postIds: fetched.map(\.id))
+        }
+        if let saved = await feedService.fetchSavedPostIds(uid: uid) {
+            savedPostIds = saved
+        }
+    }
+
+    /// Publishes one post to the real feed and inserts it locally on success.
+    /// Quiet core shared by the composer and the share-a-win rewire below.
+    @discardableResult
+    private func publishToRealFeed(text: String, workoutName: String = "",
+                                   repostOfId: String = "", repostOfAuthor: String = "") async -> Bool {
+        guard let uid = authUser?.id else { return false }
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return false }
+        let post = FeedPost(
+            id: UUID().uuidString,
+            authorUid: uid,
+            authorName: feedAuthorName,
+            // Honest mirror: the rules re-check this against users/{uid}.verified.
+            verified: isVerifiedUser,
+            text: String(clean.prefix(1000)),
+            workoutName: String(workoutName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80)),
+            repostOfId: repostOfId,
+            repostOfAuthor: String(repostOfAuthor.prefix(60))
+        )
+        guard await feedService.publish(post: post) else { return false }
+        feedPosts.insert(post, at: 0)
+        feedReactionCounts[post.id] = 0
+        return true
+    }
+
+    /// Composer path: publish a win (optionally tagged with a workout name).
+    func publishPost(text: String, workoutName: String = "") async {
+        guard await publishToRealFeed(text: text, workoutName: workoutName) else {
+            showToast("Post didn't publish — check your connection.")
+            return
+        }
+        SoundEffects.play(.ding)
+        showCelebration(title: "Post shared", detail: "Your win is live on the feed.", symbol: "bubble.left.and.exclamationmark.bubble.right.fill")
+    }
+
+    /// Toggles this account's single reaction on a post. The count updates
+    /// optimistically; the server doc is one-per-uid so nobody can inflate
+    /// a post beyond 1 either way.
+    func toggleReaction(_ post: FeedPost) {
+        guard let uid = authUser?.id else { return }
+        let on = !myReactedPostIds.contains(post.id)
+        if on {
+            myReactedPostIds.insert(post.id)
+        } else {
+            myReactedPostIds.remove(post.id)
+        }
+        feedReactionCounts[post.id] = max(0, (feedReactionCounts[post.id] ?? 0) + (on ? 1 : -1))
+        feedService.react(postId: post.id, uid: uid, on: on)
+        if on { Haptics.impact(.light) }
+    }
+
+    /// Toggles a private bookmark (users/{uid}/savedPosts/{postId}).
+    func toggleSaved(_ post: FeedPost) {
+        guard let uid = authUser?.id else { return }
+        let on = !savedPostIds.contains(post.id)
+        if on {
+            savedPostIds.insert(post.id)
+        } else {
+            savedPostIds.remove(post.id)
+        }
+        feedService.savePost(uid: uid, postId: post.id, on: on)
+        showToast(on ? "Post saved." : "Removed from saved.")
+    }
+
+    /// Reposts with the reposter's own commentary. Reposting a repost points
+    /// at the ORIGINAL post, so attribution never chains through middlemen.
+    func repost(_ post: FeedPost, commentary: String) async {
+        let originalId = post.isRepost ? post.repostOfId : post.id
+        let originalAuthor = post.isRepost ? post.repostOfAuthor : post.authorName
+        let clean = commentary.trimmingCharacters(in: .whitespacesAndNewlines)
+        // The rules require 1..1000 chars of text — an empty commentary
+        // becomes an honest default rather than a rejected write.
+        let text = clean.isEmpty ? "Sharing \(originalAuthor)'s win." : clean
+        guard await publishToRealFeed(text: text, repostOfId: originalId,
+                                      repostOfAuthor: originalAuthor) else {
+            showToast("Repost didn't publish — check your connection.")
+            return
+        }
+        SoundEffects.play(.ding)
+        showToast("Reposted to the feed.")
+    }
+
+    /// Deletes the user's OWN post (the rules enforce author-only server-side).
+    func deleteMyPost(_ post: FeedPost) {
+        guard let uid = authUser?.id, post.authorUid == uid else { return }
+        feedPosts.removeAll { $0.id == post.id }
+        feedReactionCounts[post.id] = nil
+        feedService.delete(postId: post.id)
+        showToast("Post deleted.")
+    }
+
+    // MARK: - Appointments (real personal schedule)
+
+    /// Upcoming = still scheduled and not fully in the past. Cancelled and
+    /// completed entries drop off the list rather than cluttering it.
+    var upcomingAppointments: [Appointment] {
+        appointments.filter { $0.isScheduled && $0.endDate >= .now }
+    }
+
+    /// Adds a personal appointment and mirrors it to the cloud (one doc).
+    /// Works signed-out too — the entry just stays local until sign-in.
+    @discardableResult
+    func addAppointment(
+        title: String,
+        date: Date,
+        durationMinutes: Int,
+        kind: AppointmentKind,
+        withName: String,
+        notes: String
+    ) -> Appointment? {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTitle.isEmpty else {
+            showToast("Give the appointment a title first.")
+            return nil
+        }
+        let appointment = Appointment(
+            title: cleanTitle,
+            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines),
+            date: date,
+            durationMinutes: max(durationMinutes, 5),
+            kind: kind,
+            withName: withName.trimmingCharacters(in: .whitespacesAndNewlines),
+            createdByRole: selectedRole.rawValue
+        )
+        appointments.append(appointment)
+        appointments.sort { $0.date < $1.date }
+        if let uid = authUser?.id {
+            appointmentService.push(appointment, uid: uid)
+        }
+        scheduleAppointmentReminder(appointment)
+        showToast("\(cleanTitle) scheduled.")
+        return appointment
+    }
+
+    /// Moves an appointment between scheduled/completed/cancelled (the
+    /// `Appointment.status*` constants) and syncs the change.
+    func updateAppointmentStatus(_ appointment: Appointment, to status: String) {
+        guard let index = appointments.firstIndex(where: { $0.id == appointment.id }) else { return }
+        appointments[index].status = status
+        if let uid = authUser?.id {
+            appointmentService.push(appointments[index], uid: uid)
+        }
+        // A cancelled or completed appointment must not still ring an hour out.
+        if status != Appointment.statusScheduled {
+            cancelAppointmentReminder(id: appointment.id)
+        }
+    }
+
+    /// Removes an appointment locally, in the cloud, and from the reminder queue.
+    func deleteAppointment(_ appointment: Appointment) {
+        guard let index = appointments.firstIndex(where: { $0.id == appointment.id }) else { return }
+        appointments.remove(at: index)
+        if let uid = authUser?.id {
+            appointmentService.delete(id: appointment.id, uid: uid)
+        }
+        cancelAppointmentReminder(id: appointment.id)
+    }
+
+    /// Pulls this account's appointments (launch + sign-in). A nil fetch
+    /// (offline, signed out) keeps whatever is already local.
+    func refreshAppointments() async {
+        guard let uid = authUser?.id else { return }
+        if let fetched = await appointmentService.fetchAll(uid: uid) {
+            appointments = fetched.sorted { $0.date < $1.date }
+        }
+    }
+
+    // Local reminders are best-effort: authorization is requested on the
+    // first add, a denial is handled silently, and the in-app list stays the
+    // source of truth either way. Tests/previews (NoOp service) never touch
+    // the system notification center.
+    private var appointmentRemindersEnabled: Bool {
+        !(appointmentService is NoOpAppointmentService)
+    }
+
+    /// Schedules a local notification 60 minutes before the appointment
+    /// (identifier = appointment id, so cancel/delete can revoke exactly it).
+    private func scheduleAppointmentReminder(_ appointment: Appointment) {
+        guard appointmentRemindersEnabled else { return }
+        let fireDate = appointment.date.addingTimeInterval(-60 * 60)
+        guard fireDate > .now else { return }   // less than an hour out: no ghost ring
+
+        let center = UNUserNotificationCenter.current()
+        // Safe to call every time — after the first prompt it just reports
+        // the existing decision.
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }   // denied: silent, the list is the truth
+            let content = UNMutableNotificationContent()
+            content.title = appointment.title
+            content.body = appointment.withName.isEmpty
+                ? "In 1 hour — \(appointment.kind.title.lowercased())."
+                : "In 1 hour with \(appointment.withName)."
+            content.sound = .default
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: Calendar.current.dateComponents(
+                    [.year, .month, .day, .hour, .minute], from: fireDate),
+                repeats: false
+            )
+            center.add(UNNotificationRequest(identifier: appointment.id, content: content, trigger: trigger))
+        }
+    }
+
+    private func cancelAppointmentReminder(id: String) {
+        guard appointmentRemindersEnabled else { return }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
     }
 
     func coachAddManualWorkoutLog(

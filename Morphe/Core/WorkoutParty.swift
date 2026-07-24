@@ -364,3 +364,217 @@ final class FirebasePartyService: WorkoutPartying {
         )
     }
 }
+
+// MARK: - Weekly leaderboard + challenges (opt-in competition)
+//
+// Firestore layout (leaderboards/challenges blocks in BACKEND/firestore.rules):
+//   leaderboards/{weekKey}/entries/{uid}   { uid, name, verified, score,
+//                                            workouts, updatedAt }
+//   challenges/{code}                      { hostUid, hostName, title, metric,
+//                                            startsAt, endsAt, createdAt }
+//   challenges/{code}/members/{uid}        { name, verified, score, updatedAt }
+//
+// Honest boundaries: every row is a real signed-in account's own write (the
+// rules pin each entry to its uid); scores derive from the user's own logged
+// sets; `verified` can only mirror the server-granted badge. Nothing here is
+// seeded, simulated, or ranked beyond what was actually fetched.
+
+/// Monday-anchored ISO year-week key ("2026-W30") — the weekly board's
+/// document id. Pure and injectable so tests can pin dates and zones.
+enum LeaderboardWeek {
+    static func key(for date: Date = .now, timeZone: TimeZone = .current) -> String {
+        var calendar = Calendar(identifier: .iso8601)   // ISO 8601 weeks start Monday
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        return String(format: "%04d-W%02d", parts.yearForWeekOfYear ?? 0, parts.weekOfYear ?? 0)
+    }
+
+    /// The Monday-00:00 start of `date`'s ISO week — the window scores count.
+    static func start(of date: Date = .now, timeZone: TimeZone = .current) -> Date {
+        var calendar = Calendar(identifier: .iso8601)
+        calendar.timeZone = timeZone
+        return calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? date
+    }
+}
+
+/// Abstraction so the store runs without Firebase (tests use a mock, previews
+/// the no-op). The real app injects `FirebaseLeaderboardService`.
+protocol LeaderboardSyncing: AnyObject {
+    // Weekly board
+    /// Upsert the user's own entry (fire-and-forget; Firestore queues offline).
+    func postScore(weekKey: String, entry: WeeklyLeaderboardEntry)
+    /// Top entries by score, or nil when offline/unavailable.
+    func fetchTop(weekKey: String, limit: Int) async -> [WeeklyLeaderboardEntry]?
+    /// One user's entry, nil when they haven't posted this week.
+    func fetchEntry(weekKey: String, uid: String) async -> WeeklyLeaderboardEntry?
+
+    // Challenges
+    func createChallenge(_ challenge: ChallengeSummary, host: ChallengeMember) async -> Bool
+    /// Joins by code; returns the challenge (with members) or nil when the
+    /// code resolves to nothing / the write fails.
+    func joinChallenge(code: String, member: ChallengeMember) async -> ChallengeSummary?
+    /// The challenge plus its current members, nil when the code is unknown.
+    func fetchChallenge(code: String) async -> ChallengeSummary?
+    /// Upsert the user's own member score (fire-and-forget).
+    func postChallengeScore(code: String, member: ChallengeMember)
+}
+
+/// Default that does nothing — keeps the store fully functional offline and
+/// keeps the test suite off the network.
+final class NoOpLeaderboardService: LeaderboardSyncing {
+    func postScore(weekKey: String, entry: WeeklyLeaderboardEntry) {}
+    func fetchTop(weekKey: String, limit: Int) async -> [WeeklyLeaderboardEntry]? { nil }
+    func fetchEntry(weekKey: String, uid: String) async -> WeeklyLeaderboardEntry? { nil }
+    func createChallenge(_ challenge: ChallengeSummary, host: ChallengeMember) async -> Bool { false }
+    func joinChallenge(code: String, member: ChallengeMember) async -> ChallengeSummary? { nil }
+    func fetchChallenge(code: String) async -> ChallengeSummary? { nil }
+    func postChallengeScore(code: String, member: ChallengeMember) {}
+}
+
+final class FirebaseLeaderboardService: LeaderboardSyncing {
+    private var db: Firestore { Firestore.firestore() }
+
+    private func entries(_ weekKey: String) -> CollectionReference {
+        db.collection("leaderboards").document(weekKey).collection("entries")
+    }
+
+    private func challengeDoc(_ code: String) -> DocumentReference {
+        db.collection("challenges").document(code)
+    }
+
+    // MARK: Weekly board
+
+    func postScore(weekKey: String, entry: WeeklyLeaderboardEntry) {
+        // Merge, no completion: Firestore queues offline and syncs when it can.
+        entries(weekKey).document(entry.uid).setData([
+            "uid": entry.uid,
+            "name": entry.name,
+            "verified": entry.verified,
+            "score": entry.score,
+            "workouts": entry.workouts,
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true)
+    }
+
+    func fetchTop(weekKey: String, limit: Int) async -> [WeeklyLeaderboardEntry]? {
+        guard let snapshot = try? await entries(weekKey)
+            .order(by: "score", descending: true)
+            .limit(to: limit)
+            .getDocuments()
+        else { return nil }
+        return snapshot.documents.compactMap { Self.entry(from: $0.documentID, data: $0.data()) }
+    }
+
+    func fetchEntry(weekKey: String, uid: String) async -> WeeklyLeaderboardEntry? {
+        guard let snap = try? await entries(weekKey).document(uid).getDocument(),
+              snap.exists, let data = snap.data() else { return nil }
+        return Self.entry(from: snap.documentID, data: data)
+    }
+
+    // MARK: Challenges
+
+    func createChallenge(_ challenge: ChallengeSummary, host: ChallengeMember) async -> Bool {
+        do {
+            try await challengeDoc(challenge.code).setData([
+                "hostUid": challenge.hostUid,
+                "hostName": challenge.hostName,
+                "title": challenge.title,
+                "metric": challenge.metric.rawValue,
+                "startsAt": Timestamp(date: challenge.startsAt),
+                "endsAt": Timestamp(date: challenge.endsAt),
+                "createdAt": FieldValue.serverTimestamp()
+            ])
+        } catch {
+            return false
+        }
+        return await writeMember(code: challenge.code, member: host)
+    }
+
+    func joinChallenge(code: String, member: ChallengeMember) async -> ChallengeSummary? {
+        guard let challenge = await fetchChallenge(code: code) else { return nil }
+        guard await writeMember(code: code, member: member) else { return nil }
+        var joined = challenge
+        joined.members.removeAll { $0.uid == member.uid }
+        joined.members.append(member)
+        return joined
+    }
+
+    func fetchChallenge(code: String) async -> ChallengeSummary? {
+        guard let snap = try? await challengeDoc(code).getDocument(),
+              snap.exists, let data = snap.data(),
+              var challenge = Self.challenge(from: snap.documentID, data: data)
+        else { return nil }
+        if let members = try? await challengeDoc(code).collection("members").getDocuments() {
+            challenge.members = members.documents.compactMap {
+                Self.member(from: $0.documentID, data: $0.data())
+            }
+        }
+        return challenge
+    }
+
+    func postChallengeScore(code: String, member: ChallengeMember) {
+        challengeDoc(code).collection("members").document(member.uid).setData([
+            "name": member.name,
+            "verified": member.verified,
+            "score": member.score,
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true)
+    }
+
+    private func writeMember(code: String, member: ChallengeMember) async -> Bool {
+        do {
+            try await challengeDoc(code).collection("members").document(member.uid).setData([
+                "name": member.name,
+                "verified": member.verified,
+                "score": member.score,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    // MARK: Tolerant hand-decodes (same per-field-defaults style as the
+    // party service — one malformed field never hides a whole row)
+
+    private static func entry(from uid: String, data: [String: Any]) -> WeeklyLeaderboardEntry? {
+        guard let name = data["name"] as? String else { return nil }
+        return WeeklyLeaderboardEntry(
+            uid: uid,
+            name: name,
+            verified: data["verified"] as? Bool ?? false,
+            score: data["score"] as? Int ?? 0,
+            workouts: data["workouts"] as? Int ?? 0,
+            updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue()
+        )
+    }
+
+    private static func member(from uid: String, data: [String: Any]) -> ChallengeMember? {
+        guard let name = data["name"] as? String else { return nil }
+        return ChallengeMember(
+            uid: uid,
+            name: name,
+            verified: data["verified"] as? Bool ?? false,
+            score: data["score"] as? Int ?? 0,
+            updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue()
+        )
+    }
+
+    private static func challenge(from code: String, data: [String: Any]) -> ChallengeSummary? {
+        guard let hostUid = data["hostUid"] as? String,
+              let title = data["title"] as? String,
+              let startsAt = (data["startsAt"] as? Timestamp)?.dateValue(),
+              let endsAt = (data["endsAt"] as? Timestamp)?.dateValue()
+        else { return nil }
+        return ChallengeSummary(
+            code: code,
+            hostUid: hostUid,
+            hostName: data["hostName"] as? String ?? "",
+            title: title,
+            metric: (data["metric"] as? String).flatMap(ChallengeMetric.init(rawValue:)) ?? .sets,
+            startsAt: startsAt,
+            endsAt: endsAt
+        )
+    }
+}

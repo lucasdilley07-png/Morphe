@@ -55,6 +55,23 @@ service cloud.firestore {
       match /customWorkouts/{id} {
         allow read, write: if isOwner(uid);
       }
+
+      // Personal appointments — one doc per appointment (append-scale, not a
+      // state/* JSON blob). Owner-only ON PURPOSE: unlike workoutLogs there
+      // is no coach read, because an appointment can name third parties
+      // (withName) who never agreed to be visible to a linked coach.
+      // NOTE: publishing these rules is manual — editing this file changes
+      // nothing until `firebase deploy --only firestore:rules` (or a console
+      // paste) pushes it to the morphe-3c5c2 project.
+      match /appointments/{id} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Feed bookmarks — one doc per saved post ({ savedAt }). Private on
+      // purpose: what someone saves is their own business, so no coach read.
+      match /savedPosts/{postId} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // Username uniqueness map. Readable by all (to check availability at
@@ -199,6 +216,188 @@ service cloud.firestore {
       allow delete: if isSignedIn()
         && request.auth.uid == resource.data.coachUid
         && resource.data.status == 'unclaimed';
+    }
+
+    // Weekly leaderboard — global, opt-in. weekKey is the Monday-anchored ISO
+    // year-week ("2026-W30"); each signed-in user owns exactly one entry per
+    // week (doc id = uid). Honesty guarantees enforced here:
+    //   • a user writes ONLY their own row (no ghost competitors),
+    //   • score/workouts must be non-negative integers,
+    //   • `verified` may only mirror a badge the server actually granted
+    //     (users/{uid}.verified) — no self-minted blue checks on the board,
+    //   • no client deletes: leaving the board stops future posts, but the
+    //     already-posted week stays (disclosed in the opt-in copy).
+    // NOTE: publishing these rules is manual — editing this file changes
+    // nothing until `firebase deploy --only firestore:rules` (or a console
+    // paste) pushes it to the morphe-3c5c2 project.
+    match /leaderboards/{weekKey}/entries/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.score is int
+        && request.resource.data.score >= 0
+        && request.resource.data.workouts is int
+        && request.resource.data.workouts >= 0
+        && (request.resource.data.get('verified', false) != true
+            || get(/databases/$(database)/documents/users/$(uid)).data.get('verified', false) == true);
+      allow delete: if false;
+    }
+
+    // Code-joinable challenges. The 6-char doc id is the join code — knowing
+    // it is the invite (get by code; no listing), exactly like parties. The
+    // host creates the challenge doc (immutable afterward, host-set window
+    // capped at 30 days); every member owns exactly their own member doc,
+    // with the same non-negative-score and honest-verified checks as the
+    // weekly board.
+    match /challenges/{code} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 60
+        && request.resource.data.metric in ['sets', 'workouts']
+        && request.resource.data.startsAt is timestamp
+        && request.resource.data.endsAt is timestamp
+        && request.resource.data.endsAt.toMillis() > request.resource.data.startsAt.toMillis()
+        && request.resource.data.endsAt.toMillis() - request.resource.data.startsAt.toMillis() <= 30 * 24 * 60 * 60 * 1000;
+      allow update, delete: if false;
+
+      match /members/{uid} {
+        allow read: if isSignedIn();
+        allow create, update: if isOwner(uid)
+          && request.resource.data.score is int
+          && request.resource.data.score >= 0
+          && (request.resource.data.get('verified', false) != true
+              || get(/databases/$(database)/documents/users/$(uid)).data.get('verified', false) == true);
+        allow delete: if false;
+      }
+    }
+
+    // Real 1:1 coach↔athlete messaging. Thread id is deterministic —
+    // "{coachUid}_{athleteUid}" — same scheme as connections, so both sides
+    // derive the same doc without a lookup. Participants (and only they) read
+    // and write; the uid/name fields freeze at creation; messages are
+    // immutable once sent (honest history — no edits, no deletions). Rules
+    // can't query managedClients by claimedByUid, so the real-link guarantee
+    // is: the coach client only creates a thread from a CLAIMED roster entry,
+    // and rules pin every thread to exactly its two named participants.
+    // NOTE: publishing these rules is manual — editing this file changes
+    // nothing until `firebase deploy --only firestore:rules` (or a console
+    // paste) pushes it to the morphe-3c5c2 project.
+    match /threads/{threadId} {
+      function isThreadParticipant() {
+        return isSignedIn()
+          && (request.auth.uid == resource.data.coachUid
+              || request.auth.uid == resource.data.athleteUid);
+      }
+
+      allow get: if isThreadParticipant();
+      // list only via a participant-scoped query (whereField coachUid == me,
+      // or whereField athleteUid == me — the store issues one of each).
+      allow list: if isThreadParticipant();
+
+      // A participant creates the thread under the deterministic id, never to
+      // themself, with exactly the thread fields and a bounded preview.
+      allow create: if isSignedIn()
+        && threadId == request.resource.data.coachUid + '_' + request.resource.data.athleteUid
+        && (request.auth.uid == request.resource.data.coachUid
+            || request.auth.uid == request.resource.data.athleteUid)
+        && request.resource.data.coachUid != request.resource.data.athleteUid
+        && request.resource.data.keys().hasOnly(
+             ['coachUid', 'athleteUid', 'coachName', 'athleteName',
+              'lastMessage', 'lastSender', 'updatedAt'])
+        && request.resource.data.coachName is string
+        && request.resource.data.athleteName is string
+        && request.resource.data.lastMessage is string
+        && request.resource.data.lastMessage.size() <= 300;
+
+      // Participants may only roll the preview forward — uids and names are
+      // immutable, and the preview sender must be the writer.
+      allow update: if isThreadParticipant()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['lastMessage', 'lastSender', 'updatedAt'])
+        && request.resource.data.lastMessage is string
+        && request.resource.data.lastMessage.size() <= 300
+        && request.resource.data.lastSender == request.auth.uid;
+
+      allow delete: if false;
+
+      match /messages/{msgId} {
+        // Membership lives on the parent thread doc — one get() per rule.
+        function parentData() {
+          return get(/databases/$(database)/documents/threads/$(threadId)).data;
+        }
+
+        allow read: if isSignedIn()
+          && (request.auth.uid == parentData().coachUid
+              || request.auth.uid == parentData().athleteUid);
+
+        allow create: if isSignedIn()
+          && request.resource.data.senderUid == request.auth.uid
+          && (request.auth.uid == parentData().coachUid
+              || request.auth.uid == parentData().athleteUid)
+          && request.resource.data.keys().hasOnly(['senderUid', 'text', 'sentAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1
+          && request.resource.data.text.size() <= 2000;
+
+        // Messages are immutable — sent means sent.
+        allow update, delete: if false;
+      }
+    }
+
+    // Community feed — the real For You surface. One doc per post, visible to
+    // every signed-in user. Honesty guarantees enforced here:
+    //   • authorUid is always the writer (no ghost authors),
+    //   • text is bounded 1..1000; workoutName ≤80; repostOfAuthor ≤60,
+    //   • `verified` may only mirror a badge the server actually granted
+    //     (users/{uid}.verified) — same pattern as the leaderboard entries,
+    //     so no self-minted blue checks in the feed,
+    //   • posts are immutable once published (edit = delete + repost),
+    //   • only the author deletes their own post.
+    // NOTE: publishing these rules is manual — editing this file changes
+    // nothing until `firebase deploy --only firestore:rules` (or a console
+    // paste) pushes it to the morphe-3c5c2 project.
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(
+             ['authorUid', 'authorName', 'verified', 'text', 'workoutName',
+              'repostOfId', 'repostOfAuthor', 'createdAt'])
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() >= 1
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 1000
+        && (!('workoutName' in request.resource.data)
+            || (request.resource.data.workoutName is string
+                && request.resource.data.workoutName.size() <= 80))
+        && (!('repostOfId' in request.resource.data)
+            || request.resource.data.repostOfId is string)
+        && (!('repostOfAuthor' in request.resource.data)
+            || (request.resource.data.repostOfAuthor is string
+                && request.resource.data.repostOfAuthor.size() <= 60))
+        && (request.resource.data.get('verified', false) != true
+            || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('verified', false) == true);
+
+      // Posts are immutable — published means published.
+      allow update: if false;
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.authorUid;
+
+      // Reactions: one doc per user per post ({ value: true, createdAt }) —
+      // the doc id IS the reactor's uid, so real counts come from counting
+      // docs and nobody can inflate a post beyond their single reaction.
+      match /reactions/{uid} {
+        allow read: if isSignedIn();
+        allow create: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['value', 'createdAt'])
+          && request.resource.data.value == true;
+        allow update: if false;
+        allow delete: if isOwner(uid);
+      }
     }
 
     // Default deny for anything not matched above.

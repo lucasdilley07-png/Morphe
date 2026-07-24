@@ -5,6 +5,8 @@ struct HomeView: View {
     @State private var showAdjustments = false
     @State private var showSupport = false
     @State private var showMessages = false
+    @State private var showAppointments = false
+    @State private var showCoachMessages = false
     @State private var showEmptyLibraryNotice = false
 
     private var morpheScoreTitle: String {
@@ -196,12 +198,75 @@ struct HomeView: View {
                         showMessages = true
                     }
                 }
+
+                // REAL coach messaging: only exists once a coach link is real
+                // (the athlete claimed an invite and a thread exists). An
+                // athlete without a coach never sees a Coach card at all.
+                // When Coach and Schedule are BOTH present they share one
+                // slim two-column row so Today doesn't end in a stack of
+                // look-alike link-cards.
+                if store.liveThreads.isEmpty {
+                    scheduleLinkCard
+                } else {
+                    HStack(alignment: .top, spacing: 12) {
+                        HomeLinkTile(
+                            systemImage: "bubble.left.and.bubble.right.fill",
+                            title: "Coach",
+                            detail: coachTileDetail,
+                            detailIsMuted: coachTileDetailIsMuted,
+                            accessibilityLabel: "Coach messages"
+                        ) {
+                            showCoachMessages = true
+                        }
+
+                        HomeLinkTile(
+                            systemImage: "calendar.badge.clock",
+                            title: "Schedule",
+                            detail: scheduleTileDetail,
+                            detailIsMuted: store.upcomingAppointments.isEmpty,
+                            accessibilityLabel: "Schedule"
+                        ) {
+                            showAppointments = true
+                        }
+                    }
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 120)
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
+        .sheet(isPresented: $showAppointments) {
+            NavigationStack {
+                ClientAppointmentsView()
+                    .environment(store)
+            }
+        }
+        .sheet(isPresented: $showCoachMessages) {
+            NavigationStack {
+                Group {
+                    // One coach = straight into the conversation; the inbox
+                    // list only appears when there's something to list.
+                    if store.liveThreads.count == 1, let only = store.liveThreads.first {
+                        ThreadChatView(thread: only)
+                    } else {
+                        AthleteInboxView()
+                    }
+                }
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Text("Coach").font(.headline).foregroundStyle(.white)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { showCoachMessages = false }
+                            .foregroundStyle(.white)
+                    }
+                }
+                .navigationBarTitleDisplayMode(.inline)
+            }
+            .environment(store)
+            .background(PremiumBackground())
+        }
         .alert("Your library is empty", isPresented: $showEmptyLibraryNotice) {
             Button("Browse Discover") { store.showDiscoverTab() }
             Button("Got It", role: .cancel) {}
@@ -226,6 +291,63 @@ struct HomeView: View {
         }
     }
 
+    /// Personal schedule as a full-width card — used when there is no Coach
+    /// card to pair with. Real per-account data (Firestore).
+    private var scheduleLinkCard: some View {
+        Button {
+            showAppointments = true
+        } label: {
+            GlassCard {
+                HStack(spacing: 12) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.accent)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Schedule")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                        if let next = store.upcomingAppointments.first {
+                            Text("\(next.title) — \(next.date.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .lineLimit(1)
+                        } else {
+                            Text("No appointments yet — add training sessions or check-ins.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Schedule")
+    }
+
+    private var coachTileDetail: String {
+        guard let first = store.liveThreads.first else { return "" }
+        let name = first.counterpartName(for: store.authUser?.id ?? "")
+        return first.lastMessage.isEmpty
+            ? "\(name) — no messages yet"
+            : "\(name): \(first.lastMessage)"
+    }
+
+    private var coachTileDetailIsMuted: Bool {
+        store.liveThreads.first?.lastMessage.isEmpty ?? true
+    }
+
+    private var scheduleTileDetail: String {
+        if let next = store.upcomingAppointments.first {
+            return "\(next.title) — \(next.date.formatted(date: .abbreviated, time: .shortened))"
+        }
+        return "No appointments yet"
+    }
+
     private var adjustmentSubtitle: String {
         if store.isWorkoutLoggedToday {
             return "Use this only if you want the recap or a lighter next step."
@@ -244,6 +366,49 @@ struct HomeView: View {
         }
 
         return "Your plan's context and progress checkpoints stay here without crowding the top of the day."
+    }
+}
+
+/// Slim half-width link tile — used when Coach and Schedule share one
+/// two-column row at the bottom of Today.
+private struct HomeLinkTile: View {
+    let systemImage: String
+    let title: String
+    let detail: String
+    let detailIsMuted: Bool
+    let accessibilityLabel: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Image(systemName: systemImage)
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.accent)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(detailIsMuted ? MorpheTheme.textMuted : MorpheTheme.textSecondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
     }
 }
 

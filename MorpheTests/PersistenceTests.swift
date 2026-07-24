@@ -747,10 +747,10 @@ final class WorkoutSessionTests: XCTestCase {
 
         // The v2 library is browsable again: hand-authored workouts across
         // the ten training-style categories.
-        XCTAssertEqual(store.discoverWorkouts.count, 112, "the v2 library ships 112 workouts")
+        XCTAssertGreaterThanOrEqual(store.discoverWorkouts.count, 150, "the library ships 150+ workouts (grows with content drops)")
 
         let categories = Set(store.discoverWorkouts.map(\.categoryTag))
-        XCTAssertEqual(categories.count, 10, "ten category spines")
+        XCTAssertGreaterThanOrEqual(categories.count, 13, "category spines (grows with content drops)")
         XCTAssertTrue(categories.contains("Strength & Powerlifting"))
         XCTAssertTrue(categories.contains("Recovery & Longevity"))
 
@@ -2315,7 +2315,7 @@ final class FormAnalyzerTests: XCTestCase {
         // the loader — this pins the full v2 catalog as resolvable, so a bad
         // libraryID fails here, not in prod.
         let catalog = WorkoutCatalog.loadBundled()
-        XCTAssertEqual(catalog.count, 112, "bundled v2 catalog size")
+        XCTAssertGreaterThanOrEqual(catalog.count, 150, "bundled catalog size (grows with content drops)")
         let resolved = catalog.compactMap {
             WorkoutCatalog.template(from: $0, library: MorpheDemoContent.exerciseDatabase)
         }
@@ -3362,5 +3362,59 @@ final class IdentityAndTermsTests: XCTestCase {
         // Signing back in (still unaccepted) puts the gate right back up.
         store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
         XCTAssertTrue(store.needsTermsAcceptance, "the gate returns on every open until they agree")
+    }
+}
+
+/// The REAL appointments schedule (personal, per-account). These run through
+/// the NoOp sync service — no Firebase, no notification center — and protect
+/// the add/cancel/delete round-trip the schedule UI depends on.
+@MainActor
+final class AppointmentTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    func testAddAppointmentRoundTrip() {
+        let store = MorpheAppStore()
+        XCTAssertTrue(store.appointments.isEmpty, "a fresh user has an empty schedule — nothing seeded")
+
+        let later = Date.now.addingTimeInterval(48 * 3600)
+        let sooner = Date.now.addingTimeInterval(24 * 3600)
+        store.addAppointment(title: "Leg Day", date: later, durationMinutes: 60,
+                             kind: .session, withName: "Jordan", notes: "Bring straps")
+        let added = store.addAppointment(title: "Check-in", date: sooner, durationMinutes: 30,
+                                         kind: .checkIn, withName: "", notes: "")
+
+        XCTAssertEqual(store.appointments.count, 2)
+        XCTAssertEqual(store.appointments.map(\.title), ["Check-in", "Leg Day"],
+                       "the schedule stays sorted by date")
+        XCTAssertEqual(added?.status, Appointment.statusScheduled)
+        XCTAssertEqual(added?.createdByRole, store.selectedRole.rawValue)
+        XCTAssertEqual(store.upcomingAppointments.count, 2)
+
+        // A blank title is rejected, not silently saved.
+        XCTAssertNil(store.addAppointment(title: "   ", date: sooner, durationMinutes: 30,
+                                          kind: .custom, withName: "", notes: ""))
+        XCTAssertEqual(store.appointments.count, 2)
+    }
+
+    func testCancelAndDeleteAppointment() {
+        let store = MorpheAppStore()
+        guard let appointment = store.addAppointment(
+            title: "Assessment", date: .now.addingTimeInterval(24 * 3600),
+            durationMinutes: 45, kind: .assessment, withName: "Sam", notes: ""
+        ) else { return XCTFail("add must succeed") }
+
+        // Cancel keeps the record (its history) but drops it from upcoming.
+        store.updateAppointmentStatus(appointment, to: Appointment.statusCancelled)
+        XCTAssertEqual(store.appointments.first?.status, Appointment.statusCancelled)
+        XCTAssertTrue(store.upcomingAppointments.isEmpty)
+
+        // Delete removes it entirely.
+        store.deleteAppointment(appointment)
+        XCTAssertTrue(store.appointments.isEmpty)
     }
 }

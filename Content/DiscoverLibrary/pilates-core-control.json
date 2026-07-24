@@ -1,0 +1,948 @@
+{
+  "version": 2,
+  "category": "Pilates & Core Control",
+  "workouts": [
+    {
+      "slug": "pil-flowing-mat-burner",
+      "name": "Flowing Mat Burner",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Pilates circuit",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A mat class programmed like a circuit — you move from exercise to exercise with just enough rest to set up, so your heart rate stays elevated while your core does the steering. Progress by cutting each rest to 20 seconds before you add time to the moves.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "pilates-hundred",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "roll-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "swimming-exercise",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "leg-pull-front",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "pil-mat-sweat-circuit",
+      "name": "Mat Sweat Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Pilates circuit",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "notes": "For anyone who thinks Pilates can't make you sweat — big crawling and bridging patterns are woven between the classic mat work so the whole body pays in. Do the side kick series on your right side one round, left the next; progress by adding a fourth round before shortening rests.",
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "pilates-hundred",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "side-kick-series",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "teaser-prep",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "pil-slow-tempo-core-strength",
+      "name": "Slow-Tempo Core Strength",
+      "goal": "strengthBuilding",
+      "focus": "Core",
+      "trainingType": "Pilates strength",
+      "level": "Advanced",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Strength work for the midline: every rep is taken on a 5-count down and a 5-count up, so six reps feel like twenty and your deep core learns to own every inch of the range. Progress by slowing the tempo further, not by adding reps.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "roll-up",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "teaser-prep",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "leg-pull-front",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "side-plank",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "pil-single-leg-control-lab",
+      "name": "Single-Leg Control Lab",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Pilates strength",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "One leg at a time exposes what two legs hide — this session builds the hip stability and single-side strength that carries over to running, lifting and not rolling ankles. Own eight perfect reps per side before you chase more; wobbling reps don't count.",
+      "exercises": [
+        {
+          "libraryID": "bird-dog",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "single-leg-circle",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "shoulder-bridge",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "side-kick-series",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "pil-classic-mat-core",
+      "name": "Classic Mat: Core Day",
+      "goal": "leanOut",
+      "focus": "Core",
+      "trainingType": "Pilates mat",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Day one of the classic mat split — the traditional core sequence in its original order, from the hundred through the teaser. Keep the low back gently pressed to the mat throughout; progress by holding the top of each teaser rep for a full breath.",
+      "exercises": [
+        {
+          "libraryID": "pilates-hundred",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "roll-up",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "single-leg-circle",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "spine-twist",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "teaser-prep",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bicycle-crunch",
+          "sets": 3,
+          "reps": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "pil-classic-mat-hips",
+      "name": "Classic Mat: Hips Day",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Pilates mat",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Day two targets the hips and glutes — bridging, side kicks and single-leg work that shape the lower body while teaching the pelvis to stay level under load. Reps and kick series are per side; progress by pausing two seconds at the top of every bridge.",
+      "exercises": [
+        {
+          "libraryID": "shoulder-bridge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "side-kick-series",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "single-leg-circle",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "pil-classic-mat-full-body",
+      "name": "Classic Mat: Full Body Day",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Pilates mat",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Day three strings the whole mat repertoire together — front-line planks, back-line swimming and hip work in one continuous session. It's the day to take when you can only train once this week; progress by moving between exercises without putting your knees down.",
+      "exercises": [
+        {
+          "libraryID": "roll-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "leg-pull-front",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "swimming-exercise",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "side-kick-series",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "shoulder-bridge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "teaser-prep",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "pil-classic-mat-posture",
+      "name": "Classic Mat: Posture Day",
+      "goal": "leanOut",
+      "focus": "Core",
+      "trainingType": "Pilates mat",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Day four is for everyone who sits all day — extension, rotation and anti-rotation work that wakes up the back line and undoes the desk hunch. Think length before effort on every rep; progress by growing taller through the crown of your head, not by rushing.",
+      "exercises": [
+        {
+          "libraryID": "swimming-exercise",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "bird-dog",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "cobra-pose",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "spine-twist",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "pil-gentle-spine-mobility",
+      "name": "Gentle Spine Mobility",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Twenty quiet minutes of flexion, extension and rotation to move the spine through every direction it owns — ideal the day after heavy lifting or a long drive. Nothing here should feel like work; if a position pinches, shrink the range.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "spine-twist",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "cobra-pose",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "pil-breath-and-release",
+      "name": "Breath & Release",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The wind-down session: long-held stretches paced by slow nasal breathing — inhale for four counts, exhale for six in every position. Take it before bed or after a stressful day; the goal is a lower heart rate on the way out than on the way in.",
+      "exercises": [
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ],
+  "newExercises": [
+    {
+      "id": "pilates-hundred",
+      "name": "Pilates Hundred",
+      "muscleGroup": "Core",
+      "movementPattern": "Isometric trunk flexion + arm pumps",
+      "musclesWorked": "Deep abdominals, hip flexors, neck flexors",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-pilates-hundred",
+      "instructions": [
+        "Lie on your back, lift your head and shoulder blades off the mat, and extend your legs to a tabletop or 45-degree position.",
+        "Reach your arms long by your sides, hovering a few inches off the floor.",
+        "Pump your straight arms up and down in a small, brisk range while breathing in for five pumps and out for five.",
+        "Continue for ten breath cycles — one hundred pumps — keeping your low back gently pressed into the mat."
+      ],
+      "formCue": "Press your low back into the mat and pump from the shoulders.",
+      "commonMistakes": "Letting the low back arch off the mat as the legs lower, and straining the neck instead of curling from the ribs.",
+      "beginnerModification": "Keep the knees bent in tabletop and rest the head down — the breathing and arm pumps still do their job.",
+      "alternatives": [
+        "dead-bug",
+        "hollow-hold"
+      ],
+      "whyThisMatters": "The classic Pilates warm-up teaches you to brace your core and breathe at the same time — the skill every other exercise depends on.",
+      "formGuide": {
+        "description": "You lie on your back with head and shoulders curled up, legs extended, and pump straight arms in a small fast beat while breathing in for five counts and out for five. The abs hold everything still; only the arms move. Ten breath cycles adds up to one hundred pumps.",
+        "diagramPrompt": "Side-view illustration of a person lying on a mat in the Pilates hundred: head and shoulder blades curled off the floor, legs extended at 45 degrees, straight arms hovering by the hips. Highlight the low back pressed flat to the mat with an accent line and add small double-headed arrows at the hands showing the rapid up-down pumping motion."
+      }
+    },
+    {
+      "id": "roll-up",
+      "name": "Roll-Up",
+      "muscleGroup": "Core",
+      "movementPattern": "Sequential spinal flexion",
+      "musclesWorked": "Rectus abdominis, deep abdominals, hip flexors",
+      "equipment": "None (mat optional)",
+      "difficulty": "Moderate",
+      "videoPlaceholder": "demo-roll-up",
+      "instructions": [
+        "Lie flat on your back with legs extended and arms reaching overhead along the floor.",
+        "Bring the arms toward the ceiling, tuck your chin, and peel your spine off the mat one vertebra at a time.",
+        "Roll all the way up and reach forward over your legs into a deep C-curve.",
+        "Reverse the movement with the same control, articulating the spine back down bone by bone."
+      ],
+      "formCue": "Peel off the mat one vertebra at a time — no jerking.",
+      "commonMistakes": "Throwing the arms for momentum and lifting in one flat piece instead of rolling through each segment of the spine.",
+      "beginnerModification": "Bend the knees and hold behind the thighs to assist the roll, or start seated and only lower halfway down.",
+      "alternatives": [
+        "sit-up",
+        "dead-bug"
+      ],
+      "whyThisMatters": "Builds segment-by-segment control of your spine, which is the difference between abs that look strong and abs that move you well.",
+      "formGuide": {
+        "description": "From lying flat with arms overhead, you curl up through the spine piece by piece until you're folded over your legs, then roll back down with the same slow control. There's no momentum — every vertebra touches down in sequence. Slower is harder, and harder is the point.",
+        "diagramPrompt": "Side-view three-stage sequence of a roll-up: figure lying flat with arms overhead, figure halfway up in a rounded C-curve with arms reaching forward, figure folded over extended legs. Draw a curved accent arrow tracing the spine's rolling path and highlight the rounded lower back at the midpoint."
+      }
+    },
+    {
+      "id": "single-leg-circle",
+      "name": "Single-Leg Circle",
+      "muscleGroup": "Core",
+      "movementPattern": "Hip circumduction with a stable pelvis",
+      "musclesWorked": "Hip flexors, inner thighs, deep abdominals, glutes",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-single-leg-circle",
+      "instructions": [
+        "Lie on your back with one leg extended toward the ceiling and the other long on the mat.",
+        "Anchor your pelvis and reach your arms by your sides, palms down.",
+        "Draw a controlled circle on the ceiling with the raised leg, crossing slightly over the body and sweeping back around.",
+        "Complete all reps in one direction, reverse, then switch legs."
+      ],
+      "formCue": "Stir the leg — don't let the hips rock an inch.",
+      "commonMistakes": "Letting the pelvis wobble side to side with the circle, and making the circle so big that the low back arches.",
+      "beginnerModification": "Bend the moving knee or shrink the circle to the size of a dinner plate until the pelvis stays quiet.",
+      "alternatives": [
+        "dead-bug",
+        "single-leg-glute-bridge"
+      ],
+      "whyThisMatters": "Teaches your hip to move freely while your core stays braced — the exact skill that protects your back in squats, running and life.",
+      "formGuide": {
+        "description": "Lying on your back with one leg pointed at the ceiling, you draw slow circles in the air with that leg while your pelvis stays completely still. The circle starts small and only grows as your control does. Both directions, both legs.",
+        "diagramPrompt": "Three-quarter view illustration of a person on their back with one leg vertical, drawing a circle in the air: dashed circular path traced at the raised foot with a direction arrow. Highlight the level, anchored pelvis with an accent line across the hip bones and show the other leg long on the mat."
+      }
+    },
+    {
+      "id": "shoulder-bridge",
+      "name": "Shoulder Bridge",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hip extension with spinal articulation",
+      "musclesWorked": "Glutes, hamstrings, spinal erectors, deep abdominals",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-shoulder-bridge",
+      "instructions": [
+        "Lie on your back with knees bent, feet hip-width and flat, arms long by your sides.",
+        "Exhale and peel your spine off the mat from the tailbone up until you form a straight line from shoulders to knees.",
+        "Hold at the top, ribs soft and glutes working — optionally extend one leg to the ceiling for the classic variation.",
+        "Roll back down through the spine one vertebra at a time, chest to tailbone."
+      ],
+      "formCue": "Roll up bone by bone and squeeze the top like you mean it.",
+      "commonMistakes": "Pushing so high that the ribs flare and the low back takes over, and dropping down in one piece instead of articulating.",
+      "beginnerModification": "Keep both feet down and pause the rep at a lower bridge height until the roll up and down feels smooth.",
+      "alternatives": [
+        "glute-bridge",
+        "hip-thrust"
+      ],
+      "whyThisMatters": "Combines glute strength with vertebra-by-vertebra spine control, so you build power and mobility in the same rep.",
+      "formGuide": {
+        "description": "From lying with knees bent, you peel your hips toward the ceiling one vertebra at a time until shoulders, hips and knees form a straight ramp, then melt back down in the same sequence. The glutes drive the lift; the spine articulates like a wheel.",
+        "diagramPrompt": "Side-view illustration of a shoulder bridge at the top position: shoulders and feet grounded, hips lifted so the torso and thighs form one straight line. Highlight the straight shoulder-to-knee line with an accent line, add a curved arrow at the pelvis showing the rolling lift, and shade the glutes as the working muscles."
+      }
+    },
+    {
+      "id": "side-kick-series",
+      "name": "Side Kick Series",
+      "muscleGroup": "Legs",
+      "movementPattern": "Side-lying hip flexion, extension and abduction",
+      "musclesWorked": "Glute medius, glute max, outer thigh, obliques",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-side-kick-series",
+      "instructions": [
+        "Lie on your side with your body in one long line, head resting on your bottom arm and top hand lightly on the floor in front of you.",
+        "Lift the top leg to hip height and keep it there for the entire series.",
+        "Sweep the leg forward with two small pulses, then reach it behind you without letting the waist collapse.",
+        "Continue kicking front and back, then finish with small lifts straight up before switching sides."
+      ],
+      "formCue": "Kick from the hip — the waist stays long and still.",
+      "commonMistakes": "Rocking the torso back and forth with each kick, and letting the top leg drop below hip height between reps.",
+      "beginnerModification": "Bend the bottom knee for a bigger base of support and shrink the kicking range until the trunk stays quiet.",
+      "alternatives": [
+        "single-leg-glute-bridge",
+        "side-plank"
+      ],
+      "whyThisMatters": "Strengthens the side of the hip that keeps your pelvis level every time you stand on one leg — the unglamorous muscle behind pain-free knees and hips.",
+      "formGuide": {
+        "description": "Lying on your side in one straight line, you hold the top leg at hip height and swing it forward and back with control, the torso refusing to rock. A set of small upward lifts finishes the series before you switch sides. The stillness of the waist is the whole exercise.",
+        "diagramPrompt": "Side-lying figure viewed from the front-top angle: body in one straight line, bottom leg grounded, top leg raised to hip height. Draw dashed arc arrows showing the leg sweeping forward and backward, and highlight the stacked, motionless hips and long waistline with accent lines."
+      }
+    },
+    {
+      "id": "swimming-exercise",
+      "name": "Swimming",
+      "muscleGroup": "Back",
+      "movementPattern": "Prone alternating extension",
+      "musclesWorked": "Spinal erectors, glutes, hamstrings, rear shoulders",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-swimming-exercise",
+      "instructions": [
+        "Lie face down with arms extended overhead and legs long, both hovering slightly off the mat.",
+        "Lengthen through the crown of your head and keep your gaze down so the neck stays neutral.",
+        "Flutter opposite arm and leg up and down in a brisk swimming rhythm.",
+        "Breathe steadily — in for five beats, out for five — without letting the hips rock."
+      ],
+      "formCue": "Reach long like you're being pulled from both ends.",
+      "commonMistakes": "Cranking the head and neck up to look forward, and bending the knees to fake a higher leg lift.",
+      "beginnerModification": "Slow it down to single alternating lifts — opposite arm and leg raise, hold one beat, switch.",
+      "alternatives": [
+        "bird-dog",
+        "back-extension"
+      ],
+      "whyThisMatters": "Trains the entire back line — the muscles that hold you upright — with zero equipment and zero spinal compression.",
+      "formGuide": {
+        "description": "Face down with arms and legs hovering off the mat, you flutter opposite limbs up and down in a quick swimming beat while the trunk stays long and level. The neck stays neutral, the hips stay quiet, and the whole back of your body does the work.",
+        "diagramPrompt": "Side-view illustration of a prone figure in the Pilates swimming exercise: chest and thighs lifted slightly off the mat, right arm and left leg raised higher than their pairs. Add small alternating up-down arrows at the hands and feet, and highlight the long line from fingertips to toes with an accent stroke."
+      }
+    },
+    {
+      "id": "teaser-prep",
+      "name": "Teaser Prep",
+      "muscleGroup": "Core",
+      "movementPattern": "V-sit balance with trunk flexion",
+      "musclesWorked": "Deep abdominals, hip flexors, quads",
+      "equipment": "None (mat optional)",
+      "difficulty": "Moderate",
+      "videoPlaceholder": "demo-teaser-prep",
+      "instructions": [
+        "Sit tall with knees bent and feet flat, hands resting behind your thighs.",
+        "Lean back until your arms go light and lift your shins parallel to the floor.",
+        "Reach your arms forward alongside your legs and balance in a V-shape on the back of your sit bones.",
+        "Hold, then lower the feet with control and roll back up to the start for the next rep."
+      ],
+      "formCue": "Lift your chest to your knees — don't sink into your low back.",
+      "commonMistakes": "Rounding into a slump instead of balancing with a lifted chest, and gripping the hip flexors so hard the abs never engage.",
+      "beginnerModification": "Keep the hands behind the thighs throughout, or keep the toes lightly touching the mat.",
+      "alternatives": [
+        "v-up",
+        "sit-up"
+      ],
+      "whyThisMatters": "The stepping stone to the full teaser — Pilates' signature move — building the balance and deep core strength the finished shape demands.",
+      "formGuide": {
+        "description": "From seated, you lean back, float your shins parallel to the floor and reach your arms forward, balancing in a V on the back of your sit bones. The chest stays proud rather than collapsed. Each hold is short, honest work for the deepest layer of your abs.",
+        "diagramPrompt": "Side-view illustration of a person balancing in teaser prep: torso leaned back at roughly 45 degrees, shins parallel to the floor, arms reaching forward parallel to the shins. Highlight the V-angle between torso and thighs with an accent arc and mark the balance point at the back of the pelvis with a small accent dot."
+      }
+    },
+    {
+      "id": "spine-twist",
+      "name": "Spine Twist",
+      "muscleGroup": "Core",
+      "movementPattern": "Seated thoracic rotation",
+      "musclesWorked": "Obliques, spinal rotators, upper back",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "videoPlaceholder": "demo-spine-twist",
+      "instructions": [
+        "Sit tall with legs extended together in front of you and arms reaching out to the sides at shoulder height.",
+        "Inhale to grow an inch taller through the crown of your head.",
+        "Exhale and rotate your ribcage to one side in two crisp pulses, keeping the hips square and legs still.",
+        "Return to center on the inhale and repeat to the other side."
+      ],
+      "formCue": "Grow taller as you twist — spiral up, not around.",
+      "commonMistakes": "Letting the hips and legs swing with the twist, and slumping shorter through the spine as the set goes on.",
+      "beginnerModification": "Sit cross-legged or on a folded towel with hands crossed over the chest to make sitting tall easier.",
+      "alternatives": [
+        "russian-twist",
+        "supine-twist"
+      ],
+      "whyThisMatters": "Restores the rotation your spine is built for while teaching the hips to stay anchored — mobility and control in one move.",
+      "formGuide": {
+        "description": "Sitting tall with legs together and arms out wide, you rotate your ribcage to one side in two crisp pulses, come back to center, and go the other way. The hips never move; the twist happens in the mid-back. Height first, rotation second.",
+        "diagramPrompt": "Top-down and rear-view combined illustration of a seated figure with legs extended and arms out in a T: torso rotated to one side. Draw a horizontal rotation arrow around the ribcage, highlight the square, anchored hips with an accent line, and add a small vertical arrow at the head showing the lift through the crown."
+      }
+    },
+    {
+      "id": "leg-pull-front",
+      "name": "Leg Pull Front",
+      "muscleGroup": "Core",
+      "movementPattern": "Plank with alternating hip extension",
+      "musclesWorked": "Deep abdominals, shoulders, glutes, hamstrings",
+      "equipment": "None (mat optional)",
+      "difficulty": "Moderate",
+      "videoPlaceholder": "demo-leg-pull-front",
+      "instructions": [
+        "Start in a strong plank on your hands with shoulders stacked over wrists and body in one line.",
+        "Without shifting your hips, lift one leg toward the ceiling with a pointed foot.",
+        "Lower the leg with control and press the floor away to keep the chest broad.",
+        "Alternate legs, moving slowly enough that your hips never tip or dip."
+      ],
+      "formCue": "Lift the leg without letting anyone see your hips move.",
+      "commonMistakes": "Hiking or rotating the hips as the leg lifts, and sagging through the low back as the set fatigues.",
+      "beginnerModification": "Perform it from a forearm plank, or just tap alternate toes an inch off the floor.",
+      "alternatives": [
+        "plank",
+        "mountain-climber"
+      ],
+      "whyThisMatters": "Upgrades the plank from a hold into a stability test — three limbs support you while the core refuses to leak the difference.",
+      "formGuide": {
+        "description": "From a hands plank, you lift one straight leg toward the ceiling and lower it without your hips tipping an inch, then switch. It looks like a plank with a leg lift; it feels like your entire trunk working overtime to hide the movement. Slow beats fast every time.",
+        "diagramPrompt": "Side-view illustration of a figure in a straight-arm plank with one leg raised behind and above hip height, foot pointed. Highlight the unbroken head-to-heel line of the plank with an accent line, add an upward arrow at the raised foot, and mark the level hips with a small horizontal accent bar."
+      }
+    }
+  ]
+}

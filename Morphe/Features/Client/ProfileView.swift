@@ -717,6 +717,23 @@ struct ProfileView: View {
                     .frame(width: 110)
                 }
 
+                Divider().overlay(Color.white.opacity(0.08))
+
+                // Accent color — picked once in onboarding, now editable
+                // anytime. Gold is the brand default; the others personalize
+                // the whole app's accent pair.
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Accent")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    HStack(spacing: 0) {
+                        ForEach(AccentPalette.allCases) { palette in
+                            accentDot(for: palette)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+
                 if !isCoach {
                     Divider().overlay(Color.white.opacity(0.08))
 
@@ -817,6 +834,42 @@ struct ProfileView: View {
         }
     }
 
+    /// The dot shows the color the palette actually resolves to — `.gold`
+    /// means the brand-yellow pair, not the muted legacy gold swatch.
+    private func accentDotColor(for palette: AccentPalette) -> Color {
+        palette == .gold ? MorpheTheme.brandYellow : MorpheTheme.colors(for: palette).primary
+    }
+
+    private func accentDot(for palette: AccentPalette) -> some View {
+        let isSelected = store.profileShowcase.accentPalette == palette
+        return Button {
+            // Store contract: sets profileShowcase.accentPalette, calls
+            // MorpheTheme.apply(accentPalette:), and persists the profile
+            // snapshot — the same pathway onboarding's choice rides.
+            store.updateAccentPalette(palette)
+            Haptics.impact(.light)
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(accentDotColor(for: palette))
+                    .frame(width: 28, height: 28)
+                if isSelected {
+                    Circle()
+                        .stroke(.white, lineWidth: 2)
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.black)
+                }
+            }
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(palette.rawValue) accent")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
     private func settingsRow(_ title: String, value: String, showEdit: Bool = true, onEdit: @escaping () -> Void) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
@@ -847,7 +900,7 @@ private struct AthleteProfileBody: View {
         Group {
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Training snapshot")
+                    Text("Training Snapshot")
                         .font(.headline)
                         .foregroundStyle(.white)
                     if store.todayExperienceTier >= 1 {
@@ -904,7 +957,7 @@ private struct CoachProfileBody: View {
         Group {
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Coaching snapshot")
+                    Text("Coaching Snapshot")
                         .font(.headline)
                         .foregroundStyle(.white)
                     HStack(spacing: 8) {
@@ -936,7 +989,7 @@ private struct CoachProfileBody: View {
 
             GlassCard {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Your coaching tools")
+                    Text("Your Coaching Tools")
                         .font(.headline)
                         .foregroundStyle(.white)
                     Text("Build programs, track clients, and run outreach from the coach tabs. Connecting real clients turns on with your account backend.")
@@ -945,22 +998,24 @@ private struct CoachProfileBody: View {
                 }
             }
 
-            if FeatureFlags.multiUserEnabled {
-                Button {
+            // Un-gated in v1: the business view now leads with REAL
+            // appointments and hides its demo commerce internally behind
+            // the multi-user flag — the schedule must be reachable today.
+            Button {
                     showBusiness = true
                 } label: {
                     GlassCard {
                         HStack(spacing: 12) {
-                            Image(systemName: "banknote")
+                            Image(systemName: "calendar.badge.clock")
                                 .font(.headline)
                                 .foregroundStyle(MorpheTheme.accent)
                                 .frame(width: 44, height: 44)
                                 .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.panelStrong))
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Training Business")
+                                Text("Schedule")
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.white)
-                                Text("Set rates, take bookings, track earnings.")
+                                Text("Appointments with your clients — bookings and rates arrive with payments.")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
                             }
@@ -973,7 +1028,6 @@ private struct CoachProfileBody: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .combine)
-            }
         }
         .sheet(isPresented: $showBusiness) {
             NavigationStack {

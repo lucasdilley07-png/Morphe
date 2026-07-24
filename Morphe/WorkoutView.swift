@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct WorkoutView: View {
     @Environment(MorpheAppStore.self) private var store
@@ -28,6 +29,7 @@ struct WorkoutView: View {
     @State private var showHistory = false
     @State private var showBuilder = false
     @State private var showFormCheck = false
+    @State private var showCircuitMode = false
     @State private var showEmptyLibraryNotice = false
     @State private var showTrainTogether = false
 
@@ -136,6 +138,12 @@ struct WorkoutView: View {
                 } else {
                     FormCheckView()
                 }
+            }
+        )
+        .background(
+            EmptyView().fullScreenCover(isPresented: $showCircuitMode) {
+                CircuitModeView(exercises: store.currentWorkout.exercises)
+                    .environment(store)
             }
         )
     }
@@ -267,6 +275,13 @@ struct WorkoutView: View {
                         Button("Keep Training", role: .cancel) {}
                     }
                 }
+
+                // Circuit Mode: guided work/rest intervals over this session's
+                // exercises — sits with the session tools, off the set-logging
+                // fast path.
+                Button("Circuit Mode") { showCircuitMode = true }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityHint("Timed stations with auto-advance; only finished intervals get logged")
 
                 TrainExpandableSection(
                     title: "Session tools",
@@ -1505,7 +1520,7 @@ private struct LiveWorkoutSupportToolsCard: View {
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Support tools")
+                Text("Support Tools")
                     .font(.headline)
                     .foregroundStyle(.white)
 
@@ -1639,22 +1654,22 @@ private struct DiscoverCatalogSection: View {
     /// The workout whose exercises/sets/reps breakdown is open.
     @State private var detailTemplate: WorkoutTemplate?
 
-    /// Time filters are ranges, not exact matches — sport sessions run
-    /// 15/24/36/38-min lengths, so exact chips made Time + Sport-specific
-    /// always return zero results.
-    private static let durationBuckets = ["Under 25 min", "25–40 min", "Over 40 min"]
+    /// Time filters are ranges, not exact matches — catalog sessions run
+    /// odd lengths (15/24/36/38 min), so exact chips would make most
+    /// combinations return zero results.
+    private static let durationBuckets = ["Under 20 min", "20–40 min", "Over 40 min"]
 
     private func durationBucket(_ minutes: Int) -> String {
-        if minutes < 25 { return "Under 25 min" }
-        if minutes <= 40 { return "25–40 min" }
+        if minutes < 20 { return "Under 20 min" }
+        if minutes <= 40 { return "20–40 min" }
         return "Over 40 min"
     }
 
-    /// The v2 library's 10 categories, grouped into families for the grid.
+    /// The v2 library's 13 categories, grouped into families for the grid.
     private static let families: [(name: String, categories: [String])] = [
         ("Build", ["Strength & Powerlifting", "Bodybuilding & Hypertrophy", "Calisthenics & Bodyweight", "Kettlebell & Dumbbell"]),
-        ("Condition", ["HIIT & Conditioning", "Functional & CrossFit-Style", "Running & Cardio", "Boxing & Combat Conditioning"]),
-        ("Restore", ["Yoga, Mobility & Flexibility", "Recovery & Longevity"])
+        ("Condition", ["HIIT & Conditioning", "Functional & CrossFit-Style", "Running & Cardio", "Boxing & Combat Conditioning", "Dance & Aerobics", "Sport Performance"]),
+        ("Restore", ["Yoga, Mobility & Flexibility", "Pilates & Core Control", "Recovery & Longevity"])
     ]
 
     /// Tile-length names for the category tags.
@@ -1668,10 +1683,14 @@ private struct DiscoverCatalogSection: View {
         "Running & Cardio": "Running & Cardio",
         "Boxing & Combat Conditioning": "Boxing",
         "Yoga, Mobility & Flexibility": "Yoga & Mobility",
+        "Pilates & Core Control": "Pilates",
+        "Dance & Aerobics": "Dance",
+        "Sport Performance": "Sport Performance",
         "Recovery & Longevity": "Recovery"
     ]
 
-    /// One pictogram per category — the tile reads by icon first.
+    /// One pictogram per category — the tile reads by icon first. The newer
+    /// activity glyphs get a runtime fallback for OS builds that lack them.
     private static let categorySymbols: [String: String] = [
         "Strength & Powerlifting": "dumbbell.fill",
         "Bodybuilding & Hypertrophy": "figure.strengthtraining.traditional",
@@ -1682,8 +1701,16 @@ private struct DiscoverCatalogSection: View {
         "Running & Cardio": "figure.run",
         "Boxing & Combat Conditioning": "figure.boxing",
         "Yoga, Mobility & Flexibility": "figure.yoga",
+        "Pilates & Core Control": availableSymbol("figure.pilates", fallback: "figure.core.training"),
+        "Dance & Aerobics": availableSymbol("figure.dance", "figure.socialdance", fallback: "figure.mixed.cardio"),
+        "Sport Performance": "sportscourt",
         "Recovery & Longevity": "leaf.fill"
     ]
+
+    /// First SF Symbol name the current OS actually ships.
+    private static func availableSymbol(_ candidates: String..., fallback: String) -> String {
+        candidates.first { UIImage(systemName: $0) != nil } ?? fallback
+    }
 
     /// The four result targets every v2 workout carries — the goal lens
     /// applies to the landing counts, drill-ins, and search alike.
@@ -1698,10 +1725,63 @@ private struct DiscoverCatalogSection: View {
         goalOptions.first { $0.tag == tag }?.label
     }
 
-    /// Everything browsable, narrowed by the goal chip when one is active.
-    private var goalFilteredWorkouts: [WorkoutTemplate] {
-        guard let goalFilter else { return store.discoverWorkouts }
-        return store.discoverWorkouts.filter { $0.goalTag == goalFilter }
+    /// AND-composition of every active filter: duration bucket, equipment,
+    /// goal, and difficulty all narrow together.
+    private func matchesFilters(_ template: WorkoutTemplate) -> Bool {
+        (goalFilter == nil || template.goalTag == goalFilter)
+            && (durationFilter == nil || durationBucket(template.durationMinutes) == durationFilter)
+            && (equipmentFilter == nil || template.equipment == equipmentFilter)
+            && (levelFilter == nil || template.difficulty == levelFilter)
+    }
+
+    /// Everything browsable, narrowed by every active filter.
+    private var filteredWorkouts: [WorkoutTemplate] {
+        store.discoverWorkouts.filter { matchesFilters($0) }
+    }
+
+    private var activeFilterCount: Int {
+        [goalFilter != nil, durationFilter != nil, equipmentFilter != nil, levelFilter != nil]
+            .filter { $0 }
+            .count
+    }
+
+    /// The three newest categories in the catalog. Hardcoded because catalog
+    /// documents don't carry publish dates yet — these three genuinely ARE the
+    /// newest additions. Becomes date-driven once the catalog carries a
+    /// publishedAt field.
+    private static let newestCategories: Set<String> = [
+        "Pilates & Core Control", "Dance & Aerobics", "Sport Performance"
+    ]
+
+    private var newThisWeekPicks: [WorkoutTemplate] {
+        filteredWorkouts.filter { Self.newestCategories.contains($0.categoryTag) }
+    }
+
+    /// Ranked by the USER'S OWN completion counts from their logs — an honest
+    /// personal ranking, never a faked global popularity number.
+    private var mostDonePicks: [(template: WorkoutTemplate, count: Int)] {
+        var counts: [UUID: Int] = [:]
+        for log in store.currentAthleteWorkoutLogs {
+            guard let templateID = log.workoutTemplateID else { continue }
+            counts[templateID, default: 0] += 1
+        }
+        return Array(
+            filteredWorkouts
+                .compactMap { template in counts[template.id].map { (template: template, count: $0) } }
+                .sorted { $0.count > $1.count }
+                .prefix(8)
+        )
+    }
+
+    /// Fallback when nothing's been completed yet: the catalog workouts the
+    /// user saved, pinned ones first — labeled as saved picks, not popularity.
+    private var savedCatalogPicks: [WorkoutTemplate] {
+        let ordered = store.savedWorkouts.sorted { $0.isPinned && !$1.isPinned }
+        return Array(
+            ordered
+                .compactMap { item in filteredWorkouts.first { $0.id == item.workoutTemplateID } }
+                .prefix(8)
+        )
     }
 
     var body: some View {
@@ -1724,17 +1804,20 @@ private struct DiscoverCatalogSection: View {
 
     // MARK: - Landing: icon tile grid
 
-    /// Search matches name, category, style, focus, and goal so "boxing",
-    /// "core", or a workout's own name all land. The goal chip narrows it.
+    /// Search matches name, category, style, focus, goal, AND the exercises
+    /// inside each workout — "pallof" lands the Sport Performance days that
+    /// program it. One lowercased haystack per item keeps 150 templates fast
+    /// on every keystroke; active filters still narrow the pool.
     private var searchResults: [WorkoutTemplate] {
-        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !q.isEmpty else { return [] }
-        return goalFilteredWorkouts.filter {
-            $0.name.localizedCaseInsensitiveContains(q)
-                || $0.categoryTag.localizedCaseInsensitiveContains(q)
-                || $0.trainingTypeTag.localizedCaseInsensitiveContains(q)
-                || $0.focusTag.localizedCaseInsensitiveContains(q)
-                || $0.goal.localizedCaseInsensitiveContains(q)
+        return filteredWorkouts.filter { template in
+            var haystack = "\(template.name) \(template.categoryTag) \(template.trainingTypeTag) \(template.focusTag) \(template.goal)"
+            for exercise in template.exercises {
+                haystack += " "
+                haystack += exercise.name
+            }
+            return haystack.lowercased().contains(q)
         }
     }
 
@@ -1947,7 +2030,7 @@ private struct DiscoverCatalogSection: View {
     }
 
     private var landingGrid: some View {
-        let byCategory = Dictionary(grouping: goalFilteredWorkouts, by: \.categoryTag)
+        let byCategory = Dictionary(grouping: filteredWorkouts, by: \.categoryTag)
 
         return VStack(alignment: .leading, spacing: 20) {
             connectCard
@@ -1974,12 +2057,14 @@ private struct DiscoverCatalogSection: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
-                goalChipRow
+                filterRow(scope: store.discoverWorkouts)
             }
 
             if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 searchResultsList
             } else {
+            newThisWeekSection
+            mostDoneSection
             ForEach(Self.families, id: \.name) { family in
                 let presentCategories = family.categories.filter { !(byCategory[$0] ?? []).isEmpty }
                 if !presentCategories.isEmpty {
@@ -2004,39 +2089,200 @@ private struct DiscoverCatalogSection: View {
         }
     }
 
-    /// Result-goal lens: All / Weight Loss / Strength / Lean Out / Recovery.
-    private var goalChipRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                goalChip(nil, label: "All")
-                ForEach(Self.goalOptions, id: \.tag) { option in
-                    goalChip(option.tag, label: option.label)
+    // MARK: - New & trending shelves
+
+    /// Horizontal shelf of the newest categories' workouts — see
+    /// `newestCategories` for why the three names are hardcoded today.
+    @ViewBuilder
+    private var newThisWeekSection: some View {
+        let picks = newThisWeekPicks
+        if !picks.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(title: "New This Week", count: picks.count)
+                miniCardShelf(picks.prefix(10).map { ($0, nil) })
+            }
+        }
+    }
+
+    /// "Your Most Done" — the user's own completion counts. Falls back to
+    /// their saved picks before anything's logged. Both labels are honest
+    /// about whose data this is; there is no global popularity signal yet.
+    @ViewBuilder
+    private var mostDoneSection: some View {
+        let done = mostDonePicks
+        if !done.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(title: "Your Most Done", count: done.count)
+                miniCardShelf(done.map { ($0.template, "\($0.count)×") })
+            }
+        } else {
+            let saved = savedCatalogPicks
+            if !saved.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    sectionHeader(title: "Your Saved Picks", count: saved.count)
+                    miniCardShelf(saved.map { ($0, nil) })
                 }
             }
         }
     }
 
-    private func goalChip(_ tag: String?, label: String) -> some View {
-        let isOn = goalFilter == tag
-        return Button {
-            withAnimation(.easeInOut(duration: 0.15)) { goalFilter = tag }
+    private func miniCardShelf(_ entries: [(template: WorkoutTemplate, badge: String?)]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(entries, id: \.template.id) { entry in
+                    miniWorkoutCard(entry.template, badge: entry.badge)
+                }
+            }
+        }
+    }
+
+    /// Compact shelf card — tap opens the preview sheet.
+    private func miniWorkoutCard(_ template: WorkoutTemplate, badge: String?) -> some View {
+        Button {
+            detailTemplate = template
         } label: {
-            Text(label.uppercased())
-                .font(MorpheTheme.microLabel(10))
-                .tracking(1.2)
-                .lineLimit(1)
-                .foregroundStyle(isOn ? .black : MorpheTheme.textSecondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(isOn ? MorpheTheme.accent : MorpheTheme.panelStrong)
-                        .overlay(Capsule().stroke(Color.white.opacity(isOn ? 0 : 0.14), lineWidth: 1))
-                )
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .top) {
+                    StatusBadge(text: template.difficulty.rawValue, color: MorpheTheme.accentAlt)
+                    Spacer(minLength: 0)
+                    if let badge {
+                        Text(badge)
+                            .font(.system(.caption, design: .monospaced).weight(.bold))
+                            .foregroundStyle(MorpheTheme.accent)
+                    }
+                }
+
+                Text(template.name)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2, reservesSpace: true)
+
+                Text("\(template.durationMinutes) MIN • \((Self.shortCategoryNames[template.categoryTag] ?? template.categoryTag).uppercased())")
+                    .font(MorpheTheme.microLabel(9))
+                    .tracking(0.8)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .lineLimit(1)
+            }
+            .padding(12)
+            .frame(width: 190, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panelStrong)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    )
+            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(label) goal filter")
-        .accessibilityAddTraits(isOn ? .isSelected : [])
+        .accessibilityLabel("Preview \(template.name), \(template.durationMinutes) minutes\(badge.map { ", completed \($0)" } ?? "")")
+    }
+
+    // MARK: - Combined filter row
+
+    /// ONE composable filter line (AND semantics): Clear + active count,
+    /// duration chips, equipment menu, goal chips, difficulty menu. `scope`
+    /// feeds the equipment options so drilled-in categories only offer gear
+    /// their workouts actually use.
+    private func filterRow(scope: [WorkoutTemplate]) -> some View {
+        let equipmentOptions = Array(Set(scope.map(\.equipment))).sorted()
+
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                if activeFilterCount > 0 {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            goalFilter = nil
+                            durationFilter = nil
+                            equipmentFilter = nil
+                            levelFilter = nil
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 9, weight: .bold))
+                            Text("Clear")
+                            Text("\(activeFilterCount)")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.black)
+                                .frame(width: 16, height: 16)
+                                .background(Circle().fill(MorpheTheme.accent))
+                        }
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: false))
+                    .accessibilityLabel("Clear \(activeFilterCount) active filters")
+                }
+
+                ForEach(Self.durationBuckets, id: \.self) { bucket in
+                    Button(bucket) {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            durationFilter = durationFilter == bucket ? nil : bucket
+                        }
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: durationFilter == bucket))
+                    .accessibilityLabel("\(bucket) duration filter")
+                }
+
+                if equipmentOptions.count > 1 {
+                    filterMenuChip("Equipment", selection: $equipmentFilter, options: equipmentOptions) { $0 }
+                }
+
+                ForEach(Self.goalOptions, id: \.tag) { option in
+                    Button(option.label) {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            goalFilter = goalFilter == option.tag ? nil : option.tag
+                        }
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: goalFilter == option.tag))
+                    .accessibilityLabel("\(option.label) goal filter")
+                }
+
+                filterMenuChip(
+                    "Difficulty",
+                    selection: $levelFilter,
+                    options: [DemoDifficulty.beginner, .moderate, .advanced, .recovery]
+                ) { $0.rawValue }
+            }
+        }
+    }
+
+    /// Menu dressed as a filter chip — Menu labels can't take a ButtonStyle,
+    /// so this mirrors FilterChipStyle's look by hand.
+    private func filterMenuChip<Option: Hashable>(
+        _ label: String,
+        selection: Binding<Option?>,
+        options: [Option],
+        title: @escaping (Option) -> String
+    ) -> some View {
+        let isSelected = selection.wrappedValue != nil
+        return Menu {
+            Button("All") { selection.wrappedValue = nil }
+            ForEach(options, id: \.self) { option in
+                Button(title(option)) { selection.wrappedValue = option }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(selection.wrappedValue.map(title) ?? label)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isSelected ? .black : .white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(isSelected ? MorpheTheme.accent : Color.white.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.10), lineWidth: 1)
+            )
+        }
+        .accessibilityLabel("\(label) filter")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func categoryTile(_ category: String, count: Int) -> some View {
@@ -2089,14 +2335,10 @@ private struct DiscoverCatalogSection: View {
         let all: [WorkoutTemplate] = {
             switch selection {
             case .category(let tag):
-                return goalFilteredWorkouts.filter { $0.categoryTag == tag }
+                return store.discoverWorkouts.filter { $0.categoryTag == tag }
             }
         }()
-        let filtered = all.filter { template in
-            (levelFilter == nil || template.difficulty == levelFilter)
-                && (durationFilter == nil || durationBucket(template.durationMinutes) == durationFilter)
-                && (equipmentFilter == nil || template.equipment == equipmentFilter)
-        }
+        let filtered = all.filter { matchesFilters($0) }
         let title: String = {
             switch selection {
             case .category(let tag): return Self.shortCategoryNames[tag] ?? tag
@@ -2105,11 +2347,10 @@ private struct DiscoverCatalogSection: View {
 
         VStack(alignment: .leading, spacing: 12) {
             Button {
+                // Filters survive the trip back — the combined row now lives
+                // on the landing too, so what you set here stays visible.
                 withAnimation(.easeInOut(duration: 0.2)) {
                     self.selection = nil
-                    levelFilter = nil
-                    durationFilter = nil
-                    equipmentFilter = nil
                 }
                 onSelectionChange()
             } label: {
@@ -2128,9 +2369,7 @@ private struct DiscoverCatalogSection: View {
 
             sectionHeader(title: title, count: filtered.count)
 
-            goalChipRow
-
-            filterBar(equipmentOptions: Array(Set(all.map(\.equipment))).sorted())
+            filterRow(scope: all)
 
             if filtered.isEmpty {
                 GlassCard {
@@ -2183,54 +2422,6 @@ private struct DiscoverCatalogSection: View {
         }
     }
 
-    private func filterBar(equipmentOptions: [String]) -> some View {
-        HStack(spacing: 8) {
-            filterMenu("Level", selection: $levelFilter, options: [DemoDifficulty.beginner, .moderate, .advanced]) { $0.rawValue }
-            filterMenu("Time", selection: $durationFilter, options: Self.durationBuckets) { $0 }
-            // Options mirror the style's real data — the hardcoded bucket
-            // list made every equipment chip a dead end for the bridged
-            // sport-specific templates ("Ball + cones" is not "Full Gym").
-            if equipmentOptions.count > 1 {
-                filterMenu("Equipment", selection: $equipmentFilter, options: equipmentOptions) { $0 }
-            }
-            Spacer()
-        }
-    }
-
-    private func filterMenu<Option: Hashable>(
-        _ label: String,
-        selection: Binding<Option?>,
-        options: [Option],
-        title: @escaping (Option) -> String
-    ) -> some View {
-        Menu {
-            Button("All") { selection.wrappedValue = nil }
-            ForEach(options, id: \.self) { option in
-                Button(title(option)) { selection.wrappedValue = option }
-            }
-        } label: {
-            HStack(spacing: 5) {
-                Text((selection.wrappedValue.map(title) ?? label).uppercased())
-                    .font(MorpheTheme.microLabel(10))
-                    .tracking(1.0)
-                    .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .bold))
-            }
-            .foregroundStyle(selection.wrappedValue == nil ? MorpheTheme.textSecondary : .black)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                    .fill(selection.wrappedValue == nil ? MorpheTheme.panelStrong : MorpheTheme.accent)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .stroke(Color.white.opacity(0.14), lineWidth: 1)
-                    )
-            )
-        }
-        .accessibilityLabel("\(label) filter")
-    }
 }
 
 /// Compact program card for the drill-in list: level badge, two-line name,
@@ -2306,29 +2497,30 @@ private struct DiscoverProgramCard: View {
     }
 }
 
-/// The exercises/sets/reps breakdown behind every Discover card.
+/// The preview sheet behind every Discover card: pills, coach note, and the
+/// exercise list with a form-diagram thumbnail per row.
 private struct DiscoverWorkoutDetailSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let template: WorkoutTemplate
     let onStart: () -> Void
 
+    /// Form diagrams keyed by exerciseLibraryID, loaded once in .task —
+    /// synchronous disk reads in body are a known perf bug pattern here.
+    @State private var formDiagrams: [String: UIImage] = [:]
+
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 10) {
                         Text(template.name)
                             .font(.title3.weight(.bold))
                             .foregroundStyle(.white)
-                        Text("\(template.durationMinutes) min • \(template.difficulty.rawValue) • \(template.equipment)")
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                        if !template.goal.isEmpty {
-                            Text(template.goal)
-                                .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                        }
+
+                        // Category / goal / duration / difficulty pills.
+                        FlowingPillRow(pills: pillTexts)
+
                         if !template.coachNote.isEmpty {
                             Text(template.coachNote)
                                 .font(.caption)
@@ -2343,31 +2535,35 @@ private struct DiscoverWorkoutDetailSheet: View {
                                 .foregroundStyle(.white)
 
                             ForEach(Array(template.exercises.enumerated()), id: \.element.id) { index, exercise in
-                                VStack(alignment: .leading, spacing: 3) {
-                                    HStack(alignment: .top) {
-                                        Text("\(index + 1). \(exercise.name)")
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(.white)
-                                        Spacer()
-                                        Text("\(exercise.sets) × \(exercise.reps)")
-                                            .font(.system(.subheadline, design: .monospaced).weight(.semibold))
-                                            .foregroundStyle(MorpheTheme.accent)
-                                    }
-                                    // Prescription line: effort + rest, when
-                                    // the catalog carries them.
-                                    let prescription = [
-                                        exercise.intensityLabel,
-                                        exercise.restSeconds.map { "rest \($0)s" } ?? ""
-                                    ].filter { !$0.isEmpty }.joined(separator: " · ")
-                                    Text(prescription.isEmpty
-                                         ? exercise.muscleGroup.rawValue
-                                         : "\(exercise.muscleGroup.rawValue) · \(prescription)")
-                                        .font(.caption)
-                                        .foregroundStyle(MorpheTheme.textSecondary)
-                                    if !exercise.formCue.isEmpty {
-                                        Text(exercise.formCue)
+                                HStack(alignment: .top, spacing: 10) {
+                                    diagramThumbnail(for: exercise)
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        HStack(alignment: .top) {
+                                            Text("\(index + 1). \(exercise.name)")
+                                                .font(.subheadline.weight(.semibold))
+                                                .foregroundStyle(.white)
+                                            Spacer()
+                                            Text("\(exercise.sets) × \(exercise.reps)")
+                                                .font(.system(.subheadline, design: .monospaced).weight(.semibold))
+                                                .foregroundStyle(MorpheTheme.accent)
+                                        }
+                                        // Prescription line: effort + rest, when
+                                        // the catalog carries them.
+                                        let prescription = [
+                                            exercise.intensityLabel,
+                                            exercise.restSeconds.map { "rest \($0)s" } ?? ""
+                                        ].filter { !$0.isEmpty }.joined(separator: " · ")
+                                        Text(prescription.isEmpty
+                                             ? exercise.muscleGroup.rawValue
+                                             : "\(exercise.muscleGroup.rawValue) · \(prescription)")
                                             .font(.caption)
-                                            .foregroundStyle(MorpheTheme.textMuted)
+                                            .foregroundStyle(MorpheTheme.textSecondary)
+                                        if !exercise.formCue.isEmpty {
+                                            Text(exercise.formCue)
+                                                .font(.caption)
+                                                .foregroundStyle(MorpheTheme.textMuted)
+                                        }
                                     }
                                 }
                                 if index < template.exercises.count - 1 {
@@ -2378,17 +2574,27 @@ private struct DiscoverWorkoutDetailSheet: View {
                     }
 
                     HStack(spacing: 10) {
-                        Button("Start Workout") {
+                        Button("Start") {
                             dismiss()
                             onStart()
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .accessibilityLabel("Start \(template.name) now")
+
+                        // Queue = stage as today's workout in Train without
+                        // starting the live session.
+                        Button("Queue") {
+                            dismiss()
+                            store.openWorkoutTemplate(template)
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityLabel("Queue \(template.name) in Train")
 
                         Button(store.isCatalogWorkoutSaved(template) ? "Saved" : "Save") {
                             store.saveCatalogWorkout(template)
                         }
                         .buttonStyle(SecondaryCTAButtonStyle())
-                        .frame(width: 110)
+                        .accessibilityLabel(store.isCatalogWorkoutSaved(template) ? "\(template.name) saved" : "Save \(template.name) to My Library")
                     }
                 }
                 .padding(20)
@@ -2397,6 +2603,88 @@ private struct DiscoverWorkoutDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundStyle(.white)
+                }
+            }
+            .task {
+                formDiagrams = await Self.loadDiagrams(
+                    for: template.exercises.map(\.exerciseLibraryID)
+                )
+            }
+        }
+    }
+
+    private var pillTexts: [String] {
+        var pills: [String] = []
+        if !template.categoryTag.isEmpty { pills.append(template.categoryTag) }
+        if !template.goal.isEmpty { pills.append(template.goal) }
+        pills.append("\(template.durationMinutes) min")
+        pills.append(template.difficulty.rawValue)
+        pills.append(template.equipment)
+        return pills
+    }
+
+    @ViewBuilder
+    private func diagramThumbnail(for exercise: WorkoutExercise) -> some View {
+        if let image = formDiagrams[exercise.exerciseLibraryID] {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .accessibilityLabel("Form diagram for \(exercise.name)")
+        } else {
+            // Placeholder while diagrams load (or if one is missing).
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(MorpheTheme.panelStrong)
+                .frame(width: 44, height: 44)
+                .overlay(
+                    Image(systemName: "figure.strengthtraining.traditional")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                )
+                .accessibilityHidden(true)
+        }
+    }
+
+    /// Reads every diagram off the main actor in one pass; UIImage decode +
+    /// disk IO for a dozen HEICs is exactly what .task exists for.
+    nonisolated private static func loadDiagrams(for libraryIDs: [String]) async -> [String: UIImage] {
+        var result: [String: UIImage] = [:]
+        for id in Set(libraryIDs) {
+            guard let url = Bundle.main.url(
+                forResource: id,
+                withExtension: "heic",
+                subdirectory: "FormDiagrams"
+            ), let image = UIImage(contentsOfFile: url.path) else { continue }
+            result[id] = image
+        }
+        return result
+    }
+}
+
+/// Wrapping row of small status pills (category, goal, duration, level).
+private struct FlowingPillRow: View {
+    let pills: [String]
+
+    var body: some View {
+        // A simple wrapping layout via LazyVGrid would force equal cells;
+        // pills vary a lot in width, so a plain wrapping HStack via
+        // ScrollView keeps it one tidy line that scrolls if it must.
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(pills, id: \.self) { pill in
+                    Text(pill.uppercased())
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(0.8)
+                        .lineLimit(1)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(
+                            Capsule()
+                                .fill(MorpheTheme.panelStrong)
+                                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                        )
                 }
             }
         }
@@ -3089,6 +3377,642 @@ private struct WorkoutRestControlBar: View {
         countdownTask = nil
         countdownEndDate = nil
         RestTimerActivityController.end()
+    }
+}
+
+// MARK: - Circuit Mode
+
+/// Full-screen guided interval runner over the live session's exercises:
+/// configure rounds and work/rest timing, run the stations with auto-advance,
+/// then log exactly what happened back into the tracked session.
+///
+/// HONEST-LOGGING CONVENTION: a timed circuit interval is ONE tracked set.
+/// `reps: 1` means "one finished work interval", never a rep count — the set
+/// label carries the truth ("Circuit: 40s work"), the same way superset and
+/// dropset sets already encode their sub-work in labels. Weight logs as 0
+/// (bodyweight). Skipped or interrupted intervals are never logged.
+private struct CircuitModeView: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// One exercise slot in the circuit. `id` is the WorkoutExercise id so
+    /// finished intervals log back to the right exercise.
+    private struct Station: Identifiable {
+        let id: String
+        let name: String
+        var workSeconds: Int
+        var isEnabled = true
+    }
+
+    /// One finished work interval — the only unit the summary ever logs.
+    private struct CompletedInterval {
+        let stationID: String
+        let workSeconds: Int
+    }
+
+    private enum Phase { case setup, running, summary }
+    private enum Segment { case work, stationRest, roundRest }
+
+    // Config
+    @State private var stations: [Station]
+    @State private var rounds = 3
+    @State private var stationRestSeconds = 15
+    @State private var roundRestSeconds = 60
+
+    // Runner
+    @State private var phase: Phase = .setup
+    @State private var segment: Segment = .work
+    @State private var roundIndex = 0
+    @State private var stationIndex = 0
+    @State private var remaining = 0
+    @State private var segmentLength = 1
+    @State private var isPaused = false
+    @State private var endedEarly = false
+    @State private var showEndConfirm = false
+    @State private var completedIntervals: [CompletedInterval] = []
+    /// Stations snapshotted at Start, so nothing can shift mid-run.
+    @State private var runStations: [Station] = []
+    /// Wall-clock end of the running segment — the truth the 1s ticker
+    /// resyncs to after a suspension (same pattern as WorkoutRestControlBar).
+    @State private var segmentEndDate: Date?
+    @State private var tickTask: Task<Void, Never>?
+
+    init(exercises: [WorkoutExercise]) {
+        _stations = State(initialValue: exercises.map { exercise in
+            Station(
+                id: exercise.id,
+                name: exercise.name,
+                workSeconds: Self.templateWorkSeconds(from: exercise.reps) ?? 40
+            )
+        })
+    }
+
+    /// Reads timed work off the catalog display string ("45 sec", "3 min");
+    /// rep-based moves ("8 reps") carry no template interval. Clamped to a
+    /// circuit-sensible 10–120s — a "20 min" steady-state block is not a
+    /// station length.
+    private static func templateWorkSeconds(from repsLabel: String) -> Int? {
+        let lower = repsLabel.lowercased()
+        guard let value = Int(
+            lower.components(separatedBy: CharacterSet.decimalDigits.inverted)
+                .first(where: { !$0.isEmpty }) ?? ""
+        ) else { return nil }
+        if lower.contains("min") { return min(max(value * 60, 10), 120) }
+        if lower.contains("sec") { return min(max(value, 10), 120) }
+        return nil
+    }
+
+    var body: some View {
+        ZStack {
+            PremiumBackground()
+
+            switch phase {
+            case .setup: setupView
+            case .running: runnerView
+            case .summary: summaryView
+            }
+        }
+        .onChange(of: phase) { _, newPhase in
+            // The runner must outlast the auto-lock timeout; every other
+            // phase gives the normal screen sleep straight back.
+            UIApplication.shared.isIdleTimerDisabled = (newPhase == .running)
+        }
+        .onDisappear {
+            // Defer-safe restore: however this cover exits — log, discard,
+            // or the session ending underneath it — the idle timer and the
+            // ticker never outlive it.
+            UIApplication.shared.isIdleTimerDisabled = false
+            tickTask?.cancel()
+        }
+        // The 1s loop suspends with the app; resync to wall clock on return
+        // so the countdown never drifts. Time that fully elapsed while
+        // suspended ends the segment on the next tick — the runner resumes
+        // at the boundary instead of fast-forwarding through unseen work.
+        .onChange(of: scenePhase) { _, newScene in
+            guard newScene == .active, phase == .running, !isPaused,
+                  let end = segmentEndDate else { return }
+            remaining = min(max(Int(end.timeIntervalSinceNow.rounded()), 0), segmentLength)
+        }
+    }
+
+    // MARK: Setup
+
+    private var enabledStations: [Station] { stations.filter(\.isEnabled) }
+
+    /// The work chip that matches every enabled station, if they agree.
+    private var uniformWorkSeconds: Int? {
+        let values = Set(enabledStations.map(\.workSeconds))
+        return values.count == 1 ? values.first : nil
+    }
+
+    /// Honest plan length: all work + rests, rounded up to whole minutes.
+    private var estimatedMinutes: Int {
+        let work = enabledStations.reduce(0) { $0 + $1.workSeconds }
+        let perRound = work + stationRestSeconds * max(enabledStations.count - 1, 0)
+        let total = perRound * rounds + roundRestSeconds * max(rounds - 1, 0)
+        return max(Int((Double(total) / 60).rounded(.up)), 1)
+    }
+
+    private var setupView: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                coverHeader(
+                    title: "Circuit Mode",
+                    subtitle: "Timed stations over this session's exercises. Only finished work intervals get logged — one set per interval."
+                )
+
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        configLabel("Rounds")
+                        SetConsoleRow(
+                            label: "Rounds",
+                            value: "\(rounds)",
+                            onCoarseDown: nil,
+                            onDown: { rounds = max(rounds - 1, 1) },
+                            onUp: { rounds = min(rounds + 1, 8) },
+                            onCoarseUp: nil
+                        )
+
+                        configLabel("Work")
+                        secondsChipRow([20, 30, 40, 60], selected: uniformWorkSeconds) { value in
+                            for index in stations.indices { stations[index].workSeconds = value }
+                        }
+
+                        configLabel("Station rest")
+                        secondsChipRow([10, 15, 20, 30], selected: stationRestSeconds) { value in
+                            stationRestSeconds = value
+                        }
+
+                        configLabel("Round rest")
+                        secondsChipRow([30, 60, 90], selected: roundRestSeconds) { value in
+                            roundRestSeconds = value
+                        }
+                    }
+                }
+
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        configLabel("Stations")
+
+                        ForEach($stations) { $station in
+                            Button {
+                                station.isEnabled.toggle()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: station.isEnabled ? "checkmark.square.fill" : "square")
+                                        .foregroundStyle(station.isEnabled ? MorpheTheme.accent : MorpheTheme.textMuted)
+                                    Text(station.name)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(station.isEnabled ? .white : MorpheTheme.textMuted)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                    Spacer()
+                                    Text("\(station.workSeconds)s")
+                                        .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                                        .foregroundStyle(station.isEnabled ? MorpheTheme.accent : MorpheTheme.textMuted)
+                                }
+                                .padding(10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                        .fill(station.isEnabled ? MorpheTheme.panelStrong : MorpheTheme.panel)
+                                )
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(station.name), \(station.workSeconds) seconds, \(station.isEnabled ? "included" : "excluded")")
+                            .accessibilityHint("Double-tap to \(station.isEnabled ? "exclude from" : "include in") the circuit")
+                        }
+
+                        if enabledStations.isEmpty {
+                            Text("Turn at least one station on to start.")
+                                .font(.footnote)
+                                .foregroundStyle(MorpheTheme.warning)
+                        } else {
+                            Text("\(rounds) round\(rounds == 1 ? "" : "s") × \(enabledStations.count) station\(enabledStations.count == 1 ? "" : "s") ≈ \(estimatedMinutes) min")
+                                .font(.system(.footnote, design: .monospaced).weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                    }
+                }
+
+                Button("Start Circuit") { startCircuit() }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(enabledStations.isEmpty)
+                    .opacity(enabledStations.isEmpty ? 0.5 : 1)
+            }
+            .padding(20)
+        }
+    }
+
+    private func configLabel(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(MorpheTheme.microLabel(10))
+            .tracking(1.4)
+            .foregroundStyle(MorpheTheme.textMuted)
+    }
+
+    private func secondsChipRow(_ presets: [Int], selected: Int?, onPick: @escaping (Int) -> Void) -> some View {
+        HStack(spacing: 8) {
+            ForEach(presets, id: \.self) { preset in
+                Button("\(preset)s") { onPick(preset) }
+                    .buttonStyle(FilterChipStyle(isSelected: selected == preset))
+            }
+        }
+    }
+
+    private func coverHeader(title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title.uppercased())
+                    .font(.system(size: 17, design: .monospaced).weight(.heavy))
+                    .tracking(2)
+                    .foregroundStyle(.white)
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                        )
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Close circuit mode")
+            }
+            Text(subtitle)
+                .font(.footnote)
+                .foregroundStyle(MorpheTheme.textSecondary)
+        }
+    }
+
+    // MARK: Runner
+
+    private var currentStation: Station? {
+        runStations.indices.contains(stationIndex) ? runStations[stationIndex] : nil
+    }
+
+    private var segmentTitle: String {
+        switch segment {
+        case .work: return "Work"
+        case .stationRest: return "Rest"
+        case .roundRest: return "Round rest"
+        }
+    }
+
+    private var segmentColor: Color {
+        switch segment {
+        case .work: return MorpheTheme.accent
+        case .stationRest: return MorpheTheme.accentAlt
+        case .roundRest: return MorpheTheme.lavender
+        }
+    }
+
+    /// The huge center line: the station being worked, or the one to get
+    /// ready for during a rest.
+    private var displayStationName: String {
+        switch segment {
+        case .work:
+            return currentStation?.name ?? ""
+        case .stationRest:
+            return runStations.indices.contains(stationIndex + 1) ? runStations[stationIndex + 1].name : ""
+        case .roundRest:
+            return runStations.first?.name ?? ""
+        }
+    }
+
+    private var nextPreviewText: String? {
+        switch segment {
+        case .work:
+            if runStations.indices.contains(stationIndex + 1) {
+                return "Next: \(runStations[stationIndex + 1].name)"
+            }
+            if roundIndex + 1 < rounds { return "Next: round rest" }
+            return "Last station"
+        case .stationRest:
+            return "Get ready"
+        case .roundRest:
+            return "Round \(roundIndex + 2) of \(rounds) starts next"
+        }
+    }
+
+    private var ringProgress: Double {
+        Double(remaining) / Double(max(segmentLength, 1))
+    }
+
+    private var runnerView: some View {
+        VStack(spacing: 20) {
+            HStack {
+                StatusBadge(text: "Round \(roundIndex + 1) / \(rounds)", color: MorpheTheme.accent)
+                StatusBadge(text: "Station \(min(stationIndex + 1, runStations.count)) / \(runStations.count)", color: MorpheTheme.lavender)
+                Spacer()
+                Button("End") { showEndConfirm = true }
+                    .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.danger))
+                    .accessibilityLabel("End circuit early")
+            }
+
+            Spacer()
+
+            // Countdown ring: hairline track, accent arc draining clockwise —
+            // the MorpheLoadingMark arc language at telemetry scale.
+            ZStack {
+                Circle()
+                    .stroke(MorpheTheme.stroke, lineWidth: 10)
+                Circle()
+                    .trim(from: 0, to: ringProgress)
+                    .stroke(segmentColor, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    // Animate the drain, not the refill jump at segment start.
+                    .animation(remaining == segmentLength ? nil : .linear(duration: 1), value: remaining)
+
+                VStack(spacing: 8) {
+                    Text(segmentTitle.uppercased())
+                        .font(MorpheTheme.microLabel(12))
+                        .tracking(2.2)
+                        .foregroundStyle(segmentColor)
+                    Text(timeString(remaining))
+                        .font(.system(size: 58, design: .monospaced).weight(.heavy))
+                        .foregroundStyle(.white)
+                        .contentTransition(.numericText(countsDown: true))
+                        .animation(.linear(duration: 0.3), value: remaining)
+                    if isPaused {
+                        Text("PAUSED")
+                            .font(MorpheTheme.microLabel(11))
+                            .tracking(2)
+                            .foregroundStyle(MorpheTheme.warning)
+                    }
+                }
+            }
+            .frame(width: 250, height: 250)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(segmentTitle), \(timeString(remaining)) remaining\(isPaused ? ", paused" : "")")
+
+            VStack(spacing: 8) {
+                Text(displayStationName)
+                    .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
+
+                if let nextPreviewText {
+                    Text(nextPreviewText)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+
+            Spacer()
+
+            HStack(spacing: 10) {
+                Button(isPaused ? "Resume" : "Pause") { togglePause() }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
+
+                Button("Skip") { skipStation() }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .frame(width: 110)
+                    .accessibilityLabel("Skip station")
+            }
+        }
+        .padding(20)
+        .confirmationDialog(
+            completedIntervals.isEmpty
+                ? "End the circuit? Nothing has been completed yet, so nothing would be logged."
+                : "End the circuit early? The \(completedIntervals.count) finished interval\(completedIntervals.count == 1 ? "" : "s") can still be logged.",
+            isPresented: $showEndConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("End Circuit", role: .destructive) { finishCircuit(early: true) }
+            Button("Keep Going", role: .cancel) {}
+        }
+    }
+
+    private func timeString(_ seconds: Int) -> String {
+        String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
+    // MARK: Runner state machine
+
+    private func startCircuit() {
+        runStations = enabledStations
+        guard !runStations.isEmpty else { return }
+        completedIntervals = []
+        roundIndex = 0
+        stationIndex = 0
+        endedEarly = false
+        isPaused = false
+        Haptics.impact(.medium)
+        phase = .running
+        beginSegment(.work)
+    }
+
+    private func beginSegment(_ newSegment: Segment) {
+        segment = newSegment
+        switch newSegment {
+        case .work: segmentLength = max(currentStation?.workSeconds ?? 40, 1)
+        case .stationRest: segmentLength = max(stationRestSeconds, 1)
+        case .roundRest: segmentLength = max(roundRestSeconds, 1)
+        }
+        remaining = segmentLength
+        startTicking()
+    }
+
+    private func startTicking() {
+        tickTask?.cancel()
+        segmentEndDate = Date().addingTimeInterval(TimeInterval(remaining))
+        tickTask = Task {
+            while !Task.isCancelled && remaining > 0 {
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { return }
+                if remaining > 0 { remaining -= 1 }
+            }
+            if !Task.isCancelled && remaining <= 0 {
+                segmentFinished()
+            }
+        }
+    }
+
+    private func stopTicking() {
+        tickTask?.cancel()
+        tickTask = nil
+        segmentEndDate = nil
+    }
+
+    private func segmentFinished() {
+        switch segment {
+        case .work:
+            // The interval ran to zero on the clock — that, and only that,
+            // earns a logged set.
+            if let station = currentStation {
+                completedIntervals.append(
+                    CompletedInterval(stationID: station.id, workSeconds: station.workSeconds)
+                )
+            }
+            if stationIndex + 1 < runStations.count {
+                Haptics.impact(.medium)
+                beginSegment(.stationRest)
+            } else if roundIndex + 1 < rounds {
+                SoundEffects.play(.ding)   // round completion
+                Haptics.impact(.heavy)
+                beginSegment(.roundRest)
+            } else {
+                finishCircuit(early: false)
+            }
+        case .stationRest:
+            Haptics.impact(.medium)
+            stationIndex += 1
+            beginSegment(.work)
+        case .roundRest:
+            Haptics.impact(.medium)
+            advanceToNextRound()
+        }
+    }
+
+    private func advanceToNextRound() {
+        roundIndex += 1
+        stationIndex = 0
+        beginSegment(.work)
+    }
+
+    private func togglePause() {
+        if isPaused {
+            isPaused = false
+            startTicking()
+        } else {
+            isPaused = true
+            stopTicking()
+        }
+        Haptics.impact(.light)
+    }
+
+    /// Jumps to the next station's work. A skipped work interval is never
+    /// credited; skipping during a rest just cuts the rest short.
+    private func skipStation() {
+        stopTicking()
+        Haptics.impact(.light)
+        isPaused = false
+        switch segment {
+        case .roundRest:
+            advanceToNextRound()
+        case .work, .stationRest:
+            if stationIndex + 1 < runStations.count {
+                stationIndex += 1
+                beginSegment(.work)
+            } else if roundIndex + 1 < rounds {
+                advanceToNextRound()
+            } else {
+                finishCircuit(early: segment == .work)
+            }
+        }
+    }
+
+    private func finishCircuit(early: Bool) {
+        stopTicking()
+        isPaused = false
+        endedEarly = early
+        if early {
+            Haptics.impact(.medium)
+        } else {
+            SoundEffects.play(.star)   // circuit completion
+            Haptics.success()
+        }
+        phase = .summary
+    }
+
+    // MARK: Summary + honest logging
+
+    private struct SummaryLine: Identifiable {
+        let id: String
+        let name: String
+        let count: Int
+        let workSeconds: Int
+    }
+
+    private var summaryLines: [SummaryLine] {
+        runStations.compactMap { station in
+            let count = completedIntervals.filter { $0.stationID == station.id }.count
+            guard count > 0 else { return nil }
+            return SummaryLine(id: station.id, name: station.name, count: count, workSeconds: station.workSeconds)
+        }
+    }
+
+    private var summaryView: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                coverHeader(
+                    title: endedEarly ? "Circuit ended" : "Circuit complete",
+                    subtitle: summaryLines.isEmpty
+                        ? "No work intervals finished, so there is nothing to log."
+                        : "This is exactly what gets recorded — nothing you didn't do."
+                )
+
+                if !summaryLines.isEmpty {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            configLabel("Will be logged")
+
+                            ForEach(summaryLines) { line in
+                                HStack(spacing: 10) {
+                                    Text(line.name)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
+                                    Spacer()
+                                    Text("\(line.count) × \(line.workSeconds)s")
+                                        .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                                        .foregroundStyle(MorpheTheme.accent)
+                                }
+                            }
+
+                            Text("Each finished interval logs as one set — reps 1 (one interval, not a rep count), weight 0 (bodyweight), labeled \"Circuit: …s work\".")
+                                .font(.footnote)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    if summaryLines.isEmpty {
+                        Button("Close") { dismiss() }
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                    } else {
+                        Button("Log Circuit") { logCircuit() }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+
+                        Button("Discard") { dismiss() }
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .frame(width: 110)
+                            .accessibilityLabel("Discard circuit without logging")
+                    }
+                }
+            }
+            .padding(20)
+        }
+    }
+
+    /// Writes each finished interval into the tracked session via the same
+    /// store API every other set uses (see the convention note on this view).
+    /// `completeTrackedSet` targets the store's active exercise, so the index
+    /// is pointed at each station's exercise first and restored after.
+    private func logCircuit() {
+        let originalIndex = store.activeWorkoutExerciseIndex
+        for interval in completedIntervals {
+            guard let index = store.currentWorkout.exercises.firstIndex(where: { $0.id == interval.stationID }) else { continue }
+            store.activeWorkoutExerciseIndex = index
+            store.completeTrackedSet(
+                reps: 1,
+                weight: 0,
+                allowExtra: true,
+                label: "Circuit: \(interval.workSeconds)s work"
+            )
+        }
+        store.activeWorkoutExerciseIndex = min(originalIndex, max(store.currentWorkout.exercises.count - 1, 0))
+        dismiss()
     }
 }
 
@@ -4089,7 +5013,7 @@ private struct ExerciseSwapFlowSheet: View {
                     if let selectedReason, let libraryExercise {
                         GlassCard {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Suggested alternatives")
+                                Text("Suggested Alternatives")
                                     .font(.headline)
                                     .foregroundStyle(.white)
 
@@ -4175,7 +5099,7 @@ private struct YourWorkoutsCard: View {
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Your workouts")
+                Text("Your Workouts")
                     .font(.headline)
                     .foregroundStyle(.white)
 

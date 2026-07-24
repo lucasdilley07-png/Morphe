@@ -3,15 +3,14 @@ import SwiftUI
 struct MoreView: View {
     @Environment(MorpheAppStore.self) private var store
 
-    private var activeFeature: ClientHubFeature {
-        let selected = store.selectedHubFeature ?? .scores
-        return selected == .progress ? .scores : selected
-    }
+    /// The three surfaces this tab actually owns. Scores/Progress duplicated
+    /// the Progress tab and Quick Tools duplicated the Train tab + AI FAB, so
+    /// both are gone — any stale store selection maps to Lessons.
+    private static let tabs: [ClientHubFeature] = [.library, .nutrition, .learn]
 
-    private var personalRecords: [PersonalRecord] {
-        // Real records from logged sets — the seeded showcase list is always
-        // empty for real users.
-        store.derivedPersonalRecords
+    private var activeFeature: ClientHubFeature {
+        let selected = store.selectedHubFeature ?? .learn
+        return Self.tabs.contains(selected) ? selected : .learn
     }
 
     private var featuredDrills: [DrillReference] {
@@ -19,10 +18,6 @@ struct MoreView: View {
             .filter { $0.sport == store.selectedSportMode || $0.sport == .generalFitness }
             .prefix(4)
             .map { $0 }
-    }
-
-    private var utilityFeatures: [ClientHubFeature] {
-        ClientHubFeature.allCases.filter { $0 != .progress }
     }
 
     /// ONE quiz per calendar day — the day picks it, completion doesn't skip
@@ -34,43 +29,6 @@ struct MoreView: View {
         return store.quizzes[dayIndex % store.quizzes.count]
     }
 
-    /// Calories/protein/water come from the store's single source of truth
-    /// (store.nutritionTargets — its sourceNote labels the provenance below
-    /// the list). The goal type only flavors the detail copy and the general
-    /// carb guidance; it no longer hardcodes competing numbers.
-    private var nutritionTargets: [(label: String, value: String, detail: String)] {
-        let targets = store.nutritionTargets
-        switch store.clientProfile.goal {
-        case let goal where goal.localizedCaseInsensitiveContains("weight"):
-            return [
-                ("Calories", targets.calories.formatted(), "steady deficit"),
-                ("Protein", "\(targets.proteinGrams)g", "muscle support"),
-                ("Carbs", "190g", "training energy"),
-                ("Vegetables", "4 servings", "recovery + fullness"),
-                ("Dairy", "2 servings", "easy calcium + protein"),
-                ("Water", "\(targets.waterCups) cups", "daily baseline")
-            ]
-        case let goal where goal.localizedCaseInsensitiveContains("conditioning"):
-            return [
-                ("Calories", targets.calories.formatted(), "fuel the work"),
-                ("Protein", "\(targets.proteinGrams)g", "recovery support"),
-                ("Carbs", "240g", "session energy"),
-                ("Vegetables", "4 servings", "micronutrient base"),
-                ("Dairy", "2 servings", "easy add-on"),
-                ("Water", "\(targets.waterCups) cups", "sweat support")
-            ]
-        default:
-            return [
-                ("Calories", targets.calories.formatted(), "daily target"),
-                ("Protein", "\(targets.proteinGrams)g", "consistency first"),
-                ("Carbs", "220g", "steady energy"),
-                ("Vegetables", "4 servings", "simple habit"),
-                ("Dairy", "2 servings", "optional support"),
-                ("Water", "\(targets.waterCups) cups", "hydration baseline")
-            ]
-        }
-    }
-
     private let mobilityLibrary = [
         "90/90 Hip Switch",
         "World's Greatest Stretch",
@@ -79,102 +37,57 @@ struct MoreView: View {
         "Child's Pose Breathing"
     ]
 
-    // Swap Exercise was removed: it silently rewrote the current workout's
-    // first exercise and yanked the user to Train — a destructive surprise
-    // from a Learn tab. Swapping lives in the workout itself now.
-    private let quickActions: [(TodayQuickAction, String)] = [
-        (.logWorkout, "checkmark.circle"),
-        (.askAI, "text.bubble")
-    ]
-
-    private let quickActionColumns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
-    ]
-
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                SectionTitleView(
-                    title: "Learn",
-                    subtitle: "Exercise help, recovery, nutrition basics, and short lessons in one place."
-                )
-
-                MoreFeatureGrid(features: utilityFeatures, selected: activeFeature) { feature in
-                    store.selectedHubFeature = feature
-                }
-
-                featureContent
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitleView(
+                title: "Learn",
+                subtitle: "Exercise help, recovery, nutrition basics, and short lessons in one place."
+            )
             .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 120)
+
+            // Compact chip row instead of the old 5-tile grid: one line, always
+            // visible, and the selected panel renders directly beneath it.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Self.tabs) { feature in
+                        Button(chipTitle(for: feature)) {
+                            store.selectedHubFeature = feature
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: activeFeature == feature))
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    featureContent
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 4)
+                .padding(.bottom, 120)
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private func chipTitle(for feature: ClientHubFeature) -> String {
+        switch feature {
+        case .library: return "Library"
+        case .nutrition: return "Nutrition"
+        default: return "Lessons"
         }
     }
 
     @ViewBuilder
     private var featureContent: some View {
         switch activeFeature {
-        case .progress:
-            scoresPanel
-        case .scores:
-            scoresPanel
-        case .tools:
-            toolsPanel
         case .library:
             libraryPanel
         case .nutrition:
             nutritionPanel
-        case .learn:
+        default:
             learningPanel
-        }
-    }
-
-    private var scoresPanel: some View {
-        Group {
-            HubScoreboardCard(
-                recovery: store.recovery,
-                morpheScore: store.clientProfile.health.score,
-                streak: store.clientProfile.level.streak,
-                adherence: store.clientProfile.adherence,
-                hasCheckedIn: store.didCompleteQuickCheckIn
-            )
-            LevelProgressCard(progress: store.clientProfile.level)
-            GoalTranslationCard(translation: store.goalTranslation)
-            SportModeSelector(selected: store.selectedSportMode) { sport in
-                store.selectSportMode(sport)
-            }
-            // Only ever non-empty in the pre-onboarding demo — a real user
-            // has no fabricated sport metrics.
-            if !store.sportMetrics.isEmpty {
-                SportMetricsCard(sport: store.selectedSportMode, metrics: store.sportMetrics)
-            }
-            PersonalRecordsCard(records: personalRecords)
-        }
-    }
-
-    private var toolsPanel: some View {
-        Group {
-            GlassCard {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Quick Tools")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-
-                    LazyVGrid(columns: quickActionColumns, spacing: 10) {
-                        ForEach(quickActions, id: \.0.id) { action, symbol in
-                            QuickActionButton(title: action.rawValue, systemImage: symbol) {
-                                store.quickAction(action)
-                            }
-                        }
-                    }
-                }
-            }
-
-            GoalTranslationCard(translation: store.goalTranslation)
-            if !store.personalRules.isEmpty {
-                PersonalRulesCard(rules: store.personalRules)
-            }
         }
     }
 
@@ -182,7 +95,7 @@ struct MoreView: View {
         Group {
             // (SportModeSelector removed from here: browsing the library must
             // not rewrite the user's sports, goal, and persisted profile as a
-            // side effect — it lives in Scores where changing sport is the point.)
+            // side effect — changing sport lives on the plan surfaces.)
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Exercise Library")
@@ -259,6 +172,21 @@ struct MoreView: View {
         }
     }
 
+    // MARK: - Nutrition
+
+    /// One goal-flavored guidance line — the numbers themselves come from
+    /// store.nutritionTargets (single source of truth) and render as pills.
+    private var nutritionGuidanceLine: String {
+        switch store.clientProfile.goal {
+        case let goal where goal.localizedCaseInsensitiveContains("weight"):
+            return "Keep vegetables high and carbs moderate — fullness makes a steady deficit easier."
+        case let goal where goal.localizedCaseInsensitiveContains("conditioning"):
+            return "Carbs fuel your sessions — eat most of them around training."
+        default:
+            return "Carbs, vegetables, and a couple of dairy servings round it out — consistency beats precision."
+        }
+    }
+
     private var nutritionPanel: some View {
         Group {
             GlassCard {
@@ -266,28 +194,19 @@ struct MoreView: View {
                     Text("Nutrition Basics")
                         .font(.headline)
                         .foregroundStyle(.white)
-                    // Provenance lives in the sourceNote caption under the
-                    // list — this line just sets expectations. (The old Mode
-                    // picker wrote a value nothing in the app ever read.)
                     Text("Hit the basics before trying to be perfect.")
                         .foregroundStyle(MorpheTheme.textSecondary)
 
-                    ForEach(nutritionTargets, id: \.label) { target in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(target.label)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                Text(target.detail)
-                                    .font(.caption)
-                                    .foregroundStyle(MorpheTheme.textSecondary)
-                            }
-                            Spacer()
-                            Text(target.value)
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.accentAlt)
-                        }
+                    HStack(spacing: 8) {
+                        MetricPill(label: "Calories", value: store.nutritionTargets.calories.formatted())
+                        MetricPill(label: "Protein", value: "\(store.nutritionTargets.proteinGrams)g")
+                        MetricPill(label: "Water", value: "\(store.nutritionTargets.waterCups) cups")
                     }
+
+                    Text(nutritionGuidanceLine)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     // The honest label for where the numbers come from.
                     Text(store.nutritionTargets.sourceNote)
@@ -317,6 +236,74 @@ struct MoreView: View {
 
             AIInsightCard(insight: store.nutritionInsight)
         }
+    }
+
+    // MARK: - Lessons (personalized ordering)
+
+    /// Keywords from the user's own onboarding answers: goal phrases, training
+    /// style names, and sport mode. Short/generic words are dropped so "Build
+    /// consistency" contributes "consistency", not "build". View-side only —
+    /// nothing is written back to the store.
+    private var lessonKeywords: [String] {
+        let profile = store.clientProfile
+        var phrases: [String] = profile.selectedGoals
+        phrases += profile.selectedTrainingStyles.map(\.rawValue)
+        phrases.append(profile.sportMode.rawValue)
+
+        let stopWords: Set<String> = [
+            "and", "the", "for", "your", "with", "improve", "build", "get",
+            "more", "better", "body", "work", "general", "fitness", "personal"
+        ]
+        var seen = Set<String>()
+        var keywords: [String] = []
+        for phrase in phrases {
+            for word in phrase.lowercased().split(whereSeparator: { !$0.isLetter }) {
+                let token = String(word)
+                guard token.count >= 4, !stopWords.contains(token), seen.insert(token).inserted else { continue }
+                keywords.append(token)
+            }
+        }
+        return keywords
+    }
+
+    /// Deterministic relevance score: +3 for a keyword in the title, +1 in the
+    /// subtitle/detail, and +2 when the user reported limitations and the
+    /// lesson covers recovery/pain/safety. Ties keep authored order (stable).
+    private func lessonScore(_ lesson: LessonCard, keywords: [String], boostRecovery: Bool) -> Int {
+        let title = lesson.title.lowercased()
+        let body = "\(lesson.subtitle) \(lesson.detail)".lowercased()
+        var score = 0
+        for keyword in keywords {
+            if title.contains(keyword) { score += 3 }
+            if body.contains(keyword) { score += 1 }
+        }
+        if boostRecovery {
+            let safetyTerms = ["recovery", "pain", "sore", "safe", "deload", "rest", "sleep", "warm-up"]
+            if safetyTerms.contains(where: { title.contains($0) || body.contains($0) }) {
+                score += 2
+            }
+        }
+        return score
+    }
+
+    /// Lessons reordered so the user's world comes first. `forYou` holds up to
+    /// three lessons that actually matched (score > 0); everything else keeps
+    /// its original authored order in `rest`.
+    private var orderedLessons: (forYou: [LessonCard], rest: [LessonCard]) {
+        let keywords = lessonKeywords
+        let boostRecovery = !store.clientProfile.limitations
+            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let scored = store.lessons.enumerated().map { index, lesson in
+            (lesson: lesson, score: lessonScore(lesson, keywords: keywords, boostRecovery: boostRecovery), index: index)
+        }
+        // Stable: equal scores fall back to the original index.
+        let sorted = scored.sorted {
+            $0.score != $1.score ? $0.score > $1.score : $0.index < $1.index
+        }
+        let forYou = sorted.prefix(3).filter { $0.score > 0 }.map(\.lesson)
+        guard !forYou.isEmpty else { return ([], store.lessons) }
+        let rest = sorted.dropFirst(forYou.count).map(\.lesson)
+        return (forYou, rest)
     }
 
     private var learningPanel: some View {
@@ -396,155 +383,62 @@ struct MoreView: View {
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
 
-                    ForEach(store.lessons) { lesson in
-                        DisclosureGroup {
-                            Text(lesson.detail)
-                                .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.top, 4)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(lesson.title)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                Text(lesson.subtitle)
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(MorpheTheme.accentAlt)
-                            }
+                    let lessons = orderedLessons
+
+                    if !lessons.forYou.isEmpty {
+                        Text("For you")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentAlt)
+                            .textCase(.uppercase)
+
+                        ForEach(lessons.forYou) { lesson in
+                            lessonRow(lesson)
                         }
-                        .disclosureGroupStyle(HUDDisclosureStyle())
+
+                        Text("All lessons")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .textCase(.uppercase)
+                            .padding(.top, 4)
+                    }
+
+                    ForEach(lessons.rest) { lesson in
+                        lessonRow(lesson)
                     }
                 }
             }
+
+            // Personal Rules lived on the deleted Quick Tools panel; the rules
+            // are learned habits, so they belong with the lessons.
+            if !store.personalRules.isEmpty {
+                PersonalRulesCard(rules: store.personalRules)
+            }
         }
+    }
+
+    private func lessonRow(_ lesson: LessonCard) -> some View {
+        DisclosureGroup {
+            Text(lesson.detail)
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 4)
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(lesson.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Text(lesson.subtitle)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentAlt)
+            }
+        }
+        .disclosureGroupStyle(HUDDisclosureStyle())
     }
 
     private func quizOptionLabel(option: String, index: Int, quiz: MiniQuiz, answeredIndex: Int?) -> String {
         guard answeredIndex != nil || store.completedQuizIDs.contains(quiz.id) else { return option }
         return index == quiz.correctIndex ? "\(option), correct answer" : option
-    }
-}
-
-private struct MoreFeatureGrid: View {
-    let features: [ClientHubFeature]
-    let selected: ClientHubFeature
-    let onSelect: (ClientHubFeature) -> Void
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
-    ]
-
-    var body: some View {
-        LazyVGrid(columns: columns, spacing: 10) {
-            ForEach(features) { feature in
-                Button {
-                    onSelect(feature)
-                } label: {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Image(systemName: feature.systemImage)
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                        Text(feature.rawValue)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Text(feature.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .multilineTextAlignment(.leading)
-                    }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, minHeight: 124, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(selected == feature ? MorpheTheme.panelStrong : MorpheTheme.panel)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .stroke(selected == feature ? MorpheTheme.accent : MorpheTheme.stroke, lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-}
-
-private struct HubScoreboardCard: View {
-    let recovery: RecoverySnapshot
-    let morpheScore: Int
-    let streak: Int
-    let adherence: Int
-    /// Readiness is a measurement only after a check-in — before one, the
-    /// neutral default renders as an em dash (same rule as Today's strip).
-    var hasCheckedIn: Bool = false
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Scores & Levels")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                HStack(spacing: 8) {
-                    MetricPill(label: "Readiness", value: hasCheckedIn ? "\(recovery.score)" : "—")
-                    MetricPill(label: "Morphe Score", value: "\(morpheScore)")
-                    MetricPill(label: "Streak", value: "\(streak) days")
-                }
-
-                Text(recoveryLine)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-            }
-        }
-    }
-
-    private var recoveryLine: String {
-        let recoveryPart = hasCheckedIn
-            ? "Recovery is \(recovery.status.rawValue.lowercased()) today."
-            : "Do a quick check-in on Today to set your readiness."
-        let streakPart = streak > 0
-            ? "You're on a \(streak)-day streak — keep it going."
-            : "Log a workout to start your streak."
-        return "\(recoveryPart) \(streakPart)"
-    }
-}
-
-private struct PersonalRecordsCard: View {
-    let records: [PersonalRecord]
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Personal Records")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                if records.isEmpty {
-                    Text("Your records build themselves from the workouts you log — the first one lands with your first big set.")
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                ForEach(records) { record in
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(record.title)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-                            Text(record.detail)
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                        }
-                        Spacer()
-                        Text(record.value)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(MorpheTheme.accentAlt)
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -568,30 +462,5 @@ private struct LibraryDrillRow: View {
                 .foregroundStyle(MorpheTheme.textSecondary)
         }
         .padding(.vertical, 4)
-    }
-}
-
-private struct NutritionMeter: View {
-    let title: String
-    let consumed: Int
-    let goal: Int
-    let unit: String
-
-    private var progress: Double {
-        guard goal > 0 else { return 0 }
-        return min(Double(consumed) / Double(goal), 1)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title)
-                    .foregroundStyle(.white)
-                Spacer()
-                Text("\(consumed)\(unit) / \(goal)\(unit)")
-                    .foregroundStyle(MorpheTheme.textSecondary)
-            }
-            ProgressBarView(progress: progress, color: MorpheTheme.accent)
-        }
     }
 }

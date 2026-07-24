@@ -1677,3 +1677,205 @@ private struct ProfileLine: View {
         }
     }
 }
+
+// MARK: - Appointments (real personal schedule)
+
+/// One appointment line: kind icon, title, when, and who it's with.
+/// Shared by the client schedule list and the coach's card in BookingView.
+struct AppointmentRowView: View {
+    let appointment: Appointment
+
+    private var whenLabel: String {
+        appointment.date.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: appointment.kind.systemImage)
+                .font(.headline)
+                .foregroundStyle(MorpheTheme.accentAlt)
+                .frame(width: 40, height: 40)
+                .background(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .fill(MorpheTheme.panelStrong)
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(appointment.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Text(appointment.withName.isEmpty
+                    ? "\(whenLabel) · \(appointment.durationMinutes) min"
+                    : "\(whenLabel) · \(appointment.durationMinutes) min · \(appointment.withName)")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+            }
+
+            Spacer(minLength: 0)
+
+            StatusBadge(text: appointment.kind.title, color: MorpheTheme.accent)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The client's schedule surface: upcoming appointments as a swipeable list.
+/// Swipe an appointment to cancel it (soft — the doc keeps its history) or
+/// remove it entirely; "+ Add" opens the compact editor.
+struct ClientAppointmentsView: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var showAddSheet = false
+
+    var body: some View {
+        List {
+            Section {
+                if store.upcomingAppointments.isEmpty {
+                    Text("Nothing scheduled. Add a session, check-in, or anything you train around.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .listRowBackground(Color.white.opacity(0.05))
+                } else {
+                    ForEach(store.upcomingAppointments) { appointment in
+                        AppointmentRowView(appointment: appointment)
+                            .listRowBackground(Color.white.opacity(0.05))
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button("Delete", role: .destructive) {
+                                    store.deleteAppointment(appointment)
+                                }
+                                Button("Cancel") {
+                                    store.updateAppointmentStatus(appointment, to: Appointment.statusCancelled)
+                                }
+                                .tint(MorpheTheme.warning)
+                            }
+                    }
+                }
+            } header: {
+                Text("Appointments")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .textCase(nil)
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(PremiumBackground().ignoresSafeArea())
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Add") { showAddSheet = true }
+                    .foregroundStyle(MorpheTheme.accent)
+                    .accessibilityLabel("Add appointment")
+            }
+        }
+        .sheet(isPresented: $showAddSheet) {
+            AppointmentEditorSheet()
+                .environment(store)
+        }
+    }
+}
+
+/// Compact add-appointment editor, shared by client and coach. The coach
+/// passes `nameSuggestions` (managed client names) so "With" can be picked
+/// from the roster or typed freely — an appointment's other party may not be
+/// a Morphe account at all.
+struct AppointmentEditorSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    var nameSuggestions: [String] = []
+
+    @State private var title = ""
+    @State private var kind: AppointmentKind = .session
+    @State private var date = Date.now.addingTimeInterval(60 * 60)
+    @State private var durationMinutes = 60
+    @State private var withName = ""
+    @State private var notes = ""
+
+    private var canSave: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("New Appointment")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+
+                            TextField("Title", text: $title)
+                                .textFieldStyle(MorpheFieldStyle())
+
+                            Picker("Kind", selection: $kind) {
+                                ForEach(AppointmentKind.allCases) { kind in
+                                    Label(kind.title, systemImage: kind.systemImage).tag(kind)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .tint(MorpheTheme.accent)
+
+                            DatePicker("Time", selection: $date, in: .now...)
+                                .tint(MorpheTheme.accent)
+                                .foregroundStyle(.white)
+
+                            Stepper("Duration: \(durationMinutes) min", value: $durationMinutes, in: 15...240, step: 15)
+                                .foregroundStyle(.white)
+                        }
+                    }
+
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("With")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+
+                            TextField("Who it's with (optional)", text: $withName)
+                                .textFieldStyle(MorpheFieldStyle())
+
+                            if !nameSuggestions.isEmpty {
+                                Menu {
+                                    ForEach(nameSuggestions, id: \.self) { name in
+                                        Button(name) { withName = name }
+                                    }
+                                } label: {
+                                    Label("Pick Client", systemImage: "person.crop.circle.badge.checkmark")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(MorpheTheme.accentAlt)
+                                }
+                            }
+
+                            TextField("Notes (optional)", text: $notes, axis: .vertical)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .lineLimit(2...4)
+                        }
+                    }
+
+                    Button("Save") {
+                        store.addAppointment(
+                            title: title,
+                            date: date,
+                            durationMinutes: durationMinutes,
+                            kind: kind,
+                            withName: withName,
+                            notes: notes
+                        )
+                        dismiss()
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle())
+                    .disabled(!canSave)
+                    .opacity(canSave ? 1 : 0.5)
+                    .accessibilityLabel("Save appointment")
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+}

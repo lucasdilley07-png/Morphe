@@ -2105,6 +2105,386 @@ enum MorpheDemoContent {
             alternatives: ["Thread the Needle", "Doorway Chest Stretch"],
             whyThisMatters: "Keeps the rear shoulder and cuff supple after pressing days — thirty easy seconds that pay off on your next bench session."
         ),
+        // Pilates / Dance / Sport Performance additions (Discover v2.1) —
+        // generated from Content/DiscoverLibrary newExercises, same as the 24 before.
+        ExerciseReference(
+            id: "pilates-hundred",
+            name: "Pilates Hundred",
+            muscleGroup: .core,
+            movementPattern: "Isometric trunk flexion + arm pumps",
+            musclesWorked: "Deep abdominals, hip flexors, neck flexors",
+            equipment: "None (mat optional)",
+            difficulty: .beginner,
+            videoPlaceholder: "You lie on your back with head and shoulders curled up, legs extended, and pump straight arms in a small fast beat while breathing in for five counts and out for five. The abs hold everything still; only the arms move. Ten breath cycles adds up to one hundred pumps.",
+            instructions: [
+                "Lie on your back, lift your head and shoulder blades off the mat, and extend your legs to a tabletop or 45-degree position.",
+                "Reach your arms long by your sides, hovering a few inches off the floor.",
+                "Pump your straight arms up and down in a small, brisk range while breathing in for five pumps and out for five.",
+                "Continue for ten breath cycles — one hundred pumps — keeping your low back gently pressed into the mat."
+            ],
+            formCue: "Press your low back into the mat and pump from the shoulders.",
+            commonMistakes: "Letting the low back arch off the mat as the legs lower, and straining the neck instead of curling from the ribs.",
+            beginnerModification: "Keep the knees bent in tabletop and rest the head down — the breathing and arm pumps still do their job.",
+            alternatives: ["dead-bug", "hollow-hold"],
+            whyThisMatters: "The classic Pilates warm-up teaches you to brace your core and breathe at the same time — the skill every other exercise depends on."
+        ),
+        ExerciseReference(
+            id: "roll-up",
+            name: "Roll-Up",
+            muscleGroup: .core,
+            movementPattern: "Sequential spinal flexion",
+            musclesWorked: "Rectus abdominis, deep abdominals, hip flexors",
+            equipment: "None (mat optional)",
+            difficulty: .moderate,
+            videoPlaceholder: "From lying flat with arms overhead, you curl up through the spine piece by piece until you're folded over your legs, then roll back down with the same slow control. There's no momentum — every vertebra touches down in sequence. Slower is harder, and harder is the point.",
+            instructions: [
+                "Lie flat on your back with legs extended and arms reaching overhead along the floor.",
+                "Bring the arms toward the ceiling, tuck your chin, and peel your spine off the mat one vertebra at a time.",
+                "Roll all the way up and reach forward over your legs into a deep C-curve.",
+                "Reverse the movement with the same control, articulating the spine back down bone by bone."
+            ],
+            formCue: "Peel off the mat one vertebra at a time — no jerking.",
+            commonMistakes: "Throwing the arms for momentum and lifting in one flat piece instead of rolling through each segment of the spine.",
+            beginnerModification: "Bend the knees and hold behind the thighs to assist the roll, or start seated and only lower halfway down.",
+            alternatives: ["sit-up", "dead-bug"],
+            whyThisMatters: "Builds segment-by-segment control of your spine, which is the difference between abs that look strong and abs that move you well."
+        ),
+        ExerciseReference(
+            id: "single-leg-circle",
+            name: "Single-Leg Circle",
+            muscleGroup: .core,
+            movementPattern: "Hip circumduction with a stable pelvis",
+            musclesWorked: "Hip flexors, inner thighs, deep abdominals, glutes",
+            equipment: "None (mat optional)",
+            difficulty: .beginner,
+            videoPlaceholder: "Lying on your back with one leg pointed at the ceiling, you draw slow circles in the air with that leg while your pelvis stays completely still. The circle starts small and only grows as your control does. Both directions, both legs.",
+            instructions: [
+                "Lie on your back with one leg extended toward the ceiling and the other long on the mat.",
+                "Anchor your pelvis and reach your arms by your sides, palms down.",
+                "Draw a controlled circle on the ceiling with the raised leg, crossing slightly over the body and sweeping back around.",
+                "Complete all reps in one direction, reverse, then switch legs."
+            ],
+            formCue: "Stir the leg — don't let the hips rock an inch.",
+            commonMistakes: "Letting the pelvis wobble side to side with the circle, and making the circle so big that the low back arches.",
+            beginnerModification: "Bend the moving knee or shrink the circle to the size of a dinner plate until the pelvis stays quiet.",
+            alternatives: ["dead-bug", "single-leg-glute-bridge"],
+            whyThisMatters: "Teaches your hip to move freely while your core stays braced — the exact skill that protects your back in squats, running and life."
+        ),
+        ExerciseReference(
+            id: "shoulder-bridge",
+            name: "Shoulder Bridge",
+            muscleGroup: .legs,
+            movementPattern: "Hip extension with spinal articulation",
+            musclesWorked: "Glutes, hamstrings, spinal erectors, deep abdominals",
+            equipment: "None (mat optional)",
+            difficulty: .beginner,
+            videoPlaceholder: "From lying with knees bent, you peel your hips toward the ceiling one vertebra at a time until shoulders, hips and knees form a straight ramp, then melt back down in the same sequence. The glutes drive the lift; the spine articulates like a wheel.",
+            instructions: [
+                "Lie on your back with knees bent, feet hip-width and flat, arms long by your sides.",
+                "Exhale and peel your spine off the mat from the tailbone up until you form a straight line from shoulders to knees.",
+                "Hold at the top, ribs soft and glutes working — optionally extend one leg to the ceiling for the classic variation.",
+                "Roll back down through the spine one vertebra at a time, chest to tailbone."
+            ],
+            formCue: "Roll up bone by bone and squeeze the top like you mean it.",
+            commonMistakes: "Pushing so high that the ribs flare and the low back takes over, and dropping down in one piece instead of articulating.",
+            beginnerModification: "Keep both feet down and pause the rep at a lower bridge height until the roll up and down feels smooth.",
+            alternatives: ["glute-bridge", "hip-thrust"],
+            whyThisMatters: "Combines glute strength with vertebra-by-vertebra spine control, so you build power and mobility in the same rep."
+        ),
+        ExerciseReference(
+            id: "side-kick-series",
+            name: "Side Kick Series",
+            muscleGroup: .legs,
+            movementPattern: "Side-lying hip flexion, extension and abduction",
+            musclesWorked: "Glute medius, glute max, outer thigh, obliques",
+            equipment: "None (mat optional)",
+            difficulty: .beginner,
+            videoPlaceholder: "Lying on your side in one straight line, you hold the top leg at hip height and swing it forward and back with control, the torso refusing to rock. A set of small upward lifts finishes the series before you switch sides. The stillness of the waist is the whole exercise.",
+            instructions: [
+                "Lie on your side with your body in one long line, head resting on your bottom arm and top hand lightly on the floor in front of you.",
+                "Lift the top leg to hip height and keep it there for the entire series.",
+                "Sweep the leg forward with two small pulses, then reach it behind you without letting the waist collapse.",
+                "Continue kicking front and back, then finish with small lifts straight up before switching sides."
+            ],
+            formCue: "Kick from the hip — the waist stays long and still.",
+            commonMistakes: "Rocking the torso back and forth with each kick, and letting the top leg drop below hip height between reps.",
+            beginnerModification: "Bend the bottom knee for a bigger base of support and shrink the kicking range until the trunk stays quiet.",
+            alternatives: ["single-leg-glute-bridge", "side-plank"],
+            whyThisMatters: "Strengthens the side of the hip that keeps your pelvis level every time you stand on one leg — the unglamorous muscle behind pain-free knees and hips."
+        ),
+        ExerciseReference(
+            id: "swimming-exercise",
+            name: "Swimming",
+            muscleGroup: .back,
+            movementPattern: "Prone alternating extension",
+            musclesWorked: "Spinal erectors, glutes, hamstrings, rear shoulders",
+            equipment: "None (mat optional)",
+            difficulty: .beginner,
+            videoPlaceholder: "Face down with arms and legs hovering off the mat, you flutter opposite limbs up and down in a quick swimming beat while the trunk stays long and level. The neck stays neutral, the hips stay quiet, and the whole back of your body does the work.",
+            instructions: [
+                "Lie face down with arms extended overhead and legs long, both hovering slightly off the mat.",
+                "Lengthen through the crown of your head and keep your gaze down so the neck stays neutral.",
+                "Flutter opposite arm and leg up and down in a brisk swimming rhythm.",
+                "Breathe steadily — in for five beats, out for five — without letting the hips rock."
+            ],
+            formCue: "Reach long like you're being pulled from both ends.",
+            commonMistakes: "Cranking the head and neck up to look forward, and bending the knees to fake a higher leg lift.",
+            beginnerModification: "Slow it down to single alternating lifts — opposite arm and leg raise, hold one beat, switch.",
+            alternatives: ["bird-dog", "back-extension"],
+            whyThisMatters: "Trains the entire back line — the muscles that hold you upright — with zero equipment and zero spinal compression."
+        ),
+        ExerciseReference(
+            id: "teaser-prep",
+            name: "Teaser Prep",
+            muscleGroup: .core,
+            movementPattern: "V-sit balance with trunk flexion",
+            musclesWorked: "Deep abdominals, hip flexors, quads",
+            equipment: "None (mat optional)",
+            difficulty: .moderate,
+            videoPlaceholder: "From seated, you lean back, float your shins parallel to the floor and reach your arms forward, balancing in a V on the back of your sit bones. The chest stays proud rather than collapsed. Each hold is short, honest work for the deepest layer of your abs.",
+            instructions: [
+                "Sit tall with knees bent and feet flat, hands resting behind your thighs.",
+                "Lean back until your arms go light and lift your shins parallel to the floor.",
+                "Reach your arms forward alongside your legs and balance in a V-shape on the back of your sit bones.",
+                "Hold, then lower the feet with control and roll back up to the start for the next rep."
+            ],
+            formCue: "Lift your chest to your knees — don't sink into your low back.",
+            commonMistakes: "Rounding into a slump instead of balancing with a lifted chest, and gripping the hip flexors so hard the abs never engage.",
+            beginnerModification: "Keep the hands behind the thighs throughout, or keep the toes lightly touching the mat.",
+            alternatives: ["v-up", "sit-up"],
+            whyThisMatters: "The stepping stone to the full teaser — Pilates' signature move — building the balance and deep core strength the finished shape demands."
+        ),
+        ExerciseReference(
+            id: "spine-twist",
+            name: "Spine Twist",
+            muscleGroup: .core,
+            movementPattern: "Seated thoracic rotation",
+            musclesWorked: "Obliques, spinal rotators, upper back",
+            equipment: "None (mat optional)",
+            difficulty: .beginner,
+            videoPlaceholder: "Sitting tall with legs together and arms out wide, you rotate your ribcage to one side in two crisp pulses, come back to center, and go the other way. The hips never move; the twist happens in the mid-back. Height first, rotation second.",
+            instructions: [
+                "Sit tall with legs extended together in front of you and arms reaching out to the sides at shoulder height.",
+                "Inhale to grow an inch taller through the crown of your head.",
+                "Exhale and rotate your ribcage to one side in two crisp pulses, keeping the hips square and legs still.",
+                "Return to center on the inhale and repeat to the other side."
+            ],
+            formCue: "Grow taller as you twist — spiral up, not around.",
+            commonMistakes: "Letting the hips and legs swing with the twist, and slumping shorter through the spine as the set goes on.",
+            beginnerModification: "Sit cross-legged or on a folded towel with hands crossed over the chest to make sitting tall easier.",
+            alternatives: ["russian-twist", "supine-twist"],
+            whyThisMatters: "Restores the rotation your spine is built for while teaching the hips to stay anchored — mobility and control in one move."
+        ),
+        ExerciseReference(
+            id: "leg-pull-front",
+            name: "Leg Pull Front",
+            muscleGroup: .core,
+            movementPattern: "Plank with alternating hip extension",
+            musclesWorked: "Deep abdominals, shoulders, glutes, hamstrings",
+            equipment: "None (mat optional)",
+            difficulty: .moderate,
+            videoPlaceholder: "From a hands plank, you lift one straight leg toward the ceiling and lower it without your hips tipping an inch, then switch. It looks like a plank with a leg lift; it feels like your entire trunk working overtime to hide the movement. Slow beats fast every time.",
+            instructions: [
+                "Start in a strong plank on your hands with shoulders stacked over wrists and body in one line.",
+                "Without shifting your hips, lift one leg toward the ceiling with a pointed foot.",
+                "Lower the leg with control and press the floor away to keep the chest broad.",
+                "Alternate legs, moving slowly enough that your hips never tip or dip."
+            ],
+            formCue: "Lift the leg without letting anyone see your hips move.",
+            commonMistakes: "Hiking or rotating the hips as the leg lifts, and sagging through the low back as the set fatigues.",
+            beginnerModification: "Perform it from a forearm plank, or just tap alternate toes an inch off the floor.",
+            alternatives: ["plank", "mountain-climber"],
+            whyThisMatters: "Upgrades the plank from a hold into a stability test — three limbs support you while the core refuses to leak the difference."
+        ),
+        ExerciseReference(
+            id: "grapevine-step",
+            name: "Grapevine Step",
+            muscleGroup: .conditioning,
+            movementPattern: "Lateral traveling step",
+            musclesWorked: "Calves, hip abductors, quads, coordination",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "You travel sideways in a four-count pattern — step out, cross behind, step out, tap together — then reverse. Kept light and bouncy it turns into effortless-feeling cardio; the arms swing freely to lift the intensity. The footwork becomes automatic within a song or two.",
+            instructions: [
+                "Stand tall with feet together and step your right foot out to the side.",
+                "Cross your left foot behind the right, then step the right foot out again.",
+                "Close with a tap of the left foot beside the right, adding a clap or arm swing on the tap.",
+                "Reverse direction immediately, traveling left with the same step-behind-step pattern."
+            ],
+            formCue: "Step, behind, step, tap — keep it springy.",
+            commonMistakes: "Staring at the feet with a hunched posture, and stepping so flat-footed that the move loses all bounce.",
+            beginnerModification: "Drop the crossing step and simply step-together, step-together in each direction until the rhythm is automatic.",
+            alternatives: ["lateral-shuffle", "step-touch"],
+            whyThisMatters: "Side-to-side travel trains hips, ankles and coordination that straight-ahead cardio never touches."
+        ),
+        ExerciseReference(
+            id: "step-touch",
+            name: "Step Touch",
+            muscleGroup: .conditioning,
+            movementPattern: "Rhythmic lateral step with weight shift",
+            musclesWorked: "Calves, quads, hip abductors, cardiovascular system",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "A continuous side-to-side rhythm: step out, tap the other foot in, step back the other way. It's the move you return to between harder blocks — low impact but never lazy, with a springy push off the floor and arms that keep the beat.",
+            instructions: [
+                "Stand with feet hip-width apart, knees soft and chest tall.",
+                "Step your right foot out to the side and shift your weight onto it.",
+                "Bring the left foot in to tap lightly beside the right.",
+                "Immediately step left and tap right, settling into a continuous side-to-side rhythm with the arms swinging naturally."
+            ],
+            formCue: "Push off the floor — bounce, don't shuffle.",
+            commonMistakes: "Going flat and lifeless through the feet, and letting the arms hang instead of driving the rhythm.",
+            beginnerModification: "Slow the tempo and shrink the step width; the weight shift matters more than the speed.",
+            alternatives: ["jumping-jack", "lateral-shuffle"],
+            whyThisMatters: "The base step of every aerobics class — a joint-friendly way to keep the heart rate up between harder moves."
+        ),
+        ExerciseReference(
+            id: "dance-squat-groove",
+            name: "Dance Squat Groove",
+            muscleGroup: .legs,
+            movementPattern: "Rhythmic squat with pulse and arm drive",
+            musclesWorked: "Quads, glutes, calves, cardiovascular system",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "You hold a half-squat and bounce it to the music, arms pumping, standing tall every few beats before dropping back in. It reads as dancing and works like a squat finisher — the legs stay under tension for the whole track.",
+            instructions: [
+                "Stand with feet slightly wider than shoulder-width, toes turned out a touch.",
+                "Sit into a half-squat and bounce to the beat, staying low as you pulse.",
+                "Drive the arms — pump, punch or wave — in time with the bounce.",
+                "Every fourth beat, stand tall and roll the shoulders back, then drop back into the groove."
+            ],
+            formCue: "Stay low and keep the bounce in your hips, not your knees.",
+            commonMistakes: "Standing up out of the squat between pulses, and letting the knees cave inward as fatigue builds.",
+            beginnerModification: "Shrink to a quarter-squat depth and slow the pulse to every other beat.",
+            alternatives: ["bodyweight-squat", "jump-squat"],
+            whyThisMatters: "Sneaks real leg volume into a cardio session — your quads and glutes work a full song without a single counted rep."
+        ),
+        ExerciseReference(
+            id: "front-kick-step",
+            name: "Front Kick Step",
+            muscleGroup: .conditioning,
+            movementPattern: "Alternating front kick with rhythm step",
+            musclesWorked: "Hip flexors, quads, core, cardiovascular system",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "Alternating front kicks strung together with a light step or bounce between them, hands up like a kickboxer. The knee leads, the leg extends, and you land soft and already moving. Kick height is negotiable; staying on the beat is not.",
+            instructions: [
+                "Stand tall with fists loosely guarding at chest height.",
+                "Kick your right leg to the front at a comfortable height, knee leading then leg extending.",
+                "Land softly and take a quick step or bounce between kicks.",
+                "Alternate legs in rhythm, keeping the torso upright and the core braced on every kick."
+            ],
+            formCue: "Kick from the knee up — height comes later, rhythm comes first.",
+            commonMistakes: "Leaning way back to fake a higher kick, and locking the kicking knee out hard at full extension.",
+            beginnerModification: "Kick to shin height or swap in a marching knee lift until balance feels solid.",
+            alternatives: ["high-knees", "walking-lunge"],
+            whyThisMatters: "Kicks braid hip flexor strength, balance and cardio into one move that leaves your legs and lungs equally taxed."
+        ),
+        ExerciseReference(
+            id: "arm-wave-reach",
+            name: "Arm Wave Reach",
+            muscleGroup: .shoulders,
+            movementPattern: "Overhead reach with rhythmic arm waves",
+            musclesWorked: "Deltoids, upper back, core, cardiovascular system",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "With a gentle bounce in the legs, you sweep both arms up to a full overhead reach and wave them back down in big circles, the waist following along. It looks like celebration and functions as shoulder endurance plus a surprising heart-rate lift.",
+            instructions: [
+                "Stand with feet hip-width, knees soft, bouncing gently to the beat.",
+                "Sweep both arms out and up until you're reaching fully overhead.",
+                "Wave the arms down through a big circle, letting the ribs and waist follow the motion.",
+                "Keep the reach-and-wave cycling with the bounce, alternating both-arm and single-arm reaches."
+            ],
+            formCue: "Reach for the ceiling like you mean it — big beats small.",
+            commonMistakes: "Tiny half-hearted arm circles that never get overhead, and shrugging the shoulders up around the ears.",
+            beginnerModification: "Reach to shoulder height instead of overhead, or plant the feet and drop the bounce.",
+            alternatives: ["arm-swing-circles", "shadow-boxing"],
+            whyThisMatters: "Arms held and moved overhead spike the heart rate more than people expect — free cardio hiding in your shoulders."
+        ),
+        ExerciseReference(
+            id: "side-step-punch",
+            name: "Side-Step Punch",
+            muscleGroup: .conditioning,
+            movementPattern: "Lateral step with cross-body punch",
+            musclesWorked: "Shoulders, obliques, calves, cardiovascular system",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "You step side to side and throw a cross-body punch with the opposite fist on every step, rotating through the waist so the whole body drives the fist. Step and punch land on the same beat. It's boxing rhythm borrowed for the dance floor.",
+            instructions: [
+                "Stand with fists guarding at chin height and knees soft.",
+                "Step your right foot out to the side and punch your left fist across your body.",
+                "Bring the feet together, then step left and punch the right fist across.",
+                "Keep stepping and punching in rhythm, rotating through the waist with each punch."
+            ],
+            formCue: "Punch from the hips — the step and the fist land together.",
+            commonMistakes: "Punching with just the arm while the hips stay frozen, and letting the guard hand drop to the waist.",
+            beginnerModification: "Slow the tempo and punch straight forward instead of across the body.",
+            alternatives: ["shadow-boxing", "lateral-shuffle"],
+            whyThisMatters: "Pairing footwork with cross-body punches works the waist and coordination while the legs keep the calorie meter running."
+        ),
+        ExerciseReference(
+            id: "split-step-hop",
+            name: "Split-Step Hop",
+            muscleGroup: .legs,
+            movementPattern: "Reactive hop + split landing",
+            musclesWorked: "Calves, quads, glutes, ankle stabilizers",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "From an athletic stance you make a small two-foot hop and land slightly wider with knees bent, so both legs load like springs. The moment you land, you push off one leg into a quick directional step, then reset and repeat in rhythm. The hop is low and quick — the point is the loaded landing, not air time.",
+            instructions: [
+                "Stand in an athletic ready position: feet shoulder-width, knees soft, weight on the balls of your feet, hands in front like you're holding a racquet.",
+                "Hop an inch or two off the ground and land with both feet slightly wider than they started, knees bent, hips loaded.",
+                "The instant your feet touch, push off one foot and take a quick step in either direction, as if reacting to an opponent's shot.",
+                "Reset to the ready position and repeat, timing the hop so you land just as you would read the opponent's contact."
+            ],
+            formCue: "Land loaded, not flat — you should feel spring, not thud.",
+            commonMistakes: "Hopping too high (slows the reaction) and landing with straight legs, which kills the elastic rebound the split step exists to create.",
+            beginnerModification: "Practice the hop-and-land alone with no reaction step, focusing on a soft, wide, balanced landing before adding direction changes.",
+            alternatives: ["jump-rope", "skater-jump"],
+            whyThisMatters: "The split step is the trigger for every first step in racquet sports — a well-timed hop turns your legs into loaded springs the moment the opponent hits the ball."
+        ),
+        ExerciseReference(
+            id: "medicine-ball-rotational-throw",
+            name: "Medicine Ball Rotational Throw",
+            muscleGroup: .core,
+            movementPattern: "Rotational hip drive + throw",
+            musclesWorked: "Obliques, hips, glutes, shoulders, lats",
+            equipment: "Medicine ball, solid wall",
+            difficulty: .moderate,
+            videoPlaceholder: "Standing side-on to a wall, you coil your hips and shoulders away from it with the ball at your back hip, then drive off the rear foot and rotate explosively, releasing the ball into the wall at chest height. Every rep starts from a full reset so each throw is maximal. The arms finish the throw; the hips power it.",
+            instructions: [
+                "Stand side-on to a solid wall, about an arm's length plus a step away, feet shoulder-width, holding a medicine ball at your back hip with both hands.",
+                "Load by rotating your hips and shoulders slightly away from the wall, letting the ball travel back past your rear hip.",
+                "Drive off the back foot, snap the hips toward the wall, and let the torso and arms whip the ball into the wall at chest height.",
+                "Catch the ball off the bounce (or pick it up), reset your stance fully, and repeat all reps on one side before switching."
+            ],
+            formCue: "Hips fire first — the ball is just the last thing to leave.",
+            commonMistakes: "Throwing with the arms while the hips stay square, and rushing reps instead of resetting for a maximal throw each time.",
+            beginnerModification: "Use a lighter ball and pause in the loaded position for a full second before each throw to learn the hip-first sequence.",
+            alternatives: ["russian-twist", "kettlebell-swing"],
+            whyThisMatters: "Rotational power is the currency of striking and racquet sports, and the med-ball throw is the safest way to train it at full intent."
+        ),
+        ExerciseReference(
+            id: "pallof-press",
+            name: "Pallof Press",
+            muscleGroup: .core,
+            movementPattern: "Anti-rotation press",
+            musclesWorked: "Obliques, deep core, glutes, shoulders",
+            equipment: "Cable machine or resistance band",
+            difficulty: .beginner,
+            videoPlaceholder: "Standing side-on to a chest-height cable, you hold the handle at your sternum and press it straight out and back while the cable tries to twist you toward the anchor. The whole exercise is refusing that twist — hips square, ribs down, arms moving while the torso stays frozen.",
+            instructions: [
+                "Set a cable (or band anchor) at chest height, stand side-on to it, and hold the handle with both hands at your sternum.",
+                "Step away until the cable is taut, feet shoulder-width, knees soft, ribs stacked over hips.",
+                "Press the handle straight out until your arms are extended, resisting the cable's pull to twist you toward the anchor.",
+                "Hold the extended position for a beat, return the handle to your chest under control, and finish all reps before facing the other way."
+            ],
+            formCue: "Press out slow — let nothing else move.",
+            commonMistakes: "Letting the hips or shoulders rotate toward the anchor as the arms extend, and standing so close that the load is too light to resist.",
+            beginnerModification: "Use a half-kneeling stance or lighter band, and shorten the press to half range until the torso stays perfectly still.",
+            alternatives: ["side-plank", "dead-bug"],
+            whyThisMatters: "Anti-rotation strength lets you transfer force through a stiff trunk — the difference between power leaking and power landing in a stroke, punch, or sprint."
+        ),
         ExerciseReference(
             id: "downward-dog",
             name: "Downward Dog",

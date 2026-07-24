@@ -48,14 +48,24 @@ enum MorpheTheme {
         LinearGradient(colors: [panel, panel], startPoint: .top, endPoint: .bottom)
     }
 
-    /// MORPHE signature yellow (#FFD600). The brand is single-accent, so this is
-    /// locked rather than driven by the legacy accent-palette picker.
+    /// MORPHE signature yellow (#FFD600). Single-accent by default: `.gold`
+    /// (the default palette) resolves to this brand pair, so the app ships
+    /// looking exactly on-brand. Users can personalize via the accent picker,
+    /// which swaps `accent`/`accentAlt` to that palette's pair app-wide.
     static let brandYellow = Color(red: 1.0, green: 0.839, blue: 0.0)      // #FFD600
     static let brandGold = Color(red: 0.95, green: 0.72, blue: 0.0)        // deeper gold for gradients
 
-    static var accent: Color { brandYellow }
+    /// The launch M + app-icon color. Always brand yellow, regardless of the
+    /// user's accent palette — the launch beat must match the app icon.
+    static var launchMark: Color { brandYellow }
 
-    static var accentAlt: Color { brandGold }
+    static var accent: Color {
+        currentAccentPalette == .gold ? brandYellow : colors(for: currentAccentPalette).primary
+    }
+
+    static var accentAlt: Color {
+        currentAccentPalette == .gold ? brandGold : colors(for: currentAccentPalette).secondary
+    }
 
     static func apply(accentPalette: AccentPalette) {
         currentAccentPalette = accentPalette

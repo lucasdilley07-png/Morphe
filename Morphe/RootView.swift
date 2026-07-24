@@ -234,7 +234,8 @@ struct RootView: View {
             if isInAppShell {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
-                    .padding(.bottom, 102)
+                    // 12pt above the slim icon-only tab bar (~47pt tall).
+                    .padding(.bottom, 59)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
@@ -383,11 +384,11 @@ private struct ClientExperienceShell: View {
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.discover)
 
-            if FeatureFlags.multiUserEnabled {
-                CommunityView()
-                    .toolbar(.hidden, for: .tabBar)
-                    .tag(ClientTab.community)
-            }
+            // Un-gated: the For You feed is REAL now (Firestore posts).
+            // CommunityView gates its own demo-only sections internally.
+            CommunityView()
+                .toolbar(.hidden, for: .tabBar)
+                .tag(ClientTab.community)
 
             ProgressScreenView()
                 .id(store.tabResetKey("hub"))
@@ -400,34 +401,20 @@ private struct ClientExperienceShell: View {
                 .tag(ClientTab.more)
         }
         .safeAreaInset(edge: .top) {
+            // Transparent over content — the hairline inside the header is
+            // the only chrome; no filled band.
             ClientPinnedHeader()
                 .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .background(
-                    ZStack {
-                        PremiumBackground()
-                        LinearGradient(
-                            colors: [
-                                MorpheTheme.ink.opacity(0.96),
-                                MorpheTheme.ink.opacity(0.88),
-                                .clear
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
-                    .ignoresSafeArea()
-                )
         }
         .safeAreaInset(edge: .bottom) {
+            // Edge-to-edge slim strip — the bar draws its own ink into the
+            // home-indicator area, so no floating padding here.
             BottomTabNavigation(items: ClientTab.visibleCases, selected: store.selectedClientTab) { tab in
                 store.selectedClientTab = tab
                 // Tapping the icon always lands at the top of that tab's
                 // first page.
                 store.popTabToRoot(tab.rawValue)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
         }
     }
 }
@@ -436,24 +423,18 @@ private struct ClientPinnedHeader: View {
     @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
+        // Icons only — no name/handle strip. The avatar IS the profile
+        // button; VoiceOver still gets the words.
         HStack(spacing: 12) {
             Button {
                 store.openClientProfile()
             } label: {
-                HStack(spacing: 10) {
-                    MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 40)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(store.profileShowcase.displayName)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white)
-                        Text("@\(store.profileShowcase.username)")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                }
+                MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 40)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(Text("Profile"))
 
             Spacer()
 
@@ -461,7 +442,9 @@ private struct ClientPinnedHeader: View {
                 store.openQuickAdd()
             }
 
-            // Messaging is a v2 (multi-user) surface, hidden in v1.
+            // This button opens the demo Contact inbox — still a multi-user
+            // surface. REAL coach messaging lives on the Today "Coach" card
+            // (only shown once a claimed coach thread exists).
             if FeatureFlags.multiUserEnabled {
                 HeaderCircleButton(systemImage: "bubble.left.and.bubble.right.fill", label: "Messages") {
                     store.openCommunity(.contact)
@@ -469,7 +452,7 @@ private struct ClientPinnedHeader: View {
             }
         }
         .padding(.horizontal, 2)
-        .padding(.vertical, 10)
+        .padding(.vertical, 4)
         // Flat header — the hairline below is the only chrome.
         .overlay(alignment: .bottom) {
             Rectangle()
@@ -593,7 +576,7 @@ private struct HeaderCircleButton: View {
             Image(systemName: systemImage)
                 .font(.system(.subheadline).weight(.semibold))
                 .foregroundStyle(.white)
-                .frame(width: 38, height: 38)
+                .frame(width: 44, height: 44)
                 .background(
                     RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .stroke(Color.white.opacity(0.16), lineWidth: 1)
@@ -1078,7 +1061,7 @@ private struct NetworkProfilePreviewSheet: View {
 
                 GlassCard {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Quick actions")
+                        Text("Quick Actions")
                             .font(.headline)
                             .foregroundStyle(.white)
 

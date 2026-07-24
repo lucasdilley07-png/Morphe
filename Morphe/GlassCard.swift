@@ -1254,28 +1254,24 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
     let onSelect: (Item) -> Void
 
     var body: some View {
-        // HUD dock: solid ink bar, hairline frame; the active tab is yellow
-        // text over a thin underline tick — no filled pills.
+        // HUD dock, icons only: a slim ink strip under a single top hairline.
+        // The active tab is yellow with a 4pt dot beneath it, so state
+        // survives without words; VoiceOver still speaks each tab's title.
         HStack(spacing: 4) {
             ForEach(items, id: \.self) { item in
                 Button {
                     onSelect(item)
                 } label: {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 5) {
                         Image(systemName: item.systemImage)
-                            .font(.system(.subheadline).weight(.semibold))
-                        Text(item.title.uppercased())
-                            .font(MorpheTheme.microLabel(9))
-                            .tracking(1.0)
-                            .lineLimit(1)
-                        Rectangle()
+                            .font(.system(size: 22, weight: .semibold))
+                        Circle()
                             .fill(selected == item ? MorpheTheme.accent : .clear)
-                            .frame(width: 26, height: 2)
+                            .frame(width: 4, height: 4)
                     }
                     .foregroundStyle(selected == item ? MorpheTheme.accent : Color.white.opacity(0.70))
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 10)
-                    .padding(.bottom, 6)
+                    .padding(.vertical, 8)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -1286,13 +1282,14 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
         }
         .padding(.horizontal, 6)
         .background(
-            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                .fill(MorpheTheme.ink.opacity(0.97))
-                .overlay(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
-                )
+            MorpheTheme.ink.opacity(0.94)
+                .ignoresSafeArea(edges: .bottom)
         )
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.white.opacity(0.10))
+                .frame(height: 1)
+        }
     }
 }
 

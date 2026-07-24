@@ -2425,6 +2425,775 @@
       ]
     },
     {
+      "id": "5867229a-bcaa-564a-8293-12dfcc562902",
+      "name": "Dance Cardio Party",
+      "focus": "Conditioning",
+      "trainingType": "Dance cardio",
+      "category": "Dance & Aerobics",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Queue up four songs of roughly three minutes each — every move runs 45 seconds and you cycle the whole set once per song. It's cardio for people who hate cardio: if you're smiling and slightly out of breath, you're doing it right. Progress by adding bounce and bigger arms, not by rushing the steps.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "step-touch",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "dance-squat-groove",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "side-step-punch",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "front-kick-step",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "arm-wave-reach",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "51618b67-5354-5b92-a848-de444f441e1d",
+      "name": "Step-Style Intervals",
+      "focus": "Conditioning",
+      "trainingType": "Aerobic intervals",
+      "category": "Dance & Aerobics",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Classic step-class energy without the choreography degree — hard 30-second pushes on the step and knees, with dance steps as your active recovery. Use a sturdy step, bench or bottom stair. Progress by raising the step height before you shorten the rests.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "step-touch",
+          "sets": 1,
+          "durationSeconds": 90,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "step-up",
+          "sets": 5,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 5,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "jumping-jack",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cad60484-9fc6-5ff4-b831-0fa3a7a49b92",
+      "name": "Low-Impact Aerobics",
+      "focus": "Conditioning",
+      "trainingType": "Low-impact aerobics",
+      "category": "Dance & Aerobics",
+      "goalTag": "weightLoss",
+      "level": "Beginner",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "One foot stays on the floor at all times — zero jumping, full calorie burn — which makes this the pick for beginners, bad knees, downstairs neighbours and big bodies getting started. Keep a pace where you could talk but wouldn't want to. Progress by extending each block toward 75 seconds.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "step-touch",
+          "sets": 4,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 4,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "arm-wave-reach",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "side-step-punch",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "front-kick-step",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "75cfca46-a5f0-5888-9695-1872a12a9acf",
+      "name": "HIIT-Dance Fusion",
+      "focus": "Conditioning",
+      "trainingType": "HIIT dance",
+      "category": "Dance & Aerobics",
+      "goalTag": "weightLoss",
+      "level": "Advanced",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Dance moves at sprint intensity — 30 seconds all-out, 30 seconds to breathe, five moves deep. This is the shortest, sharpest session in the category; if you can chat during the work intervals, you're leaving results on the floor. Progress by trimming the rests toward 20 seconds.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 1,
+          "durationSeconds": 90,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "dance-squat-groove",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "front-kick-step",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "jumping-jack",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        }
+      ]
+    },
+    {
+      "id": "820bc1a6-70a7-530f-864b-cba60eeb0cf3",
+      "name": "Retro Aerobics Throwback",
+      "focus": "Conditioning",
+      "trainingType": "Aerobics",
+      "category": "Dance & Aerobics",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "An 80s-studio format: long steady blocks of jacks, grapevines and kicks with two short high-energy pushes dropped in the middle. Sweatband optional, commitment mandatory. Progress by keeping the bounce big and springy through the final block instead of shuffling home.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 4,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "step-touch",
+          "sets": 4,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "front-kick-step",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "arm-wave-reach",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "cc4602a0-b73f-5cfc-bd8f-42afbf81a30f",
+      "name": "Barre Strength: Hips & Posterior",
+      "focus": "Legs",
+      "trainingType": "Barre strength",
+      "category": "Dance & Aerobics",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Strength Building",
+      "notes": "Barre-style strength for the hips and the whole posterior chain — chair-pose pulses, calf raises and bridge work done to a burn, not to a beat. The reps are small and the ranges are honest; when your glutes shake, that's the exercise working. Progress by adding a 2-second squeeze at the top of every bridge and raise.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "step-touch",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          }
+        },
+        {
+          "libraryID": "chair-pose",
+          "sets": 4,
+          "durationSeconds": 45,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 4,
+          "reps": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 4,
+          "reps": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "reverse-lunge",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "wall-sit",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "e876f484-d311-57f3-8c7d-18a758208a0f",
+      "name": "Sculpt & Sweat Fusion",
+      "focus": "Full Body",
+      "trainingType": "Dance sculpt",
+      "category": "Dance & Aerobics",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "goal": "Lean Out",
+      "notes": "Alternating format: a dance-cardio block, then a light-dumbbell sculpt block, back and forth so your heart rate never fully settles while the muscles still get real volume. Pick dumbbells you could press 20 times — light is correct here. Progress by nudging the weights up only when RPE 7 starts feeling like RPE 5.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "step-touch",
+          "sets": 3,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "lateral-raise",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "dance-squat-groove",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "bicep-curl",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "front-kick-step",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "fbc682b6-1970-5e2e-a4dd-92da4a2d425c",
+      "name": "Light-Dumbbell Tone Party",
+      "focus": "Full Body",
+      "trainingType": "Dance sculpt",
+      "category": "Dance & Aerobics",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "goal": "Lean Out",
+      "notes": "The arms-and-legs day of the sculpt pair — curls, raises and loaded lunges stacked between cardio bursts so you finish pumped and out of breath at the same time. Keep the dumbbells light enough to stay smooth on rep twelve. Progress by shortening the cardio-block rests toward 15 seconds.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "hammer-curl",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "front-raise",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "step-touch",
+          "sets": 3,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          }
+        },
+        {
+          "libraryID": "arm-wave-reach",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "0662c59e-9400-52d2-9991-5e8e737c0b1c",
+      "name": "Cooldown Stretch Flow",
+      "focus": "Recovery",
+      "trainingType": "Stretching",
+      "category": "Dance & Aerobics",
+      "goalTag": "recovery",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Recovery",
+      "notes": "The stretch sequence to run straight after any cardio party in this category — quads, hamstrings, hips and shoulders, each held long enough to actually change something. Breathe slower than feels natural and let the heart rate step down with you.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "standing-quad-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "cross-body-shoulder-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ba9951f8-9f6f-5f3a-b1ed-159a1638c881",
+      "name": "Dancer's Full Release",
+      "focus": "Recovery",
+      "trainingType": "Stretching",
+      "category": "Dance & Aerobics",
+      "goalTag": "recovery",
+      "level": "Recovery",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Recovery",
+      "notes": "The deeper floor-based release for rest days or the evening after a hard dance week — hips, spine and chest each get long, quiet holds. If a position bites, back out ten percent and breathe there instead; recovery never earns a grimace.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "downward-dog",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pigeon-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
       "id": "db2ed802-ecd2-5724-866b-cc88ac683651",
       "name": "The Engine Room — AMRAP 18",
       "focus": "Conditioning",
@@ -4750,6 +5519,724 @@
       ]
     },
     {
+      "id": "8dcd0948-9584-584f-a1ee-fbaabea3b1b4",
+      "name": "Flowing Mat Burner",
+      "focus": "Conditioning",
+      "trainingType": "Pilates circuit",
+      "category": "Pilates & Core Control",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "A mat class programmed like a circuit — you move from exercise to exercise with just enough rest to set up, so your heart rate stays elevated while your core does the steering. Progress by cutting each rest to 20 seconds before you add time to the moves.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pilates-hundred",
+          "sets": 3,
+          "durationSeconds": 60,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "roll-up",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "swimming-exercise",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "leg-pull-front",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "durationSeconds": 40,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "8bf4a0aa-f79d-5f2d-844a-16e1c3fde9b0",
+      "name": "Mat Sweat Circuit",
+      "focus": "Full Body",
+      "trainingType": "Pilates circuit",
+      "category": "Pilates & Core Control",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "For anyone who thinks Pilates can't make you sweat — big crawling and bridging patterns are woven between the classic mat work so the whole body pays in. Do the side kick series on your right side one round, left the next; progress by adding a fourth round before shortening rests.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 40,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pilates-hundred",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "side-kick-series",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "teaser-prep",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "dd62191a-a144-5e67-a739-aee13549894f",
+      "name": "Slow-Tempo Core Strength",
+      "focus": "Core",
+      "trainingType": "Pilates strength",
+      "category": "Pilates & Core Control",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Strength Building",
+      "notes": "Strength work for the midline: every rep is taken on a 5-count down and a 5-count up, so six reps feel like twenty and your deep core learns to own every inch of the range. Progress by slowing the tempo further, not by adding reps.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "roll-up",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "teaser-prep",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "leg-pull-front",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "side-plank",
+          "sets": 3,
+          "durationSeconds": 40,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "721d79eb-b362-56b9-a7bf-68bd7a641075",
+      "name": "Single-Leg Control Lab",
+      "focus": "Legs",
+      "trainingType": "Pilates strength",
+      "category": "Pilates & Core Control",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Strength Building",
+      "notes": "One leg at a time exposes what two legs hide — this session builds the hip stability and single-side strength that carries over to running, lifting and not rolling ankles. Own eight perfect reps per side before you chase more; wobbling reps don't count.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "bird-dog",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "single-leg-circle",
+          "sets": 4,
+          "reps": 8,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "shoulder-bridge",
+          "sets": 4,
+          "reps": 8,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 4,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "side-kick-series",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cf5f8782-5cde-5fa8-9138-9590c6516047",
+      "name": "Classic Mat: Core Day",
+      "focus": "Core",
+      "trainingType": "Pilates mat",
+      "category": "Pilates & Core Control",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Day one of the classic mat split — the traditional core sequence in its original order, from the hundred through the teaser. Keep the low back gently pressed to the mat throughout; progress by holding the top of each teaser rep for a full breath.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "pilates-hundred",
+          "sets": 3,
+          "durationSeconds": 60,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "roll-up",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "single-leg-circle",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "spine-twist",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "teaser-prep",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "bicycle-crunch",
+          "sets": 3,
+          "reps": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3deb4cc1-6b87-53f3-baad-3a566b32ba8e",
+      "name": "Classic Mat: Hips Day",
+      "focus": "Legs",
+      "trainingType": "Pilates mat",
+      "category": "Pilates & Core Control",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Day two targets the hips and glutes — bridging, side kicks and single-leg work that shape the lower body while teaching the pelvis to stay level under load. Reps and kick series are per side; progress by pausing two seconds at the top of every bridge.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "shoulder-bridge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "side-kick-series",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "single-leg-circle",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3578751a-9546-59a3-b47c-b02e42ce9ca0",
+      "name": "Classic Mat: Full Body Day",
+      "focus": "Full Body",
+      "trainingType": "Pilates mat",
+      "category": "Pilates & Core Control",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Day three strings the whole mat repertoire together — front-line planks, back-line swimming and hip work in one continuous session. It's the day to take when you can only train once this week; progress by moving between exercises without putting your knees down.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "roll-up",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "leg-pull-front",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "swimming-exercise",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "side-kick-series",
+          "sets": 3,
+          "durationSeconds": 40,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "shoulder-bridge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "teaser-prep",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3c378fc7-faeb-5ec9-9a65-3867e9f3a61b",
+      "name": "Classic Mat: Posture Day",
+      "focus": "Core",
+      "trainingType": "Pilates mat",
+      "category": "Pilates & Core Control",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Day four is for everyone who sits all day — extension, rotation and anti-rotation work that wakes up the back line and undoes the desk hunch. Think length before effort on every rep; progress by growing taller through the crown of your head, not by rushing.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "swimming-exercise",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "bird-dog",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "cobra-pose",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "spine-twist",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "b96616be-0c12-51ec-840e-f32717b221be",
+      "name": "Gentle Spine Mobility",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "category": "Pilates & Core Control",
+      "goalTag": "recovery",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Recovery",
+      "notes": "Twenty quiet minutes of flexion, extension and rotation to move the spine through every direction it owns — ideal the day after heavy lifting or a long drive. Nothing here should feel like work; if a position pinches, shrink the range.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "spine-twist",
+          "sets": 2,
+          "reps": 8,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "cobra-pose",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2d813010-69d0-53bf-bc24-08abcf08921f",
+      "name": "Breath & Release",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "category": "Pilates & Core Control",
+      "goalTag": "recovery",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Recovery",
+      "notes": "The wind-down session: long-held stretches paced by slow nasal breathing — inhale for four counts, exhale for six in every position. Take it before bed or after a stressful day; the goal is a lower heart rate on the way out than on the way in.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
       "id": "7fa57b94-bf7d-55ac-a3cf-ed6a4e2042be",
       "name": "Zone-2 Walk + Light Circuit",
       "focus": "Full Body",
@@ -6190,6 +7677,1315 @@
           "sets": 2,
           "durationSeconds": 30,
           "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "23f20d73-a30e-5b51-8c81-51071e07f3bb",
+      "name": "Fight Engine — Bag & Body Rounds",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "goal": "Weight Loss",
+      "notes": "Boxing pack conditioning day — this is the glycolytic engine work that decides the late rounds, built around 3-minute bag rounds with a 1-minute corner rest. Jab-cross bursts and a burpee finisher keep density high so the fat-loss stimulus matches fight pacing. Progress by raising punch output in the last 30 seconds of every bag round before adding a sixth round.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 1,
+          "durationSeconds": 180,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "jab-cross-combo",
+          "sets": 4,
+          "durationSeconds": 60,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "heavy-bag-rounds",
+          "sets": 5,
+          "durationSeconds": 180,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          }
+        },
+        {
+          "libraryID": "boxer-slip-and-roll",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "russian-twist",
+          "sets": 3,
+          "reps": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "43908787-f4c3-5910-a072-31fa2b5228cd",
+      "name": "Pitch Fit — Repeat Sprint Conditioning",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Soccer pack conditioning day — a match is 60+ repeated sprints, so this session trains exactly that: short all-out efforts on incomplete rest, plus the lateral work that covers a winger's defensive shifts. High density keeps calorie burn up while building repeat-sprint ability. Progress by trimming sprint rest from 75 to 60 seconds before adding reps.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 8,
+          "durationSeconds": 20,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "0449c8c2-2cd2-5075-85f6-aa07694d065e",
+      "name": "Fourth-Quarter Legs — Court Conditioning",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Basketball pack conditioning day — baseline-to-baseline sprints, defensive slides, and jump-squat bursts mirror the sprint-shuffle-jump pattern of a real possession, so your legs still have lift in the fourth quarter. The interval format keeps heart rate high for the fat-loss goal. Progress by adding one sprint per week up to ten before cutting rest.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "durationSeconds": 20,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 4,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "f9c3998c-ab4f-5985-b646-558ee639446b",
+      "name": "Hill Power — Sprint Intervals",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Running pack conditioning day — hill sprints are a runner's weight room: 30-second uphill efforts build stride power and torch calories with almost no impact cost, and the walk-down doubles as your recovery. Lunges and calf raises finish the posterior chain the hill just loaded. Progress by adding one rep per week to ten, then finding a steeper hill.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 8,
+          "durationSeconds": 30,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 2,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3146bc8b-e04a-5276-96af-c4a06d1b2686",
+      "name": "Court Coverage — Agility Intervals",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Tennis pack conditioning day — points are 5–15 second bursts of shuffles and sprints off a split step, so this session strings split-step hops, lateral shuffles, and short sprints into the same rally-length intervals. Density stays high for the fat-loss goal without losing footwork quality. Progress by shaving shuffle rest from 60 to 45 seconds before adding sprint reps.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "split-step-hop",
+          "sets": 4,
+          "durationSeconds": 20,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 5,
+          "durationSeconds": 20,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "durationSeconds": 15,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "russian-twist",
+          "sets": 3,
+          "reps": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "c9a652bb-238c-5ee2-ab74-3f2016c454cc",
+      "name": "Knockout Power — Boxer's Strength Day",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Boxing pack strength day — punching power starts in the legs and hips, so front squats and explosive-intent bench work (move every rep as fast as it will go) build the force behind the cross, while rotational throws teach the hips to transfer it. Progress by adding 2.5 kg to the squat and bench whenever all prescribed reps move crisply.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 1,
+          "durationSeconds": 180,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "front-squat",
+          "sets": 5,
+          "reps": 5,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          }
+        },
+        {
+          "libraryID": "barbell-bench-press",
+          "sets": 4,
+          "reps": 4,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          }
+        },
+        {
+          "libraryID": "bent-over-row",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          }
+        },
+        {
+          "libraryID": "medicine-ball-rotational-throw",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "hanging-knee-raise",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "0547d519-c119-5301-9b6d-fe5d6e7ebf2b",
+      "name": "Pitch Strong — Single-Leg Strength Day",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Soccer pack strength day — every sprint, cut, and tackle happens on one leg, so heavy squats are backed by split squats, single-leg RDLs, and hamstring curls, the combination shown to slash hamstring injury rates in field-sport athletes. Reps are per leg on unilateral work. Progress the squat 2.5 kg per week and add a rep to the single-leg lifts before adding load.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 10,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          }
+        },
+        {
+          "libraryID": "bulgarian-split-squat",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "hamstring-curl",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 4,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "ed21b674-7250-5fa7-8179-a4ad8a494a6d",
+      "name": "Vertical Force — Hoops Strength Day",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Basketball pack strength day — vertical jump is built on maximal squat strength, so box jumps prime the nervous system before heavy 4s, and RDLs plus loaded calf raises finish the hip-and-ankle chain that launches you. Progress by adding 2.5 kg to the squat when all sets hit, and raising the box height only when landings stay silent.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "box-jump",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 5,
+          "reps": 4,
+          "restSeconds": 210,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 85
+          }
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          }
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 4,
+          "reps": 8,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "19825fe8-ee4e-5fee-b5bd-3db51e8cd98b",
+      "name": "Runner's Strength — Single-Leg + Calves",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Running pack strength day — deadlifts give the stride its horsepower while step-ups, single-leg RDLs, and single-leg bridges build the one-leg stability that keeps knees and hips tracking straight at mile eight. High-rep calf raises armor the achilles. Progress the deadlift 2.5–5 kg when all reps are clean, and slow the single-leg work down before loading it.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "conventional-deadlift",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          }
+        },
+        {
+          "libraryID": "step-up",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 4,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "43f470b0-6e7c-5868-a29c-16a8a2deb657",
+      "name": "Pull Power — Swimmer's Dryland Strength",
+      "focus": "Pull",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Swimming pack strength day — the catch and pull phase is a lat-driven movement, so heavy pull-ups and pulldowns build stroke force while straight-arm pulldowns groove the exact early-vertical-forearm path, and face pulls plus hollow holds protect the shoulders and lock in the streamline. Progress by adding load to pull-ups once 4x6 strict is easy.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lat-pulldown",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          }
+        },
+        {
+          "libraryID": "straight-arm-pulldown",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "face-pull",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "be453634-f48d-59fd-974a-3975e0bb0f39",
+      "name": "Serve Power — Rotational Strength Day",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Tennis pack strength day — serve and forehand speed come from the ground up, so rotational throws convert leg drive into racquet-arm power before squats and overhead presses build the base, and Pallof presses plus face pulls armor the trunk and shoulder against a season of rotation. Progress the barbell lifts 2.5 kg at a time and throw a heavier ball, never a slower one.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "medicine-ball-rotational-throw",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          }
+        },
+        {
+          "libraryID": "overhead-press",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          }
+        },
+        {
+          "libraryID": "pallof-press",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "face-pull",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "5b3e6afc-f419-5146-86ba-fef8ce965ae0",
+      "name": "Change of Direction — Footwork Skill Day",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Beginner",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Soccer pack skill day — a movement-quality session where shuffles and skater jumps are done crisp, not gassed, teaching you to plant, decelerate, and re-accelerate the way a defender closes down space. The steady circuit pace keeps you burning while you sharpen footwork. Progress by making cuts sharper and landings quieter, then shortening rests by 10 seconds.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "d2dee2f4-ba11-560a-ab68-87cc5c280298",
+      "name": "Bounce — Vertical & Lateral Skill Day",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "goal": "Lean Out",
+      "notes": "Basketball pack skill day — pure jump practice: box jumps, broad jumps, and jump squats done fresh and explosive to convert your squat strength into inches of vertical, with lateral shuffles and calves keeping the whole takeoff chain honest. Volume stays moderate so you lean out without frying your legs. Progress box height and broad-jump distance, never rep count first.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 1,
+          "durationSeconds": 120,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "box-jump",
+          "sets": 5,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "v-up",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2c82b3a1-7785-5cd8-84fc-14e3224f29cf",
+      "name": "Dryland Circuit — Swimmer's Engine",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "goal": "Lean Out",
+      "notes": "Swimming pack conditioning day — the rower is the closest land match to swimming's aerobic pull-dominant demand, so 2-minute repeats anchor a hypertrophy circuit of pulldowns, rows, and anti-rotation core that builds stroke muscle while the short rests keep you leaning out. Progress by holding a faster split on the rower at the same heart rate, then adding a sixth repeat.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "rowing-machine",
+          "sets": 5,
+          "durationSeconds": 120,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          }
+        },
+        {
+          "libraryID": "lat-pulldown",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "seated-cable-row",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "straight-arm-pulldown",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "pallof-press",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "side-plank",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2ac433a9-da54-59f2-9d08-a612af0c6f32",
+      "name": "Rotation & Reaction — Court Movement Day",
+      "focus": "Core",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "goal": "Lean Out",
+      "notes": "Tennis pack skill day — split-step timing, crisp lateral movement, and controlled rotational throws rehearse the exact sequence of a groundstroke, while Pallof presses and rear-delt flys bank the anti-rotation strength and shoulder prehab a racquet season demands. Moderate volume with short rests supports the lean-out goal. Progress by throwing harder and reacting faster, not longer.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "split-step-hop",
+          "sets": 4,
+          "durationSeconds": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "medicine-ball-rotational-throw",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "russian-twist",
+          "sets": 3,
+          "reps": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pallof-press",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "rear-delt-fly",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "94212944-83b3-58d7-a0d4-7b6db277f3eb",
+      "name": "Sharp & Loose — Boxer's Technique Reset",
+      "focus": "Recovery",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "recovery",
+      "level": "Recovery",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Recovery",
+      "notes": "Boxing pack skill day — easy shadow rounds, slow-motion slip-and-roll patterns, and light 1-2s groove technique at conversation pace the day after bag or strength work, then stretches unwind the shoulders and chest that punching tightens up. Keep everything below RPE 4. Progress by making the movement cleaner each week, never faster.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 3,
+          "durationSeconds": 120,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "boxer-slip-and-roll",
+          "sets": 3,
+          "durationSeconds": 45,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "jab-cross-combo",
+          "sets": 2,
+          "durationSeconds": 60,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "cross-body-shoulder-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 0,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "7e7ecbda-0697-513a-9259-d8698cb65d3f",
+      "name": "Cadence & Reset — Runner's Skill Day",
+      "focus": "Recovery",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "recovery",
+      "level": "Recovery",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "goal": "Recovery",
+      "notes": "Running pack skill day — easy jump-rope intervals rehearse a quick 170+ steps-per-minute cadence with soft, midfoot landings, a brisk walk flushes the legs, and the stretch sequence hits the quads, hamstrings, hip flexors, and glutes that hard running shortens. Keep everything gentle. Progress by matching the rope rhythm to a metronome, two beats quicker each week.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 4,
+          "durationSeconds": 60,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 600,
+          "restSeconds": 0,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          }
+        },
+        {
+          "libraryID": "standing-quad-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pigeon-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 0,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "b1d06fd1-a7b8-555d-99e9-1b209441e618",
+      "name": "Shoulder Saver — Swimmer's Mobility Day",
+      "focus": "Recovery",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "recovery",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Recovery",
+      "notes": "Swimming pack skill day — thousands of stroke cycles a week demand this: gentle arm circles and cat-cows restore shoulder and thoracic motion, thread-the-needles and doorway stretches open the lats and chest, and downward dog rebuilds the overhead line your catch depends on. Stay well under RPE 4. Progress by sinking deeper into each hold, never by pushing through pinchy angles.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "cross-body-shoulder-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "downward-dog",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 0,
           "intensity": {
             "type": "bodyweight"
           }

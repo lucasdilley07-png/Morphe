@@ -363,26 +363,92 @@ private struct StatusPill: View {
 /// packages they sell. Payout setup connects with the backend.
 struct CoachBusinessView: View {
     @Environment(MorpheAppStore.self) private var store
+    @State private var showAddAppointment = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Training Business",
-                    subtitle: "Your rates, your bookings, and what you've earned — all in one place."
+                    subtitle: "Your schedule and, once payments connect, your rates and earnings."
                 )
 
-                earningsCard
-                if !store.coachBookingRequests.isEmpty {
-                    requestsCard
+                appointmentsCard
+
+                // The demo commerce surfaces (packages, slots, earnings,
+                // booking requests) are hidden for the solo-first launch:
+                // they run on seeded data and can't take real money yet.
+                // They return with marketplace payments — see docs/PAYMENTS.md.
+                if FeatureFlags.multiUserEnabled {
+                    earningsCard
+                    if !store.coachBookingRequests.isEmpty {
+                        requestsCard
+                    }
+                    packagesCard
+                    payoutCard
                 }
-                packagesCard
-                payoutCard
             }
             .padding(20)
             .padding(.bottom, 120)
         }
         .background(PremiumBackground().ignoresSafeArea())
+        .sheet(isPresented: $showAddAppointment) {
+            // The coach can pick "With" from their managed roster or type a
+            // name — there is no live coach↔client account link yet, so the
+            // other party may not be on Morphe at all.
+            AppointmentEditorSheet(nameSuggestions: store.managedClients.map(\.name))
+                .environment(store)
+        }
+    }
+
+    /// The coach's REAL session management: personal appointments that sync
+    /// per account (unlike the seeded booking demo below, which is gated).
+    private var appointmentsCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Upcoming Appointments")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button("Add") { showAddAppointment = true }
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(MorpheTheme.accent))
+                        .accessibilityLabel("Add appointment")
+                }
+
+                if store.upcomingAppointments.isEmpty {
+                    Text("Nothing scheduled. Add sessions, check-ins, or assessments — they sync to your account.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    ForEach(store.upcomingAppointments) { appointment in
+                        HStack(spacing: 8) {
+                            AppointmentRowView(appointment: appointment)
+                            Menu {
+                                Button("Complete") {
+                                    store.updateAppointmentStatus(appointment, to: Appointment.statusCompleted)
+                                }
+                                Button("Cancel") {
+                                    store.updateAppointmentStatus(appointment, to: Appointment.statusCancelled)
+                                }
+                                Button("Delete", role: .destructive) {
+                                    store.deleteAppointment(appointment)
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis.circle")
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                            .accessibilityLabel("Appointment actions for \(appointment.title)")
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private var earningsCard: some View {

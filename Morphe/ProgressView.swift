@@ -6,6 +6,7 @@ import SwiftUI
 // wherever a plain loading spinner was intended (onboarding, auth).
 struct ProgressScreenView: View {
     @Environment(MorpheAppStore.self) private var store
+    @State private var showCompete = false
 
     private var athleteReport: AthleteReport? {
         store.clientAthleteProfile?.reportCard
@@ -180,12 +181,15 @@ struct ProgressScreenView: View {
         }?.0 ?? "You"
 
         return TrainingPatternInsightData(
+            minutesThisWeek: logSummary.minutesThisWeek,
             totalMinutesLogged: totalMinutes,
             sessionsLast30Days: sessionsLast30Days,
             averageDuration: averageDuration,
             longestSessionTitle: longestSession?.workoutTitle ?? "No long session yet",
             longestSessionMinutes: longestSession?.durationMinutes ?? 0,
-            topExercise: topExercise,
+            topExercises: logSummary.topExercises.isEmpty
+                ? [topExercise].compactMap { $0 }
+                : logSummary.topExercises,
             dominantSourceLabel: dominantSource
         )
     }
@@ -221,12 +225,6 @@ struct ProgressScreenView: View {
             latestRecoveryDate: recoveryFriendly.first?.completedAt,
             summary: summary
         )
-    }
-
-    private var weightChange: Int {
-        guard let start = store.weightTrend.first?.value,
-              let current = store.weightTrend.last?.value else { return 0 }
-        return current - start
     }
 
     var body: some View {
@@ -275,13 +273,38 @@ struct ProgressScreenView: View {
                 // data drawn as a dramatic score curve.
                 TrainedDaysCard(days: last7TrainingDays)
 
-                LogDrivenWeeklySummaryCard(summary: logSummary)
+                // (The old "Weekly Log Summary" card lived here — its unique
+                // stats now ride in TrainingPatternInsightCard below, and its
+                // this-week/streak pills already live in the hero strip.)
                 WorkoutHistoryCard(logs: store.currentAthleteWorkoutLogs)
             }
 
             if store.todayExperienceTier >= 2 {
                 AthletePatternInsightsCard(insights: athletePatternInsights)
                 TrainingPatternInsightCard(insight: trainingPatternInsight)
+
+                // Telemetry charts, all from the user's real per-set log
+                // data: strength, volume, effort, body weight, records.
+                // (Grouped: the tier-2 block would otherwise exceed the
+                // 10-view ViewBuilder limit.)
+                Group {
+                    StrengthOverTimeCard(
+                        exerciseOptions: store.mostLoggedExerciseNames(limit: 6),
+                        weightUnit: store.weightUnit,
+                        progression: { store.strengthProgression(for: $0) }
+                    )
+                    WeeklySetVolumeCard(points: store.weeklySetVolume(weeks: 8))
+                    RPETrendCard(points: store.rpeTrendPerSession(sessions: 15))
+                    BodyWeightTrendCard(
+                        entries: store.bodyWeightHistory,
+                        weightUnit: store.weightUnit
+                    )
+                    PRTimelineCard(
+                        records: store.recentPersonalRecords(limit: 5),
+                        weightUnit: store.weightUnit
+                    )
+                }
+
                 SessionMixCard(insight: sessionMixInsight)
                 // Buddy comparison, source breakdowns, and coach report cards
                 // are multi-user concepts — hidden in solo v1. (Report and
@@ -305,39 +328,40 @@ struct ProgressScreenView: View {
                 }
                 RecoveryBalanceCard(insight: recoveryBalanceInsight)
 
-                SimpleChartCard(title: "Weekly Consistency") {
-                    Chart(store.workoutConsistency) { point in
-                        BarMark(
-                            x: .value("Week", point.week),
-                            y: .value("Workouts", point.workouts)
-                        )
-                        .foregroundStyle(MorpheTheme.accentAlt)
-                    }
-                    .frame(height: 160)
-                    .accessibilityLabel(Text("Workouts logged per week"))
-                }
-
-                if !store.weightTrend.isEmpty {
-                    StatCard(
-                        title: "Weight Trend",
-                        value: "\(store.weightTrend.last?.value ?? 0) \(store.weightUnit.label)",
-                        detail: "Start: \(store.weightTrend.first?.value ?? 0) \(store.weightUnit.label)  •  Change: \(weightChange) \(store.weightUnit.label)"
-                    )
-                }
+                // Removed here on purpose (UX audit):
+                // - "Weekly Consistency" chart — weekly consistency already
+                //   shows in the hero "This Week" pill AND TrainedDaysCard,
+                //   which answers the question better.
+                // - "Weight Trend" StatCard — read demo-origin weightTrend;
+                //   BodyWeightTrendCard above charts the user's REAL saved
+                //   weights instead.
+                // - FrictionInsightCard — near-duplicate of the athlete
+                //   pattern insights card at the top of this tier.
 
                 if !store.roadmap.isEmpty {
                     TransformationRoadmapCard(phases: store.roadmap)
-                }
-                if let pattern = store.currentPatternInsight {
-                    FrictionInsightCard(insight: pattern) {
-                        store.cyclePatternInsight()
-                    }
                 }
                 if !store.profileShowcase.badges.isEmpty {
                     BadgeGridCard(badges: store.profileShowcase.badges)
                 }
                 if !store.recentWins.isEmpty {
                     RecentWinsCard(wins: store.recentWins)
+                }
+            }
+
+            // Real multi-user competition: opt-in weekly board and
+            // code-joinable challenges. Every row is fetched Firestore data
+            // from real accounts — no seeded rivals, no fake ranks. Lives
+            // last, behind one disclosure, so the page reads summary →
+            // charts → competition and stays scannable.
+            if store.todayExperienceTier >= 1 {
+                ProgressExpandableSection(
+                    title: "Compete",
+                    subtitle: "The weekly board and code-joinable challenges — every score is a real athlete's logged sets.",
+                    isExpanded: $showCompete
+                ) {
+                    WeeklyBoardCard()
+                    ChallengesCard()
                 }
             }
         }
@@ -455,6 +479,63 @@ private struct TrainedDay: Identifiable {
     let trained: Bool
 }
 
+/// Flat HUD disclosure — same pattern as HomeExpandableSection /
+/// TrainExpandableSection: tracked mono label + hairline rule + a +/-
+/// indicator. No bubble — the rule IS the section boundary.
+private struct ProgressExpandableSection<Content: View>: View {
+    let title: String
+    let subtitle: String
+    @Binding var isExpanded: Bool
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 10) {
+                        Text(title.uppercased())
+                            .font(MorpheTheme.microLabel(12))
+                            .tracking(1.6)
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+
+                        Rectangle()
+                            .fill(MorpheTheme.stroke)
+                            .frame(height: 1)
+                            .frame(maxWidth: .infinity)
+
+                        Image(systemName: isExpanded ? "minus" : "plus")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accent)
+                    }
+
+                    if !isExpanded {
+                        Text(subtitle)
+                            .font(.footnote)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 14) {
+                    content()
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+}
+
 /// Seven plain day-dots: trained or rested. Replaces the old line chart that
 /// drew binary trained/rested values (80/25) as a dramatic score curve.
 private struct TrainedDaysCard: View {
@@ -501,13 +582,17 @@ private struct TrainedDaysCard: View {
     }
 }
 
+/// Consolidated training summary — absorbed the old "Weekly Log Summary"
+/// card's unique stats (this-week minutes, top-exercise list) so duration
+/// numbers appear exactly once on this screen.
 private struct TrainingPatternInsightData {
+    let minutesThisWeek: Int
     let totalMinutesLogged: Int
     let sessionsLast30Days: Int
     let averageDuration: Int
     let longestSessionTitle: String
     let longestSessionMinutes: Int
-    let topExercise: String?
+    let topExercises: [String]
     let dominantSourceLabel: String
 }
 
@@ -556,19 +641,19 @@ private struct TrainingPatternInsightCard: View {
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text("This is the shape of your real training record, not just a weekly summary.")
+                Text("The shape of your real training record — this week and all-time.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
-                    MetricPill(label: "Logged mins", value: "\(insight.totalMinutesLogged)")
+                    MetricPill(label: "Mins this week", value: "\(insight.minutesThisWeek)")
+                    MetricPill(label: "Total mins", value: "\(insight.totalMinutesLogged)")
                     MetricPill(label: "Last 30 days", value: "\(insight.sessionsLast30Days)")
                     MetricPill(label: "Average", value: "\(insight.averageDuration) min")
-                    MetricPill(label: "Longest", value: "\(insight.longestSessionMinutes) min")
                 }
 
                 if insight.longestSessionMinutes > 0 {
-                    Text("Longest session: \(insight.longestSessionTitle)")
+                    Text("Longest session: \(insight.longestSessionTitle) (\(insight.longestSessionMinutes) min)")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                 }
@@ -578,8 +663,9 @@ private struct TrainingPatternInsightCard: View {
                     .foregroundStyle(MorpheTheme.accentAlt)
 
                 Text(
-                    insight.topExercise.map { "Most repeated movement lately: \($0)." }
-                    ?? "As more logs land, Morphe will surface the movements showing up most in your real training history."
+                    insight.topExercises.isEmpty
+                    ? "As more logs land, Morphe will surface the movements showing up most in your real training history."
+                    : "Most logged lately: \(insight.topExercises.joined(separator: " • "))"
                 )
                 .font(.caption)
                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -895,39 +981,335 @@ private struct ProgressHeroStrip: View {
     }
 }
 
-private struct LogDrivenWeeklySummaryCard: View {
-    let summary: WorkoutLogSummary
+// MARK: - Telemetry charts (real per-set log data, flat black + accent)
+
+/// Per-exercise top-set progression across every logged session — the
+/// long-arc "am I getting stronger?" chart. (StrengthProgressCard above
+/// covers only latest-vs-previous; this draws the whole line.)
+private struct StrengthOverTimeCard: View {
+    let exerciseOptions: [String]
+    let weightUnit: WeightUnit
+    let progression: (String) -> [(date: Date, topWeight: Double)]
+
+    @State private var selectedExercise: String?
+
+    private var activeExercise: String? {
+        if let selectedExercise, exerciseOptions.contains(selectedExercise) {
+            return selectedExercise
+        }
+        return exerciseOptions.first
+    }
+
+    private var points: [(date: Date, topWeight: Double)] {
+        guard let activeExercise else { return [] }
+        return progression(activeExercise)
+    }
 
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Weekly Log Summary")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
-                    MetricPill(label: "Workouts", value: "\(summary.workoutsThisWeek)")
-                    MetricPill(label: "Minutes", value: "\(summary.minutesThisWeek)")
-                    MetricPill(label: "Average", value: "\(summary.averageDuration) min")
-                    MetricPill(label: "Streak", value: "\(summary.currentStreakDays) days")
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Strength Over Time")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    if !exerciseOptions.isEmpty, let activeExercise {
+                        Menu {
+                            ForEach(exerciseOptions, id: \.self) { name in
+                                Button(name) { selectedExercise = name }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(activeExercise)
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.caption2)
+                            }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accent)
+                        }
+                        .accessibilityLabel("Choose exercise, currently \(activeExercise)")
+                    }
                 }
 
-                Text(summary.latestWorkoutTitle)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-
-                Text(summary.latestEntryLabel)
+                Text("Heaviest set per session for one exercise.")
                     .font(.caption)
-                    .foregroundStyle(MorpheTheme.accentAlt)
+                    .foregroundStyle(MorpheTheme.textSecondary)
 
-                if summary.topExercises.isEmpty {
-                    Text("As new workouts land here, Morphe will surface the exercises and session patterns showing up most often.")
+                if points.count >= 2 {
+                    Chart {
+                        ForEach(Array(points.enumerated()), id: \.offset) { index, point in
+                            LineMark(
+                                x: .value("Date", point.date),
+                                y: .value("Top set", point.topWeight)
+                            )
+                            .foregroundStyle(MorpheTheme.accent)
+                            .interpolationMethod(.monotone)
+
+                            PointMark(
+                                x: .value("Date", point.date),
+                                y: .value("Top set", point.topWeight)
+                            )
+                            .foregroundStyle(
+                                index == points.count - 1
+                                    ? MorpheTheme.accent
+                                    : MorpheTheme.accent.opacity(0.5)
+                            )
+                            .symbolSize(index == points.count - 1 ? 100 : 36)
+                        }
+
+                        if let latest = points.last {
+                            PointMark(
+                                x: .value("Date", latest.date),
+                                y: .value("Top set", latest.topWeight)
+                            )
+                            .foregroundStyle(MorpheTheme.accent)
+                            .annotation(position: .top, alignment: .trailing) {
+                                Text(weightUnit.format(latest.topWeight))
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(MorpheTheme.accent)
+                            }
+                        }
+                    }
+                    .frame(height: 180)
+                    .accessibilityLabel(Text(
+                        "\(activeExercise ?? "Exercise") top set over \(points.count) sessions, latest \(weightUnit.format(points.last?.topWeight ?? 0))"
+                    ))
+                } else if let activeExercise {
+                    Text("Log \(activeExercise) with weights one more time to draw this line — two sessions make a trend.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                 } else {
-                    Text("Most logged lately: \(summary.topExercises.joined(separator: " • "))")
+                    Text("Log 2 sessions of the same exercise with weights to see this chart.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
+        }
+    }
+}
+
+/// Total logged sets per week, last 8 weeks — the honest workload dial.
+private struct WeeklySetVolumeCard: View {
+    let points: [(weekStart: Date, sets: Int)]
+
+    private var hasData: Bool {
+        points.contains { $0.sets > 0 }
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Weekly Volume")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Total sets logged per week — empty weeks stay visible.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                if hasData {
+                    Chart(points, id: \.weekStart) { point in
+                        BarMark(
+                            x: .value("Week", point.weekStart, unit: .weekOfYear),
+                            y: .value("Sets", point.sets)
+                        )
+                        .foregroundStyle(point.sets > 0 ? MorpheTheme.accent : MorpheTheme.accent.opacity(0.2))
+                    }
+                    .frame(height: 160)
+                    .accessibilityLabel(Text(
+                        "Sets per week over the last \(points.count) weeks, latest week \(points.last?.sets ?? 0) sets"
+                    ))
+                } else {
+                    Text("Log the sets inside your workouts to see weekly volume — your first logged set starts this chart.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
+        }
+    }
+}
+
+/// Average rated RPE per session — is training effort drifting up or down?
+private struct RPETrendCard: View {
+    let points: [(date: Date, averageRPE: Double)]
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Effort Trend (RPE)")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Average rated RPE per session, most recent rated sessions.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                if points.count >= 2 {
+                    Chart {
+                        ForEach(Array(points.enumerated()), id: \.offset) { index, point in
+                            LineMark(
+                                x: .value("Date", point.date),
+                                y: .value("RPE", point.averageRPE)
+                            )
+                            .foregroundStyle(MorpheTheme.accent)
+                            .interpolationMethod(.monotone)
+
+                            PointMark(
+                                x: .value("Date", point.date),
+                                y: .value("RPE", point.averageRPE)
+                            )
+                            .foregroundStyle(
+                                index == points.count - 1
+                                    ? MorpheTheme.accent
+                                    : MorpheTheme.accent.opacity(0.5)
+                            )
+                            .symbolSize(index == points.count - 1 ? 100 : 36)
+                        }
+                    }
+                    .chartYScale(domain: 6.0...10.0)
+                    .frame(height: 160)
+                    .accessibilityLabel(Text(
+                        "Average session RPE over \(points.count) sessions, latest \(points.last.map { String($0.averageRPE) } ?? "unknown")"
+                    ))
+                } else {
+                    Text("Rate RPE on your sets in at least 2 sessions to unlock this trend.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
+        }
+    }
+}
+
+/// Real body-weight history from the readings the user saves in Profile —
+/// never a fake curve extrapolated from a single current value.
+private struct BodyWeightTrendCard: View {
+    let entries: [(date: Date, weightLb: Double)]
+    let weightUnit: WeightUnit
+
+    /// History is stored in lb; render in the user's display unit.
+    private func displayWeight(_ lb: Double) -> Double {
+        weightUnit == .kilograms ? ((lb * 0.45359237) * 10).rounded() / 10 : lb
+    }
+
+    private var changeText: String? {
+        guard let first = entries.first, let last = entries.last, entries.count >= 2 else { return nil }
+        let delta = displayWeight(last.weightLb) - displayWeight(first.weightLb)
+        if abs(delta) < 0.05 { return "Held steady since your first reading." }
+        let rounded = (abs(delta) * 10).rounded() / 10
+        let amount = rounded.truncatingRemainder(dividingBy: 1) == 0
+            ? String(Int(rounded))
+            : String(rounded)
+        return "\(delta > 0 ? "Up" : "Down") \(amount) \(weightUnit.label) since your first reading."
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Body Weight")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Every weight you save in Profile becomes a dated reading here.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                if entries.count >= 2 {
+                    Chart {
+                        ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
+                            LineMark(
+                                x: .value("Date", entry.date),
+                                y: .value("Weight", displayWeight(entry.weightLb))
+                            )
+                            .foregroundStyle(MorpheTheme.accent)
+                            .interpolationMethod(.monotone)
+
+                            PointMark(
+                                x: .value("Date", entry.date),
+                                y: .value("Weight", displayWeight(entry.weightLb))
+                            )
+                            .foregroundStyle(
+                                index == entries.count - 1
+                                    ? MorpheTheme.accent
+                                    : MorpheTheme.accent.opacity(0.5)
+                            )
+                            .symbolSize(index == entries.count - 1 ? 100 : 36)
+                        }
+                    }
+                    .frame(height: 160)
+                    .accessibilityLabel(Text(
+                        "Body weight over \(entries.count) readings, latest \(weightUnit.format(displayWeight(entries.last?.weightLb ?? 0)))"
+                    ))
+
+                    if let changeText {
+                        Text(changeText)
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.accentAlt)
+                    }
+                } else {
+                    Text("Update your weight in Profile over time to build this chart — two saved readings draw the first line.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
+        }
+    }
+}
+
+/// The last five personal records — first session each all-time top set
+/// was hit, straight from the logs.
+private struct PRTimelineCard: View {
+    let records: [(date: Date, exerciseName: String, weight: Double)]
+    let weightUnit: WeightUnit
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("PR Timeline")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Your latest personal records — the day each top set first landed.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                if records.isEmpty {
+                    Text("Log weighted sets to start your PR timeline — every first-time top weight lands here.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                } else {
+                    ForEach(Array(records.enumerated()), id: \.offset) { index, record in
+                        HStack(alignment: .center, spacing: 10) {
+                            Image(systemName: "trophy.fill")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.accent)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(record.exerciseName)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                Text(MorpheAppStore.workoutDateLabel(for: record.date))
+                                    .font(.caption2)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Text(weightUnit.format(record.weight))
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(MorpheTheme.accent)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(
+                            "\(record.exerciseName) record: \(weightUnit.format(record.weight)), set \(MorpheAppStore.workoutDateLabel(for: record.date))"
+                        )
+
+                        if index < records.count - 1 {
+                            Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+                        }
+                    }
                 }
             }
         }
@@ -985,27 +1367,6 @@ private struct WeeklyReportCard: View {
                     .foregroundStyle(MorpheTheme.textSecondary)
                 Text("Next focus: \(report.nextFocus)")
                     .foregroundStyle(MorpheTheme.accentAlt)
-            }
-        }
-    }
-}
-
-private struct SimpleChartCard<Content: View>: View {
-    let title: String
-    let content: Content
-
-    init(title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                content
             }
         }
     }
@@ -1189,6 +1550,413 @@ private struct WorkoutHistoryCard: View {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Weekly board + challenges (real multi-user competition)
+
+/// The blue verification seal color used app-wide (matches ProfileView).
+private let verifiedSealBlue = Color(red: 0.25, green: 0.56, blue: 0.96)
+
+/// Opt-in global weekly leaderboard. Scores are total sets logged this ISO
+/// week, posted by each user's own device from their own logs — the card only
+/// ever renders what was actually fetched from Firestore.
+private struct WeeklyBoardCard: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    private var myUid: String? { store.authUser?.id }
+
+    /// Rows to show: the fetched top 10 (of the fetched top 50).
+    private var topRows: [WeeklyLeaderboardEntry] {
+        Array(store.weeklyLeaderboard.prefix(10))
+    }
+
+    /// The user's position within the FETCHED list (1-based), if present.
+    /// Positions beyond what was fetched are unknowable cheaply — the card
+    /// says so instead of inventing a rank.
+    private var myFetchedRank: Int? {
+        guard let myUid,
+              let index = store.weeklyLeaderboard.firstIndex(where: { $0.uid == myUid })
+        else { return nil }
+        return index + 1
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Weekly Board")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                if store.leaderboardOptIn {
+                    optedInBody
+                } else {
+                    optInPitch
+                }
+            }
+        }
+        .task {
+            await store.refreshLeaderboard()
+        }
+    }
+
+    private var optInPitch: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("A global board of real Morphe athletes, reset every Monday. Your score is the sets you actually log — nothing else. Leaving stops future posts, but anything already posted stays visible for the rest of the week.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+
+            Button("Join Board") {
+                store.joinWeeklyBoard()
+            }
+            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+        }
+    }
+
+    @ViewBuilder
+    private var optedInBody: some View {
+        Text("Top of the fetched board (top 50) — total sets logged this week.")
+            .font(.caption)
+            .foregroundStyle(MorpheTheme.textSecondary)
+
+        if topRows.isEmpty {
+            Text("No scores posted this week yet — log a workout and yours starts the board.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+        } else {
+            VStack(spacing: 6) {
+                ForEach(Array(topRows.enumerated()), id: \.element.id) { index, entry in
+                    boardRow(rank: index + 1, entry: entry, isMe: entry.uid == myUid)
+                }
+            }
+
+            // The user's own honest position when they're outside the top 10.
+            if let myUid, !topRows.contains(where: { $0.uid == myUid }) {
+                if let rank = myFetchedRank,
+                   let mine = store.weeklyLeaderboard.first(where: { $0.uid == myUid }) {
+                    Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+                    boardRow(rank: rank, entry: mine, isMe: true)
+                } else if let mine = store.weeklyLeaderboardSelfEntry {
+                    Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+                    HStack(spacing: 8) {
+                        Text("You")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accent)
+                        Text("\(mine.score) sets — posted, outside the fetched top 50")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                } else {
+                    Text("Not on the board this week yet — log a workout to post your score.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
+        }
+
+        Button("Leave Board") {
+            store.leaveWeeklyBoard()
+        }
+        .buttonStyle(SecondaryCTAButtonStyle())
+    }
+
+    private func boardRow(rank: Int, entry: WeeklyLeaderboardEntry, isMe: Bool) -> some View {
+        HStack(spacing: 8) {
+            Text("\(rank)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(isMe ? MorpheTheme.accent : MorpheTheme.textMuted)
+                .frame(width: 22, alignment: .leading)
+
+            Text(isMe ? "\(entry.name) (you)" : entry.name)
+                .font(.caption.weight(isMe ? .bold : .semibold))
+                .foregroundStyle(isMe ? MorpheTheme.accent : .white)
+                .lineLimit(1)
+
+            if entry.verified {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.caption2)
+                    .foregroundStyle(verifiedSealBlue)
+                    .accessibilityLabel("Verified")
+            }
+
+            Spacer()
+
+            Text("\(entry.score) sets")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+        }
+        .padding(.vertical, 3)
+        .padding(.horizontal, 6)
+        .background(
+            isMe ? MorpheTheme.accent.opacity(0.10) : Color.clear,
+            in: RoundedRectangle(cornerRadius: MorpheTheme.radius)
+        )
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Code-joinable challenges — the party-code pattern applied to a scoreboard.
+/// Rows show the fetched top member versus the user's own fetched score; a
+/// member who hasn't posted yet is told exactly what unlocks it.
+private struct ChallengesCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var joinCode = ""
+    @State private var showCreateSheet = false
+
+    private var myUid: String? { store.authUser?.id }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Challenges")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Private scoreboards with people who have the code. Scores come from logged workouts only.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                if store.activeChallenges.isEmpty {
+                    Text("No challenges yet — create one and share its code, or enter a friend's code below.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                } else {
+                    VStack(spacing: 10) {
+                        ForEach(store.activeChallenges) { challenge in
+                            challengeRow(challenge)
+                        }
+                    }
+                }
+
+                Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+
+                HStack(spacing: 8) {
+                    TextField("Enter code", text: $joinCode)
+                        .font(.caption.monospaced())
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .onChange(of: joinCode) { _, newValue in
+                            joinCode = String(newValue.uppercased().prefix(6))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(MorpheTheme.panelStrong, in: RoundedRectangle(cornerRadius: MorpheTheme.radius))
+
+                    Button("Join") {
+                        let code = joinCode
+                        joinCode = ""
+                        Task { await store.joinChallenge(code: code) }
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .disabled(joinCode.count != 6 || store.isCompetitionBusy)
+
+                    Button("Create") {
+                        showCreateSheet = true
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(store.isCompetitionBusy)
+                }
+            }
+        }
+        .task {
+            await store.refreshChallenges()
+        }
+        .sheet(isPresented: $showCreateSheet) {
+            CreateChallengeSheet()
+                .environment(store)
+        }
+    }
+
+    private func challengeRow(_ challenge: ChallengeSummary) -> some View {
+        let top = challenge.topMember
+        let mine = myUid.flatMap { uid in challenge.members.first { $0.uid == uid } }
+
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(challenge.title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text(challenge.isExpired ? "Ended" : "\(challenge.daysLeft)d left")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(challenge.isExpired ? MorpheTheme.textMuted : MorpheTheme.accent)
+            }
+
+            HStack(spacing: 8) {
+                if let top {
+                    HStack(spacing: 3) {
+                        Text("Top: \(top.name)")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                        if top.verified {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.caption2)
+                                .foregroundStyle(verifiedSealBlue)
+                                .accessibilityLabel("Verified")
+                        }
+                        Text("— \(top.score) \(challenge.metric.unit)")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                } else {
+                    Text("No scores yet — the first logged workout opens the scoring.")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+
+                Spacer()
+
+                if let mine {
+                    Text("You: \(mine.score)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accent)
+                }
+            }
+
+            HStack(spacing: 6) {
+                Text("Code \(challenge.code)")
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(MorpheTheme.textMuted)
+                ShareLink(item: "Join my \"\(challenge.title)\" challenge on Morphe — code \(challenge.code)") {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .accessibilityLabel("Share challenge code")
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+/// Host-side challenge creation: title, metric, duration (rules cap 30 days),
+/// then the share code — same handoff pattern as managed-client invites.
+private struct CreateChallengeSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var title = ""
+    @State private var metric: ChallengeMetric = .sets
+    @State private var days = 7
+    @State private var created: ChallengeSummary?
+
+    private let durationOptions = [7, 14, 30]
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                MorpheTheme.ink.ignoresSafeArea()
+
+                VStack(alignment: .leading, spacing: 16) {
+                    if let created {
+                        createdBody(created)
+                    } else {
+                        formBody
+                    }
+                    Spacer()
+                }
+                .padding(20)
+            }
+            .navigationTitle("New Challenge")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private var formBody: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Whoever has the code can join. Scores count only workouts logged during the challenge window.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+
+            TextField("Challenge title", text: $title)
+                .font(.subheadline)
+                .padding(12)
+                .background(MorpheTheme.panelStrong, in: RoundedRectangle(cornerRadius: MorpheTheme.radius))
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Scored by")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                HStack(spacing: 8) {
+                    ForEach(ChallengeMetric.allCases) { option in
+                        Button(option.label) { metric = option }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(metric == option ? .black : .white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                metric == option ? MorpheTheme.accent : MorpheTheme.panelStrong,
+                                in: Capsule()
+                            )
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Duration")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                HStack(spacing: 8) {
+                    ForEach(durationOptions, id: \.self) { option in
+                        Button("\(option) days") { days = option }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(days == option ? .black : .white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                days == option ? MorpheTheme.accent : MorpheTheme.panelStrong,
+                                in: Capsule()
+                            )
+                    }
+                }
+            }
+
+            Button(store.isCompetitionBusy ? "Creating…" : "Create") {
+                Task {
+                    created = await store.createChallenge(title: title, metric: metric, days: days)
+                }
+            }
+            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+            .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.isCompetitionBusy)
+        }
+    }
+
+    private func createdBody(_ challenge: ChallengeSummary) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(challenge.title)
+                .font(.headline)
+                .foregroundStyle(.white)
+
+            Text("Share this code — anyone who enters it joins the scoreboard.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+
+            Text(challenge.code)
+                .font(.system(.title, design: .monospaced).weight(.bold))
+                .foregroundStyle(MorpheTheme.accent)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(MorpheTheme.panelStrong, in: RoundedRectangle(cornerRadius: MorpheTheme.radius))
+
+            ShareLink(item: "Join my \"\(challenge.title)\" challenge on Morphe — code \(challenge.code)") {
+                Text("Share Code")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+
+            Button("Done") { dismiss() }
+                .buttonStyle(SecondaryCTAButtonStyle())
         }
     }
 }

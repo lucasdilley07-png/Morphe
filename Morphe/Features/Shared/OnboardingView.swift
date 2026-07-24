@@ -61,7 +61,9 @@ struct MorpheLoadingMark: View {
     var body: some View {
         ZStack {
             MorpheMarkShape()
-                .fill(MorpheTheme.accent)
+                // launchMark, not accent: the launch M must match the app
+                // icon's brand yellow even when the user picked another accent.
+                .fill(MorpheTheme.launchMark)
                 .frame(width: size, height: size)
 
             // The spinner: a quarter-ish arc sweeping a ring around the M.
@@ -69,7 +71,7 @@ struct MorpheLoadingMark: View {
                 .trim(from: 0, to: 0.28)
                 .stroke(
                     AngularGradient(
-                        colors: [MorpheTheme.accent.opacity(0), MorpheTheme.accent],
+                        colors: [MorpheTheme.launchMark.opacity(0), MorpheTheme.launchMark],
                         center: .center,
                         startAngle: .degrees(0),
                         endAngle: .degrees(100)
