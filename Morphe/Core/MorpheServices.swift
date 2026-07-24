@@ -4087,29 +4087,29 @@ enum MorpheDemoContent {
             return "Pain changes the plan. Report where it happened, how strong it felt, and which movement triggered it so Morphe can swap in a safer option."
         }
 
-        switch tone {
-        case .competitive:
-            return "You do not need more overthinking. Pick the next small action and finish it."
-        case .educational:
-            return "Consistency works because repeatable training builds adaptation without blowing up recovery."
-        default:
-            return "Small wins first. If today feels heavy, use a lighter version, finish one meaningful task, and keep the streak alive."
-        }
+        // Every tone gets its own fallback voice (the table lives on
+        // CoachingTone) — previously only competitive/educational differed
+        // and the other five all collapsed into the same generic line.
+        return tone.replyFallback
     }
 
-    static func workoutFeedbackResponse(for option: WorkoutFeedbackOption) -> String {
+    static func workoutFeedbackResponse(for option: WorkoutFeedbackOption,
+                                        tone: CoachingTone = .supportive) -> String {
+        let body: String
         switch option {
         case .tooEasy:
-            return "Nice — that means you're ready for more. Next session Morphe pre-fills a small bump on the weights you logged today."
+            body = "That means you're ready for more. Next session Morphe pre-fills a small bump on the weights you logged today."
         case .justRight:
-            return "Perfect. Morphe will keep the next session in the same productive range."
+            body = "Morphe will keep the next session in the same productive range."
         case .tooHard:
-            return "No problem. Morphe will reduce the next session so you can keep momentum."
+            body = "Morphe will reduce the next session so you can keep momentum."
         case .pain:
-            return "Pain reported. Morphe will suggest a safer option and adjust today's plan."
+            body = "Pain reported. Morphe will suggest a safer option and adjust today's plan."
         case .skippedParts:
-            return "Thanks for logging that. Morphe will trim the next plan so it fits real life better."
+            body = "Morphe will trim the next plan so it fits real life better."
         }
+        // The user's chosen tone speaks first; the factual adjustment follows.
+        return "\(tone.feedbackLead) \(body)"
     }
 
     static func planAdjustment(for reasons: [PlanAdjustmentReason]) -> PlanAdjustment {

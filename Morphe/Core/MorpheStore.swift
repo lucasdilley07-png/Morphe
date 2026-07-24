@@ -1408,6 +1408,10 @@ final class MorpheAppStore {
         planDayIndex = max(0, snapshot.planDayIndex)
         rebuildPersonalizedPlan()
 
+        // Nutrition goal numbers recomputed from the restored weight + goals
+        // (goals only — today's consumed counts were restored above).
+        applyNutritionTargets()
+
         // History/consistency/score/streak were derived in init against the seeded
         // id; rebuild them now that the user's real identity is restored.
         refreshWorkoutLogDerivedState(for: clientProfile.id)
@@ -2249,8 +2253,118 @@ final class MorpheAppStore {
     func updateBodyMetrics(height: String, weight: String) {
         clientProfile.height = String(height.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
         clientProfile.bodyWeight = String(weight.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
+        // A new logged weight moves the nutrition goal numbers immediately.
+        applyNutritionTargets()
         persistLocalProfile()
         showToast("Details saved.")
+    }
+
+    /// Updates the goal targets shown on Profile (physical / weight /
+    /// deadline). Free text, trimmed and capped so a pasted essay can't
+    /// become a "goal".
+    func updateGoalTargets(physical: String, weight: String, deadline: String) {
+        func clean(_ text: String) -> String {
+            String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
+        }
+        clientProfile.physicalGoalTarget = clean(physical)
+        clientProfile.weightGoalTarget = clean(weight)
+        clientProfile.goalDeadline = clean(deadline)
+        persistLocalProfile()
+        showToast("Goals updated.")
+    }
+
+    /// Updates the training-equipment answer post-onboarding and immediately
+    /// re-ranks the plan rotation around it.
+    func updateEquipment(_ text: String) {
+        clientProfile.equipment = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        rebuildPersonalizedPlan()
+        persistLocalProfile()
+        showToast("Equipment updated — today's plan adjusts.")
+    }
+
+    /// The equipment choices onboarding offers — the Profile editor shows the
+    /// same list so both surfaces write the same vocabulary into
+    /// `clientProfile.equipment` (which `equipmentPreferenceOrder` parses).
+    static let equipmentOptions: [String] = [
+        "Full gym", "Dumbbells", "Barbell & rack", "Kettlebells",
+        "Resistance bands", "Pull-up bar", "Cardio machines", "Pool",
+        "Bodyweight only"
+    ]
+
+    // MARK: - Nutrition targets (deterministic math on the user's own data)
+
+    /// Parses the free-text body weight ("170", "170 lb", "77 kg") into
+    /// pounds. Returns nil for anything unparseable or implausible, in which
+    /// case the caller keeps honest starter defaults.
+    static func parsedBodyWeightLb(_ text: String) -> Double? {
+        let lowered = text.lowercased()
+        guard let numberRange = lowered.range(of: #"[0-9]+([.,][0-9]+)?"#, options: .regularExpression),
+              var value = Double(lowered[numberRange].replacingOccurrences(of: ",", with: ".")),
+              value > 0 else { return nil }
+        if lowered.contains("kg") || lowered.contains("kilo") {
+            value *= 2.20462262
+        }
+        // Outside a plausible human range the "weight" is probably a typo —
+        // better generic targets than absurd personalized ones.
+        guard (60...700).contains(value) else { return nil }
+        return value
+    }
+
+    /// Daily nutrition goal numbers from the user's own logged weight and
+    /// goal — standard per-pound coaching heuristics (protein ≈ 0.85 g/lb,
+    /// water ≈ weight/20 cups, calories 13–16×lb by goal direction), not AI.
+    /// Falls back to the generic starter numbers, and says so, when no
+    /// parseable weight has been logged.
+    var nutritionTargets: NutritionTargets {
+        guard let weightLb = Self.parsedBodyWeightLb(clientProfile.bodyWeight) else {
+            return NutritionTargets(
+                calories: 2200, proteinGrams: 160, waterCups: 8,
+                sourceNote: "Starter targets — log your weight in Profile to personalize"
+            )
+        }
+        let goalText = (clientProfile.selectedGoals + [clientProfile.goal])
+            .joined(separator: " ").lowercased()
+        // Fat-loss framing wins when goals mix (e.g. "Lose weight" + "Build
+        // consistency") — overshooting calories hurts that goal the most.
+        let caloriesPerLb: Double
+        if goalText.contains("lose") || goalText.contains("lean") || goalText.contains("fat")
+            || goalText.contains("cut") || goalText.contains("weight loss") {
+            caloriesPerLb = 13
+        } else if goalText.contains("build") || goalText.contains("strength")
+            || goalText.contains("muscle") || goalText.contains("bulk") {
+            caloriesPerLb = 16
+        } else {
+            caloriesPerLb = 15
+        }
+        return NutritionTargets(
+            calories: Int(((weightLb * caloriesPerLb) / 50).rounded()) * 50,
+            proteinGrams: Int(((weightLb * 0.85) / 5).rounded()) * 5,
+            waterCups: min(max(Int((weightLb / 20).rounded()), 8), 16),
+            sourceNote: "Based on your logged weight (\(Int(weightLb.rounded())) lb) and goal"
+        )
+    }
+
+    /// Pushes the computed targets into the nutrition card's goal fields.
+    /// Goals only — consumed counts are the day's real log and stay intact.
+    private func applyNutritionTargets() {
+        let targets = nutritionTargets
+        nutrition.calorieGoal = targets.calories
+        nutrition.proteinGoal = targets.proteinGrams
+        nutrition.waterGoal = targets.waterCups
+    }
+
+    /// One meal-prep nudge built from the onboarding answers; nil when the
+    /// user never answered, or said Never/Occasionally without interest
+    /// (no unsolicited prep sermons).
+    var mealPrepTip: String? {
+        let habit = clientProfile.mealPrepHabit
+        guard !habit.isEmpty else { return nil }
+        if habit == MealPrepOption.weekly.rawValue || habit == MealPrepOption.mostMeals.rawValue {
+            return "You already prep — batch one extra protein source and lunches are covered."
+        }
+        return clientProfile.mealPrepInterested
+            ? "Start with one prepped breakfast this week — smallest possible win."
+            : nil
     }
 
     func updateExperienceLevel(_ level: ExperienceLevelOption) {
@@ -2704,6 +2818,9 @@ final class MorpheAppStore {
             hasAcceptedTerms = true
         }
         rebuildPersonalRules()
+        // Nutrition goals framed by the goals just chosen (weight arrives
+        // later via Profile; until then these stay the labeled starters).
+        applyNutritionTargets()
 
         // A coach account is the USER's practice, not demo "Coach Marcus" —
         // stamp their identity into the workspace and zero the seeded stats.
@@ -2809,10 +2926,96 @@ final class MorpheAppStore {
         return ["Dumbbells", "Bodyweight", "Full Gym"]
     }
 
+    // MARK: Plan candidate ranking (sport preference + injury down-ranking)
+
+    /// Injury vocabulary: flag word -> body area. Extends the areas the
+    /// pain-flag flow (`painAlternative`) already understands so the free-text
+    /// onboarding note and the in-session pain report speak the same language.
+    private static let injuryAreaKeywords: [String: String] = [
+        "knee": "knee", "acl": "knee", "mcl": "knee", "meniscus": "knee", "patella": "knee",
+        "shoulder": "shoulder", "rotator": "shoulder", "labrum": "shoulder",
+        "back": "back", "spine": "back", "lumbar": "back", "disc": "back", "sciatica": "back",
+        "hip": "hip", "groin": "hip",
+        "ankle": "ankle", "achilles": "ankle",
+        "wrist": "wrist",
+        "elbow": "elbow"
+    ]
+
+    /// Movement words that load each flagged area (matched against exercise
+    /// names, lowercased).
+    private static let areaStressKeywords: [String: [String]] = [
+        "knee": ["squat", "lunge", "jump", "pistol", "step-up", "step up", "bound", "wall sit", "skater"],
+        "shoulder": ["press", "push-up", "push up", "pushup", "overhead", "dip", "handstand", "snatch", "jerk", "raise"],
+        "back": ["deadlift", "good morning", "row", "swing", "clean", "back extension", "superman", "hyperextension"],
+        "hip": ["squat", "lunge", "deadlift", "thrust", "bridge", "sprint", "kick"],
+        "ankle": ["jump", "sprint", "run", "hop", "skip", "bound", "calf", "skater"],
+        "wrist": ["push-up", "push up", "pushup", "plank", "handstand", "burpee", "crawl"],
+        "elbow": ["curl", "extension", "dip", "press", "push-up", "push up", "pushup"]
+    ]
+
+    /// The focus bucket that concentrates work on each flagged area.
+    private static let areaFocusTags: [String: String] = [
+        "knee": "Legs", "hip": "Legs", "ankle": "Conditioning",
+        "shoulder": "Push", "elbow": "Push", "wrist": "Push",
+        "back": "Pull"
+    ]
+
+    /// Pure, explainable parse of the free-text injury note ("knee pain after
+    /// squats" -> {"knee"}). Keyword table only — no guessing beyond it.
+    static func flaggedAreas(from note: String) -> Set<String> {
+        let lowered = note.lowercased()
+        guard !lowered.isEmpty else { return [] }
+        var areas: Set<String> = []
+        for (keyword, area) in injuryAreaKeywords where lowered.contains(keyword) {
+            areas.insert(area)
+        }
+        return areas
+    }
+
+    /// How hard a template leans on flagged areas: +2 when its focus bucket
+    /// targets the area, +1 per exercise whose name hits a stress keyword
+    /// (capped at 3 per area so one long workout can't swamp the score).
+    /// A penalty only reorders — it never removes a workout.
+    static func injuryPenalty(for template: WorkoutTemplate, areas: Set<String>) -> Int {
+        guard !areas.isEmpty else { return 0 }
+        let exerciseNames = template.exercises.map { $0.name.lowercased() }
+        var penalty = 0
+        for area in areas {
+            if areaFocusTags[area] == template.focusTag { penalty += 2 }
+            let stressWords = areaStressKeywords[area, default: []]
+            let hits = exerciseNames.filter { name in stressWords.contains { name.contains($0) } }.count
+            penalty += min(hits, 3)
+        }
+        return penalty
+    }
+
+    /// Orders plan candidates within one focus bucket. All signals are SOFT
+    /// (sort keys, never filters): injury load first — safety outranks taste —
+    /// then sport match, then equipment fit, then name for determinism.
+    /// Sport is a preference rather than a filter because small sports have
+    /// few catalog templates; excluding mismatches would starve their rotation
+    /// down to a handful of repeats.
+    static func rankedPlanCandidates(
+        _ candidates: [WorkoutTemplate],
+        sport: SportFocus,
+        equipmentOrder: [String],
+        flaggedAreas: Set<String>
+    ) -> [WorkoutTemplate] {
+        func key(_ t: WorkoutTemplate) -> (Int, Int, Int, String) {
+            // generalFitness templates count as a match: they're the sport-
+            // agnostic backbone of the catalog, not a mismatch to bury.
+            let sportRank = (t.sport == sport || t.sport == .generalFitness) ? 0 : 1
+            let equipmentRank = equipmentOrder.firstIndex(of: t.equipment) ?? equipmentOrder.count
+            return (injuryPenalty(for: t, areas: flaggedAreas), sportRank, equipmentRank, t.name)
+        }
+        return candidates.sorted { key($0) < key($1) }
+    }
+
     /// Rebuilds the daily-plan rotation from the catalog: filtered to the
-    /// user's level, ranked by equipment preference, and round-robined across
-    /// focus (Full Body / Legs / Push / Pull / Conditioning / Core) so each
-    /// day changes focus and many distinct workouts pass before any repeat.
+    /// user's level, ranked by injury safety + sport preference + equipment
+    /// fit, and round-robined across focus (Full Body / Legs / Push / Pull /
+    /// Conditioning / Core) so each day changes focus and many distinct
+    /// workouts pass before any repeat.
     func rebuildPersonalizedPlan() {
         let level = planTargetDifficulty(for: clientProfile.fitnessLevel)
         let trainable = catalogWorkouts.filter {
@@ -2821,13 +3024,17 @@ final class MorpheAppStore {
         guard !trainable.isEmpty else { personalizedPlanIDs = []; return }
 
         let pref = equipmentPreferenceOrder()
-        func rank(_ t: WorkoutTemplate) -> Int { pref.firstIndex(of: t.equipment) ?? pref.count }
+        let areas = Self.flaggedAreas(from: clientProfile.limitations)
 
         let focusOrder = ["Full Body", "Legs", "Push", "Pull", "Conditioning", "Core"]
         let buckets: [[WorkoutTemplate]] = focusOrder
             .map { focus in
-                trainable.filter { $0.focusTag == focus }
-                    .sorted { rank($0) != rank($1) ? rank($0) < rank($1) : $0.name < $1.name }
+                Self.rankedPlanCandidates(
+                    trainable.filter { $0.focusTag == focus },
+                    sport: clientProfile.sportMode,
+                    equipmentOrder: pref,
+                    flaggedAreas: areas
+                )
             }
             .filter { !$0.isEmpty }
         guard !buckets.isEmpty else { personalizedPlanIDs = []; return }
@@ -2853,9 +3060,12 @@ final class MorpheAppStore {
         let bias = workoutIntensityBias
         let blendLevel = Self.shiftDifficulty(level, by: bias)
         if bias != 0, blendLevel != level {
-            let blendPool = catalogWorkouts
-                .filter { $0.difficulty == blendLevel && $0.durationMinutes >= 20 && $0.focusTag != "Recovery" }
-                .sorted { rank($0) != rank($1) ? rank($0) < rank($1) : $0.name < $1.name }
+            let blendPool = Self.rankedPlanCandidates(
+                catalogWorkouts.filter { $0.difficulty == blendLevel && $0.durationMinutes >= 20 && $0.focusTag != "Recovery" },
+                sport: clientProfile.sportMode,
+                equipmentOrder: pref,
+                flaggedAreas: areas
+            )
             if !blendPool.isEmpty {
                 var blendIndex = 0
                 for position in stride(from: 2, to: sequence.count, by: 3) {
@@ -3346,18 +3556,20 @@ final class MorpheAppStore {
     /// One line under Today's Plan saying where the task mix comes from —
     /// the dial is invisible otherwise and the list reads as generic.
     var taskPlanNote: String {
+        // The chosen coaching tone leads; the factual explanation follows.
+        let lead = profileShowcase.coachingTone.planNoteLead
         let stage = ["a gentle start", "light with one step up", "a steady mix", "a challenging mix", "a demanding mix"][taskDifficultyDial]
         if let rate = recentTaskCloseRate {
             let percent = Int((rate * 100).rounded())
             if rate >= 0.8 {
-                return "You've closed \(percent)% of your tasks lately, so today runs \(stage) — nudged up a level."
+                return "\(lead) You've closed \(percent)% of your tasks lately, so today runs \(stage) — nudged up a level."
             }
             if rate < 0.35 {
-                return "Tasks have been slipping (\(percent)% closed lately), so today stays \(stage) to rebuild the rhythm."
+                return "\(lead) Tasks have been slipping (\(percent)% closed lately), so today stays \(stage) to rebuild the rhythm."
             }
-            return "Today's tasks run \(stage), matched to your \(levelWord) profile and \(percent)% recent close rate."
+            return "\(lead) Today's tasks run \(stage), matched to your \(levelWord) profile and \(percent)% recent close rate."
         }
-        return "Today's tasks run \(stage), matched to your \(levelWord) profile — they grow as you keep closing them."
+        return "\(lead) Today's tasks run \(stage), matched to your \(levelWord) profile — they grow as you keep closing them."
     }
 
     private var levelWord: String {
@@ -3393,6 +3605,15 @@ final class MorpheAppStore {
             case .tooHard: score -= 1
             case .pain: score -= 1.5
             case nil: break
+            }
+            // Per-set effort the user actually rated: a session averaging
+            // RPE ≤ 6.5 had more in the tank; ≥ 9 was a grind. Unrated sets
+            // (0) are ignored — no signal is not a signal.
+            let ratedRPEs = log.exercises.flatMap { $0.rpePerSet ?? [] }.filter { $0 > 0 }
+            if !ratedRPEs.isEmpty {
+                let avgRPE = Double(ratedRPEs.reduce(0, +)) / Double(ratedRPEs.count)
+                if avgRPE <= 6.5 { score += 0.5 }
+                else if avgRPE >= 9 { score -= 0.5 }
             }
             // A fast clean finish (≤70% of planned time, nothing skipped)
             // reads as headroom.
@@ -3874,39 +4095,67 @@ final class MorpheAppStore {
     private func progressionIncrement() -> Double { weightUnit == .kilograms ? 2.5 : 5 }
 
     /// The top weight the user last logged for an exercise of this name (across
-    /// prior sessions, newest first) and how that session felt.
+    /// prior sessions, newest first), how that session felt, and the RPE they
+    /// rated on that top set (0 / nil = not rated).
     private func lastLoggedTopWeight(forExerciseNamed name: String)
-        -> (weight: Double, unit: WeightUnit, feedback: WorkoutFeedbackOption?)? {
+        -> (weight: Double, unit: WeightUnit, feedback: WorkoutFeedbackOption?, topSetRPE: Int?)? {
         for log in workoutLogs where log.athleteID == clientProfile.id {
             guard let logged = log.exercises.first(where: { $0.name == name }),
-                  let top = logged.weightsPerSet?.max(), top > 0 else { continue }
+                  let weights = logged.weightsPerSet,
+                  let top = weights.max(), top > 0 else { continue }
             let unit = WeightUnit(rawValue: logged.weightUnit ?? "") ?? weightUnit
             let feedback = log.sessionFeedback.flatMap { WorkoutFeedbackOption(rawValue: $0) }
-            return (top, unit, feedback)
+            // RPE rated on the top set itself (the arrays are parallel);
+            // an unrated set (0) reads as no signal.
+            var topSetRPE: Int?
+            if let rpes = logged.rpePerSet,
+               let topIndex = weights.firstIndex(of: top),
+               rpes.indices.contains(topIndex), rpes[topIndex] > 0 {
+                topSetRPE = rpes[topIndex]
+            }
+            return (top, unit, feedback, topSetRPE)
         }
         return nil
     }
 
     /// Suggested working weight for the next set of `exercise`: the last weight
     /// the user logged for it, plus a small bump when that session felt too
-    /// easy. This is what finally makes "Morphe will increase your challenge"
-    /// true instead of a text card. Returns nil for bodyweight / no history.
+    /// easy — or when the top set itself was rated RPE ≤ 6 (same headroom
+    /// signal, per-set instead of per-session). This is what finally makes
+    /// "Morphe will increase your challenge" true instead of a text card.
+    /// Returns nil for bodyweight / no history.
     func suggestedWorkingWeight(for exercise: WorkoutExercise) -> Double? {
         guard let last = lastLoggedTopWeight(forExerciseNamed: exercise.name) else { return nil }
         // Only bump when the logged unit matches the current one — never guess
         // a number across a lb/kg switch.
-        if last.feedback == .tooEasy, last.unit == weightUnit {
-            return last.weight + progressionIncrement()
+        guard last.unit == weightUnit else { return last.weight }
+        if last.feedback == .tooEasy { return last.weight + progressionIncrement() }
+        if let rpe = last.topSetRPE {
+            if rpe <= 6 { return last.weight + progressionIncrement() }
+            // A top set at RPE 10 (≥ 9.5) means hold, never load further.
+            if Double(rpe) >= 9.5 { return last.weight }
         }
         return last.weight
     }
 
-    /// A short, honest note for the tracker when Morphe is suggesting more than
-    /// last time; nil when there's no bump.
+    /// A short, honest note for the tracker citing the real signal (session
+    /// rating or top-set RPE) behind the suggestion; nil when there's nothing
+    /// to say.
     func progressionNote(for exercise: WorkoutExercise) -> String? {
         guard let last = lastLoggedTopWeight(forExerciseNamed: exercise.name),
-              last.feedback == .tooEasy, last.unit == weightUnit, last.weight > 0 else { return nil }
-        return "MORPHE SUGGESTS +\(weightUnit.format(progressionIncrement())) — last time felt easy"
+              last.unit == weightUnit, last.weight > 0 else { return nil }
+        if last.feedback == .tooEasy {
+            return "MORPHE SUGGESTS +\(weightUnit.format(progressionIncrement())) — last time felt easy"
+        }
+        if let rpe = last.topSetRPE {
+            if rpe <= 6 {
+                return "MORPHE SUGGESTS +\(weightUnit.format(progressionIncrement())) — last time was RPE \(rpe), room to add"
+            }
+            if Double(rpe) >= 9.5 {
+                return "MORPHE SUGGESTS holding — last top set was RPE \(rpe)"
+            }
+        }
+        return nil
     }
 
     /// True once every exercise in the live session has hit its target sets.
@@ -4268,7 +4517,7 @@ final class MorpheAppStore {
 
     func submitWorkoutFeedback(_ option: WorkoutFeedbackOption) {
         selectedWorkoutFeedback = option
-        workoutFeedbackResponse = MorpheDemoContent.workoutFeedbackResponse(for: option)
+        workoutFeedbackResponse = MorpheDemoContent.workoutFeedbackResponse(for: option, tone: profileShowcase.coachingTone)
         recovery.previousSessionFeedback = option
 
         switch option {
@@ -4439,7 +4688,8 @@ final class MorpheAppStore {
         // very next plan day already reflects this session.
         rebuildPersonalizedPlan()
         openProgress()
-        showCelebration(title: "+50 XP", detail: "Workout logged", symbol: "sparkles")
+        // The celebration speaks in the coaching tone the user picked.
+        showCelebration(title: "+50 XP", detail: profileShowcase.coachingTone.workoutCompleteDetail, symbol: "sparkles")
         Haptics.success()
         showToast("Workout logged. Progress updated.")
     }
@@ -6947,6 +7197,23 @@ final class MorpheAppStore {
         let lowercasedPrompt = prompt.lowercased()
         let primaryExercise = activeWorkoutExercise?.name ?? currentWorkout.exercises.first?.name ?? "your first movement"
         let firstWin = recentWins.first ?? "You kept showing up when the plan got busy."
+
+        // Asking about goals/targets gets the user's OWN stored targets back,
+        // on any tab — real data outranks tab-contextual generic advice.
+        if lowercasedPrompt.contains("goal") || lowercasedPrompt.contains("target") {
+            let physical = clientProfile.physicalGoalTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+            let weight = clientProfile.weightGoalTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+            let deadline = clientProfile.goalDeadline.trimmingCharacters(in: .whitespacesAndNewlines)
+            let parts = [
+                physical.isEmpty ? nil : "Physical target: \(physical)",
+                weight.isEmpty ? nil : "Weight goal: \(weight)",
+                deadline.isEmpty ? nil : "Deadline: \(deadline)"
+            ].compactMap { $0 }
+            if parts.isEmpty {
+                return "You haven't set your goal targets yet. Add a physical target, weight goal, and deadline in Profile and I'll answer with the real numbers."
+            }
+            return "Here's what you're aiming at — \(parts.joined(separator: " / ")). Every logged session counts toward those."
+        }
 
         switch selectedClientTab {
         case .discover:

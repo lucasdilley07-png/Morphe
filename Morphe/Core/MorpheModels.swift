@@ -539,6 +539,72 @@ enum CoachingTone: String, CaseIterable, Identifiable {
     }
 }
 
+extension CoachingTone {
+    // Voice table for Morphe's deterministic coach copy. The tone the user
+    // picked changes HOW Morphe talks everywhere it talks — replies, session
+    // feedback, celebrations, plan notes — not just one fallback line. This
+    // is honest string work keyed off their setting, not AI.
+
+    /// The catch-all coach reply when no keyword branch matches.
+    var replyFallback: String {
+        switch self {
+        case .supportive:
+            return "You showed up — that already counts. Pick one small action, finish it, and let the day build from there."
+        case .direct:
+            return "Skip the debate. Pick the next action and finish it clean."
+        case .competitive:
+            return "You said you wanted this. Pick the next small action and prove it."
+        case .calm:
+            return "Keep it steady. One small action, done well, is enough for right now."
+        case .educational:
+            return "Consistency works because repeatable training builds adaptation without blowing up recovery — so pick one repeatable action and do it now."
+        case .highEnergy:
+            return "Let's move — energy follows action. Grab the next task and go."
+        case .beginnerFriendly:
+            return "Short, clear, and doable: pick the smallest next step and finish it. That's a real win."
+        }
+    }
+
+    /// Short lead-in prepended to the post-workout feedback response.
+    var feedbackLead: String {
+        switch self {
+        case .supportive: return "Proud of you for logging that."
+        case .direct: return "Logged."
+        case .competitive: return "Noted — competitors log everything."
+        case .calm: return "Thanks for checking in."
+        case .educational: return "Good data point."
+        case .highEnergy: return "Let's go!"
+        case .beginnerFriendly: return "Nice and simple."
+        }
+    }
+
+    /// The celebration detail line when a workout is logged.
+    var workoutCompleteDetail: String {
+        switch self {
+        case .supportive: return "Workout logged — another brick in the wall."
+        case .direct: return "Workout logged. On to the next one."
+        case .competitive: return "Workout logged — stay ahead."
+        case .calm: return "Workout logged. Breathe — good work."
+        case .educational: return "Workout logged — every log sharpens your plan."
+        case .highEnergy: return "Workout logged — that's how it's done!"
+        case .beginnerFriendly: return "Workout logged — one clear step at a time."
+        }
+    }
+
+    /// Short lead-in prepended to the daily task-plan note.
+    var planNoteLead: String {
+        switch self {
+        case .supportive: return "You've got this."
+        case .direct: return "No fluff:"
+        case .competitive: return "Scoreboard's watching:"
+        case .calm: return "Steady as ever:"
+        case .educational: return "For context:"
+        case .highEnergy: return "Let's go:"
+        case .beginnerFriendly: return "Keep it simple:"
+        }
+    }
+}
+
 enum ThemePreset: String, CaseIterable, Identifiable {
     case morpheBlackBlue = "Morphe Black/Electric Blue"
     case boxingRedCharcoal = "Boxing Red/Charcoal"
@@ -1091,6 +1157,17 @@ struct NutritionSnapshot: Hashable {
     var meals: [MealLogEntry]
     var quickMeals: [QuickMeal]
     var weeklyProteinTrend: [DayScore]
+}
+
+/// Daily nutrition goal numbers plus where they came from. Computed with
+/// deterministic per-pound math from the user's logged weight and goal —
+/// `sourceNote` says so honestly, and says when the defaults are still
+/// generic starters because no weight was logged.
+struct NutritionTargets: Equatable {
+    var calories: Int
+    var proteinGrams: Int
+    var waterCups: Int
+    var sourceNote: String
 }
 
 struct FriendActivity: Identifiable, Hashable {

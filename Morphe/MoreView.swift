@@ -34,34 +34,39 @@ struct MoreView: View {
         return store.quizzes[dayIndex % store.quizzes.count]
     }
 
+    /// Calories/protein/water come from the store's single source of truth
+    /// (store.nutritionTargets — its sourceNote labels the provenance below
+    /// the list). The goal type only flavors the detail copy and the general
+    /// carb guidance; it no longer hardcodes competing numbers.
     private var nutritionTargets: [(label: String, value: String, detail: String)] {
+        let targets = store.nutritionTargets
         switch store.clientProfile.goal {
         case let goal where goal.localizedCaseInsensitiveContains("weight"):
             return [
-                ("Calories", "2,100", "steady deficit"),
-                ("Protein", "160g", "muscle support"),
+                ("Calories", targets.calories.formatted(), "steady deficit"),
+                ("Protein", "\(targets.proteinGrams)g", "muscle support"),
                 ("Carbs", "190g", "training energy"),
                 ("Vegetables", "4 servings", "recovery + fullness"),
                 ("Dairy", "2 servings", "easy calcium + protein"),
-                ("Water", "8 cups", "daily baseline")
+                ("Water", "\(targets.waterCups) cups", "daily baseline")
             ]
         case let goal where goal.localizedCaseInsensitiveContains("conditioning"):
             return [
-                ("Calories", "2,300", "fuel the work"),
-                ("Protein", "165g", "recovery support"),
+                ("Calories", targets.calories.formatted(), "fuel the work"),
+                ("Protein", "\(targets.proteinGrams)g", "recovery support"),
                 ("Carbs", "240g", "session energy"),
                 ("Vegetables", "4 servings", "micronutrient base"),
                 ("Dairy", "2 servings", "easy add-on"),
-                ("Water", "9 cups", "sweat support")
+                ("Water", "\(targets.waterCups) cups", "sweat support")
             ]
         default:
             return [
-                ("Calories", "\(store.nutrition.calorieGoal)", "daily target"),
-                ("Protein", "\(store.nutrition.proteinGoal)g", "consistency first"),
+                ("Calories", targets.calories.formatted(), "daily target"),
+                ("Protein", "\(targets.proteinGrams)g", "consistency first"),
                 ("Carbs", "220g", "steady energy"),
                 ("Vegetables", "4 servings", "simple habit"),
                 ("Dairy", "2 servings", "optional support"),
-                ("Water", "\(store.nutrition.waterGoal) cups", "hydration baseline")
+                ("Water", "\(targets.waterCups) cups", "hydration baseline")
             ]
         }
     }
@@ -261,10 +266,10 @@ struct MoreView: View {
                     Text("Nutrition Basics")
                         .font(.headline)
                         .foregroundStyle(.white)
-                    // Honest framing: these are general starting points from
-                    // the goal type, not personalized macros. (The old Mode
+                    // Provenance lives in the sourceNote caption under the
+                    // list — this line just sets expectations. (The old Mode
                     // picker wrote a value nothing in the app ever read.)
-                    Text("General starting points for your goal type — not personalized targets. Hit the basics before trying to be perfect.")
+                    Text("Hit the basics before trying to be perfect.")
                         .foregroundStyle(MorpheTheme.textSecondary)
 
                     ForEach(nutritionTargets, id: \.label) { target in
@@ -282,6 +287,30 @@ struct MoreView: View {
                                 .font(.headline)
                                 .foregroundStyle(MorpheTheme.accentAlt)
                         }
+                    }
+
+                    // The honest label for where the numbers come from.
+                    Text(store.nutritionTargets.sourceNote)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let tip = store.mealPrepTip {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "fork.knife")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.accent)
+                            Text(tip)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .fill(MorpheTheme.panelStrong)
+                        )
                     }
                 }
             }

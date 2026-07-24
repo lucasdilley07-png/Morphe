@@ -2527,6 +2527,223 @@ final class ProgressionTests: XCTestCase {
     }
 }
 
+/// Tier-2 personalization engine: sport-aware plan ranking, injury-aware
+/// ordering, nutrition targets from the user's own logged weight, top-set RPE
+/// driving progression, and the equipment/goal editors the Profile UI calls.
+@MainActor
+final class PersonalizationEngineTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    override func tearDown() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        super.tearDown()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    private func template(name: String, sport: SportFocus, exercises: [String] = [],
+                          focusTag: String = "Full Body", equipment: String = "Bodyweight") -> WorkoutTemplate {
+        WorkoutTemplate(
+            name: name, type: "Strength", sport: sport, goal: "Test",
+            difficulty: .moderate, durationMinutes: 30, equipment: equipment,
+            focusTag: focusTag,
+            exercises: exercises.map {
+                WorkoutExercise(id: $0.lowercased(), exerciseLibraryID: "", name: $0,
+                                muscleGroup: .legs, sets: "3", reps: "10",
+                                difficulty: .moderate, formCue: "")
+            },
+            notes: "", coachNote: ""
+        )
+    }
+
+    // MARK: Sport-aware ranking
+
+    func testSportMatchRanksAheadOfOtherwiseEqualMismatch() {
+        // "A ..." would win on the name tiebreak — only the sport preference
+        // can put the boxing template first for a boxing user.
+        let mismatch = template(name: "A Runner Builder", sport: .running)
+        let match = template(name: "B Boxing Builder", sport: .boxing)
+
+        let ranked = MorpheAppStore.rankedPlanCandidates(
+            [mismatch, match], sport: .boxing, equipmentOrder: ["Bodyweight"], flaggedAreas: []
+        )
+        XCTAssertEqual(ranked.first?.name, "B Boxing Builder",
+                       "a matching-sport template outranks an otherwise-equal mismatch")
+
+        // Soft preference, never a filter: the mismatch is still in the pool.
+        XCTAssertEqual(ranked.count, 2, "sport mismatches are down-ranked, not excluded")
+    }
+
+    // MARK: Injury-aware ordering
+
+    func testFlaggedAreasParsesInjuryNote() {
+        XCTAssertEqual(MorpheAppStore.flaggedAreas(from: "knee pain after squats"), ["knee"])
+        XCTAssertEqual(MorpheAppStore.flaggedAreas(from: "Shoulder + lower back issues"), ["shoulder", "back"])
+        XCTAssertTrue(MorpheAppStore.flaggedAreas(from: "").isEmpty)
+        XCTAssertTrue(MorpheAppStore.flaggedAreas(from: "none").isEmpty)
+    }
+
+    func testKneeFlagDownRanksSquatHeavyTemplateWithoutExcludingIt() {
+        let kneeHeavy = template(name: "A Squat Blast", sport: .generalFitness,
+                                 exercises: ["Back Squat", "Walking Lunge", "Jump Squat"], focusTag: "Legs")
+        let kneeFriendly = template(name: "Z Upper Builder", sport: .generalFitness,
+                                    exercises: ["Bench Press Machine Row", "Curl"], focusTag: "Pull")
+        let areas = MorpheAppStore.flaggedAreas(from: "knee pain after squats")
+
+        XCTAssertGreaterThan(MorpheAppStore.injuryPenalty(for: kneeHeavy, areas: areas), 0)
+        XCTAssertEqual(MorpheAppStore.injuryPenalty(for: kneeHeavy, areas: []), 0,
+                       "no flagged areas, no penalty")
+
+        let ranked = MorpheAppStore.rankedPlanCandidates(
+            [kneeHeavy, kneeFriendly], sport: .generalFitness,
+            equipmentOrder: ["Bodyweight"], flaggedAreas: areas
+        )
+        XCTAssertEqual(ranked.first?.name, "Z Upper Builder",
+                       "knee-loading work moves behind safer options")
+        XCTAssertEqual(ranked.count, 2, "flagged workouts are re-ordered, never removed")
+    }
+
+    // MARK: Nutrition targets from real data
+
+    func testNutritionTargetsFromLoggedWeightAndFatLossGoal() {
+        let store = freshStore()
+        store.clientProfile.selectedGoals = ["Lose weight"]
+        store.clientProfile.goal = "Lose weight"
+        store.updateBodyMetrics(height: "", weight: "170 lb")
+
+        let targets = store.nutritionTargets
+        XCTAssertEqual(targets.calories, 2200, "170 lb x 13 (fat loss), rounded to 50")
+        XCTAssertEqual(targets.proteinGrams, 145, "170 lb x 0.85 g/lb, rounded to 5")
+        XCTAssertEqual(targets.waterCups, 9, "170 / 20, clamped 8...16")
+        XCTAssertTrue(targets.sourceNote.contains("170 lb"),
+                      "the note cites the real logged weight — got \(targets.sourceNote)")
+
+        // The nutrition card's goal numbers follow the computed targets.
+        XCTAssertEqual(store.nutrition.calorieGoal, 2200)
+        XCTAssertEqual(store.nutrition.proteinGoal, 145)
+        XCTAssertEqual(store.nutrition.waterGoal, 9)
+    }
+
+    func testNutritionTargetsFallBackToLabeledStartersWithoutWeight() {
+        let store = freshStore()
+        let targets = store.nutritionTargets
+        XCTAssertEqual(targets.calories, 2200)
+        XCTAssertEqual(targets.proteinGrams, 160)
+        XCTAssertEqual(targets.waterCups, 8)
+        XCTAssertTrue(targets.sourceNote.contains("Starter targets"),
+                      "defaults must be labeled as starters, not passed off as personalized")
+    }
+
+    func testBodyWeightParsingHandlesKilograms() {
+        let parsed = MorpheAppStore.parsedBodyWeightLb("77 kg")
+        XCTAssertEqual(parsed ?? 0, 169.76, accuracy: 0.1)
+        XCTAssertEqual(MorpheAppStore.parsedBodyWeightLb("170"), 170)
+        XCTAssertNil(MorpheAppStore.parsedBodyWeightLb("soon"), "words are not a weight")
+        XCTAssertNil(MorpheAppStore.parsedBodyWeightLb("9999 lb"), "implausible values fall back")
+    }
+
+    func testMealPrepTipReflectsHabitAndInterest() {
+        let store = freshStore()
+        store.clientProfile.mealPrepHabit = ""
+        XCTAssertNil(store.mealPrepTip, "never asked = no tip")
+
+        store.clientProfile.mealPrepHabit = MealPrepOption.never.rawValue
+        store.clientProfile.mealPrepInterested = false
+        XCTAssertNil(store.mealPrepTip, "not interested = no unsolicited prep sermon")
+
+        store.clientProfile.mealPrepInterested = true
+        XCTAssertTrue(store.mealPrepTip?.contains("one prepped breakfast") ?? false)
+
+        store.clientProfile.mealPrepHabit = MealPrepOption.weekly.rawValue
+        XCTAssertTrue(store.mealPrepTip?.contains("already prep") ?? false)
+    }
+
+    // MARK: Top-set RPE drives progression
+
+    func testTopSetRPESixTriggersTooEasyStyleBump() {
+        let store = freshStore()
+        store.startTodayWorkout()
+        let exercise = store.activeWorkoutExercise!
+        store.completeTrackedSet(reps: 8, weight: 100, rpe: 6)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        // Session rated "just right" — only the per-set RPE says there was
+        // room, and that alone must drive the bump.
+        store.submitWorkoutFeedback(.justRight)
+        store.logWorkout()
+
+        XCTAssertEqual(store.suggestedWorkingWeight(for: exercise), 105,
+                       "top set at RPE 6 suggests the same +5 lb as a too-easy rating")
+        XCTAssertTrue(store.progressionNote(for: exercise)?.contains("RPE 6") ?? false,
+                      "the note cites the real RPE — got \(store.progressionNote(for: exercise) ?? "nil")")
+    }
+
+    func testTopSetRPETenSuggestsHolding() {
+        let store = freshStore()
+        store.startTodayWorkout()
+        let exercise = store.activeWorkoutExercise!
+        store.completeTrackedSet(reps: 8, weight: 100, rpe: 10)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        store.submitWorkoutFeedback(.justRight)
+        store.logWorkout()
+
+        XCTAssertEqual(store.suggestedWorkingWeight(for: exercise), 100, "RPE 10 never loads further")
+        XCTAssertTrue(store.progressionNote(for: exercise)?.lowercased().contains("holding") ?? false)
+    }
+
+    func testUnratedRPEChangesNothing() {
+        let store = freshStore()
+        store.startTodayWorkout()
+        let exercise = store.activeWorkoutExercise!
+        store.completeTrackedSet(reps: 8, weight: 100) // rpe defaults to unrated
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        store.submitWorkoutFeedback(.justRight)
+        store.logWorkout()
+
+        XCTAssertEqual(store.suggestedWorkingWeight(for: exercise), 100)
+        XCTAssertNil(store.progressionNote(for: exercise), "no rating is not a signal")
+    }
+
+    // MARK: Equipment + goal editors (the contract ProfileView calls)
+
+    func testUpdateEquipmentChangesProfileAndPersists() {
+        let store = freshStore()
+        store.updateEquipment("  Pull-up bar ")
+        XCTAssertEqual(store.clientProfile.equipment, "Pull-up bar")
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.equipment, "Pull-up bar",
+                       "the equipment edit survives relaunch")
+        XCTAssertFalse(reloaded.personalizedPlanIDs.isEmpty, "the plan rebuilt around it")
+    }
+
+    func testUpdateGoalTargetsTrimsCapsAndPersists() {
+        let store = freshStore()
+        store.updateGoalTargets(
+            physical: "  Visible abs ",
+            weight: String(repeating: "9", count: 200),
+            deadline: "12 weeks"
+        )
+        XCTAssertEqual(store.clientProfile.physicalGoalTarget, "Visible abs")
+        XCTAssertEqual(store.clientProfile.weightGoalTarget.count, 120, "capped at 120 chars")
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.goalDeadline, "12 weeks")
+        XCTAssertEqual(reloaded.clientProfile.physicalGoalTarget, "Visible abs",
+                       "goal targets survive relaunch")
+    }
+}
+
 /// The press-and-hold stepper ramps to ~4x after 2 seconds held.
 final class HoldRepeaterTests: XCTestCase {
     func testCadenceRampsAfterTwoSeconds() {

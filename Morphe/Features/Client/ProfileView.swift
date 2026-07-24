@@ -11,6 +11,10 @@ struct ProfileView: View {
     @State private var usernameDraft = ""
     @State private var isEditingBio = false
     @State private var bioDraft = ""
+    @State private var isEditingTargets = false
+    @State private var physicalTargetDraft = ""
+    @State private var weightTargetDraft = ""
+    @State private var deadlineTargetDraft = ""
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var showVerificationCamera = false
     @State private var heightDraft = ""
@@ -42,6 +46,7 @@ struct ProfileView: View {
                 } else {
                     AthleteProfileBody(store: store)
                     detailsCard
+                    targetsCard
                 }
                 settingsCard
                 if !isCoach {
@@ -122,7 +127,16 @@ struct ProfileView: View {
            bioDraft.trimmingCharacters(in: .whitespacesAndNewlines) != store.profileCustomBio {
             return true
         }
+        if isEditingTargets, targetsChanged {
+            return true
+        }
         return false
+    }
+
+    private var targetsChanged: Bool {
+        physicalTargetDraft.trimmingCharacters(in: .whitespacesAndNewlines) != store.clientProfile.physicalGoalTarget
+            || weightTargetDraft.trimmingCharacters(in: .whitespacesAndNewlines) != store.clientProfile.weightGoalTarget
+            || deadlineTargetDraft.trimmingCharacters(in: .whitespacesAndNewlines) != store.clientProfile.goalDeadline
     }
 
     private func saveAllEdits() {
@@ -133,6 +147,7 @@ struct ProfileView: View {
             isEditingInjuries = false
         }
         if isEditingBio { saveBio() }
+        if isEditingTargets { saveTargets() }
         if bodyMetricsChanged {
             store.updateBodyMetrics(height: heightDraft, weight: weightDraft)
         }
@@ -143,6 +158,7 @@ struct ProfileView: View {
         isEditingUsername = false
         isEditingInjuries = false
         isEditingBio = false
+        isEditingTargets = false
         heightDraft = store.clientProfile.height
         weightDraft = store.clientProfile.bodyWeight
     }
@@ -205,6 +221,22 @@ struct ProfileView: View {
                 Divider().overlay(Color.white.opacity(0.08))
 
                 VStack(alignment: .leading, spacing: 8) {
+                    Text("Equipment")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
+                        ForEach(MorpheAppStore.equipmentOptions, id: \.self) { option in
+                            Button(option) {
+                                toggleEquipment(option)
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: selectedEquipment.contains(option)))
+                        }
+                    }
+                }
+
+                Divider().overlay(Color.white.opacity(0.08))
+
+                VStack(alignment: .leading, spacing: 8) {
                     Text("Body")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textMuted)
@@ -223,6 +255,105 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+
+    /// Same comma-joined format onboarding writes, split back into a set.
+    private var selectedEquipment: Set<String> {
+        Set(store.clientProfile.equipment
+            .components(separatedBy: ", ")
+            .filter { !$0.isEmpty })
+    }
+
+    /// Instant-commit like the other chip sections — re-joined in canonical
+    /// option order so the stored string reads cleanly everywhere.
+    private func toggleEquipment(_ option: String) {
+        var current = selectedEquipment
+        if current.contains(option) {
+            current.remove(option)
+        } else {
+            current.insert(option)
+        }
+        store.updateEquipment(
+            MorpheAppStore.equipmentOptions
+                .filter { current.contains($0) }
+                .joined(separator: ", ")
+        )
+    }
+
+    /// The 30/60/90-day targets captured in onboarding, editable in place.
+    /// Drafts ride the sheet's save/discard guard so a swipe-down can't eat
+    /// half-typed goals.
+    private var targetsCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Your Targets")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                if isEditingTargets {
+                    VStack(alignment: .leading, spacing: 10) {
+                        targetField("30-day", placeholder: "Your 30-day goal", text: $physicalTargetDraft)
+                        targetField("60-day", placeholder: "Your 60-day goal", text: $weightTargetDraft)
+                        targetField("90-day", placeholder: "Your 90-day goal", text: $deadlineTargetDraft)
+                        HStack(spacing: 12) {
+                            Button("Save") { saveTargets() }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.accent)
+                                .accessibilityLabel("Save targets")
+                            Button("Cancel") { isEditingTargets = false }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .accessibilityLabel("Cancel target edits")
+                            Spacer()
+                        }
+                    }
+                } else {
+                    targetRow("30-day", value: store.clientProfile.physicalGoalTarget)
+                    targetRow("60-day", value: store.clientProfile.weightGoalTarget)
+                    targetRow("90-day", value: store.clientProfile.goalDeadline)
+                    Button("Edit Targets") {
+                        physicalTargetDraft = store.clientProfile.physicalGoalTarget
+                        weightTargetDraft = store.clientProfile.weightGoalTarget
+                        deadlineTargetDraft = store.clientProfile.goalDeadline
+                        isEditingTargets = true
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentAlt)
+                }
+            }
+        }
+    }
+
+    private func targetRow(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textMuted)
+            Text(value.isEmpty ? "Not set" : value)
+                .foregroundStyle(value.isEmpty ? MorpheTheme.textMuted : .white)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func targetField(_ label: String, placeholder: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textMuted)
+            TextField(placeholder, text: text, axis: .vertical)
+                .textFieldStyle(MorpheFieldStyle())
+                .lineLimit(1...4)
+        }
+    }
+
+    private func saveTargets() {
+        store.updateGoalTargets(
+            physical: physicalTargetDraft,
+            weight: weightTargetDraft,
+            deadline: deadlineTargetDraft
+        )
+        isEditingTargets = false
     }
 
     /// XP readout at the bottom of the page. Levels climb a decade curve:
