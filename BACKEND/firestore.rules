@@ -72,6 +72,13 @@ service cloud.firestore {
       match /savedPosts/{postId} {
         allow read, write: if isOwner(uid);
       }
+
+      // Follow graph — one doc per followed account ({ createdAt }).
+      // Owner-only on purpose: who you follow is your business, and honest
+      // follower COUNTS wait for a server aggregation nobody can forge.
+      match /following/{targetUid} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // Username uniqueness map. Readable by all (to check availability at
@@ -366,7 +373,8 @@ service cloud.firestore {
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.keys().hasOnly(
              ['authorUid', 'authorName', 'verified', 'text', 'workoutName',
-              'repostOfId', 'repostOfAuthor', 'createdAt'])
+              'repostOfId', 'repostOfAuthor', 'createdAt',
+              'durationMinutes', 'setCount', 'exerciseCount', 'prNames'])
         && request.resource.data.authorName is string
         && request.resource.data.authorName.size() >= 1
         && request.resource.data.text is string
@@ -380,6 +388,25 @@ service cloud.firestore {
         && (!('repostOfAuthor' in request.resource.data)
             || (request.resource.data.repostOfAuthor is string
                 && request.resource.data.repostOfAuthor.size() <= 60))
+        // Structured session stats (auto-share workout cards) — optional,
+        // bounded ints and at most 3 PR names. Bounds are sanity caps, not
+        // proof of honesty; proof comes from the linked coach relationship,
+        // never from a feed post.
+        && (!('durationMinutes' in request.resource.data)
+            || (request.resource.data.durationMinutes is int
+                && request.resource.data.durationMinutes >= 0
+                && request.resource.data.durationMinutes <= 1440))
+        && (!('setCount' in request.resource.data)
+            || (request.resource.data.setCount is int
+                && request.resource.data.setCount >= 0
+                && request.resource.data.setCount <= 500))
+        && (!('exerciseCount' in request.resource.data)
+            || (request.resource.data.exerciseCount is int
+                && request.resource.data.exerciseCount >= 0
+                && request.resource.data.exerciseCount <= 100))
+        && (!('prNames' in request.resource.data)
+            || (request.resource.data.prNames is list
+                && request.resource.data.prNames.size() <= 3))
         && (request.resource.data.get('verified', false) != true
             || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('verified', false) == true);
 
@@ -387,16 +414,38 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isSignedIn() && request.auth.uid == resource.data.authorUid;
 
-      // Reactions: one doc per user per post ({ value: true, createdAt }) —
-      // the doc id IS the reactor's uid, so real counts come from counting
-      // docs and nobody can inflate a post beyond their single reaction.
+      // Reactions: one doc per user per post ({ value: true, type?,
+      // createdAt }) — the doc id IS the reactor's uid, so real counts come
+      // from counting docs and nobody can inflate a post beyond their single
+      // reaction. Update is allowed (same shape) so changing the reaction
+      // TYPE rewrites the same doc without moving the count.
       match /reactions/{uid} {
         allow read: if isSignedIn();
-        allow create: if isOwner(uid)
-          && request.resource.data.keys().hasOnly(['value', 'createdAt'])
-          && request.resource.data.value == true;
-        allow update: if false;
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['value', 'createdAt', 'type'])
+          && request.resource.data.value == true
+          && (!('type' in request.resource.data)
+              || request.resource.data.type in ['heart', 'fire', 'power', 'clap']);
         allow delete: if isOwner(uid);
+      }
+
+      // Comments: one doc per comment, immutable once posted (same
+      // "published means published" rule as posts); only the comment's
+      // author deletes it. No counters anywhere — counts come from reading
+      // the docs themselves.
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn()
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.keys().hasOnly(
+               ['authorUid', 'authorName', 'text', 'createdAt'])
+          && request.resource.data.authorName is string
+          && request.resource.data.authorName.size() >= 1
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1
+          && request.resource.data.text.size() <= 300;
+        allow update: if false;
+        allow delete: if isSignedIn() && request.auth.uid == resource.data.authorUid;
       }
     }
 

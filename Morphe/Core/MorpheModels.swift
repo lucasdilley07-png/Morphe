@@ -2059,8 +2059,40 @@ struct FeedPost: Identifiable, Hashable {
     var repostOfId: String = ""
     var repostOfAuthor: String = ""
     var createdAt: Date = .now
+    /// Structured session stats — filled by auto-share from the real logged
+    /// session, nil/empty on plain text posts. Rendered as a rich workout
+    /// card; every number is a logged fact, never typed in.
+    var durationMinutes: Int?
+    var setCount: Int?
+    var exerciseCount: Int?
+    /// Exercise names that set a PR in this session (max 3 ride the post).
+    var prNames: [String] = []
 
     var isRepost: Bool { !repostOfId.isEmpty }
+    var hasSessionStats: Bool {
+        durationMinutes != nil || setCount != nil || exerciseCount != nil
+    }
+}
+
+/// One comment on a real feed post — posts/{postId}/comments/{id}. Fetched
+/// on expand; counts come from the fetched docs themselves (no forgeable
+/// denormalized counters anywhere).
+struct PostComment: Identifiable, Hashable {
+    var id: String
+    var postId: String
+    var authorUid: String
+    var authorName: String
+    var text: String
+    var createdAt: Date = .now
+}
+
+/// One row of the Find Athletes username search — a directory hit, nothing
+/// more (profiles stay private until people choose to post).
+struct AthleteSearchResult: Identifiable, Hashable {
+    var username: String
+    var uid: String
+
+    var id: String { uid }
 }
 
 struct CoachClient: Identifiable, Hashable {

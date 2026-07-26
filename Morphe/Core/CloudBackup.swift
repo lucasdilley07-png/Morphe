@@ -462,9 +462,13 @@ final class FirebaseMessagingService: MessagingSyncing {
 // Firestore layout (posts rules in BACKEND/firestore.rules):
 //   posts/{postId}                  { authorUid, authorName, verified, text,
 //                                     workoutName?, repostOfId?,
-//                                     repostOfAuthor?, createdAt }
-//   posts/{postId}/reactions/{uid}  { value: true, createdAt }
+//                                     repostOfAuthor?, durationMinutes?,
+//                                     setCount?, exerciseCount?, prNames?,
+//                                     createdAt }
+//   posts/{postId}/reactions/{uid}  { value: true, type?, createdAt }
+//   posts/{postId}/comments/{id}    { authorUid, authorName, text, createdAt }
 //   users/{uid}/savedPosts/{postId} { savedAt }
+//   users/{uid}/following/{target}  { createdAt }
 
 /// Abstraction so tests/previews run without Firebase; the real app resolves
 /// `FirebaseFeedService` (inferred alongside the party service).
@@ -473,15 +477,27 @@ protocol FeedSyncing: AnyObject {
     func publish(post: FeedPost) async -> Bool
     /// Newest posts first, or nil when offline/unavailable.
     func fetchRecent(limit: Int) async -> [FeedPost]?
-    /// Adds (on) or removes (off) this uid's single reaction doc.
-    func react(postId: String, uid: String, on: Bool)
+    /// Writes this uid's single reaction doc with `type` ("heart"/"fire"/
+    /// "power"/"clap"), or removes it when type is nil. Still one doc per
+    /// uid, so counts stay honest whatever the type.
+    func react(postId: String, uid: String, type: String?)
     /// Real reaction counts via server-side count() aggregation. Posts whose
     /// count couldn't be fetched are simply absent from the result.
     func fetchReactionCounts(postIds: [String]) async -> [String: Int]
+    /// Oldest-first comments for one post, or nil when offline/unavailable.
+    func fetchComments(postId: String, limit: Int) async -> [PostComment]?
+    /// Publishes one comment exactly as given (id = doc id). False on failure.
+    func addComment(_ comment: PostComment) async -> Bool
+    /// Removes one comment (rules enforce author-only).
+    func deleteComment(postId: String, commentId: String)
     /// Adds (on) or removes (off) a bookmark under the owner.
     func savePost(uid: String, postId: String, on: Bool)
     /// Every post id this user saved, or nil when offline/unavailable.
     func fetchSavedPostIds(uid: String) async -> Set<String>?
+    /// Adds (on) or removes (off) one follow edge under the owner.
+    func setFollow(uid: String, targetUid: String, on: Bool)
+    /// Every uid this user follows, or nil when offline/unavailable.
+    func fetchFollowing(uid: String) async -> Set<String>?
     /// Removes one post (rules enforce author-only).
     func delete(postId: String)
 }
@@ -489,10 +505,15 @@ protocol FeedSyncing: AnyObject {
 final class NoOpFeedService: FeedSyncing {
     func publish(post: FeedPost) async -> Bool { false }
     func fetchRecent(limit: Int) async -> [FeedPost]? { nil }
-    func react(postId: String, uid: String, on: Bool) {}
+    func react(postId: String, uid: String, type: String?) {}
     func fetchReactionCounts(postIds: [String]) async -> [String: Int] { [:] }
+    func fetchComments(postId: String, limit: Int) async -> [PostComment]? { nil }
+    func addComment(_ comment: PostComment) async -> Bool { false }
+    func deleteComment(postId: String, commentId: String) {}
     func savePost(uid: String, postId: String, on: Bool) {}
     func fetchSavedPostIds(uid: String) async -> Set<String>? { nil }
+    func setFollow(uid: String, targetUid: String, on: Bool) {}
+    func fetchFollowing(uid: String) async -> Set<String>? { nil }
     func delete(postId: String) {}
 }
 
@@ -522,6 +543,12 @@ final class FirebaseFeedService: FeedSyncing {
             data["repostOfId"] = post.repostOfId
             data["repostOfAuthor"] = String(post.repostOfAuthor.prefix(60))
         }
+        // Structured session stats (auto-share). Written only when present so
+        // plain text posts keep the minimal shape.
+        if let minutes = post.durationMinutes { data["durationMinutes"] = minutes }
+        if let sets = post.setCount { data["setCount"] = sets }
+        if let exercises = post.exerciseCount { data["exerciseCount"] = exercises }
+        if !post.prNames.isEmpty { data["prNames"] = Array(post.prNames.prefix(3)) }
         do {
             try await posts.document(post.id).setData(data)
             return true
@@ -539,15 +566,79 @@ final class FirebaseFeedService: FeedSyncing {
         return snapshot.documents.compactMap { Self.post(from: $0.documentID, data: $0.data()) }
     }
 
-    func react(postId: String, uid: String, on: Bool) {
+    func react(postId: String, uid: String, type: String?) {
         // Fire-and-forget like the other services: Firestore queues the write
         // offline and syncs when the network returns.
         let doc = posts.document(postId).collection("reactions").document(uid)
-        if on {
-            doc.setData(["value": true, "createdAt": FieldValue.serverTimestamp()])
+        if let type {
+            doc.setData(["value": true, "type": type, "createdAt": FieldValue.serverTimestamp()])
         } else {
             doc.delete()
         }
+    }
+
+    private func comments(_ postId: String) -> CollectionReference {
+        posts.document(postId).collection("comments")
+    }
+
+    func fetchComments(postId: String, limit: Int) async -> [PostComment]? {
+        guard let snapshot = try? await comments(postId)
+            .order(by: "createdAt", descending: false)
+            .limit(to: limit)
+            .getDocuments()
+        else { return nil }
+        return snapshot.documents.compactMap { document in
+            let data = document.data()
+            guard let authorUid = data["authorUid"] as? String,
+                  let text = data["text"] as? String else { return nil }
+            return PostComment(
+                id: document.documentID,
+                postId: postId,
+                authorUid: authorUid,
+                authorName: data["authorName"] as? String ?? "Athlete",
+                text: text,
+                // Pending serverTimestamp on a just-sent comment: .now keeps
+                // it ordered at the bottom instead of dropped.
+                createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? .now
+            )
+        }
+    }
+
+    func addComment(_ comment: PostComment) async -> Bool {
+        let data: [String: Any] = [
+            "authorUid": comment.authorUid,
+            "authorName": comment.authorName,
+            "text": String(comment.text.prefix(300)),
+            "createdAt": FieldValue.serverTimestamp()
+        ]
+        do {
+            try await comments(comment.postId).document(comment.id).setData(data)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    func deleteComment(postId: String, commentId: String) {
+        comments(postId).document(commentId).delete()
+    }
+
+    private func following(_ uid: String) -> CollectionReference {
+        db.collection("users").document(uid).collection("following")
+    }
+
+    func setFollow(uid: String, targetUid: String, on: Bool) {
+        let doc = following(uid).document(targetUid)
+        if on {
+            doc.setData(["createdAt": FieldValue.serverTimestamp()])
+        } else {
+            doc.delete()
+        }
+    }
+
+    func fetchFollowing(uid: String) async -> Set<String>? {
+        guard let snapshot = try? await following(uid).getDocuments() else { return nil }
+        return Set(snapshot.documents.map(\.documentID))
     }
 
     func fetchReactionCounts(postIds: [String]) async -> [String: Int] {
@@ -596,7 +687,11 @@ final class FirebaseFeedService: FeedSyncing {
             repostOfAuthor: data["repostOfAuthor"] as? String ?? "",
             // A just-published post's serverTimestamp is still pending in the
             // local cache — .now keeps it at the top instead of dropped.
-            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? .now
+            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? .now,
+            durationMinutes: data["durationMinutes"] as? Int,
+            setCount: data["setCount"] as? Int,
+            exerciseCount: data["exerciseCount"] as? Int,
+            prNames: data["prNames"] as? [String] ?? []
         )
     }
 }

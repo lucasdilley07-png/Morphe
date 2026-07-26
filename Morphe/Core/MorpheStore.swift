@@ -385,6 +385,18 @@ final class MorpheAppStore {
     /// simple on purpose: no per-post own-reaction fetch; the server doc is
     /// still one-per-uid, so honesty holds regardless).
     var myReactedPostIds: Set<String> = []
+    /// Which reaction type ("heart"/"fire"/"power"/"clap") this session
+    /// picked per post — presence in `myReactedPostIds` is the truth of
+    /// "reacted"; this only remembers which flavor.
+    var myReactionTypes: [String: String] = [:]
+    /// Comments per post id, fetched on expand. A MISSING key means "not
+    /// fetched yet", never "zero comments" — the UI must not fake a count.
+    var postComments: [String: [PostComment]] = [:]
+    /// Uids this account follows (users/{uid}/following mirror) — loaded
+    /// with the feed, drives the Following filter.
+    var followedUids: Set<String> = []
+    /// Find Athletes search hits (username directory prefix scan).
+    var athleteSearchResults: [AthleteSearchResult] = []
     /// The user's REAL personal schedule (kept sorted by date). Lives in
     /// memory + the Firestore offline cache only — deliberately no file
     /// persistence: each appointment is its own users/{uid}/appointments doc,
@@ -2498,6 +2510,8 @@ final class MorpheAppStore {
         if !snapshot.challengeCodes.isEmpty {
             Task { await refreshChallenges() }
         }
+        // Keep the Monday "new week" reminder in sync with the restored opt-in.
+        refreshWeeklyBoardReminder()
     }
 
     private func persistCompetitionState() {
@@ -2596,6 +2610,7 @@ final class MorpheAppStore {
         leaderboardOptIn = true
         postWeeklyBoardScore()
         Task { await refreshLeaderboard() }
+        refreshWeeklyBoardReminder()
         showToast("You're on this week's board.")
     }
 
@@ -2605,7 +2620,34 @@ final class MorpheAppStore {
     func leaveWeeklyBoard() {
         leaderboardOptIn = false
         weeklyLeaderboardSelfEntry = nil
+        refreshWeeklyBoardReminder()
         showToast("Left the board. This week's posted entry stays until Monday.")
+    }
+
+    /// The Monday-morning "new week" moment: one repeating local
+    /// notification, alive only while the user is opted into the board.
+    /// The board reset itself is server truth (ISO week keys) — this only
+    /// tells the user the moment happened.
+    private static let weeklyBoardNotificationID = "morphe.board.week"
+
+    private func refreshWeeklyBoardReminder() {
+        guard appointmentRemindersEnabled else { return }
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.weeklyBoardNotificationID])
+        guard leaderboardOptIn else { return }
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "New week on the board"
+            content.body = "The weekly leaderboard reset — every set you log counts from zero."
+            content.sound = .default
+            var components = DateComponents()
+            components.weekday = 2   // Monday, matching the board's ISO week anchor
+            components.hour = 9
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            center.add(UNNotificationRequest(
+                identifier: Self.weeklyBoardNotificationID, content: content, trigger: trigger))
+        }
     }
 
     /// Pulls the top of this week's board, plus the user's own entry (which
@@ -5362,10 +5404,26 @@ final class MorpheAppStore {
         // Auto-share: one honest recap post per finished session — global
         // opt-in (Profile), per-session opt-out (the toggle above Log
         // Workout). Quiet path: a failed publish never blocks the log.
+        // Structured stats ride along so the feed renders a real workout
+        // card; party buddies are named so a shared session shares SHARED.
         if autoShareWorkoutsEnabled, shareCompletedSessionToFeed, authUser != nil {
-            let text = completedSessionPostText(exercises: loggedExercises, newPRs: newPRs)
+            let buddyNames = activeParty != nil ? partyBuddies.map(\.name) : []
+            let text = completedSessionPostText(exercises: loggedExercises, newPRs: newPRs, buddies: buddyNames)
             let workoutName = currentWorkout.name
-            Task { await publishToRealFeed(text: text, workoutName: workoutName) }
+            let sharedSetCount = loggedExercises.reduce(0) { $0 + ($1.repsPerSet?.count ?? 0) }
+            let sharedMinutes = completedSessionMinutes ?? currentWorkout.durationMinutes
+            let sharedExerciseCount = loggedExercises.count
+            let sharedPRNames = newPRs.prefix(3).map(\.name)
+            Task {
+                await publishToRealFeed(
+                    text: text,
+                    workoutName: workoutName,
+                    durationMinutes: sharedMinutes > 0 ? sharedMinutes : nil,
+                    setCount: sharedSetCount > 0 ? sharedSetCount : nil,
+                    exerciseCount: sharedExerciseCount > 0 ? sharedExerciseCount : nil,
+                    prNames: Array(sharedPRNames)
+                )
+            }
         }
 
         isWorkoutSessionActive = false
@@ -6977,13 +7035,90 @@ final class MorpheAppStore {
         if let saved = await feedService.fetchSavedPostIds(uid: uid) {
             savedPostIds = saved
         }
+        if let following = await feedService.fetchFollowing(uid: uid) {
+            followedUids = following
+        }
+    }
+
+    // MARK: Follow graph + user discovery
+
+    func isFollowing(_ uid: String) -> Bool {
+        followedUids.contains(uid)
+    }
+
+    /// Follows/unfollows one account. Optimistic like reactions — the write
+    /// queues offline and the owner-only doc can't lie about anyone else.
+    func toggleFollow(uid targetUid: String, name: String) {
+        guard let uid = authUser?.id, targetUid != uid else { return }
+        let on = !followedUids.contains(targetUid)
+        if on {
+            followedUids.insert(targetUid)
+        } else {
+            followedUids.remove(targetUid)
+        }
+        feedService.setFollow(uid: uid, targetUid: targetUid, on: on)
+        if on { Haptics.impact(.light) }
+        showToast(on ? "Following \(name)." : "Unfollowed \(name).")
+    }
+
+    /// Username prefix search (2+ chars). Results exclude this account —
+    /// following yourself is noise.
+    func searchAthletes(query: String) async {
+        let clean = UsernameRules.normalize(query)
+        guard clean.count >= 2 else {
+            athleteSearchResults = []
+            return
+        }
+        let hits = await usernameDirectory.search(prefix: clean, limit: 10)
+        athleteSearchResults = hits
+            .filter { $0.uid != authUser?.id }
+            .map { AthleteSearchResult(username: $0.username, uid: $0.uid) }
+    }
+
+    // MARK: Comments
+
+    /// Fetches one post's comments (on expand). Nil result (offline) keeps
+    /// whatever is local rather than blanking the thread.
+    func loadComments(for post: FeedPost) async {
+        guard isRealFeedActive else { return }
+        if let fetched = await feedService.fetchComments(postId: post.id, limit: 100) {
+            postComments[post.id] = fetched
+        }
+    }
+
+    func addComment(to post: FeedPost, text: String) async {
+        guard let uid = authUser?.id else { return }
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        let comment = PostComment(
+            id: UUID().uuidString,
+            postId: post.id,
+            authorUid: uid,
+            authorName: feedAuthorName,
+            text: String(clean.prefix(300))
+        )
+        guard await feedService.addComment(comment) else {
+            showToast("Comment didn't send — check your connection.")
+            return
+        }
+        postComments[post.id, default: []].append(comment)
+        Haptics.impact(.light)
+    }
+
+    func deleteMyComment(_ comment: PostComment) {
+        guard comment.authorUid == authUser?.id else { return }
+        feedService.deleteComment(postId: comment.postId, commentId: comment.id)
+        postComments[comment.postId]?.removeAll { $0.id == comment.id }
+        showToast("Comment deleted.")
     }
 
     /// Publishes one post to the real feed and inserts it locally on success.
     /// Quiet core shared by the composer and the share-a-win rewire below.
     @discardableResult
     private func publishToRealFeed(text: String, workoutName: String = "",
-                                   repostOfId: String = "", repostOfAuthor: String = "") async -> Bool {
+                                   repostOfId: String = "", repostOfAuthor: String = "",
+                                   durationMinutes: Int? = nil, setCount: Int? = nil,
+                                   exerciseCount: Int? = nil, prNames: [String] = []) async -> Bool {
         guard let uid = authUser?.id else { return false }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return false }
@@ -6996,7 +7131,11 @@ final class MorpheAppStore {
             text: String(clean.prefix(1000)),
             workoutName: String(workoutName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80)),
             repostOfId: repostOfId,
-            repostOfAuthor: String(repostOfAuthor.prefix(60))
+            repostOfAuthor: String(repostOfAuthor.prefix(60)),
+            durationMinutes: durationMinutes,
+            setCount: setCount,
+            exerciseCount: exerciseCount,
+            prNames: Array(prNames.prefix(3))
         )
         guard await feedService.publish(post: post) else { return false }
         feedPosts.insert(post, at: 0)
@@ -7009,7 +7148,8 @@ final class MorpheAppStore {
     /// applause, no adjectives the data can't back.
     private func completedSessionPostText(
         exercises: [LoggedExercise],
-        newPRs: [(name: String, weight: Double, previous: Double)]
+        newPRs: [(name: String, weight: Double, previous: Double)],
+        buddies: [String] = []
     ) -> String {
         let setCount = exercises.reduce(0) { $0 + ($1.repsPerSet?.count ?? 0) }
         let minutes = completedSessionMinutes ?? currentWorkout.durationMinutes
@@ -7020,6 +7160,9 @@ final class MorpheAppStore {
         var text = "Completed \(currentWorkout.name)"
         if !facts.isEmpty { text += " — " + facts.joined(separator: ", ") }
         text += "."
+        if !buddies.isEmpty {
+            text += " Trained with \(buddies.joined(separator: ", "))."
+        }
         for pr in newPRs.prefix(3) {
             text += " New PR: \(pr.name) \(weightUnit.format(pr.weight))."
         }
@@ -7036,20 +7179,42 @@ final class MorpheAppStore {
         showCelebration(title: "Post shared", detail: "Your win is live on the feed.", symbol: "bubble.left.and.exclamationmark.bubble.right.fill")
     }
 
-    /// Toggles this account's single reaction on a post. The count updates
-    /// optimistically; the server doc is one-per-uid so nobody can inflate
-    /// a post beyond 1 either way.
+    /// Reaction types the picker offers, with their SF Symbols.
+    static let reactionTypes: [(type: String, symbol: String, label: String)] = [
+        ("heart", "heart.fill", "Heart"),
+        ("fire", "flame.fill", "Fire"),
+        ("power", "bolt.fill", "Power"),
+        ("clap", "hands.clap.fill", "Clap")
+    ]
+
+    /// Toggles this account's single reaction on a post (default heart). The
+    /// count updates optimistically; the server doc is one-per-uid so nobody
+    /// can inflate a post beyond 1 either way.
     func toggleReaction(_ post: FeedPost) {
+        react(to: post, type: myReactedPostIds.contains(post.id) ? nil : "heart")
+    }
+
+    /// Sets this account's reaction to `type`, or removes it when nil.
+    /// Changing type on an existing reaction rewrites the SAME one-per-uid
+    /// doc — the count never moves, only the flavor.
+    func react(to post: FeedPost, type: String?) {
         guard let uid = authUser?.id else { return }
-        let on = !myReactedPostIds.contains(post.id)
-        if on {
-            myReactedPostIds.insert(post.id)
+        let wasOn = myReactedPostIds.contains(post.id)
+        if let type {
+            if !wasOn {
+                myReactedPostIds.insert(post.id)
+                feedReactionCounts[post.id] = (feedReactionCounts[post.id] ?? 0) + 1
+            }
+            myReactionTypes[post.id] = type
+            feedService.react(postId: post.id, uid: uid, type: type)
+            Haptics.impact(.light)
         } else {
+            guard wasOn else { return }
             myReactedPostIds.remove(post.id)
+            myReactionTypes.removeValue(forKey: post.id)
+            feedReactionCounts[post.id] = max(0, (feedReactionCounts[post.id] ?? 0) - 1)
+            feedService.react(postId: post.id, uid: uid, type: nil)
         }
-        feedReactionCounts[post.id] = max(0, (feedReactionCounts[post.id] ?? 0) + (on ? 1 : -1))
-        feedService.react(postId: post.id, uid: uid, on: on)
-        if on { Haptics.impact(.light) }
     }
 
     /// Toggles a private bookmark (users/{uid}/savedPosts/{postId}).

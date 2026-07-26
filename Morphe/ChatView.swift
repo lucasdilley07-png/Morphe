@@ -1337,15 +1337,27 @@ private let feedVerifiedSealBlue = Color(red: 0.25, green: 0.56, blue: 0.96)
 private struct RealFeedSection: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var draft = ""
-    @State private var showSavedOnly = false
+    @State private var filter: FeedFilter = .all
     @State private var repostTarget: FeedPost?
+    @State private var athleteQuery = ""
+
+    private enum FeedFilter: String, CaseIterable {
+        case all = "All"
+        case following = "Following"
+        case saved = "Saved"
+    }
 
     private static let postLimit = 1000
 
     private var visiblePosts: [FeedPost] {
-        showSavedOnly
-            ? store.feedPosts.filter { store.savedPostIds.contains($0.id) }
-            : store.feedPosts
+        switch filter {
+        case .all:
+            return store.feedPosts
+        case .following:
+            return store.feedPosts.filter { store.followedUids.contains($0.authorUid) }
+        case .saved:
+            return store.feedPosts.filter { store.savedPostIds.contains($0.id) }
+        }
     }
 
     private var cleanDraft: String {
@@ -1364,16 +1376,17 @@ private struct RealFeedSection: View {
 
             composer
 
-            HStack(spacing: 8) {
-                Button("All") {
-                    showSavedOnly = false
-                }
-                .buttonStyle(FilterChipStyle(isSelected: !showSavedOnly, selectedColor: MorpheTheme.accent))
+            CompetitionPulseCard()
 
-                Button("Saved") {
-                    showSavedOnly = true
+            athleteSearch
+
+            HStack(spacing: 8) {
+                ForEach(FeedFilter.allCases, id: \.self) { option in
+                    Button(option.rawValue) {
+                        filter = option
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: filter == option, selectedColor: MorpheTheme.accent))
                 }
-                .buttonStyle(FilterChipStyle(isSelected: showSavedOnly, selectedColor: MorpheTheme.accent))
 
                 Spacer()
             }
@@ -1393,6 +1406,56 @@ private struct RealFeedSection: View {
         }
         .task {
             await store.refreshFeed()
+            await store.refreshLeaderboard()
+            await store.refreshChallenges()
+        }
+    }
+
+    /// Username search → follow. The directory is the only thing scanned —
+    /// no profiles, no suggestion engine, just "type a name, follow it".
+    private var athleteSearch: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    TextField("Find athletes by @username…", text: $athleteQuery)
+                        .textFieldStyle(MorpheFieldStyle())
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+
+                if !store.athleteSearchResults.isEmpty {
+                    ForEach(store.athleteSearchResults) { result in
+                        HStack(spacing: 10) {
+                            Text("@\(result.username)")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+
+                            Spacer(minLength: 0)
+
+                            Button(store.isFollowing(result.uid) ? "Following" : "Follow") {
+                                store.toggleFollow(uid: result.uid, name: "@\(result.username)")
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: store.isFollowing(result.uid), selectedColor: MorpheTheme.accent))
+                            .accessibilityLabel(store.isFollowing(result.uid)
+                                ? "Unfollow \(result.username)" : "Follow \(result.username)")
+                        }
+                    }
+                } else if athleteQuery.trimmingCharacters(in: .whitespaces).count >= 2 {
+                    Text("No usernames match yet — names claim on sign-up.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+        }
+        // Re-query as typing settles; .task(id:) auto-cancels the stale run.
+        .task(id: athleteQuery) {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            await store.searchAthletes(query: athleteQuery)
         }
     }
 
@@ -1428,37 +1491,165 @@ private struct RealFeedSection: View {
     private var emptyState: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 10) {
-                Image(systemName: showSavedOnly ? "bookmark" : "sparkles")
+                Image(systemName: emptyStateSymbol)
                     .font(.title2)
                     .foregroundStyle(MorpheTheme.accentAlt)
 
-                Text(showSavedOnly ? "Nothing saved yet" : "No posts yet — share the first win")
+                Text(emptyStateTitle)
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text(showSavedOnly
-                     ? "Tap Save on any post and it lands here for later."
-                     : "This feed is real people's real training. Your post can be the one that starts it.")
+                Text(emptyStateDetail)
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
+
+    private var emptyStateSymbol: String {
+        switch filter {
+        case .all: return "sparkles"
+        case .following: return "person.2"
+        case .saved: return "bookmark"
+        }
+    }
+
+    private var emptyStateTitle: String {
+        switch filter {
+        case .all: return "No posts yet — share the first win"
+        case .following: return store.followedUids.isEmpty ? "Nobody followed yet" : "No posts here yet"
+        case .saved: return "Nothing saved yet"
+        }
+    }
+
+    private var emptyStateDetail: String {
+        switch filter {
+        case .all:
+            return "This feed is real people's real training. Your post can be the one that starts it."
+        case .following:
+            return store.followedUids.isEmpty
+                ? "Find athletes by @username above, or tap Follow on any post — their sessions land here."
+                : "The people you follow haven't posted yet — their next logged session shows up here."
+        case .saved:
+            return "Tap Save on any post and it lands here for later."
+        }
+    }
+}
+
+/// The weekly board + joined challenges, IN the real feed where signed-in
+/// users actually live — the backend scored these all along; this card just
+/// stops hiding them. Every number shown is a fetched Firestore row.
+private struct CompetitionPulseCard: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    private var topThree: [WeeklyLeaderboardEntry] {
+        Array(store.weeklyLeaderboard.prefix(3))
+    }
+
+    private var selfRank: Int? {
+        guard let me = store.weeklyLeaderboardSelfEntry else { return nil }
+        return store.weeklyLeaderboard.firstIndex { $0.uid == me.uid }.map { $0 + 1 }
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("This Week")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button("Open Progress") {
+                        store.openProgress()
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
+                    .accessibilityLabel("Open Progress for the full board")
+                }
+
+                if store.leaderboardOptIn {
+                    if topThree.isEmpty {
+                        Text("The board is live — the first logged workout of the week takes #1.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    } else {
+                        ForEach(Array(topThree.enumerated()), id: \.element.uid) { index, entry in
+                            HStack(spacing: 8) {
+                                Text("#\(index + 1)")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(MorpheTheme.accent)
+                                    .frame(width: 26, alignment: .leading)
+                                Text(entry.name)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
+                                Text("\(entry.score) sets")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                        }
+                        if let me = store.weeklyLeaderboardSelfEntry {
+                            Text(selfRank.map { "You're #\($0) with \(me.score) sets." }
+                                 ?? "You've posted \(me.score) sets — outside the fetched top 50.")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.accentAlt)
+                        }
+                    }
+                } else {
+                    // Honest unlock: the board exists, joining is the gate.
+                    Text("The weekly leaderboard is opt-in — join from Progress and your real logged sets score from Monday.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if !store.activeChallenges.isEmpty {
+                    Divider().overlay(Color.white.opacity(0.08))
+                    ForEach(store.activeChallenges.prefix(2)) { challenge in
+                        HStack(spacing: 8) {
+                            Image(systemName: "flag.checkered")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.accent)
+                            Text(challenge.title)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Text(challenge.isExpired ? "Ended" : "\(challenge.daysLeft)d left")
+                                .font(.caption)
+                                .foregroundStyle(challenge.isExpired ? MorpheTheme.textMuted : MorpheTheme.textSecondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// One real feed post: author (blue seal when server-verified), relative
-/// time, text, optional workout pill, repost attribution, and the real
-/// action row. Own posts delete via the context menu.
+/// time, text, optional workout pill + structured session stats, repost
+/// attribution, the real action row (typed reactions via long-press,
+/// comments fetched on expand), and a follow chip on others' posts. Own
+/// posts delete via the context menu.
 private struct FeedPostCard: View {
     @Environment(MorpheAppStore.self) private var store
     let post: FeedPost
     let onRepost: () -> Void
 
+    @State private var showComments = false
+    @State private var commentDraft = ""
+
     private var isMine: Bool { post.authorUid == (store.authUser?.id ?? "") }
     private var hasReacted: Bool { store.myReactedPostIds.contains(post.id) }
     private var isSaved: Bool { store.savedPostIds.contains(post.id) }
     private var reactionCount: Int { store.feedReactionCounts[post.id] ?? 0 }
+
+    private var myReactionSymbol: String {
+        guard hasReacted else { return "heart" }
+        let type = store.myReactionTypes[post.id] ?? "heart"
+        return MorpheAppStore.reactionTypes.first { $0.type == type }?.symbol ?? "heart.fill"
+    }
 
     var body: some View {
         GlassCard {
@@ -1494,6 +1685,17 @@ private struct FeedPostCard: View {
                     }
 
                     Spacer()
+
+                    if !isMine, store.isRealFeedActive {
+                        Button(store.isFollowing(post.authorUid) ? "Following" : "Follow") {
+                            store.toggleFollow(uid: post.authorUid, name: post.authorName)
+                        }
+                        .buttonStyle(FilterChipStyle(
+                            isSelected: store.isFollowing(post.authorUid),
+                            selectedColor: MorpheTheme.accent))
+                        .accessibilityLabel(store.isFollowing(post.authorUid)
+                            ? "Unfollow \(post.authorName)" : "Follow \(post.authorName)")
+                    }
                 }
 
                 if post.isRepost {
@@ -1535,17 +1737,91 @@ private struct FeedPostCard: View {
                     )
                 }
 
-                HStack(spacing: 8) {
-                    Button {
-                        store.toggleReaction(post)
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: hasReacted ? "heart.fill" : "heart")
-                            Text("\(reactionCount)")
+                // Structured session stats — the rich workout card. Every
+                // chip is a logged number the auto-share carried; a post
+                // without stats renders exactly as before.
+                if post.hasSessionStats {
+                    HStack(spacing: 6) {
+                        if let sets = post.setCount {
+                            sessionStatChip(symbol: "square.stack.3d.up.fill", text: "\(sets) sets")
+                        }
+                        if let exercises = post.exerciseCount {
+                            sessionStatChip(symbol: "figure.strengthtraining.traditional", text: "\(exercises) moves")
+                        }
+                        if let minutes = post.durationMinutes {
+                            sessionStatChip(symbol: "clock.fill", text: "\(minutes) min")
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+
+                if !post.prNames.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(post.prNames, id: \.self) { name in
+                            HStack(spacing: 6) {
+                                Image(systemName: "trophy.fill")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.accent)
+                                Text("PR · \(name)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                            }
                         }
                     }
-                    .buttonStyle(FeedActionButtonStyle(isActive: hasReacted, activeColor: MorpheTheme.accent))
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1)
+                    )
+                }
+
+                HStack(spacing: 8) {
+                    // Tap toggles a heart; long-press picks the reaction type.
+                    // One doc per uid either way — the count stays honest.
+                    Menu {
+                        ForEach(MorpheAppStore.reactionTypes, id: \.type) { option in
+                            Button {
+                                store.react(to: post, type: option.type)
+                            } label: {
+                                Label(option.label, systemImage: option.symbol)
+                            }
+                        }
+                        if hasReacted {
+                            Button(role: .destructive) {
+                                store.react(to: post, type: nil)
+                            } label: {
+                                Label("Remove", systemImage: "xmark")
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: myReactionSymbol)
+                            Text("\(reactionCount)")
+                        }
+                        .feedActionChrome(isActive: hasReacted, activeColor: MorpheTheme.accent)
+                    } primaryAction: {
+                        store.toggleReaction(post)
+                    }
                     .accessibilityLabel(hasReacted ? "Remove reaction" : "React")
+
+                    Button {
+                        showComments.toggle()
+                        if showComments {
+                            Task { await store.loadComments(for: post) }
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: showComments ? "bubble.right.fill" : "bubble.right")
+                            if let comments = store.postComments[post.id] {
+                                Text("\(comments.count)")
+                            } else {
+                                Text("Comment")
+                            }
+                        }
+                    }
+                    .buttonStyle(FeedActionButtonStyle(isActive: showComments, activeColor: MorpheTheme.accentAlt))
+                    .accessibilityLabel(showComments ? "Hide comments" : "Show comments")
 
                     Button {
                         store.toggleSaved(post)
@@ -1569,6 +1845,10 @@ private struct FeedPostCard: View {
 
                     Spacer()
                 }
+
+                if showComments {
+                    commentsSection
+                }
             }
         }
         .contextMenu {
@@ -1580,6 +1860,114 @@ private struct FeedPostCard: View {
                 }
             }
         }
+    }
+
+    private func sessionStatChip(symbol: String, text: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbol)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(MorpheTheme.accentAlt)
+            Text(text)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panel)
+        )
+    }
+
+    /// Fetched-on-expand comments plus a one-line composer. A missing fetch
+    /// shows "loading", never a fake zero.
+    private var commentsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let comments = store.postComments[post.id] {
+                if comments.isEmpty {
+                    Text("No comments yet — start it.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                ForEach(comments) { comment in
+                    HStack(alignment: .top, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(comment.authorName)
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                Text(comment.createdAt.formatted(.relative(presentation: .named)))
+                                    .font(.caption2)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            Text(comment.text)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+                    .contextMenu {
+                        if comment.authorUid == (store.authUser?.id ?? "") {
+                            Button(role: .destructive) {
+                                store.deleteMyComment(comment)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text("Loading comments…")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+
+            HStack(spacing: 8) {
+                TextField("Add a comment…", text: $commentDraft)
+                    .textFieldStyle(MorpheFieldStyle())
+                Button("Send") {
+                    let text = commentDraft
+                    commentDraft = ""
+                    Task { await store.addComment(to: post, text: text) }
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .frame(width: 70)
+                .disabled(commentDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityLabel("Send comment")
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panelStrong.opacity(0.6))
+        )
+    }
+}
+
+/// The FeedActionButtonStyle look as a plain modifier, for Menu labels
+/// (Menus can't take a ButtonStyle the way Buttons do).
+private extension View {
+    func feedActionChrome(isActive: Bool, activeColor: Color) -> some View {
+        self
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(isActive ? activeColor : .white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(MorpheTheme.panel)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(
+                        isActive ? activeColor.opacity(0.6) : MorpheTheme.strokeStrong.opacity(0.45),
+                        lineWidth: 1
+                    )
+            )
     }
 }
 

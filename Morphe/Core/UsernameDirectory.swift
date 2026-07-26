@@ -50,6 +50,9 @@ protocol UsernameDirectoryService: AnyObject {
     /// Atomically claims `username` for `uid`, releasing `previous` (when
     /// given and owned by this uid) in the same transaction.
     func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult
+    /// Prefix search over the directory for user discovery — (username, uid)
+    /// pairs, name-ordered. Empty on failure or empty prefix.
+    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]
 }
 
 /// Offline default for tests/previews: everything is available and every
@@ -57,6 +60,7 @@ protocol UsernameDirectoryService: AnyObject {
 final class NoOpUsernameDirectory: UsernameDirectoryService {
     func isAvailable(_ username: String, for uid: String) async -> Bool { true }
     func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult { .claimed }
+    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)] { [] }
 }
 
 final class FirebaseUsernameDirectory: UsernameDirectoryService {
@@ -70,6 +74,23 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
         guard let snap = try? await nameDoc(username).getDocument() else { return false }
         guard snap.exists else { return true }
         return (snap.data()?["uid"] as? String) == uid
+    }
+
+    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)] {
+        let clean = UsernameRules.normalize(prefix)
+        guard !clean.isEmpty else { return [] }
+        // Doc-id range scan: the doc id IS the lowercased username, so
+        // [prefix, prefix + U+F8FF) is every name starting with it.
+        guard let snapshot = try? await db.collection("usernames")
+            .whereField(FieldPath.documentID(), isGreaterThanOrEqualTo: clean)
+            .whereField(FieldPath.documentID(), isLessThan: clean + "\u{f8ff}")
+            .limit(to: max(limit, 1))
+            .getDocuments()
+        else { return [] }
+        return snapshot.documents.compactMap { document in
+            guard let uid = document.data()["uid"] as? String else { return nil }
+            return (username: document.documentID, uid: uid)
+        }
     }
 
     func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult {

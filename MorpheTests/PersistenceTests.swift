@@ -3317,6 +3317,9 @@ final class IdentityAndTermsTests: XCTestCase {
             if let previous { taken.remove(previous) }
             return .claimed
         }
+        func search(prefix: String, limit: Int) async -> [(username: String, uid: String)] {
+            taken.filter { $0.hasPrefix(prefix) }.sorted().prefix(limit).map { ($0, "uid-\($0)") }
+        }
     }
 
     override func setUp() {
@@ -3492,5 +3495,72 @@ final class AppointmentTests: XCTestCase {
         // Delete removes it entirely.
         store.deleteAppointment(appointment)
         XCTAssertTrue(store.appointments.isEmpty)
+    }
+}
+
+// MARK: - Social feed (follow graph, typed reactions, rich cards)
+
+@MainActor
+final class SocialFeedTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    /// Onboarded store with a fake signed-in identity — services stay NoOp,
+    /// so every assertion below is about STORE state, not Firestore.
+    private func signedInStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(
+            id: "uid-test", email: "t@morphe.app", role: .athlete,
+            displayName: "Sarah", createdAt: .now
+        )
+        return store
+    }
+
+    func testReactionTypeRewritesWithoutDoubleCounting() {
+        let store = signedInStore()
+        let post = FeedPost(id: "p1", authorUid: "other", authorName: "Alex", text: "win")
+        store.feedPosts = [post]
+        store.feedReactionCounts["p1"] = 0
+
+        store.toggleReaction(post)
+        XCTAssertEqual(store.feedReactionCounts["p1"], 1, "first reaction counts once")
+        XCTAssertEqual(store.myReactionTypes["p1"], "heart", "plain tap is a heart")
+
+        store.react(to: post, type: "fire")
+        XCTAssertEqual(store.feedReactionCounts["p1"], 1, "changing type must not move the count")
+        XCTAssertEqual(store.myReactionTypes["p1"], "fire")
+
+        store.react(to: post, type: nil)
+        XCTAssertEqual(store.feedReactionCounts["p1"], 0)
+        XCTAssertFalse(store.myReactedPostIds.contains("p1"))
+    }
+
+    func testFollowToggleGuardsSelfAndFlips() {
+        let store = signedInStore()
+        XCTAssertFalse(store.isFollowing("friend-1"))
+
+        store.toggleFollow(uid: "friend-1", name: "@alex")
+        XCTAssertTrue(store.isFollowing("friend-1"))
+
+        store.toggleFollow(uid: "friend-1", name: "@alex")
+        XCTAssertFalse(store.isFollowing("friend-1"))
+
+        store.toggleFollow(uid: "uid-test", name: "@me")
+        XCTAssertFalse(store.isFollowing("uid-test"), "following yourself is refused")
+    }
+
+    func testSessionStatsRideTheFeedPost() {
+        var post = FeedPost(id: "p", authorUid: "u", authorName: "A", text: "t")
+        XCTAssertFalse(post.hasSessionStats, "plain text posts carry no stats card")
+
+        post.setCount = 18
+        post.durationMinutes = 42
+        XCTAssertTrue(post.hasSessionStats)
     }
 }
