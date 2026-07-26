@@ -152,10 +152,21 @@ protocol ManagedClientSyncing: AnyObject {
     func claim(code: String, athleteUid: String, athleteName: String) async -> Result<ManagedClient, ManagedClientClaimError>
     /// Remove an (unclaimed) managed client.
     func delete(code: String)
+    /// Athlete side: publishes the consented progress summary the named
+    /// coach may read (users/{athleteUid}/coachShare/summary).
+    func pushCoachShare(_ summary: CoachShareSummary, athleteUid: String)
+    /// Athlete side: revokes consent by deleting the summary doc.
+    func clearCoachShare(athleteUid: String)
+    /// Coach side: the claimed client's shared summary — nil when the
+    /// athlete isn't sharing (or offline).
+    func fetchCoachShare(athleteUid: String) async -> CoachShareSummary?
 }
 
 final class NoOpManagedClientService: ManagedClientSyncing {
     func push(_ client: ManagedClient) {}
+    func pushCoachShare(_ summary: CoachShareSummary, athleteUid: String) {}
+    func clearCoachShare(athleteUid: String) {}
+    func fetchCoachShare(athleteUid: String) async -> CoachShareSummary? { nil }
     func fetchMine(coachUid: String) async -> [ManagedClient]? { nil }
     func claim(code: String, athleteUid: String, athleteName: String) async -> Result<ManagedClient, ManagedClientClaimError> {
         .failure(.network)
@@ -180,6 +191,35 @@ final class FirebaseManagedClientService: ManagedClientSyncing {
 
     private func doc(_ code: String) -> DocumentReference {
         db.collection("managedClients").document(code)
+    }
+
+    private func coachShareDoc(_ athleteUid: String) -> DocumentReference {
+        db.collection("users").document(athleteUid).collection("coachShare").document("summary")
+    }
+
+    func pushCoachShare(_ summary: CoachShareSummary, athleteUid: String) {
+        guard let data = try? encoder.encode(summary),
+              let json = String(data: data, encoding: .utf8) else { return }
+        // coachUid rides top-level too — it's the field the read rule checks.
+        coachShareDoc(athleteUid).setData([
+            "schemaVersion": 1,
+            "coachUid": summary.coachUid,
+            "json": json,
+            "updatedAt": FieldValue.serverTimestamp()
+        ])
+    }
+
+    func clearCoachShare(athleteUid: String) {
+        coachShareDoc(athleteUid).delete()
+    }
+
+    func fetchCoachShare(athleteUid: String) async -> CoachShareSummary? {
+        guard let snap = try? await coachShareDoc(athleteUid).getDocument(),
+              let json = snap.data()?["json"] as? String,
+              let data = json.data(using: .utf8),
+              let summary = try? decoder.decode(CoachShareSummary.self, from: data)
+        else { return nil }
+        return summary
     }
 
     func push(_ client: ManagedClient) {

@@ -440,6 +440,24 @@ final class MorpheAppStore {
     var healthSyncEnabled = false {
         didSet { persistTrainingPreferences() }
     }
+    /// Athlete-consented coach visibility (the coachShare doc). Flip via
+    /// `setCoachShare(enabled:)` so the push/revoke rides the toggle.
+    var coachShareEnabled = false {
+        didSet { persistTrainingPreferences() }
+    }
+    /// The coach this athlete is linked to (captured at claim time, adopted
+    /// from the first coach thread as a fallback). Empty = no coach.
+    var linkedCoachUid = "" {
+        didSet { persistTrainingPreferences() }
+    }
+    var linkedCoachName = "" {
+        didSet { persistTrainingPreferences() }
+    }
+    /// Coach side: claimed clients' shared summaries by athlete uid, plus
+    /// which uids have been fetched (so "not sharing" is a KNOWN state,
+    /// never an assumption about an unfetched one).
+    var coachShareSummaries: [String: CoachShareSummary] = [:]
+    var coachShareFetched: Set<String> = []
     /// Guards the didSets above while `loadTrainingPreferences` restores them.
     private var isLoadingTrainingPreferences = false
     /// Challenges this user hosts or joined, refreshed from Firestore by code.
@@ -2764,8 +2782,11 @@ final class MorpheAppStore {
     private struct TrainingPreferencesSnapshot: Codable {
         var autoRestTimer: Bool
         var autoShareWorkouts: Bool
-        /// Optional so blobs written before this field decode unchanged.
+        /// Optionals so blobs written before each field decode unchanged.
         var healthSync: Bool?
+        var coachShare: Bool?
+        var linkedCoachUid: String?
+        var linkedCoachName: String?
     }
 
     private var trainingPreferencesDefaultsKey: String {
@@ -2781,11 +2802,17 @@ final class MorpheAppStore {
             autoRestTimerEnabled = true
             autoShareWorkoutsEnabled = false
             healthSyncEnabled = false
+            coachShareEnabled = false
+            linkedCoachUid = ""
+            linkedCoachName = ""
             return
         }
         autoRestTimerEnabled = snapshot.autoRestTimer
         autoShareWorkoutsEnabled = snapshot.autoShareWorkouts
         healthSyncEnabled = snapshot.healthSync ?? false
+        coachShareEnabled = snapshot.coachShare ?? false
+        linkedCoachUid = snapshot.linkedCoachUid ?? ""
+        linkedCoachName = snapshot.linkedCoachName ?? ""
     }
 
     private func persistTrainingPreferences() {
@@ -2793,7 +2820,10 @@ final class MorpheAppStore {
         let snapshot = TrainingPreferencesSnapshot(
             autoRestTimer: autoRestTimerEnabled,
             autoShareWorkouts: autoShareWorkoutsEnabled,
-            healthSync: healthSyncEnabled
+            healthSync: healthSyncEnabled,
+            coachShare: coachShareEnabled,
+            linkedCoachUid: linkedCoachUid,
+            linkedCoachName: linkedCoachName
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: trainingPreferencesDefaultsKey)
@@ -4425,6 +4455,8 @@ final class MorpheAppStore {
         didCompleteQuickCheckIn = true
         Haptics.success()
         persistLocalProfile()
+        // A fresh readiness read is exactly what a coach wants to see.
+        pushCoachShareIfEnabled()
         showToast("Recovery check-in saved.")
     }
 
@@ -7339,6 +7371,10 @@ final class MorpheAppStore {
         case .failure(let error):
             showToast(error.message)
         case .success(let claimed):
+            // Remember WHO the coach is — the coachShare consent toggle and
+            // the summary's named reader both key off this link.
+            linkedCoachUid = claimed.coachUid
+            linkedCoachName = claimed.coachName
             for var log in claimed.logs.sorted(by: { $0.completedAt < $1.completedAt }) {
                 log.athleteID = clientProfile.id
                 log.athleteName = clientProfile.name
@@ -7361,6 +7397,103 @@ final class MorpheAppStore {
         }
     }
 
+    // MARK: - Coach share (athlete-consented progress visibility)
+
+    /// Builds the consented summary from the athlete's REAL logs — every
+    /// field is derived the same way the athlete's own Progress screen
+    /// derives it. Internal so tests can pin the derivations.
+    func makeCoachShareSummary(coachUid: String) -> CoachShareSummary {
+        let logs = currentAthleteWorkoutLogs
+        let calendar = Calendar.current
+        let weeklyLogs = logs.filter {
+            calendar.isDate($0.completedAt, equalTo: .now, toGranularity: .weekOfYear)
+        }
+        let sessions = logs.prefix(10).map { log in
+            CoachShareSummary.SharedSession(
+                title: log.workoutTitle,
+                completedAt: log.completedAt,
+                sets: Self.loggedSetCount(of: log),
+                minutes: log.durationMinutes,
+                feedback: log.sessionFeedback ?? ""
+            )
+        }
+        let prs = recentPersonalRecords(limit: 5).map { record in
+            CoachShareSummary.SharedPR(
+                name: record.exerciseName,
+                weight: record.weight,
+                unit: weightUnit.rawValue,
+                date: record.date
+            )
+        }
+        // Readiness only when the athlete actually checked in today —
+        // score > 0 was NOT enough: the seeded default snapshot carries a
+        // neutral 60, and sharing that would hand the coach a fabricated
+        // signal. The check-in flag is the truth (it resets with the day).
+        let readiness: String
+        if didCompleteQuickCheckIn {
+            readiness = "Readiness \(recovery.score)/100 — \(recovery.reason)"
+        } else {
+            readiness = ""
+        }
+        return CoachShareSummary(
+            coachUid: coachUid,
+            athleteName: clientProfile.name,
+            streak: currentWorkoutStreak(from: logs),
+            weeklySets: weeklySetVolume(weeks: 1).last?.sets ?? 0,
+            weeklyWorkouts: weeklyLogs.count,
+            totalWorkouts: logs.count,
+            recentSessions: Array(sessions),
+            recentPRs: prs,
+            readinessNote: readiness
+        )
+    }
+
+    /// Flips consent. On: pushes the summary immediately (and on every
+    /// future log/check-in). Off: DELETES the doc — revocation is instant
+    /// and server-enforced, not a client courtesy.
+    func setCoachShare(enabled: Bool) {
+        guard let uid = authUser?.id else {
+            showToast("Sign in to share progress with your coach.")
+            return
+        }
+        guard !linkedCoachUid.isEmpty else {
+            showToast("Connect with a coach first — claim their invite code.")
+            return
+        }
+        coachShareEnabled = enabled
+        if enabled {
+            managedClientService.pushCoachShare(
+                makeCoachShareSummary(coachUid: linkedCoachUid), athleteUid: uid)
+            showToast("\(linkedCoachName.isEmpty ? "Your coach" : linkedCoachName) now sees your progress summary.")
+        } else {
+            managedClientService.clearCoachShare(athleteUid: uid)
+            showToast("Progress sharing is off — your coach sees nothing new.")
+        }
+    }
+
+    /// Refreshes the shared doc after anything it summarizes changed.
+    /// Quiet no-op unless consent is on and the link is real.
+    private func pushCoachShareIfEnabled() {
+        guard coachShareEnabled, !linkedCoachUid.isEmpty,
+              selectedRole == .client, let uid = authUser?.id else { return }
+        managedClientService.pushCoachShare(
+            makeCoachShareSummary(coachUid: linkedCoachUid), athleteUid: uid)
+    }
+
+    /// Coach side: pulls one claimed client's shared summary. Marks the uid
+    /// fetched either way so the UI can render "not sharing" as a KNOWN
+    /// state instead of guessing.
+    func loadCoachShare(for client: ManagedClient) async {
+        guard client.isClaimed, !client.claimedByUid.isEmpty else { return }
+        let summary = await managedClientService.fetchCoachShare(athleteUid: client.claimedByUid)
+        coachShareFetched.insert(client.claimedByUid)
+        if let summary {
+            coachShareSummaries[client.claimedByUid] = summary
+        } else {
+            coachShareSummaries.removeValue(forKey: client.claimedByUid)
+        }
+    }
+
     // MARK: - Real 1:1 messaging (coach ↔ claimed client)
 
     /// Pulls every real thread this account participates in — either role —
@@ -7370,6 +7503,14 @@ final class MorpheAppStore {
         guard let uid = authUser?.id else { return }
         if let fetched = await messagingService.fetchThreads(for: uid) {
             liveThreads = fetched
+            // Fallback link capture: an athlete who claimed BEFORE the
+            // linked-coach fields existed still has a coach thread — adopt
+            // it so the coachShare toggle appears for them too.
+            if selectedRole == .client, linkedCoachUid.isEmpty,
+               let coachThread = fetched.first(where: { $0.athleteUid == uid }) {
+                linkedCoachUid = coachThread.coachUid
+                linkedCoachName = coachThread.coachName
+            }
         }
     }
 
@@ -9671,10 +9812,11 @@ final class MorpheAppStore {
         guard log.athleteID == clientProfile.id else { return }
 
         // Fresh training day: the streak deadline moved — re-arm (or clear)
-        // tonight's at-risk reminder against the new latest day, and hand
-        // the widgets the new numbers.
+        // tonight's at-risk reminder against the new latest day, hand the
+        // widgets the new numbers, and refresh the coach's consented view.
         refreshStreakRiskReminder()
         publishWidgetSnapshot()
+        pushCoachShareIfEnabled()
 
         switch log.source {
         case .athleteManual:

@@ -94,6 +94,18 @@ service cloud.firestore {
       match /blocked/{targetUid} {
         allow read, write: if isOwner(uid);
       }
+
+      // Athlete-consented coach visibility. The athlete's device writes a
+      // compact progress summary that NAMES the one coach allowed to read
+      // it — consent IS the document, and deleting it (the toggle-off path)
+      // revokes instantly. This deliberately does NOT ride isActiveCoachOf:
+      // claimed managed clients have no connections/ doc, and the athlete
+      // naming the reader is the stronger, simpler consent anyway.
+      match /coachShare/{doc} {
+        allow read: if isOwner(uid)
+          || (isSignedIn() && request.auth.uid == resource.data.get('coachUid', ''));
+        allow write: if isOwner(uid);
+      }
     }
 
     // Abuse reports — WRITE-ONLY from clients. Any signed-in user may file

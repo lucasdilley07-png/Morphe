@@ -2131,6 +2131,40 @@ struct ShareCardData: Hashable {
     var username: String
 }
 
+/// The compact, athlete-CONSENTED progress packet a coach sees for a
+/// claimed client — users/{athleteUid}/coachShare/summary. The athlete's
+/// device builds and pushes it; consent IS the document (it names the one
+/// coach allowed to read, and toggling off deletes it). Every number is
+/// derived from the athlete's real logs — the coach reads, never writes.
+struct CoachShareSummary: Codable, Hashable {
+    var coachUid: String
+    var athleteName: String
+    var updatedAt: Date = .now
+    var streak: Int = 0
+    var weeklySets: Int = 0
+    var weeklyWorkouts: Int = 0
+    var totalWorkouts: Int = 0
+    var recentSessions: [SharedSession] = []
+    var recentPRs: [SharedPR] = []
+    /// Today's readiness in words ("" when no check-in today).
+    var readinessNote: String = ""
+
+    struct SharedSession: Codable, Hashable {
+        var title: String
+        var completedAt: Date
+        var sets: Int
+        var minutes: Int
+        var feedback: String
+    }
+
+    struct SharedPR: Codable, Hashable {
+        var name: String
+        var weight: Double
+        var unit: String
+        var date: Date
+    }
+}
+
 /// One row of the Find Athletes username search — a directory hit, nothing
 /// more (profiles stay private until people choose to post).
 struct AthleteSearchResult: Identifiable, Hashable {

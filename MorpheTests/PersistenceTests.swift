@@ -3857,3 +3857,92 @@ final class DepthSprintTests: XCTestCase {
                       "an applied palette is grandfathered — updates never revoke a choice")
     }
 }
+
+// MARK: - Coach share (athlete-consented progress visibility)
+
+@MainActor
+final class CoachShareTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func signedInStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(
+            id: "uid-athlete", email: "s@morphe.app", role: .athlete,
+            displayName: "Sarah", createdAt: .now
+        )
+        return store
+    }
+
+    private func log(for store: MorpheAppStore, title: String, daysAgo: Int,
+                     reps: [Int], weights: [Double]) -> WorkoutLog {
+        WorkoutLog(
+            athleteID: store.clientProfile.id,
+            athleteName: store.clientProfile.name,
+            workoutTemplateID: nil,
+            workoutTitle: title,
+            sport: .strength,
+            completedAt: Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now,
+            durationMinutes: 40,
+            exercises: [LoggedExercise(
+                name: "Bench Press", sets: "\(reps.count) sets",
+                reps: reps.map(String.init).joined(separator: ", "),
+                weight: "\(Int(weights.max() ?? 0)) lb", note: "",
+                repsPerSet: reps, weightsPerSet: weights,
+                rpePerSet: reps.map { _ in 0 }, weightUnit: "lb"
+            )],
+            notes: "", source: .athleteManual,
+            enteredByUserID: store.clientProfile.id, enteredByRole: .client,
+            enteredByName: store.clientProfile.name, verificationStatus: .athleteSubmitted,
+            sessionFeedback: "Just right"
+        )
+    }
+
+    func testSummaryDerivesFromRealLogsOnly() {
+        let store = signedInStore()
+        store.workoutLogs.append(log(for: store, title: "Push Day", daysAgo: 0, reps: [8, 8], weights: [135, 145]))
+        store.workoutLogs.append(log(for: store, title: "Pull Day", daysAgo: 8, reps: [8], weights: [95]))
+
+        let summary = store.makeCoachShareSummary(coachUid: "uid-coach")
+
+        XCTAssertEqual(summary.coachUid, "uid-coach", "the named reader is the consent boundary")
+        XCTAssertEqual(summary.totalWorkouts, 2)
+        XCTAssertEqual(summary.weeklyWorkouts, 1, "only this week's sessions count as weekly")
+        XCTAssertEqual(summary.recentSessions.first?.title, "Push Day")
+        XCTAssertEqual(summary.recentSessions.first?.sets, 2)
+        XCTAssertEqual(summary.recentSessions.first?.feedback, "Just right")
+        XCTAssertEqual(summary.recentPRs.first?.name, "Bench Press")
+        XCTAssertEqual(summary.recentPRs.first?.weight ?? 0, 145, accuracy: 0.001)
+        XCTAssertEqual(summary.readinessNote, "", "no check-in today means NO readiness claim")
+    }
+
+    func testConsentToggleRequiresALinkedCoach() {
+        let store = signedInStore()
+        store.setCoachShare(enabled: true)
+        XCTAssertFalse(store.coachShareEnabled, "no linked coach, no consent flip")
+
+        store.linkedCoachUid = "uid-coach"
+        store.linkedCoachName = "Marcus"
+        store.setCoachShare(enabled: true)
+        XCTAssertTrue(store.coachShareEnabled)
+
+        store.setCoachShare(enabled: false)
+        XCTAssertFalse(store.coachShareEnabled, "revocation flips off cleanly")
+    }
+
+    func testLinkedCoachSurvivesRelaunch() {
+        let store = signedInStore()
+        store.linkedCoachUid = "uid-coach"
+        store.linkedCoachName = "Marcus"
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.linkedCoachUid, "uid-coach")
+        XCTAssertEqual(reloaded.linkedCoachName, "Marcus")
+    }
+}

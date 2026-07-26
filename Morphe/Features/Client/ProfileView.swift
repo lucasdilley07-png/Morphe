@@ -797,6 +797,21 @@ struct ProfileView: View {
                         )
                     )
 
+                    // Only renders once a coach link exists (claimed invite
+                    // or an existing coach thread) — no dead toggle.
+                    if !store.linkedCoachUid.isEmpty {
+                        Divider().overlay(Color.white.opacity(0.08))
+
+                        preferenceToggleRow(
+                            title: "Share with coach",
+                            caption: "\(store.linkedCoachName.isEmpty ? "Your coach" : store.linkedCoachName) sees a live summary — streak, weekly volume, recent sessions, PRs, readiness. Turning it off deletes it instantly.",
+                            isOn: Binding(
+                                get: { store.coachShareEnabled },
+                                set: { store.setCoachShare(enabled: $0) }
+                            )
+                        )
+                    }
+
                     Divider().overlay(Color.white.opacity(0.08))
 
                     HStack(spacing: 12) {

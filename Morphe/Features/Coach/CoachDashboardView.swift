@@ -838,6 +838,86 @@ private struct ManagedClientDetailSheet: View {
                             Button("Remove Client", role: .destructive) { isConfirmingDelete = true }
                         }
                     } else {
+                        // The moat: the claimed client's REAL, consented
+                        // progress. The athlete's device publishes it and can
+                        // revoke it — this side only reads, and every state
+                        // here is honest: shared, known-not-shared, or
+                        // still-checking.
+                        Section("Live progress") {
+                            if let summary = store.coachShareSummaries[client.claimedByUid] {
+                                HStack(spacing: 14) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(summary.streak)d")
+                                            .font(.headline)
+                                        Text("Streak").font(.caption2).foregroundStyle(.secondary)
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(summary.weeklySets)")
+                                            .font(.headline)
+                                        Text("Sets this wk").font(.caption2).foregroundStyle(.secondary)
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(summary.weeklyWorkouts)")
+                                            .font(.headline)
+                                        Text("Sessions wk").font(.caption2).foregroundStyle(.secondary)
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(summary.totalWorkouts)")
+                                            .font(.headline)
+                                        Text("All time").font(.caption2).foregroundStyle(.secondary)
+                                    }
+                                }
+
+                                if !summary.readinessNote.isEmpty {
+                                    Text(summary.readinessNote)
+                                        .font(.caption)
+                                }
+
+                                ForEach(Array(summary.recentSessions.prefix(5).enumerated()), id: \.offset) { _, session in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(session.title)
+                                            .font(.subheadline.weight(.semibold))
+                                        Text("\(session.completedAt.formatted(date: .abbreviated, time: .omitted)) · \(session.sets) sets · \(session.minutes) min\(session.feedback.isEmpty ? "" : " · \(session.feedback)")")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+
+                                ForEach(Array(summary.recentPRs.enumerated()), id: \.offset) { _, pr in
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "trophy.fill")
+                                            .font(.caption)
+                                            .foregroundStyle(.yellow)
+                                        Text("\(pr.name) — \(pr.weight.formatted()) \(pr.unit)")
+                                            .font(.caption.weight(.semibold))
+                                        Spacer()
+                                        Text(pr.date.formatted(date: .abbreviated, time: .omitted))
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+
+                                Text("Shared by \(summary.athleteName.isEmpty ? client.name : summary.athleteName) · updated \(summary.updatedAt.formatted(.relative(presentation: .named)))")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            } else if store.coachShareFetched.contains(client.claimedByUid) {
+                                Text("\(client.name) isn't sharing progress yet. It's their call — ask them to turn on \"Share with coach\" in Profile › Settings.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                HStack {
+                                    Text("Checking for shared progress…")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    SwiftUI.ProgressView()
+                                }
+                            }
+                        }
+                        .task {
+                            await store.loadCoachShare(for: client)
+                        }
+
                         // A claimed client is a REAL account now — open the
                         // real Firestore-backed conversation with them.
                         // TODO: "Remove from Roster" for claimed clients needs
