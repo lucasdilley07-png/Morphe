@@ -1510,3 +1510,146 @@ struct WrapStack<Content: View>: View {
         }
     }
 }
+
+// MARK: - Share card (the outward face of a session)
+//
+// A branded 9:16 story image rendered on demand with ImageRenderer — the
+// telemetry HUD look, sized for IG/Snap stories. Every number on it is a
+// logged fact from ShareCardData; there is nothing to embellish.
+
+struct ShareCardView: View {
+    let data: ShareCardData
+
+    private var factLine: String {
+        var facts: [String] = []
+        if data.setCount > 0 { facts.append("\(data.setCount) SETS") }
+        if data.exerciseCount > 0 { facts.append("\(data.exerciseCount) MOVES") }
+        if data.minutes > 0 { facts.append("\(data.minutes) MIN") }
+        return facts.joined(separator: "   ·   ")
+    }
+
+    var body: some View {
+        ZStack {
+            MorpheTheme.ink
+
+            VStack(alignment: .leading, spacing: 0) {
+                // Header: wordmark + date.
+                HStack {
+                    Text("MORPHE")
+                        .font(.system(size: 22, design: .monospaced).weight(.black))
+                        .tracking(6)
+                        .foregroundStyle(MorpheTheme.brandYellow)
+                    Spacer()
+                    Text(data.dateLabel.uppercased())
+                        .font(.system(size: 11, design: .monospaced).weight(.semibold))
+                        .tracking(1.6)
+                        .foregroundStyle(Color.white.opacity(0.55))
+                }
+
+                Spacer()
+
+                Text("SESSION COMPLETE")
+                    .font(.system(size: 12, design: .monospaced).weight(.semibold))
+                    .tracking(2.4)
+                    .foregroundStyle(Color.white.opacity(0.55))
+                    .padding(.bottom, 10)
+
+                Text(data.workoutName)
+                    .font(.system(size: 40, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.6)
+                    .padding(.bottom, 18)
+
+                if !factLine.isEmpty {
+                    Text(factLine)
+                        .font(.system(size: 15, design: .monospaced).weight(.bold))
+                        .tracking(1.2)
+                        .foregroundStyle(MorpheTheme.brandYellow)
+                        .padding(.bottom, 18)
+                }
+
+                ForEach(data.prNames, id: \.self) { name in
+                    HStack(spacing: 8) {
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(MorpheTheme.brandYellow)
+                        Text("NEW PR · \(name.uppercased())")
+                            .font(.system(size: 13, design: .monospaced).weight(.bold))
+                            .tracking(1.2)
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                    }
+                    .padding(.bottom, 8)
+                }
+
+                if data.streak >= 2 {
+                    HStack(spacing: 8) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(MorpheTheme.brandYellow)
+                        Text("\(data.streak)-DAY STREAK")
+                            .font(.system(size: 13, design: .monospaced).weight(.bold))
+                            .tracking(1.2)
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.top, 4)
+                }
+
+                Spacer()
+
+                // Footer: hairline + handle.
+                Rectangle()
+                    .fill(Color.white.opacity(0.18))
+                    .frame(height: 1)
+                    .padding(.bottom, 12)
+                HStack {
+                    Text(data.username.isEmpty ? "TRAIN HONEST" : data.username.uppercased())
+                        .font(.system(size: 12, design: .monospaced).weight(.semibold))
+                        .tracking(1.6)
+                        .foregroundStyle(Color.white.opacity(0.7))
+                    Spacer()
+                    Rectangle()
+                        .fill(MorpheTheme.brandYellow)
+                        .frame(width: 26, height: 3)
+                }
+            }
+            .padding(36)
+
+            // The HUD corner ticks, scaled up for the poster format.
+            HUDCornerTicks(arm: 16, color: Color.white.opacity(0.35))
+                .padding(18)
+        }
+        .frame(width: 360, height: 640)
+    }
+}
+
+@MainActor
+enum ShareCardRenderer {
+    /// 360×640 view at 3× = a 1080×1920 story-ready PNG.
+    static func image(for data: ShareCardData) -> UIImage? {
+        let renderer = ImageRenderer(content: ShareCardView(data: data))
+        renderer.scale = 3
+        return renderer.uiImage
+    }
+}
+
+/// System share sheet for a rendered card image (+ caption text). Same
+/// completion-dismiss contract as the data-export sheet: finishing or
+/// cancelling the share closes the hosting SwiftUI sheet too.
+struct ImageShareSheet: UIViewControllerRepresentable {
+    let image: UIImage
+    let caption: String
+    let onFinish: () -> Void
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(
+            activityItems: [image, caption], applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, _, _, _ in
+            onFinish()
+        }
+        return controller
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}

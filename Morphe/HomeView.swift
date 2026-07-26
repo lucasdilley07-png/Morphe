@@ -584,9 +584,18 @@ private struct HomeExpandableSection<Content: View>: View {
 /// Replaces TodayNextMoveCard in the hero slot once today's session is
 /// logged — same card, new state, instead of an overlay hiding the page.
 private struct TodayDoneCard: View {
+    @Environment(MorpheAppStore.self) private var store
     let workoutName: String
     let onViewProgress: () -> Void
     let onTrainAgain: () -> Void
+
+    /// The rendered story card, alive while the share sheet is up.
+    private struct SharePayload: Identifiable {
+        let id = UUID()
+        let image: UIImage
+        let caption: String
+    }
+    @State private var sharePayload: SharePayload?
 
     var body: some View {
         GlassCard {
@@ -604,12 +613,26 @@ private struct TodayDoneCard: View {
                     .foregroundStyle(MorpheTheme.textSecondary)
 
                 HStack(spacing: 10) {
-                    ShareLink(item: "I just finished \(workoutName) on Morphe. Small wins, real transformation. 💪") {
-                        Text("Share Win").frame(maxWidth: .infinity)
+                    // The Strava-sticker play: a branded story IMAGE of the
+                    // real session (sets/moves/minutes/PRs/streak), not a
+                    // plain sentence. Falls back to text if rendering fails.
+                    Button("Share Win") {
+                        if let data = store.latestSessionShareCardData,
+                           let image = ShareCardRenderer.image(for: data) {
+                            sharePayload = SharePayload(image: image, caption: store.shareCardCaption)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .accessibilityLabel("Share a story card of this session")
                     Button("View Progress", action: onViewProgress)
                         .buttonStyle(SecondaryCTAButtonStyle())
+                }
+                .sheet(item: $sharePayload) { payload in
+                    ImageShareSheet(image: payload.image, caption: payload.caption) {
+                        sharePayload = nil
+                    }
+                    .presentationDetents([.medium, .large])
                 }
 
                 Button("Go Again", action: onTrainAgain)

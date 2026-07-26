@@ -2089,6 +2089,21 @@ struct PostComment: Identifiable, Hashable {
     var createdAt: Date = .now
 }
 
+/// Everything the share-card image states — every field is a logged fact
+/// (the card is the outward face of honest engineering; it never claims a
+/// number the log can't back).
+struct ShareCardData: Hashable {
+    var workoutName: String
+    var dateLabel: String
+    var setCount: Int
+    var exerciseCount: Int
+    var minutes: Int
+    var streak: Int
+    var prNames: [String]
+    /// "@username", or "" before a handle is claimed.
+    var username: String
+}
+
 /// One row of the Find Athletes username search — a directory hit, nothing
 /// more (profiles stay private until people choose to post).
 struct AthleteSearchResult: Identifiable, Hashable {

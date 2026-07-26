@@ -32,7 +32,10 @@ struct CommunityView: View {
                     // rankedCommunityPosts list for signed-in users. The demo
                     // sections below stay intact for the flag-gated path.
                     RealFeedSection()
-                } else if store.hasNetworkActivity {
+                } else if FeatureFlags.multiUserEnabled, store.hasNetworkActivity {
+                    // Demo surfaces render ONLY under the demo flag — a real
+                    // TestFlight account must never see seeded stories or
+                    // suggestion cards it could mistake for real people.
                     communityHeaderControls
 
                     CommunityNetworkFeed(perspective: .client)

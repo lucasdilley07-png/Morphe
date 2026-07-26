@@ -3555,6 +3555,18 @@ final class SocialFeedTests: XCTestCase {
         XCTAssertFalse(store.isFollowing("uid-test"), "following yourself is refused")
     }
 
+    func testReferralLinkNormalizesAndStoresTheHandle() {
+        UserDefaults.standard.removeObject(forKey: "morphe.referral.pending")
+        let store = signedInStore()
+        store.handleIncomingURL(URL(string: "morphe://invite/LucasD")!)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "morphe.referral.pending"), "lucasd",
+                       "invite handle is normalized like every username")
+        store.handleIncomingURL(URL(string: "https://evil.example/invite/x")!)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "morphe.referral.pending"), "lucasd",
+                       "non-morphe schemes are ignored")
+        UserDefaults.standard.removeObject(forKey: "morphe.referral.pending")
+    }
+
     func testSessionStatsRideTheFeedPost() {
         var post = FeedPost(id: "p", authorUid: "u", authorName: "A", text: "t")
         XCTAssertFalse(post.hasSessionStats, "plain text posts carry no stats card")
@@ -3652,6 +3664,19 @@ final class StrengthAnalyticsTests: XCTestCase {
         let balance = store.muscleGroupSetBalance(days: 7)
         XCTAssertEqual(balance.map(\.group), ["Chest", "Back"], "largest first, untagged excluded")
         XCTAssertEqual(balance.map(\.sets), [3, 2])
+    }
+
+    func testShareCardDataStatesOnlyLoggedFacts() {
+        let store = freshStore()
+        XCTAssertNil(store.latestSessionShareCardData, "no log, no card")
+
+        store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 0,
+                                     reps: [8, 8], weights: [135, 135]))
+        let card = store.latestSessionShareCardData
+        XCTAssertEqual(card?.setCount, 2)
+        XCTAssertEqual(card?.exerciseCount, 1)
+        XCTAssertEqual(card?.minutes, 30)
+        XCTAssertEqual(card?.prNames, ["Bench"], "a record set on the log's day rides as a PR line")
     }
 
     func testExportFileContainsLogsAndWeightHistory() throws {

@@ -2504,6 +2504,37 @@ final class MorpheAppStore {
         UserDefaults.standard.set(data, forKey: bodyWeightHistoryDefaultsKey)
     }
 
+    // MARK: - Share card (the session's outward face)
+
+    /// The latest logged session as share-card facts — nil before any log.
+    /// PR lines come from the same derivation the PR timeline uses, filtered
+    /// to records set on that session's day.
+    var latestSessionShareCardData: ShareCardData? {
+        guard let log = currentAthleteWorkoutLogs.first else { return nil }
+        let calendar = Calendar.current
+        let prNames = recentPersonalRecords(limit: 10)
+            .filter { calendar.isDate($0.date, inSameDayAs: log.completedAt) }
+            .map(\.exerciseName)
+        return ShareCardData(
+            workoutName: log.workoutTitle,
+            dateLabel: log.completedAt.formatted(date: .abbreviated, time: .omitted),
+            setCount: Self.loggedSetCount(of: log),
+            exerciseCount: log.exercises.count,
+            minutes: log.durationMinutes,
+            streak: currentWorkoutStreak(from: currentAthleteWorkoutLogs),
+            prNames: Array(prNames.prefix(3)),
+            username: profileShowcase.username.isEmpty ? "" : "@\(profileShowcase.username)"
+        )
+    }
+
+    /// Caption that rides along with the share-card image — carries the
+    /// referral handle so the picture recruits.
+    var shareCardCaption: String {
+        let handle = profileShowcase.username
+        guard !handle.isEmpty else { return "Training on Morphe." }
+        return "Training on Morphe — I'm @\(handle). Install it, then open morphe://invite/\(handle) and we're connected."
+    }
+
     // MARK: - Data export
 
     /// One-file JSON export of everything this athlete owns — profile
@@ -6682,10 +6713,50 @@ final class MorpheAppStore {
     }
 
     /// Shareable invite text for pulling a training partner into Morphe.
-    /// Becomes a real deep link once accounts/Firebase are connected.
+    /// Carries the sender's handle as a referral link: opening
+    /// morphe://invite/<username> after install auto-follows the inviter.
     var networkInviteMessage: String {
         let name = clientProfile.name.isEmpty ? "me" : clientProfile.name
-        return "Train with \(name) on Morphe — we can share workouts, track progress, and keep each other consistent. Download it and let's go. 💪"
+        var message = "Train with \(name) on Morphe — we can share workouts, track progress, and keep each other consistent."
+        let handle = profileShowcase.username
+        if !handle.isEmpty {
+            message += " After you install, open morphe://invite/\(handle) and we're connected."
+        }
+        return message + " 💪"
+    }
+
+    // MARK: Referral deep links (morphe://invite/<username>)
+
+    private static let pendingReferralKey = "morphe.referral.pending"
+
+    /// Entry point for morphe:// URLs. An invite link remembers WHO invited,
+    /// then connects the graph as soon as a signed-in session can — install
+    /// first, sign up, and the follow happens on the next feed load.
+    func handleIncomingURL(_ url: URL) {
+        guard url.scheme == "morphe", url.host == "invite" else { return }
+        let username = UsernameRules.normalize(url.lastPathComponent)
+        guard !username.isEmpty else { return }
+        UserDefaults.standard.set(username, forKey: Self.pendingReferralKey)
+        if isRealFeedActive {
+            Task { await consumePendingReferral() }
+        } else {
+            showToast("Invite from @\(username) saved — it connects when you're signed in.")
+        }
+    }
+
+    /// Resolves the stored invite to a uid via the username directory and
+    /// follows them. Exact-match only; a stale or bogus handle just clears.
+    func consumePendingReferral() async {
+        guard isRealFeedActive,
+              let username = UserDefaults.standard.string(forKey: Self.pendingReferralKey)
+        else { return }
+        UserDefaults.standard.removeObject(forKey: Self.pendingReferralKey)
+        let hits = await usernameDirectory.search(prefix: username, limit: 1)
+        guard let hit = hits.first, hit.username == username,
+              hit.uid != authUser?.id else { return }
+        if !followedUids.contains(hit.uid) {
+            toggleFollow(uid: hit.uid, name: "@\(hit.username)")
+        }
     }
 
     /// Entry point for location-based athlete discovery. Wires to a Firestore
@@ -7241,6 +7312,9 @@ final class MorpheAppStore {
         if let following = await feedService.fetchFollowing(uid: uid) {
             followedUids = following
         }
+        // A referral captured before sign-in connects on the first real
+        // feed load after it.
+        await consumePendingReferral()
     }
 
     // MARK: Report + block (App Store 1.2: report, block, filter)

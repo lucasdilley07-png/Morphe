@@ -246,6 +246,11 @@ struct RootView: View {
         // The celebration is the app's ONE emotional beat (PRs land here) —
         // it gets a spring pop where everything else stays mechanical.
         .animation(.spring(response: 0.38, dampingFraction: 0.65), value: store.celebration)
+        // Referral deep links (morphe://invite/<username>) land here whether
+        // the app was cold-launched or already running.
+        .onOpenURL { url in
+            store.handleIncomingURL(url)
+        }
     }
 }
 
