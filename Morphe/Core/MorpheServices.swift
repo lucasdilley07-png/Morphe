@@ -4921,9 +4921,26 @@ extension HealthWorkoutSync {
             HKCategoryValueSleepAnalysis.asleepUnspecified,
             .asleepCore, .asleepDeep, .asleepREM
         ].map(\.rawValue))
-        let totalSeconds = samples
+        // UNION of asleep intervals, clamped to the window — iPhone and
+        // Watch both write sleepAnalysis for the same night, and a naive
+        // sum double-counts a 7h night into a confident 14. Overlaps merge;
+        // only genuinely distinct sleep adds up.
+        let intervals = samples
             .filter { asleepValues.contains($0.value) }
-            .reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+            .map { (start: max($0.startDate, start), end: min($0.endDate, now)) }
+            .filter { $0.end > $0.start }
+            .sorted { $0.start < $1.start }
+        var totalSeconds = 0.0
+        var currentEnd = Date.distantPast
+        for interval in intervals {
+            if interval.start >= currentEnd {
+                totalSeconds += interval.end.timeIntervalSince(interval.start)
+                currentEnd = interval.end
+            } else if interval.end > currentEnd {
+                totalSeconds += interval.end.timeIntervalSince(currentEnd)
+                currentEnd = interval.end
+            }
+        }
         guard totalSeconds > 15 * 60 else { return nil }
         return totalSeconds / 3600
     }

@@ -1,99 +1,111 @@
-# Morphe — Privacy Policy
+# Morphe Privacy Policy
 
-**Effective date:** June 14, 2026
-**Last updated:** June 14, 2026
+**Effective date:** July 26, 2026
+**Developer:** Lucas Dilley
+**Contact:** lucasdilley.07@gmail.com
 
-> Fill in the bracketed placeholders before publishing: **[Developer / legal name]**,
-> **[contact email]**, and **[your state/country]**. Everything else reflects how the
-> app actually works today.
+Morphe is a fitness tracking and training community app. This policy says
+exactly what Morphe collects, where it goes, and what control you have.
+Plain language on purpose — if anything here is unclear, email us.
 
-## The short version
+## What Morphe collects
 
-Morphe is built to keep your information on your own device. We do **not** collect it,
-receive it, transmit it to any server, sell it, or share it with anyone. Morphe has no
-user accounts, no analytics, no advertising, and no third‑party tracking. Everything you
-enter stays on your iPhone.
+**Account data.** Morphe uses accounts (Firebase Authentication, a Google
+service). When you sign up we collect your **email address** and store the
+display name and @username you choose. Your @username is globally unique
+and visible to other users.
 
-## Who we are
+**Training data you create.** Workouts you log (exercises, sets, reps,
+weights, effort ratings, session notes), body-weight readings, recovery
+check-ins, nutrition entries, goals, and profile details. This data is
+stored on your device and backed up to your account in Google Firebase
+(Firestore) so you can restore it on a new phone.
 
-Morphe ("the app," "we," "us") is an iOS fitness app published by **[Developer / legal
-name]**. If you have questions about this policy, contact us at **[contact email]**.
+**Community content.** Posts, comments, reactions, reposts, who you follow,
+who you block, challenge and leaderboard entries (opt-in), Train Together
+party participation, and messages with a connected coach. Posts and
+comments are visible to other signed-in users; messages are visible only to
+the two people in the conversation.
 
-## What information the app stores
+**Coach sharing (optional).** If you turn on "Share with coach," a summary
+of your real training progress (streak, weekly volume, recent sessions,
+PRs, and — only on days you check in — your readiness) is shared with the
+one coach you're linked to. Turning it off deletes the shared summary
+immediately.
 
-Morphe stores the following **locally on your device only**, so the app can work and
-remember your progress between sessions:
+**Verification selfies (optional).** If you request a verified badge, the
+selfie you submit is uploaded for human review by the Morphe team and used
+for no other purpose.
 
-- **Profile details you provide during setup** — the name you choose to be called, and the
-  goals, sport and training‑style preferences, experience level, available equipment, any
-  injuries or limitations you enter, and display preferences (such as theme).
-- **Your training activity** — workouts you log (exercises, sets, reps, duration, notes),
-  any in‑progress workout session, and derived figures such as streaks and progress scores.
+**Abuse reports.** If you report content, we store the report (what was
+reported, the reason you chose, and a text excerpt) so a human can review it.
 
-This information is saved in the app's private storage area on your device. It is **not**
-sent to us or to anyone else.
+## Apple Health (optional, off by default)
 
-## What we do *not* collect
+- **Writing:** with "Sync to Health" on, each workout you log is saved to
+  Apple Health so it counts toward your Activity rings.
+- **Reading:** with "Sleep from Health" on, Morphe reads last night's sleep
+  to pre-fill your morning check-in slider.
 
-- We do **not** operate any servers or backend, so your data is never uploaded.
-- We do **not** use analytics, crash reporting, advertising, or third‑party SDKs.
-- We do **not** track you across apps or websites, and we do not use an advertising
-  identifier.
-- We do **not** sell, rent, or share your information with third parties.
+Health data is used only for the features above. It is **never** used for
+advertising, never sold, and never shared with third parties. Both toggles
+live in Profile → Settings and are off until you turn them on.
 
 ## Device permissions
 
-This version of Morphe requests **no special device permissions**. It does not access your
-camera, photos, microphone, location, contacts, or Apple Health.
+- **Camera** — Form Check (movement analysis and rep counting happen
+  entirely on your device; video never leaves your phone) and scanning
+  Morphe connect/party QR codes.
+- **Microphone & speech recognition** — dictating messages to the in-app
+  assistant. Audio is processed for transcription only.
+- **Notifications** — local reminders you control (appointments, streak,
+  weekly leaderboard). Morphe currently sends no remote push notifications.
 
-## How your information is used
+Every permission is requested only when the feature needs it, and declining
+never breaks the rest of the app.
 
-Because the data never leaves your device, it is used for one purpose only: to run the app
-for you — showing your plan, tracking your workouts, and personalizing your experience.
+## What Morphe does NOT do
 
-## Storage, security, and retention
+- No advertising, and no advertising SDKs.
+- No selling or renting of your data — to anyone, ever.
+- No location tracking.
+- No contact-list access.
+- No third-party analytics trackers. The only third-party service Morphe
+  uses is Google Firebase (authentication and database hosting), which
+  processes your data on our behalf under
+  [Google's terms](https://firebase.google.com/support/privacy).
 
-Your information is stored in Morphe's private app container and is protected by your
-device's built‑in security (your passcode/biometrics and iOS's app sandboxing).
+## Where your data lives
 
-Your data stays on your device until you remove it. **To delete everything Morphe has
-stored, delete (uninstall) the app from your device.** Doing so permanently removes all
-locally stored Morphe data.
+On your device, and — for account-backed data — in Google Firebase
+(Firestore), protected by security rules so that only you (and, where you
+explicitly opted in, your linked coach) can read your data. Community
+content you publish is readable by signed-in users by design.
 
-## Children's privacy
+## Your controls
 
-Morphe is not directed to children under the age of 13 (or the minimum age required in your
-country). Because the app collects no information from anyone and transmits nothing off the
-device, no personal data is gathered from children or any other user.
+- **Export** — Profile → Settings → Export Data produces a single JSON file
+  with every workout you've logged and your weight history.
+- **Delete your account** — Profile → Settings → Delete Account permanently
+  removes your sign-in, cloud backup, weight history, and @username, and
+  wipes the app's local data. Posts and comments you shared remain on the
+  feed unless you delete them first (long-press any of yours); after
+  account deletion they are no longer connected to a live account.
+- **Delete individual content** — long-press your own posts and comments to
+  delete them at any time.
+- **Block and report** — available on every post and comment; blocking is
+  instant and reports are reviewed by a human.
 
-## Purchases
+## Children
 
-This version of Morphe does not offer in‑app purchases, subscriptions, or payments, and it
-does not process any payment information.
+Morphe is not directed at children under 13, and we do not knowingly
+collect data from them.
 
-## Future changes to the app
+## Changes
 
-Features that would change how data is handled — such as user accounts, cloud sync,
-coach–client messaging, or payments — are **not part of this version**. If a future version
-introduces them, we will update this policy and, where required, ask for your consent before
-any new data practices take effect.
-
-## Your rights and choices
-
-Because all of your information lives only on your device and under your control, you can
-review it within the app and erase all of it at any time by uninstalling the app. We hold no
-copy of your data to access, correct, or delete on your behalf. Depending on where you live
-(for example, under the GDPR or CCPA), you may have additional rights; since we neither hold
-nor process your data on any server, there is nothing for us to retrieve or delete on our
-side.
-
-## Changes to this policy
-
-If we update this policy, we will revise the "Last updated" date above and publish the new
-version at the same location. Material changes will also be reflected in an updated app
-release where appropriate.
+If this policy changes, the effective date above changes with it and the
+current version ships inside the app repository and on the app's website.
 
 ## Contact
 
-Questions or requests about privacy: **[contact email]**.
-**[Developer / legal name]** — governed by the laws of **[your state/country]**.
+Questions, requests, or complaints: **lucasdilley.07@gmail.com**.

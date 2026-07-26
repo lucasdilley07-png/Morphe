@@ -743,6 +743,7 @@ final class MorpheAppStore {
         // fresh-install path where no profile snapshot existed yet.)
         loadCompetitionState()
         loadTrainingPreferences()
+        reloadPerProfileMirrors()
         // A relaunch on the streak's last allowed rest day re-arms tonight's
         // reminder; a launch after training today clears it. Widgets get the
         // freshest numbers on every launch too.
@@ -822,6 +823,63 @@ final class MorpheAppStore {
         savedPostIds = []
         feedReactionCounts = [:]
         myReactedPostIds = []
+        // The rest of the fetched social/coach state follows the same
+        // "another account must never see it" rule.
+        myReactionTypes = [:]
+        postComments = [:]
+        followedUids = []
+        blockedAccounts = [:]
+        athleteSearchResults = []
+        coachShareSummaries = [:]
+        coachShareFetched = []
+    }
+
+    /// Permanently deletes the account (App Store 5.1.1(v)): cloud backup
+    /// docs, the coachShare doc, the @username claim, the users/{uid} root
+    /// doc, and the Auth user — then wipes this device's local copy and
+    /// lands on the sign-in screen. Content published to SHARED surfaces
+    /// (posts, comments, messages) is not mass-deleted here; the confirm
+    /// dialog discloses that, and own-posts can be deleted first.
+    /// Returns false when Firebase demands a fresh sign-in.
+    func deleteAccount() async -> Bool {
+        guard let uid = authUser?.id else { return false }
+
+        // Server cleanup FIRST, while the auth session is still valid —
+        // after user.delete() the rules see an anonymous caller.
+        await cloudBackup.eraseUser()
+        managedClientService.clearCoachShare(athleteUid: uid)
+        let username = selectedRole == .coach ? coachProfile.username : profileShowcase.username
+        if !username.isEmpty {
+            await usernameDirectory.release(username, for: uid)
+        }
+
+        do {
+            try await authService.deleteAccount()
+        } catch {
+            showToast((error as? AuthError)?.errorDescription
+                ?? "Couldn't delete the account — check your connection and retry.")
+            return false
+        }
+
+        // Local wipe: per-profile defaults, files, and in-memory state.
+        for key in [trainingPreferencesDefaultsKey, competitionStateDefaultsKey,
+                    bodyWeightHistoryDefaultsKey, recoverySeriesDefaultsKey,
+                    nutritionSeriesDefaultsKey, activeProgramDefaultsKey,
+                    Self.pendingReferralKey] {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        workoutPersistence.clear()
+        profilePersistence.clear()
+        // signOut BEFORE clearing logs: the workoutLogs didSet mirrors to
+        // the cloud for signed-in accounts, and the account is gone.
+        signOut()
+        workoutLogs = []
+        hasCompletedOnboarding = false
+        loadTrainingPreferences()
+        loadCompetitionState()
+        reloadPerProfileMirrors()
+        showToast("Account deleted. Everything tied to it is gone from this device.")
+        return true
     }
 
     /// Lands on the Train surface for the CURRENT role. The coach workspace
@@ -1625,6 +1683,7 @@ final class MorpheAppStore {
         // may have just changed — re-read them for the restored identity.
         loadCompetitionState()
         loadTrainingPreferences()
+        reloadPerProfileMirrors()
     }
 
     /// Persists the current local profile snapshot to disk.
@@ -2597,7 +2656,13 @@ final class MorpheAppStore {
         return snapshot
     }
 
+    /// Stored, observable mirror of the persisted snapshot — programProgress
+    /// used to decode UserDefaults on EVERY access, which the live console
+    /// hits per exercise row per render via suggestedWorkingWeight.
+    private(set) var activeProgramState: ActiveProgramSnapshot?
+
     private func persistActiveProgramSnapshot(_ snapshot: ActiveProgramSnapshot?) {
+        activeProgramState = snapshot
         if let snapshot, let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: activeProgramDefaultsKey)
         } else {
@@ -2606,7 +2671,7 @@ final class MorpheAppStore {
     }
 
     var programProgress: ProgramProgress? {
-        guard let snapshot = loadActiveProgramSnapshot(),
+        guard let snapshot = activeProgramState,
               let program = Self.trainingPrograms.first(where: { $0.id == snapshot.programID }),
               !program.weeklySessionNames.isEmpty
         else { return nil }
@@ -2652,7 +2717,7 @@ final class MorpheAppStore {
     }
 
     private func advanceProgram(by count: Int) {
-        guard var snapshot = loadActiveProgramSnapshot() else { return }
+        guard var snapshot = activeProgramState else { return }
         snapshot.completedSessions += count
         persistActiveProgramSnapshot(snapshot)
     }
@@ -2671,10 +2736,19 @@ final class MorpheAppStore {
         return true
     }
 
-    /// True while the active program sits in its deload week — the
-    /// progression engine reads this to suggest lighter, with the reason.
+    /// True while the active program sits in its deload week — drives the
+    /// badge on the program card.
     var isProgramDeloadWeek: Bool {
         programProgress?.isDeloadWeek == true
+    }
+
+    /// True only when the deload week applies to THIS session: the staged
+    /// workout must be one of the program's own sessions. A custom workout
+    /// run during a program's deload week keeps normal progression — the
+    /// program has no business deloading training it doesn't own.
+    var isDeloadActiveForCurrentSession: Bool {
+        guard let progress = programProgress, progress.isDeloadWeek else { return false }
+        return progress.program.weeklySessionNames.contains(currentWorkout.name)
     }
 
     // MARK: - Share card (the session's outward face)
@@ -2764,12 +2838,20 @@ final class MorpheAppStore {
         }
     }
 
-    var recoverySeries: [DailyRecoveryEntry] {
-        loadSeries(recoverySeriesDefaultsKey)
-    }
+    /// Stored mirrors of the persisted series — decoded ONCE per profile
+    /// load instead of on every view-body access (firstWeekSteps reads
+    /// recoverySeries on every Home render during week one), and observable
+    /// so the trend cards refresh the moment a new entry lands.
+    private(set) var recoverySeries: [DailyRecoveryEntry] = []
+    private(set) var nutritionSeries: [DailyNutritionEntry] = []
 
-    var nutritionSeries: [DailyNutritionEntry] {
-        loadSeries(nutritionSeriesDefaultsKey)
+    /// Reloads the per-profile stored mirrors (series + active program) for
+    /// the CURRENT profile id — called at launch, on profile restore, and
+    /// after the onboarding identity mint.
+    private func reloadPerProfileMirrors() {
+        recoverySeries = loadSeries(recoverySeriesDefaultsKey)
+        nutritionSeries = loadSeries(nutritionSeriesDefaultsKey)
+        activeProgramState = loadActiveProgramSnapshot()
     }
 
     /// Called from `submitRecoveryCheckIn` — records today's real inputs.
@@ -2786,6 +2868,7 @@ final class MorpheAppStore {
             mood: recovery.mood
         ))
         saveSeries(entries, key: recoverySeriesDefaultsKey)
+        recoverySeries = entries
     }
 
     /// Called at day rollover BEFORE the daily nutrition board resets —
@@ -2805,6 +2888,7 @@ final class MorpheAppStore {
             proteinTarget: targets.proteinGrams
         ))
         saveSeries(entries, key: nutritionSeriesDefaultsKey)
+        nutritionSeries = entries
     }
 
     // MARK: - Data export
@@ -2922,6 +3006,12 @@ final class MorpheAppStore {
             coachShareEnabled = false
             linkedCoachUid = ""
             linkedCoachName = ""
+            // EVERY field resets on a missing blob — a profile switch to an
+            // account with no stored prefs must not inherit the previous
+            // profile's sleep toggle, first-week date, or archived roster.
+            healthSleepEnabled = false
+            firstWeekStart = nil
+            archivedClientCodes = []
             return
         }
         autoRestTimerEnabled = snapshot.autoRestTimer
@@ -3950,11 +4040,9 @@ final class MorpheAppStore {
         let resolvedName = trimmedName.isEmpty ? clientProfile.name : trimmedName
 
         hasCompletedOnboarding = true
-        // Week one starts NOW — the day-7 starter arc keys off this stamp
-        // and never restarts (a returning profile keeps its original date).
-        if firstWeekStart == nil {
-            firstWeekStart = .now
-        }
+        // (firstWeekStart is stamped AFTER resetToFreshUser below — stamping
+        // here persisted it under the SEEDED demo profile id, which the
+        // minted identity never reads, so the arc vanished on relaunch.)
         // The signed-up account role is the source of truth once accounts are
         // real — the draft's default must never demote a coach to athlete.
         selectedRole = authUser?.role.appRole ?? onboardingDraft.accountType
@@ -4002,7 +4090,21 @@ final class MorpheAppStore {
 
         // Mint a fresh identity and clear all seeded demo data so the user
         // starts in THEIR OWN empty account, not the demo athlete's.
+        let preMintPrefsKey = trainingPreferencesDefaultsKey
         resetToFreshUser()
+
+        // Week one starts NOW — stamped AFTER the mint so it lands under the
+        // key this profile will actually read on relaunch, then explicitly
+        // persisted (no other prefs didSet is guaranteed to fire on the solo
+        // path). The pre-mint blob is purged: it sits under the FIXED seeded
+        // demo id, so a second account on this device would inherit it.
+        if firstWeekStart == nil {
+            firstWeekStart = .now
+        }
+        persistTrainingPreferences()
+        UserDefaults.standard.removeObject(forKey: preMintPrefsKey)
+        // The per-profile mirrors (series, program) follow the minted id.
+        reloadPerProfileMirrors()
 
         // The user's own safety and setup notes — applied AFTER the reset
         // (which clears the demo athlete's) so they actually stick. These were
@@ -5344,6 +5446,11 @@ final class MorpheAppStore {
     private func lastLoggedTopWeight(forExerciseNamed name: String)
         -> (weight: Double, unit: WeightUnit, feedback: WorkoutFeedbackOption?, topSetRPE: Int?)? {
         for log in workoutLogs where log.athleteID == clientProfile.id {
+            // Deload sessions are deliberately light — deriving the next
+            // working weight from one would make the cut permanent (bench
+            // 100 → deload 90 → post-program suggestions rebuild from 90).
+            // The engine looks past them to the last REAL working session.
+            guard !log.notes.contains("Deload week.") else { continue }
             guard let logged = log.exercises.first(where: { $0.name == name }),
                   let weights = logged.weightsPerSet,
                   let top = weights.max(), top > 0 else { continue }
@@ -5373,9 +5480,9 @@ final class MorpheAppStore {
         // Only bump when the logged unit matches the current one — never guess
         // a number across a lb/kg switch.
         guard last.unit == weightUnit else { return last.weight }
-        // Program deload week: ~10% off the last working weight, snapped to
-        // the plate increment. The note names the program as the reason.
-        if isProgramDeloadWeek, last.weight > 0 {
+        // Program deload week — scoped to the program's OWN sessions: ~10%
+        // off the last working weight, snapped to the plate increment.
+        if isDeloadActiveForCurrentSession, last.weight > 0 {
             let step = progressionIncrement()
             let deload = ((last.weight * 0.9) / step).rounded() * step
             return max(deload, step)
@@ -5395,7 +5502,7 @@ final class MorpheAppStore {
     func progressionNote(for exercise: WorkoutExercise) -> String? {
         guard let last = lastLoggedTopWeight(forExerciseNamed: exercise.name),
               last.unit == weightUnit, last.weight > 0 else { return nil }
-        if isProgramDeloadWeek {
+        if isDeloadActiveForCurrentSession {
             return "DELOAD WEEK — about 10% off, that's the program working"
         }
         if last.feedback == .tooEasy {
@@ -5536,6 +5643,7 @@ final class MorpheAppStore {
 
     /// Abandons the live session without logging anything.
     func cancelTrackedWorkoutSession() {
+        restoreSessionTemplateBaseline()
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false
         hasCompletedWorkoutFlow = false
@@ -5558,6 +5666,28 @@ final class MorpheAppStore {
         Haptics.impact(.light)
     }
 
+    /// The template's exercise list as it stood before the FIRST mid-session
+    /// edit, restored when the session ends — "one more movement today" must
+    /// never rewrite the saved template (currentWorkout is computed from the
+    /// library, so session edits necessarily pass through it). In-memory
+    /// only: a mid-session relaunch keeps the edit for the restored session
+    /// and a fresh baseline is captured on the next edit.
+    private var sessionTemplateBaseline: (templateID: UUID, exercises: [WorkoutExercise])?
+
+    private func captureSessionBaselineIfNeeded() {
+        guard sessionTemplateBaseline == nil else { return }
+        sessionTemplateBaseline = (currentWorkoutID, currentWorkout.exercises)
+    }
+
+    /// Puts the template back exactly as the user saved it. Called wherever
+    /// the live session ends (logged or discarded).
+    private func restoreSessionTemplateBaseline() {
+        guard let baseline = sessionTemplateBaseline else { return }
+        sessionTemplateBaseline = nil
+        guard let index = workoutTemplates.firstIndex(where: { $0.id == baseline.templateID }) else { return }
+        workoutTemplates[index].exercises = baseline.exercises
+    }
+
     /// Adds a library exercise to the LIVE session (end of the queue) —
     /// "one more movement I feel like doing" without editing the template.
     /// Refuses duplicates: the tracked-set dictionaries key by exercise id.
@@ -5567,6 +5697,7 @@ final class MorpheAppStore {
             showToast("\(reference.name) is already in this session.")
             return
         }
+        captureSessionBaselineIfNeeded()
         updateCurrentWorkout { workout in
             workout.exercises.append(WorkoutExercise(
                 id: reference.id,
@@ -5590,6 +5721,7 @@ final class MorpheAppStore {
         guard let index = currentWorkout.exercises.firstIndex(where: { $0.id == id }) else { return }
         let target = up ? index - 1 : index + 1
         guard currentWorkout.exercises.indices.contains(target) else { return }
+        captureSessionBaselineIfNeeded()
         let activeID = activeWorkoutExercise?.id
         updateCurrentWorkout { workout in
             workout.exercises.swapAt(index, target)
@@ -5914,6 +6046,12 @@ final class MorpheAppStore {
         }
         let isBuddySession = partnerWorkoutEnabled && selectedWorkoutPartner != nil
         var sessionNotes = partnerWorkoutSessionNote()
+        // Deload sessions carry a marker so the progression engine can look
+        // past their deliberately light numbers when suggesting the next
+        // working weight.
+        if isDeloadActiveForCurrentSession {
+            sessionNotes = sessionNotes.isEmpty ? "Deload week." : "\(sessionNotes) Deload week."
+        }
 
         // Train Together: publish this user's totals to the party so buddies
         // see them in their shared recap, and stamp the log with who was there.
@@ -6010,6 +6148,9 @@ final class MorpheAppStore {
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false
         hasCompletedWorkoutFlow = false
+        // Session-scoped add/reorder dies with the session — the template
+        // goes back exactly as the user saved it.
+        restoreSessionTemplateBaseline()
 
         if partnerWorkoutEnabled, let partner = selectedWorkoutPartner, let partnerPlan = currentPartnerWorkoutPlan {
             updateXP(for: partnerPlan.xpBonus, add: true)
@@ -6891,11 +7032,8 @@ final class MorpheAppStore {
         }
     }
 
-    func previewOnboardingAccentPalette(_ palette: AccentPalette) {
-        onboardingDraft.accentPalette = palette
-        MorpheTheme.apply(accentPalette: palette)
-        Haptics.impact(.light)
-    }
+    // (previewOnboardingAccentPalette lived here — dead since the onboarding
+    // accent step was cut, and it bypassed the level gate. Removed.)
 
     /// Applies a new accent palette app-wide and persists it. Contract with
     /// the Profile appearance picker (ProfileView owns the UI only): set
@@ -7125,30 +7263,57 @@ final class MorpheAppStore {
 
     private static let pendingReferralKey = "morphe.referral.pending"
 
-    /// Entry point for morphe:// URLs. An invite link remembers WHO invited,
-    /// then connects the graph as soon as a signed-in session can — install
-    /// first, sign up, and the follow happens on the next feed load.
+    /// Entry point for morphe:// URLs. Registering the scheme means the iOS
+    /// Camera now launches Morphe for EVERY morphe:// QR — party and connect
+    /// payloads must route, not silently drop. Invite links remember WHO
+    /// invited, then connect the graph as soon as a signed-in session can.
     func handleIncomingURL(_ url: URL) {
-        guard url.scheme == "morphe", url.host == "invite" else { return }
-        let username = UsernameRules.normalize(url.lastPathComponent)
-        guard !username.isEmpty else { return }
-        UserDefaults.standard.set(username, forKey: Self.pendingReferralKey)
-        if isRealFeedActive {
-            Task { await consumePendingReferral() }
-        } else {
-            showToast("Invite from @\(username) saved — it connects when you're signed in.")
+        guard url.scheme == "morphe" else { return }
+        switch url.host {
+        case "invite":
+            let username = UsernameRules.normalize(url.lastPathComponent)
+            guard !username.isEmpty else { return }
+            UserDefaults.standard.set(username, forKey: Self.pendingReferralKey)
+            if isRealFeedActive {
+                Task { await consumePendingReferral() }
+            } else {
+                showToast("Invite from @\(username) saved — it connects when you're signed in.")
+            }
+        case "party":
+            // A party QR scanned with the system Camera (the in-app scanner
+            // has its own path). Join goes through the same code flow.
+            guard let code = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "code" })?.value,
+                  !code.isEmpty else { return }
+            Task {
+                if await joinParty(code: code) == false {
+                    showToast("Couldn't join that party — the session may have ended.")
+                }
+            }
+        case "connect":
+            // Connect QRs carry a profile payload the in-app scanner records;
+            // from the system Camera, route to the same handler.
+            recordScannedConnection(from: url.absoluteString)
+        default:
+            break
         }
     }
 
     /// Resolves the stored invite to a uid via the username directory and
-    /// follows them. Exact-match only; a stale or bogus handle just clears.
+    /// follows them. Exact-match only. The pending key survives failed
+    /// lookups (offline = try again next feed load) and clears only on a
+    /// DEFINITIVE outcome: followed, or the directory answered and the
+    /// handle genuinely doesn't exist.
     func consumePendingReferral() async {
         guard isRealFeedActive,
               let username = UserDefaults.standard.string(forKey: Self.pendingReferralKey)
         else { return }
+        let hits = await usernameDirectory.search(prefix: username, limit: 5)
+        // Empty CAN mean offline (the NoOp/failed search returns []) — keep
+        // the invite and retry on the next feed load rather than eating it.
+        guard !hits.isEmpty else { return }
         UserDefaults.standard.removeObject(forKey: Self.pendingReferralKey)
-        let hits = await usernameDirectory.search(prefix: username, limit: 1)
-        guard let hit = hits.first, hit.username == username,
+        guard let hit = hits.first(where: { $0.username == username }),
               hit.uid != authUser?.id else { return }
         if !followedUids.contains(hit.uid) {
             toggleFollow(uid: hit.uid, name: "@\(hit.username)")
@@ -7737,7 +7902,14 @@ final class MorpheAppStore {
     /// fetched either way so the UI can render "not sharing" as a KNOWN
     /// state instead of guessing.
     func loadCoachShare(for client: ManagedClient) async {
-        guard client.isClaimed, !client.claimedByUid.isEmpty else { return }
+        guard client.isClaimed else { return }
+        guard !client.claimedByUid.isEmpty else {
+            // Legacy/corrupt claim doc with no uid: mark it fetched so the
+            // sheet renders the honest not-sharing state instead of spinning
+            // on "Checking…" forever.
+            coachShareFetched.insert(client.claimedByUid)
+            return
+        }
         let summary = await managedClientService.fetchCoachShare(athleteUid: client.claimedByUid)
         coachShareFetched.insert(client.claimedByUid)
         if let summary {
@@ -8543,10 +8715,6 @@ final class MorpheAppStore {
 
     func contactSupport() {
         showToast("Support contact opened.")
-    }
-
-    func logoutPlaceholder() {
-        showToast("Logout placeholder - connect auth before production.")
     }
 
     func selectCoachSportFilter(_ sport: SportFocus?) {

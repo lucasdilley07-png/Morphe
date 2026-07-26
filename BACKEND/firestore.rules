@@ -45,7 +45,10 @@ service cloud.firestore {
             || resource.data.get('coach', {}).get('verified', false) == true)
         && (request.resource.data.get('verified', false) != true
             || resource.data.get('verified', false) == true);
-      allow delete: if false;   // account deletion goes through a Function later
+      // Account deletion is user-initiated IN the app (App Store 5.1.1(v)):
+      // the owner deletes their own root doc; state/* and coachShare are
+      // removed by the same flow, and the Auth user is deleted last.
+      allow delete: if isOwner(uid);
 
       // The user's own workout data. Linked coaches read, never write.
       match /workoutLogs/{logId} {

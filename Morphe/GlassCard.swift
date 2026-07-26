@@ -1638,13 +1638,15 @@ enum ShareCardRenderer {
 /// completion-dismiss contract as the data-export sheet: finishing or
 /// cancelling the share closes the hosting SwiftUI sheet too.
 struct ImageShareSheet: UIViewControllerRepresentable {
-    let image: UIImage
+    /// Nil = share the caption text alone (render-failure fallback).
+    let image: UIImage?
     let caption: String
     let onFinish: () -> Void
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
+        let items: [Any] = image.map { [$0, caption] } ?? [caption]
         let controller = UIActivityViewController(
-            activityItems: [image, caption], applicationActivities: nil)
+            activityItems: items, applicationActivities: nil)
         controller.completionWithItemsHandler = { _, _, _, _ in
             onFinish()
         }

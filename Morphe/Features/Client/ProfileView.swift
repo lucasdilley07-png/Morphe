@@ -21,6 +21,8 @@ struct ProfileView: View {
     @State private var weightDraft = ""
     @State private var showSignOutConfirm = false
     @State private var showUnsavedPrompt = false
+    @State private var showDeleteAccountConfirm = false
+    @State private var isDeletingAccount = false
     /// The generated export file, presented in the system share sheet.
     private struct ExportFile: Identifiable {
         let url: URL
@@ -969,6 +971,29 @@ struct ProfileView: View {
                         Button("Cancel", role: .cancel) {}
                     } message: {
                         Text("Your data stays backed up to your account — signing back in restores everything.")
+                    }
+
+                    // App Store 5.1.1(v): account deletion lives IN the app.
+                    Button(isDeletingAccount ? "Deleting…" : "Delete Account") {
+                        showDeleteAccountConfirm = true
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .foregroundStyle(MorpheTheme.danger)
+                    .disabled(isDeletingAccount)
+                    .accessibilityLabel("Permanently delete your account")
+                    .alert("Delete your account forever?", isPresented: $showDeleteAccountConfirm) {
+                        Button("Delete Forever", role: .destructive) {
+                            isDeletingAccount = true
+                            Task {
+                                defer { isDeletingAccount = false }
+                                if await store.deleteAccount() {
+                                    store.closeClientProfile()
+                                }
+                            }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This deletes your sign-in, cloud backup, weight history, and @username permanently — there is no undo. Posts and comments you shared stay on the feed unless you delete them first (long-press any of yours).")
                     }
                 }
             }

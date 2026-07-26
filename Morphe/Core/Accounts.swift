@@ -33,6 +33,7 @@ enum AuthError: Error, LocalizedError, Equatable {
     case userNotFound
     case wrongPassword
     case notConfigured
+    case requiresRecentLogin
     case unknown(String)
 
     var errorDescription: String? {
@@ -43,6 +44,7 @@ enum AuthError: Error, LocalizedError, Equatable {
         case .userNotFound: return "No account found for that email."
         case .wrongPassword: return "That password doesn't match."
         case .notConfigured: return "Sign-in isn't connected yet."
+        case .requiresRecentLogin: return "For safety, sign out, sign back in, then delete the account."
         case .unknown(let message): return message
         }
     }
@@ -57,6 +59,9 @@ protocol AuthService: AnyObject {
     /// Emails the user a password-reset link. Only a real backend can do this;
     /// the local service throws `.notConfigured`.
     func sendPasswordReset(email: String) async throws
+    /// Permanently deletes the signed-in account (App Store 5.1.1(v)).
+    /// Firebase may demand a recent sign-in — thrown as `.requiresRecentLogin`.
+    func deleteAccount() async throws
 }
 
 extension AuthService {
@@ -122,6 +127,11 @@ final class LocalAuthService: AuthService {
 
     /// The device account never had a real password to reset — be honest
     /// about it instead of pretending an email went out.
+    func deleteAccount() async throws {
+        try? FileManager.default.removeItem(at: url)
+        currentUser = nil
+    }
+
     func sendPasswordReset(email: String) async throws {
         throw AuthError.notConfigured
     }

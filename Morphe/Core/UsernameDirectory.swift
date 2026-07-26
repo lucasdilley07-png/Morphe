@@ -53,6 +53,9 @@ protocol UsernameDirectoryService: AnyObject {
     /// Prefix search over the directory for user discovery — (username, uid)
     /// pairs, name-ordered. Empty on failure or empty prefix.
     func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]
+    /// Releases a claim on account deletion so the name frees up. Rules
+    /// enforce owner-only; a mismatched uid write is simply denied.
+    func release(_ username: String, for uid: String) async
 }
 
 /// Offline default for tests/previews: everything is available and every
@@ -61,6 +64,7 @@ final class NoOpUsernameDirectory: UsernameDirectoryService {
     func isAvailable(_ username: String, for uid: String) async -> Bool { true }
     func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult { .claimed }
     func search(prefix: String, limit: Int) async -> [(username: String, uid: String)] { [] }
+    func release(_ username: String, for uid: String) async {}
 }
 
 final class FirebaseUsernameDirectory: UsernameDirectoryService {
@@ -91,6 +95,14 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
             guard let uid = document.data()["uid"] as? String else { return nil }
             return (username: document.documentID, uid: uid)
         }
+    }
+
+    func release(_ username: String, for uid: String) async {
+        let clean = UsernameRules.normalize(username)
+        guard !clean.isEmpty else { return }
+        // Owner-only delete is enforced by the rules; a stale/mismatched
+        // claim just fails quietly.
+        try? await nameDoc(clean).delete()
     }
 
     func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult {

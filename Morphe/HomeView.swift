@@ -598,7 +598,8 @@ private struct TodayDoneCard: View {
     /// The rendered story card, alive while the share sheet is up.
     private struct SharePayload: Identifiable {
         let id = UUID()
-        let image: UIImage
+        /// Nil = render failed; the sheet shares the caption text alone.
+        let image: UIImage?
         let caption: String
     }
     @State private var sharePayload: SharePayload?
@@ -621,12 +622,13 @@ private struct TodayDoneCard: View {
                 HStack(spacing: 10) {
                     // The Strava-sticker play: a branded story IMAGE of the
                     // real session (sets/moves/minutes/PRs/streak), not a
-                    // plain sentence. Falls back to text if rendering fails.
+                    // plain sentence. A failed render REALLY falls back to
+                    // sharing the caption text — a button that sometimes
+                    // does nothing reads as broken.
                     Button("Share Win") {
-                        if let data = store.latestSessionShareCardData,
-                           let image = ShareCardRenderer.image(for: data) {
-                            sharePayload = SharePayload(image: image, caption: store.shareCardCaption)
-                        }
+                        let image = store.latestSessionShareCardData
+                            .flatMap { ShareCardRenderer.image(for: $0) }
+                        sharePayload = SharePayload(image: image, caption: store.shareCardCaption)
                     }
                     .frame(maxWidth: .infinity)
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
@@ -995,8 +997,12 @@ private struct RecoveryCheckInSheet: View {
                         .task {
                             // Opt-in Health pre-fill: seeds the slider once,
                             // rounded to the slider's own 0.5 step. No data
-                            // (or a declined read) changes nothing.
-                            if let hours = await store.healthSleepHoursForCheckIn() {
+                            // (or a declined read) changes nothing — and a
+                            // user who already moved the slider while the
+                            // query ran is NEVER stomped.
+                            let valueBeforeQuery = sleepHours
+                            if let hours = await store.healthSleepHoursForCheckIn(),
+                               sleepHours == valueBeforeQuery {
                                 let seeded = min(12, max(0, (hours * 2).rounded() / 2))
                                 sleepHours = seeded
                                 healthSeededSleep = seeded

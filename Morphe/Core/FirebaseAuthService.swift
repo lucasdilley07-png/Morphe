@@ -113,6 +113,24 @@ final class FirebaseAuthService: AuthService {
         currentUser = nil
     }
 
+    /// Deletes the users/{uid} root doc, then the Auth account itself.
+    /// Firebase refuses stale sessions with requiresRecentLogin — surfaced
+    /// as its own error so the UI can say exactly what to do.
+    func deleteAccount() async throws {
+        guard let user = Auth.auth().currentUser else { throw AuthError.userNotFound }
+        try? await usersCollection.document(user.uid).delete()
+        do {
+            try await user.delete()
+        } catch let error as NSError {
+            if error.code == AuthErrorCode.requiresRecentLogin.rawValue {
+                throw AuthError.requiresRecentLogin
+            }
+            throw AuthError.unknown(error.localizedDescription)
+        }
+        cache.clear()
+        currentUser = nil
+    }
+
     func sendPasswordReset(email: String) async throws {
         let normalized = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         do {

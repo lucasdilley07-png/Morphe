@@ -3326,6 +3326,9 @@ final class IdentityAndTermsTests: XCTestCase {
         func search(prefix: String, limit: Int) async -> [(username: String, uid: String)] {
             taken.filter { $0.hasPrefix(prefix) }.sorted().prefix(limit).map { ($0, "uid-\($0)") }
         }
+        func release(_ username: String, for uid: String) async {
+            taken.remove(username)
+        }
     }
 
     override func setUp() {
@@ -3821,12 +3824,19 @@ final class DepthSprintTests: XCTestCase {
     func testDeloadWeekDerivesFromCountAndCutsSuggestion() throws {
         let store = freshStore()
         let program = MorpheAppStore.trainingPrograms[0]   // 4 weeks x 3, deload wk 4
-        let key = "morphe.program.\(store.clientProfile.id.uuidString)"
-        let snapshot = ActiveProgramSnapshot(programID: program.id, startedAt: .now, completedSessions: 9)
-        UserDefaults.standard.set(try JSONEncoder().encode(snapshot), forKey: key)
 
+        // Reach week 4 through the PUBLIC path — the third audit made the
+        // program state a stored mirror, so poking the defaults blob
+        // directly no longer describes real behavior.
+        store.startProgram(program)
+        for _ in 0..<9 {
+            logStagedWorkout(store)
+            store.startNextProgramSession()
+        }
         XCTAssertEqual(store.programProgress?.week, 4, "9 of 12 sessions = week 4")
         XCTAssertTrue(store.isProgramDeloadWeek)
+        XCTAssertTrue(store.isDeloadActiveForCurrentSession,
+                      "the staged session IS a program session in deload week")
 
         // Deload suggestion: ~10% off the last logged 100 lb, snapped to 5s.
         store.workoutLogs.append(WorkoutLog(
@@ -3845,7 +3855,19 @@ final class DepthSprintTests: XCTestCase {
         XCTAssertEqual(store.suggestedWorkingWeight(for: exercise) ?? 0, 90, accuracy: 0.01,
                        "deload week suggests ~10% off, snapped to the increment")
 
-        UserDefaults.standard.removeObject(forKey: key)
+        // The cut is SCOPED: a non-program session during the same deload
+        // week keeps normal progression — the program doesn't own it.
+        // (Cancel the staged program session first: switching workouts is
+        // confirm-gated while a live session is active.)
+        store.cancelTrackedWorkoutSession()
+        if let other = store.discoverWorkouts.first(where: { !program.weeklySessionNames.contains($0.name) }) {
+            store.startCatalogWorkout(other)
+            XCTAssertFalse(store.isDeloadActiveForCurrentSession)
+            XCTAssertEqual(store.suggestedWorkingWeight(for: exercise) ?? 0, 100, accuracy: 0.01,
+                           "off-program sessions never inherit the deload cut")
+        }
+
+        store.leaveProgram()
     }
 
     func testPaletteUnlocksGateAndGrandfather() {

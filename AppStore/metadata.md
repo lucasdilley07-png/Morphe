@@ -59,7 +59,7 @@ First release of Morphe. Build your own workouts, log real sets with weight and 
 
 - **Primary category:** Health & Fitness
 - **Secondary category:** (optional) Lifestyle
-- **Age rating:** 4+ (no objectionable content; not medical advice)
+- **Age rating:** answer the questionnaire honestly — with user-generated content and social features expect **12+** (infrequent/mild UGC exposure); Morphe ships report + block + filter as 1.2 requires
 - **Price:** Free
 - **Bundle ID:** com.morpheapp.Morphe
 - **Version:** 1.0
@@ -68,8 +68,15 @@ First release of Morphe. Build your own workouts, log real sets with weight and 
 - **Marketing URL:** (optional)
 
 ## App Privacy questionnaire (the "nutrition label")
-Answer: **Data Not Collected.**
-Morphe has no backend, no analytics, no third-party SDKs, and no tracking — nothing leaves the device. This matches the bundled `PrivacyInfo.xcprivacy` manifest. When asked "Do you or your third-party partners collect data from this app?", choose **No**.
+Answer: **Data IS collected** — declare it honestly; the bundled `PrivacyInfo.xcprivacy` matches.
+When asked "Do you or your third-party partners collect data from this app?", choose **Yes**, then declare (all "Linked to the user", none "Used for tracking", purpose App Functionality):
+- **Contact Info → Email Address** (account sign-in)
+- **Contact Info → Name** (display name)
+- **Identifiers → User ID** (account id)
+- **Health & Fitness** (workouts written to / sleep read from Apple Health, training logs)
+- **User Content → Other User Content** (posts, comments, messages, coach-share summaries)
+- **User Content → Photos or Videos** (verification selfie, profile photo)
+No advertising, no analytics SDKs, no tracking — `NSPrivacyTracking` is false.
 
 ## TestFlight (internal beta) — minimum needed
 TestFlight does NOT require screenshots or the full description. You need:

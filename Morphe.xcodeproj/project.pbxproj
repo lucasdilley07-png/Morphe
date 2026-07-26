@@ -598,7 +598,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Morphe/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Morphe reads nothing yet - this permission appears only if you enable future Health imports.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "With Sleep from Health on, Morphe reads last night's sleep to pre-fill your morning check-in. Nothing else is read, and nothing you decline changes the app.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves each finished workout to Apple Health so it counts toward your Activity rings.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device) and to scan Morphe connect codes. Video never leaves your phone.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone so you can dictate messages to Morphe AI. Audio is processed for transcription only.";
@@ -637,7 +637,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Morphe/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Morphe reads nothing yet - this permission appears only if you enable future Health imports.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "With Sleep from Health on, Morphe reads last night's sleep to pre-fill your morning check-in. Nothing else is read, and nothing you decline changes the app.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves each finished workout to Apple Health so it counts toward your Activity rings.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device) and to scan Morphe connect codes. Video never leaves your phone.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone so you can dictate messages to Morphe AI. Audio is processed for transcription only.";

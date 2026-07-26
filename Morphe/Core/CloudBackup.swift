@@ -35,6 +35,9 @@ protocol CloudBackingUp: AnyObject {
     func pushLogs(_ logs: [WorkoutLog])
     func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry])
     func pull() async -> CloudSnapshot
+    /// Account deletion: removes every state/* backup doc for the current
+    /// user (best-effort, while the auth session is still valid).
+    func eraseUser() async
 }
 
 /// Default backup that does nothing — keeps the store fully functional offline
@@ -45,6 +48,7 @@ final class NoOpCloudBackup: CloudBackingUp {
     func pushLogs(_ logs: [WorkoutLog]) {}
     func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry]) {}
     func pull() async -> CloudSnapshot { CloudSnapshot() }
+    func eraseUser() async {}
 }
 
 // MARK: - Verification (manual review → server-granted badge)
@@ -1003,6 +1007,14 @@ final class FirebaseCloudBackup: CloudBackingUp {
                 "json": json,
                 "updatedAt": FieldValue.serverTimestamp()
             ])
+        }
+    }
+
+    func eraseUser() async {
+        for name in ["profile", "logs", "weightHistory"] {
+            if let doc = stateDoc(name) {
+                try? await doc.delete()
+            }
         }
     }
 

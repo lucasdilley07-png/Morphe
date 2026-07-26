@@ -18,8 +18,10 @@ struct TermsGateView: View {
          "To the maximum extent permitted by law, Morphe and its creators are not liable for any injury, loss, or damage — direct or indirect — arising from your use of the app, its workouts, its recommendations, or training sessions with other users, whether in person, virtual, or in a group."),
         ("Form Check and AI features",
          "Camera-based form feedback and AI-generated guidance are automated aids, not a substitute for qualified, in-person coaching. They can be wrong. You remain responsible for your own technique and safety."),
+        ("Community conduct",
+         "Morphe has zero tolerance for objectionable content and abusive users. Content you post can be reported by anyone and is reviewed by a human; you can block any account instantly; repeat or serious abuse ends the account. By using the community features you agree to these rules."),
         ("Your data",
-         "Your profile and training history are stored on your device and backed up to your account so you can restore them. Don't share your account credentials."),
+         "Your profile and training history are stored on your device and backed up to your account so you can restore them. You can export everything and delete your account, both from Profile. Don't share your account credentials."),
         ("As is",
          "Morphe is provided \"as is\", without warranties of any kind. Features may change, break, or be removed as the app evolves.")
     ]
