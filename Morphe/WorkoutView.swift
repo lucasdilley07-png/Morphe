@@ -74,7 +74,10 @@ struct WorkoutView: View {
             // Item-based so every tap presents atomically with its payload —
             // the Bool flavor could silently drop a present during state
             // races, which read as "the More button does nothing".
-            EmptyView().sheet(item: $repLoggerContext) { context in
+            // onDismiss: whatever RPE the sheet seeded (draft or stored set)
+            // dies with the sheet — a swiped-away sheet must not leave a
+            // rating armed for the next quick log.
+            EmptyView().sheet(item: $repLoggerContext, onDismiss: { pendingRPE = nil }) { context in
                 SetRepLoggingSheet(
                     reps: $pendingRepCount,
                     weight: $pendingWeight,
@@ -83,6 +86,10 @@ struct WorkoutView: View {
                 ) { label in
                     if let editIndex = context.editIndex, let exercise = store.activeWorkoutExercise {
                         store.updateTrackedSet(exerciseID: exercise.id, setIndex: editIndex, reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE)
+                        // Editing seeded pendingRPE from the STORED set —
+                        // without this clear, that rating silently rides
+                        // into the next quick-logged set.
+                        pendingRPE = nil
                     } else {
                         // Opening the full logger is an explicit action, so it may
                         // log past the planned set count ("Add extra set").
@@ -1201,10 +1208,14 @@ private struct ActiveWorkoutTrackerCard: View {
         weight > 0 ? weightUnit.format(weight) : "Bodyweight"
     }
 
-    /// Barbell-ish movements only — the keyword gate keeps dumbbell and
-    /// bodyweight moves from showing nonsense plate math.
+    /// Barbell movements only. The include list catches the big lifts, and
+    /// the exclude list vetoes the non-barbell variants that share their
+    /// names — a 60 lb DUMBBELL bench must never render bar math.
     private var isBarbellExercise: Bool {
         let name = exercise.name.lowercased()
+        let excluded = ["dumbbell", "goblet", "split", "machine", "smith",
+                        "kettlebell", "band", "cable", "bodyweight", "pistol"]
+        guard !excluded.contains(where: name.contains) else { return false }
         return name.contains("barbell") || name.contains("bench")
             || name.contains("squat") || name.contains("deadlift")
     }

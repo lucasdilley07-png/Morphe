@@ -2629,8 +2629,9 @@ final class MorpheAppStore {
         }
     }
 
-    /// Flips Health sync; enabling walks through the system Health prompt
-    /// first and refuses honestly when access isn't granted.
+    /// Flips Health sync; enabling walks through the system Health prompt.
+    /// The flag flips ON optimistically so the toggle doesn't visually snap
+    /// back while the prompt is up — a denial reverts it with the honest toast.
     func setHealthSync(enabled: Bool) async {
         guard enabled else {
             healthSyncEnabled = false
@@ -2640,8 +2641,8 @@ final class MorpheAppStore {
             showToast("Health isn't available on this device.")
             return
         }
+        healthSyncEnabled = true
         if await HealthWorkoutSync.requestAuthorization() {
-            healthSyncEnabled = true
             showToast("Workouts now save to Apple Health.")
         } else {
             healthSyncEnabled = false
@@ -2725,8 +2726,12 @@ final class MorpheAppStore {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [Self.weeklyBoardNotificationID])
         guard leaderboardOptIn else { return }
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            guard granted else { return }
+        // Ambient reminders never trigger the permission prompt cold — they
+        // schedule only if the user already granted notifications through a
+        // user-context ask (the appointment reminder path prompts).
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else { return }
             let content = UNMutableNotificationContent()
             content.title = "New week on the board"
             content.body = "The weekly leaderboard reset — every set you log counts from zero."
@@ -7214,12 +7219,21 @@ final class MorpheAppStore {
         if let fetched = await feedService.fetchRecent(limit: 50) {
             // Two-layer render filter: blocked authors are the user's call;
             // the term filter is the App Store 1.2 hygiene net for content
-            // other clients let through.
+            // other clients let through. workoutName is user-typed text too —
+            // a slur in the pill is still a slur.
             feedPosts = fetched.filter {
                 !blockedUids.contains($0.authorUid)
                     && !ContentModeration.containsBlockedTerm($0.text)
+                    && !ContentModeration.containsBlockedTerm($0.workoutName)
             }
             feedReactionCounts = await feedService.fetchReactionCounts(postIds: feedPosts.map(\.id))
+            // Hydrate the filled-heart state: which of these posts THIS
+            // account already reacted to (and with what type) — without
+            // this, a relaunch forgets and a re-tap double-counts locally.
+            if let mine = await feedService.fetchMyReactions(uid: uid, postIds: feedPosts.map(\.id)) {
+                myReactedPostIds = Set(mine.keys)
+                myReactionTypes = mine
+            }
         }
         if let saved = await feedService.fetchSavedPostIds(uid: uid) {
             savedPostIds = saved
@@ -7279,6 +7293,8 @@ final class MorpheAppStore {
         guard let uid = authUser?.id else { return }
         let name = blockedAccounts.removeValue(forKey: targetUid) ?? "Athlete"
         feedService.setBlocked(uid: uid, targetUid: targetUid, name: name, on: false)
+        // Their content comes back NOW, not on the next manual refresh.
+        Task { await refreshFeed() }
         showToast("Unblocked \(name).")
     }
 
@@ -7331,27 +7347,31 @@ final class MorpheAppStore {
         }
     }
 
-    func addComment(to post: FeedPost, text: String) async {
-        guard let uid = authUser?.id else { return }
+    /// Returns whether the comment actually posted, so the composer can put
+    /// the typed text back instead of eating it on failure.
+    @discardableResult
+    func addComment(to post: FeedPost, text: String) async -> Bool {
+        guard let uid = authUser?.id else { return false }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty else { return }
+        guard !clean.isEmpty else { return false }
         guard !ContentModeration.containsBlockedTerm(clean) else {
             showToast(ContentModeration.refusalMessage)
-            return
+            return false
         }
         let comment = PostComment(
             id: UUID().uuidString,
             postId: post.id,
             authorUid: uid,
             authorName: feedAuthorName,
-            text: String(clean.prefix(300))
+            text: clean.wireClamped(300)
         )
         guard await feedService.addComment(comment) else {
             showToast("Comment didn't send — check your connection.")
-            return
+            return false
         }
         postComments[post.id, default: []].append(comment)
         Haptics.impact(.light)
+        return true
     }
 
     func deleteMyComment(_ comment: PostComment) {
@@ -7372,8 +7392,10 @@ final class MorpheAppStore {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return false }
         // The publish-time leg of the 1.2 filter — auto-share recaps are
-        // template text and sail through; typed text gets checked.
-        guard !ContentModeration.containsBlockedTerm(clean) else {
+        // template text and sail through; typed text (including the workout
+        // name, which renders as a pill on every client) gets checked.
+        guard !ContentModeration.containsBlockedTerm(clean),
+              !ContentModeration.containsBlockedTerm(workoutName) else {
             showToast(ContentModeration.refusalMessage)
             return false
         }
@@ -7639,6 +7661,10 @@ final class MorpheAppStore {
         defaults.set(currentWorkout.name, forKey: "widget.todayWorkout")
         defaults.set(weeklySetVolume(weeks: 1).last?.sets ?? 0, forKey: "widget.weekSets")
         defaults.set(isWorkoutLoggedToday, forKey: "widget.loggedToday")
+        // The day this snapshot was true. The widget compares against ITS
+        // render day, so "Logged today ✓" can't survive into tomorrow when
+        // the app isn't opened.
+        defaults.set(Self.dayKey(), forKey: "widget.day")
         WidgetCenter.shared.reloadAllTimelines()
     }
 
@@ -7680,8 +7706,11 @@ final class MorpheAppStore {
               fireDate > .now   // deadline evening already passed: no ghost ring
         else { return }
 
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            guard granted else { return }
+        // Same polite gate as the board reminder: never a cold prompt at
+        // launch — this arms itself once notifications were granted anywhere.
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else { return }
             let content = UNMutableNotificationContent()
             content.title = "Your \(streak)-day streak ends tonight"
             content.body = "One session keeps it alive — even a short one counts."

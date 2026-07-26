@@ -474,6 +474,21 @@ final class FirebaseMessagingService: MessagingSyncing {
 //   users/{uid}/savedPosts/{postId} { savedAt }
 //   users/{uid}/following/{target}  { createdAt }
 
+extension String {
+    /// Trims to at most `max` UTF-8 bytes without splitting a character.
+    /// Swift's `prefix(n)` counts grapheme clusters while the rules' `size()`
+    /// counts smaller units — an emoji-heavy "300-character" string can blow
+    /// the rule bound and get the whole write denied. Byte-capping is
+    /// over-strict but always passes.
+    func wireClamped(_ max: Int) -> String {
+        var clamped = String(prefix(max))
+        while clamped.utf8.count > max, !clamped.isEmpty {
+            clamped.removeLast()
+        }
+        return clamped
+    }
+}
+
 /// Abstraction so tests/previews run without Firebase; the real app resolves
 /// `FirebaseFeedService` (inferred alongside the party service).
 protocol FeedSyncing: AnyObject {
@@ -488,6 +503,9 @@ protocol FeedSyncing: AnyObject {
     /// Real reaction counts via server-side count() aggregation. Posts whose
     /// count couldn't be fetched are simply absent from the result.
     func fetchReactionCounts(postIds: [String]) async -> [String: Int]
+    /// This uid's own reaction per post (postId → type) for the given posts —
+    /// hydrates the filled-heart state across relaunches. Nil when offline.
+    func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]?
     /// Oldest-first comments for one post, or nil when offline/unavailable.
     func fetchComments(postId: String, limit: Int) async -> [PostComment]?
     /// Publishes one comment exactly as given (id = doc id). False on failure.
@@ -520,6 +538,7 @@ final class NoOpFeedService: FeedSyncing {
     func fetchRecent(limit: Int) async -> [FeedPost]? { nil }
     func react(postId: String, uid: String, type: String?) {}
     func fetchReactionCounts(postIds: [String]) async -> [String: Int] { [:] }
+    func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]? { nil }
     func fetchComments(postId: String, limit: Int) async -> [PostComment]? { nil }
     func addComment(_ comment: PostComment) async -> Bool { false }
     func deleteComment(postId: String, commentId: String) {}
@@ -550,11 +569,11 @@ final class FirebaseFeedService: FeedSyncing {
             "authorUid": post.authorUid,
             "authorName": post.authorName,
             "verified": post.verified,
-            "text": String(post.text.prefix(1000)),
+            "text": post.text.wireClamped(1000),
             "createdAt": FieldValue.serverTimestamp()
         ]
         if !post.workoutName.isEmpty {
-            data["workoutName"] = String(post.workoutName.prefix(80))
+            data["workoutName"] = post.workoutName.wireClamped(80)
         }
         if !post.repostOfId.isEmpty {
             data["repostOfId"] = post.repostOfId
@@ -625,7 +644,7 @@ final class FirebaseFeedService: FeedSyncing {
         let data: [String: Any] = [
             "authorUid": comment.authorUid,
             "authorName": comment.authorName,
-            "text": String(comment.text.prefix(300)),
+            "text": comment.text.wireClamped(300),
             "createdAt": FieldValue.serverTimestamp()
         ]
         do {
@@ -666,7 +685,7 @@ final class FirebaseFeedService: FeedSyncing {
             "targetId": targetId,
             "targetUid": targetUid,
             "reason": reason,
-            "excerpt": String(excerpt.prefix(300)),
+            "excerpt": excerpt.wireClamped(300),
             "status": "open",
             "createdAt": FieldValue.serverTimestamp()
         ]
@@ -710,6 +729,27 @@ final class FirebaseFeedService: FeedSyncing {
             counts[postId] = Int(truncating: snap.count)
         }
         return counts
+    }
+
+    func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]? {
+        // One direct doc-get per visible post (max 50), run concurrently —
+        // each is the single reactions/{uid} doc, cached offline by Firestore.
+        await withTaskGroup(of: (String, String)?.self) { group in
+            for postId in postIds {
+                let doc = posts.document(postId).collection("reactions").document(uid)
+                group.addTask {
+                    guard let snap = try? await doc.getDocument(), snap.exists else { return nil }
+                    return (postId, snap.data()?["type"] as? String ?? "heart")
+                }
+            }
+            var result: [String: String] = [:]
+            for await hit in group {
+                if let (postId, type) = hit {
+                    result[postId] = type
+                }
+            }
+            return result
+        }
     }
 
     func savePost(uid: String, postId: String, on: Bool) {
@@ -892,15 +932,38 @@ final class FirebaseCloudBackup: CloudBackingUp {
     }
 
     func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry]) {
-        guard let doc = stateDoc("weightHistory"),
-              let data = try? encoder.encode(entries),
-              let json = String(data: data, encoding: .utf8) else { return }
-        doc.setData([
-            "schemaVersion": 1,
-            "count": entries.count,
-            "json": json,
-            "updatedAt": FieldValue.serverTimestamp()
-        ])
+        guard let doc = stateDoc("weightHistory") else { return }
+        // MERGE, never blind-overwrite: if a fresh install's restore silently
+        // failed (offline pull), the local series is 1 entry while the cloud
+        // holds the real trend — a whole-blob write here would destroy the
+        // exact data this doc exists to protect. Union by date instead.
+        let encoder = self.encoder
+        let decoder = self.decoder
+        Task {
+            var merged = entries
+            if let snap = try? await doc.getDocument(),
+               let json = snap.data()?["json"] as? String,
+               let data = json.data(using: .utf8),
+               let cloud = try? decoder.decode([MorpheAppStore.BodyWeightHistoryEntry].self, from: data) {
+                var byDate: [Date: MorpheAppStore.BodyWeightHistoryEntry] = [:]
+                for entry in cloud { byDate[entry.date] = entry }
+                for entry in entries { byDate[entry.date] = entry }   // local wins on same-date edits
+                merged = byDate.values.sorted { $0.date < $1.date }
+                if merged.count > 200 {
+                    merged.removeFirst(merged.count - 200)
+                }
+            }
+            guard let data = try? encoder.encode(merged),
+                  let json = String(data: data, encoding: .utf8) else { return }
+            // Best-effort like every backup write — a failed push retries on
+            // the next reading via Firestore's offline queue.
+            try? await doc.setData([
+                "schemaVersion": 1,
+                "count": merged.count,
+                "json": json,
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+        }
     }
 
     func pull() async -> CloudSnapshot {

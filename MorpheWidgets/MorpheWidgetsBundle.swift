@@ -24,13 +24,19 @@ private struct MorpheTodaySnapshot {
     var loggedToday: Bool
     var hasData: Bool
 
-    static func load() -> MorpheTodaySnapshot {
+    static func load(for renderDate: Date = .now) -> MorpheTodaySnapshot {
         let defaults = UserDefaults(suiteName: "group.com.morpheapp.Morphe")
+        // "Logged today ✓" is only true on the DAY the app wrote it — a
+        // snapshot from Monday must not brag on Tuesday's home screen.
+        let parts = Calendar.current.dateComponents([.year, .month, .day], from: renderDate)
+        let renderDay = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+        let snapshotDay = defaults?.string(forKey: "widget.day") ?? ""
+        let isSameDay = snapshotDay == renderDay
         return MorpheTodaySnapshot(
             streak: defaults?.integer(forKey: "widget.streak") ?? 0,
             todayWorkout: defaults?.string(forKey: "widget.todayWorkout") ?? "",
             weekSets: defaults?.integer(forKey: "widget.weekSets") ?? 0,
-            loggedToday: defaults?.bool(forKey: "widget.loggedToday") ?? false,
+            loggedToday: isSameDay && (defaults?.bool(forKey: "widget.loggedToday") ?? false),
             hasData: defaults?.object(forKey: "widget.todayWorkout") != nil
         )
     }
@@ -52,11 +58,19 @@ private struct MorpheTodayProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<MorpheTodayEntry>) -> Void) {
-        // The app reloads timelines on every state change; the hourly
-        // refresh only keeps relative staleness bounded overnight.
-        let entry = MorpheTodayEntry(date: .now, snapshot: .load())
-        let next = Calendar.current.date(byAdding: .hour, value: 1, to: .now) ?? .now
-        completion(Timeline(entries: [entry], policy: .after(next)))
+        // The app reloads timelines on every state change; this policy only
+        // bounds staleness in between. The midnight entry matters: it
+        // re-renders with the new day so "Logged today ✓" flips off even if
+        // the app never opens.
+        let now = Date.now
+        var entries = [MorpheTodayEntry(date: now, snapshot: .load(for: now))]
+        if let midnight = Calendar.current.nextDate(
+            after: now, matching: DateComponents(hour: 0, minute: 0, second: 5),
+            matchingPolicy: .nextTime) {
+            entries.append(MorpheTodayEntry(date: midnight, snapshot: .load(for: midnight)))
+        }
+        let next = Calendar.current.date(byAdding: .hour, value: 1, to: now) ?? now
+        completion(Timeline(entries: entries, policy: .after(next)))
     }
 }
 

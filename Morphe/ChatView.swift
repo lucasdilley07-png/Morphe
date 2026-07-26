@@ -1640,6 +1640,7 @@ private struct FeedPostCard: View {
     @State private var showComments = false
     @State private var commentDraft = ""
     @State private var showBlockConfirm = false
+    @State private var commentBlockTarget: PostComment?
 
     private var isMine: Bool { post.authorUid == (store.authUser?.id ?? "") }
     private var hasReacted: Bool { store.myReactedPostIds.contains(post.id) }
@@ -1887,6 +1888,22 @@ private struct FeedPostCard: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+        .confirmationDialog(
+            "Block \(commentBlockTarget?.authorName ?? "this account")? Their posts and comments disappear from your feed, and you unfollow them. You can unblock from Profile.",
+            isPresented: Binding(
+                get: { commentBlockTarget != nil },
+                set: { if !$0 { commentBlockTarget = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Block \(commentBlockTarget?.authorName ?? "account")", role: .destructive) {
+                if let target = commentBlockTarget {
+                    store.blockAccount(uid: target.authorUid, name: target.authorName)
+                }
+                commentBlockTarget = nil
+            }
+            Button("Cancel", role: .cancel) { commentBlockTarget = nil }
+        }
     }
 
     private func sessionStatChip(symbol: String, text: String) -> some View {
@@ -1955,7 +1972,9 @@ private struct FeedPostCard: View {
                                 Label("Report Comment", systemImage: "flag")
                             }
                             Button(role: .destructive) {
-                                store.blockAccount(uid: comment.authorUid, name: comment.authorName)
+                                // Same confirmation the post path gets —
+                                // blocking is never a single accidental tap.
+                                commentBlockTarget = comment
                             } label: {
                                 Label("Block \(comment.authorName)", systemImage: "hand.raised")
                             }
@@ -1974,7 +1993,13 @@ private struct FeedPostCard: View {
                 Button("Send") {
                     let text = commentDraft
                     commentDraft = ""
-                    Task { await store.addComment(to: post, text: text) }
+                    Task {
+                        // A failed send gives the typed text BACK — offline
+                        // or refused, the words aren't the app's to eat.
+                        if await !store.addComment(to: post, text: text), commentDraft.isEmpty {
+                            commentDraft = text
+                        }
+                    }
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
                 .frame(width: 70)

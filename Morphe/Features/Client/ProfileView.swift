@@ -65,8 +65,10 @@ struct ProfileView: View {
             .padding(.bottom, 40)
         }
         .sheet(item: $exportFile) { file in
-            DataExportShareSheet(url: file.url)
-                .presentationDetents([.medium, .large])
+            DataExportShareSheet(url: file.url) {
+                exportFile = nil
+            }
+            .presentationDetents([.medium, .large])
         }
         .onAppear {
             heightDraft = store.clientProfile.height
@@ -1296,12 +1298,19 @@ private struct VerificationSelfieCamera: UIViewControllerRepresentable {
     }
 }
 
-/// System share sheet for the JSON data export.
+/// System share sheet for the JSON data export. The completion handler
+/// closes the HOSTING SwiftUI sheet too — without it, finishing or
+/// cancelling the share left a blank panel the user had to swipe away.
 private struct DataExportShareSheet: UIViewControllerRepresentable {
     let url: URL
+    let onFinish: () -> Void
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, _, _, _ in
+            onFinish()
+        }
+        return controller
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}

@@ -3720,6 +3720,14 @@ final class ModerationTests: XCTestCase {
         XCTAssertTrue(store.blockedAccounts.isEmpty)
     }
 
+    func testWireClampNeverExceedsByteBoundOrSplitsCharacters() {
+        let emoji = String(repeating: "\u{1F4AA}", count: 200)   // 4 UTF-8 bytes each
+        let clamped = emoji.wireClamped(300)
+        XCTAssertLessThanOrEqual(clamped.utf8.count, 300, "rules-side size() can never be exceeded")
+        XCTAssertFalse(clamped.contains("\u{FFFD}"), "no split characters")
+        XCTAssertEqual("plain text".wireClamped(300), "plain text", "short ASCII passes untouched")
+    }
+
     func testSelfBlockIsRefused() {
         let store = signedInStore()
         store.blockAccount(uid: "uid-test", name: "Me")
