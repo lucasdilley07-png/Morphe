@@ -306,6 +306,8 @@ struct ProgressScreenView: View {
                         records: store.recentPersonalRecords(limit: 5),
                         weightUnit: store.weightUnit
                     )
+                    RecoveryTrendCard(entries: store.recoverySeries)
+                    NutritionAdherenceCard(entries: store.nutritionSeries)
                 }
 
                 SessionMixCard(insight: sessionMixInsight)
@@ -2089,6 +2091,118 @@ private struct CreateChallengeSheet: View {
 
             Button("Done") { dismiss() }
                 .buttonStyle(SecondaryCTAButtonStyle())
+        }
+    }
+}
+
+/// Readiness score over time — the check-in data that used to be captured
+/// then thrown away at day rollover, finally trended.
+private struct RecoveryTrendCard: View {
+    let entries: [MorpheAppStore.DailyRecoveryEntry]
+
+    private var recent: [MorpheAppStore.DailyRecoveryEntry] {
+        Array(entries.suffix(30))
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Recovery Trend")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Your daily check-in scores — sleep, energy, soreness, and mood rolled into one honest number.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                if recent.count >= 2 {
+                    Chart {
+                        ForEach(Array(recent.enumerated()), id: \.offset) { index, entry in
+                            LineMark(
+                                x: .value("Date", entry.date),
+                                y: .value("Score", entry.score)
+                            )
+                            .foregroundStyle(MorpheTheme.accentAlt)
+                            .interpolationMethod(.monotone)
+
+                            PointMark(
+                                x: .value("Date", entry.date),
+                                y: .value("Score", entry.score)
+                            )
+                            .foregroundStyle(index == recent.count - 1
+                                ? MorpheTheme.accentAlt
+                                : MorpheTheme.accentAlt.opacity(0.45))
+                            .symbolSize(index == recent.count - 1 ? 90 : 30)
+                        }
+                    }
+                    .chartYScale(domain: 0...100)
+                    .frame(height: 150)
+                    .accessibilityLabel(Text(
+                        "Recovery over \(recent.count) check-ins, latest \(recent.last?.score ?? 0) out of 100"
+                    ))
+                } else {
+                    Text("Check in two mornings and the trend starts here — one point isn't a pattern.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
+        }
+    }
+}
+
+/// Protein per logged day against that day's real target. Days with
+/// nothing logged are ABSENT, not zero — "didn't log" and "didn't eat"
+/// are indistinguishable, and faking either would poison the chart.
+private struct NutritionAdherenceCard: View {
+    let entries: [MorpheAppStore.DailyNutritionEntry]
+
+    private var recent: [MorpheAppStore.DailyNutritionEntry] {
+        Array(entries.suffix(14))
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Protein Adherence")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Logged protein vs. that day's target. Unlogged days don't chart — no fake zeros.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                if recent.count >= 2 {
+                    Chart {
+                        ForEach(Array(recent.enumerated()), id: \.offset) { _, entry in
+                            BarMark(
+                                x: .value("Date", entry.date, unit: .day),
+                                y: .value("Protein", entry.protein)
+                            )
+                            .foregroundStyle(entry.protein >= entry.proteinTarget
+                                ? MorpheTheme.accent
+                                : MorpheTheme.accent.opacity(0.45))
+                        }
+                        if let target = recent.last?.proteinTarget, target > 0 {
+                            RuleMark(y: .value("Target", target))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                                .annotation(position: .top, alignment: .trailing) {
+                                    Text("\(target)g target")
+                                        .font(.caption2)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                }
+                        }
+                    }
+                    .frame(height: 150)
+                    .accessibilityLabel(Text(
+                        "Protein over \(recent.count) logged days, latest \(recent.last?.protein ?? 0) grams"
+                    ))
+                } else {
+                    Text("Log meals on two different days and the adherence bars start here.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
         }
     }
 }

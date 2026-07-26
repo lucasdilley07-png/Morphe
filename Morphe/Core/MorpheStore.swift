@@ -458,6 +458,21 @@ final class MorpheAppStore {
     /// never an assumption about an unfetched one).
     var coachShareSummaries: [String: CoachShareSummary] = [:]
     var coachShareFetched: Set<String> = []
+    /// Pre-fills the check-in's sleep slider from Apple Health (read-only,
+    /// opt-in). Flip via `setHealthSleepPrefill(enabled:)`.
+    var healthSleepEnabled = false {
+        didSet { persistTrainingPreferences() }
+    }
+    /// When onboarding finished — drives the day-7 first-week arc, then
+    /// goes silent forever.
+    var firstWeekStart: Date? {
+        didSet { persistTrainingPreferences() }
+    }
+    /// Coach side: claimed clients hidden from the roster VIEW. The docs
+    /// (the athlete's history) are untouched — rules forbid touching them.
+    var archivedClientCodes: Set<String> = [] {
+        didSet { persistTrainingPreferences() }
+    }
     /// Guards the didSets above while `loadTrainingPreferences` restores them.
     private var isLoadingTrainingPreferences = false
     /// Challenges this user hosts or joined, refreshed from Firestore by code.
@@ -2693,6 +2708,105 @@ final class MorpheAppStore {
         return "Training on Morphe — I'm @\(handle). Install it, then open morphe://invite/\(handle) and we're connected."
     }
 
+    // MARK: - Daily series (recovery + nutrition history)
+    //
+    // Same documented persistence exception as bodyWeightHistory: small
+    // capped per-profile arrays in UserDefaults, never in the shared
+    // snapshot decoder. Both series turn throwaway daily inputs into
+    // retention surfaces — the check-in and the meal log used to be
+    // captured then DISCARDED at day rollover.
+
+    /// One completed recovery check-in. One entry per day (a re-check-in
+    /// the same day replaces).
+    struct DailyRecoveryEntry: Codable {
+        var date: Date
+        var score: Int
+        var sleepHours: Double
+        var energy: Int
+        var soreness: Int
+        var mood: Int
+    }
+
+    /// One COMPLETED nutrition day, captured at day rollover with the
+    /// targets that applied that day. Days with nothing logged are absent —
+    /// "didn't log" and "didn't eat" are not distinguishable, so no entry
+    /// is the only honest record.
+    struct DailyNutritionEntry: Codable {
+        var date: Date
+        var calories: Int
+        var protein: Int
+        var calorieTarget: Int
+        var proteinTarget: Int
+    }
+
+    private var recoverySeriesDefaultsKey: String {
+        "morphe.recoverySeries.\(clientProfile.id.uuidString)"
+    }
+
+    private var nutritionSeriesDefaultsKey: String {
+        "morphe.nutritionSeries.\(clientProfile.id.uuidString)"
+    }
+
+    private func loadSeries<Entry: Codable>(_ key: String) -> [Entry] {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let entries = try? JSONDecoder().decode([Entry].self, from: data)
+        else { return [] }
+        return entries
+    }
+
+    private func saveSeries<Entry: Codable>(_ entries: [Entry], key: String, cap: Int = 120) {
+        var trimmed = entries
+        if trimmed.count > cap {
+            trimmed.removeFirst(trimmed.count - cap)
+        }
+        if let data = try? JSONEncoder().encode(trimmed) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+    }
+
+    var recoverySeries: [DailyRecoveryEntry] {
+        loadSeries(recoverySeriesDefaultsKey)
+    }
+
+    var nutritionSeries: [DailyNutritionEntry] {
+        loadSeries(nutritionSeriesDefaultsKey)
+    }
+
+    /// Called from `submitRecoveryCheckIn` — records today's real inputs.
+    private func recordRecoveryCheckInEntry() {
+        var entries: [DailyRecoveryEntry] = loadSeries(recoverySeriesDefaultsKey)
+        let todayKey = Self.dayKey()
+        entries.removeAll { Self.dayKey(for: $0.date) == todayKey }
+        entries.append(DailyRecoveryEntry(
+            date: .now,
+            score: recovery.score,
+            sleepHours: recovery.sleepHours,
+            energy: recovery.energy,
+            soreness: recovery.soreness,
+            mood: recovery.mood
+        ))
+        saveSeries(entries, key: recoverySeriesDefaultsKey)
+    }
+
+    /// Called at day rollover BEFORE the daily nutrition board resets —
+    /// the day that just ended becomes a history point iff anything was
+    /// actually logged.
+    private func recordNutritionDayIfLogged(dayKey: String) {
+        guard nutrition.caloriesConsumed > 0 || nutrition.proteinConsumed > 0,
+              let day = Self.date(fromDayKey: dayKey) else { return }
+        let targets = nutritionTargets
+        var entries: [DailyNutritionEntry] = loadSeries(nutritionSeriesDefaultsKey)
+        entries.removeAll { Self.dayKey(for: $0.date) == dayKey }
+        entries.append(DailyNutritionEntry(
+            date: day,
+            calories: nutrition.caloriesConsumed,
+            protein: nutrition.proteinConsumed,
+            calorieTarget: targets.calories,
+            proteinTarget: targets.proteinGrams
+        ))
+        saveSeries(entries, key: nutritionSeriesDefaultsKey)
+    }
+
     // MARK: - Data export
 
     /// One-file JSON export of everything this athlete owns — profile
@@ -2787,6 +2901,9 @@ final class MorpheAppStore {
         var coachShare: Bool?
         var linkedCoachUid: String?
         var linkedCoachName: String?
+        var healthSleep: Bool?
+        var firstWeekStart: Date?
+        var archivedClientCodes: [String]?
     }
 
     private var trainingPreferencesDefaultsKey: String {
@@ -2813,6 +2930,9 @@ final class MorpheAppStore {
         coachShareEnabled = snapshot.coachShare ?? false
         linkedCoachUid = snapshot.linkedCoachUid ?? ""
         linkedCoachName = snapshot.linkedCoachName ?? ""
+        healthSleepEnabled = snapshot.healthSleep ?? false
+        firstWeekStart = snapshot.firstWeekStart
+        archivedClientCodes = Set(snapshot.archivedClientCodes ?? [])
     }
 
     private func persistTrainingPreferences() {
@@ -2823,7 +2943,10 @@ final class MorpheAppStore {
             healthSync: healthSyncEnabled,
             coachShare: coachShareEnabled,
             linkedCoachUid: linkedCoachUid,
-            linkedCoachName: linkedCoachName
+            linkedCoachName: linkedCoachName,
+            healthSleep: healthSleepEnabled,
+            firstWeekStart: firstWeekStart,
+            archivedClientCodes: Array(archivedClientCodes)
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: trainingPreferencesDefaultsKey)
@@ -3827,6 +3950,11 @@ final class MorpheAppStore {
         let resolvedName = trimmedName.isEmpty ? clientProfile.name : trimmedName
 
         hasCompletedOnboarding = true
+        // Week one starts NOW — the day-7 starter arc keys off this stamp
+        // and never restarts (a returning profile keeps its original date).
+        if firstWeekStart == nil {
+            firstWeekStart = .now
+        }
         // The signed-up account role is the source of truth once accounts are
         // real — the draft's default must never demote a coach to athlete.
         selectedRole = authUser?.role.appRole ?? onboardingDraft.accountType
@@ -4453,6 +4581,9 @@ final class MorpheAppStore {
             previousSessionFeedback: recovery.previousSessionFeedback
         )
         didCompleteQuickCheckIn = true
+        // Today's inputs become a history point — the check-in used to be
+        // discarded at day rollover.
+        recordRecoveryCheckInEntry()
         Haptics.success()
         persistLocalProfile()
         // A fresh readiness read is exactly what a coach wants to see.
@@ -4836,6 +4967,12 @@ final class MorpheAppStore {
         // A new day means a new quiz — selections are per-day, earned
         // completions (completedQuizIDs, XP) are forever.
         quizSelections = [:]
+
+        // The day that just ended becomes a nutrition history point (iff
+        // anything was logged) BEFORE the board resets.
+        if hasCompletedOnboarding, !previousDay.isEmpty {
+            recordNutritionDayIfLogged(dayKey: previousDay)
+        }
 
         // Yesterday's meals, water, and readiness don't describe today.
         nutrition.caloriesConsumed = 0
@@ -5418,6 +5555,49 @@ final class MorpheAppStore {
     func goToNextTrackedExercise() {
         guard !currentWorkout.exercises.isEmpty else { return }
         activeWorkoutExerciseIndex = min(activeWorkoutExerciseIndex + 1, currentWorkout.exercises.count - 1)
+        Haptics.impact(.light)
+    }
+
+    /// Adds a library exercise to the LIVE session (end of the queue) —
+    /// "one more movement I feel like doing" without editing the template.
+    /// Refuses duplicates: the tracked-set dictionaries key by exercise id.
+    func addExerciseToSession(_ reference: ExerciseReference) {
+        guard isWorkoutSessionActive else { return }
+        guard !currentWorkout.exercises.contains(where: { $0.id == reference.id }) else {
+            showToast("\(reference.name) is already in this session.")
+            return
+        }
+        updateCurrentWorkout { workout in
+            workout.exercises.append(WorkoutExercise(
+                id: reference.id,
+                exerciseLibraryID: reference.id,
+                name: reference.name,
+                muscleGroup: reference.muscleGroup,
+                sets: "3 sets",
+                reps: "10 reps",
+                difficulty: reference.difficulty,
+                formCue: reference.formCue
+            ))
+        }
+        showToast("\(reference.name) added to the session.")
+        Haptics.impact(.light)
+    }
+
+    /// Moves one live-session exercise up or down the queue. The active
+    /// pointer follows the exercise it was on — reordering never silently
+    /// changes what the console is tracking.
+    func moveSessionExercise(id: String, up: Bool) {
+        guard let index = currentWorkout.exercises.firstIndex(where: { $0.id == id }) else { return }
+        let target = up ? index - 1 : index + 1
+        guard currentWorkout.exercises.indices.contains(target) else { return }
+        let activeID = activeWorkoutExercise?.id
+        updateCurrentWorkout { workout in
+            workout.exercises.swapAt(index, target)
+        }
+        if let activeID,
+           let newIndex = currentWorkout.exercises.firstIndex(where: { $0.id == activeID }) {
+            activeWorkoutExerciseIndex = newIndex
+        }
         Haptics.impact(.light)
     }
 
@@ -7395,6 +7575,79 @@ final class MorpheAppStore {
                 symbol: "person.2.fill"
             )
         }
+    }
+
+    // MARK: - First week arc (day-7 retention bridge)
+
+    struct FirstWeekStep: Identifiable {
+        let id: Int
+        let title: String
+        let done: Bool
+    }
+
+    /// The 7-day starter checklist, or nil once week one is over. Every
+    /// step's completion is DERIVED from real state — nothing to tick, the
+    /// app notices. Steps stay achievable in any order.
+    var firstWeekSteps: [FirstWeekStep]? {
+        guard selectedRole == .client, let start = firstWeekStart else { return nil }
+        let daysIn = Calendar.current.dateComponents(
+            [.day], from: Calendar.current.startOfDay(for: start), to: Calendar.current.startOfDay(for: .now)
+        ).day ?? 0
+        guard daysIn < 7 else { return nil }
+        let logCount = currentAthleteWorkoutLogs.count
+        return [
+            FirstWeekStep(id: 1, title: "Log your first session", done: logCount >= 1),
+            FirstWeekStep(id: 2, title: "Do a recovery check-in", done: didCompleteQuickCheckIn || !recoverySeries.isEmpty),
+            FirstWeekStep(id: 3, title: "Save your weight in Profile", done: Self.parsedBodyWeightLb(clientProfile.bodyWeight) != nil),
+            FirstWeekStep(id: 4, title: "Train a second time", done: logCount >= 2),
+            FirstWeekStep(id: 5, title: "Train a third time", done: logCount >= 3)
+        ]
+    }
+
+    // MARK: - Coach roster archive (claimed clients)
+
+    /// Roster minus the archived. The underlying docs are the athletes'
+    /// history — rules forbid touching them, so "remove" is a view state.
+    var visibleManagedClients: [ManagedClient] {
+        managedClients.filter { !archivedClientCodes.contains($0.id) }
+    }
+
+    func archiveClaimedClient(_ client: ManagedClient) {
+        guard client.isClaimed else { return }
+        archivedClientCodes.insert(client.id)
+        showToast("\(client.name) removed from your roster view. Their account and history are untouched.")
+    }
+
+    func restoreArchivedClients() {
+        archivedClientCodes = []
+        showToast("Hidden clients restored.")
+    }
+
+    // MARK: - Health sleep pre-fill (read-only, opt-in)
+
+    /// Flips the sleep pre-fill. Enabling asks Health for READ access to
+    /// sleep — Apple never reveals whether a read was granted, so the
+    /// toggle stays on and an empty query simply pre-fills nothing.
+    func setHealthSleepPrefill(enabled: Bool) async {
+        guard enabled else {
+            healthSleepEnabled = false
+            return
+        }
+        guard HealthWorkoutSync.isAvailable else {
+            showToast("Health isn't available on this device.")
+            return
+        }
+        healthSleepEnabled = true
+        _ = await HealthWorkoutSync.requestSleepReadAuthorization()
+        showToast("Check-ins will pre-fill sleep from Health when it's there.")
+    }
+
+    /// Last night's sleep for the check-in sheet — nil when disabled, no
+    /// data, or access was declined (indistinguishable by design; the
+    /// sheet just shows its normal slider).
+    func healthSleepHoursForCheckIn() async -> Double? {
+        guard healthSleepEnabled else { return nil }
+        return await HealthWorkoutSync.lastNightSleepHours()
     }
 
     // MARK: - Coach share (athlete-consented progress visibility)

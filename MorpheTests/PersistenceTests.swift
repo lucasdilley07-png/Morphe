@@ -1078,6 +1078,12 @@ final class BookingTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
+        // Absorb the PREVIOUS test's pending coalesced writes before
+        // clearing: building a store triggers the cross-instance flush
+        // (the relaunch-simulation mechanism), and without this throwaway
+        // the flush re-lands a stale onboarded profile AFTER the clear —
+        // which empties the demo booking slots these tests rely on.
+        _ = MorpheAppStore()
         WorkoutFilePersistence().clear()
         ProfileFilePersistence().clear()
     }
@@ -3944,5 +3950,108 @@ final class CoachShareTests: XCTestCase {
         let reloaded = MorpheAppStore()
         XCTAssertEqual(reloaded.linkedCoachUid, "uid-coach")
         XCTAssertEqual(reloaded.linkedCoachName, "Marcus")
+    }
+}
+
+// MARK: - Backlog batch (series, mid-session editing, first week, roster)
+
+@MainActor
+final class BacklogBatchTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    func testRecoverySeriesRecordsOnePerDayAndReplaces() {
+        let store = freshStore()
+        XCTAssertTrue(store.recoverySeries.isEmpty)
+
+        store.submitRecoveryCheckIn(sleepHours: 7, energy: 6, soreness: 3, mood: 7, pain: false)
+        XCTAssertEqual(store.recoverySeries.count, 1)
+        let firstScore = store.recoverySeries.last?.score ?? -1
+
+        // A same-day re-check-in replaces, never duplicates.
+        store.submitRecoveryCheckIn(sleepHours: 9, energy: 9, soreness: 1, mood: 9, pain: false)
+        XCTAssertEqual(store.recoverySeries.count, 1, "one entry per day")
+        XCTAssertGreaterThan(store.recoverySeries.last?.score ?? -1, firstScore,
+                             "the replacement carries the new inputs")
+    }
+
+    func testMidSessionAddAndReorder() {
+        let store = freshStore()
+        store.beginLiveWorkout(store.workoutTemplates.first!)
+        let originalCount = store.currentWorkout.exercises.count
+        let newExercise = store.allExercises.first {
+            reference in !store.currentWorkout.exercises.contains { $0.id == reference.id }
+        }!
+
+        store.addExerciseToSession(newExercise)
+        XCTAssertEqual(store.currentWorkout.exercises.count, originalCount + 1)
+        XCTAssertEqual(store.currentWorkout.exercises.last?.id, newExercise.id)
+
+        // Duplicates refused — tracked-set dictionaries key by exercise id.
+        store.addExerciseToSession(newExercise)
+        XCTAssertEqual(store.currentWorkout.exercises.count, originalCount + 1)
+
+        // Reorder: the active pointer follows the exercise it was on.
+        let activeID = store.activeWorkoutExercise!.id
+        store.moveSessionExercise(id: newExercise.id, up: true)
+        XCTAssertEqual(store.activeWorkoutExercise?.id, activeID,
+                       "reordering must not silently change what's being tracked")
+        XCTAssertEqual(store.currentWorkout.exercises[originalCount - 1].id, newExercise.id)
+
+        // Top can't move up.
+        let topID = store.currentWorkout.exercises[0].id
+        store.moveSessionExercise(id: topID, up: true)
+        XCTAssertEqual(store.currentWorkout.exercises[0].id, topID)
+    }
+
+    func testFirstWeekArcDerivesAndExpires() {
+        let store = freshStore()
+        guard var steps = store.firstWeekSteps else {
+            return XCTFail("fresh onboarding must start the first-week arc")
+        }
+        XCTAssertEqual(steps.count, 5)
+        XCTAssertFalse(steps[0].done, "no session logged yet")
+
+        store.submitRecoveryCheckIn(sleepHours: 7, energy: 6, soreness: 3, mood: 7, pain: false)
+        steps = store.firstWeekSteps!
+        XCTAssertTrue(steps[1].done, "check-in step derives from real state")
+
+        // Day 8: the arc is over, complete or not.
+        store.firstWeekStart = Calendar.current.date(byAdding: .day, value: -8, to: .now)
+        XCTAssertNil(store.firstWeekSteps, "the arc never nags past week one")
+    }
+
+    func testClaimedRosterArchiveIsViewStateOnly() {
+        let store = freshStore()
+        let claimed = ManagedClient(
+            id: "CODE01", coachUid: "uid-coach", coachName: "Marcus",
+            name: "Alex", status: .claimed, claimedByUid: "uid-alex"
+        )
+        let unclaimed = ManagedClient(
+            id: "CODE02", coachUid: "uid-coach", coachName: "Marcus",
+            name: "Sam", status: .unclaimed
+        )
+        store.managedClients = [claimed, unclaimed]
+
+        store.archiveClaimedClient(unclaimed)
+        XCTAssertTrue(store.archivedClientCodes.isEmpty, "unclaimed clients use real delete, not archive")
+
+        store.archiveClaimedClient(claimed)
+        XCTAssertEqual(store.visibleManagedClients.map(\.id), ["CODE02"], "archived leaves the view")
+        XCTAssertEqual(store.managedClients.count, 2, "the underlying data is untouched")
+
+        store.restoreArchivedClients()
+        XCTAssertEqual(store.visibleManagedClients.count, 2)
     }
 }

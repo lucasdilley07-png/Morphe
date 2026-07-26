@@ -66,6 +66,12 @@ struct HomeView: View {
                     )
                 }
 
+                // The day-7 bridge: five derived checkmarks that walk a new
+                // user from first session to habit. Gone after week one.
+                if let steps = store.firstWeekSteps {
+                    FirstWeekCard(steps: steps)
+                }
+
                 // Progressive disclosure: a first-run user sees the hero and
                 // who they are — no zero-metrics, no tools that need history.
                 // Everything below is earned by logging workouts (see
@@ -963,6 +969,13 @@ private struct RecoveryCheckInSheet: View {
     @State private var soreness: Int
     @State private var mood: Int
     @State private var pain: Bool
+    /// The exact value Health seeded (nil = not seeded). The "from Health"
+    /// label shows only while the slider still holds this value — any
+    /// manual nudge makes the number the user's, not Health's.
+    @State private var healthSeededSleep: Double?
+    private var sleepFromHealth: Bool {
+        healthSeededSleep.map { abs(sleepHours - $0) < 0.01 } ?? false
+    }
 
     init(recovery: RecoverySnapshot) {
         _sleepHours = State(initialValue: recovery.sleepHours > 0 ? recovery.sleepHours : 7)
@@ -979,6 +992,16 @@ private struct RecoveryCheckInSheet: View {
                     Text("How recovered do you feel today? Morphe uses this to set your readiness and adjust the plan.")
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
+                        .task {
+                            // Opt-in Health pre-fill: seeds the slider once,
+                            // rounded to the slider's own 0.5 step. No data
+                            // (or a declined read) changes nothing.
+                            if let hours = await store.healthSleepHoursForCheckIn() {
+                                let seeded = min(12, max(0, (hours * 2).rounded() / 2))
+                                sleepHours = seeded
+                                healthSeededSleep = seeded
+                            }
+                        }
 
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -991,6 +1014,11 @@ private struct RecoveryCheckInSheet: View {
                         }
                         Slider(value: $sleepHours, in: 0...12, step: 0.5)
                             .tint(MorpheTheme.accent)
+                        if sleepFromHealth {
+                            Text("Pre-filled from Apple Health — adjust if it's off.")
+                                .font(.caption2)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
                     }
 
                     ratingRow("Energy", value: $energy, range: 1...10)
@@ -1216,6 +1244,53 @@ private struct PartnerWorkoutCard: View {
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.accentAlt)
                     }
+                }
+            }
+        }
+    }
+}
+
+/// Week-one starter checklist — every checkmark is DERIVED from real state
+/// (logs, check-ins, profile weight); there is nothing to tick manually,
+/// the app just notices. Disappears after day 7, complete or not.
+private struct FirstWeekCard: View {
+    let steps: [MorpheAppStore.FirstWeekStep]
+
+    private var doneCount: Int { steps.filter(\.done).count }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Your First Week")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    StatusBadge(
+                        text: doneCount == steps.count ? "Complete" : "\(doneCount)/\(steps.count)",
+                        color: MorpheTheme.accent
+                    )
+                }
+
+                Text(doneCount == steps.count
+                     ? "Week one locked in — this is how habits start."
+                     : "Five small wins make the habit real. The app checks them off as they happen.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                ForEach(steps) { step in
+                    HStack(spacing: 10) {
+                        Image(systemName: step.done ? "checkmark.circle.fill" : "circle")
+                            .font(.subheadline)
+                            .foregroundStyle(step.done ? MorpheTheme.accent : MorpheTheme.textMuted)
+                        Text(step.title)
+                            .font(.subheadline)
+                            .foregroundStyle(step.done ? MorpheTheme.textMuted : .white)
+                            .strikethrough(step.done, color: MorpheTheme.textMuted)
+                        Spacer(minLength: 0)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(step.title): \(step.done ? "done" : "not yet")")
                 }
             }
         }

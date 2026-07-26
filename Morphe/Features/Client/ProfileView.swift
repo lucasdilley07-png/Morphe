@@ -797,6 +797,20 @@ struct ProfileView: View {
                         )
                     )
 
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    // Read-only and honest about its limits: Apple never
+                    // reveals whether a sleep READ was granted, so this just
+                    // pre-fills when data comes back and stays quiet when not.
+                    preferenceToggleRow(
+                        title: "Sleep from Health",
+                        caption: "Pre-fills the check-in's sleep slider from last night's Apple Health sleep. You can always adjust it.",
+                        isOn: Binding(
+                            get: { store.healthSleepEnabled },
+                            set: { newValue in Task { await store.setHealthSleepPrefill(enabled: newValue) } }
+                        )
+                    )
+
                     // Only renders once a coach link exists (claimed invite
                     // or an existing coach thread) — no dead toggle.
                     if !store.linkedCoachUid.isEmpty {

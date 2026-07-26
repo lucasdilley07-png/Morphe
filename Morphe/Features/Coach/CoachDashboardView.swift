@@ -523,10 +523,20 @@ private struct CoachAthletesRosterSection: View {
 
             // Clients this coach manages directly — created before the person
             // ever installed Morphe. Real data only: name, sport, logged work.
-            ForEach(store.managedClients) { client in
+            // Archived (removed-from-view) claimed clients stay out of the
+            // list but are one tap from coming back — never silently gone.
+            ForEach(store.visibleManagedClients) { client in
                 ManagedClientCard(client: client) {
                     selectedManagedClient = ManagedClientSelection(id: client.id)
                 }
+            }
+
+            if !store.archivedClientCodes.isEmpty {
+                Button("Show Hidden (\(store.archivedClientCodes.count))") {
+                    store.restoreArchivedClients()
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .accessibilityLabel("Restore \(store.archivedClientCodes.count) hidden clients to the roster")
             }
 
             if store.coachClients.isEmpty {
@@ -920,11 +930,6 @@ private struct ManagedClientDetailSheet: View {
 
                         // A claimed client is a REAL account now — open the
                         // real Firestore-backed conversation with them.
-                        // TODO: "Remove from Roster" for claimed clients needs
-                        // store support — deleteManagedClient guards
-                        // !isClaimed, and a claimed profile is the athlete's
-                        // account history now, so removal must only drop the
-                        // coach's roster reference, not the data.
                         Section {
                             Button {
                                 isOpeningThread = true
@@ -952,6 +957,14 @@ private struct ManagedClientDetailSheet: View {
                             Text("They own their training log now — messages go straight to their account.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+
+                            // View-state removal only: the athlete's account
+                            // and history are theirs, and the rules would
+                            // refuse a delete anyway.
+                            Button("Remove from Roster", role: .destructive) {
+                                store.archiveClaimedClient(client)
+                                dismiss()
+                            }
                         }
                     }
                 }

@@ -4879,3 +4879,52 @@ final class PremiumStore {
         await refreshEntitlement()
     }
 }
+
+// MARK: - Health sleep read (check-in pre-fill)
+
+extension HealthWorkoutSync {
+    /// Asks Health for READ access to sleep. Apple deliberately hides
+    /// whether a read grant succeeded — callers just query and get nothing
+    /// if declined, which is exactly how the pre-fill degrades.
+    static func requestSleepReadAuthorization() async -> Bool {
+        guard isAvailable,
+              let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)
+        else { return false }
+        do {
+            try await healthStore.requestAuthorization(toShare: [], read: [sleepType])
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Total asleep time in the last 18 hours, in hours — the "last night"
+    /// window for a morning/afternoon check-in. Nil under 15 minutes: that's
+    /// no data (or declined access), not a nap worth pre-filling.
+    static func lastNightSleepHours() async -> Double? {
+        guard isAvailable,
+              let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)
+        else { return nil }
+        let now = Date.now
+        let start = now.addingTimeInterval(-18 * 3600)
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: now)
+        let samples: [HKCategorySample] = await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: sleepType, predicate: predicate,
+                limit: HKObjectQueryNoLimit, sortDescriptors: nil
+            ) { _, results, _ in
+                continuation.resume(returning: (results as? [HKCategorySample]) ?? [])
+            }
+            healthStore.execute(query)
+        }
+        let asleepValues: Set<Int> = Set([
+            HKCategoryValueSleepAnalysis.asleepUnspecified,
+            .asleepCore, .asleepDeep, .asleepREM
+        ].map(\.rawValue))
+        let totalSeconds = samples
+            .filter { asleepValues.contains($0.value) }
+            .reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+        guard totalSeconds > 15 * 60 else { return nil }
+        return totalSeconds / 3600
+    }
+}

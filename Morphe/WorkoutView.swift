@@ -32,6 +32,7 @@ struct WorkoutView: View {
     @State private var showCircuitMode = false
     @State private var showEmptyLibraryNotice = false
     @State private var showTrainTogether = false
+    @State private var showAddExercise = false
 
     private var deleteWorkoutDialogTitle: String {
         guard let template = workoutPendingDelete else { return "Delete this workout?" }
@@ -121,6 +122,12 @@ struct WorkoutView: View {
         .background(
             EmptyView().sheet(isPresented: $showTrainTogether) {
                 TrainTogetherSheet()
+                    .environment(store)
+            }
+        )
+        .background(
+            EmptyView().sheet(isPresented: $showAddExercise) {
+                AddExerciseToSessionSheet()
                     .environment(store)
             }
         )
@@ -330,7 +337,9 @@ struct WorkoutView: View {
                     FocusedWorkoutQueueCard(
                         exercises: store.currentWorkout.exercises,
                         activeExerciseID: store.activeWorkoutExercise?.id,
-                        completedWorkoutSets: store.completedWorkoutSets
+                        completedWorkoutSets: store.completedWorkoutSets,
+                        onMove: { id, up in store.moveSessionExercise(id: id, up: up) },
+                        onAddExercise: { showAddExercise = true }
                     )
 
                     if isShowingPainFlow || store.selectedWorkoutFeedback == .pain {
@@ -1734,6 +1743,10 @@ private struct FocusedWorkoutQueueCard: View {
     let exercises: [WorkoutExercise]
     let activeExerciseID: String?
     let completedWorkoutSets: [String: Int]
+    /// Mid-session reorder (id, up) — nil hides the arrows (read-only uses).
+    var onMove: ((String, Bool) -> Void)? = nil
+    /// Mid-session "one more movement" — nil hides the button.
+    var onAddExercise: (() -> Void)? = nil
 
     var body: some View {
         GlassCard {
@@ -1742,7 +1755,7 @@ private struct FocusedWorkoutQueueCard: View {
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                ForEach(exercises) { exercise in
+                ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
                     HStack(spacing: 10) {
                         Rectangle()
                             .fill(activeExerciseID == exercise.id ? MorpheTheme.accent : MorpheTheme.panelStrong)
@@ -1764,7 +1777,104 @@ private struct FocusedWorkoutQueueCard: View {
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(MorpheTheme.accentAlt)
                         }
+
+                        if let onMove {
+                            Button {
+                                onMove(exercise.id, true)
+                            } label: {
+                                Image(systemName: "chevron.up")
+                                    .font(.caption.weight(.bold))
+                                    .frame(width: 28, height: 28)
+                                    .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(index == 0 ? MorpheTheme.textMuted : .white)
+                            .disabled(index == 0)
+                            .accessibilityLabel("Move \(exercise.name) earlier")
+
+                            Button {
+                                onMove(exercise.id, false)
+                            } label: {
+                                Image(systemName: "chevron.down")
+                                    .font(.caption.weight(.bold))
+                                    .frame(width: 28, height: 28)
+                                    .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(index == exercises.count - 1 ? MorpheTheme.textMuted : .white)
+                            .disabled(index == exercises.count - 1)
+                            .accessibilityLabel("Move \(exercise.name) later")
+                        }
                     }
+                }
+
+                if let onAddExercise {
+                    Button("Add Exercise", action: onAddExercise)
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityHint("Adds one more movement to the end of this session")
+                }
+            }
+        }
+    }
+}
+
+/// Mid-session exercise picker: search the library, one tap adds to the
+/// end of the queue. Duplicates are refused by the store.
+private struct AddExerciseToSessionSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    private var results: [ExerciseReference] {
+        let clean = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !clean.isEmpty else { return Array(store.allExercises.prefix(30)) }
+        return store.allExercises.filter { $0.name.lowercased().contains(clean) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 10) {
+                    TextField("Search exercises…", text: $query)
+                        .textFieldStyle(MorpheFieldStyle())
+
+                    ForEach(results) { exercise in
+                        Button {
+                            store.addExerciseToSession(exercise)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 10) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(exercise.name)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                    Text("\(exercise.muscleGroup.rawValue) · \(exercise.equipment)")
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textSecondary)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: "plus.circle")
+                                    .foregroundStyle(MorpheTheme.accent)
+                            }
+                            .padding(10)
+                            .background(
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                    .fill(MorpheTheme.panel)
+                            )
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground().ignoresSafeArea())
+            .navigationTitle("Add Exercise")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(.white)
                 }
             }
         }
