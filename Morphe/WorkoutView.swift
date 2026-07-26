@@ -497,6 +497,13 @@ struct WorkoutView: View {
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 }
 
+                // Structured programs: the weeks × sessions arc above the
+                // single-session picks. Post-finish it stays out of the way —
+                // the recap owns that moment.
+                if !store.hasCompletedWorkoutFlow {
+                    ProgramSectionCard()
+                }
+
                 // ONE workout, one name: the same session the Today hero
                 // shows, with Morphe's readiness-based pick demoted to an
                 // inline suggestion instead of a competing second entry point.
@@ -1041,6 +1048,131 @@ private struct PostWorkoutSmartActionCard: View {
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
             }
+        }
+    }
+}
+
+/// The multi-week program surface: active-program progress (week, session,
+/// deload badge, honest count-based bar) or the starter library. Progress
+/// only ever moves when a session is LOGGED.
+private struct ProgramSectionCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var showLeaveConfirm = false
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                if let progress = store.programProgress {
+                    activeProgramBody(progress)
+                } else {
+                    programLibraryBody
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func activeProgramBody(_ progress: MorpheAppStore.ProgramProgress) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Program")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Text(progress.program.name)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
+            }
+            Spacer()
+            if progress.isDeloadWeek {
+                StatusBadge(text: "Deload week", color: MorpheTheme.accentAlt)
+            }
+        }
+
+        Text(progress.isComplete
+             ? "Complete — every session of all \(progress.program.weeks) weeks logged."
+             : "WEEK \(progress.week) OF \(progress.program.weeks) · SESSION \(progress.completedSessions + 1) OF \(progress.program.totalSessions)")
+            .font(MorpheTheme.microLabel(10))
+            .tracking(1.2)
+            .foregroundStyle(MorpheTheme.accent)
+
+        ProgressBarView(
+            progress: Double(progress.completedSessions) / Double(max(progress.program.totalSessions, 1)),
+            color: MorpheTheme.accent
+        )
+
+        if progress.isComplete {
+            Button("Choose Next") {
+                store.leaveProgram()
+            }
+            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+            .accessibilityLabel("Finish this program and browse the library")
+        } else {
+            Text("Up next: \(progress.nextSessionName)")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+
+            HStack(spacing: 10) {
+                Button("Start Session") {
+                    store.startNextProgramSession()
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+
+                Button("Leave") {
+                    showLeaveConfirm = true
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .frame(width: 90)
+                .accessibilityLabel("Leave this program")
+            }
+            .confirmationDialog(
+                "Leave \(progress.program.name)? Your logged sessions stay in your history; only the program position is dropped.",
+                isPresented: $showLeaveConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Leave Program", role: .destructive) {
+                    store.leaveProgram()
+                }
+                Button("Keep Going", role: .cancel) {}
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var programLibraryBody: some View {
+        Text("Programs")
+            .font(.headline)
+            .foregroundStyle(.white)
+        Text("A plan measured in weeks, not days — sessions in order, progression built in, one deload before the end.")
+            .font(.caption)
+            .foregroundStyle(MorpheTheme.textSecondary)
+
+        ForEach(MorpheAppStore.trainingPrograms) { program in
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(program.name)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Text("\(program.weeks) WK · \(program.weeklySessionNames.count)/WK")
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(1.0)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                Text(program.summary)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Start Program") {
+                    store.startProgram(program)
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .accessibilityLabel("Start \(program.name), \(program.weeks) weeks")
+            }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panelStrong.opacity(0.6))
+            )
         }
     }
 }

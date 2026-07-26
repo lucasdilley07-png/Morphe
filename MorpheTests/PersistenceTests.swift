@@ -3759,3 +3759,101 @@ final class ModerationTests: XCTestCase {
         XCTAssertTrue(store.blockedAccounts.isEmpty, "you can't block yourself")
     }
 }
+
+// MARK: - Depth sprint (programs, milestone unlocks)
+
+@MainActor
+final class DepthSprintTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    /// Runs one full live session of whatever is currently staged and logs it.
+    private func logStagedWorkout(_ store: MorpheAppStore) {
+        store.beginLiveWorkout(store.currentWorkout)
+        store.completeTrackedSet(reps: 5, weight: 45, allowExtra: true)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+    }
+
+    func testProgramAdvancesOnlyOnMatchingLoggedSession() {
+        let store = freshStore()
+        let program = MorpheAppStore.trainingPrograms[0]
+        store.startProgram(program)
+
+        XCTAssertEqual(store.programProgress?.week, 1)
+        XCTAssertEqual(store.currentWorkout.name, program.weeklySessionNames[0],
+                       "starting a program stages its first session")
+
+        logStagedWorkout(store)
+        XCTAssertEqual(store.programProgress?.completedSessions, 1,
+                       "logging the program's session advances it")
+        XCTAssertEqual(store.programProgress?.nextSessionName, program.weeklySessionNames[1])
+
+        // A random non-program session must NOT advance it.
+        if let other = store.discoverWorkouts.first(where: { !program.weeklySessionNames.contains($0.name) }) {
+            store.startCatalogWorkout(other)
+            logStagedWorkout(store)
+            XCTAssertEqual(store.programProgress?.completedSessions, 1,
+                           "off-program sessions never advance the program")
+        }
+
+        store.leaveProgram()
+        XCTAssertNil(store.programProgress, "leaving clears the position")
+    }
+
+    func testDeloadWeekDerivesFromCountAndCutsSuggestion() throws {
+        let store = freshStore()
+        let program = MorpheAppStore.trainingPrograms[0]   // 4 weeks x 3, deload wk 4
+        let key = "morphe.program.\(store.clientProfile.id.uuidString)"
+        let snapshot = ActiveProgramSnapshot(programID: program.id, startedAt: .now, completedSessions: 9)
+        UserDefaults.standard.set(try JSONEncoder().encode(snapshot), forKey: key)
+
+        XCTAssertEqual(store.programProgress?.week, 4, "9 of 12 sessions = week 4")
+        XCTAssertTrue(store.isProgramDeloadWeek)
+
+        // Deload suggestion: ~10% off the last logged 100 lb, snapped to 5s.
+        store.workoutLogs.append(WorkoutLog(
+            athleteID: store.clientProfile.id, athleteName: "Sarah",
+            workoutTemplateID: nil, workoutTitle: "S", sport: .strength,
+            completedAt: .now, durationMinutes: 30,
+            exercises: [LoggedExercise(name: "Back Squat", sets: "1 set", reps: "5",
+                                       weight: "100 lb", note: "", repsPerSet: [5],
+                                       weightsPerSet: [100], rpePerSet: [0], weightUnit: "lb")],
+            notes: "", source: .athleteManual,
+            enteredByUserID: store.clientProfile.id, enteredByRole: .client,
+            enteredByName: "Sarah", verificationStatus: .athleteSubmitted))
+        let exercise = WorkoutExercise(id: "bs", exerciseLibraryID: "back-squat",
+                                       name: "Back Squat", muscleGroup: .legs, sets: "3 sets",
+                                       reps: "5", difficulty: .moderate, formCue: "")
+        XCTAssertEqual(store.suggestedWorkingWeight(for: exercise) ?? 0, 90, accuracy: 0.01,
+                       "deload week suggests ~10% off, snapped to the increment")
+
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+
+    func testPaletteUnlocksGateAndGrandfather() {
+        let store = freshStore()   // level 1
+        XCTAssertTrue(store.isPaletteUnlocked(.gold), "brand default ships free")
+        XCTAssertFalse(store.isPaletteUnlocked(.pink), "pink is a level-12 earn")
+
+        let before = store.profileShowcase.accentPalette
+        store.updateAccentPalette(.pink)
+        XCTAssertEqual(store.profileShowcase.accentPalette, before,
+                       "a locked palette refuses with a toast, never applies")
+
+        store.profileShowcase.accentPalette = .pink
+        XCTAssertTrue(store.isPaletteUnlocked(.pink),
+                      "an applied palette is grandfathered — updates never revoke a choice")
+    }
+}

@@ -4796,3 +4796,86 @@ enum ContentModeration {
     /// the matched word (echoing it back just teaches evasion).
     static let refusalMessage = "That crosses Morphe's community line — abusive language doesn't post. Edit it and try again."
 }
+
+// MARK: - Premium entitlement shell (StoreKit 2, dormant until products exist)
+//
+// The monetization scaffold. While `storefrontEnabled` is false the shell is
+// fully dormant: no paywall renders anywhere and every feature stays free —
+// pre-launch users are never teased with a store that can't sell. Flipping
+// the flag (after the $99 Apple Developer Program + App Store Connect
+// products exist) activates loading, purchase, restore, and the Profile
+// entry point with no further code changes.
+//
+// House rule for what ever gets gated: programs, advanced analytics, coach
+// tooling — cosmetically premium surfaces. NEVER safety, NEVER the user's
+// own data, NEVER the export.
+
+import StoreKit
+
+enum PremiumGate {
+    static let storefrontEnabled = false
+    static let productIDs: Set<String> = ["app.morphe.pro.monthly", "app.morphe.pro.yearly"]
+}
+
+@MainActor
+@Observable
+final class PremiumStore {
+    static let shared = PremiumStore()
+
+    private(set) var products: [Product] = []
+    /// True when a verified, unrevoked transaction for a pro product exists.
+    private(set) var hasEntitlement = false
+    private(set) var isBusy = false
+
+    /// The single gate the app reads. Everything is free while the
+    /// storefront is dormant.
+    var isPremium: Bool {
+        !PremiumGate.storefrontEnabled || hasEntitlement
+    }
+
+    func load() async {
+        guard PremiumGate.storefrontEnabled else { return }
+        products = ((try? await Product.products(for: PremiumGate.productIDs)) ?? [])
+            .sorted { $0.price < $1.price }
+        await refreshEntitlement()
+    }
+
+    func refreshEntitlement() async {
+        guard PremiumGate.storefrontEnabled else { return }
+        var owned = false
+        for await result in Transaction.currentEntitlements {
+            if case .verified(let transaction) = result,
+               PremiumGate.productIDs.contains(transaction.productID),
+               transaction.revocationDate == nil {
+                owned = true
+            }
+        }
+        hasEntitlement = owned
+    }
+
+    /// Purchase with full StoreKit 2 verification; unverified results never
+    /// grant the entitlement.
+    func purchase(_ product: Product) async -> Bool {
+        guard PremiumGate.storefrontEnabled, !isBusy else { return false }
+        isBusy = true
+        defer { isBusy = false }
+        guard let result = try? await product.purchase() else { return false }
+        switch result {
+        case .success(let verification):
+            guard case .verified(let transaction) = verification else { return false }
+            await transaction.finish()
+            await refreshEntitlement()
+            return true
+        case .userCancelled, .pending:
+            return false
+        @unknown default:
+            return false
+        }
+    }
+
+    func restore() async {
+        guard PremiumGate.storefrontEnabled else { return }
+        try? await AppStore.sync()
+        await refreshEntitlement()
+    }
+}

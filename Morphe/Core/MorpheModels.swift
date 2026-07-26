@@ -2089,6 +2089,33 @@ struct PostComment: Identifiable, Hashable {
     var createdAt: Date = .now
 }
 
+/// A multi-week structured program: one weekly session pattern (referencing
+/// Discover catalog workouts BY NAME, tolerant of missing ones) repeated for
+/// `weeks`, with an optional lighter deload week. The program supplies
+/// STRUCTURE and sequencing; the per-exercise progression engine supplies
+/// the numbers — nothing here fabricates a load.
+struct TrainingProgram: Identifiable, Hashable {
+    var id: String
+    var name: String
+    var summary: String
+    var weeks: Int
+    /// 1-based week trained lighter — the progression engine suggests ~10%
+    /// off and says why.
+    var deloadWeek: Int?
+    /// Ordered session names for ONE week, resolved against the catalog.
+    var weeklySessionNames: [String]
+
+    var totalSessions: Int { weeks * weeklySessionNames.count }
+}
+
+/// Per-profile persisted program state. Progress advances on LOGGED
+/// sessions, never on the calendar — a missed week just resumes.
+struct ActiveProgramSnapshot: Codable {
+    var programID: String
+    var startedAt: Date
+    var completedSessions: Int = 0
+}
+
 /// Everything the share-card image states — every field is a logged fact
 /// (the card is the outward face of honest engineering; it never claims a
 /// number the log can't back).

@@ -2504,6 +2504,146 @@ final class MorpheAppStore {
         UserDefaults.standard.set(data, forKey: bodyWeightHistoryDefaultsKey)
     }
 
+    // MARK: - Structured programs (weeks × sessions, progression baked in)
+
+    /// The starter program library — assembled from catalog sessions that
+    /// already exist, so every referenced workout is real content.
+    static let trainingPrograms: [TrainingProgram] = [
+        TrainingProgram(
+            id: "foundation-4w",
+            name: "Foundation Strength",
+            summary: "4 weeks of beginner linear progression — two alternating full-body days plus one conditioning finisher each week. Week 4 deloads.",
+            weeks: 4,
+            deloadWeek: 4,
+            weeklySessionNames: [
+                "Beginner Linear Progression — Day A",
+                "Beginner Linear Progression — Day B",
+                "Full-Body Burner Circuit"
+            ]
+        ),
+        TrainingProgram(
+            id: "ppl-6w",
+            name: "Push Pull Legs",
+            summary: "6 weeks of the classic split — push, pull, and leg days every week. Week 6 deloads before you test anything.",
+            weeks: 6,
+            deloadWeek: 6,
+            weeklySessionNames: ["PPL — Push Day", "PPL — Pull Day", "PPL — Leg Day"]
+        ),
+        TrainingProgram(
+            id: "powerbuild-6w",
+            name: "Powerbuilding",
+            summary: "6 weeks of heavy upper/lower work with a dedicated squat day. Week 6 deloads.",
+            weeks: 6,
+            deloadWeek: 6,
+            weeklySessionNames: ["Powerbuilding Upper", "Powerbuilding Lower", "5x5 Lower — Squat Day"]
+        )
+    ]
+
+    /// Live program progress, all derived from the completed-session COUNT —
+    /// weeks advance when the work is done, never because a date passed.
+    struct ProgramProgress {
+        var program: TrainingProgram
+        var completedSessions: Int
+        var week: Int
+        var sessionIndexInWeek: Int
+        var isDeloadWeek: Bool
+        var nextSessionName: String
+        var isComplete: Bool
+    }
+
+    private var activeProgramDefaultsKey: String {
+        "morphe.program.\(clientProfile.id.uuidString)"
+    }
+
+    /// Same documented UserDefaults exception as competition state: one tiny
+    /// per-profile blob, never in the shared snapshot decoder.
+    private func loadActiveProgramSnapshot() -> ActiveProgramSnapshot? {
+        guard let data = UserDefaults.standard.data(forKey: activeProgramDefaultsKey),
+              let snapshot = try? JSONDecoder().decode(ActiveProgramSnapshot.self, from: data)
+        else { return nil }
+        return snapshot
+    }
+
+    private func persistActiveProgramSnapshot(_ snapshot: ActiveProgramSnapshot?) {
+        if let snapshot, let data = try? JSONEncoder().encode(snapshot) {
+            UserDefaults.standard.set(data, forKey: activeProgramDefaultsKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: activeProgramDefaultsKey)
+        }
+    }
+
+    var programProgress: ProgramProgress? {
+        guard let snapshot = loadActiveProgramSnapshot(),
+              let program = Self.trainingPrograms.first(where: { $0.id == snapshot.programID }),
+              !program.weeklySessionNames.isEmpty
+        else { return nil }
+        let done = min(snapshot.completedSessions, program.totalSessions)
+        let perWeek = program.weeklySessionNames.count
+        let week = min(done / perWeek + 1, program.weeks)
+        let sessionIndex = done % perWeek
+        return ProgramProgress(
+            program: program,
+            completedSessions: done,
+            week: week,
+            sessionIndexInWeek: sessionIndex,
+            isDeloadWeek: program.deloadWeek == week && done < program.totalSessions,
+            nextSessionName: program.weeklySessionNames[sessionIndex],
+            isComplete: done >= program.totalSessions
+        )
+    }
+
+    func startProgram(_ program: TrainingProgram) {
+        persistActiveProgramSnapshot(ActiveProgramSnapshot(programID: program.id, startedAt: .now))
+        showToast("\(program.name) started — \(program.weeks) weeks, session 1 is staged.")
+        startNextProgramSession()
+    }
+
+    func leaveProgram() {
+        guard let progress = programProgress else { return }
+        persistActiveProgramSnapshot(nil)
+        showToast("Left \(progress.program.name). Your logs keep everything you did.")
+    }
+
+    /// Stages the program's next session as today's workout. A session name
+    /// missing from the catalog (content drift) skips forward honestly.
+    func startNextProgramSession() {
+        guard let progress = programProgress, !progress.isComplete else { return }
+        guard let template = discoverWorkouts.first(where: { $0.name == progress.nextSessionName }) else {
+            // Content drift: count the unresolvable slot as passed so the
+            // program can't wedge, and say so.
+            advanceProgram(by: 1)
+            showToast("\(progress.nextSessionName) isn't in the catalog right now — skipped ahead.")
+            return
+        }
+        startCatalogWorkout(template)
+    }
+
+    private func advanceProgram(by count: Int) {
+        guard var snapshot = loadActiveProgramSnapshot() else { return }
+        snapshot.completedSessions += count
+        persistActiveProgramSnapshot(snapshot)
+    }
+
+    /// Called from `logWorkout`: a logged session that IS the program's next
+    /// session advances it. Returns whether this log COMPLETED the program —
+    /// the caller owns the celebration slot, so completion can outrank the
+    /// generic one.
+    @discardableResult
+    private func advanceProgramIfMatches(loggedTitle: String) -> Bool {
+        guard let progress = programProgress, !progress.isComplete,
+              progress.nextSessionName == loggedTitle else { return false }
+        advanceProgram(by: 1)
+        guard let after = programProgress, after.isComplete else { return false }
+        recentWins.insert("Finished the \(after.program.name) program.", at: 0)
+        return true
+    }
+
+    /// True while the active program sits in its deload week — the
+    /// progression engine reads this to suggest lighter, with the reason.
+    var isProgramDeloadWeek: Bool {
+        programProgress?.isDeloadWeek == true
+    }
+
     // MARK: - Share card (the session's outward face)
 
     /// The latest logged session as share-card facts — nil before any log.
@@ -5064,6 +5204,13 @@ final class MorpheAppStore {
         // Only bump when the logged unit matches the current one — never guess
         // a number across a lb/kg switch.
         guard last.unit == weightUnit else { return last.weight }
+        // Program deload week: ~10% off the last working weight, snapped to
+        // the plate increment. The note names the program as the reason.
+        if isProgramDeloadWeek, last.weight > 0 {
+            let step = progressionIncrement()
+            let deload = ((last.weight * 0.9) / step).rounded() * step
+            return max(deload, step)
+        }
         if last.feedback == .tooEasy { return last.weight + progressionIncrement() }
         if let rpe = last.topSetRPE {
             if rpe <= 6 { return last.weight + progressionIncrement() }
@@ -5079,6 +5226,9 @@ final class MorpheAppStore {
     func progressionNote(for exercise: WorkoutExercise) -> String? {
         guard let last = lastLoggedTopWeight(forExerciseNamed: exercise.name),
               last.unit == weightUnit, last.weight > 0 else { return nil }
+        if isProgramDeloadWeek {
+            return "DELOAD WEEK — about 10% off, that's the program working"
+        }
         if last.feedback == .tooEasy {
             return "MORPHE SUGGESTS +\(weightUnit.format(progressionIncrement())) — last time felt easy"
         }
@@ -5616,6 +5766,10 @@ final class MorpheAppStore {
         // part of the weekly totals — mirror them up (opt-in gated inside).
         publishCompetitionScores()
 
+        // A logged session that IS the program's next session advances the
+        // program (count-based, so a missed week just resumes).
+        let programJustCompleted = advanceProgramIfMatches(loggedTitle: currentWorkout.name)
+
         // Auto-share: one honest recap post per finished session — global
         // opt-in (Profile), per-session opt-out (the toggle above Log
         // Workout). Quiet path: a failed publish never blocks the log.
@@ -5674,10 +5828,15 @@ final class MorpheAppStore {
         // very next plan day already reflects this session.
         rebuildPersonalizedPlan()
         openProgress()
-        // A session that set a PR celebrates THAT — the highest-emotion fact
-        // it produced — instead of the generic XP line. Every number in the
-        // banner is a logged weight; nothing is inferred.
-        if let pr = newPRs.first {
+        // Celebration ranking: finishing a whole PROGRAM outranks a PR,
+        // which outranks the generic XP line. One banner, the biggest fact.
+        if programJustCompleted, let finished = programProgress {
+            showCelebration(
+                title: "Program complete",
+                detail: "\(finished.program.name) — every session of all \(finished.program.weeks) weeks, logged.",
+                symbol: "trophy.fill"
+            )
+        } else if let pr = newPRs.first {
             let extraPRs = newPRs.count - 1
             var detail = pr.previous > 0
                 ? "\(weightUnit.format(pr.weight)) — up from \(weightUnit.format(pr.previous))."
@@ -6530,8 +6689,33 @@ final class MorpheAppStore {
     /// the Profile appearance picker (ProfileView owns the UI only): set
     /// profileShowcase.accentPalette, call MorpheTheme.apply(accentPalette:),
     /// persist the profile.
+    // MARK: Milestone unlocks (levels finally mean something)
+
+    /// Level each accent palette unlocks at. Gold (the brand default) plus
+    /// two others ship free; the rest are earned. Cosmetics ONLY — data,
+    /// analytics, and safety are never gated behind progression.
+    static let paletteUnlockLevels: [AccentPalette: Int] = [
+        .gold: 1, .electricBlue: 1, .green: 1,
+        .red: 3, .orange: 5, .purple: 8, .pink: 12
+    ]
+
+    func paletteUnlockLevel(_ palette: AccentPalette) -> Int {
+        Self.paletteUnlockLevels[palette] ?? 1
+    }
+
+    /// Unlocked by level — or grandfathered: whatever is currently applied
+    /// stays yours regardless (an update never revokes a choice).
+    func isPaletteUnlocked(_ palette: AccentPalette) -> Bool {
+        palette == profileShowcase.accentPalette
+            || currentLevelNumber >= paletteUnlockLevel(palette)
+    }
+
     func updateAccentPalette(_ palette: AccentPalette) {
         guard profileShowcase.accentPalette != palette else { return }
+        guard isPaletteUnlocked(palette) else {
+            showToast("\(palette.rawValue) unlocks at level \(paletteUnlockLevel(palette)) — keep logging.")
+            return
+        }
         profileShowcase.accentPalette = palette
         MorpheTheme.apply(accentPalette: palette)
         persistLocalProfile()
@@ -8551,7 +8735,15 @@ final class MorpheAppStore {
                 clientProfile.level.currentTitle = "Level \(nextLevel)"
                 clientProfile.level.nextTitle = "Level \(nextLevel + 1)"
                 clientProfile.level.targetXP = Self.xpTarget(forLevel: nextLevel)
-                showCelebration(title: "Level \(nextLevel)", detail: "Keep stacking the work.", symbol: "arrow.up.circle.fill")
+                // Name what this level actually unlocked — a level that
+                // opens something lands harder than a bare number.
+                let unlockedNames = Self.paletteUnlockLevels
+                    .filter { $0.value == nextLevel }
+                    .keys.map(\.rawValue).sorted()
+                let levelDetail = unlockedNames.isEmpty
+                    ? "Keep stacking the work."
+                    : "\(unlockedNames.joined(separator: " + ")) accent unlocked — it's in Profile."
+                showCelebration(title: "Level \(nextLevel)", detail: levelDetail, symbol: "arrow.up.circle.fill")
             }
             Haptics.success()
         } else {

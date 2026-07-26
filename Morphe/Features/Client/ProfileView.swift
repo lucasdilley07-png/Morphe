@@ -27,6 +27,7 @@ struct ProfileView: View {
         var id: String { url.absoluteString }
     }
     @State private var exportFile: ExportFile?
+    @State private var showPaywall = false
 
     private var isCoach: Bool {
         store.selectedRole == .coach
@@ -69,6 +70,9 @@ struct ProfileView: View {
                 exportFile = nil
             }
             .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showPaywall) {
+            MorpheProPaywallSheet()
         }
         .onAppear {
             heightDraft = store.clientProfile.height
@@ -814,6 +818,29 @@ struct ProfileView: View {
                         .accessibilityLabel("Export your data as JSON")
                     }
 
+                    // Morphe Pro — DORMANT until App Store Connect products
+                    // exist; while the storefront flag is off nothing here
+                    // renders and everything stays free.
+                    if PremiumGate.storefrontEnabled {
+                        Divider().overlay(Color.white.opacity(0.08))
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Morphe Pro")
+                                    .foregroundStyle(.white)
+                                Text("Programs, advanced analytics, coach tools. Your data stays free forever.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            Spacer(minLength: 0)
+                            Button("View Plans") {
+                                showPaywall = true
+                            }
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .frame(width: 110)
+                            .accessibilityLabel("View Morphe Pro plans")
+                        }
+                    }
+
                     // Blocked accounts — only renders when there's someone
                     // to manage; blocking happens from posts/comments.
                     if !store.blockedAccounts.isEmpty {
@@ -947,10 +974,12 @@ struct ProfileView: View {
 
     private func accentDot(for palette: AccentPalette) -> some View {
         let isSelected = store.profileShowcase.accentPalette == palette
+        let isUnlocked = store.isPaletteUnlocked(palette)
         return Button {
             // Store contract: sets profileShowcase.accentPalette, calls
             // MorpheTheme.apply(accentPalette:), and persists the profile
-            // snapshot — the same pathway onboarding's choice rides.
+            // snapshot — the same pathway onboarding's choice rides. A
+            // locked palette toasts its unlock level instead.
             store.updateAccentPalette(palette)
             Haptics.impact(.light)
         } label: {
@@ -958,6 +987,7 @@ struct ProfileView: View {
                 Circle()
                     .fill(accentDotColor(for: palette))
                     .frame(width: 28, height: 28)
+                    .opacity(isUnlocked ? 1 : 0.35)
                 if isSelected {
                     Circle()
                         .stroke(.white, lineWidth: 2)
@@ -965,13 +995,19 @@ struct ProfileView: View {
                     Image(systemName: "checkmark")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(.black)
+                } else if !isUnlocked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.85))
                 }
             }
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(palette.rawValue) accent")
+        .accessibilityLabel(isUnlocked
+            ? "\(palette.rawValue) accent"
+            : "\(palette.rawValue) accent, unlocks at level \(store.paletteUnlockLevel(palette))")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
@@ -1314,4 +1350,80 @@ private struct DataExportShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+/// Morphe Pro paywall — mounted ONLY while PremiumGate.storefrontEnabled.
+/// Lists what Pro will gate and what it never will, then the live products.
+struct MorpheProPaywallSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var premium = PremiumStore.shared
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Morphe Pro")
+                    .font(.title2.weight(.black))
+                    .foregroundStyle(.white)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    paywallRow("calendar.badge.clock", "Structured programs — multi-week arcs with deloads built in")
+                    paywallRow("chart.line.uptrend.xyaxis", "Advanced analytics — e1RM, plateaus, muscle balance, trends")
+                    paywallRow("person.2.badge.gearshape", "Coach tools — rosters, programs, and client insights")
+                }
+
+                Text("Your data, your export, and every safety feature stay free — always.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+
+                if premium.hasEntitlement {
+                    Text("You're Pro. Thanks for backing honest training.")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accent)
+                } else if premium.products.isEmpty {
+                    Text("Plans are loading…")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                } else {
+                    ForEach(premium.products, id: \.id) { product in
+                        Button {
+                            Task {
+                                if await premium.purchase(product) { dismiss() }
+                            }
+                        } label: {
+                            HStack {
+                                Text(product.displayName)
+                                Spacer()
+                                Text(product.displayPrice)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .disabled(premium.isBusy)
+                    }
+                }
+
+                Button("Restore Purchases") {
+                    Task { await premium.restore() }
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .frame(maxWidth: .infinity)
+            }
+            .padding(20)
+        }
+        .background(MorpheTheme.ink)
+        .task { await premium.load() }
+    }
+
+    private func paywallRow(_ symbol: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: symbol)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(MorpheTheme.accent)
+                .frame(width: 24)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
 }
