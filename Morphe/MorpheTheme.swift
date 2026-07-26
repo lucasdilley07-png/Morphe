@@ -25,10 +25,37 @@ enum MorpheTheme {
     /// HUD corner radius — sharp, technical. One knob for the whole system.
     static let radius: CGFloat = 3
 
+    /// Chip/badge radius — the deliberate second, tighter knob the small
+    /// elements already used as a literal `2` in a dozen places.
+    static let chipRadius: CGFloat = 2
+
+    /// Spacing scale — a 4pt grid for the whole HUD. New code uses these;
+    /// existing literals migrate as files get touched. (The audit counted
+    /// 600+ magic spacing numbers; the token is how that stops growing.)
+    enum Spacing {
+        /// 4 — hairline gaps inside a label stack.
+        static let xs: CGFloat = 4
+        /// 8 — chip rows, tight control clusters.
+        static let sm: CGFloat = 8
+        /// 12 — default gap inside a card.
+        static let md: CGFloat = 12
+        /// 16 — card-to-card, screen gutters.
+        static let lg: CGFloat = 16
+        /// 20 — horizontal screen padding.
+        static let xl: CGFloat = 20
+        /// 24 — section breaks.
+        static let xxl: CGFloat = 24
+    }
+
     /// Monospaced micro-label — the telemetry signature. Pair with
     /// `.tracking(1.4)` and an uppercased string.
+    /// Scaled: the point size rides Dynamic Type via UIFontMetrics (at the
+    /// default setting it IS the requested size, so the HUD look is
+    /// untouched; at accessibility sizes the labels finally grow with the
+    /// body text instead of staying microscopic).
     static func microLabel(_ size: CGFloat = 11) -> Font {
-        .system(size: size, design: .monospaced).weight(.semibold)
+        let scaled = UIFontMetrics(forTextStyle: .caption2).scaledValue(for: size)
+        return .system(size: scaled, design: .monospaced).weight(.semibold)
     }
 
     // Glows retired with the glass design; kept near-zero for API compat.
@@ -175,6 +202,14 @@ enum Haptics {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(.success)
+    }
+
+    /// The light tick for choosing among options (filter chips, tabs) —
+    /// the most common interaction in the app finally has a feel.
+    static func selection() {
+        let generator = UISelectionFeedbackGenerator()
+        generator.prepare()
+        generator.selectionChanged()
     }
 }
 

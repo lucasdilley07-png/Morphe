@@ -1201,6 +1201,36 @@ private struct ActiveWorkoutTrackerCard: View {
         weight > 0 ? weightUnit.format(weight) : "Bodyweight"
     }
 
+    /// Barbell-ish movements only — the keyword gate keeps dumbbell and
+    /// bodyweight moves from showing nonsense plate math.
+    private var isBarbellExercise: Bool {
+        let name = exercise.name.lowercased()
+        return name.contains("barbell") || name.contains("bench")
+            || name.contains("squat") || name.contains("deadlift")
+    }
+
+    /// "Bar 45 + 45 + 25 + 10 / side" for the current weight — the mental
+    /// math every lifter does at the bar, done. Greedy fill from standard
+    /// plates; an unreachable remainder is named, never rounded away.
+    private var plateBreakdown: String? {
+        let barWeight: Double = weightUnit == .kilograms ? 20 : 45
+        guard isBarbellExercise, weight > barWeight + 0.1 else { return nil }
+        let plates: [Double] = weightUnit == .kilograms
+            ? [25, 20, 15, 10, 5, 2.5, 1.25]
+            : [45, 35, 25, 10, 5, 2.5]
+        var perSide = (weight - barWeight) / 2
+        var loaded: [String] = []
+        for plate in plates {
+            while perSide >= plate - 0.01 {
+                loaded.append(plate == plate.rounded() ? "\(Int(plate))" : "\(plate)")
+                perSide -= plate
+            }
+        }
+        guard !loaded.isEmpty else { return nil }
+        let remainder = perSide > 0.05 ? " (+\((perSide * 10).rounded() / 10) odd)" : ""
+        return "BAR \(Int(barWeight)) + \(loaded.joined(separator: " + ")) / SIDE\(remainder)"
+    }
+
     /// Short CTA — the accessibility label carries the exact reps and weight.
     private var logButtonTitle: String {
         "Log Set"
@@ -1357,6 +1387,14 @@ private struct ActiveWorkoutTrackerCard: View {
                             onUp: { weight += weightStep },
                             onCoarseUp: { weight += coarseWeightStep }
                         )
+
+                        if let plateBreakdown {
+                            Text(plateBreakdown)
+                                .font(MorpheTheme.microLabel(9))
+                                .tracking(0.8)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .accessibilityLabel("Plate loading: \(plateBreakdown)")
+                        }
 
                         // Inline RPE: the progression engine feeds on this,
                         // so rating a set is ONE optional tap here — not a

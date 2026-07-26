@@ -109,7 +109,9 @@ struct SectionTitleView: View {
                     .frame(width: 3, height: 14)
 
                 Text(title.uppercased())
-                    .font(.system(size: 14, design: .monospaced).weight(.bold))
+                    // microLabel scales with Dynamic Type; the .bold keeps
+                    // the section weight the fixed 14pt version had.
+                    .font(MorpheTheme.microLabel(14).weight(.bold))
                     .tracking(2)
                     .foregroundStyle(MorpheTheme.textPrimary)
                     .lineLimit(1)
@@ -175,7 +177,7 @@ struct StatusBadge: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
             .background(
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                     .stroke(color.opacity(0.55), lineWidth: 1)
             )
     }
@@ -362,7 +364,7 @@ struct ProfileBannerView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
-                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                             .stroke(Color.white.opacity(0.25), lineWidth: 1)
                     )
 
@@ -490,22 +492,10 @@ struct NotificationCard: View {
     }
 }
 
-struct EmptyStateCard: View {
-    let title: String
-    let detail: String
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                Text(detail)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-            }
-        }
-    }
-}
+// (EmptyStateCard used to live here — defined in the design system, used by
+// nobody, while every real empty state was hand-rolled inline. An unused
+// component is drift bait, so it's gone; the inline states already follow
+// the house rule of naming their unlock condition.)
 
 struct ScoreRing: View {
     let score: Int
@@ -1413,16 +1403,21 @@ struct FilterChipStyle: ButtonStyle {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                     .fill(isSelected ? selectedColor : (configuration.isPressed ? MorpheTheme.panelStrong : Color.white.opacity(0.04)))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                     .stroke(isSelected ? Color.clear : Color.white.opacity(0.10), lineWidth: 1)
             )
             // Selection was color-only — invisible to VoiceOver and weak for
             // color-blind users. Every chip in the app gets the trait from here.
             .accessibilityAddTraits(isSelected ? .isSelected : [])
+            // The most common tap in the app gets the standard selection
+            // tick — fired on press-down so it lands with the touch.
+            .onChange(of: configuration.isPressed) { _, pressed in
+                if pressed { Haptics.selection() }
+            }
     }
 }
 

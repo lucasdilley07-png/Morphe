@@ -243,7 +243,9 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.25), value: store.selectedClientTab)
         .animation(.easeInOut(duration: 0.25), value: store.selectedCoachTab)
         .animation(.easeInOut(duration: 0.25), value: store.toastMessage)
-        .animation(.easeInOut(duration: 0.25), value: store.celebration)
+        // The celebration is the app's ONE emotional beat (PRs land here) —
+        // it gets a spring pop where everything else stays mechanical.
+        .animation(.spring(response: 0.38, dampingFraction: 0.65), value: store.celebration)
     }
 }
 
@@ -857,7 +859,10 @@ private struct AIAgentMessageRow: View {
                         }
                     }
             }
-            .frame(maxWidth: UIScreen.main.bounds.width * 0.75, alignment: isUser ? .trailing : .leading)
+            // Fixed cap instead of UIScreen.main (deprecated for multi-scene;
+            // wrong under Stage Manager). 300pt ≈ 75% of the narrowest iPhone
+            // and reads fine on every width.
+            .frame(maxWidth: 300, alignment: isUser ? .trailing : .leading)
 
             if !isUser { Spacer(minLength: 0) }
         }

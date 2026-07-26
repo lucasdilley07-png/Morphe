@@ -1217,15 +1217,31 @@ private struct BodyWeightTrendCard: View {
         weightUnit == .kilograms ? ((lb * 0.45359237) * 10).rounded() / 10 : lb
     }
 
+    /// 5-reading centered moving average — daily weight is water/food noise;
+    /// the smoothed line is the trend worth reading. Raw points stay visible
+    /// underneath so nothing is hidden.
+    private var smoothed: [(date: Date, weightLb: Double)] {
+        guard entries.count >= 3 else { return [] }
+        return entries.indices.map { index in
+            let window = max(0, index - 2)...min(entries.count - 1, index + 2)
+            let mean = window.reduce(0.0) { $0 + entries[$1].weightLb } / Double(window.count)
+            return (entries[index].date, mean)
+        }
+    }
+
     private var changeText: String? {
-        guard let first = entries.first, let last = entries.last, entries.count >= 2 else { return nil }
+        // The delta reads off the SMOOTHED endpoints when there are enough
+        // readings — first-vs-last raw compares two noise samples.
+        let series = smoothed.isEmpty ? entries : smoothed
+        guard let first = series.first, let last = series.last, series.count >= 2 else { return nil }
         let delta = displayWeight(last.weightLb) - displayWeight(first.weightLb)
         if abs(delta) < 0.05 { return "Held steady since your first reading." }
         let rounded = (abs(delta) * 10).rounded() / 10
         let amount = rounded.truncatingRemainder(dividingBy: 1) == 0
             ? String(Int(rounded))
             : String(rounded)
-        return "\(delta > 0 ? "Up" : "Down") \(amount) \(weightUnit.label) since your first reading."
+        let basis = smoothed.isEmpty ? "since your first reading" : "on trend since your first reading"
+        return "\(delta > 0 ? "Up" : "Down") \(amount) \(weightUnit.label) \(basis)."
     }
 
     var body: some View {
@@ -1235,19 +1251,25 @@ private struct BodyWeightTrendCard: View {
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text("Every weight you save in Profile becomes a dated reading here.")
+                Text(smoothed.isEmpty
+                     ? "Every weight you save in Profile becomes a dated reading here."
+                     : "Solid line is the 5-reading trend; dots are the raw readings.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
                 if entries.count >= 2 {
                     Chart {
+                        // Raw readings: dots (+ the connecting line only while
+                        // there aren't enough points to draw a trend).
                         ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
-                            LineMark(
-                                x: .value("Date", entry.date),
-                                y: .value("Weight", displayWeight(entry.weightLb))
-                            )
-                            .foregroundStyle(MorpheTheme.accent)
-                            .interpolationMethod(.monotone)
+                            if smoothed.isEmpty {
+                                LineMark(
+                                    x: .value("Date", entry.date),
+                                    y: .value("Weight", displayWeight(entry.weightLb))
+                                )
+                                .foregroundStyle(MorpheTheme.accent)
+                                .interpolationMethod(.monotone)
+                            }
 
                             PointMark(
                                 x: .value("Date", entry.date),
@@ -1256,9 +1278,20 @@ private struct BodyWeightTrendCard: View {
                             .foregroundStyle(
                                 index == entries.count - 1
                                     ? MorpheTheme.accent
-                                    : MorpheTheme.accent.opacity(0.5)
+                                    : MorpheTheme.accent.opacity(smoothed.isEmpty ? 0.5 : 0.35)
                             )
                             .symbolSize(index == entries.count - 1 ? 100 : 36)
+                        }
+
+                        ForEach(Array(smoothed.enumerated()), id: \.offset) { _, point in
+                            LineMark(
+                                x: .value("Date", point.date),
+                                y: .value("Trend", displayWeight(point.weightLb)),
+                                series: .value("Series", "Trend")
+                            )
+                            .foregroundStyle(MorpheTheme.accent)
+                            .lineStyle(StrokeStyle(lineWidth: 2.5))
+                            .interpolationMethod(.monotone)
                         }
                     }
                     .frame(height: 160)

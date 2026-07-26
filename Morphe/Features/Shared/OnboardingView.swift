@@ -232,9 +232,9 @@ struct OnboardingFlowView: View {
             return UsernameRules.normalize(usernameEntry).count >= UsernameRules.minLength
                 && !isReservingUsername
         }
-        if currentStep == .gender {
-            return store.onboardingDraft.genderChosen
-        }
+        // Gender advances freely — it only tunes coaching language, and a
+        // hard gate for soft value is the wrong trade. "Never asked" is a
+        // state the model already supports.
         if currentStep == .review {
             // Can't finish onboarding without agreeing to the terms.
             return store.onboardingDraft.agreedToTerms
