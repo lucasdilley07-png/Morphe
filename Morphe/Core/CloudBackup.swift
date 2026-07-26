@@ -502,6 +502,15 @@ protocol FeedSyncing: AnyObject {
     func setFollow(uid: String, targetUid: String, on: Bool)
     /// Every uid this user follows, or nil when offline/unavailable.
     func fetchFollowing(uid: String) async -> Set<String>?
+    /// Files one abuse report into reports/ (create-only from clients; the
+    /// Morphe team reviews via Tools/review_reports.py). False on failure.
+    func submitReport(reporterUid: String, kind: String, targetId: String,
+                      targetUid: String, reason: String, excerpt: String) async -> Bool
+    /// Adds (on) or removes (off) one block edge under the owner, with the
+    /// display name at block time (so the manage list can show WHO).
+    func setBlocked(uid: String, targetUid: String, name: String, on: Bool)
+    /// Every uid this user blocked (uid -> name), or nil when unavailable.
+    func fetchBlocked(uid: String) async -> [String: String]?
     /// Removes one post (rules enforce author-only).
     func delete(postId: String)
 }
@@ -518,6 +527,10 @@ final class NoOpFeedService: FeedSyncing {
     func fetchSavedPostIds(uid: String) async -> Set<String>? { nil }
     func setFollow(uid: String, targetUid: String, on: Bool) {}
     func fetchFollowing(uid: String) async -> Set<String>? { nil }
+    func submitReport(reporterUid: String, kind: String, targetId: String,
+                      targetUid: String, reason: String, excerpt: String) async -> Bool { false }
+    func setBlocked(uid: String, targetUid: String, name: String, on: Bool) {}
+    func fetchBlocked(uid: String) async -> [String: String]? { nil }
     func delete(postId: String) {}
 }
 
@@ -643,6 +656,48 @@ final class FirebaseFeedService: FeedSyncing {
     func fetchFollowing(uid: String) async -> Set<String>? {
         guard let snapshot = try? await following(uid).getDocuments() else { return nil }
         return Set(snapshot.documents.map(\.documentID))
+    }
+
+    func submitReport(reporterUid: String, kind: String, targetId: String,
+                      targetUid: String, reason: String, excerpt: String) async -> Bool {
+        let data: [String: Any] = [
+            "reporterUid": reporterUid,
+            "kind": kind,
+            "targetId": targetId,
+            "targetUid": targetUid,
+            "reason": reason,
+            "excerpt": String(excerpt.prefix(300)),
+            "status": "open",
+            "createdAt": FieldValue.serverTimestamp()
+        ]
+        do {
+            try await db.collection("reports").document(UUID().uuidString).setData(data)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private func blocked(_ uid: String) -> CollectionReference {
+        db.collection("users").document(uid).collection("blocked")
+    }
+
+    func setBlocked(uid: String, targetUid: String, name: String, on: Bool) {
+        let doc = blocked(uid).document(targetUid)
+        if on {
+            doc.setData(["name": String(name.prefix(60)), "createdAt": FieldValue.serverTimestamp()])
+        } else {
+            doc.delete()
+        }
+    }
+
+    func fetchBlocked(uid: String) async -> [String: String]? {
+        guard let snapshot = try? await blocked(uid).getDocuments() else { return nil }
+        var result: [String: String] = [:]
+        for document in snapshot.documents {
+            result[document.documentID] = document.data()["name"] as? String ?? "Athlete"
+        }
+        return result
     }
 
     func fetchReactionCounts(postIds: [String]) async -> [String: Int] {

@@ -1639,6 +1639,7 @@ private struct FeedPostCard: View {
 
     @State private var showComments = false
     @State private var commentDraft = ""
+    @State private var showBlockConfirm = false
 
     private var isMine: Bool { post.authorUid == (store.authUser?.id ?? "") }
     private var hasReacted: Bool { store.myReactedPostIds.contains(post.id) }
@@ -1858,7 +1859,33 @@ private struct FeedPostCard: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
+            } else {
+                Menu {
+                    ForEach(MorpheAppStore.reportReasons, id: \.self) { reason in
+                        Button(reason) {
+                            store.reportPost(post, reason: reason)
+                        }
+                    }
+                } label: {
+                    Label("Report Post", systemImage: "flag")
+                }
+
+                Button(role: .destructive) {
+                    showBlockConfirm = true
+                } label: {
+                    Label("Block \(post.authorName)", systemImage: "hand.raised")
+                }
             }
+        }
+        .confirmationDialog(
+            "Block \(post.authorName)? Their posts and comments disappear from your feed, and you unfollow them. You can unblock from Profile.",
+            isPresented: $showBlockConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Block \(post.authorName)", role: .destructive) {
+                store.blockAccount(uid: post.authorUid, name: post.authorName)
+            }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
@@ -1916,6 +1943,21 @@ private struct FeedPostCard: View {
                                 store.deleteMyComment(comment)
                             } label: {
                                 Label("Delete", systemImage: "trash")
+                            }
+                        } else {
+                            Menu {
+                                ForEach(MorpheAppStore.reportReasons, id: \.self) { reason in
+                                    Button(reason) {
+                                        store.reportComment(comment, reason: reason)
+                                    }
+                                }
+                            } label: {
+                                Label("Report Comment", systemImage: "flag")
+                            }
+                            Button(role: .destructive) {
+                                store.blockAccount(uid: comment.authorUid, name: comment.authorName)
+                            } label: {
+                                Label("Block \(comment.authorName)", systemImage: "hand.raised")
                             }
                         }
                     }

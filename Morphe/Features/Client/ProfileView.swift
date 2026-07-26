@@ -812,6 +812,32 @@ struct ProfileView: View {
                         .accessibilityLabel("Export your data as JSON")
                     }
 
+                    // Blocked accounts — only renders when there's someone
+                    // to manage; blocking happens from posts/comments.
+                    if !store.blockedAccounts.isEmpty {
+                        Divider().overlay(Color.white.opacity(0.08))
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Blocked accounts")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            ForEach(store.blockedAccounts.sorted(by: { $0.value < $1.value }), id: \.key) { uid, name in
+                                HStack(spacing: 10) {
+                                    Text(name)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.white)
+                                        .lineLimit(1)
+                                    Spacer(minLength: 0)
+                                    Button("Unblock") {
+                                        store.unblockAccount(uid: uid)
+                                    }
+                                    .buttonStyle(FilterChipStyle(isSelected: false))
+                                    .accessibilityLabel("Unblock \(name)")
+                                }
+                            }
+                        }
+                    }
+
                     Divider().overlay(Color.white.opacity(0.08))
 
                     // Weekly target — drives the consistency denominator on

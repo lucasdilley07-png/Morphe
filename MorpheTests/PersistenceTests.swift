@@ -3666,3 +3666,63 @@ final class StrengthAnalyticsTests: XCTestCase {
         XCTAssertNotNil(json["bodyWeightHistoryLb"], "weight series rides the export even when empty")
     }
 }
+
+// MARK: - Moderation (App Store 1.2: filter, block, report)
+
+@MainActor
+final class ModerationTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func signedInStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(
+            id: "uid-test", email: "t@morphe.app", role: .athlete,
+            displayName: "Sarah", createdAt: .now
+        )
+        return store
+    }
+
+    func testContentFilterCatchesSlursNotScunthorpe() {
+        XCTAssertTrue(ContentModeration.containsBlockedTerm("you are a faggot"), "slurs are caught")
+        XCTAssertTrue(ContentModeration.containsBlockedTerm("KYS loser"), "case-insensitive")
+        XCTAssertFalse(ContentModeration.containsBlockedTerm("great class today"), "substrings inside words don't trigger")
+        XCTAssertFalse(ContentModeration.containsBlockedTerm("new grape smoothie recipe"), "word boundaries hold")
+        XCTAssertFalse(ContentModeration.containsBlockedTerm("Completed Push Day — 18 sets, 42 min."), "recaps sail through")
+    }
+
+    func testBlockingRemovesContentAndSeversFollow() {
+        let store = signedInStore()
+        store.followedUids = ["bad-actor"]
+        store.feedPosts = [
+            FeedPost(id: "p1", authorUid: "bad-actor", authorName: "Troll", text: "spam"),
+            FeedPost(id: "p2", authorUid: "friend", authorName: "Alex", text: "real win")
+        ]
+        store.postComments["p2"] = [
+            PostComment(id: "c1", postId: "p2", authorUid: "bad-actor", authorName: "Troll", text: "spam"),
+            PostComment(id: "c2", postId: "p2", authorUid: "friend", authorName: "Alex", text: "nice")
+        ]
+
+        store.blockAccount(uid: "bad-actor", name: "Troll")
+
+        XCTAssertEqual(store.feedPosts.map(\.id), ["p2"], "blocked author's posts vanish")
+        XCTAssertEqual(store.postComments["p2"]?.map(\.id), ["c2"], "blocked author's comments vanish")
+        XCTAssertFalse(store.followedUids.contains("bad-actor"), "block severs the follow")
+        XCTAssertEqual(store.blockedAccounts["bad-actor"], "Troll", "name kept for the manage list")
+
+        store.unblockAccount(uid: "bad-actor")
+        XCTAssertTrue(store.blockedAccounts.isEmpty)
+    }
+
+    func testSelfBlockIsRefused() {
+        let store = signedInStore()
+        store.blockAccount(uid: "uid-test", name: "Me")
+        XCTAssertTrue(store.blockedAccounts.isEmpty, "you can't block yourself")
+    }
+}

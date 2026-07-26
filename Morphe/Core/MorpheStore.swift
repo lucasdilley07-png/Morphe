@@ -398,6 +398,11 @@ final class MorpheAppStore {
     var followedUids: Set<String> = []
     /// Find Athletes search hits (username directory prefix scan).
     var athleteSearchResults: [AthleteSearchResult] = []
+    /// Blocked accounts (uid → display name at block time) — mirror of
+    /// users/{uid}/blocked. A blocked author never renders: their posts,
+    /// comments, and search hits all filter through this set.
+    var blockedAccounts: [String: String] = [:]
+    var blockedUids: Set<String> { Set(blockedAccounts.keys) }
     /// The user's REAL personal schedule (kept sorted by date). Lives in
     /// memory + the Firestore offline cache only — deliberately no file
     /// persistence: each appointment is its own users/{uid}/appointments doc,
@@ -7202,9 +7207,19 @@ final class MorpheAppStore {
     /// service) keeps whatever is local.
     func refreshFeed() async {
         guard let uid = authUser?.id else { return }
+        // Blocks load FIRST so the post filter below always has them.
+        if let blocked = await feedService.fetchBlocked(uid: uid) {
+            blockedAccounts = blocked
+        }
         if let fetched = await feedService.fetchRecent(limit: 50) {
-            feedPosts = fetched
-            feedReactionCounts = await feedService.fetchReactionCounts(postIds: fetched.map(\.id))
+            // Two-layer render filter: blocked authors are the user's call;
+            // the term filter is the App Store 1.2 hygiene net for content
+            // other clients let through.
+            feedPosts = fetched.filter {
+                !blockedUids.contains($0.authorUid)
+                    && !ContentModeration.containsBlockedTerm($0.text)
+            }
+            feedReactionCounts = await feedService.fetchReactionCounts(postIds: feedPosts.map(\.id))
         }
         if let saved = await feedService.fetchSavedPostIds(uid: uid) {
             savedPostIds = saved
@@ -7212,6 +7227,59 @@ final class MorpheAppStore {
         if let following = await feedService.fetchFollowing(uid: uid) {
             followedUids = following
         }
+    }
+
+    // MARK: Report + block (App Store 1.2: report, block, filter)
+
+    static let reportReasons = ["Spam", "Abuse or hate", "Nudity or sexual content", "Dangerous advice", "Other"]
+
+    func reportPost(_ post: FeedPost, reason: String) {
+        guard let uid = authUser?.id else { return }
+        Task {
+            let sent = await feedService.submitReport(
+                reporterUid: uid, kind: "post", targetId: post.id,
+                targetUid: post.authorUid, reason: reason, excerpt: post.text)
+            showToast(sent ? "Report sent — a human reviews every one."
+                           : "Report didn't send — check your connection.")
+        }
+    }
+
+    func reportComment(_ comment: PostComment, reason: String) {
+        guard let uid = authUser?.id else { return }
+        Task {
+            let sent = await feedService.submitReport(
+                reporterUid: uid, kind: "comment",
+                targetId: "\(comment.postId)/\(comment.id)",
+                targetUid: comment.authorUid, reason: reason, excerpt: comment.text)
+            showToast(sent ? "Report sent — a human reviews every one."
+                           : "Report didn't send — check your connection.")
+        }
+    }
+
+    /// Blocks one account: their posts/comments/search hits disappear now
+    /// and stay gone (the block doc filters every future fetch), and any
+    /// follow edge this side owns is severed.
+    func blockAccount(uid targetUid: String, name: String) {
+        guard let uid = authUser?.id, targetUid != uid else { return }
+        blockedAccounts[targetUid] = name
+        feedService.setBlocked(uid: uid, targetUid: targetUid, name: name, on: true)
+        if followedUids.contains(targetUid) {
+            followedUids.remove(targetUid)
+            feedService.setFollow(uid: uid, targetUid: targetUid, on: false)
+        }
+        feedPosts.removeAll { $0.authorUid == targetUid }
+        for (postId, comments) in postComments {
+            postComments[postId] = comments.filter { $0.authorUid != targetUid }
+        }
+        athleteSearchResults.removeAll { $0.uid == targetUid }
+        showToast("Blocked \(name). Their posts and comments are gone from your feed.")
+    }
+
+    func unblockAccount(uid targetUid: String) {
+        guard let uid = authUser?.id else { return }
+        let name = blockedAccounts.removeValue(forKey: targetUid) ?? "Athlete"
+        feedService.setBlocked(uid: uid, targetUid: targetUid, name: name, on: false)
+        showToast("Unblocked \(name).")
     }
 
     // MARK: Follow graph + user discovery
@@ -7245,7 +7313,7 @@ final class MorpheAppStore {
         }
         let hits = await usernameDirectory.search(prefix: clean, limit: 10)
         athleteSearchResults = hits
-            .filter { $0.uid != authUser?.id }
+            .filter { $0.uid != authUser?.id && !blockedUids.contains($0.uid) }
             .map { AthleteSearchResult(username: $0.username, uid: $0.uid) }
     }
 
@@ -7256,7 +7324,10 @@ final class MorpheAppStore {
     func loadComments(for post: FeedPost) async {
         guard isRealFeedActive else { return }
         if let fetched = await feedService.fetchComments(postId: post.id, limit: 100) {
-            postComments[post.id] = fetched
+            postComments[post.id] = fetched.filter {
+                !blockedUids.contains($0.authorUid)
+                    && !ContentModeration.containsBlockedTerm($0.text)
+            }
         }
     }
 
@@ -7264,6 +7335,10 @@ final class MorpheAppStore {
         guard let uid = authUser?.id else { return }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
+        guard !ContentModeration.containsBlockedTerm(clean) else {
+            showToast(ContentModeration.refusalMessage)
+            return
+        }
         let comment = PostComment(
             id: UUID().uuidString,
             postId: post.id,
@@ -7296,6 +7371,12 @@ final class MorpheAppStore {
         guard let uid = authUser?.id else { return false }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return false }
+        // The publish-time leg of the 1.2 filter — auto-share recaps are
+        // template text and sail through; typed text gets checked.
+        guard !ContentModeration.containsBlockedTerm(clean) else {
+            showToast(ContentModeration.refusalMessage)
+            return false
+        }
         let post = FeedPost(
             id: UUID().uuidString,
             authorUid: uid,

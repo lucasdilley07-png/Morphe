@@ -87,6 +87,34 @@ service cloud.firestore {
       match /following/{targetUid} {
         allow read, write: if isOwner(uid);
       }
+
+      // Block list — one doc per blocked account ({ name, createdAt }).
+      // Owner-only: who you block is your business. The app filters every
+      // feed/comment/search render through this list.
+      match /blocked/{targetUid} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Abuse reports — WRITE-ONLY from clients. Any signed-in user may file
+    // one about a post, comment, or user; nobody can read, edit, or delete
+    // them from an app. Review happens with the service account via
+    // Tools/review_reports.py (App Store 1.2: report + human action).
+    match /reports/{reportId} {
+      allow read: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(
+             ['reporterUid', 'kind', 'targetId', 'targetUid', 'reason',
+              'excerpt', 'status', 'createdAt'])
+        && request.resource.data.kind in ['post', 'comment', 'user']
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() >= 1
+        && request.resource.data.reason.size() <= 60
+        && request.resource.data.excerpt is string
+        && request.resource.data.excerpt.size() <= 300
+        && request.resource.data.status == 'open';
+      allow update, delete: if false;
     }
 
     // Username uniqueness map. Readable by all (to check availability at

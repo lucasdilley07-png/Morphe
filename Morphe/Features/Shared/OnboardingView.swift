@@ -1068,6 +1068,13 @@ private struct ProfileReviewStep: View {
                         .foregroundStyle(.white)
                 }
                 .tint(MorpheTheme.accent)
+
+                // App Store 1.2: consenting users must know abusive content
+                // has zero tolerance and gets people removed.
+                Text("Morphe has zero tolerance for abusive or objectionable content. Posts can be reported, accounts can be blocked, and repeat abuse ends the account.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

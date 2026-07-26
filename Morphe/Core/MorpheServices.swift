@@ -4754,3 +4754,45 @@ enum HealthWorkoutSync {
         return .traditionalStrengthTraining
     }
 }
+
+// MARK: - Content moderation (deterministic filter, App Store 1.2)
+//
+// A UGC app must filter objectionable content, take reports, and support
+// blocking. This is the FILTER leg: a deterministic severe-term check
+// applied at publish time (refuse with an honest message) AND at render
+// time (posts fetched from other clients that slip past their own check
+// are hidden locally). Word-boundary matching keeps "class" and
+// "Scunthorpe" safe. This is hygiene, not judgment — reports + human
+// review (Tools/review_reports.py) handle everything a wordlist can't.
+
+enum ContentModeration {
+    /// Severe abuse/slur terms — deliberately short and unambiguous. This
+    /// list catches the worst; nuance belongs to human review of reports.
+    private static let blockedTerms: Set<String> = [
+        "nigger", "nigga", "faggot", "kike", "spic", "chink", "wetback",
+        "tranny", "raghead", "beaner",
+        "kys", "kill yourself", "rape"
+    ]
+
+    /// Nil when the text is publishable; otherwise true — the caller shows
+    /// the refusal copy. Case-insensitive, word-boundary bounded.
+    static func containsBlockedTerm(_ text: String) -> Bool {
+        let lowered = text.lowercased()
+        for term in blockedTerms {
+            var searchRange = lowered.startIndex..<lowered.endIndex
+            while let range = lowered.range(of: term, range: searchRange) {
+                let beforeOK = range.lowerBound == lowered.startIndex
+                    || !lowered[lowered.index(before: range.lowerBound)].isLetter
+                let afterOK = range.upperBound == lowered.endIndex
+                    || !lowered[range.upperBound].isLetter
+                if beforeOK && afterOK { return true }
+                searchRange = range.upperBound..<lowered.endIndex
+            }
+        }
+        return false
+    }
+
+    /// The refusal shown when a compose is blocked — names the rule, not
+    /// the matched word (echoing it back just teaches evasion).
+    static let refusalMessage = "That crosses Morphe's community line — abusive language doesn't post. Edit it and try again."
+}
