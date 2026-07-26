@@ -14,13 +14,15 @@ import FirebaseFirestore
 // nuke the whole history), at the cost of the console showing a JSON blob
 // rather than nested fields.
 //
-// Firestore layout (covered by the users/{uid}/{document=**} security rule):
-//   users/{uid}/state/profile  { schemaVersion, json, updatedAt }
-//   users/{uid}/state/logs     { schemaVersion, count, json, updatedAt }
+// Firestore layout (owner-only state/* rule in BACKEND/firestore.rules):
+//   users/{uid}/state/profile        { schemaVersion, json, updatedAt }
+//   users/{uid}/state/logs           { schemaVersion, count, json, updatedAt }
+//   users/{uid}/state/weightHistory  { schemaVersion, count, json, updatedAt }
 
 struct CloudSnapshot {
     var profile: LocalProfileSnapshot?
     var logs: [WorkoutLog]?
+    var weightHistory: [MorpheAppStore.BodyWeightHistoryEntry]?
 }
 
 /// Abstraction so the store can be built without Firebase (tests/previews use
@@ -31,6 +33,7 @@ protocol CloudBackingUp: AnyObject {
     func setUser(_ uid: String?)
     func pushProfile(_ snapshot: LocalProfileSnapshot)
     func pushLogs(_ logs: [WorkoutLog])
+    func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry])
     func pull() async -> CloudSnapshot
 }
 
@@ -40,6 +43,7 @@ final class NoOpCloudBackup: CloudBackingUp {
     func setUser(_ uid: String?) {}
     func pushProfile(_ snapshot: LocalProfileSnapshot) {}
     func pushLogs(_ logs: [WorkoutLog]) {}
+    func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry]) {}
     func pull() async -> CloudSnapshot { CloudSnapshot() }
 }
 
@@ -832,6 +836,18 @@ final class FirebaseCloudBackup: CloudBackingUp {
         ])
     }
 
+    func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry]) {
+        guard let doc = stateDoc("weightHistory"),
+              let data = try? encoder.encode(entries),
+              let json = String(data: data, encoding: .utf8) else { return }
+        doc.setData([
+            "schemaVersion": 1,
+            "count": entries.count,
+            "json": json,
+            "updatedAt": FieldValue.serverTimestamp()
+        ])
+    }
+
     func pull() async -> CloudSnapshot {
         guard uid != nil else { return CloudSnapshot() }
         var result = CloudSnapshot()
@@ -852,6 +868,14 @@ final class FirebaseCloudBackup: CloudBackingUp {
            // drops that entry, never the whole array.
            let elements = try? decoder.decode([FailableElement<WorkoutLog>].self, from: data) {
             result.logs = elements.compactMap(\.value)
+        }
+
+        if let doc = stateDoc("weightHistory"),
+           let snap = try? await doc.getDocument(),
+           let json = snap.data()?["json"] as? String,
+           let data = json.data(using: .utf8),
+           let entries = try? decoder.decode([MorpheAppStore.BodyWeightHistoryEntry].self, from: data) {
+            result.weightHistory = entries
         }
 
         return result

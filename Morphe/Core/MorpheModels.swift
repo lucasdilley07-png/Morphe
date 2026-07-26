@@ -1004,6 +1004,9 @@ struct LoggedExercise: Identifiable, Hashable, Codable {
     var weightsPerSet: [Double]?   // 0 = bodyweight, in `weightUnit` at log time
     var rpePerSet: [Int]?          // 0 = not rated
     var weightUnit: String?        // "lb" / "kg" the weights were recorded in
+    /// MuscleGroup rawValue at log time — optional so every older log still
+    /// decodes; the balance chart only counts sets that carry it.
+    var muscleGroup: String?
 }
 
 struct WorkoutLog: Identifiable, Hashable, Codable {

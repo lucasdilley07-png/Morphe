@@ -1,6 +1,7 @@
 import SwiftUI
 import Observation
 import UserNotifications
+import WidgetKit
 
 @MainActor
 @Observable
@@ -429,7 +430,12 @@ final class MorpheAppStore {
     /// Per-session share opt-out (the toggle above Log Workout). Re-arms to
     /// true every time a session finishes; never persisted.
     var shareCompletedSessionToFeed = true
-    /// Guards the two didSets above while `loadTrainingPreferences` restores them.
+    /// Apple Health workout sync — opt-in, write-only. Enable via
+    /// `setHealthSync(enabled:)` so the system prompt rides the flip.
+    var healthSyncEnabled = false {
+        didSet { persistTrainingPreferences() }
+    }
+    /// Guards the didSets above while `loadTrainingPreferences` restores them.
     private var isLoadingTrainingPreferences = false
     /// Challenges this user hosts or joined, refreshed from Firestore by code.
     /// Membership (the codes) persists in UserDefaults; the data never does.
@@ -700,8 +706,10 @@ final class MorpheAppStore {
         loadCompetitionState()
         loadTrainingPreferences()
         // A relaunch on the streak's last allowed rest day re-arms tonight's
-        // reminder; a launch after training today clears it.
+        // reminder; a launch after training today clears it. Widgets get the
+        // freshest numbers on every launch too.
         refreshStreakRiskReminder()
+        publishWidgetSnapshot()
 
         Self.mostRecentInstance = self
     }
@@ -1304,6 +1312,11 @@ final class MorpheAppStore {
         // history. Setting workoutLogs also writes them to the local file.
         workoutLogs = (cloud.logs ?? []).sorted { $0.completedAt > $1.completedAt }
         applyPersistedProfile(profile)
+        // AFTER applyPersistedProfile: the weight-history defaults key is
+        // scoped by profile id, which the restore may have just changed.
+        if let weightHistory = cloud.weightHistory {
+            applyRestoredWeightHistory(weightHistory)
+        }
         // The photo rides the cloud snapshot as base64 but lives locally as
         // its own file — decode it back out and keep the local JSON photo-free.
         if !profile.profilePhotoBase64.isEmpty,
@@ -2425,7 +2438,8 @@ final class MorpheAppStore {
 
     /// One saved body-weight reading. Always stored in pounds so the series
     /// stays comparable when the display unit flips; the UI converts.
-    private struct BodyWeightHistoryEntry: Codable {
+    /// Internal (not private) so the cloud backup can carry the same type.
+    struct BodyWeightHistoryEntry: Codable {
         var date: Date
         var weightLb: Double
     }
@@ -2470,6 +2484,52 @@ final class MorpheAppStore {
         }
         if let data = try? JSONEncoder().encode(entries) {
             UserDefaults.standard.set(data, forKey: bodyWeightHistoryDefaultsKey)
+        }
+        // The series used to live ONLY in device defaults — a reinstall wiped
+        // the whole trend. Now every new reading mirrors to the cloud.
+        cloudBackup.pushWeightHistory(entries)
+    }
+
+    /// Cloud-restore path: adopt the fetched series when it holds more than
+    /// the device does (fresh install, new phone). A shorter cloud copy never
+    /// clobbers a longer local one.
+    private func applyRestoredWeightHistory(_ entries: [BodyWeightHistoryEntry]) {
+        guard entries.count > loadBodyWeightHistoryEntries().count,
+              let data = try? JSONEncoder().encode(entries) else { return }
+        UserDefaults.standard.set(data, forKey: bodyWeightHistoryDefaultsKey)
+    }
+
+    // MARK: - Data export
+
+    /// One-file JSON export of everything this athlete owns — profile
+    /// basics, full workout logs (per-set arrays included), body-weight
+    /// series. Data portability is a trust feature: the user's numbers are
+    /// theirs to take.
+    func exportDataFile() -> URL? {
+        struct ExportPayload: Codable {
+            var exportedAt: Date
+            var athleteName: String
+            var weightUnit: String
+            var workoutLogs: [WorkoutLog]
+            var bodyWeightHistoryLb: [BodyWeightHistoryEntry]
+        }
+        let payload = ExportPayload(
+            exportedAt: .now,
+            athleteName: clientProfile.name,
+            weightUnit: weightUnit.rawValue,
+            workoutLogs: currentAthleteWorkoutLogs,
+            bodyWeightHistoryLb: loadBodyWeightHistoryEntries()
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(payload) else { return nil }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Morphe-Export.json")
+        do {
+            try data.write(to: url, options: .atomic)
+            return url
+        } catch {
+            return nil
         }
     }
 
@@ -2528,6 +2588,8 @@ final class MorpheAppStore {
     private struct TrainingPreferencesSnapshot: Codable {
         var autoRestTimer: Bool
         var autoShareWorkouts: Bool
+        /// Optional so blobs written before this field decode unchanged.
+        var healthSync: Bool?
     }
 
     private var trainingPreferencesDefaultsKey: String {
@@ -2542,20 +2604,43 @@ final class MorpheAppStore {
         else {
             autoRestTimerEnabled = true
             autoShareWorkoutsEnabled = false
+            healthSyncEnabled = false
             return
         }
         autoRestTimerEnabled = snapshot.autoRestTimer
         autoShareWorkoutsEnabled = snapshot.autoShareWorkouts
+        healthSyncEnabled = snapshot.healthSync ?? false
     }
 
     private func persistTrainingPreferences() {
         guard !isLoadingTrainingPreferences else { return }
         let snapshot = TrainingPreferencesSnapshot(
             autoRestTimer: autoRestTimerEnabled,
-            autoShareWorkouts: autoShareWorkoutsEnabled
+            autoShareWorkouts: autoShareWorkoutsEnabled,
+            healthSync: healthSyncEnabled
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: trainingPreferencesDefaultsKey)
+        }
+    }
+
+    /// Flips Health sync; enabling walks through the system Health prompt
+    /// first and refuses honestly when access isn't granted.
+    func setHealthSync(enabled: Bool) async {
+        guard enabled else {
+            healthSyncEnabled = false
+            return
+        }
+        guard HealthWorkoutSync.isAvailable else {
+            showToast("Health isn't available on this device.")
+            return
+        }
+        if await HealthWorkoutSync.requestAuthorization() {
+            healthSyncEnabled = true
+            showToast("Workouts now save to Apple Health.")
+        } else {
+            healthSyncEnabled = false
+            showToast("Health access is off — enable Morphe in Settings > Health.")
         }
     }
 
@@ -3034,6 +3119,59 @@ final class MorpheAppStore {
             }
     }
 
+    /// Estimated 1RM per session for one exercise (Epley: weight × (1 +
+    /// reps/30) on each set, best set per session), oldest first, current
+    /// display unit. Catches the progress a raw top-set line hides — 185×5
+    /// → 185×8 is a FLAT top-set line but a rising e1RM. Pure arithmetic on
+    /// logged numbers; reps cap at 15 because rep-range formulas stop
+    /// meaning anything past that.
+    func estimatedOneRMProgression(for exerciseName: String) -> [(date: Date, topWeight: Double)] {
+        let ordered = currentAthleteWorkoutLogs.sorted { $0.completedAt < $1.completedAt }
+        var points: [(date: Date, topWeight: Double)] = []
+        for log in ordered {
+            var sessionBest: Double = 0
+            for exercise in log.exercises where exercise.name == exerciseName {
+                guard let weights = exercise.weightsPerSet,
+                      let reps = exercise.repsPerSet else { continue }
+                for (weight, repCount) in zip(weights, reps) where weight > 0 && repCount > 0 {
+                    let epley: Double = weight * (1 + Double(min(repCount, 15)) / 30)
+                    let rounded: Double = (epley * 10).rounded() / 10
+                    let normalized = normalizedLoggedWeight(rounded, recordedUnit: exercise.weightUnit)
+                    sessionBest = max(sessionBest, normalized)
+                }
+            }
+            if sessionBest > 0 {
+                points.append((date: log.completedAt, topWeight: sessionBest))
+            }
+        }
+        return points
+    }
+
+    /// Exercises that have STALLED: 4+ weighted sessions and no new top-set
+    /// high in the last 3. Deterministic — a flag, not advice; the UI pairs
+    /// it with the standard deload/rep-change playbook.
+    var stalledExerciseNames: [String] {
+        var perExercise: [String: [(date: Date, top: Double)]] = [:]
+        for log in currentAthleteWorkoutLogs {
+            for exercise in log.exercises {
+                guard let top = exercise.weightsPerSet?.max(), top > 0 else { continue }
+                let normalized = normalizedLoggedWeight(top, recordedUnit: exercise.weightUnit)
+                perExercise[exercise.name, default: []].append((log.completedAt, normalized))
+            }
+        }
+        return perExercise
+            .compactMap { name, sessions -> String? in
+                guard sessions.count >= 4 else { return nil }
+                let ordered = sessions.sorted { $0.date < $1.date }
+                let recent = ordered.suffix(3)
+                let bestBefore = ordered.dropLast(3).map(\.top).max() ?? 0
+                guard let bestRecent = recent.map(\.top).max(),
+                      bestRecent <= bestBefore else { return nil }
+                return name
+            }
+            .sorted()
+    }
+
     /// Total logged sets per week for the last `weeks` weeks (current week
     /// included), oldest first. Weeks with no training report zero so the
     /// bar chart shows honest gaps instead of compressing them away.
@@ -3062,6 +3200,34 @@ final class MorpheAppStore {
             else { return nil }
             return (weekStart: weekStart, sets: buckets[weekStart] ?? 0)
         }
+    }
+
+    /// Sets per muscle group over the last `days` days, largest first — the
+    /// "am I neglecting legs?" view. Counts ONLY sets whose log carries a
+    /// muscle group (recorded from Tier-3 onward); the card names that
+    /// unlock instead of mislabeling older history.
+    func muscleGroupSetBalance(days: Int = 7) -> [(group: String, sets: Int)] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -max(days, 1), to: .now) ?? .now
+        var buckets: [String: Int] = [:]
+        for log in currentAthleteWorkoutLogs where log.completedAt >= cutoff {
+            for exercise in log.exercises {
+                guard let group = exercise.muscleGroup, !group.isEmpty else { continue }
+                let sets: Int
+                if let reps = exercise.repsPerSet, !reps.isEmpty {
+                    sets = reps.count
+                } else {
+                    sets = Int(exercise.sets.prefix(while: \.isNumber)) ?? 0
+                }
+                if sets > 0 {
+                    buckets[group, default: 0] += sets
+                }
+            }
+        }
+        return buckets
+            .map { (group: $0.key, sets: $0.value) }
+            .sorted { lhs, rhs in
+                lhs.sets != rhs.sets ? lhs.sets > rhs.sets : lhs.group < rhs.group
+            }
     }
 
     /// Average rated RPE per session for the last `sessions` sessions where
@@ -5397,6 +5563,14 @@ final class MorpheAppStore {
             appendWorkoutLog(partnerLog)
         }
 
+        // Apple Health (opt-in): the logged session, exactly as logged —
+        // real minutes, ending now. Fire-and-forget like the social writes.
+        if healthSyncEnabled {
+            let healthTitle = currentWorkout.name
+            let healthMinutes = completedSessionMinutes ?? currentWorkout.durationMinutes
+            Task { await HealthWorkoutSync.save(workoutTitle: healthTitle, minutes: healthMinutes) }
+        }
+
         // Weekly board + joined challenges: the freshly-appended log is now
         // part of the weekly totals — mirror them up (opt-in gated inside).
         publishCompetitionScores()
@@ -7373,6 +7547,20 @@ final class MorpheAppStore {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
     }
 
+    /// Shared app-group defaults the home/lock-screen widgets read. The
+    /// payload is four primitives — streak, today's workout, week's sets,
+    /// logged-today — refreshed at the same moments the streak reminder is.
+    private static let widgetSuiteName = "group.com.morpheapp.Morphe"
+
+    private func publishWidgetSnapshot() {
+        guard let defaults = UserDefaults(suiteName: Self.widgetSuiteName) else { return }
+        defaults.set(currentWorkoutStreak(from: currentAthleteWorkoutLogs), forKey: "widget.streak")
+        defaults.set(currentWorkout.name, forKey: "widget.todayWorkout")
+        defaults.set(weeklySetVolume(weeks: 1).last?.sets ?? 0, forKey: "widget.weekSets")
+        defaults.set(isWorkoutLoggedToday, forKey: "widget.loggedToday")
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     private static let streakRiskNotificationID = "morphe.streak.risk"
 
     /// Schedules (or clears) the one streak-at-risk reminder: 7pm on the LAST
@@ -9107,8 +9295,10 @@ final class MorpheAppStore {
         guard log.athleteID == clientProfile.id else { return }
 
         // Fresh training day: the streak deadline moved — re-arm (or clear)
-        // tonight's at-risk reminder against the new latest day.
+        // tonight's at-risk reminder against the new latest day, and hand
+        // the widgets the new numbers.
         refreshStreakRiskReminder()
+        publishWidgetSnapshot()
 
         switch log.source {
         case .athleteManual:
@@ -9440,7 +9630,8 @@ final class MorpheAppStore {
                 repsPerSet: repsLogged.isEmpty ? nil : repsLogged,
                 weightsPerSet: repsLogged.isEmpty ? nil : weightsLogged,
                 rpePerSet: repsLogged.isEmpty ? nil : rpesLogged,
-                weightUnit: repsLogged.isEmpty ? nil : weightUnit.rawValue
+                weightUnit: repsLogged.isEmpty ? nil : weightUnit.rawValue,
+                muscleGroup: exercise.muscleGroup.rawValue
             )
         }
     }

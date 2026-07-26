@@ -589,6 +589,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Morphe/Morphe.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -597,6 +598,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Morphe/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Morphe reads nothing yet - this permission appears only if you enable future Health imports.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves each finished workout to Apple Health so it counts toward your Activity rings.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device) and to scan Morphe connect codes. Video never leaves your phone.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone so you can dictate messages to Morphe AI. Audio is processed for transcription only.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Morphe converts your speech to text so you can talk to Morphe AI instead of typing.";
@@ -625,6 +628,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Morphe/Morphe.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -633,6 +637,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Morphe/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Morphe reads nothing yet - this permission appears only if you enable future Health imports.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves each finished workout to Apple Health so it counts toward your Activity rings.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device) and to scan Morphe connect codes. Video never leaves your phone.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone so you can dictate messages to Morphe AI. Audio is processed for transcription only.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Morphe converts your speech to text so you can talk to Morphe AI instead of typing.";
@@ -697,6 +703,7 @@
 		1B20F6002C40000100200007 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MorpheWidgets/MorpheWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8P47H3XRN3;
@@ -722,6 +729,7 @@
 		1B20F6002C40000100200008 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MorpheWidgets/MorpheWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8P47H3XRN3;

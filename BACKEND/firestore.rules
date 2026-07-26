@@ -52,6 +52,14 @@ service cloud.firestore {
         allow read:  if isOwner(uid) || isActiveCoachOf(uid);
         allow write: if isOwner(uid);
       }
+
+      // Cloud backup blobs (state/profile, state/logs, state/weightHistory —
+      // { schemaVersion, json, updatedAt }). Owner-only. NOTE: this block was
+      // MISSING while FirebaseCloudBackup already wrote here — the backup
+      // fail-secured into doing nothing. This makes it real.
+      match /state/{doc} {
+        allow read, write: if isOwner(uid);
+      }
       match /customWorkouts/{id} {
         allow read, write: if isOwner(uid);
       }

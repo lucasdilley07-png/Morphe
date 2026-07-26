@@ -3564,3 +3564,105 @@ final class SocialFeedTests: XCTestCase {
         XCTAssertTrue(post.hasSessionStats)
     }
 }
+
+// MARK: - Tier 3 analytics (e1RM, plateau, muscle balance, export)
+
+@MainActor
+final class StrengthAnalyticsTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    /// A log with explicit per-set reps+weights for one exercise.
+    private func log(for store: MorpheAppStore, exercise: String, daysAgo: Int,
+                     reps: [Int], weights: [Double], muscleGroup: String? = nil) -> WorkoutLog {
+        WorkoutLog(
+            athleteID: store.clientProfile.id,
+            athleteName: store.clientProfile.name,
+            workoutTemplateID: nil,
+            workoutTitle: "Session",
+            sport: .strength,
+            completedAt: Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now,
+            durationMinutes: 30,
+            exercises: [LoggedExercise(
+                name: exercise, sets: "\(reps.count) sets",
+                reps: reps.map(String.init).joined(separator: ", "),
+                weight: "\(Int(weights.max() ?? 0)) lb", note: "",
+                repsPerSet: reps, weightsPerSet: weights,
+                rpePerSet: reps.map { _ in 0 }, weightUnit: "lb",
+                muscleGroup: muscleGroup
+            )],
+            notes: "", source: .athleteManual,
+            enteredByUserID: store.clientProfile.id, enteredByRole: .client,
+            enteredByName: store.clientProfile.name, verificationStatus: .athleteSubmitted
+        )
+    }
+
+    func testE1RMRisesWhenTopSetIsFlat() {
+        let store = freshStore()
+        // Same 185 top set, 5 reps then 8 reps — top-set line is flat,
+        // e1RM must rise (Epley: 185×(1+reps/30)).
+        store.workoutLogs.append(log(for: store, exercise: "Bench Press", daysAgo: 7, reps: [5], weights: [185]))
+        store.workoutLogs.append(log(for: store, exercise: "Bench Press", daysAgo: 1, reps: [8], weights: [185]))
+
+        let topSet = store.strengthProgression(for: "Bench Press")
+        XCTAssertEqual(topSet.first?.topWeight ?? 0, topSet.last?.topWeight ?? -1,
+                       accuracy: 0.001, "top-set line is flat by construction")
+
+        let e1RM = store.estimatedOneRMProgression(for: "Bench Press")
+        XCTAssertEqual(e1RM.count, 2)
+        XCTAssertGreaterThan(e1RM.last?.topWeight ?? 0, e1RM.first?.topWeight ?? 0,
+                             "more reps at the same weight must raise the estimated 1RM")
+    }
+
+    func testStalledDetectionFlagsNoNewHighInLastThree() {
+        let store = freshStore()
+        // A high 4 sessions ago, then three sessions that never beat it.
+        store.workoutLogs.append(log(for: store, exercise: "Squat", daysAgo: 21, reps: [5], weights: [225]))
+        store.workoutLogs.append(log(for: store, exercise: "Squat", daysAgo: 14, reps: [5], weights: [225]))
+        store.workoutLogs.append(log(for: store, exercise: "Squat", daysAgo: 7, reps: [5], weights: [220]))
+        store.workoutLogs.append(log(for: store, exercise: "Squat", daysAgo: 1, reps: [5], weights: [225]))
+        XCTAssertEqual(store.stalledExerciseNames, ["Squat"])
+
+        // A new high in the last 3 sessions clears the flag.
+        store.workoutLogs.append(log(for: store, exercise: "Squat", daysAgo: 0, reps: [5], weights: [230]))
+        XCTAssertTrue(store.stalledExerciseNames.isEmpty, "a fresh top set is not a plateau")
+    }
+
+    func testMuscleBalanceCountsOnlyTaggedSets() {
+        let store = freshStore()
+        store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 1,
+                                     reps: [8, 8, 8], weights: [135, 135, 135], muscleGroup: "Chest"))
+        store.workoutLogs.append(log(for: store, exercise: "Row", daysAgo: 2,
+                                     reps: [8, 8], weights: [95, 95], muscleGroup: "Back"))
+        // Untagged legacy log must not appear in the balance at all.
+        store.workoutLogs.append(log(for: store, exercise: "Mystery", daysAgo: 1,
+                                     reps: [10], weights: [50]))
+
+        let balance = store.muscleGroupSetBalance(days: 7)
+        XCTAssertEqual(balance.map(\.group), ["Chest", "Back"], "largest first, untagged excluded")
+        XCTAssertEqual(balance.map(\.sets), [3, 2])
+    }
+
+    func testExportFileContainsLogsAndWeightHistory() throws {
+        let store = freshStore()
+        store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 1, reps: [8], weights: [135]))
+
+        let url = try XCTUnwrap(store.exportDataFile())
+        let data = try Data(contentsOf: url)
+        let json = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertNotNil(json["exportedAt"])
+        XCTAssertEqual((json["workoutLogs"] as? [[String: Any]])?.count, 1)
+        XCTAssertNotNil(json["bodyWeightHistoryLb"], "weight series rides the export even when empty")
+    }
+}

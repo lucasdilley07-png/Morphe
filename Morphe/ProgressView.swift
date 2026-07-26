@@ -265,7 +265,8 @@ struct ProgressScreenView: View {
                 if !store.exerciseStrengthProgress.isEmpty {
                     StrengthProgressCard(
                         items: store.exerciseStrengthProgress,
-                        weightUnit: store.weightUnit
+                        weightUnit: store.weightUnit,
+                        stalledNames: store.stalledExerciseNames
                     )
                 }
 
@@ -291,8 +292,10 @@ struct ProgressScreenView: View {
                     StrengthOverTimeCard(
                         exerciseOptions: store.mostLoggedExerciseNames(limit: 6),
                         weightUnit: store.weightUnit,
-                        progression: { store.strengthProgression(for: $0) }
+                        progression: { store.strengthProgression(for: $0) },
+                        e1RMProgression: { store.estimatedOneRMProgression(for: $0) }
                     )
+                    MuscleBalanceCard(balance: store.muscleGroupSetBalance(days: 7))
                     WeeklySetVolumeCard(points: store.weeklySetVolume(weeks: 8))
                     RPETrendCard(points: store.rpeTrendPerSession(sessions: 15))
                     BodyWeightTrendCard(
@@ -990,8 +993,15 @@ private struct StrengthOverTimeCard: View {
     let exerciseOptions: [String]
     let weightUnit: WeightUnit
     let progression: (String) -> [(date: Date, topWeight: Double)]
+    let e1RMProgression: (String) -> [(date: Date, topWeight: Double)]
+
+    private enum StrengthMetric: String, CaseIterable {
+        case topSet = "Top Set"
+        case estimated1RM = "Est. 1RM"
+    }
 
     @State private var selectedExercise: String?
+    @State private var metric: StrengthMetric = .topSet
 
     private var activeExercise: String? {
         if let selectedExercise, exerciseOptions.contains(selectedExercise) {
@@ -1002,7 +1012,7 @@ private struct StrengthOverTimeCard: View {
 
     private var points: [(date: Date, topWeight: Double)] {
         guard let activeExercise else { return [] }
-        return progression(activeExercise)
+        return metric == .topSet ? progression(activeExercise) : e1RMProgression(activeExercise)
     }
 
     var body: some View {
@@ -1032,7 +1042,21 @@ private struct StrengthOverTimeCard: View {
                     }
                 }
 
-                Text("Heaviest set per session for one exercise.")
+                // Est. 1RM (Epley on the best logged set) catches progress a
+                // flat top-set line hides: 185×5 → 185×8 IS getting stronger.
+                HStack(spacing: 8) {
+                    ForEach(StrengthMetric.allCases, id: \.self) { option in
+                        Button(option.rawValue) {
+                            metric = option
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: metric == option))
+                    }
+                    Spacer()
+                }
+
+                Text(metric == .topSet
+                     ? "Heaviest set per session for one exercise."
+                     : "Estimated 1RM per session — weight × (1 + reps/30) on your best set. Arithmetic, not a promise.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -1395,6 +1419,7 @@ private struct RecentWinsCard: View {
 private struct StrengthProgressCard: View {
     let items: [ExerciseStrengthProgress]
     let weightUnit: WeightUnit
+    var stalledNames: [String] = []
 
     private func deltaText(_ item: ExerciseStrengthProgress) -> String {
         if item.delta > 0 { return "+\(weightUnit.format(item.delta))" }
@@ -1444,6 +1469,80 @@ private struct StrengthProgressCard: View {
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(item.exerciseName): top set \(weightUnit.format(item.latestTopWeight)), \(deltaText(item)) versus previous session")
+                }
+
+                // Deterministic plateau flag: 4+ weighted sessions, no new
+                // top-set high in the last 3. A fact plus the standard
+                // playbook — never a fabricated diagnosis.
+                if !stalledNames.isEmpty {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "chart.line.flattrend.xyaxis")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.warning)
+                        Text("Stalled: \(stalledNames.prefix(3).joined(separator: ", ")) — no new top set in 3 sessions. A deload week or a rep-range change usually restarts the line.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(MorpheTheme.warning.opacity(0.4), lineWidth: 1)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/// Sets per muscle group, last 7 days — the "am I neglecting legs?" dial.
+/// Only counts sets whose logs carry a muscle group (recorded from the day
+/// this shipped), and says so instead of mislabeling older history.
+private struct MuscleBalanceCard: View {
+    let balance: [(group: String, sets: Int)]
+
+    private var maxSets: Int {
+        balance.map(\.sets).max() ?? 1
+    }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Muscle Balance")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Sets per muscle group over the last 7 days.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+
+                if balance.isEmpty {
+                    Text("Sessions record muscle groups from today forward — log one and the balance view starts here.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                } else {
+                    ForEach(balance, id: \.group) { row in
+                        HStack(spacing: 10) {
+                            Text(row.group)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 84, alignment: .leading)
+
+                            GeometryReader { proxy in
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                    .fill(MorpheTheme.accent.opacity(0.85))
+                                    .frame(width: max(proxy.size.width * CGFloat(row.sets) / CGFloat(max(maxSets, 1)), 4))
+                            }
+                            .frame(height: 10)
+
+                            Text("\(row.sets)")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .frame(width: 30, alignment: .trailing)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(row.group): \(row.sets) sets this week")
+                    }
                 }
             }
         }

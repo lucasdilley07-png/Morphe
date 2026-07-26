@@ -21,6 +21,12 @@ struct ProfileView: View {
     @State private var weightDraft = ""
     @State private var showSignOutConfirm = false
     @State private var showUnsavedPrompt = false
+    /// The generated export file, presented in the system share sheet.
+    private struct ExportFile: Identifiable {
+        let url: URL
+        var id: String { url.absoluteString }
+    }
+    @State private var exportFile: ExportFile?
 
     private var isCoach: Bool {
         store.selectedRole == .coach
@@ -57,6 +63,10 @@ struct ProfileView: View {
             .padding(.top, 8)
             // This is a sheet — no tab bar underneath to pad around.
             .padding(.bottom, 40)
+        }
+        .sheet(item: $exportFile) { file in
+            DataExportShareSheet(url: file.url)
+                .presentationDetents([.medium, .large])
         }
         .onAppear {
             heightDraft = store.clientProfile.height
@@ -770,6 +780,40 @@ struct ProfileView: View {
 
                     Divider().overlay(Color.white.opacity(0.08))
 
+                    // Enabling walks through the system Health prompt; the
+                    // store refuses the flip when access isn't granted.
+                    preferenceToggleRow(
+                        title: "Sync to Health",
+                        caption: "Saves each logged workout to Apple Health so it counts toward your Activity rings.",
+                        isOn: Binding(
+                            get: { store.healthSyncEnabled },
+                            set: { newValue in Task { await store.setHealthSync(enabled: newValue) } }
+                        )
+                    )
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Your data")
+                                .foregroundStyle(.white)
+                            Text("One JSON file: every logged workout, set by set, plus your weight history.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                        Spacer(minLength: 0)
+                        Button("Export Data") {
+                            if let url = store.exportDataFile() {
+                                exportFile = ExportFile(url: url)
+                            }
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .frame(width: 120)
+                        .accessibilityLabel("Export your data as JSON")
+                    }
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
                     // Weekly target — drives the consistency denominator on
                     // Progress; was user-set in onboarding then locked forever.
                     VStack(alignment: .leading, spacing: 8) {
@@ -1224,4 +1268,15 @@ private struct VerificationSelfieCamera: UIViewControllerRepresentable {
             onCapture(nil)
         }
     }
+}
+
+/// System share sheet for the JSON data export.
+private struct DataExportShareSheet: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

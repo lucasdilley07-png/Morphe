@@ -4679,3 +4679,78 @@ enum MorpheDemoContent {
         )
     }
 }
+
+// MARK: - Apple Health workout sync (opt-in, write-only)
+//
+// With "Sync to Health" on, every logged Morphe session is saved to Apple
+// Health as an HKWorkout — real duration, real end time — so it counts
+// toward Activity rings and shows in the Health app. Write-only on purpose:
+// nothing is read from Health yet, and the toggle defaults OFF (opting into
+// writing the user's own data is their call, never a surprise).
+
+import HealthKit
+
+@MainActor
+enum HealthWorkoutSync {
+    private static let healthStore = HKHealthStore()
+
+    static var isAvailable: Bool {
+        HKHealthStore.isHealthDataAvailable()
+    }
+
+    /// True once the user granted workout-write in the Health prompt.
+    static var isAuthorized: Bool {
+        healthStore.authorizationStatus(for: .workoutType()) == .sharingAuthorized
+    }
+
+    /// Shows the system Health prompt (first call only; later calls just
+    /// report the existing decision). Returns whether writing is allowed.
+    static func requestAuthorization() async -> Bool {
+        guard isAvailable else { return false }
+        do {
+            try await healthStore.requestAuthorization(toShare: [.workoutType()], read: [])
+            return isAuthorized
+        } catch {
+            return false
+        }
+    }
+
+    /// Saves one finished session. Fire-and-forget honest: only ever writes
+    /// the workout the user actually logged, and silently no-ops when Health
+    /// is unavailable or the user revoked access in Settings.
+    static func save(workoutTitle: String, minutes: Int, endedAt: Date = .now) async {
+        guard isAvailable, isAuthorized, minutes > 0 else { return }
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = activityType(for: workoutTitle)
+        let builder = HKWorkoutBuilder(healthStore: healthStore, configuration: configuration, device: .local())
+        let start = endedAt.addingTimeInterval(-Double(min(minutes, 480)) * 60)
+        do {
+            try await builder.beginCollection(at: start)
+            try await builder.endCollection(at: endedAt)
+            _ = try await builder.finishWorkout()
+        } catch {
+            // Health rejected the write (permissions changed mid-flight, or
+            // the store is locked) — the Morphe log is still the truth.
+        }
+    }
+
+    /// Deterministic title-keyword mapping into Health's activity types —
+    /// strength training is the honest default for a lifting-first catalog.
+    private static func activityType(for title: String) -> HKWorkoutActivityType {
+        let lowered = title.lowercased()
+        if lowered.contains("yoga") { return .yoga }
+        if lowered.contains("pilates") { return .pilates }
+        if lowered.contains("run") { return .running }
+        if lowered.contains("cycl") || lowered.contains("bike") { return .cycling }
+        if lowered.contains("swim") { return .swimming }
+        if lowered.contains("hiit") || lowered.contains("circuit") || lowered.contains("conditioning") {
+            return .highIntensityIntervalTraining
+        }
+        if lowered.contains("stretch") || lowered.contains("mobility") { return .flexibility }
+        if lowered.contains("dance") || lowered.contains("aerobic") { return .cardioDance }
+        if lowered.contains("boxing") || lowered.contains("kickbox") { return .boxing }
+        if lowered.contains("row") { return .rowing }
+        if lowered.contains("walk") { return .walking }
+        return .traditionalStrengthTraining
+    }
+}
