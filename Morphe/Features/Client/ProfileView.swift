@@ -618,6 +618,22 @@ struct ProfileView: View {
         return resized.jpegData(compressionQuality: 0.75)
     }
 
+    private func preferenceToggleRow(title: String, caption: String, isOn: Binding<Bool>) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .foregroundStyle(.white)
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            Spacer(minLength: 0)
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .tint(MorpheTheme.accent)
+        }
+    }
+
     private var settingsCard: some View {
         @Bindable var store = store
         return GlassCard {
@@ -735,6 +751,23 @@ struct ProfileView: View {
                 }
 
                 if !isCoach {
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    // Live-session preferences — both persisted per profile.
+                    preferenceToggleRow(
+                        title: "Auto rest timer",
+                        caption: "Starts the rest countdown each time you log a set, using the exercise's own rest length.",
+                        isOn: $store.autoRestTimerEnabled
+                    )
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    preferenceToggleRow(
+                        title: "Auto-share workouts",
+                        caption: "Posts an honest recap to the feed when you log a session. Each session shows a toggle to keep it private.",
+                        isOn: $store.autoShareWorkoutsEnabled
+                    )
+
                     Divider().overlay(Color.white.opacity(0.08))
 
                     // Weekly target — drives the consistency denominator on

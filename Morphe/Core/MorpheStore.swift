@@ -403,6 +403,22 @@ final class MorpheAppStore {
     var leaderboardOptIn = false {
         didSet { persistCompetitionState() }
     }
+    /// Auto-starts the rest countdown each time a set is logged, seeded from
+    /// the exercise's own rest length. Persisted in UserDefaults (same
+    /// documented exception as the competition state).
+    var autoRestTimerEnabled = true {
+        didSet { persistTrainingPreferences() }
+    }
+    /// Global opt-in for auto-posting finished sessions to the real feed.
+    /// Off by default — publishing on the user's behalf is never a surprise.
+    var autoShareWorkoutsEnabled = false {
+        didSet { persistTrainingPreferences() }
+    }
+    /// Per-session share opt-out (the toggle above Log Workout). Re-arms to
+    /// true every time a session finishes; never persisted.
+    var shareCompletedSessionToFeed = true
+    /// Guards the two didSets above while `loadTrainingPreferences` restores them.
+    private var isLoadingTrainingPreferences = false
     /// Challenges this user hosts or joined, refreshed from Firestore by code.
     /// Membership (the codes) persists in UserDefaults; the data never does.
     var activeChallenges: [ChallengeSummary] = []
@@ -670,6 +686,10 @@ final class MorpheAppStore {
         // (applyPersistedProfile also loads these — this call covers the
         // fresh-install path where no profile snapshot existed yet.)
         loadCompetitionState()
+        loadTrainingPreferences()
+        // A relaunch on the streak's last allowed rest day re-arms tonight's
+        // reminder; a launch after training today clears it.
+        refreshStreakRiskReminder()
 
         Self.mostRecentInstance = self
     }
@@ -1541,6 +1561,7 @@ final class MorpheAppStore {
         // The competition prefs are keyed by profile id, which this restore
         // may have just changed — re-read them for the restored identity.
         loadCompetitionState()
+        loadTrainingPreferences()
     }
 
     /// Persists the current local profile snapshot to disk.
@@ -2487,6 +2508,43 @@ final class MorpheAppStore {
         }
     }
 
+    /// Two live-session Bools, stored exactly like the competition state:
+    /// one JSON blob in UserDefaults, keyed per profile id, never in the
+    /// shared LocalProfileSnapshot decoder.
+    private struct TrainingPreferencesSnapshot: Codable {
+        var autoRestTimer: Bool
+        var autoShareWorkouts: Bool
+    }
+
+    private var trainingPreferencesDefaultsKey: String {
+        "morphe.trainingprefs.\(clientProfile.id.uuidString)"
+    }
+
+    private func loadTrainingPreferences() {
+        isLoadingTrainingPreferences = true
+        defer { isLoadingTrainingPreferences = false }
+        guard let data = UserDefaults.standard.data(forKey: trainingPreferencesDefaultsKey),
+              let snapshot = try? JSONDecoder().decode(TrainingPreferencesSnapshot.self, from: data)
+        else {
+            autoRestTimerEnabled = true
+            autoShareWorkoutsEnabled = false
+            return
+        }
+        autoRestTimerEnabled = snapshot.autoRestTimer
+        autoShareWorkoutsEnabled = snapshot.autoShareWorkouts
+    }
+
+    private func persistTrainingPreferences() {
+        guard !isLoadingTrainingPreferences else { return }
+        let snapshot = TrainingPreferencesSnapshot(
+            autoRestTimer: autoRestTimerEnabled,
+            autoShareWorkouts: autoShareWorkoutsEnabled
+        )
+        if let data = try? JSONEncoder().encode(snapshot) {
+            UserDefaults.standard.set(data, forKey: trainingPreferencesDefaultsKey)
+        }
+    }
+
     /// The identity competition rows carry: uid + display name. Nil while
     /// signed out — no account, no board.
     private var competitionSelf: (uid: String, name: String)? {
@@ -3004,6 +3062,21 @@ final class MorpheAppStore {
             }
             .prefix(max(limit, 0))
             .map { $0 }
+    }
+
+    /// All-time top logged weight per exercise, in the current display unit —
+    /// the baseline `logWorkout` diffs against to catch a PR the moment it
+    /// lands (same derivation as `recentPersonalRecords`, minus the dates).
+    private func personalBestTopWeights() -> [String: Double] {
+        var best: [String: Double] = [:]
+        for log in currentAthleteWorkoutLogs {
+            for exercise in log.exercises {
+                guard let top = exercise.weightsPerSet?.max(), top > 0 else { continue }
+                let normalized = normalizedLoggedWeight(top, recordedUnit: exercise.weightUnit)
+                best[exercise.name] = max(best[exercise.name] ?? 0, normalized)
+            }
+        }
+        return best
     }
 
     var currentAthleteWorkoutSummary: WorkoutLogSummary {
@@ -4014,6 +4087,8 @@ final class MorpheAppStore {
     func protectStreak(with option: String) {
         streakProtected = true
         recordProtectedDay()
+        // A protected day counts as training — the streak deadline moved.
+        refreshStreakRiskReminder()
         showCelebration(title: "Momentum protected", detail: option, symbol: "shield.fill")
         showToast("Momentum protected.")
     }
@@ -4800,14 +4875,17 @@ final class MorpheAppStore {
 
     /// `allowExtra` lets an explicit user action log past the target set count
     /// (the quick-log buttons stay guarded so a stray tap can't over-log).
-    func completeTrackedSet(reps: Int, weight: Double? = nil, rpe: Int? = nil, allowExtra: Bool = false, label: String = "") {
-        guard let exercise = activeWorkoutExercise else { return }
+    /// Returns whether the set actually logged, so callers can gate follow-on
+    /// behavior (the auto rest timer) on a real set, not a rejected tap.
+    @discardableResult
+    func completeTrackedSet(reps: Int, weight: Double? = nil, rpe: Int? = nil, allowExtra: Bool = false, label: String = "") -> Bool {
+        guard let exercise = activeWorkoutExercise else { return false }
         let targetSets = targetSetCount(for: exercise)
         let currentCount = completedWorkoutSets[exercise.id, default: 0]
 
         guard allowExtra || currentCount < targetSets else {
             showToast("\(exercise.name) is already complete.")
-            return
+            return false
         }
 
         let updatedCount = currentCount + 1
@@ -4839,6 +4917,7 @@ final class MorpheAppStore {
             showToast("\(reps) reps logged for set \(updatedCount) of \(targetSets).")
         }
         publishPartyProgress()
+        return true
     }
 
     /// Converts this session's logged weights into `unit` (lb <-> kg), rounded
@@ -4951,6 +5030,9 @@ final class MorpheAppStore {
 
         isWorkoutSessionActive = false
         hasCompletedWorkoutFlow = true
+        // Every finished session re-arms the share toggle — an opt-out is a
+        // one-session decision, never a sticky hidden state.
+        shareCompletedSessionToFeed = true
         // Buddies see "finished" as soon as the session wraps, not only
         // after the recap gets logged.
         publishPartyProgress()
@@ -5209,6 +5291,16 @@ final class MorpheAppStore {
         // Morphe Score, streak, and trend are recomputed from logs in
         // appendWorkoutLog -> refreshWorkoutLogDerivedState; no manual edits here.
         let loggedExercises = makeLoggedExercisesFromCurrentWorkout()
+        // PRs must be diffed against the bests BEFORE this session lands in
+        // the logs — afterwards the new top IS the best and nothing is new.
+        let priorBests = personalBestTopWeights()
+        // A PR is pure arithmetic: this session's top logged weight beats the
+        // all-time top. Both sides are in the current display unit.
+        let newPRs: [(name: String, weight: Double, previous: Double)] = loggedExercises.compactMap { exercise in
+            guard let top = exercise.weightsPerSet?.max(), top > 0 else { return nil }
+            let previous = priorBests[exercise.name] ?? 0
+            return top > previous ? (exercise.name, top, previous) : nil
+        }
         let isBuddySession = partnerWorkoutEnabled && selectedWorkoutPartner != nil
         var sessionNotes = partnerWorkoutSessionNote()
 
@@ -5267,12 +5359,18 @@ final class MorpheAppStore {
         // part of the weekly totals — mirror them up (opt-in gated inside).
         publishCompetitionScores()
 
+        // Auto-share: one honest recap post per finished session — global
+        // opt-in (Profile), per-session opt-out (the toggle above Log
+        // Workout). Quiet path: a failed publish never blocks the log.
+        if autoShareWorkoutsEnabled, shareCompletedSessionToFeed, authUser != nil {
+            let text = completedSessionPostText(exercises: loggedExercises, newPRs: newPRs)
+            let workoutName = currentWorkout.name
+            Task { await publishToRealFeed(text: text, workoutName: workoutName) }
+        }
+
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false
         hasCompletedWorkoutFlow = false
-
-        // No self-authored feed posts with fabricated coach applause here —
-        // social content becomes real when multi-user does.
 
         if partnerWorkoutEnabled, let partner = selectedWorkoutPartner, let partnerPlan = currentPartnerWorkoutPlan {
             updateXP(for: partnerPlan.xpBonus, add: true)
@@ -5303,8 +5401,23 @@ final class MorpheAppStore {
         // very next plan day already reflects this session.
         rebuildPersonalizedPlan()
         openProgress()
-        // The celebration speaks in the coaching tone the user picked.
-        showCelebration(title: "+50 XP", detail: profileShowcase.coachingTone.workoutCompleteDetail, symbol: "sparkles")
+        // A session that set a PR celebrates THAT — the highest-emotion fact
+        // it produced — instead of the generic XP line. Every number in the
+        // banner is a logged weight; nothing is inferred.
+        if let pr = newPRs.first {
+            let extraPRs = newPRs.count - 1
+            var detail = pr.previous > 0
+                ? "\(weightUnit.format(pr.weight)) — up from \(weightUnit.format(pr.previous))."
+                : "\(weightUnit.format(pr.weight)) — your first record."
+            if extraPRs > 0 {
+                detail += " Plus \(extraPRs) more PR\(extraPRs == 1 ? "" : "s")."
+            }
+            showCelebration(title: "New PR — \(pr.name)", detail: detail, symbol: "trophy.fill")
+            recentWins.insert("New PR: \(pr.name) at \(weightUnit.format(pr.weight)).", at: 0)
+        } else {
+            // The celebration speaks in the coaching tone the user picked.
+            showCelebration(title: "+50 XP", detail: profileShowcase.coachingTone.workoutCompleteDetail, symbol: "sparkles")
+        }
         Haptics.success()
         showToast("Workout logged. Progress updated.")
     }
@@ -6891,6 +7004,28 @@ final class MorpheAppStore {
         return true
     }
 
+    /// The auto-share recap line: only facts the session actually produced
+    /// (set count, exercise count, minutes trained, logged PRs) — no
+    /// applause, no adjectives the data can't back.
+    private func completedSessionPostText(
+        exercises: [LoggedExercise],
+        newPRs: [(name: String, weight: Double, previous: Double)]
+    ) -> String {
+        let setCount = exercises.reduce(0) { $0 + ($1.repsPerSet?.count ?? 0) }
+        let minutes = completedSessionMinutes ?? currentWorkout.durationMinutes
+        var facts: [String] = []
+        if setCount > 0 { facts.append("\(setCount) set\(setCount == 1 ? "" : "s")") }
+        if !exercises.isEmpty { facts.append("\(exercises.count) exercise\(exercises.count == 1 ? "" : "s")") }
+        if minutes > 0 { facts.append("\(minutes) min") }
+        var text = "Completed \(currentWorkout.name)"
+        if !facts.isEmpty { text += " — " + facts.joined(separator: ", ") }
+        text += "."
+        for pr in newPRs.prefix(3) {
+            text += " New PR: \(pr.name) \(weightUnit.format(pr.weight))."
+        }
+        return text
+    }
+
     /// Composer path: publish a win (optionally tagged with a workout name).
     func publishPost(text: String, workoutName: String = "") async {
         guard await publishToRealFeed(text: text, workoutName: workoutName) else {
@@ -7071,6 +7206,60 @@ final class MorpheAppStore {
     private func cancelAppointmentReminder(id: String) {
         guard appointmentRemindersEnabled else { return }
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+    }
+
+    private static let streakRiskNotificationID = "morphe.streak.risk"
+
+    /// Schedules (or clears) the one streak-at-risk reminder: 7pm on the LAST
+    /// allowed rest day of the schedule-aware streak. Honest by construction —
+    /// the deadline math is the same `allowedGap` the streak itself uses, so
+    /// the reminder can only fire on a day the streak would truly end.
+    /// Re-derived on every log/launch: training re-arms it for the next
+    /// deadline; a lapsed or absent streak clears it.
+    private func refreshStreakRiskReminder() {
+        // Same gate as appointment reminders: tests/previews (NoOp services)
+        // never touch the system notification center.
+        guard appointmentRemindersEnabled else { return }
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.streakRiskNotificationID])
+
+        let logs = currentAthleteWorkoutLogs
+        let streak = currentWorkoutStreak(from: logs)
+        // A 1-day streak isn't a loss worth a push — nag only when there's
+        // real momentum on the line.
+        guard streak >= 2 else { return }
+
+        let calendar = Calendar.current
+        var activeDays = Set(logs.map { calendar.startOfDay(for: $0.completedAt) })
+        for key in protectedDayKeys {
+            if let day = Self.date(fromDayKey: key) {
+                activeDays.insert(calendar.startOfDay(for: day))
+            }
+        }
+        guard let latestDay = activeDays.max() else { return }
+
+        // Mirror of currentWorkoutStreak's gap rule.
+        let daysPerWeek = max(1, min(7, clientProfile.trainingDaysPerWeek))
+        let allowedGap = max(1, 8 - daysPerWeek)
+        guard let deadlineDay = calendar.date(byAdding: .day, value: allowedGap, to: latestDay),
+              let fireDate = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: deadlineDay),
+              fireDate > .now   // deadline evening already passed: no ghost ring
+        else { return }
+
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Your \(streak)-day streak ends tonight"
+            content.body = "One session keeps it alive — even a short one counts."
+            content.sound = .default
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: Calendar.current.dateComponents(
+                    [.year, .month, .day, .hour, .minute], from: fireDate),
+                repeats: false
+            )
+            center.add(UNNotificationRequest(
+                identifier: Self.streakRiskNotificationID, content: content, trigger: trigger))
+        }
     }
 
     func coachAddManualWorkoutLog(
@@ -8751,6 +8940,10 @@ final class MorpheAppStore {
         refreshWorkoutLogDerivedState(for: log.athleteID, latestLog: log)
 
         guard log.athleteID == clientProfile.id else { return }
+
+        // Fresh training day: the streak deadline moved — re-arm (or clear)
+        // tonight's at-risk reminder against the new latest day.
+        refreshStreakRiskReminder()
 
         switch log.source {
         case .athleteManual:

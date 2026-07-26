@@ -86,7 +86,11 @@ struct WorkoutView: View {
                     } else {
                         // Opening the full logger is an explicit action, so it may
                         // log past the planned set count ("Add extra set").
-                        store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true, label: label)
+                        let exercise = store.activeWorkoutExercise
+                        if store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true, label: label) {
+                            pendingRPE = nil
+                            if let exercise { autoStartRest(after: exercise) }
+                        }
                     }
                     repLoggerContext = nil
                 }
@@ -189,10 +193,16 @@ struct WorkoutView: View {
                         repsLogged: store.trackedSetReps[activeExercise.id, default: []],
                         weightsLogged: store.trackedSetWeights[activeExercise.id, default: []],
                         weight: $pendingWeight,
+                        rpe: $pendingRPE,
                         weightUnit: store.weightUnit,
                         onPrevious: { store.goToPreviousTrackedExercise() },
                         onQuickLogSet: { reps in
-                            store.completeTrackedSet(reps: reps, weight: pendingWeight)
+                            if store.completeTrackedSet(reps: reps, weight: pendingWeight, rpe: pendingRPE) {
+                                // RPE is a per-set read — a stale rating must
+                                // never silently ride into the next set.
+                                pendingRPE = nil
+                                autoStartRest(after: activeExercise)
+                            }
                         },
                         onOpenCustomRepLogger: {
                             // A saved draft wins — whatever was typed last time
@@ -225,7 +235,9 @@ struct WorkoutView: View {
                         },
                         onNext: { store.goToNextTrackedExercise() },
                         onStartRest: {
-                            restSeconds = 180
+                            // Manual start honors the exercise's own rest
+                            // length too — 180 is only the catalog fallback.
+                            restSeconds = activeExercise.restSeconds ?? 180
                             restRunning = true
                         },
                         onOpenFormCheck: { showFormCheck = true },
@@ -239,6 +251,7 @@ struct WorkoutView: View {
                     totalExercises: max(store.currentWorkout.exercises.count, 1),
                     warmupText: liveWarmupText,
                     exerciseName: store.activeWorkoutExercise?.name ?? store.currentWorkout.name,
+                    restDefaultSeconds: store.activeWorkoutExercise?.restSeconds ?? 180,
                     restSeconds: $restSeconds,
                     restRunning: $restRunning
                 )
@@ -352,6 +365,21 @@ struct WorkoutView: View {
         }
     }
 
+    /// Auto rest: fires after every successfully logged set, seeded from the
+    /// exercise's own rest length (compound lifts rest long, accessories
+    /// short — the catalog already knows). A finished workout never starts a
+    /// timer, and the Profile toggle turns the whole behavior off.
+    private func autoStartRest(after exercise: WorkoutExercise) {
+        guard store.autoRestTimerEnabled, !store.isTrackedWorkoutComplete else { return }
+        restSeconds = exercise.restSeconds ?? 180
+        if !restRunning {
+            restRunning = true
+        }
+        // Already running (back-to-back logs): the seconds change above is
+        // picked up by WorkoutRestControlBar's retarget onChange, which
+        // re-anchors the wall clock and the Live Activity.
+    }
+
     /// One concrete pick each for training, stretching, and recovery — shown
     /// after today's workout is logged.
     private var trySomethingNewPicks: [(category: String, template: WorkoutTemplate)] {
@@ -428,6 +456,31 @@ struct WorkoutView: View {
                         PostWorkoutSmartActionCard(prompt: prompt) { action in
                             handlePostWorkoutAction(action)
                         }
+                    }
+
+                    // Per-session share control: visible only when auto-share
+                    // is globally on AND there's a signed-in account to post
+                    // as. Off here means THIS session stays private; the
+                    // toggle re-arms every session.
+                    if store.autoShareWorkoutsEnabled, store.authUser != nil {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Share to feed")
+                                    .foregroundStyle(.white)
+                                Text("Posts this session's recap — sets, exercises, minutes, PRs — when you log it.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            Spacer(minLength: 0)
+                            Toggle("Share to feed", isOn: $store.shareCompletedSessionToFeed)
+                                .labelsHidden()
+                                .tint(MorpheTheme.accent)
+                        }
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .fill(MorpheTheme.panelStrong)
+                        )
                     }
 
                     Button("Log Workout") {
@@ -993,6 +1046,7 @@ private struct LiveWorkoutConsoleCard: View {
     // before the first set of the first exercise.
     let warmupText: String?
     var exerciseName: String = "Next set"
+    var restDefaultSeconds: Int = 180
     @Binding var restSeconds: Int
     @Binding var restRunning: Bool
 
@@ -1028,7 +1082,12 @@ private struct LiveWorkoutConsoleCard: View {
                     }
                 }
 
-                WorkoutRestControlBar(seconds: $restSeconds, isRunning: $restRunning, exerciseName: exerciseName)
+                WorkoutRestControlBar(
+                    seconds: $restSeconds,
+                    isRunning: $restRunning,
+                    exerciseName: exerciseName,
+                    defaultSeconds: restDefaultSeconds
+                )
             }
         }
     }
@@ -1103,6 +1162,9 @@ private struct ActiveWorkoutTrackerCard: View {
     let repsLogged: [Int]
     let weightsLogged: [Double]
     @Binding var weight: Double
+    /// Optional effort rating for the NEXT logged set — cleared by the owner
+    /// after each log so a stale rating can't stick.
+    @Binding var rpe: Int?
     let weightUnit: WeightUnit
     let onPrevious: () -> Void
     let onQuickLogSet: (Int) -> Void
@@ -1296,11 +1358,36 @@ private struct ActiveWorkoutTrackerCard: View {
                             onCoarseUp: { weight += coarseWeightStep }
                         )
 
+                        // Inline RPE: the progression engine feeds on this,
+                        // so rating a set is ONE optional tap here — not a
+                        // trip through the More sheet. Tap again to unset.
+                        HStack(spacing: 6) {
+                            Text("RPE")
+                                .font(MorpheTheme.microLabel(10))
+                                .tracking(1.2)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .frame(width: 40, alignment: .leading)
+
+                            ForEach([6, 7, 8, 9, 10], id: \.self) { value in
+                                Button("\(value)") {
+                                    rpe = (rpe == value) ? nil : value
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: rpe == value))
+                                .accessibilityLabel("Rate effort \(value) of 10")
+                                .accessibilityAddTraits(rpe == value ? .isSelected : [])
+                            }
+
+                            Spacer(minLength: 0)
+                        }
+
                         Button(logButtonTitle) {
                             onQuickLogSet(repsToLog)
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        .accessibilityLabel("Log set: \(repsToLog) reps at \(weightDisplay)")
+                        .accessibilityLabel(
+                            "Log set: \(repsToLog) reps at \(weightDisplay)"
+                                + (rpe.map { ", effort \($0) of 10" } ?? "")
+                        )
                     }
                 }
 
@@ -3277,6 +3364,8 @@ private struct WorkoutRestControlBar: View {
     @Binding var seconds: Int
     @Binding var isRunning: Bool
     var exerciseName: String = "Next set"
+    /// The active exercise's own rest length — what Reset returns to.
+    var defaultSeconds: Int = 180
     @State private var countdownTask: Task<Void, Never>?
     /// Wall-clock end of the running countdown — the Live Activity's anchor,
     /// and the truth the in-app timer resyncs to after the app was suspended.
@@ -3317,7 +3406,7 @@ private struct WorkoutRestControlBar: View {
 
                 Button("Reset") {
                     isRunning = false
-                    seconds = 180
+                    seconds = defaultSeconds
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
             }
@@ -3327,6 +3416,16 @@ private struct WorkoutRestControlBar: View {
         // starts the timer — not just the local toggle.
         .onChange(of: isRunning) { _, running in
             if running { startCountdown() } else { cancelCountdown() }
+        }
+        // External retarget while running — the auto rest that fires on each
+        // logged set writes a fresh duration into `seconds` from outside.
+        // A tick is exactly -1/second, so any other change re-anchors the
+        // wall clock and the Live Activity. (The scenePhase resync below may
+        // land here too — it re-anchors to the same effective end, max 1s off.)
+        .onChange(of: seconds) { oldValue, newValue in
+            guard isRunning, newValue != oldValue - 1 else { return }
+            countdownEndDate = Date().addingTimeInterval(TimeInterval(newValue))
+            RestTimerActivityController.update(secondsRemaining: newValue)
         }
         .onAppear {
             if isRunning { startCountdown() }

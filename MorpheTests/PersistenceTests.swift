@@ -456,6 +456,82 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(roundTripped, 45, accuracy: 0.2, "converting back must round-trip")
     }
 
+    func testCompleteTrackedSetReportsWhetherItLogged() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+
+        XCTAssertTrue(store.completeTrackedSet(reps: 8, weight: 50), "a set within target must log")
+        XCTAssertTrue(store.completeTrackedSet(reps: 8, weight: 50))
+        // Exercise 1 is complete (auto-advanced away) — a guarded quick-log
+        // back on it must report failure so the auto rest timer stays quiet.
+        store.goToPreviousTrackedExercise()
+        XCTAssertFalse(store.completeTrackedSet(reps: 8, weight: 50),
+                       "a rejected quick-log must say so — follow-on behavior keys off the result")
+        XCTAssertTrue(store.completeTrackedSet(reps: 8, weight: 50, allowExtra: true),
+                      "an explicit extra set still logs and reports success")
+    }
+
+    func testLoggingCelebratesPRsAndOnlyPRs() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        let firstExerciseName = store.activeWorkoutExercise!.name
+
+        // Session 1: first-ever weighted sets — a first record is a PR.
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.completeTrackedSet(reps: 8, weight: 40)
+        store.completeTrackedSet(reps: 8, weight: 40)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+        XCTAssertEqual(store.celebration?.title, "New PR — \(firstExerciseName)",
+                       "a session that sets a record must celebrate THAT, not generic XP")
+        XCTAssertEqual(store.celebration?.symbol, "trophy.fill")
+
+        // Session 2: matching the record is NOT a new PR — generic celebration.
+        startedTwoExerciseSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.completeTrackedSet(reps: 8, weight: 40)
+        store.completeTrackedSet(reps: 8, weight: 40)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+        XCTAssertEqual(store.celebration?.title, "+50 XP",
+                       "matching an existing record must not claim a PR")
+
+        // Session 3: beating the record celebrates with the honest delta.
+        startedTwoExerciseSession(store)
+        store.completeTrackedSet(reps: 8, weight: 55)
+        store.completeTrackedSet(reps: 8, weight: 55)
+        store.completeTrackedSet(reps: 8, weight: 40)
+        store.completeTrackedSet(reps: 8, weight: 40)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+        XCTAssertEqual(store.celebration?.title, "New PR — \(firstExerciseName)")
+        XCTAssertTrue(store.celebration?.detail.contains("up from") == true,
+                      "a beaten record cites the previous best it beat")
+    }
+
+    func testTrainingPreferencesPersistAndShareToggleReArms() {
+        let store = freshStore()
+        XCTAssertTrue(store.autoRestTimerEnabled, "auto rest ships on by default")
+        XCTAssertFalse(store.autoShareWorkoutsEnabled, "auto-share is opt-in — posting is never a surprise")
+
+        store.autoRestTimerEnabled = false
+        store.autoShareWorkoutsEnabled = true
+
+        let reloaded = MorpheAppStore()
+        XCTAssertFalse(reloaded.autoRestTimerEnabled, "the rest preference survives relaunch")
+        XCTAssertTrue(reloaded.autoShareWorkoutsEnabled, "the share preference survives relaunch")
+
+        // A per-session opt-out lasts exactly one session.
+        startedTwoExerciseSession(reloaded)
+        reloaded.shareCompletedSessionToFeed = false
+        reloaded.completeTrackedSet(reps: 8, weight: 50)
+        reloaded.finishTrackedWorkoutSession()
+        XCTAssertTrue(reloaded.shareCompletedSessionToFeed,
+                      "finishing a session re-arms the share toggle — opting out is never sticky")
+    }
+
     func testRPEIsCapturedRestoredAndLogged() {
         let store = freshStore()
         startedTwoExerciseSession(store)
