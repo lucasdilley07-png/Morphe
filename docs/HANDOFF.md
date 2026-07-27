@@ -78,17 +78,17 @@ follower counts, payments activation (`docs/PAYMENTS.md`).
   -allowProvisioningUpdates build` → `xcrun devicectl device install/launch`.
   Free-team signing expires every 7 days. Team 8P47H3XRN3. First device
   build after 2026-07-26 registers the new HealthKit/App Group capabilities.
-- **Firestore rules console keeps its LAST text** — every change needs
-  `cat BACKEND/firestore.rules | pbcopy` → console paste → Publish, then a
-  live REST verification.
+- **Rules publish is one command now**: `python3 Tools/publish_rules.py`
+  (Rules API via the service account; compiles first, byte-verifies the
+  live ruleset after). The old console copy-paste routine is retired.
 - Fal.ai (form diagrams): key in ~/.zshrc, $0.15/image.
 
 ## OPEN ITEMS (next session's first moves)
 
-1. ⚠️ **Rules publish**: the ENTIRE current `BACKEND/firestore.rules` is
-   ahead of the console (social, backup/state, moderation, coachShare,
-   account-deletion owner-delete — 17+ blocks). Fail-secure until Lucas
-   pastes + publishes, then run the live rules verification.
+1. ✅ **Rules published 2026-07-26** (ruleset 277f97a6, byte-verified) —
+   the full file is live: social, backup/state, moderation, coachShare,
+   account deletion. Optional next: the live behavioral rules test with
+   throwaway auth users.
 2. **Device redeploy** — several sprints of features aren't on the phone.
 3. **$99 Apple Developer Program** — gates TestFlight, IAP flag-flip, and
    Universal Links.
