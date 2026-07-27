@@ -250,8 +250,13 @@ struct ProgressScreenView: View {
                 progressPanel
             }
             .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.top, MorpheTheme.Spacing.pageTop)
             .padding(.bottom, 120)
+        }
+        // Board + challenges are the fetched pieces of this page.
+        .refreshable {
+            await store.refreshLeaderboard()
+            await store.refreshChallenges()
         }
     }
 

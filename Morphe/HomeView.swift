@@ -240,8 +240,14 @@ struct HomeView: View {
             .padding(.horizontal, 20)
             // Starts clearly BELOW the floating profile icon, matching where
             // the Progress/Learn titles sit.
-            .padding(.top, 36)
+            .padding(.top, MorpheTheme.Spacing.pageTop)
             .padding(.bottom, 120)
+        }
+        // The network-backed pieces of Today (coach threads, appointments)
+        // refresh on pull, like Network already does.
+        .refreshable {
+            await store.refreshThreads()
+            await store.refreshAppointments()
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
         .sheet(isPresented: $showAppointments) {
@@ -283,7 +289,7 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showMessages) {
             NavigationStack {
-                CommunityView()
+                CommunityView(topPadding: 8)
                     .environment(store)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {

@@ -71,9 +71,9 @@ service cloud.firestore {
       // state/* JSON blob). Owner-only ON PURPOSE: unlike workoutLogs there
       // is no coach read, because an appointment can name third parties
       // (withName) who never agreed to be visible to a linked coach.
-      // NOTE: publishing these rules is manual — editing this file changes
-      // nothing until `firebase deploy --only firestore:rules` (or a console
-      // paste) pushes it to the morphe-3c5c2 project.
+      // NOTE: publish via `python3 Tools/publish_rules.py` (compiles,
+      // releases, byte-verifies), then behavioral-check with
+      // `python3 Tools/verify_rules_live.py`.
       match /appointments/{id} {
         allow read, write: if isOwner(uid);
       }
@@ -285,9 +285,9 @@ service cloud.firestore {
     //     (users/{uid}.verified) — no self-minted blue checks on the board,
     //   • no client deletes: leaving the board stops future posts, but the
     //     already-posted week stays (disclosed in the opt-in copy).
-    // NOTE: publishing these rules is manual — editing this file changes
-    // nothing until `firebase deploy --only firestore:rules` (or a console
-    // paste) pushes it to the morphe-3c5c2 project.
+    // NOTE: editing this file changes nothing until published — run
+    // `python3 Tools/publish_rules.py` (compiles, releases, byte-verifies),
+    // then `python3 Tools/verify_rules_live.py` for behavioral proof.
     match /leaderboards/{weekKey}/entries/{uid} {
       allow read: if isSignedIn();
       allow create, update: if isOwner(uid)
@@ -340,9 +340,9 @@ service cloud.firestore {
     // can't query managedClients by claimedByUid, so the real-link guarantee
     // is: the coach client only creates a thread from a CLAIMED roster entry,
     // and rules pin every thread to exactly its two named participants.
-    // NOTE: publishing these rules is manual — editing this file changes
-    // nothing until `firebase deploy --only firestore:rules` (or a console
-    // paste) pushes it to the morphe-3c5c2 project.
+    // NOTE: editing this file changes nothing until published — run
+    // `python3 Tools/publish_rules.py` (compiles, releases, byte-verifies),
+    // then `python3 Tools/verify_rules_live.py` for behavioral proof.
     match /threads/{threadId} {
       function isThreadParticipant() {
         return isSignedIn()
@@ -414,9 +414,9 @@ service cloud.firestore {
     //     so no self-minted blue checks in the feed,
     //   • posts are immutable once published (edit = delete + repost),
     //   • only the author deletes their own post.
-    // NOTE: publishing these rules is manual — editing this file changes
-    // nothing until `firebase deploy --only firestore:rules` (or a console
-    // paste) pushes it to the morphe-3c5c2 project.
+    // NOTE: editing this file changes nothing until published — run
+    // `python3 Tools/publish_rules.py` (compiles, releases, byte-verifies),
+    // then `python3 Tools/verify_rules_live.py` for behavioral proof.
     match /posts/{postId} {
       allow read: if isSignedIn();
 

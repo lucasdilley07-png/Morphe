@@ -45,6 +45,9 @@ enum MorpheTheme {
         static let xl: CGFloat = 20
         /// 24 — section breaks.
         static let xxl: CGFloat = 24
+        /// 36 — where page content starts below the floating header icons.
+        /// One knob for every tab landing (athlete shell).
+        static let pageTop: CGFloat = 36
     }
 
     /// Monospaced micro-label — the telemetry signature. Pair with

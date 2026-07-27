@@ -1256,6 +1256,9 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
         HStack(spacing: 4) {
             ForEach(items, id: \.self) { item in
                 Button {
+                    // The most-pressed control in the app gets the same
+                    // selection tick as every chip.
+                    Haptics.selection()
                     onSelect(item)
                 } label: {
                     VStack(spacing: 5) {

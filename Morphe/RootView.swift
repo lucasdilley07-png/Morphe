@@ -219,7 +219,9 @@ struct RootView: View {
             VStack(spacing: 10) {
                 if let toast = store.toastMessage {
                     ToastBanner(text: toast)
-                        .padding(.top, 12)
+                        // Clears the floating icon row (52pt) instead of
+                        // drawing over the avatar/quick-add buttons.
+                        .padding(.top, 64)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
@@ -396,6 +398,9 @@ private struct ClientExperienceShell: View {
             // Un-gated: the For You feed is REAL now (Firestore posts).
             // CommunityView gates its own demo-only sections internally.
             CommunityView()
+                // Keyed like the other tabs: re-tapping Network lands back
+                // at the top of a fresh feed instead of doing nothing.
+                .id(store.tabResetKey("community"))
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.community)
 
@@ -410,12 +415,24 @@ private struct ClientExperienceShell: View {
                 .tag(ClientTab.more)
         }
         .safeAreaInset(edge: .top) {
-            // NO header band, NO hairline — just the icons floating over the
-            // page. The inset still pushes page content to start below the
-            // icon row; the icon BUTTONS are individually solid so content
-            // scrolling beneath never shows through them.
+            // Icons only — no band, no hairline. The short ink→clear fade
+            // (same scrim the coach header uses) keeps the STATUS BAR
+            // readable and stops content ghosting up between the icons,
+            // without bringing the solid band back.
             ClientPinnedHeader()
                 .padding(.horizontal, 16)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            MorpheTheme.ink.opacity(0.96),
+                            MorpheTheme.ink.opacity(0.80),
+                            .clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea(edges: .top)
+                )
         }
         .safeAreaInset(edge: .bottom) {
             // Edge-to-edge slim strip — the bar draws its own ink into the
@@ -441,6 +458,13 @@ private struct ClientPinnedHeader: View {
                 store.openClientProfile()
             } label: {
                 MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 40)
+                    // The avatar tile's own fill is 6%-white — floating over
+                    // scrolling content it needs a truly opaque face, same
+                    // as the quick-add button.
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(MorpheTheme.ink)
+                    )
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
@@ -468,109 +492,8 @@ private struct ClientPinnedHeader: View {
     }
 }
 
-struct DemoBrandHeader: View {
-    @Environment(MorpheAppStore.self) private var store
-
-    private var role: AppRole { store.selectedRole }
-
-    private var displayName: String {
-        role == .coach ? store.coachProfile.name : store.profileShowcase.displayName
-    }
-
-    private var handle: String {
-        role == .coach ? store.coachProfile.username : store.profileShowcase.username
-    }
-
-    private var title: String {
-        role == .coach ? "Coach workspace" : "Your training OS"
-    }
-
-    private var subtitle: String {
-        role == .coach ? "Inbox, athletes, and action in one clean loop." : "Simple enough to use every day, smart enough to feel personal."
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Button {
-                    store.openClientProfile()
-                } label: {
-                    HStack(spacing: 10) {
-                        MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 42)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(displayName)
-                                .font(.subheadline.weight(.bold))
-                                .foregroundStyle(.white)
-                            Text("@\(handle) • \(role == .coach ? "Coach" : "Athlete")")
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-
-                HeaderCircleButton(systemImage: "plus", label: "Quick add") {
-                    store.openQuickAdd()
-                }
-
-                HeaderCircleButton(systemImage: role == .coach ? "bubble.left.and.bubble.right.fill" : "bell.fill", label: role == .coach ? "Messages" : "Notifications") {
-                    if role == .coach {
-                        store.selectedCoachTab = .messages
-                    } else {
-                        store.openCommunity(.contact)
-                    }
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Morphe")
-                    .font(.system(.title, design: .rounded).weight(.bold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.white, MorpheTheme.accent.opacity(0.92)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                Text(subtitle)
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(MorpheTheme.textSecondary)
-            }
-
-            Button {
-                store.openUniversalSearch()
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                    Text(role == .coach ? "Search athletes, drills, or programs" : "Search workouts, people, or network posts")
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(MorpheTheme.accent)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .fill(Color.white.opacity(0.04))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                        )
-                )
-            }
-            .buttonStyle(.plain)
-        }
-    }
-}
+// (DemoBrandHeader removed — the old solid header band, orphaned by the
+// icons-only floating header.)
 
 private struct HeaderCircleButton: View {
     let systemImage: String

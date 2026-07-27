@@ -356,7 +356,7 @@ struct WorkoutView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 36)
+            .padding(.top, MorpheTheme.Spacing.pageTop)
             .padding(.bottom, 120)
         }
         .onChange(of: store.activeWorkoutExerciseIndex) { _, _ in
@@ -718,7 +718,7 @@ struct WorkoutView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 36)
+            .padding(.top, MorpheTheme.Spacing.pageTop)
             .padding(.bottom, 120)
         }
         .onAppear { revealLibraryIfRequested(proxy) }
@@ -881,7 +881,7 @@ struct DiscoverScreenView: View {
                     )
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 36)
+                .padding(.top, MorpheTheme.Spacing.pageTop)
                 .padding(.bottom, 120)
                 .id("discoverTop")
             }

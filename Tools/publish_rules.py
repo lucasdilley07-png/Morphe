@@ -19,7 +19,9 @@ Needs the Firebase service-account key at BACKEND/serviceAccount.json
 (gitignored, same credential the review tools use).
 """
 import json
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -64,6 +66,18 @@ def call(method: str, path: str, payload=None):
 
 source = RULES_PATH.read_text()
 
+# You publish the WORKING TREE — say so when it differs from git, so an
+# experimental edit never goes live by muscle memory.
+diff = subprocess.run(
+    ["git", "-C", str(REPO), "diff", "--stat", "--", "BACKEND/firestore.rules"],
+    capture_output=True, text=True)
+if diff.stdout.strip():
+    print("NOTE: BACKEND/firestore.rules has UNCOMMITTED changes — publishing them:")
+    print(f"  {diff.stdout.strip()}")
+    if sys.stdin.isatty():
+        if input("Continue? [y/N] ").strip().lower() != "y":
+            sys.exit("Aborted — commit (or intend) the change, then rerun.")
+
 # 1. Create the ruleset — the API compiles the source; a broken file dies
 #    here with line-numbered issues and nothing changes in production.
 print(f"Compiling + uploading {RULES_PATH.name} ({len(source.splitlines())} lines) to {PROJECT}…")
@@ -73,19 +87,34 @@ ruleset = call("POST", f"projects/{PROJECT}/rulesets", {
 ruleset_name = ruleset["name"]
 print(f"  ruleset created: {ruleset_name}")
 
-# 2. Point the Firestore release at it — THIS is the publish.
-call("PATCH", RELEASE, {
-    "release": {"name": RELEASE, "rulesetName": ruleset_name}
-})
+# 2. Point the Firestore release at it — THIS is the publish. From here on,
+#    any failure is a VERIFICATION problem, not a publish failure — a retry
+#    against already-changed production must never look necessary.
+try:
+    call("PATCH", RELEASE, {
+        "release": {"name": RELEASE, "rulesetName": ruleset_name}
+    })
+except requests.RequestException as error:
+    sys.exit(f"Release PATCH did not return cleanly ({error}).\n"
+             "The publish MAY have applied — check the console before retrying.")
 print(f"  release updated: {RELEASE}")
 
 # 3. Trust nothing: read the LIVE release back and byte-compare.
-live_release = call("GET", RELEASE)
-live_ruleset = call("GET", live_release["rulesetName"])
-live_source = live_ruleset["source"]["files"][0]["content"]
+try:
+    live_release = call("GET", RELEASE)
+    live_ruleset = call("GET", live_release["rulesetName"])
+    live_source = live_ruleset["source"]["files"][0]["content"]
+except requests.RequestException as error:
+    sys.exit(f"Release updated, but verification could not complete ({error}).\n"
+             "Rerun this script (it is idempotent) or check the console.")
 
 if live_source == source:
     print(f"\nPUBLISHED + VERIFIED — the live ruleset is byte-identical to "
           f"{RULES_PATH.relative_to(REPO)} ({live_release['rulesetName'].split('/')[-1]}).")
+    # Byte-verified ≠ enforced yet: rules propagation lags up to ~1 minute.
+    # The behavioral test right after a publish must not race the old rules.
+    print("Waiting 60s for rules propagation before behavioral tests are safe…")
+    time.sleep(60)
+    print("Done — run Tools/verify_rules_live.py now.")
 else:
     sys.exit("\nMISMATCH: the live ruleset does not match the local file. Investigate.")

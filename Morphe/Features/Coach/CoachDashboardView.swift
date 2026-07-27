@@ -38,7 +38,8 @@ struct CoachDashboardView: View {
                 .id(store.tabResetKey("messages"))
                 .tag(CoachTab.messages)
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
+        // Matches the client shell: no edge-swipe pager fighting the chip
+        // rows and carousels — the dock is the navigator.
         .safeAreaInset(edge: .top) {
             CoachPinnedHeader()
                 .padding(.horizontal, 16)
@@ -60,14 +61,14 @@ struct CoachDashboardView: View {
                 )
         }
         .safeAreaInset(edge: .bottom) {
+            // Edge-to-edge like the client dock — same design language in
+            // both roles, and the floating AI button's clearance holds.
             BottomTabNavigation(items: CoachTab.visibleCases, selected: store.selectedCoachTab) { tab in
                 store.selectedCoachTab = tab
                 // Tapping the icon always lands at the top of that tab's
                 // first page.
                 store.popTabToRoot(tab.rawValue)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
         }
         .sheet(item: Binding(
             get: { store.selectedCoachClient },
@@ -435,7 +436,7 @@ private struct CoachCommandCenterScreen: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 36)
+            .padding(.top, 8)
             .padding(.bottom, 120)
         }
         .sheet(item: $sessionRequest) { request in
@@ -532,7 +533,7 @@ private struct CoachAthletesRosterSection: View {
             }
 
             if !store.archivedClientCodes.isEmpty {
-                Button("Show Hidden (\(store.archivedClientCodes.count))") {
+                Button("Show (\(store.archivedClientCodes.count))") {
                     store.restoreArchivedClients()
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
@@ -961,7 +962,7 @@ private struct ManagedClientDetailSheet: View {
                             // View-state removal only: the athlete's account
                             // and history are theirs, and the rules would
                             // refuse a delete anyway.
-                            Button("Remove from Roster", role: .destructive) {
+                            Button("Remove Client", role: .destructive) {
                                 store.archiveClaimedClient(client)
                                 dismiss()
                             }
@@ -1448,7 +1449,7 @@ private struct CoachProgramsScreen: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 36)
+            .padding(.top, 8)
             .padding(.bottom, 120)
         }
         // Pull to re-check the roster — claim status changes on a server the
@@ -1853,7 +1854,7 @@ private struct CoachNetworkScreen: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 36)
+            .padding(.top, 8)
             .padding(.bottom, 120)
         }
     }
@@ -2447,47 +2448,8 @@ private struct CoachNetworkHighlightsRail: View {
     }
 }
 
-private struct CoachPerformanceScreen: View {
-    @Environment(MorpheAppStore.self) private var store
-
-    private var focusedAthlete: CoachClient? {
-        store.selectedCoachClient ?? store.filteredCoachClients.first ?? store.coachClients.first
-    }
-
-    var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                SectionTitleView(
-                    title: "Performance",
-                    subtitle: "Sport-specific testing, readiness, report cards, and coaching quality signals."
-                )
-
-                if let athlete = focusedAthlete {
-                    CoachAthleteCard(athlete: athlete, onOpenHub: {
-                        store.openClientHub(athlete)
-                    }, onMessage: {
-                        if let thread = store.messageThreads.first(where: { $0.participant == athlete.name }) {
-                            store.selectedCoachTab = .messages
-                            store.selectThread(thread)
-                        }
-                    })
-
-                    SportTestingDashboardCard(tests: athlete.tests)
-                    AthleteReportCardView(report: athlete.reportCard)
-                    TrainingLoadCard(load: athlete.trainingLoad)
-                    MovementQualityScoreCard(score: athlete.movementQuality)
-                    EventPrepModeCard(plan: athlete.eventPrep)
-                    VideoReviewHubCard(clips: athlete.videoReviews)
-                }
-
-                CoachQualityAnalyticsCard(analytics: store.coachAnalytics)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 36)
-            .padding(.bottom, 120)
-        }
-    }
-}
+// (CoachPerformanceScreen removed — defined but never mounted in the
+// coach TabView; dead since the shell was built.)
 
 private struct CoachMessagesScreen: View {
     @Environment(MorpheAppStore.self) private var store
@@ -2561,7 +2523,7 @@ private struct CoachMessagesScreen: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .padding(.top, 36)
+        .padding(.top, 8)
         .padding(.bottom, 120)
         // Real threads live in Firestore — fresh on every Inbox visit.
         .task { await store.refreshThreads() }

@@ -1,10 +1,10 @@
 # Morphe — Project Handoff
 
-One-file briefing for a fresh session. Last updated 2026-07-26, after the
-third audit's full fix pass (~205+ automated tests green; run the suite for
-the exact count). Deployed to Lucas's iPhone 17 Pro Max 2026-07-26 evening
-(all session sprints on-device; HealthKit + App Group capabilities
-registered on that build). Free-team signing expires ~2026-08-02.
+One-file briefing for a fresh session. Last updated 2026-07-27, after the
+FOURTH audit's fix pass (layout consistency, tool hardening, honest App
+Store copy; ~205 automated tests green — run the suite for the exact
+count). Deployed to Lucas's iPhone 17 Pro Max 2026-07-27 (includes the
+floating-header layout iteration). Free-team signing expires ~2026-08-03.
 
 ## What Morphe is
 
@@ -95,6 +95,8 @@ follower counts, payments activation (`docs/PAYMENTS.md`).
    program session, account-deletion flow on a throwaway account.
 3. **$99 Apple Developer Program** — gates TestFlight, IAP flag-flip, and
    Universal Links. THE remaining unlock.
+3b. **Retake App Store screenshots** — AppStore/screenshots/ are from
+   June 14, two header redesigns old. Retake after the UI settles.
 4. ✅ **docs/index.html regenerated 2026-07-26** from the new policy —
    ready to host via GitHub Pages (LAUNCH_CHECKLIST step 1).
 5. Compliance is otherwise launch-ready: privacy policy rewritten

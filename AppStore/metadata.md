@@ -13,7 +13,7 @@ Copy/paste these into App Store Connect. Fields are length-limited as noted.
 **Workout builder & tracker**
 
 ## Promotional text (≤170 chars, editable any time without review)
-Build your own workouts, log real weight and reps, and see a Morphe Score that reflects what you actually did. Private by design — everything stays on your phone.
+Log real sets, follow real training programs, and share honest wins with a community that trains. No ads, no trackers — your numbers are yours.
 
 ## Keywords (≤100 chars, comma-separated, no spaces)
 `workout,gym,fitness,tracker,exercise,log,strength,reps,sets,training,lifting,recovery,builder`
@@ -45,13 +45,22 @@ CHECK YOUR RECOVERY
 • A quick daily check-in reads your sleep, energy, soreness, and mood
 • Morphe adjusts the day around how you actually feel
 
-PRIVATE BY DESIGN
-• Everything stays on your device. No account, no sign-up, no tracking, and nothing ever leaves your phone.
+TRAIN TOGETHER
+• Follow athletes, share sessions as honest stat cards, and react and comment
+• Weekly leaderboards and code-joinable challenges — opt-in, real scores only
+• Live buddy sessions: train the same workout together in real time
+• Coaches: manage your roster, message clients, and see consented live progress
+
+YOUR DATA, YOUR CALL
+• Your account backs up your training so a new phone restores everything
+• Optional Apple Health sync: workouts count toward your rings, sleep pre-fills your check-in
+• Export everything as one file, or delete your account — both in the app
+• No ads, no analytics trackers, and your data is never sold
 
 Built for beginners and anyone rebuilding momentum. Small wins. Real transformation.
 
 ## What's New (release notes, first version)
-First release of Morphe. Build your own workouts, log real sets with weight and reps, track honest progress, learn the why behind training, and check your recovery — all private, all on your device.
+First release of Morphe. Build workouts, log real sets, run multi-week programs, and share honest progress with a community that trains — with opt-in Apple Health sync, cloud backup, and full data export/deletion built in.
 
 ---
 

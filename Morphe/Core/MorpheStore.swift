@@ -6912,14 +6912,6 @@ final class MorpheAppStore {
         showToast("Quick note saved.")
     }
 
-    func shareDailyWin() {
-        let detail = isWorkoutLoggedToday
-            ? "Closed the loop on \(currentWorkout.name) and finished the day with momentum intact."
-            : "Showing up for the plan today. Small wins still count."
-
-        shareCommunityPost(detail, as: .client)
-        openCommunity(.forYou)
-    }
 
     func logRecoveryReset() {
         guard !didCompleteQuickCheckIn else {

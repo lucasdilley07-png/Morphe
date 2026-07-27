@@ -4,6 +4,9 @@ struct CommunityView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var selectedStory: CommunityStoryPreview?
     @State private var showNetworkExtras = false
+    /// Tab landing clears the floating header icons; sheets (the Home
+    /// Messages sheet) have a nav bar instead and pass a small value.
+    var topPadding: CGFloat = MorpheTheme.Spacing.pageTop
 
     var body: some View {
         Group {
@@ -64,7 +67,7 @@ struct CommunityView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 36)
+            .padding(.top, topPadding)
             .padding(.bottom, 120)
         }
         .refreshable {
@@ -1003,7 +1006,7 @@ private struct AICoachChatCard: View {
                     }
                 }
 
-                Button("Send to AI Coach") {
+                Button("Ask Coach") {
                     onSend(prompt)
                 }
                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
