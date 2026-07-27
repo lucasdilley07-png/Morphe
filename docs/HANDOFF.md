@@ -92,8 +92,8 @@ follower counts, payments activation (`docs/PAYMENTS.md`).
 2. **Device redeploy** — several sprints of features aren't on the phone.
 3. **$99 Apple Developer Program** — gates TestFlight, IAP flag-flip, and
    Universal Links.
-4. **docs/index.html** — regenerate from the rewritten PRIVACY_POLICY.md
-   before hosting (the web copy is still the old local-only draft).
+4. ✅ **docs/index.html regenerated 2026-07-26** from the new policy —
+   ready to host via GitHub Pages (LAUNCH_CHECKLIST step 1).
 5. Compliance is otherwise launch-ready: privacy policy rewritten
    (2026-07-26), PrivacyInfo.xcprivacy populated, App Store metadata
    corrected to declare collected data, in-app account deletion shipped,
