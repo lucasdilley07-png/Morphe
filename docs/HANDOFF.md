@@ -2,8 +2,9 @@
 
 One-file briefing for a fresh session. Last updated 2026-07-26, after the
 third audit's full fix pass (~205+ automated tests green; run the suite for
-the exact count). App last deployed to Lucas's iPhone 17 Pro Max BEFORE the
-July 25-26 sprints — a redeploy is pending (device unreachable).
+the exact count). Deployed to Lucas's iPhone 17 Pro Max 2026-07-26 evening
+(all session sprints on-device; HealthKit + App Group capabilities
+registered on that build). Free-team signing expires ~2026-08-02.
 
 ## What Morphe is
 
@@ -85,13 +86,15 @@ follower counts, payments activation (`docs/PAYMENTS.md`).
 
 ## OPEN ITEMS (next session's first moves)
 
-1. ✅ **Rules published 2026-07-26** (ruleset 277f97a6, byte-verified) —
-   the full file is live: social, backup/state, moderation, coachShare,
-   account deletion. Optional next: the live behavioral rules test with
-   throwaway auth users.
-2. **Device redeploy** — several sprints of features aren't on the phone.
+1. ✅ **Rules published 2026-07-26** (ruleset 277f97a6, byte-verified) AND
+   **behaviorally verified live**: `python3 Tools/verify_rules_live.py` —
+   35/35 checks with throwaway auth users. Rerun after every publish.
+2. ✅ **Deployed to Lucas's phone 2026-07-26** — weekly re-sign due
+   ~2026-08-02. On-device to verify by hand: Health prompt (Sync to
+   Health toggle), widget gallery add, share-card render, a full
+   program session, account-deletion flow on a throwaway account.
 3. **$99 Apple Developer Program** — gates TestFlight, IAP flag-flip, and
-   Universal Links.
+   Universal Links. THE remaining unlock.
 4. ✅ **docs/index.html regenerated 2026-07-26** from the new policy —
    ready to host via GitHub Pages (LAUNCH_CHECKLIST step 1).
 5. Compliance is otherwise launch-ready: privacy policy rewritten
