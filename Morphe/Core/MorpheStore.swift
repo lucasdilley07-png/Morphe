@@ -345,6 +345,7 @@ final class MorpheAppStore {
     /// Personal appointments (one Firestore doc each). Real app injects
     /// `FirebaseAppointmentService`; no-op default for tests/previews.
     private let appointmentService: AppointmentSyncing
+    private let telemetryService: TelemetrySyncing
     /// Weekly leaderboard + challenges. Resolved in `init` (injected, or
     /// inferred Firebase/no-op alongside the party service).
     private let leaderboardService: LeaderboardSyncing
@@ -527,7 +528,8 @@ final class MorpheAppStore {
          appointmentService: AppointmentSyncing = NoOpAppointmentService(),
          leaderboardService: LeaderboardSyncing? = nil,
          messagingService: MessagingSyncing? = nil,
-         feedService: FeedSyncing? = nil) {
+         feedService: FeedSyncing? = nil,
+         telemetryService: TelemetrySyncing? = nil) {
         // Tests build a second store to simulate a relaunch — land the live
         // store's pending coalesced writes before this instance reads the files.
         Self.mostRecentInstance?.flushPendingPersists()
@@ -558,6 +560,11 @@ final class MorpheAppStore {
             ?? (partyService is FirebasePartyService
                 ? FirebaseFeedService()
                 : NoOpFeedService())
+        // And for first-party telemetry (write-only measurement events).
+        self.telemetryService = telemetryService
+            ?? (partyService is FirebasePartyService
+                ? FirebaseTelemetryService()
+                : NoOpTelemetryService())
         let templates = MorpheDemoContent.workoutTemplates
         let clients = MorpheDemoContent.coachClients
         let threads = MorpheDemoContent.messageThreads
@@ -749,6 +756,7 @@ final class MorpheAppStore {
         // freshest numbers on every launch too.
         refreshStreakRiskReminder()
         publishWidgetSnapshot()
+        trackDayActiveIfNeeded()
 
         Self.mostRecentInstance = self
     }
@@ -853,6 +861,12 @@ final class MorpheAppStore {
             await usernameDirectory.release(username, for: uid)
         }
 
+        // Recorded BEFORE the auth user disappears — churn you can't see
+        // is churn you can't learn from. Then the whole event trail is
+        // erased with the account, as the policy promises. (Yes, that
+        // erases this event too — the policy outranks the metric.)
+        track("account_deleted")
+        await telemetryService.eraseAll(uid: uid)
         do {
             try await authService.deleteAccount()
         } catch {
@@ -1378,6 +1392,7 @@ final class MorpheAppStore {
     private func applySignedIn(_ user: AppUser) {
         authUser = user
         cloudBackup.setUser(user.id)
+        trackDayActiveIfNeeded()
         selectedRole = user.role.appRole
         // The signed-up role drives onboarding: a coach account gets the coach
         // flow and completeOnboarding stamps the coach workspace identity.
@@ -2692,6 +2707,7 @@ final class MorpheAppStore {
 
     func startProgram(_ program: TrainingProgram) {
         persistActiveProgramSnapshot(ActiveProgramSnapshot(programID: program.id, startedAt: .now))
+        track("program_started")
         showToast("\(program.name) started — \(program.weeks) weeks, session 1 is staged.")
         startNextProgramSession()
     }
@@ -4686,6 +4702,7 @@ final class MorpheAppStore {
         // Today's inputs become a history point — the check-in used to be
         // discarded at day rollover.
         recordRecoveryCheckInEntry()
+        track("checkin_completed")
         Haptics.success()
         persistLocalProfile()
         // A fresh readiness read is exactly what a coach wants to see.
@@ -5098,6 +5115,8 @@ final class MorpheAppStore {
         // Rollover is an action boundary (launch/foreground) — land the new
         // day's state (profile AND the rotated session) on disk right away.
         flushPendingPersists()
+        // A new day the app was OPENED counts as an active day.
+        trackDayActiveIfNeeded()
     }
 
     /// Honest, general training tips rotated by calendar day — the same tip
@@ -6033,6 +6052,9 @@ final class MorpheAppStore {
         updateXP(for: 50, add: true)
         // Morphe Score, streak, and trend are recomputed from logs in
         // appendWorkoutLog -> refreshWorkoutLogDerivedState; no manual edits here.
+        // Activation = the FIRST logged workout — captured before the append
+        // makes it un-first.
+        let isActivation = currentAthleteWorkoutLogs.isEmpty
         let loggedExercises = makeLoggedExercisesFromCurrentWorkout()
         // PRs must be diffed against the bests BEFORE this session lands in
         // the logs — afterwards the new top IS the best and nothing is new.
@@ -6181,6 +6203,10 @@ final class MorpheAppStore {
         // very next plan day already reflects this session.
         rebuildPersonalizedPlan()
         openProgress()
+        track("workout_logged")
+        if isActivation {
+            track("activation_first_log")
+        }
         // Celebration ranking: finishing a whole PROGRAM outranks a PR,
         // which outranks the generic XP line. One banner, the biggest fact.
         if programJustCompleted, let finished = programProgress {
@@ -7309,6 +7335,7 @@ final class MorpheAppStore {
               hit.uid != authUser?.id else { return }
         if !followedUids.contains(hit.uid) {
             toggleFollow(uid: hit.uid, name: "@\(hit.username)")
+            track("referral_consumed")
         }
     }
 
@@ -7712,6 +7739,7 @@ final class MorpheAppStore {
             // the summary's named reader both key off this link.
             linkedCoachUid = claimed.coachUid
             linkedCoachName = claimed.coachName
+            track("coach_claimed")
             for var log in claimed.logs.sorted(by: { $0.completedAt < $1.completedAt }) {
                 log.athleteID = clientProfile.id
                 log.athleteName = clientProfile.name
@@ -8233,6 +8261,7 @@ final class MorpheAppStore {
         guard await feedService.publish(post: post) else { return false }
         feedPosts.insert(post, at: 0)
         feedReactionCounts[post.id] = 0
+        track("post_published")
         return true
     }
 
@@ -8482,6 +8511,34 @@ final class MorpheAppStore {
         // the app isn't opened.
         defaults.set(Self.dayKey(), forKey: "widget.day")
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    // MARK: - First-party telemetry hooks
+    //
+    // Named milestone events, recorded fire-and-forget under the user's own
+    // account. The event VOCABULARY is deliberately tiny and product-shaped
+    // (activation, retention, growth loops) — never behavioral surveillance.
+
+    private func track(_ name: String) {
+        guard let uid = authUser?.id else { return }
+        telemetryService.record(uid: uid, name: name, day: Self.dayKey())
+    }
+
+    /// One "day_active" per account per calendar day — the retention pulse
+    /// D1/D7/D30 are computed from. Deduped locally per uid.
+    func trackDayActiveIfNeeded() {
+        guard let uid = authUser?.id else { return }
+        let key = "morphe.telemetry.lastActiveDay.\(uid)"
+        let today = Self.dayKey()
+        guard UserDefaults.standard.string(forKey: key) != today else { return }
+        UserDefaults.standard.set(today, forKey: key)
+        track("day_active")
+    }
+
+    /// The share-card loop fired for real (the user completed the system
+    /// share, not just opened the sheet).
+    func noteShareCardShared() {
+        track("share_card_shared")
     }
 
     private static let streakRiskNotificationID = "morphe.streak.risk"

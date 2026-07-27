@@ -645,7 +645,10 @@ private struct TodayDoneCard: View {
                         .buttonStyle(SecondaryCTAButtonStyle())
                 }
                 .sheet(item: $sharePayload) { payload in
-                    ImageShareSheet(image: payload.image, caption: payload.caption) {
+                    ImageShareSheet(image: payload.image, caption: payload.caption) { completed in
+                        if completed {
+                            store.noteShareCardShared()
+                        }
                         sharePayload = nil
                     }
                     .presentationDetents([.medium, .large])

@@ -1652,14 +1652,16 @@ struct ImageShareSheet: UIViewControllerRepresentable {
     /// Nil = share the caption text alone (render-failure fallback).
     let image: UIImage?
     let caption: String
-    let onFinish: () -> Void
+    /// `completed` distinguishes a real share from a cancelled sheet —
+    /// the share-loop telemetry only counts the former.
+    let onFinish: (_ completed: Bool) -> Void
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
         let items: [Any] = image.map { [$0, caption] } ?? [caption]
         let controller = UIActivityViewController(
             activityItems: items, applicationActivities: nil)
-        controller.completionWithItemsHandler = { _, _, _, _ in
-            onFinish()
+        controller.completionWithItemsHandler = { _, completed, _, _ in
+            onFinish(completed)
         }
         return controller
     }

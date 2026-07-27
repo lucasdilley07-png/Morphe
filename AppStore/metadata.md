@@ -85,6 +85,7 @@ When asked "Do you or your third-party partners collect data from this app?", ch
 - **Health & Fitness** (workouts written to / sleep read from Apple Health, training logs)
 - **User Content → Other User Content** (posts, comments, messages, coach-share summaries)
 - **User Content → Photos or Videos** (verification selfie, profile photo)
+- **Usage Data → Product Interaction** (first-party milestone events: retention/activation; purpose Analytics, not tracking)
 No advertising, no analytics SDKs, no tracking — `NSPrivacyTracking` is false.
 
 ## TestFlight (internal beta) — minimum needed

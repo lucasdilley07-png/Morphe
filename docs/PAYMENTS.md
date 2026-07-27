@@ -21,7 +21,27 @@ app features; Premium must never be purchasable outside IAP.
   1099s). The "Payouts" button in BookingView becomes the Express onboarding
   link.
 - Clients pay per booking (or per package) with Apple Pay/card via
-  PaymentSheet; Morphe takes an application fee (decide: X%).
+  PaymentSheet; Morphe takes an application fee.
+- **PROPOSED DECISIONS (2026-07-27, benchmarked — Lucas signs off before
+  any App Store Connect / Stripe setup):**
+  - **Phase 1 is SaaS, not marketplace:** coaches pay a flat
+    **$39/mo or $349/yr** ("Morphe Coach", IAP product ids
+    `app.morphe.coach.monthly/yearly`, already scaffolded in PremiumGate)
+    for the roster/programs/coachShare/messaging tooling. Benchmark:
+    Trainerize/TrueCoach/Everfit run $19-290/mo per coach, with real
+    bills 40-60% above sticker. Flat SaaS is simpler than a take rate,
+    entirely Apple-safe (app features via IAP), and monetizes the moat
+    (roster import + consented progress) on day one.
+  - **Phase 2 marketplace take rate: 10% platform fee** on Stripe-billed
+    coaching payments, Stripe's ~2.9%+30c passed through — only after
+    ≥25 paying coaches prove the SaaS layer.
+  - **Consumer "Morphe Pro": $5.99/mo, $39.99/yr** — anchored above
+    Hevy's $2.99/$23.99 floor (don't fight the free-tier king on price),
+    below Fitbod's $15.99/$95.99, gated on programs + advanced analytics
+    + nothing safety-related.
+  - **Refunds:** full refund for sessions cancelled ≥24h ahead; inside
+    24h at the coach's discretion; disputes adjudicated from the booking
+    record (Stripe evidence API).
 - Requires: Firebase **Blaze** plan + Cloud Functions (create PaymentIntents,
   Connect webhooks — the client app must never hold secret keys), and the
   booking flow writing appointments to Firestore (see SCHEDULING work).

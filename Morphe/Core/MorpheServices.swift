@@ -4814,7 +4814,18 @@ import StoreKit
 
 enum PremiumGate {
     static let storefrontEnabled = false
+    /// Consumer tier — anchored ABOVE Hevy's floor, below Fitbod, gated on
+    /// programs + advanced analytics (proposed $5.99/mo, $39.99/yr; final
+    /// prices live in App Store Connect, never in code).
     static let productIDs: Set<String> = ["app.morphe.pro.monthly", "app.morphe.pro.yearly"]
+    /// Coach tier — flat SaaS, benchmarked against Trainerize/TrueCoach/
+    /// Everfit ($19-290/mo per coach); proposed $39/mo, $349/yr. SaaS-first
+    /// deliberately: simpler than a marketplace take-rate, Apple-safe (an
+    /// app-feature unlock via IAP), and it prices the roster tools coaches
+    /// already use here (managed clients, coachShare, messaging).
+    static let coachProductIDs: Set<String> = ["app.morphe.coach.monthly", "app.morphe.coach.yearly"]
+
+    static var allProductIDs: Set<String> { productIDs.union(coachProductIDs) }
 }
 
 @MainActor
@@ -4825,6 +4836,9 @@ final class PremiumStore {
     private(set) var products: [Product] = []
     /// True when a verified, unrevoked transaction for a pro product exists.
     private(set) var hasEntitlement = false
+    /// Coach-tier entitlement (the SaaS plan) — separate so coach tooling
+    /// can gate independently of consumer Pro when the storefront flips on.
+    private(set) var hasCoachEntitlement = false
     private(set) var isBusy = false
 
     /// The single gate the app reads. Everything is free while the
@@ -4835,7 +4849,7 @@ final class PremiumStore {
 
     func load() async {
         guard PremiumGate.storefrontEnabled else { return }
-        products = ((try? await Product.products(for: PremiumGate.productIDs)) ?? [])
+        products = ((try? await Product.products(for: PremiumGate.allProductIDs)) ?? [])
             .sorted { $0.price < $1.price }
         await refreshEntitlement()
     }
@@ -4843,14 +4857,20 @@ final class PremiumStore {
     func refreshEntitlement() async {
         guard PremiumGate.storefrontEnabled else { return }
         var owned = false
+        var coach = false
         for await result in Transaction.currentEntitlements {
             if case .verified(let transaction) = result,
-               PremiumGate.productIDs.contains(transaction.productID),
                transaction.revocationDate == nil {
-                owned = true
+                if PremiumGate.productIDs.contains(transaction.productID) {
+                    owned = true
+                }
+                if PremiumGate.coachProductIDs.contains(transaction.productID) {
+                    coach = true
+                }
             }
         }
         hasEntitlement = owned
+        hasCoachEntitlement = coach
     }
 
     /// Purchase with full StoreKit 2 verification; unverified results never

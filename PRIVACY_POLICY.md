@@ -40,6 +40,14 @@ for no other purpose.
 **Abuse reports.** If you report content, we store the report (what was
 reported, the reason you chose, and a text excerpt) so a human can review it.
 
+**Product usage signals (first-party).** To understand whether Morphe
+actually works — do people come back, does the first workout happen — the
+app records a small set of named milestone events (for example "active
+today," "first workout logged," "shared a card") tied to your account id
+and a date. This is our own measurement: **no third-party analytics SDK is
+involved, nothing is fingerprinted, and no advertising identifiers exist
+in the app.** These events are deleted with your account.
+
 ## Apple Health (optional, off by default)
 
 - **Writing:** with "Sync to Health" on, each workout you log is saved to

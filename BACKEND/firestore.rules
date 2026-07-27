@@ -111,6 +111,27 @@ service cloud.firestore {
       }
     }
 
+    // First-party telemetry — WRITE-ONLY, own-uid, tiny fixed shape. The
+    // app's own measurement (disclosed in the privacy policy): no third-
+    // party SDK ever sees it, clients can never read it back, and the only
+    // reader is the founder's service-account report tool.
+    match /telemetry/{eventId} {
+      // Own events readable/deletable ONLY by their author — that's what
+      // makes the policy's "deleted with your account" true client-side.
+      // Nobody can ever read anyone else's events; the aggregate reader is
+      // the founder's service account (Tools/metrics_report.py).
+      allow read, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'day', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.day is string
+        && request.resource.data.day.size() <= 10;
+      allow update: if false;
+    }
+
     // Abuse reports — WRITE-ONLY from clients. Any signed-in user may file
     // one about a post, comment, or user; nobody can read, edit, or delete
     // them from an app. Review happens with the service account via

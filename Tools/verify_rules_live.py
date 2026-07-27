@@ -163,6 +163,20 @@ try:
     check("B reads A's block list", False,
           fs_call(B, "GET", f"users/{A['uid']}/blocked/{B['uid']}"))
 
+    print("\n— Telemetry (first-party, own-uid) —")
+    check("A records own telemetry event", True,
+          fs_call(A, "PATCH", f"telemetry/t-{RUN_ID}",
+                  {"fields": {"uid": s(A["uid"]), "name": s("day_active"),
+                              "day": s("2026-07-27")}}))
+    check("B forges telemetry AS A", False,
+          fs_call(B, "PATCH", f"telemetry/t-{RUN_ID}-f",
+                  {"fields": {"uid": s(A["uid"]), "name": s("day_active"),
+                              "day": s("2026-07-27")}}))
+    check("B reads A's telemetry event", False,
+          fs_call(B, "GET", f"telemetry/t-{RUN_ID}"))
+    check("A deletes own telemetry (the policy promise)", True,
+          fs_call(A, "DELETE", f"telemetry/t-{RUN_ID}"))
+
     print("\n— Reports (write-only) —")
     check("B files a valid report", True,
           fs_call(B, "PATCH", f"reports/r-{RUN_ID}",
@@ -213,6 +227,7 @@ finally:
         (B, f"posts/{post_id}/comments/c-{RUN_ID}"),
         (B, f"posts/{post_id}/reactions/{B['uid']}"),
         (A, f"posts/{post_id}"),
+        (A, f"telemetry/t-{RUN_ID}"),
         (A, f"users/{A['uid']}/state/profile"),
         (A, f"users/{A['uid']}/following/{B['uid']}"),
         (A, f"users/{A['uid']}/blocked/{B['uid']}"),

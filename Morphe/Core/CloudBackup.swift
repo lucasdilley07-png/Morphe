@@ -839,6 +839,59 @@ final class FirebaseFeedService: FeedSyncing {
     }
 }
 
+// MARK: - First-party telemetry (privacy-respecting measurement)
+//
+// The app's OWN measurement — no third-party SDK, no device fingerprint,
+// no ad identifiers, disclosed in the privacy policy. One tiny doc per
+// event ({ uid, name, day, createdAt }), write-only from clients (rules
+// forbid reads), aggregated only by the founder via the service account
+// (Tools/metrics_report.py). This is how retention/activation/loop
+// attribution get measured WITHOUT breaking the no-trackers promise.
+//
+// Firestore layout: telemetry/{autoId} { uid, name, day, createdAt }
+
+protocol TelemetrySyncing: AnyObject {
+    /// Fire-and-forget event write. `day` is the local calendar day key.
+    func record(uid: String, name: String, day: String)
+    /// Account deletion: removes every event this uid ever recorded — the
+    /// policy's "deleted with your account" promise, kept client-side.
+    func eraseAll(uid: String) async
+}
+
+final class NoOpTelemetryService: TelemetrySyncing {
+    func record(uid: String, name: String, day: String) {}
+    func eraseAll(uid: String) async {}
+}
+
+final class FirebaseTelemetryService: TelemetrySyncing {
+    private var db: Firestore { Firestore.firestore() }
+
+    func record(uid: String, name: String, day: String) {
+        db.collection("telemetry").addDocument(data: [
+            "uid": uid,
+            "name": String(name.prefix(40)),
+            "day": String(day.prefix(10)),
+            "createdAt": FieldValue.serverTimestamp()
+        ])
+    }
+
+    func eraseAll(uid: String) async {
+        // Batched: query own events (rules allow reading exactly these),
+        // delete, repeat until empty. Best-effort like the other erases.
+        while true {
+            guard let snapshot = try? await db.collection("telemetry")
+                .whereField("uid", isEqualTo: uid)
+                .limit(to: 200)
+                .getDocuments(),
+                  !snapshot.documents.isEmpty else { return }
+            for document in snapshot.documents {
+                try? await document.reference.delete()
+            }
+            if snapshot.documents.count < 200 { return }
+        }
+    }
+}
+
 // MARK: - Appointments (personal schedule, per-doc sync)
 //
 // Each appointment is its OWN document — users/{uid}/appointments/{id} —

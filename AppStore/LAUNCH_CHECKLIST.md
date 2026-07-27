@@ -49,3 +49,19 @@ Add the 4 screenshots, finalize the description, set age rating 4+ and category 
 - Replace the placeholder **app icon** (a plain "M") with real branding.
 - A full **accessibility** pass (only core nav is labeled so far).
 - ~~Train "Good for Today" leaked "Source: Lucas" / "With Buddy"~~ — fixed.
+
+## 5. The 90-day proof window (the investor-audit milestone sheet)
+
+The clock starts the day the app is live on TestFlight. All measurement is
+first-party (telemetry collection + Tools/metrics_report.py) — run the
+report weekly, same day, and log the table in a spreadsheet.
+
+- Week 0: pay the $99, upload the build, invite 10 internal testers.
+- Weeks 1-2: fix what the first 25 strangers hit; App Store submission.
+- Weeks 1-12: coach pilot per docs/COACH-PILOT.md (10-25 paying coaches,
+  attach ≥60%).
+- The consumer bar that changes conversations: D30 ≥ 10-12% (3x the 3-4%
+  category average), organic k measurably > 0 (share_card_shared +
+  referral_consumed events), activation (first log) ≥ 40% of sign-ups.
+- Week 12 decision point: coach wedge proven → raise or keep bootstrapping
+  with revenue; disproven → consumer bootstrap path, no raise.

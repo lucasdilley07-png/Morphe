@@ -4077,3 +4077,80 @@ final class BacklogBatchTests: XCTestCase {
         XCTAssertEqual(store.visibleManagedClients.count, 2)
     }
 }
+
+// MARK: - First-party telemetry (milestone instrumentation)
+
+@MainActor
+final class TelemetryTests: XCTestCase {
+
+    final class SpyTelemetry: TelemetrySyncing {
+        var events: [(uid: String, name: String, day: String)] = []
+        func record(uid: String, name: String, day: String) {
+            events.append((uid, name, day))
+        }
+        func eraseAll(uid: String) async {
+            events.removeAll { $0.uid == uid }
+        }
+    }
+
+    override func setUp() {
+        super.setUp()
+        _ = MorpheAppStore()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    func testDayActiveDedupesAndMilestonesFire() {
+        let spy = SpyTelemetry()
+        let store = MorpheAppStore(telemetryService: spy)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        // Fresh uid every run — the day-active dedupe key is per-uid in
+        // UserDefaults and must not leak across test invocations.
+        let uid = "uid-\(UUID().uuidString)"
+        store.authUser = AppUser(
+            id: uid, email: "t@morphe.app", role: .athlete,
+            displayName: "Sarah", createdAt: .now
+        )
+
+        store.trackDayActiveIfNeeded()
+        store.trackDayActiveIfNeeded()
+        XCTAssertEqual(spy.events.filter { $0.name == "day_active" }.count, 1,
+                       "one active-day event per account per calendar day")
+        XCTAssertEqual(spy.events.first?.uid, uid, "events carry the account id, nothing else")
+
+        // Activation fires on the FIRST logged workout only.
+        store.beginLiveWorkout(store.workoutTemplates.first!)
+        store.completeTrackedSet(reps: 8, weight: 50, allowExtra: true)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+        XCTAssertEqual(spy.events.filter { $0.name == "activation_first_log" }.count, 1)
+        XCTAssertEqual(spy.events.filter { $0.name == "workout_logged" }.count, 1)
+
+        store.beginLiveWorkout(store.workoutTemplates.first!)
+        store.completeTrackedSet(reps: 8, weight: 50, allowExtra: true)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+        XCTAssertEqual(spy.events.filter { $0.name == "activation_first_log" }.count, 1,
+                       "the second workout is not a second activation")
+        XCTAssertEqual(spy.events.filter { $0.name == "workout_logged" }.count, 2)
+
+        // Check-in milestone.
+        store.submitRecoveryCheckIn(sleepHours: 7, energy: 6, soreness: 3, mood: 7, pain: false)
+        XCTAssertEqual(spy.events.filter { $0.name == "checkin_completed" }.count, 1)
+    }
+
+    func testNoEventsWithoutAnAccount() {
+        let spy = SpyTelemetry()
+        let store = MorpheAppStore(telemetryService: spy)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        // Signed out: nothing to attribute, nothing recorded.
+        store.trackDayActiveIfNeeded()
+        store.beginLiveWorkout(store.workoutTemplates.first!)
+        store.completeTrackedSet(reps: 8, weight: 50, allowExtra: true)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+        XCTAssertTrue(spy.events.isEmpty, "no account, no telemetry — ever")
+    }
+}
