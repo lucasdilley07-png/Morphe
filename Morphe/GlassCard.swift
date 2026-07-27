@@ -98,15 +98,21 @@ struct GlassCard<Content: View>: View {
 struct SectionTitleView: View {
     let title: String
     let subtitle: String
+    /// Page-level headers directly under the floating profile icon drop the
+    /// leading tick (it read as a stray arrow there); section headers deeper
+    /// in a page keep it.
+    var showsIndexTick: Bool = true
 
     var body: some View {
         // HUD header: accent index tick, tracked mono title, hairline rule
         // running to the trailing edge.
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
-                Rectangle()
-                    .fill(MorpheTheme.accent)
-                    .frame(width: 3, height: 14)
+                if showsIndexTick {
+                    Rectangle()
+                        .fill(MorpheTheme.accent)
+                        .frame(width: 3, height: 14)
+                }
 
                 Text(title.uppercased())
                     // microLabel scales with Dynamic Type; the .bold keeps
@@ -1271,6 +1277,8 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
             }
         }
         .padding(.horizontal, 6)
+        // Bottom keeps its ink strip + hairline (per Lucas's on-device
+        // read: dock stays solid; only the TOP is chrome-free icons).
         .background(
             MorpheTheme.ink.opacity(0.94)
                 .ignoresSafeArea(edges: .bottom)

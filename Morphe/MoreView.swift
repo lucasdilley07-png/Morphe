@@ -41,7 +41,8 @@ struct MoreView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitleView(
                 title: "Learn",
-                subtitle: "Exercise help, recovery, nutrition basics, and short lessons in one place."
+                subtitle: "Exercise help, recovery, nutrition basics, and short lessons in one place.",
+                showsIndexTick: false
             )
             .padding(.horizontal, 20)
 

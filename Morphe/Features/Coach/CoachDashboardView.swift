@@ -435,7 +435,7 @@ private struct CoachCommandCenterScreen: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.top, 36)
             .padding(.bottom, 120)
         }
         .sheet(item: $sessionRequest) { request in
@@ -1448,7 +1448,7 @@ private struct CoachProgramsScreen: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.top, 36)
             .padding(.bottom, 120)
         }
         // Pull to re-check the roster — claim status changes on a server the
@@ -1853,7 +1853,7 @@ private struct CoachNetworkScreen: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.top, 36)
             .padding(.bottom, 120)
         }
     }
@@ -2483,7 +2483,7 @@ private struct CoachPerformanceScreen: View {
                 CoachQualityAnalyticsCard(analytics: store.coachAnalytics)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.top, 36)
             .padding(.bottom, 120)
         }
     }
@@ -2561,7 +2561,7 @@ private struct CoachMessagesScreen: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .padding(.top, 8)
+        .padding(.top, 36)
         .padding(.bottom, 120)
         // Real threads live in Firestore — fresh on every Inbox visit.
         .task { await store.refreshThreads() }

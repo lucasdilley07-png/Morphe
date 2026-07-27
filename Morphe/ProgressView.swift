@@ -232,7 +232,8 @@ struct ProgressScreenView: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Progress",
-                    subtitle: "Your weekly story and the proof that the work is moving somewhere."
+                    subtitle: "Your weekly story and the proof that the work is moving somewhere.",
+                    showsIndexTick: false
                 )
 
                 ProgressHeroStrip(

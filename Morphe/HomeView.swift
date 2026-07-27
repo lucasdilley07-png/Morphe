@@ -238,7 +238,9 @@ struct HomeView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 8)
+            // Starts clearly BELOW the floating profile icon, matching where
+            // the Progress/Learn titles sit.
+            .padding(.top, 36)
             .padding(.bottom, 120)
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)

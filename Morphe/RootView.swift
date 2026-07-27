@@ -410,13 +410,12 @@ private struct ClientExperienceShell: View {
                 .tag(ClientTab.more)
         }
         .safeAreaInset(edge: .top) {
-            // SOLID band, not transparent: scrolled content used to show
-            // through the avatar/quick-add icons and read as "cut off".
-            // The ink fill extends up through the status bar and the header
-            // now owns its space — page titles start fully below it.
+            // NO header band, NO hairline — just the icons floating over the
+            // page. The inset still pushes page content to start below the
+            // icon row; the icon BUTTONS are individually solid so content
+            // scrolling beneath never shows through them.
             ClientPinnedHeader()
                 .padding(.horizontal, 16)
-                .background(MorpheTheme.ink.ignoresSafeArea(edges: .top))
         }
         .safeAreaInset(edge: .bottom) {
             // Edge-to-edge slim strip — the bar draws its own ink into the
@@ -464,16 +463,8 @@ private struct ClientPinnedHeader: View {
             }
         }
         .padding(.horizontal, 2)
-        .padding(.top, 4)
-        // Extra room below the icons so page titles ("Today's Workout",
-        // "Train", …) start clearly UNDER the header, never beside it.
-        .padding(.bottom, 12)
-        // Flat header — the hairline sits at the band's true bottom edge.
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.white.opacity(0.08))
-                .frame(height: 1)
-        }
+        .padding(.vertical, 4)
+        // No hairline, no band — icons only, page content indented below.
     }
 }
 
@@ -592,7 +583,13 @@ private struct HeaderCircleButton: View {
                 .font(.system(.subheadline).weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
+                // Solid fill: the button floats OVER scrolling content, so
+                // its face must be opaque — never text showing through.
                 .background(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .fill(MorpheTheme.ink)
+                )
+                .overlay(
                     RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .stroke(Color.white.opacity(0.16), lineWidth: 1)
                 )
