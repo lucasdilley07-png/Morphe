@@ -410,10 +410,13 @@ private struct ClientExperienceShell: View {
                 .tag(ClientTab.more)
         }
         .safeAreaInset(edge: .top) {
-            // Transparent over content — the hairline inside the header is
-            // the only chrome; no filled band.
+            // SOLID band, not transparent: scrolled content used to show
+            // through the avatar/quick-add icons and read as "cut off".
+            // The ink fill extends up through the status bar and the header
+            // now owns its space — page titles start fully below it.
             ClientPinnedHeader()
                 .padding(.horizontal, 16)
+                .background(MorpheTheme.ink.ignoresSafeArea(edges: .top))
         }
         .safeAreaInset(edge: .bottom) {
             // Edge-to-edge slim strip — the bar draws its own ink into the
@@ -461,8 +464,11 @@ private struct ClientPinnedHeader: View {
             }
         }
         .padding(.horizontal, 2)
-        .padding(.vertical, 4)
-        // Flat header — the hairline below is the only chrome.
+        .padding(.top, 4)
+        // Extra room below the icons so page titles ("Today's Workout",
+        // "Train", …) start clearly UNDER the header, never beside it.
+        .padding(.bottom, 12)
+        // Flat header — the hairline sits at the band's true bottom edge.
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(Color.white.opacity(0.08))
