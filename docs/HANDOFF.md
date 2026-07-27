@@ -1,10 +1,11 @@
 # Morphe — Project Handoff
 
-One-file briefing for a fresh session. Last updated 2026-07-27, after the
-FOURTH audit's fix pass (layout consistency, tool hardening, honest App
-Store copy; ~205 automated tests green — run the suite for the exact
-count). Deployed to Lucas's iPhone 17 Pro Max 2026-07-27 (includes the
-floating-header layout iteration). Free-team signing expires ~2026-08-03.
+One-file briefing for a fresh session. Last updated 2026-07-27 end of
+session: 4 engineering audits + 1 investor audit all executed, milestone
+sheet shipped (first-party telemetry live, coach pilot playbook, pricing
+proposals). 207 automated tests green. Deployed to Lucas's iPhone 17 Pro
+Max 2026-07-27. Free-team signing expires ~2026-08-03. Rules ruleset
+f862d86e live, 39/39 behavioral checks.
 
 ## What Morphe is
 
@@ -38,6 +39,12 @@ the feed, Train Together parties, coach↔claimed-client messaging,
 the doc), story share-card images (ImageRenderer), morphe:// referral
 deep links (also routes party/connect QRs), report/block/content-filter
 (App Store 1.2), server-granted verification.
+
+**Measurement (first-party, disclosed)**: telemetry/ collection — 10
+milestone events (day_active deduped, activation_first_log, shares,
+referral_consumed, coach_claimed…), erased with account deletion;
+`python3 Tools/metrics_report.py` = activation + D1/D7/D30 weekly
+cohorts + loop counts. No third-party analytics ever (brand promise).
 
 **Ecosystem**: HealthKit write (workouts) + read (sleep pre-fill, opt-in),
 home/lock-screen widgets (App Group group.com.morpheapp.Morphe), cloud
@@ -94,9 +101,17 @@ follower counts, payments activation (`docs/PAYMENTS.md`).
    Health toggle), widget gallery add, share-card render, a full
    program session, account-deletion flow on a throwaway account.
 3. **$99 Apple Developer Program** — gates TestFlight, IAP flag-flip, and
-   Universal Links. THE remaining unlock.
+   Universal Links. THE remaining unlock; every clock in
+   AppStore/LAUNCH_CHECKLIST.md §5 (90-day proof window) starts here.
 3b. **Retake App Store screenshots** — AppStore/screenshots/ are from
    June 14, two header redesigns old. Retake after the UI settles.
+3c. **Pricing sign-off** — docs/PAYMENTS.md now carries PROPOSED numbers
+   (coach SaaS $39/mo/$349/yr, phase-2 take rate 10%, consumer Pro
+   $5.99/$39.99; coach IAP ids scaffolded dormant). Lucas approves or
+   overrides BEFORE App Store Connect setup.
+3d. **Coach pilot** — docs/COACH-PILOT.md: 10-25 paying coaches in 90
+   days, weekly Tools/metrics_report.py numbers, explicit kill criteria.
+   This is the fundable-wedge experiment from the investor audit.
 4. ✅ **docs/index.html regenerated 2026-07-26** from the new policy —
    ready to host via GitHub Pages (LAUNCH_CHECKLIST step 1).
 5. Compliance is otherwise launch-ready: privacy policy rewritten
