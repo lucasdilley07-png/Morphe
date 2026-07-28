@@ -98,10 +98,17 @@ struct ProgressScreenView: View {
         store.athletePatternInsights
     }
 
-    private var sourceTrendInsight: SourceTrendInsightData {
-        let calendar = Calendar.current
+    /// Allocated once — a DateFormatter built inside a body-computed
+    /// property was a per-render allocation on every Progress pass.
+    private static let weekLabelFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
+        return formatter
+    }()
+
+    private var sourceTrendInsight: SourceTrendInsightData {
+        let calendar = Calendar.current
+        let formatter = Self.weekLabelFormatter
 
         let weekBuckets = Dictionary(grouping: currentLogs) { log -> Date in
             let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: log.completedAt)

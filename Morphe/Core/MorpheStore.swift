@@ -3366,7 +3366,9 @@ final class MorpheAppStore {
         if leaderboardFetchState != .loaded { leaderboardFetchState = .loading }
         let weekKey = LeaderboardWeek.key()
         if let top = await leaderboardService.fetchTop(weekKey: weekKey, limit: 50) {
-            weeklyLeaderboard = top
+            withAnimation(.easeInOut(duration: 0.25)) {
+                weeklyLeaderboard = top
+            }
             leaderboardFetchState = .loaded
         } else if weeklyLeaderboard.isEmpty {
             // Failed with nothing on screen — show it, don't fake "no
@@ -3526,7 +3528,9 @@ final class MorpheAppStore {
                 refreshed.append(known)
             }
         }
-        activeChallenges = refreshed.sorted { $0.endsAt < $1.endsAt }
+        withAnimation(.easeInOut(duration: 0.25)) {
+            activeChallenges = refreshed.sorted { $0.endsAt < $1.endsAt }
+        }
         challengesFetchState = (anyFetched || !refreshed.isEmpty) ? .loaded : .failed
     }
 
@@ -6598,7 +6602,16 @@ final class MorpheAppStore {
         showQuickAdd = false
     }
 
+    /// True once the user has EVER opened Morphe AI — flips the floating
+    /// pill to its compact circle for good (the wide label is an intro,
+    /// not furniture).
+    var hasUsedAIAgent: Bool = UserDefaults.standard.bool(forKey: "morphe.ai.used")
+
     func openAIAgent() {
+        if !hasUsedAIAgent {
+            hasUsedAIAgent = true
+            UserDefaults.standard.set(true, forKey: "morphe.ai.used")
+        }
         showAIAgent = true
         Haptics.impact(.light)
     }
@@ -8457,10 +8470,14 @@ final class MorpheAppStore {
             // the term filter is the App Store 1.2 hygiene net for content
             // other clients let through. workoutName is user-typed text too —
             // a slur in the pill is still a slur.
-            feedPosts = fetched.filter {
-                !blockedUids.contains($0.authorUid)
-                    && !ContentModeration.containsBlockedTerm($0.text)
-                    && !ContentModeration.containsBlockedTerm($0.workoutName)
+            // Arrivals fade in instead of popping — the shell animates,
+            // the content shouldn't snap.
+            withAnimation(.easeInOut(duration: 0.25)) {
+                feedPosts = fetched.filter {
+                    !blockedUids.contains($0.authorUid)
+                        && !ContentModeration.containsBlockedTerm($0.text)
+                        && !ContentModeration.containsBlockedTerm($0.workoutName)
+                }
             }
             feedReactionCounts = await feedService.fetchReactionCounts(postIds: feedPosts.map(\.id))
             // Hydrate the filled-heart state: which of these posts THIS

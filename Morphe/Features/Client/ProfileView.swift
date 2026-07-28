@@ -387,7 +387,7 @@ struct ProfileView: View {
                             .tracking(1.4)
                             .foregroundStyle(MorpheTheme.textMuted)
                         Text("\(store.currentLevelNumber)")
-                            .font(.system(size: 34, design: .monospaced).weight(.bold))
+                            .scaledFont(size: 34, weight: .bold, design: .monospaced)
                             .foregroundStyle(MorpheTheme.accent)
                     }
 
@@ -489,7 +489,7 @@ struct ProfileView: View {
                 .overlay(Circle().stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1.5))
 
                 Image(systemName: "camera.fill")
-                    .font(.system(size: 11, weight: .bold))
+                    .scaledFont(size: 11, weight: .bold)
                     .foregroundStyle(.black)
                     .padding(5)
                     .background(Circle().fill(MorpheTheme.accent))
@@ -1078,11 +1078,11 @@ struct ProfileView: View {
                         .stroke(.white, lineWidth: 2)
                         .frame(width: 36, height: 36)
                     Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .bold))
+                        .scaledFont(size: 12, weight: .bold)
                         .foregroundStyle(.black)
                 } else if !isUnlocked {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 10, weight: .bold))
+                        .scaledFont(size: 10, weight: .bold)
                         .foregroundStyle(.white.opacity(0.85))
                 }
             }

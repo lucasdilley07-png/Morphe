@@ -1540,7 +1540,8 @@ private struct ActiveWorkoutTrackerCard: View {
                             onCoarseDown: nil,
                             onDown: { repsToLog = max(1, repsToLog - 1) },
                             onUp: { repsToLog = min(50, repsToLog + 1) },
-                            onCoarseUp: nil
+                            onCoarseUp: nil,
+                            onDirectEntry: { repsToLog = max(1, min(50, Int($0))) }
                         )
 
                         SetConsoleRow(
@@ -1550,7 +1551,8 @@ private struct ActiveWorkoutTrackerCard: View {
                             onCoarseDown: { weight = max(0, weight - coarseWeightStep) },
                             onDown: { weight = max(0, weight - weightStep) },
                             onUp: { weight += weightStep },
-                            onCoarseUp: { weight += coarseWeightStep }
+                            onCoarseUp: { weight += coarseWeightStep },
+                            onDirectEntry: { weight = max(0, $0) }
                         )
 
                         if let plateBreakdown {
@@ -1634,6 +1636,14 @@ private struct SetConsoleRow: View {
     let onDown: () -> Void
     let onUp: () -> Void
     let onCoarseUp: (() -> Void)?
+    /// Non-nil makes the value tap-to-type: the display swaps for a
+    /// numeric field, and committing (focus loss) hands the number back.
+    /// Steppers stay the fast path; typing is for "put 102.5 in NOW".
+    var onDirectEntry: ((Double) -> Void)? = nil
+
+    @State private var isTyping = false
+    @State private var draft = ""
+    @FocusState private var fieldFocused: Bool
 
     var body: some View {
         HStack(spacing: 8) {
@@ -1648,19 +1658,55 @@ private struct SetConsoleRow: View {
             }
             ConsoleStepButton(title: "−", action: onDown)
 
-            Text(value)
-                .font(.system(.title3, design: .monospaced).weight(.bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .frame(maxWidth: .infinity)
-                .accessibilityLabel("\(label) \(value)")
+            if isTyping, let onDirectEntry {
+                TextField("", text: $draft)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.center)
+                    .font(.system(.title3, design: .monospaced).weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .focused($fieldFocused)
+                    .onAppear { fieldFocused = true }
+                    .onChange(of: fieldFocused) { _, focused in
+                        if !focused { commit(onDirectEntry) }
+                    }
+            } else if let onDirectEntry {
+                Button {
+                    draft = ""
+                    isTyping = true
+                } label: {
+                    valueText
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(label) \(value) — double-tap to type a value")
+            } else {
+                valueText
+                    .accessibilityLabel("\(label) \(value)")
+            }
 
             ConsoleStepButton(title: "+", action: onUp)
             if let onCoarseUp, let coarseStep {
                 ConsoleStepButton(title: "+\(coarseStep)", action: onCoarseUp)
             }
         }
+    }
+
+    private var valueText: some View {
+        Text(value)
+            .font(.system(.title3, design: .monospaced).weight(.bold))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .frame(maxWidth: .infinity)
+    }
+
+    private func commit(_ handler: (Double) -> Void) {
+        defer { isTyping = false }
+        // Comma decimals type fine on EU keyboards; empty/garbage = no-op.
+        let normalized = draft.replacingOccurrences(of: ",", with: ".")
+        guard let parsed = Double(normalized), parsed.isFinite else { return }
+        handler(parsed)
     }
 }
 
@@ -2597,7 +2643,7 @@ private struct DiscoverCatalogSection: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "xmark")
-                                .font(.system(size: 9, weight: .bold))
+                                .scaledFont(size: 9, weight: .bold)
                             Text("Clear")
                             Text("\(activeFilterCount)")
                                 .font(.caption2.weight(.bold))
@@ -2661,7 +2707,7 @@ private struct DiscoverCatalogSection: View {
             HStack(spacing: 5) {
                 Text(selection.wrappedValue.map(title) ?? label)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .bold))
+                    .scaledFont(size: 8, weight: .bold)
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(isSelected ? .black : .white)
@@ -2689,7 +2735,7 @@ private struct DiscoverCatalogSection: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: Self.categorySymbols[category] ?? "square.grid.2x2")
-                    .font(.system(size: 17, weight: .semibold))
+                    .scaledFont(size: 17, weight: .semibold)
                     .foregroundStyle(MorpheTheme.accent)
                     .frame(width: 26)
 
@@ -2751,7 +2797,7 @@ private struct DiscoverCatalogSection: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 10, weight: .bold))
+                        .scaledFont(size: 10, weight: .bold)
                     Text("ALL STYLES")
                         .font(MorpheTheme.microLabel(10))
                         .tracking(1.4)
@@ -2799,7 +2845,7 @@ private struct DiscoverCatalogSection: View {
                 .frame(width: 3, height: 14)
 
             Text(title.uppercased())
-                .font(.system(size: 14, design: .monospaced).weight(.bold))
+                .scaledFont(size: 14, weight: .bold, design: .monospaced)
                 .tracking(2)
                 .foregroundStyle(MorpheTheme.textPrimary)
                 .lineLimit(1)
@@ -2976,14 +3022,15 @@ private struct DiscoverWorkoutDetailSheet: View {
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                         .accessibilityLabel("Start \(template.name) now")
 
-                        // Queue = stage as today's workout in Train without
-                        // starting the live session.
-                        Button("Queue") {
+                        // "Stage Today" (was "Queue"): sets it as today's
+                        // workout in Train WITHOUT starting the session —
+                        // the old label read like a synonym for Start.
+                        Button("Stage Today") {
                             dismiss()
                             store.openWorkoutTemplate(template)
                         }
                         .buttonStyle(SecondaryCTAButtonStyle())
-                        .accessibilityLabel("Queue \(template.name) in Train")
+                        .accessibilityLabel("Stage \(template.name) as today's workout without starting")
 
                         Button(store.isCatalogWorkoutSaved(template) ? "Saved" : "Save") {
                             store.saveCatalogWorkout(template)
@@ -3393,7 +3440,7 @@ struct TrainTogetherSheet: View {
                     }
 
                     Text(party.id)
-                        .font(.system(size: 30, design: .monospaced).weight(.bold))
+                        .scaledFont(size: 30, weight: .bold, design: .monospaced)
                         .tracking(6)
                         .foregroundStyle(MorpheTheme.accent)
 
@@ -4032,7 +4079,7 @@ private struct CircuitModeView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(title.uppercased())
-                    .font(.system(size: 17, design: .monospaced).weight(.heavy))
+                    .scaledFont(size: 17, weight: .heavy, design: .monospaced)
                     .tracking(2)
                     .foregroundStyle(.white)
                 Spacer()
@@ -4143,7 +4190,7 @@ private struct CircuitModeView: View {
                         .tracking(2.2)
                         .foregroundStyle(segmentColor)
                     Text(timeString(remaining))
-                        .font(.system(size: 58, design: .monospaced).weight(.heavy))
+                        .scaledFont(size: 58, weight: .heavy, design: .monospaced)
                         .foregroundStyle(.white)
                         .contentTransition(.numericText(countsDown: true))
                         .animation(.linear(duration: 0.3), value: remaining)
@@ -4994,9 +5041,9 @@ private struct SavedWorkoutsLibraryCard: View {
                                 Spacer()
 
                                 Menu {
-                                    // Queue = make it today's workout, staged
-                                    // in Train without starting the session.
-                                    Button("Queue") {
+                                    // Stage Today = make it today's workout,
+                                    // staged in Train without starting.
+                                    Button("Stage Today") {
                                         onQueue(item)
                                     }
 

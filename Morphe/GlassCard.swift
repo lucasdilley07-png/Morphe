@@ -292,13 +292,13 @@ struct RecordStampOverlay: View {
 
             VStack(spacing: 0) {
                 Text(moment.kicker)
-                    .font(.system(size: 13, design: .monospaced).weight(.bold))
+                    .scaledFont(size: 13, weight: .bold, design: .monospaced)
                     .tracking(3)
                     .foregroundStyle(MorpheTheme.brandYellow)
                     .padding(.bottom, 16)
 
                 Text(moment.headline)
-                    .font(.system(size: 34, weight: .black))
+                    .scaledFont(size: 34, weight: .black)
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .lineLimit(3)
@@ -306,12 +306,12 @@ struct RecordStampOverlay: View {
                     .padding(.bottom, 14)
 
                 Text(moment.valueLine.uppercased())
-                    .font(.system(size: 28, design: .monospaced).weight(.bold))
+                    .scaledFont(size: 28, weight: .bold, design: .monospaced)
                     .foregroundStyle(MorpheTheme.brandYellow)
 
                 if !moment.detailLine.isEmpty {
                     Text(moment.detailLine.uppercased())
-                        .font(.system(size: 12, design: .monospaced).weight(.semibold))
+                        .scaledFont(size: 12, weight: .semibold, design: .monospaced)
                         .tracking(1.6)
                         .foregroundStyle(Color.white.opacity(0.55))
                         .padding(.top, 10)
@@ -1656,7 +1656,7 @@ struct ManifestoCard: View {
                 // Brand yellow on purpose — the motto doesn't follow the
                 // user's accent palette, same as the share card footer.
                 Text("TRAIN HONEST")
-                    .font(.system(size: 13, design: .monospaced).weight(.bold))
+                    .scaledFont(size: 13, weight: .bold, design: .monospaced)
                     .tracking(2.4)
                     .foregroundStyle(MorpheTheme.brandYellow)
             }

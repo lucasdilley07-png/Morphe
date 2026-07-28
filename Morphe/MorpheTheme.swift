@@ -200,6 +200,49 @@ enum MorpheTheme {
     }
 }
 
+// MARK: - Dynamic Type for fixed-size HUD typography
+//
+// The HUD language is built on precise point sizes, which SwiftUI never
+// scales. `scaledFont` keeps the design sizes as the 1.0 baseline and
+// scales them with the user's type setting — capped, so a maxed-out
+// accessibility size grows the numerals ~40% instead of shattering the
+// instrument layouts. Offscreen renders (share-card posters) keep raw
+// .system sizes on purpose: they are images, not UI.
+
+extension DynamicTypeSize {
+    /// System-ish curve anchored at .large = 1.0, capped at 1.4.
+    var morpheScale: CGFloat {
+        switch self {
+        case .xSmall: return 0.86
+        case .small: return 0.92
+        case .medium: return 0.96
+        case .large: return 1.0
+        case .xLarge: return 1.06
+        case .xxLarge: return 1.12
+        case .xxxLarge: return 1.18
+        default: return 1.4   // accessibility sizes, capped
+        }
+    }
+}
+
+private struct ScaledSystemFont: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let size: CGFloat
+    let weight: Font.Weight
+    let design: Font.Design
+
+    func body(content: Content) -> some View {
+        content.font(.system(size: size * typeSize.morpheScale, weight: weight, design: design))
+    }
+}
+
+extension View {
+    /// Dynamic-Type-aware replacement for `.font(.system(size:weight:design:))`.
+    func scaledFont(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> some View {
+        modifier(ScaledSystemFont(size: size, weight: weight, design: design))
+    }
+}
+
 enum Haptics {
     static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
         let generator = UIImpactFeedbackGenerator(style: style)

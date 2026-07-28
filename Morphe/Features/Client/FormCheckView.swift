@@ -841,7 +841,7 @@ struct FormCheckView: View {
                 // and rep counter at the bottom.
                 if let flashGrade {
                     Text(flashGrade.rawValue.uppercased())
-                        .font(.system(size: 34, design: .monospaced).weight(.heavy))
+                        .scaledFont(size: 34, weight: .heavy, design: .monospaced)
                         .tracking(3)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 24).padding(.vertical, 12)
@@ -879,7 +879,7 @@ struct FormCheckView: View {
                     .font(MorpheTheme.microLabel(10)).tracking(1.6)
                     .foregroundStyle(MorpheTheme.accent)
                 Text(session.exerciseName.uppercased())
-                    .font(.system(size: 22, design: .monospaced).weight(.bold)).tracking(2)
+                    .scaledFont(size: 22, weight: .bold, design: .monospaced).tracking(2)
                     .foregroundStyle(.white)
             }
             Spacer()
@@ -906,7 +906,7 @@ struct FormCheckView: View {
             VStack(spacing: 12) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text("\(session.repCount)")
-                        .font(.system(size: 56, design: .monospaced).weight(.bold))
+                        .scaledFont(size: 56, weight: .bold, design: .monospaced)
                         .foregroundStyle(.white)
                         .contentTransition(.numericText())
                     Text("REPS")

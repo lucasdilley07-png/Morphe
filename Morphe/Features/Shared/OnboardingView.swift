@@ -25,7 +25,7 @@ struct LaunchSequenceView: View {
                 MorpheLoadingMark(size: 132)
 
                 Text("MORPHE")
-                    .font(.system(size: 28, design: .monospaced).weight(.bold))
+                    .scaledFont(size: 28, weight: .bold, design: .monospaced)
                     .tracking(6)
                     .foregroundStyle(.white)
 
@@ -286,7 +286,7 @@ struct OnboardingFlowView: View {
                                         color: MorpheTheme.accent
                                     )
 
-                                    Text("STEP \(stepIndex) / \(steps.count - 1)")
+                                    Text("STEP \(stepIndex + 1) / \(steps.count)")
                                         .font(MorpheTheme.microLabel(10))
                                         .tracking(1.4)
                                         .foregroundStyle(MorpheTheme.textMuted)
@@ -1112,7 +1112,7 @@ private struct PersonalizedPlanLoadingView: View {
             )
 
             Text("MORPHE")
-                .font(.system(size: 28, design: .monospaced).weight(.bold))
+                .scaledFont(size: 28, weight: .bold, design: .monospaced)
                 .tracking(6)
                 .foregroundStyle(.white)
 

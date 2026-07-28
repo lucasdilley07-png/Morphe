@@ -89,6 +89,17 @@ struct TermsGateView: View {
 
 struct RootView: View {
     @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Reduce Motion swaps travel for a quick crossfade — never zero
+    /// feedback, never a slide/spring.
+    private var shellAnimation: Animation {
+        reduceMotion ? .easeInOut(duration: 0.1) : .easeInOut(duration: 0.25)
+    }
+
+    private var celebrationAnimation: Animation {
+        reduceMotion ? .easeInOut(duration: 0.1) : .spring(response: 0.38, dampingFraction: 0.65)
+    }
 
     /// True only when the real app shell is showing — matches the routing in
     /// `body` (past the launch sequence, the auth wall, and onboarding).
@@ -222,12 +233,14 @@ struct RootView: View {
                         // Clears the floating icon row (52pt) instead of
                         // drawing over the avatar/quick-add buttons.
                         .padding(.top, 64)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .transition(reduceMotion
+                            ? .opacity
+                            : .move(edge: .top).combined(with: .opacity))
                 }
 
                 if let celebration = store.celebration {
                     CelebrationOverlay(moment: celebration)
-                        .transition(.scale.combined(with: .opacity))
+                        .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
                 }
             }
             .padding(.horizontal, 20)
@@ -254,18 +267,20 @@ struct RootView: View {
                     onShareCompleted: { store.noteShareCardShared(.pr) },
                     onDismiss: { store.dismissRecordStamp() }
                 )
-                .transition(.scale(scale: 1.06).combined(with: .opacity))
+                .transition(reduceMotion ? .opacity : .scale(scale: 1.06).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: store.selectedRole)
-        .animation(.easeInOut(duration: 0.25), value: store.selectedClientTab)
-        .animation(.easeInOut(duration: 0.25), value: store.selectedCoachTab)
-        .animation(.easeInOut(duration: 0.25), value: store.toastMessage)
+        // Reduce Motion: crossfades instead of moves/springs — the beats
+        // still land, they just don't travel.
+        .animation(shellAnimation, value: store.selectedRole)
+        .animation(shellAnimation, value: store.selectedClientTab)
+        .animation(shellAnimation, value: store.selectedCoachTab)
+        .animation(shellAnimation, value: store.toastMessage)
         // The celebrations are the app's ONE emotional beat — the banner and
         // the full-screen stamp get a spring pop where everything else stays
         // mechanical.
-        .animation(.spring(response: 0.38, dampingFraction: 0.65), value: store.celebration)
-        .animation(.spring(response: 0.38, dampingFraction: 0.65), value: store.recordStamp)
+        .animation(celebrationAnimation, value: store.celebration)
+        .animation(celebrationAnimation, value: store.recordStamp)
         // Referral deep links (morphe://invite/<username>) land here whether
         // the app was cold-launched or already running.
         .onOpenURL { url in
@@ -552,7 +567,12 @@ private struct FloatingAIAgentButton: View {
     }
 
     private var isCompact: Bool {
-        store.selectedRole == .client && store.selectedClientTab == .train && store.isWorkoutSessionActive
+        // The wide "Morphe AI" pill exists to introduce the feature — after
+        // the user has opened it once, it earns its keep as a small circle
+        // that stops floating over bottom-right content on every tab.
+        // A live Train session always compacts (screen space is training's).
+        store.hasUsedAIAgent
+            || (store.selectedRole == .client && store.selectedClientTab == .train && store.isWorkoutSessionActive)
     }
 
     var body: some View {
