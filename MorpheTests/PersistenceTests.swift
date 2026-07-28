@@ -3820,9 +3820,11 @@ final class StrengthAnalyticsTests: XCTestCase {
         let store = freshStore()
         XCTAssertNil(store.weeklyRecapData, "no logs, no recap")
 
+        // Mirror the implementation's Monday anchor (ISO weeks), not
+        // Calendar.current — in a US locale they disagree by a day.
         let calendar = Calendar.current
-        let thisWeekStart = calendar.dateInterval(of: .weekOfYear, for: .now)!.start
-        let lastWeekDay = calendar.date(byAdding: .day, value: -1, to: thisWeekStart)!
+        let thisWeekStart = LeaderboardWeek.start()
+        let lastWeekDay = thisWeekStart.addingTimeInterval(-86_400)
         let daysAgo = calendar.dateComponents(
             [.day],
             from: calendar.startOfDay(for: lastWeekDay),

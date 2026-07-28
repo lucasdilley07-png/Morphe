@@ -2845,12 +2845,13 @@ final class MorpheAppStore {
 
     /// The most recent COMPLETED Mon–Sun week as story-card facts — nil when
     /// that week holds no logged sessions (an empty recap is not a recap).
+    /// Monday-anchored via LeaderboardWeek (ISO), NOT Calendar.current —
+    /// a US locale starts weeks on Sunday, which would shift the window
+    /// and fire the "Monday" reminder on Sunday.
     var weeklyRecapData: WeeklyRecapData? {
-        let calendar = Calendar.current
-        guard let thisWeekStart = calendar.dateInterval(of: .weekOfYear, for: .now)?.start,
-              let lastWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeekStart)
-        else { return nil }
-        return weeklyRecapData(weekStart: lastWeekStart, weekEnd: thisWeekStart)
+        let thisWeekStart = LeaderboardWeek.start()
+        return weeklyRecapData(weekStart: thisWeekStart.addingTimeInterval(-7 * 86_400),
+                               weekEnd: thisWeekStart)
     }
 
     /// Recap facts for one [weekStart, weekEnd) window — every number is a
@@ -8716,10 +8717,12 @@ final class MorpheAppStore {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [Self.weeklyRecapNotificationID])
 
+        // Same Monday anchor as the board (ISO weeks) — Calendar.current
+        // would fire this on Sunday morning in a US locale.
         let calendar = Calendar.current
-        guard let thisWeekStart = calendar.dateInterval(of: .weekOfYear, for: .now)?.start,
-              let nextWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: thisWeekStart),
-              let recap = weeklyRecapData(weekStart: thisWeekStart, weekEnd: nextWeekStart),
+        let thisWeekStart = LeaderboardWeek.start()
+        let nextWeekStart = thisWeekStart.addingTimeInterval(7 * 86_400)
+        guard let recap = weeklyRecapData(weekStart: thisWeekStart, weekEnd: nextWeekStart),
               let fireDate = calendar.date(bySettingHour: 9, minute: 5, second: 0, of: nextWeekStart)
         else { return }
 

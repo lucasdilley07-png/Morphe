@@ -1426,7 +1426,10 @@ private struct PRTimelineCard: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Share a story card of the \(record.exerciseName) record")
                         }
-                        .accessibilityElement(children: .combine)
+                        // .contain (not .combine): combining would swallow
+                        // the share button — VoiceOver needs both the row
+                        // text and the action reachable.
+                        .accessibilityElement(children: .contain)
                         .accessibilityLabel(
                             "\(record.exerciseName) record: \(weightUnit.format(record.weight)), set \(MorpheAppStore.workoutDateLabel(for: record.date))"
                         )

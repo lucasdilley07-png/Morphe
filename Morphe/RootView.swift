@@ -232,19 +232,6 @@ struct RootView: View {
             }
             .padding(.horizontal, 20)
         }
-        .overlay {
-            // The escalated moment (PRs, finished programs) — full-screen,
-            // above everything, dismissed only by the user.
-            if let stamp = store.recordStamp {
-                RecordStampOverlay(
-                    moment: stamp,
-                    caption: store.shareCardCaption,
-                    onShareCompleted: { store.noteShareCardShared(.pr) },
-                    onDismiss: { store.dismissRecordStamp() }
-                )
-                .transition(.scale(scale: 1.06).combined(with: .opacity))
-            }
-        }
         .overlay(alignment: .bottomTrailing) {
             // Only in the real app shell — never over the sign-in or onboarding
             // screens (a signed-out account still has hasCompletedOnboarding set).
@@ -254,6 +241,20 @@ struct RootView: View {
                     // 12pt above the slim icon-only tab bar (~47pt tall).
                     .padding(.bottom, 59)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        // The escalated moment (PRs, finished programs) — full-screen and
+        // attached LAST so it covers everything, including the floating AI
+        // button. Dismissed only by the user.
+        .overlay {
+            if let stamp = store.recordStamp {
+                RecordStampOverlay(
+                    moment: stamp,
+                    caption: store.shareCardCaption,
+                    onShareCompleted: { store.noteShareCardShared(.pr) },
+                    onDismiss: { store.dismissRecordStamp() }
+                )
+                .transition(.scale(scale: 1.06).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: store.selectedRole)
