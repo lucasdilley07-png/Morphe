@@ -12,7 +12,12 @@ struct CommunityView: View {
         Group {
             switch store.selectedCommunitySection {
             case .forYou:
-                forYouScreen
+                // The stack hosts the feed's author push (swipe-back). The
+                // system bar stays hidden — the HUD has its own chrome.
+                NavigationStack {
+                    forYouScreen
+                        .toolbar(.hidden, for: .navigationBar)
+                }
             case .contact:
                 contactScreen
             }
@@ -1287,6 +1292,8 @@ private struct RealFeedSection: View {
     @State private var draft = ""
     @State private var filter: FeedFilter = .all
     @State private var repostTarget: FeedPost?
+    /// The post whose author view is pushed (a real push, swipe-back works).
+    @State private var authorTarget: FeedPost?
     @State private var athleteQuery = ""
 
     private enum FeedFilter: String, CaseIterable {
@@ -1355,14 +1362,21 @@ private struct RealFeedSection: View {
                 }
             } else {
                 ForEach(visiblePosts) { post in
-                    FeedPostCard(post: post) {
-                        repostTarget = post
-                    }
+                    FeedPostCard(
+                        post: post,
+                        onRepost: { repostTarget = post },
+                        onAuthorTap: { authorTarget = post }
+                    )
                 }
             }
         }
         .sheet(item: $repostTarget) { post in
             RepostSheet(post: post)
+        }
+        .navigationDestination(item: $authorTarget) { post in
+            FeedAuthorView(authorUid: post.authorUid,
+                           authorName: post.authorName,
+                           verified: post.verified)
         }
         .task {
             await store.refreshFeed()
@@ -1591,8 +1605,10 @@ private struct CompetitionPulseCard: View {
 /// posts from the currently loaded feed — nothing invented. (The richer
 /// NetworkProfilePreview sheet is demo-shaped — rank/mutuals it can't
 /// know for a real account — so the feed deliberately doesn't use it.)
-private struct FeedAuthorSheet: View {
+/// Pushed, not sheeted: edge-swipe-back plus the custom back row.
+private struct FeedAuthorView: View {
     @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
     let authorUid: String
     let authorName: String
     let verified: Bool
@@ -1606,6 +1622,22 @@ private struct FeedAuthorSheet: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
+                Button {
+                    dismiss()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                            .scaledFont(size: 10, weight: .bold)
+                        Text("FEED")
+                            .font(MorpheTheme.microLabel(10))
+                            .tracking(1.4)
+                    }
+                    .foregroundStyle(MorpheTheme.accent)
+                    .padding(.vertical, 6)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Back to the feed")
+
                 GlassCard {
                     HStack(spacing: 14) {
                         Circle()
@@ -1664,7 +1696,8 @@ private struct FeedAuthorSheet: View {
             }
             .padding(20)
         }
-        .background(MorpheTheme.ink)
+        .background(PremiumBackground().ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
@@ -1677,12 +1710,13 @@ private struct FeedPostCard: View {
     @Environment(MorpheAppStore.self) private var store
     let post: FeedPost
     let onRepost: () -> Void
+    /// Author block tap — the parent pushes the author view.
+    let onAuthorTap: () -> Void
 
     @State private var showComments = false
     @State private var commentDraft = ""
     @State private var showBlockConfirm = false
     @State private var commentBlockTarget: PostComment?
-    @State private var showAuthor = false
 
     private var isMine: Bool { post.authorUid == (store.authUser?.id ?? "") }
     private var hasReacted: Bool { store.myReactedPostIds.contains(post.id) }
@@ -1702,7 +1736,7 @@ private struct FeedPostCard: View {
                     // The author block is the profile door — a feed you can't
                     // navigate out of is a dead end.
                     Button {
-                        showAuthor = true
+                        onAuthorTap()
                     } label: {
                         HStack(spacing: 10) {
                             Circle()
@@ -1956,12 +1990,6 @@ private struct FeedPostCard: View {
                 commentBlockTarget = nil
             }
             Button("Cancel", role: .cancel) { commentBlockTarget = nil }
-        }
-        .sheet(isPresented: $showAuthor) {
-            FeedAuthorSheet(authorUid: post.authorUid,
-                            authorName: post.authorName,
-                            verified: post.verified)
-                .presentationDetents([.medium, .large])
         }
     }
 

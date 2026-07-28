@@ -858,7 +858,10 @@ struct DiscoverScreenView: View {
     @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
-        ScrollViewReader { proxy in
+        // The stack exists for the category drill-in: a real push with
+        // edge-swipe-back (the old in-place swap had neither, and needed a
+        // scroll-to-top hack because both "screens" shared one offset).
+        NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     SectionTitleView(
@@ -871,20 +874,14 @@ struct DiscoverScreenView: View {
                     DiscoverCatalogSection(
                         onStart: { template in
                             store.startCatalogWorkout(template)
-                        },
-                        // Entering or leaving a style must land at the top —
-                        // the in-place swap otherwise keeps the old offset and
-                        // strands the user mid-list with the header off-screen.
-                        onSelectionChange: {
-                            proxy.scrollTo("discoverTop", anchor: .top)
                         }
                     )
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, MorpheTheme.Spacing.pageTop)
                 .padding(.bottom, 120)
-                .id("discoverTop")
             }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
@@ -2078,10 +2075,15 @@ private struct LiveWorkoutSupportToolsCard: View {
 private struct DiscoverCatalogSection: View {
     @Environment(MorpheAppStore.self) private var store
     let onStart: (WorkoutTemplate) -> Void
-    var onSelectionChange: () -> Void = {}
 
-    private enum Selection: Equatable {
+    private enum Selection: Equatable, Hashable, Identifiable {
         case category(String)
+
+        var id: String {
+            switch self {
+            case .category(let tag): return tag
+            }
+        }
     }
 
     @State private var selection: Selection?
@@ -2226,21 +2228,28 @@ private struct DiscoverCatalogSection: View {
     }
 
     var body: some View {
-        Group {
-            if let selection {
-                detailView(selection)
-            } else {
-                landingGrid
+        // A REAL push (edge-swipe-back works) instead of the old in-place
+        // swap — the custom ALL STYLES button stays as the visible back
+        // affordance because the system bar is hidden app-wide.
+        landingGrid
+            .navigationDestination(item: $selection) { current in
+                ScrollView(showsIndicators: false) {
+                    detailView(current)
+                        .padding(.horizontal, 20)
+                        .padding(.top, MorpheTheme.Spacing.pageTop)
+                        .padding(.bottom, 120)
+                }
+                .background(PremiumBackground().ignoresSafeArea())
+                .toolbar(.hidden, for: .navigationBar)
             }
-        }
-        .sheet(isPresented: $showQRConnect) {
-            QRConnectSheet(mode: qrStartMode)
-                .environment(store)
-        }
-        .sheet(item: $detailTemplate) { template in
-            DiscoverWorkoutDetailSheet(template: template, onStart: { onStart(template) })
-                .environment(store)
-        }
+            .sheet(isPresented: $showQRConnect) {
+                QRConnectSheet(mode: qrStartMode)
+                    .environment(store)
+            }
+            .sheet(item: $detailTemplate) { template in
+                DiscoverWorkoutDetailSheet(template: template, onStart: { onStart(template) })
+                    .environment(store)
+            }
     }
 
     // MARK: - Landing: icon tile grid
@@ -2728,10 +2737,8 @@ private struct DiscoverCatalogSection: View {
 
     private func categoryTile(_ category: String, count: Int) -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                selection = .category(category)
-            }
-            onSelectionChange()
+            // NavigationStack animates the push itself.
+            selection = .category(category)
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: Self.categorySymbols[category] ?? "square.grid.2x2")
@@ -2790,10 +2797,8 @@ private struct DiscoverCatalogSection: View {
             Button {
                 // Filters survive the trip back — the combined row now lives
                 // on the landing too, so what you set here stays visible.
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    self.selection = nil
-                }
-                onSelectionChange()
+                // (Clearing the item pops the push; swipe-back does the same.)
+                self.selection = nil
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.left")
