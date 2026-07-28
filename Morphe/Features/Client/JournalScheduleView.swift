@@ -1079,7 +1079,9 @@ private struct CoachWorkoutLogEntryCard: View {
     }
 }
 
-private struct WorkoutLogEditorSheet: View {
+// Internal (not private): the athlete-side Workout History reuses this
+// editor for own-log corrections — one editor, both roles.
+struct WorkoutLogEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft: WorkoutLog
     let title: String

@@ -526,6 +526,24 @@ final class WorkoutSessionTests: XCTestCase {
                        "the share card carries the beaten record too")
     }
 
+    func testReplacingAFinishedSessionLogsItFirst() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        _ = store.finishTrackedWorkoutSession()
+        let logsBefore = store.currentAthleteWorkoutLogs.count
+
+        // Starting the next workout over a FINISHED-but-unlogged session
+        // must commit it, not discard it — finished sets are real facts.
+        store.startTodayWorkout()
+        XCTAssertNotNil(store.pendingWorkoutChange, "replacing session work asks first")
+        store.confirmPendingWorkoutChange()
+
+        XCTAssertEqual(store.currentAthleteWorkoutLogs.count, logsBefore + 1,
+                       "the finished session logged instead of vanishing")
+        XCTAssertTrue(store.isWorkoutSessionActive, "and the new session started")
+    }
+
     func testTrainingPreferencesPersistAndShareToggleReArms() {
         let store = freshStore()
         XCTAssertTrue(store.autoRestTimerEnabled, "auto rest ships on by default")
@@ -3669,6 +3687,28 @@ final class SocialFeedTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "morphe.referrals.written.uid-test")
     }
 
+    func testFetchStatesDistinguishLoadingFailedAndLoaded() async {
+        let store = signedInStore()
+        XCTAssertEqual(store.feedFetchState, .idle)
+
+        // NoOp services answer nil — with nothing on screen that's a
+        // VISIBLE failure, not an empty state.
+        await store.refreshFeed()
+        XCTAssertEqual(store.feedFetchState, .failed)
+        await store.refreshLeaderboard()
+        XCTAssertEqual(store.leaderboardFetchState, .failed)
+
+        // No joined challenges is the loaded truth, not a fetch gap.
+        await store.refreshChallenges()
+        XCTAssertEqual(store.challengesFetchState, .loaded)
+
+        // A failed RE-fetch never blanks a working surface.
+        store.feedPosts = [FeedPost(id: "p", authorUid: "u", authorName: "A", text: "t")]
+        store.feedFetchState = .loaded
+        await store.refreshFeed()
+        XCTAssertEqual(store.feedFetchState, .loaded)
+    }
+
     func testRecruiterPaletteUnlocksByReferralNotLevel() {
         let store = signedInStore()
         XCTAssertFalse(store.isPaletteUnlocked(.recruiter), "no joins, no Recruiter")
@@ -3814,6 +3854,31 @@ final class StrengthAnalyticsTests: XCTestCase {
         store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 1, reps: [8], weights: [135]))
         store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 0, reps: [8], weights: [135]))
         XCTAssertEqual(store.streakShareCardData?.streak, 2)
+    }
+
+    func testAthleteCanCorrectAndDeleteOwnLogs() {
+        let store = freshStore()
+        // The fat-fingered 500 that must not be permanent.
+        store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 0, reps: [8], weights: [500]))
+
+        var fixed = store.workoutLogs[0]
+        fixed.exercises[0].weightsPerSet = [150]
+        store.updateOwnWorkoutLog(fixed)
+        XCTAssertEqual(store.workoutLogs[0].exercises[0].weightsPerSet, [150])
+        XCTAssertEqual(store.recentPersonalRecords(limit: 5).first?.weight ?? 0, 150,
+                       "derived PRs recompute from the corrected log")
+
+        store.deleteOwnWorkoutLog(store.workoutLogs[0])
+        XCTAssertTrue(store.currentAthleteWorkoutLogs.isEmpty)
+        XCTAssertTrue(store.recentPersonalRecords(limit: 5).isEmpty,
+                      "a deleted log takes its records with it")
+
+        // Someone else's log is refused — own-log rule, not a free-for-all.
+        var foreign = log(for: store, exercise: "Row", daysAgo: 0, reps: [5], weights: [100])
+        foreign.athleteID = UUID()
+        store.workoutLogs.append(foreign)
+        store.deleteOwnWorkoutLog(foreign)
+        XCTAssertEqual(store.workoutLogs.count, 1, "not your log, not your delete")
     }
 
     func testComebackDetectsLapseOnceAndClearsOnAnswer() {

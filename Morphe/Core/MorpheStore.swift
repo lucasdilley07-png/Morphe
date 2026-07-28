@@ -126,6 +126,20 @@ final class MorpheAppStore {
     /// or the only saved workout is already staged).
     var showSwitchNeedsSavedWorkouts = false
     var selectedNetworkProfile: NetworkProfilePreview?
+    /// Set by a PR-timeline row tap: the Strength Over Time card adopts
+    /// this exercise and Progress scrolls to it, then clears it. The PR
+    /// list and the trend chart are the same data — they should connect.
+    var focusedStrengthExercise: String?
+
+    /// Load lifecycle for a fetched surface. Empty copy renders ONLY in a
+    /// loaded state — an empty screen during a fetch is a lie, and a
+    /// network failure the user can't see or retry is a dead end.
+    enum FetchState: Equatable {
+        case idle, loading, loaded, failed
+    }
+    var feedFetchState: FetchState = .idle
+    var leaderboardFetchState: FetchState = .idle
+    var challengesFetchState: FetchState = .idle
     // A tab named "Learn" opens to learning, not to a scoreboard.
     var selectedHubFeature: ClientHubFeature? = .learn
     var selectedCommunitySection: ClientCommunitySection = .forYou
@@ -3349,9 +3363,15 @@ final class MorpheAppStore {
     /// Pulls the top of this week's board, plus the user's own entry (which
     /// may sit outside the fetched top — shown honestly as unranked).
     func refreshLeaderboard() async {
+        if leaderboardFetchState != .loaded { leaderboardFetchState = .loading }
         let weekKey = LeaderboardWeek.key()
         if let top = await leaderboardService.fetchTop(weekKey: weekKey, limit: 50) {
             weeklyLeaderboard = top
+            leaderboardFetchState = .loaded
+        } else if weeklyLeaderboard.isEmpty {
+            // Failed with nothing on screen — show it, don't fake "no
+            // scores yet". A failed re-fetch keeps the standing board.
+            leaderboardFetchState = .failed
         }
         if leaderboardOptIn, let me = competitionSelf {
             weeklyLeaderboardSelfEntry = await leaderboardService.fetchEntry(weekKey: weekKey, uid: me.uid)
@@ -3489,16 +3509,25 @@ final class MorpheAppStore {
     /// Re-fetches every joined challenge. A code that can't be fetched right
     /// now (offline) keeps its last-known data instead of vanishing.
     func refreshChallenges() async {
-        guard !joinedChallengeCodes.isEmpty else { return }
+        guard !joinedChallengeCodes.isEmpty else {
+            // No joined challenges IS the loaded truth, not a fetch gap.
+            challengesFetchState = .loaded
+            return
+        }
+        if challengesFetchState != .loaded { challengesFetchState = .loading }
         var refreshed: [ChallengeSummary] = []
+        var anyFetched = false
         for code in joinedChallengeCodes {
             if let challenge = await leaderboardService.fetchChallenge(code: code) {
                 refreshed.append(challenge)
+                anyFetched = true
             } else if let known = activeChallenges.first(where: { $0.code == code }) {
+                // Offline keeps last-known data — that's content, not failure.
                 refreshed.append(known)
             }
         }
         activeChallenges = refreshed.sorted { $0.endsAt < $1.endsAt }
+        challengesFetchState = (anyFetched || !refreshed.isEmpty) ? .loaded : .failed
     }
 
     /// After a real log lands: mirror the new totals to the weekly board
@@ -5502,6 +5531,14 @@ final class MorpheAppStore {
     func confirmPendingWorkoutChange() {
         let change = pendingWorkoutChange
         pendingWorkoutChange = nil
+        // A FINISHED session's sets are real facts — replacing it must
+        // never silently discard them. Commit it first (exactly what "Log
+        // Workout" would have written; feedback simply goes unrecorded).
+        // Mid-session discards stay discards: the user answered a dialog
+        // that said so, and unfinished work is theirs to drop.
+        if hasCompletedWorkoutFlow {
+            logWorkout()
+        }
         change?.action()
     }
 
@@ -5709,6 +5746,23 @@ final class MorpheAppStore {
             if Double(rpe) >= 9.5 {
                 return "MORPHE SUGGESTS holding — last top set was RPE \(rpe)"
             }
+        }
+        return nil
+    }
+
+    /// The previous session's actual work for this exercise — the console's
+    /// "LAST:" line. Literal history (deloads included): the suggestion
+    /// line editorializes, this one just states what happened.
+    func lastSessionLine(forExerciseNamed name: String) -> String? {
+        for log in currentAthleteWorkoutLogs {   // newest first
+            guard let exercise = log.exercises.first(where: { $0.name == name }),
+                  let reps = exercise.repsPerSet, !reps.isEmpty else { continue }
+            let repsText = reps.prefix(6).map(String.init).joined(separator: "/")
+            let suffix = reps.count > 6 ? "…" : ""
+            let top = exercise.weightsPerSet?.max() ?? 0
+            guard top > 0 else { return "LAST: \(repsText)\(suffix) BW" }
+            let normalized = normalizedLoggedWeight(top, recordedUnit: exercise.weightUnit)
+            return "LAST: \(repsText)\(suffix) @ \(weightUnit.format(normalized))"
         }
         return nil
     }
@@ -8390,11 +8444,15 @@ final class MorpheAppStore {
     /// service) keeps whatever is local.
     func refreshFeed() async {
         guard let uid = authUser?.id else { return }
+        // Loaded content stays visible through a re-fetch; only a first
+        // load (or a retry after failure) shows the loading surface.
+        if feedFetchState != .loaded { feedFetchState = .loading }
         // Blocks load FIRST so the post filter below always has them.
         if let blocked = await feedService.fetchBlocked(uid: uid) {
             blockedAccounts = blocked
         }
         if let fetched = await feedService.fetchRecent(limit: 50) {
+            feedFetchState = .loaded
             // Two-layer render filter: blocked authors are the user's call;
             // the term filter is the App Store 1.2 hygiene net for content
             // other clients let through. workoutName is user-typed text too —
@@ -8412,6 +8470,11 @@ final class MorpheAppStore {
                 myReactedPostIds = Set(mine.keys)
                 myReactionTypes = mine
             }
+        } else if feedPosts.isEmpty {
+            // Nothing fetched AND nothing on screen — that's a failure the
+            // user must see, not an empty state. Existing content just
+            // stays: a failed re-fetch never blanks a working feed.
+            feedFetchState = .failed
         }
         if let saved = await feedService.fetchSavedPostIds(uid: uid) {
             savedPostIds = saved
@@ -9216,6 +9279,29 @@ final class MorpheAppStore {
         workoutLogs.removeAll { $0.id == log.id }
         refreshWorkoutLogDerivedState(for: log.athleteID)
         showToast("Workout log removed.")
+    }
+
+    // MARK: Athlete-owned log corrections
+    //
+    // Your log, your call — a fat-fingered 500lb bench must not be
+    // permanent, because every derived stat (PRs, e1RM, streak, score)
+    // inherits the lie. Same recompute path as the coach edits; the
+    // change mirrors to the cloud through the workoutLogs didSet.
+
+    func updateOwnWorkoutLog(_ updatedLog: WorkoutLog) {
+        guard updatedLog.athleteID == clientProfile.id else { return }
+        guard let index = workoutLogs.firstIndex(where: { $0.id == updatedLog.id }) else { return }
+        workoutLogs[index] = updatedLog
+        workoutLogs.sort { $0.completedAt > $1.completedAt }
+        refreshWorkoutLogDerivedState(for: updatedLog.athleteID)
+        showToast("Workout updated — your stats recomputed.")
+    }
+
+    func deleteOwnWorkoutLog(_ log: WorkoutLog) {
+        guard log.athleteID == clientProfile.id else { return }
+        workoutLogs.removeAll { $0.id == log.id }
+        refreshWorkoutLogDerivedState(for: log.athleteID)
+        showToast("Workout deleted — your stats recomputed.")
     }
 
     func contactSupport() {

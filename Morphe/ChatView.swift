@@ -1340,7 +1340,19 @@ private struct RealFeedSection: View {
             }
 
             if visiblePosts.isEmpty {
-                emptyState
+                // Empty copy renders ONLY once the fetch has answered —
+                // "be the first to post" during a slow load is a lie, and
+                // a network failure needs a retry, not an empty state.
+                switch store.feedFetchState {
+                case .idle, .loading:
+                    FetchPlaceholderCard(line: "Loading the feed…")
+                case .failed:
+                    FetchRetryCard(message: "The feed couldn't load — check your connection.") {
+                        Task { await store.refreshFeed() }
+                    }
+                case .loaded:
+                    emptyState
+                }
             } else {
                 ForEach(visiblePosts) { post in
                     FeedPostCard(post: post) {
@@ -1575,6 +1587,87 @@ private struct CompetitionPulseCard: View {
     }
 }
 
+/// The honest author view: name, seal, follow state, and this author's
+/// posts from the currently loaded feed — nothing invented. (The richer
+/// NetworkProfilePreview sheet is demo-shaped — rank/mutuals it can't
+/// know for a real account — so the feed deliberately doesn't use it.)
+private struct FeedAuthorSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    let authorUid: String
+    let authorName: String
+    let verified: Bool
+
+    private var authorPosts: [FeedPost] {
+        store.feedPosts.filter { $0.authorUid == authorUid }
+    }
+
+    private var isMine: Bool { authorUid == (store.authUser?.id ?? "") }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                GlassCard {
+                    HStack(spacing: 14) {
+                        Circle()
+                            .fill(MorpheTheme.panelStrong)
+                            .frame(width: 56, height: 56)
+                            .overlay(
+                                Text(String(authorName.prefix(1)).uppercased())
+                                    .font(.title2.weight(.bold))
+                                    .foregroundStyle(.white)
+                            )
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text(authorName)
+                                    .font(.title3.weight(.bold))
+                                    .foregroundStyle(.white)
+                                if verified {
+                                    Image(systemName: "checkmark.seal.fill")
+                                        .font(.subheadline)
+                                        .foregroundStyle(feedVerifiedSealBlue)
+                                        .accessibilityLabel("Verified")
+                                }
+                            }
+                            Text("\(authorPosts.count) post\(authorPosts.count == 1 ? "" : "s") in your feed")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                        Spacer()
+                        if !isMine, store.isRealFeedActive {
+                            Button(store.isFollowing(authorUid) ? "Following" : "Follow") {
+                                store.toggleFollow(uid: authorUid, name: authorName)
+                            }
+                            .buttonStyle(FilterChipStyle(
+                                isSelected: store.isFollowing(authorUid),
+                                selectedColor: MorpheTheme.accent))
+                        }
+                    }
+                }
+
+                ForEach(authorPosts) { post in
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(post.createdAt.formatted(.relative(presentation: .named)))
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Text(post.text)
+                                .font(.subheadline)
+                                .foregroundStyle(.white)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+
+                Text("Showing this athlete's posts from the feed you've loaded.")
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            .padding(20)
+        }
+        .background(MorpheTheme.ink)
+    }
+}
+
 /// One real feed post: author (blue seal when server-verified), relative
 /// time, text, optional workout pill + structured session stats, repost
 /// attribution, the real action row (typed reactions via long-press,
@@ -1589,6 +1682,7 @@ private struct FeedPostCard: View {
     @State private var commentDraft = ""
     @State private var showBlockConfirm = false
     @State private var commentBlockTarget: PostComment?
+    @State private var showAuthor = false
 
     private var isMine: Bool { post.authorUid == (store.authUser?.id ?? "") }
     private var hasReacted: Bool { store.myReactedPostIds.contains(post.id) }
@@ -1605,34 +1699,45 @@ private struct FeedPostCard: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
-                    Circle()
-                        .fill(MorpheTheme.panelStrong)
-                        .frame(width: 40, height: 40)
-                        .overlay(
-                            Text(String(post.authorName.prefix(1)).uppercased())
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                        )
+                    // The author block is the profile door — a feed you can't
+                    // navigate out of is a dead end.
+                    Button {
+                        showAuthor = true
+                    } label: {
+                        HStack(spacing: 10) {
+                            Circle()
+                                .fill(MorpheTheme.panelStrong)
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    Text(String(post.authorName.prefix(1)).uppercased())
+                                        .font(.headline)
+                                        .foregroundStyle(.white)
+                                )
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 5) {
-                            Text(post.authorName)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 5) {
+                                    Text(post.authorName)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                        .lineLimit(1)
 
-                            if post.verified {
-                                Image(systemName: "checkmark.seal.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(feedVerifiedSealBlue)
-                                    .accessibilityLabel("Verified")
+                                    if post.verified {
+                                        Image(systemName: "checkmark.seal.fill")
+                                            .font(.caption)
+                                            .foregroundStyle(feedVerifiedSealBlue)
+                                            .accessibilityLabel("Verified")
+                                    }
+                                }
+
+                                Text(post.createdAt.formatted(.relative(presentation: .named)))
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textMuted)
                             }
                         }
-
-                        Text(post.createdAt.formatted(.relative(presentation: .named)))
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("View \(post.authorName)'s posts")
 
                     Spacer()
 
@@ -1851,6 +1956,12 @@ private struct FeedPostCard: View {
                 commentBlockTarget = nil
             }
             Button("Cancel", role: .cancel) { commentBlockTarget = nil }
+        }
+        .sheet(isPresented: $showAuthor) {
+            FeedAuthorSheet(authorUid: post.authorUid,
+                            authorName: post.authorName,
+                            verified: post.verified)
+                .presentationDetents([.medium, .large])
         }
     }
 

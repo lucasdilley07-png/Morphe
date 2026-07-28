@@ -489,6 +489,12 @@ private struct ClientPinnedHeader: View {
 
             Spacer()
 
+            // The universal search sheet existed fully built with no way
+            // in — this is its (only) front door.
+            HeaderCircleButton(systemImage: "magnifyingglass", label: "Search") {
+                store.openUniversalSearch()
+            }
+
             HeaderCircleButton(systemImage: "plus", label: "Quick add") {
                 store.openQuickAdd()
             }

@@ -228,6 +228,7 @@ struct ProgressScreenView: View {
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
@@ -263,6 +264,15 @@ struct ProgressScreenView: View {
         .refreshable {
             await store.refreshLeaderboard()
             await store.refreshChallenges()
+        }
+        // A PR-row tap: bring the strength chart into view while it
+        // adopts the exercise (see StrengthOverTimeCard.onChange).
+        .onChange(of: store.focusedStrengthExercise) { _, focused in
+            guard focused != nil else { return }
+            withAnimation(.easeInOut(duration: 0.3)) {
+                proxy.scrollTo("strengthOverTime", anchor: .top)
+            }
+        }
         }
     }
 
@@ -307,6 +317,7 @@ struct ProgressScreenView: View {
                         progression: { store.strengthProgression(for: $0) },
                         e1RMProgression: { store.estimatedOneRMProgression(for: $0) }
                     )
+                    .id("strengthOverTime")
                     MuscleBalanceCard(balance: store.muscleGroupSetBalance(days: 7))
                     WeeklySetVolumeCard(points: store.weeklySetVolume(weeks: 8))
                     RPETrendCard(points: store.rpeTrendPerSession(sessions: 15))
@@ -1036,6 +1047,7 @@ private struct ProgressHeroStrip: View {
 /// long-arc "am I getting stronger?" chart. (StrengthProgressCard above
 /// covers only latest-vs-previous; this draws the whole line.)
 private struct StrengthOverTimeCard: View {
+    @Environment(MorpheAppStore.self) private var store
     let exerciseOptions: [String]
     let weightUnit: WeightUnit
     let progression: (String) -> [(date: Date, topWeight: Double)]
@@ -1155,6 +1167,16 @@ private struct StrengthOverTimeCard: View {
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
             }
+        }
+        // A PR-row tap lands here: adopt the exercise when the chart's
+        // picker offers it, and always clear the handoff so the picker
+        // stays user-controlled afterward.
+        .onChange(of: store.focusedStrengthExercise) { _, focused in
+            guard let focused else { return }
+            if exerciseOptions.contains(focused) {
+                selectedExercise = focused
+            }
+            store.focusedStrengthExercise = nil
         }
     }
 }
@@ -1392,14 +1414,23 @@ private struct PRTimelineCard: View {
                                 .foregroundStyle(MorpheTheme.accent)
                                 .frame(width: 24)
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(record.exerciseName)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                Text(MorpheAppStore.workoutDateLabel(for: record.date))
-                                    .font(.caption2)
-                                    .foregroundStyle(MorpheTheme.textMuted)
+                            // Tapping the record jumps to this exercise's
+                            // strength trend — same data, now connected.
+                            Button {
+                                store.focusedStrengthExercise = record.exerciseName
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(record.exerciseName)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                    Text(MorpheAppStore.workoutDateLabel(for: record.date))
+                                        .font(.caption2)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Show \(record.exerciseName) strength trend")
 
                             Spacer(minLength: 0)
 
@@ -1717,8 +1748,11 @@ private struct MuscleBalanceCard: View {
 /// The user's own training history with the real per-set numbers inside
 /// each session — not just titles and dates.
 private struct WorkoutHistoryCard: View {
+    @Environment(MorpheAppStore.self) private var store
     let logs: [WorkoutLog]
     @State private var showAll = false
+    @State private var editingLog: WorkoutLog?
+    @State private var deletingLog: WorkoutLog?
 
     /// The default note written by the log flow; pure filler in history.
     private static let fillerNote = "Logged from the live workout flow."
@@ -1776,6 +1810,20 @@ private struct WorkoutHistoryCard: View {
                                 Text("\(MorpheAppStore.workoutDateLabel(for: log.completedAt)) • \(log.durationMinutes) min")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
+                                // Own-log corrections: a wrong entry must
+                                // never be permanent — it poisons every
+                                // derived stat.
+                                Menu {
+                                    Button("Edit") { editingLog = log }
+                                    Button("Delete", role: .destructive) { deletingLog = log }
+                                } label: {
+                                    Image(systemName: "ellipsis")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                        .frame(width: 44, height: 32)
+                                        .contentShape(Rectangle())
+                                }
+                                .accessibilityLabel("Edit or delete \(log.workoutTitle)")
                             }
 
                             ForEach(log.exercises) { exercise in
@@ -1796,7 +1844,9 @@ private struct WorkoutHistoryCard: View {
                             }
                         }
                         .padding(.vertical, 4)
-                        .accessibilityElement(children: .combine)
+                        // .contain, not .combine — the row menu must stay
+                        // reachable for VoiceOver.
+                        .accessibilityElement(children: .contain)
 
                         if log.id != visibleLogs.last?.id {
                             Divider().overlay(MorpheTheme.stroke.opacity(0.5))
@@ -1814,6 +1864,31 @@ private struct WorkoutHistoryCard: View {
                     }
                 }
             }
+        }
+        .sheet(item: $editingLog) { log in
+            WorkoutLogEditorSheet(
+                draft: log,
+                title: "Edit Workout",
+                subtitle: "Correct what was logged — every stat recomputes from the fixed numbers.",
+                confirmLabel: "Save Changes",
+                onConfirm: { store.updateOwnWorkoutLog($0) }
+            )
+        }
+        .confirmationDialog(
+            "Delete \(deletingLog?.workoutTitle ?? "workout")?",
+            isPresented: Binding(
+                get: { deletingLog != nil },
+                set: { if !$0 { deletingLog = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete Workout", role: .destructive) {
+                if let log = deletingLog { store.deleteOwnWorkoutLog(log) }
+                deletingLog = nil
+            }
+            Button("Cancel", role: .cancel) { deletingLog = nil }
+        } message: {
+            Text("Removes the session and recomputes your streak, PRs, and score. This can't be undone.")
         }
     }
 }
@@ -1885,9 +1960,30 @@ private struct WeeklyBoardCard: View {
             .foregroundStyle(MorpheTheme.textSecondary)
 
         if topRows.isEmpty {
-            Text("No scores posted this week yet — log a workout and yours starts the board.")
-                .font(.caption)
-                .foregroundStyle(MorpheTheme.textSecondary)
+            // Only a LOADED emptiness is an empty board — a fetch still
+            // in flight or failed says so instead.
+            switch store.leaderboardFetchState {
+            case .idle, .loading:
+                Text("LOADING THE BOARD…")
+                    .font(MorpheTheme.microLabel())
+                    .tracking(1.2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            case .failed:
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("The board couldn't load — check your connection.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    Button("Retry") {
+                        Task { await store.refreshLeaderboard() }
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .frame(width: 118)
+                }
+            case .loaded:
+                Text("No scores posted this week yet — log a workout and yours starts the board.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+            }
         } else {
             VStack(spacing: 6) {
                 ForEach(Array(topRows.enumerated()), id: \.element.id) { index, entry in

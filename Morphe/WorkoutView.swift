@@ -1410,6 +1410,13 @@ private struct ActiveWorkoutTrackerCard: View {
                     Text("\(exercise.sets) • \(exercise.reps) • \(exercise.difficulty.rawValue)")
                         .foregroundStyle(MorpheTheme.textSecondary)
                     ProgressBarView(progress: setProgress, color: MorpheTheme.accent)
+                    // What actually happened last session — the reference the
+                    // suggestion line below is judged against.
+                    if let lastLine = store.lastSessionLine(forExerciseNamed: exercise.name) {
+                        Text(lastLine)
+                            .font(MorpheTheme.microLabel(10)).tracking(1.0)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
                     if let progression = store.progressionNote(for: exercise) {
                         Text(progression)
                             .font(MorpheTheme.microLabel(10)).tracking(1.0)
@@ -1440,10 +1447,14 @@ private struct ActiveWorkoutTrackerCard: View {
                                 Button {
                                     onEditSet(index)
                                 } label: {
+                                    // Visual stays 28pt; the tappable area is
+                                    // 44pt — gym thumbs miss small targets.
                                     Image(systemName: "pencil")
                                         .font(.caption)
                                         .frame(width: 28, height: 28)
                                         .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(.white)
@@ -1456,6 +1467,8 @@ private struct ActiveWorkoutTrackerCard: View {
                                         .font(.caption)
                                         .frame(width: 28, height: 28)
                                         .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(MorpheTheme.danger)
@@ -1786,6 +1799,8 @@ private struct FocusedWorkoutQueueCard: View {
                                     .font(.caption.weight(.bold))
                                     .frame(width: 28, height: 28)
                                     .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(index == 0 ? MorpheTheme.textMuted : .white)
@@ -1799,6 +1814,8 @@ private struct FocusedWorkoutQueueCard: View {
                                     .font(.caption.weight(.bold))
                                     .frame(width: 28, height: 28)
                                     .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(index == exercises.count - 1 ? MorpheTheme.textMuted : .white)
@@ -4030,6 +4047,7 @@ private struct CircuitModeView: View {
                             RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .stroke(Color.white.opacity(0.16), lineWidth: 1)
                         )
+                        .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Close circuit mode")

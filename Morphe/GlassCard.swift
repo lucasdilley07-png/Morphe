@@ -1573,6 +1573,57 @@ struct WrapStack<Content: View>: View {
     }
 }
 
+// MARK: - Fetch states (shared by every fetched surface)
+
+/// Placeholder while a FIRST fetch answers — empty copy before the
+/// network has spoken is a lie.
+struct FetchPlaceholderCard: View {
+    let line: String
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(0..<2, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                        .frame(height: 14)
+                }
+                Text(line.uppercased())
+                    .font(MorpheTheme.microLabel())
+                    .tracking(1.2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+        }
+        .accessibilityLabel(line)
+    }
+}
+
+/// A failure the user can see and act on — never a silent empty screen.
+struct FetchRetryCard: View {
+    let message: String
+    let onRetry: () -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "wifi.exclamationmark")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.warning)
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button("Retry", action: onRetry)
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .frame(width: 118)
+            }
+        }
+        .onAppear { Haptics.error() }
+    }
+}
+
 // MARK: - Manifesto (the house rules, said out loud)
 //
 // The brand promise as a user-facing card. Every line is enforced in code —

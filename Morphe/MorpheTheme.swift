@@ -213,6 +213,14 @@ enum Haptics {
         generator.notificationOccurred(.success)
     }
 
+    /// Failure gets felt too — success-only feedback made silent network
+    /// errors literally imperceptible.
+    static func error() {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(.error)
+    }
+
     /// The light tick for choosing among options (filter chips, tabs) —
     /// the most common interaction in the app finally has a feel.
     static func selection() {
