@@ -5,7 +5,12 @@ struct CoachDashboardView: View {
 
     var body: some View {
         @Bindable var store = store
-        return TabView(selection: $store.selectedCoachTab) {
+        // The stack hosts the client hub as a PUSH (NavStack phase 2) —
+        // the old full-workspace sheet stacked its own sheets on a sheet,
+        // the exact fragility the IA audit flagged. System bar stays
+        // hidden; the hub carries its own back row.
+        return NavigationStack {
+        TabView(selection: $store.selectedCoachTab) {
             // Screens keyed off tabResetKey rebuild at their root when the tab
             // icon is tapped. Train stays unkeyed so a tap can never reset a
             // live session or rest timer.
@@ -70,13 +75,16 @@ struct CoachDashboardView: View {
                 store.popTabToRoot(tab.rawValue)
             }
         }
-        .sheet(item: Binding(
+        .navigationDestination(item: Binding(
             get: { store.selectedCoachClient },
             set: { _ in store.closeClientHub() }
         )) { athlete in
             AthleteProfileView(athlete: athlete)
+                .background(PremiumBackground().ignoresSafeArea())
         }
+        .toolbar(.hidden, for: .navigationBar)
         .animation(.easeInOut(duration: 0.25), value: store.selectedCoachTab)
+        }
     }
 }
 

@@ -190,276 +190,286 @@ struct AthleteProfileView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollViewReader { proxy in
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 16) {
-                        SectionTitleView(
-                            title: currentAthlete.name,
-                            subtitle: "Athlete profile with readiness, compliance, notes, and the next coaching decision."
-                        )
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Pushed, not sheeted (NavStack phase 2): the back row
+                    // is the visible affordance, edge-swipe works, and the
+                    // profile's own sheets stop stacking on a sheet.
+                    Button {
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .scaledFont(size: 10, weight: .bold)
+                            Text("CLIENTS")
+                                .font(MorpheTheme.microLabel(10))
+                                .tracking(1.4)
+                        }
+                        .foregroundStyle(MorpheTheme.accent)
+                        .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Back to your clients")
 
-                        CoachAthleteActionStrip(
-                            onMessage: {
-                                openMessageThread()
-                            },
-                            onAssign: {
-                                showingAssignWorkoutSheet = true
-                            },
-                            onReviewLogs: {
-                                selectedLogFilter = .all
-                                withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
-                                    proxy.scrollTo(AthleteProfileAnchor.completedLogs, anchor: .top)
-                                }
-                            },
-                            onStartSession: {
-                                sessionRequest = CoachSessionLaunchRequest(
-                                    title: "Start Session for \(currentAthlete.name)",
-                                    subtitle: "Search the workout archive, pick the right session, and launch it straight from this athlete profile.",
-                                    preferredSport: currentAthlete.sport,
-                                    athleteID: currentAthlete.id
-                                )
+                    SectionTitleView(
+                        title: currentAthlete.name,
+                        subtitle: "Athlete profile with readiness, compliance, notes, and the next coaching decision."
+                    )
+
+                    CoachAthleteActionStrip(
+                        onMessage: {
+                            openMessageThread()
+                        },
+                        onAssign: {
+                            showingAssignWorkoutSheet = true
+                        },
+                        onReviewLogs: {
+                            selectedLogFilter = .all
+                            withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+                                proxy.scrollTo(AthleteProfileAnchor.completedLogs, anchor: .top)
                             }
-                        )
-
-                        CoachOutreachShortcutStrip(insight: store.coachOutreachInsight(for: currentAthlete.id)) { shortcut in
-                            store.openCoachOutreachShortcut(shortcut, for: currentAthlete.id)
-                            dismiss()
-                        }
-
-                        CoachAthleteOverviewCard(athlete: currentAthlete)
-
-                        HStack(alignment: .top, spacing: 12) {
-                            ProgramComplianceCard(compliance: currentAthlete.programCompliance)
-                            RecoverySnapshotMiniCard(recovery: currentAthlete.recoveryScore, complianceScore: currentAthlete.complianceScore)
-                        }
-
-                        CoachAthleteReadCard(
-                            athlete: currentAthlete,
-                            insight: partnerInsight,
-                            recommendation: nextAction,
-                            onPraise: {
-                                coachPraiseDraft = store.makeCoachPraiseDraft(for: currentAthlete.id)
-                            }
-                        ) {
-                            handleSuggestedNextAction(nextAction)
-                        }
-
-                        HStack(alignment: .top, spacing: 12) {
-                            TrainingLoadCard(load: currentAthlete.trainingLoad)
-                            MovementQualityScoreCard(score: currentAthlete.movementQuality)
-                        }
-
-                        CoachAthleteDisclosureSection(
-                            title: "Athlete Details",
-                            subtitle: "Profile context, equipment, schedule, and readiness background.",
-                            isExpanded: $showProfileDetails
-                        ) {
-                            CoachAthleteDetailCard(athlete: currentAthlete)
-                        }
-
-                        AthleteWorkoutLogListCard(
-                            selectedFilter: $selectedLogFilter,
-                            logs: athleteLogs,
-                            canEditLog: { log in
-                                store.canCurrentCoachEditWorkoutLogs(for: log.athleteID) && log.source != .athleteManual
-                            },
-                            canApproveLog: { log in
-                                log.verificationStatus == .aiPendingReview && store.canCurrentCoachApproveAIEntries(for: log.athleteID)
-                            },
-                            onEdit: { log in
-                                editingLog = log
-                            },
-                            onApprove: { log in
-                                store.approveWorkoutLog(log)
-                            },
-                            onDelete: { log in
-                                store.deleteWorkoutLog(log)
-                            }
-                        )
-                        .id(AthleteProfileAnchor.completedLogs)
-
-                        CoachAthleteDisclosureSection(
-                            title: "Coach Notes",
-                            subtitle: "Keep the working notes and coaching reminders tucked nearby.",
-                            isExpanded: $showCoachNotes
-                        ) {
-                            CoachNotesPanel(notesDraft: $notesDraft) {
-                                store.updateCoachNotes(for: currentAthlete.id, text: notesDraft)
-                            }
-                        }
-
-                        CoachAthleteDisclosureSection(
-                            title: "Workout Data Input",
-                            subtitle: "Manual coach entry and AI photo review stay available without crowding the profile.",
-                            isExpanded: $showWorkoutInput
-                        ) {
-                            CoachWorkoutLogEntryCard(
-                                athlete: currentAthlete,
-                                availableTemplates: availableTemplates,
-                                selectedTemplateID: $manualTemplateID,
-                                workoutTitle: $manualWorkoutTitle,
-                                durationMinutes: $manualWorkoutDuration,
-                                notes: $manualWorkoutNotes,
-                                aiPhotoLabel: $aiPhotoLabel,
-                                onSaveManual: {
-                                    store.coachAddManualWorkoutLog(
-                                        to: currentAthlete,
-                                        template: selectedTemplate,
-                                        workoutTitle: manualWorkoutTitle,
-                                        durationMinutes: manualWorkoutDuration,
-                                        notes: manualWorkoutNotes
-                                    )
-                                    manualWorkoutNotes = ""
-                                },
-                                onImportPhoto: {
-                                    aiImportDraft = store.makeAIParsedWorkoutLogDraft(to: currentAthlete, photoLabel: aiPhotoLabel)
-                                }
+                        },
+                        onStartSession: {
+                            sessionRequest = CoachSessionLaunchRequest(
+                                title: "Start Session for \(currentAthlete.name)",
+                                subtitle: "Search the workout archive, pick the right session, and launch it straight from this athlete profile.",
+                                preferredSport: currentAthlete.sport,
+                                athleteID: currentAthlete.id
                             )
                         }
-                        .id(AthleteProfileAnchor.workoutInput)
+                    )
 
-                        CoachAthleteDisclosureSection(
-                            title: "Performance Story",
-                            subtitle: "Timeline, trends, and the current report when you want the deeper read.",
-                            isExpanded: $showPerformanceStory
-                        ) {
-                            GlassCard {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Timeline")
-                                        .font(.headline)
-                                        .foregroundStyle(.white)
+                    CoachOutreachShortcutStrip(insight: store.coachOutreachInsight(for: currentAthlete.id)) { shortcut in
+                        store.openCoachOutreachShortcut(shortcut, for: currentAthlete.id)
+                        dismiss()
+                    }
 
-                                    ForEach(currentAthlete.timeline) { event in
+                    CoachAthleteOverviewCard(athlete: currentAthlete)
+
+                    HStack(alignment: .top, spacing: 12) {
+                        ProgramComplianceCard(compliance: currentAthlete.programCompliance)
+                        RecoverySnapshotMiniCard(recovery: currentAthlete.recoveryScore, complianceScore: currentAthlete.complianceScore)
+                    }
+
+                    CoachAthleteReadCard(
+                        athlete: currentAthlete,
+                        insight: partnerInsight,
+                        recommendation: nextAction,
+                        onPraise: {
+                            coachPraiseDraft = store.makeCoachPraiseDraft(for: currentAthlete.id)
+                        }
+                    ) {
+                        handleSuggestedNextAction(nextAction)
+                    }
+
+                    HStack(alignment: .top, spacing: 12) {
+                        TrainingLoadCard(load: currentAthlete.trainingLoad)
+                        MovementQualityScoreCard(score: currentAthlete.movementQuality)
+                    }
+
+                    CoachAthleteDisclosureSection(
+                        title: "Athlete Details",
+                        subtitle: "Profile context, equipment, schedule, and readiness background.",
+                        isExpanded: $showProfileDetails
+                    ) {
+                        CoachAthleteDetailCard(athlete: currentAthlete)
+                    }
+
+                    AthleteWorkoutLogListCard(
+                        selectedFilter: $selectedLogFilter,
+                        logs: athleteLogs,
+                        canEditLog: { log in
+                            store.canCurrentCoachEditWorkoutLogs(for: log.athleteID) && log.source != .athleteManual
+                        },
+                        canApproveLog: { log in
+                            log.verificationStatus == .aiPendingReview && store.canCurrentCoachApproveAIEntries(for: log.athleteID)
+                        },
+                        onEdit: { log in
+                            editingLog = log
+                        },
+                        onApprove: { log in
+                            store.approveWorkoutLog(log)
+                        },
+                        onDelete: { log in
+                            store.deleteWorkoutLog(log)
+                        }
+                    )
+                    .id(AthleteProfileAnchor.completedLogs)
+
+                    CoachAthleteDisclosureSection(
+                        title: "Coach Notes",
+                        subtitle: "Keep the working notes and coaching reminders tucked nearby.",
+                        isExpanded: $showCoachNotes
+                    ) {
+                        CoachNotesPanel(notesDraft: $notesDraft) {
+                            store.updateCoachNotes(for: currentAthlete.id, text: notesDraft)
+                        }
+                    }
+
+                    CoachAthleteDisclosureSection(
+                        title: "Workout Data Input",
+                        subtitle: "Manual coach entry and AI photo review stay available without crowding the profile.",
+                        isExpanded: $showWorkoutInput
+                    ) {
+                        CoachWorkoutLogEntryCard(
+                            athlete: currentAthlete,
+                            availableTemplates: availableTemplates,
+                            selectedTemplateID: $manualTemplateID,
+                            workoutTitle: $manualWorkoutTitle,
+                            durationMinutes: $manualWorkoutDuration,
+                            notes: $manualWorkoutNotes,
+                            aiPhotoLabel: $aiPhotoLabel,
+                            onSaveManual: {
+                                store.coachAddManualWorkoutLog(
+                                    to: currentAthlete,
+                                    template: selectedTemplate,
+                                    workoutTitle: manualWorkoutTitle,
+                                    durationMinutes: manualWorkoutDuration,
+                                    notes: manualWorkoutNotes
+                                )
+                                manualWorkoutNotes = ""
+                            },
+                            onImportPhoto: {
+                                aiImportDraft = store.makeAIParsedWorkoutLogDraft(to: currentAthlete, photoLabel: aiPhotoLabel)
+                            }
+                        )
+                    }
+                    .id(AthleteProfileAnchor.workoutInput)
+
+                    CoachAthleteDisclosureSection(
+                        title: "Performance Story",
+                        subtitle: "Timeline, trends, and the current report when you want the deeper read.",
+                        isExpanded: $showPerformanceStory
+                    ) {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Timeline")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+
+                                ForEach(currentAthlete.timeline) { event in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(event.title)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                        Text(event.detail)
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.textSecondary)
+                                    }
+                                }
+                            }
+                        }
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Performance Trends")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+
+                                Chart(currentAthlete.healthTrend) { point in
+                                    LineMark(
+                                        x: .value("Day", point.day),
+                                        y: .value("Score", point.value)
+                                    )
+                                    .foregroundStyle(MorpheTheme.accent)
+                                }
+                                .frame(height: 150)
+
+                                Chart(currentAthlete.weightTrend) { point in
+                                    BarMark(
+                                        x: .value("Point", point.label),
+                                        y: .value("Value", point.value)
+                                    )
+                                    .foregroundStyle(MorpheTheme.accentAlt)
+                                }
+                                .frame(height: 150)
+                            }
+                        }
+
+                        AthleteReportCardView(report: currentAthlete.reportCard)
+                    }
+
+                    CoachAthleteDisclosureSection(
+                        title: "Context + Testing",
+                        subtitle: "Availability, event prep, and the testing snapshot for fuller coaching context.",
+                        isExpanded: $showContextAndTesting
+                    ) {
+                        AthleteAvailabilityConstraintsCard(availability: currentAthlete.availability)
+                        EventPrepModeCard(plan: currentAthlete.eventPrep)
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Testing Snapshot")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+
+                                ForEach(currentAthlete.tests) { test in
+                                    HStack {
                                         VStack(alignment: .leading, spacing: 4) {
-                                            Text(event.title)
+                                            Text(test.name)
                                                 .font(.subheadline.weight(.semibold))
                                                 .foregroundStyle(.white)
-                                            Text(event.detail)
+                                            Text(test.category)
                                                 .font(.caption)
                                                 .foregroundStyle(MorpheTheme.textSecondary)
                                         }
-                                    }
-                                }
-                            }
-
-                            GlassCard {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Performance Trends")
-                                        .font(.headline)
-                                        .foregroundStyle(.white)
-
-                                    Chart(currentAthlete.healthTrend) { point in
-                                        LineMark(
-                                            x: .value("Day", point.day),
-                                            y: .value("Score", point.value)
-                                        )
-                                        .foregroundStyle(MorpheTheme.accent)
-                                    }
-                                    .frame(height: 150)
-
-                                    Chart(currentAthlete.weightTrend) { point in
-                                        BarMark(
-                                            x: .value("Point", point.label),
-                                            y: .value("Value", point.value)
-                                        )
-                                        .foregroundStyle(MorpheTheme.accentAlt)
-                                    }
-                                    .frame(height: 150)
-                                }
-                            }
-
-                            AthleteReportCardView(report: currentAthlete.reportCard)
-                        }
-
-                        CoachAthleteDisclosureSection(
-                            title: "Context + Testing",
-                            subtitle: "Availability, event prep, and the testing snapshot for fuller coaching context.",
-                            isExpanded: $showContextAndTesting
-                        ) {
-                            AthleteAvailabilityConstraintsCard(availability: currentAthlete.availability)
-                            EventPrepModeCard(plan: currentAthlete.eventPrep)
-
-                            GlassCard {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Testing Snapshot")
-                                        .font(.headline)
-                                        .foregroundStyle(.white)
-
-                                    ForEach(currentAthlete.tests) { test in
-                                        HStack {
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text(test.name)
-                                                    .font(.subheadline.weight(.semibold))
-                                                    .foregroundStyle(.white)
-                                                Text(test.category)
-                                                    .font(.caption)
-                                                    .foregroundStyle(MorpheTheme.textSecondary)
-                                            }
-                                            Spacer()
-                                            Text("\(test.result) \(test.unit)")
-                                                .foregroundStyle(.white)
-                                        }
+                                        Spacer()
+                                        Text("\(test.result) \(test.unit)")
+                                            .foregroundStyle(.white)
                                     }
                                 }
                             }
                         }
                     }
-                    .padding(20)
                 }
+                .padding(20)
             }
-            .background(PremiumBackground())
-            .sheet(item: $aiImportDraft) { draft in
-                WorkoutLogEditorSheet(
-                    draft: draft,
-                    title: "Review AI Import",
-                    subtitle: "Check the workout title, duration, and parsed exercises before saving this to the athlete profile.",
-                    confirmLabel: "Confirm Save"
-                ) { approvedDraft in
-                    store.confirmAIParsedWorkoutLog(approvedDraft)
-                    aiPhotoLabel = ""
-                    aiImportDraft = nil
-                }
+        }
+        .background(PremiumBackground())
+        .sheet(item: $aiImportDraft) { draft in
+            WorkoutLogEditorSheet(
+                draft: draft,
+                title: "Review AI Import",
+                subtitle: "Check the workout title, duration, and parsed exercises before saving this to the athlete profile.",
+                confirmLabel: "Confirm Save"
+            ) { approvedDraft in
+                store.confirmAIParsedWorkoutLog(approvedDraft)
+                aiPhotoLabel = ""
+                aiImportDraft = nil
             }
-            .sheet(item: $editingLog) { log in
-                WorkoutLogEditorSheet(
-                    draft: log,
-                    title: "Edit Shared Log",
-                    subtitle: "Update the workout title, duration, notes, and exercise details before this log rolls into athlete progress.",
-                    confirmLabel: "Save Changes"
-                ) { updatedLog in
-                    store.updateWorkoutLog(updatedLog)
-                    editingLog = nil
-                }
+        }
+        .sheet(item: $editingLog) { log in
+            WorkoutLogEditorSheet(
+                draft: log,
+                title: "Edit Shared Log",
+                subtitle: "Update the workout title, duration, notes, and exercise details before this log rolls into athlete progress.",
+                confirmLabel: "Save Changes"
+            ) { updatedLog in
+                store.updateWorkoutLog(updatedLog)
+                editingLog = nil
             }
-            .sheet(item: $sessionRequest) { request in
-                CoachStartSessionSheet(request: request)
-                    .environment(store)
-            }
-            .sheet(isPresented: $showingAssignWorkoutSheet) {
-                CoachAthleteAssignWorkoutSheet(
-                    athlete: currentAthlete,
-                    availableTemplates: availableTemplates
-                )
+        }
+        .sheet(item: $sessionRequest) { request in
+            CoachStartSessionSheet(request: request)
                 .environment(store)
-            }
-            .sheet(item: $coachPraiseDraft) { draft in
-                CoachPublicPraiseSheet(draft: draft)
-                    .environment(store)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundStyle(.white)
-                }
-            }
-            .onAppear {
-                notesDraft = currentAthlete.coachNotes
-                manualWorkoutTitle = currentAthlete.currentProgram
-                manualTemplateID = manualTemplateID ?? availableTemplates.first?.id
-            }
+        }
+        .sheet(isPresented: $showingAssignWorkoutSheet) {
+            CoachAthleteAssignWorkoutSheet(
+                athlete: currentAthlete,
+                availableTemplates: availableTemplates
+            )
+            .environment(store)
+        }
+        .sheet(item: $coachPraiseDraft) { draft in
+            CoachPublicPraiseSheet(draft: draft)
+                .environment(store)
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            notesDraft = currentAthlete.coachNotes
+            manualWorkoutTitle = currentAthlete.currentProgram
+            manualTemplateID = manualTemplateID ?? availableTemplates.first?.id
         }
     }
 
