@@ -3816,6 +3816,107 @@ final class StrengthAnalyticsTests: XCTestCase {
         XCTAssertEqual(store.streakShareCardData?.streak, 2)
     }
 
+    func testComebackDetectsLapseOnceAndClearsOnAnswer() {
+        let store = freshStore()
+        let lastKnownKey = "morphe.streak.lastKnown.\(store.clientProfile.id.uuidString)"
+        let pendingKey = "morphe.streak.comeback.\(store.clientProfile.id.uuidString)"
+        UserDefaults.standard.removeObject(forKey: lastKnownKey)
+        UserDefaults.standard.removeObject(forKey: pendingKey)
+
+        // A live 3-day streak: remembered, never a lapse.
+        for day in 0..<3 {
+            store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: day, reps: [8], weights: [100]))
+        }
+        store.detectStreakLapse()
+        XCTAssertNil(store.comebackLapsedStreak, "a live streak is not a lapse")
+        XCTAssertEqual(UserDefaults.standard.integer(forKey: lastKnownKey), 3)
+
+        // The run dies — the lapse is recorded once, at its real size.
+        store.workoutLogs = [log(for: store, exercise: "Bench", daysAgo: 30, reps: [8], weights: [100])]
+        store.detectStreakLapse()
+        XCTAssertEqual(store.comebackLapsedStreak, 3, "the ended run is named honestly")
+
+        // A relaunch keeps the pending state — it never re-mints.
+        store.detectStreakLapse()
+        XCTAssertEqual(store.comebackLapsedStreak, 3)
+
+        // Dismissal is an answer, not a snooze.
+        store.dismissComebackCard()
+        XCTAssertNil(store.comebackLapsedStreak)
+        store.detectStreakLapse()
+        XCTAssertNil(store.comebackLapsedStreak, "a dismissed lapse stays answered")
+
+        UserDefaults.standard.removeObject(forKey: lastKnownKey)
+        UserDefaults.standard.removeObject(forKey: pendingKey)
+    }
+
+    func testExtrasBackupRoundTripsPerProfileState() {
+        let store = freshStore()
+        let completionsKey = "morphe.programCompletions.\(store.clientProfile.id.uuidString)"
+        UserDefaults.standard.removeObject(forKey: completionsKey)
+        store.loadProgramCompletions()
+
+        // Seed the per-profile state the backup used to miss.
+        let program = MorpheAppStore.trainingPrograms[0]
+        store.startProgram(program)
+        store.recordProgramCompletion(program.id)
+
+        let blobs = store.perProfileExtrasBlobs()
+        XCTAssertNotNil(blobs["activeProgram"], "program position rides the backup")
+        XCTAssertNotNil(blobs["programCompletions"])
+
+        // Wipe like a fresh install, then restore the blob bag.
+        store.leaveProgram()
+        UserDefaults.standard.removeObject(forKey: completionsKey)
+        store.loadProgramCompletions()
+        XCTAssertNil(store.programProgress)
+        XCTAssertTrue(store.completedProgramIDs.isEmpty)
+
+        store.applyRestoredExtras(blobs)
+        XCTAssertEqual(store.programProgress?.program.id, program.id,
+                       "a new phone resumes the program where it left off")
+        XCTAssertEqual(store.completedProgramIDs, [program.id],
+                       "finished programs survive the new phone")
+
+        // Leave nothing behind for other tests.
+        store.leaveProgram()
+        UserDefaults.standard.removeObject(forKey: completionsKey)
+        store.loadProgramCompletions()
+    }
+
+    func testEarnedBadgesDeriveOnlyFromRealData() {
+        let store = freshStore()
+        // Per-profile completions persist across runs — start clean.
+        let completionsKey = "morphe.programCompletions.\(store.clientProfile.id.uuidString)"
+        UserDefaults.standard.removeObject(forKey: completionsKey)
+        store.loadProgramCompletions()
+
+        XCTAssertTrue(store.earnedBadges.isEmpty, "no data, no badges")
+
+        // 8 consecutive training days with weighted sets.
+        for day in 0..<8 {
+            store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: day, reps: [5], weights: [100]))
+        }
+        var titles = store.earnedBadges.map(\.title)
+        XCTAssertTrue(titles.contains("First Workout"))
+        XCTAssertTrue(titles.contains("First Record"))
+        XCTAssertTrue(titles.contains("7-Day Streak"))
+        XCTAssertFalse(titles.contains("30-Day Streak"), "milestones stay earned-only")
+
+        // Program completion: once per program id, never a duplicate stack.
+        let programID = MorpheAppStore.trainingPrograms[0].id
+        store.recordProgramCompletion(programID)
+        store.recordProgramCompletion(programID)
+        titles = store.earnedBadges.map(\.title)
+        XCTAssertEqual(titles.filter { $0 == "Program Complete" }.count, 1)
+
+        // Recruiter follows the server-backed referral count.
+        store.referralCount = 1
+        XCTAssertTrue(store.earnedBadges.contains { $0.title == "Recruiter" })
+
+        UserDefaults.standard.removeObject(forKey: completionsKey)
+    }
+
     func testWeeklyRecapCoversOnlyTheLastCompletedWeek() {
         let store = freshStore()
         XCTAssertNil(store.weeklyRecapData, "no logs, no recap")

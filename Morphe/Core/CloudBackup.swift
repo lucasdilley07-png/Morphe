@@ -18,11 +18,19 @@ import FirebaseFirestore
 //   users/{uid}/state/profile        { schemaVersion, json, updatedAt }
 //   users/{uid}/state/logs           { schemaVersion, count, json, updatedAt }
 //   users/{uid}/state/weightHistory  { schemaVersion, count, json, updatedAt }
+//   users/{uid}/state/extras         { schemaVersion, count, json, updatedAt }
+//     (json = {name: base64 plist} — training prefs, competition,
+//      recovery/nutrition series, program state + completions)
 
 struct CloudSnapshot {
     var profile: LocalProfileSnapshot?
     var logs: [WorkoutLog]?
     var weightHistory: [MorpheAppStore.BodyWeightHistoryEntry]?
+    /// The per-profile UserDefaults blobs (training prefs, competition,
+    /// recovery/nutrition series, program state + completions), keyed by
+    /// logical name, values base64 property-list data. Backed up raw so
+    /// the same tolerant decoders that read them locally read the restore.
+    var extras: [String: String]?
 }
 
 /// Abstraction so the store can be built without Firebase (tests/previews use
@@ -34,6 +42,9 @@ protocol CloudBackingUp: AnyObject {
     func pushProfile(_ snapshot: LocalProfileSnapshot)
     func pushLogs(_ logs: [WorkoutLog])
     func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry])
+    /// The per-profile blob bag (see CloudSnapshot.extras) — merged by
+    /// name server-side-of-write, so a device missing a blob can't erase it.
+    func pushExtras(_ blobs: [String: String])
     func pull() async -> CloudSnapshot
     /// Account deletion: removes every state/* backup doc for the current
     /// user (best-effort, while the auth session is still valid).
@@ -47,6 +58,7 @@ final class NoOpCloudBackup: CloudBackingUp {
     func pushProfile(_ snapshot: LocalProfileSnapshot) {}
     func pushLogs(_ logs: [WorkoutLog]) {}
     func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry]) {}
+    func pushExtras(_ blobs: [String: String]) {}
     func pull() async -> CloudSnapshot { CloudSnapshot() }
     func eraseUser() async {}
 }
@@ -1117,8 +1129,35 @@ final class FirebaseCloudBackup: CloudBackingUp {
         }
     }
 
+    func pushExtras(_ blobs: [String: String]) {
+        guard let doc = stateDoc("extras"), !blobs.isEmpty else { return }
+        // MERGE by blob name, same reasoning as pushWeightHistory: a fresh
+        // device that only has (say) training prefs so far must not erase
+        // the cloud's program state. Local wins per name; absent names keep
+        // their cloud value.
+        let encoder = self.encoder
+        let decoder = self.decoder
+        Task {
+            var merged = blobs
+            if let snap = try? await doc.getDocument(),
+               let json = snap.data()?["json"] as? String,
+               let data = json.data(using: .utf8),
+               let cloud = try? decoder.decode([String: String].self, from: data) {
+                merged = cloud.merging(blobs) { _, local in local }
+            }
+            guard let data = try? encoder.encode(merged),
+                  let json = String(data: data, encoding: .utf8) else { return }
+            try? await doc.setData([
+                "schemaVersion": 1,
+                "count": merged.count,
+                "json": json,
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+        }
+    }
+
     func eraseUser() async {
-        for name in ["profile", "logs", "weightHistory"] {
+        for name in ["profile", "logs", "weightHistory", "extras"] {
             if let doc = stateDoc(name) {
                 try? await doc.delete()
             }
@@ -1153,6 +1192,14 @@ final class FirebaseCloudBackup: CloudBackingUp {
            let data = json.data(using: .utf8),
            let entries = try? decoder.decode([MorpheAppStore.BodyWeightHistoryEntry].self, from: data) {
             result.weightHistory = entries
+        }
+
+        if let doc = stateDoc("extras"),
+           let snap = try? await doc.getDocument(),
+           let json = snap.data()?["json"] as? String,
+           let data = json.data(using: .utf8),
+           let blobs = try? decoder.decode([String: String].self, from: data) {
+            result.extras = blobs
         }
 
         return result

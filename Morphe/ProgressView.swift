@@ -358,8 +358,10 @@ struct ProgressScreenView: View {
                 if !store.roadmap.isEmpty {
                     TransformationRoadmapCard(phases: store.roadmap)
                 }
-                if !store.profileShowcase.badges.isEmpty {
-                    BadgeGridCard(badges: store.profileShowcase.badges)
+                // Earned badges only — derived from real logs/state, never
+                // the seeded showcase list (that was demo content).
+                if !store.earnedBadges.isEmpty {
+                    BadgeGridCard(badges: store.earnedBadges)
                 }
                 if !store.recentWins.isEmpty {
                     RecentWinsCard(wins: store.recentWins)

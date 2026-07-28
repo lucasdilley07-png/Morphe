@@ -763,9 +763,11 @@ final class MorpheAppStore {
         reloadPerProfileMirrors()
         // A relaunch on the streak's last allowed rest day re-arms tonight's
         // reminder; a launch after training today clears it. Widgets get the
-        // freshest numbers on every launch too.
+        // freshest numbers on every launch too. Lapse detection runs here —
+        // the one launch-time moment that already owns streak truth.
         refreshStreakRiskReminder()
         refreshWeeklyRecapReminder()
+        detectStreakLapse()
         publishWidgetSnapshot()
         trackDayActiveIfNeeded()
 
@@ -899,7 +901,7 @@ final class MorpheAppStore {
         for key in [trainingPreferencesDefaultsKey, competitionStateDefaultsKey,
                     bodyWeightHistoryDefaultsKey, recoverySeriesDefaultsKey,
                     nutritionSeriesDefaultsKey, activeProgramDefaultsKey,
-                    Self.pendingReferralKey] {
+                    programCompletionsDefaultsKey, Self.pendingReferralKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
         workoutPersistence.clear()
@@ -1447,6 +1449,10 @@ final class MorpheAppStore {
         // scoped by profile id, which the restore may have just changed.
         if let weightHistory = cloud.weightHistory {
             applyRestoredWeightHistory(weightHistory)
+        }
+        // Same ordering rule: the extras keys are profile-id-scoped too.
+        if let extras = cloud.extras {
+            applyRestoredExtras(extras)
         }
         // The photo rides the cloud snapshot as base64 but lives locally as
         // its own file — decode it back out and keep the local JSON photo-free.
@@ -2703,6 +2709,7 @@ final class MorpheAppStore {
         } else {
             UserDefaults.standard.removeObject(forKey: activeProgramDefaultsKey)
         }
+        mirrorExtrasToCloud()
     }
 
     var programProgress: ProgramProgress? {
@@ -2758,6 +2765,28 @@ final class MorpheAppStore {
         persistActiveProgramSnapshot(snapshot)
     }
 
+    // Finished programs, per profile — the active snapshot dies when the
+    // user starts the next program, so completions need their own tiny
+    // record for the earned badge to stay true forever.
+    private var programCompletionsDefaultsKey: String {
+        "morphe.programCompletions.\(clientProfile.id.uuidString)"
+    }
+
+    private(set) var completedProgramIDs: [String] = []
+
+    func loadProgramCompletions() {
+        completedProgramIDs = UserDefaults.standard.stringArray(forKey: programCompletionsDefaultsKey) ?? []
+    }
+
+    /// Appends once per program id — re-finishing a re-run program keeps
+    /// one badge, not a stack of duplicates.
+    func recordProgramCompletion(_ programID: String) {
+        guard !completedProgramIDs.contains(programID) else { return }
+        completedProgramIDs.append(programID)
+        UserDefaults.standard.set(completedProgramIDs, forKey: programCompletionsDefaultsKey)
+        mirrorExtrasToCloud()
+    }
+
     /// Called from `logWorkout`: a logged session that IS the program's next
     /// session advances it. Returns whether this log COMPLETED the program —
     /// the caller owns the celebration slot, so completion can outrank the
@@ -2768,6 +2797,7 @@ final class MorpheAppStore {
               progress.nextSessionName == loggedTitle else { return false }
         advanceProgram(by: 1)
         guard let after = programProgress, after.isComplete else { return false }
+        recordProgramCompletion(after.program.id)
         recentWins.insert("Finished the \(after.program.name) program.", at: 0)
         return true
     }
@@ -2929,6 +2959,67 @@ final class MorpheAppStore {
         if let data = try? JSONEncoder().encode(trimmed) {
             UserDefaults.standard.set(data, forKey: key)
         }
+        mirrorExtrasToCloud()
+    }
+
+    // MARK: Cloud extras (the per-profile blobs the backup used to miss)
+    //
+    // The store copy promises "a new phone restores everything" — before
+    // this, program position, check-in trends, competition state, and
+    // training prefs lived only in per-profile UserDefaults and died with
+    // the device. They ride state/extras as raw property-list blobs now.
+
+    /// Logical blob name → the CURRENT profile's defaults key. Restore maps
+    /// through this after the profile id has been applied, so blobs land
+    /// under the restored identity.
+    private var extrasKeyByName: [String: String] {
+        [
+            "trainingPreferences": trainingPreferencesDefaultsKey,
+            "competitionState": competitionStateDefaultsKey,
+            "recoverySeries": recoverySeriesDefaultsKey,
+            "nutritionSeries": nutritionSeriesDefaultsKey,
+            "activeProgram": activeProgramDefaultsKey,
+            "programCompletions": programCompletionsDefaultsKey,
+        ]
+    }
+
+    /// Raw property-list round-trip: whatever type each blob is stored as
+    /// (Data, [String], …) survives byte-identical, so the same tolerant
+    /// decoders read a restore exactly like a local load.
+    func perProfileExtrasBlobs() -> [String: String] {
+        var blobs: [String: String] = [:]
+        for (name, key) in extrasKeyByName {
+            guard let object = UserDefaults.standard.object(forKey: key),
+                  let data = try? PropertyListSerialization.data(
+                    fromPropertyList: object, format: .binary, options: 0)
+            else { continue }
+            blobs[name] = data.base64EncodedString()
+        }
+        return blobs
+    }
+
+    /// Writes restored blobs under the current profile's keys and reloads
+    /// every mirror that reads them. Unknown names are skipped (an older
+    /// build restoring a newer backup keeps what it understands).
+    func applyRestoredExtras(_ blobs: [String: String]) {
+        for (name, encoded) in blobs {
+            guard let key = extrasKeyByName[name],
+                  let data = Data(base64Encoded: encoded),
+                  let object = try? PropertyListSerialization.propertyList(
+                    from: data, options: [], format: nil)
+            else { continue }
+            UserDefaults.standard.set(object, forKey: key)
+        }
+        loadTrainingPreferences()
+        loadCompetitionState()
+        reloadPerProfileMirrors()
+    }
+
+    /// Fire-and-forget after any per-profile blob write — same quiet
+    /// contract as every other backup push.
+    private func mirrorExtrasToCloud() {
+        guard hasCompletedOnboarding else { return }
+        cloudBackup.pushExtras(perProfileExtrasBlobs())
     }
 
     /// Stored mirrors of the persisted series — decoded ONCE per profile
@@ -2945,6 +3036,7 @@ final class MorpheAppStore {
         recoverySeries = loadSeries(recoverySeriesDefaultsKey)
         nutritionSeries = loadSeries(nutritionSeriesDefaultsKey)
         activeProgramState = loadActiveProgramSnapshot()
+        loadProgramCompletions()
     }
 
     /// Called from `submitRecoveryCheckIn` — records today's real inputs.
@@ -3064,6 +3156,7 @@ final class MorpheAppStore {
         let snapshot = CompetitionStateSnapshot(optIn: leaderboardOptIn, challengeCodes: joinedChallengeCodes)
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: competitionStateDefaultsKey)
+            mirrorExtrasToCloud()
         }
     }
 
@@ -3133,6 +3226,7 @@ final class MorpheAppStore {
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: trainingPreferencesDefaultsKey)
+            mirrorExtrasToCloud()
         }
     }
 
@@ -7172,6 +7266,98 @@ final class MorpheAppStore {
         return currentLevelNumber >= paletteUnlockLevel(palette)
     }
 
+    // MARK: Earned badges (derived from real data, never stored)
+
+    /// The profile badge grid — computed from logs and state on every read,
+    /// so a badge can never exist without the data that backs it. This
+    /// replaced the seeded showcase badges, which were demo content.
+    var earnedBadges: [ProfileBadge] {
+        var badges: [ProfileBadge] = []
+        let logs = currentAthleteWorkoutLogs
+
+        if let first = logs.min(by: { $0.completedAt < $1.completedAt }) {
+            badges.append(ProfileBadge(
+                title: "First Workout",
+                detail: "\(first.workoutTitle) — \(Self.workoutDateLabel(for: first.completedAt)).",
+                icon: "figure.walk"))
+        }
+
+        let records = recentPersonalRecords(limit: 500)
+        if let earliest = records.min(by: { $0.date < $1.date }) {
+            badges.append(ProfileBadge(
+                title: "First Record",
+                detail: "\(earliest.exerciseName) \(weightUnit.format(earliest.weight)) — \(Self.workoutDateLabel(for: earliest.date)).",
+                icon: "trophy.fill"))
+        }
+
+        let best = bestWorkoutStreak(from: logs)
+        for milestone in [7, 30, 100] where best >= milestone {
+            badges.append(ProfileBadge(
+                title: "\(milestone)-Day Streak",
+                detail: "Best run \(best) days — schedule-aware, planned rest counted.",
+                icon: "flame.fill"))
+        }
+
+        for programID in completedProgramIDs {
+            guard let program = Self.trainingPrograms.first(where: { $0.id == programID }) else { continue }
+            badges.append(ProfileBadge(
+                title: "Program Complete",
+                detail: "\(program.name) — every session of all \(program.weeks) weeks, logged.",
+                icon: "checkmark.seal.fill"))
+        }
+
+        // Ended challenges where this account actually put sessions on the
+        // board — score re-derived from own logs over the window, same math
+        // that posted it.
+        for challenge in activeChallenges where challenge.isExpired {
+            let window = DateInterval(start: challenge.startsAt, end: max(challenge.endsAt, challenge.startsAt))
+            let totals = competitionTotals(in: window)
+            let score = challenge.metric == .sets ? totals.sets : totals.workouts
+            guard score >= 1 else { continue }
+            badges.append(ProfileBadge(
+                title: "Challenge Run",
+                detail: "\(challenge.title) — \(score) \(challenge.metric == .sets ? "sets" : "sessions") over the full window.",
+                icon: "flag.checkered"))
+        }
+
+        if referralCount >= 1 {
+            badges.append(ProfileBadge(
+                title: "Recruiter",
+                detail: "\(referralCount) athlete\(referralCount == 1 ? "" : "s") joined Morphe through you.",
+                icon: "person.2.fill"))
+        }
+
+        return badges
+    }
+
+    /// Longest schedule-aware streak anywhere in the history — same gap
+    /// rule as `currentWorkoutStreak`, scanned over every run instead of
+    /// walking back from the latest day.
+    private func bestWorkoutStreak(from logs: [WorkoutLog]) -> Int {
+        let calendar = Calendar.current
+        var activeDays = Set(logs.map { calendar.startOfDay(for: $0.completedAt) })
+        for key in protectedDayKeys {
+            if let day = Self.date(fromDayKey: key) {
+                activeDays.insert(calendar.startOfDay(for: day))
+            }
+        }
+        let sortedDays = activeDays.sorted()
+        guard !sortedDays.isEmpty else { return 0 }
+        let daysPerWeek = max(1, min(7, clientProfile.trainingDaysPerWeek))
+        let allowedGap = max(1, 8 - daysPerWeek)
+        var best = 1
+        var run = 1
+        for (previous, next) in zip(sortedDays, sortedDays.dropFirst()) {
+            if let gap = calendar.dateComponents([.day], from: previous, to: next).day, gap <= allowedGap {
+                run += 1
+            } else {
+                run = 1
+            }
+            best = max(best, run)
+        }
+        return best
+    }
+
     func updateAccentPalette(_ palette: AccentPalette) {
         guard profileShowcase.accentPalette != palette else { return }
         guard isPaletteUnlocked(palette) else {
@@ -8706,6 +8892,78 @@ final class MorpheAppStore {
 
     private static let streakRiskNotificationID = "morphe.streak.risk"
     private static let weeklyRecapNotificationID = "morphe.recap.week"
+    private static let comebackNotificationID = "morphe.streak.comeback"
+
+    // MARK: Comeback (the streak's honest ending)
+    //
+    // The streak system handled everything except dying. When a real run
+    // (≥3 days) lapses, the app acknowledges it once — a no-guilt Today
+    // card into Minimum Win, plus ONE gentle reminder two days later.
+    // Never a nag: any log or a dismissal clears all of it.
+
+    private var lastKnownStreakKey: String { "morphe.streak.lastKnown.\(clientProfile.id.uuidString)" }
+    private var comebackPendingKey: String { "morphe.streak.comeback.\(clientProfile.id.uuidString)" }
+
+    /// The size of the run that ended — non-nil drives the Today card.
+    private(set) var comebackLapsedStreak: Int?
+
+    /// Launch-time check: compares the last streak this profile SAW against
+    /// the streak that exists now. A lapse records once and persists until
+    /// the user logs or dismisses — a relaunch never re-mints it.
+    func detectStreakLapse() {
+        comebackLapsedStreak = UserDefaults.standard.object(forKey: comebackPendingKey) as? Int
+        let current = currentWorkoutStreak(from: currentAthleteWorkoutLogs)
+        if current > 0 {
+            UserDefaults.standard.set(current, forKey: lastKnownStreakKey)
+            clearComeback()
+            return
+        }
+        let lastKnown = UserDefaults.standard.integer(forKey: lastKnownStreakKey)
+        guard lastKnown >= 3 else { return }
+        UserDefaults.standard.set(lastKnown, forKey: comebackPendingKey)
+        UserDefaults.standard.removeObject(forKey: lastKnownStreakKey)
+        comebackLapsedStreak = lastKnown
+        scheduleComebackReminder(lapsed: lastKnown)
+    }
+
+    /// User saw the card and closed it — that's an answer, not a snooze.
+    /// The pending state AND the reminder go together.
+    func dismissComebackCard() {
+        clearComeback()
+    }
+
+    private func clearComeback() {
+        comebackLapsedStreak = nil
+        UserDefaults.standard.removeObject(forKey: comebackPendingKey)
+        // Same tests-never-touch-the-center gate as every other reminder.
+        guard appointmentRemindersEnabled else { return }
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: [Self.comebackNotificationID])
+    }
+
+    /// One one-shot reminder, two days after the lapse at 6pm — same
+    /// ambient gate as every reminder (never a cold permission prompt).
+    private func scheduleComebackReminder(lapsed: Int) {
+        guard appointmentRemindersEnabled else { return }
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.comebackNotificationID])
+        let calendar = Calendar.current
+        guard let target = calendar.date(byAdding: .day, value: 2, to: .now),
+              let fireDate = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: target)
+        else { return }
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Start the next streak"
+            content.body = "Your \(lapsed)-day run ended — one small session starts a new one."
+            content.sound = .default
+            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            center.add(UNNotificationRequest(
+                identifier: Self.comebackNotificationID, content: content, trigger: trigger))
+        }
+    }
 
     /// One-shot "week in review" for next Monday 9:05, re-derived on every
     /// log so the numbers are final by the time it fires. Honest by
@@ -10482,9 +10740,14 @@ final class MorpheAppStore {
         // Fresh training day: the streak deadline moved — re-arm (or clear)
         // tonight's at-risk reminder against the new latest day, refresh
         // Monday's week-in-review numbers, hand the widgets the new
-        // numbers, and refresh the coach's consented view.
+        // numbers, and refresh the coach's consented view. A log is also
+        // THE comeback: remember the new streak and retire any lapse state.
         refreshStreakRiskReminder()
         refreshWeeklyRecapReminder()
+        UserDefaults.standard.set(
+            currentWorkoutStreak(from: currentAthleteWorkoutLogs),
+            forKey: lastKnownStreakKey)
+        clearComeback()
         publishWidgetSnapshot()
         pushCoachShareIfEnabled()
 

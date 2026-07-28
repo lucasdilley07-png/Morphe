@@ -45,6 +45,20 @@ struct HomeView: View {
                 // becomes the "You're done for today" card in place — no
                 // overlay, no page takeover. "Do another session" keeps the
                 // second-workout path alive via the Train tab.
+                // A lapsed streak gets acknowledged once, above the fold —
+                // no guilt, one ramp back in. Any log or a dismissal
+                // retires it (see detectStreakLapse).
+                if let lapsed = store.comebackLapsedStreak, !store.isWorkoutLoggedToday {
+                    ComebackCard(
+                        lapsedStreak: lapsed,
+                        onMinimumWin: {
+                            store.activateMinimumWinMode()
+                            store.dismissComebackCard()
+                        },
+                        onDismiss: { store.dismissComebackCard() }
+                    )
+                }
+
                 if store.isWorkoutLoggedToday {
                     TodayDoneCard(
                         workoutName: store.currentWorkout.name,
@@ -597,6 +611,42 @@ private struct HomeExpandableSection<Content: View>: View {
 
 /// Replaces TodayNextMoveCard in the hero slot once today's session is
 /// logged — same card, new state, instead of an overlay hiding the page.
+/// The streak's honest ending: names the run that ended, offers the
+/// smallest way back in, and never shows again once answered.
+private struct ComebackCard: View {
+    let lapsedStreak: Int
+    let onMinimumWin: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "arrow.counterclockwise.circle.fill")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accent)
+                    Text("Rebuilding starts today.")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                }
+
+                Text("Your \(lapsedStreak)-day streak ended. That run was real — and the next one starts with one small win, not a perfect week.")
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 10) {
+                    Button("Minimum Win", action: onMinimumWin)
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .accessibilityLabel("Start a minimum win session")
+                    Button("Dismiss", action: onDismiss)
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                }
+            }
+        }
+    }
+}
+
 private struct TodayDoneCard: View {
     @Environment(MorpheAppStore.self) private var store
     let workoutName: String
