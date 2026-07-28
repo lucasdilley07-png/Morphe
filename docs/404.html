@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Morphe</title>
+<script>
+  // GitHub Pages static-path shim: /invite/<handle> has no real file, so
+  // the 404 forwards it to invite.html?u=<handle>. Anything else goes home.
+  var parts = location.pathname.split("/").filter(Boolean);
+  var idx = parts.lastIndexOf("invite");
+  var base = location.pathname.slice(0, location.pathname.lastIndexOf("/invite/") + 1) || "/";
+  if (idx >= 0 && parts[idx + 1]) {
+    location.replace(base + "invite.html?u=" + encodeURIComponent(parts[idx + 1]));
+  } else {
+    location.replace("/");
+  }
+</script>
+</head>
+<body></body>
+</html>

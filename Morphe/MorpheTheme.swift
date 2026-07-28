@@ -138,6 +138,12 @@ enum MorpheTheme {
                 Color(red: 0.92, green: 0.80, blue: 0.42),
                 Color(red: 0.76, green: 0.61, blue: 0.20)
             )
+        case .recruiter:
+            // The referral-earned palette: a teal no level unlocks.
+            return (
+                Color(red: 0.34, green: 0.93, blue: 0.84),
+                Color(red: 0.12, green: 0.70, blue: 0.65)
+            )
         }
     }
 

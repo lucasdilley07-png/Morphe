@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "8P47H3XRN3.com.morpheapp.Morphe",
+        "paths": ["/invite/*"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Join Morphe</title>
+<style>
+  /* The telemetry-HUD look, one page deep: ink, mono micro-labels,
+     hairline strokes, scarce volt yellow. */
+  :root { --ink:#050506; --yellow:#FFD600; --line:rgba(255,255,255,.18); }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--ink); color:#fff; min-height:100vh;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .card {
+    max-width:420px; width:100%; border:1px solid rgba(255,255,255,.08);
+    padding:36px; position:relative;
+  }
+  .tick { position:absolute; width:16px; height:16px; border-color:rgba(255,255,255,.35); border-style:solid; }
+  .tick.tl { top:10px; left:10px; border-width:1px 0 0 1px; }
+  .tick.tr { top:10px; right:10px; border-width:1px 1px 0 0; }
+  .tick.bl { bottom:10px; left:10px; border-width:0 0 1px 1px; }
+  .tick.br { bottom:10px; right:10px; border-width:0 1px 1px 0; }
+  .mono { font-family:ui-monospace, "SF Mono", Menlo, monospace; }
+  .wordmark { color:var(--yellow); font-weight:900; letter-spacing:.4em; font-size:20px; }
+  .kicker { color:rgba(255,255,255,.55); letter-spacing:.2em; font-size:11px; font-weight:600; margin-top:28px; }
+  h1 { font-size:28px; font-weight:800; margin:10px 0 8px; }
+  p { color:rgba(255,255,255,.66); font-size:15px; line-height:1.5; }
+  .handle { color:#fff; font-weight:700; }
+  .btn {
+    display:block; text-align:center; text-decoration:none; margin-top:22px;
+    padding:14px; font-weight:700; letter-spacing:.1em; font-size:13px;
+  }
+  .btn.primary { background:var(--yellow); color:#000; }
+  .btn.secondary { border:1px solid var(--line); color:#fff; margin-top:10px; }
+  .rule { border:0; border-top:1px solid var(--line); margin:26px 0 12px; }
+  .motto { color:var(--yellow); font-size:12px; font-weight:700; letter-spacing:.15em; text-align:right; }
+  .steps { margin-top:14px; color:rgba(255,255,255,.66); font-size:13px; line-height:1.7; }
+  .steps b { color:#fff; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <span class="tick tl"></span><span class="tick tr"></span>
+    <span class="tick bl"></span><span class="tick br"></span>
+
+    <div class="mono wordmark">MORPHE</div>
+    <div class="mono kicker">TRAINING INVITE</div>
+    <h1 id="headline">You're invited to train on Morphe.</h1>
+    <p id="sub">Log real sets, keep an honest streak, and train together.</p>
+
+    <a id="open" class="btn primary mono" href="#">OPEN IN MORPHE</a>
+    <!-- Swap href for the real App Store URL once the listing exists
+         (LAUNCH_CHECKLIST). Until then the page explains the manual path. -->
+    <a id="store" class="btn secondary mono" href="#" hidden>GET THE APP</a>
+
+    <div class="steps" id="steps">
+      Don't have the app yet? Once Morphe is installed:
+      <br>1. Open the app and create your account.
+      <br>2. Your invite connects automatically from this link —
+      or search <b id="stepHandle">your friend's @name</b> in Network.
+    </div>
+
+    <hr class="rule">
+    <div class="mono motto">TRAIN HONEST</div>
+  </main>
+
+<script>
+  // Handle arrives as /invite/<handle> (via 404 rewrite) or ?u=<handle>.
+  var parts = location.pathname.split("/").filter(Boolean);
+  var idx = parts.lastIndexOf("invite");
+  var handle = (idx >= 0 && parts[idx + 1]) ? parts[idx + 1]
+             : new URLSearchParams(location.search).get("u") || "";
+  handle = handle.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 30);
+  if (handle) {
+    document.getElementById("headline").textContent =
+      "@" + handle + " invited you to train on Morphe.";
+    document.getElementById("stepHandle").textContent = "@" + handle;
+    document.getElementById("open").href = "morphe://invite/" + handle;
+  } else {
+    document.getElementById("open").href = "morphe://";
+  }
+</script>
+</body>
+</html>

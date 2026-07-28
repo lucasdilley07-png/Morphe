@@ -247,6 +247,12 @@ struct ProgressScreenView: View {
                     showMetrics: store.todayExperienceTier >= 1
                 )
 
+                // Last completed week, shareable — hidden entirely when that
+                // week holds nothing (an empty recap is not a recap).
+                if let recap = store.weeklyRecapData {
+                    WeeklyRecapCard(recap: recap)
+                }
+
                 progressPanel
             }
             .padding(.horizontal, 20)
@@ -1435,6 +1441,58 @@ private struct PRTimelineCard: View {
         .sheet(item: $sharePayload) { payload in
             ImageShareSheet(image: payload.image, caption: payload.caption) { completed in
                 if completed { store.noteShareCardShared(.pr) }
+                sharePayload = nil
+            }
+            .presentationDetents([.medium, .large])
+        }
+    }
+}
+
+/// Last completed Mon–Sun week with a one-tap story-card share — the
+/// Monday-notification landing spot and the recurring shareable beat.
+private struct WeeklyRecapCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    let recap: WeeklyRecapData
+
+    @State private var sharePayload: ShareCardPayload?
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Last Week")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Text(recap.rangeLabel)
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    Spacer(minLength: 0)
+                    Button("Share Week") {
+                        sharePayload = ShareCardPayload(
+                            image: ShareCardRenderer.image(for: recap),
+                            caption: store.shareCardCaption
+                        )
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .frame(width: 118)
+                    .accessibilityLabel("Share a story card of last week")
+                }
+
+                HStack(spacing: 8) {
+                    MetricPill(label: "Sessions", value: "\(recap.sessions)")
+                    MetricPill(label: "Sets", value: "\(recap.sets)")
+                    MetricPill(label: "Minutes", value: "\(recap.minutes)")
+                    if recap.prCount > 0 {
+                        MetricPill(label: "PRs", value: "\(recap.prCount)")
+                    }
+                }
+            }
+        }
+        .sheet(item: $sharePayload) { payload in
+            ImageShareSheet(image: payload.image, caption: payload.caption) { completed in
+                if completed { store.noteShareCardShared(.recap) }
                 sharePayload = nil
             }
             .presentationDetents([.medium, .large])

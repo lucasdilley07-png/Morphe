@@ -163,6 +163,30 @@ try:
     check("B reads A's block list", False,
           fs_call(B, "GET", f"users/{A['uid']}/blocked/{B['uid']}"))
 
+    print("\n— Referral receipts (referred user writes, recruiter reads) —")
+    ts = {"timestampValue": "2026-07-27T12:00:00Z"}
+    check("B writes own receipt into A's ledger", True,
+          fs_call(B, "PATCH", f"users/{A['uid']}/referrals/{B['uid']}",
+                  {"fields": {"createdAt": ts}}))
+    check("B re-mints (updates) the same receipt", False,
+          fs_call(B, "PATCH", f"users/{A['uid']}/referrals/{B['uid']}",
+                  {"fields": {"createdAt": ts}}))
+    check("C mints a receipt under a uid that isn't theirs", False,
+          fs_call(C, "PATCH", f"users/{A['uid']}/referrals/forged-{RUN_ID}",
+                  {"fields": {"createdAt": ts}}))
+    check("A self-refers into own ledger", False,
+          fs_call(A, "PATCH", f"users/{A['uid']}/referrals/{A['uid']}",
+                  {"fields": {"createdAt": ts}}))
+    check("C sneaks an extra key into a receipt", False,
+          fs_call(C, "PATCH", f"users/{B['uid']}/referrals/{C['uid']}",
+                  {"fields": {"createdAt": ts, "sneak": s("x")}}))
+    check("A reads own referral ledger", True,
+          fs_call(A, "GET", f"users/{A['uid']}/referrals/{B['uid']}"))
+    check("C reads A's referral ledger", False,
+          fs_call(C, "GET", f"users/{A['uid']}/referrals/{B['uid']}"))
+    check("B deletes own receipt (account erasure)", True,
+          fs_call(B, "DELETE", f"users/{A['uid']}/referrals/{B['uid']}"))
+
     print("\n— Telemetry (first-party, own-uid) —")
     check("A records own telemetry event", True,
           fs_call(A, "PATCH", f"telemetry/t-{RUN_ID}",

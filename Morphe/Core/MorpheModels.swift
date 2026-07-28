@@ -629,6 +629,9 @@ enum AccentPalette: String, CaseIterable, Identifiable {
     case purple = "Purple"
     case pink = "Pink"
     case gold = "Gold"
+    /// Earned by referral, not level — unlocks when someone joins Morphe
+    /// through this user's invite link (see `isPaletteUnlocked`).
+    case recruiter = "Recruiter"
 
     var id: String { rawValue }
 }
@@ -2166,6 +2169,18 @@ struct PRShareCardData: Hashable {
 struct StreakShareCardData: Hashable {
     var streak: Int
     var dateLabel: String
+    var username: String
+}
+
+/// One completed Mon–Sun training week as story-card facts.
+struct WeeklyRecapData: Hashable {
+    /// "Jul 20 – Jul 26" — rides the card header where the date sits.
+    var rangeLabel: String
+    var sessions: Int
+    var sets: Int
+    var minutes: Int
+    var prCount: Int
+    var streak: Int
     var username: String
 }
 

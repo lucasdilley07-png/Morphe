@@ -1854,11 +1854,70 @@ struct StreakShareCardView: View {
     }
 }
 
+/// One completed week as a poster — sessions lead, the facts ride below.
+struct RecapShareCardView: View {
+    let data: WeeklyRecapData
+
+    var body: some View {
+        ShareCardFrame(dateLabel: data.rangeLabel, username: data.username) {
+            VStack(alignment: .leading, spacing: 0) {
+                ShareCardKicker(text: "WEEK IN REVIEW")
+                    .padding(.bottom, 14)
+
+                Text("\(data.sessions)")
+                    .font(.system(size: 96, design: .monospaced).weight(.bold))
+                    .foregroundStyle(MorpheTheme.brandYellow)
+
+                Text(data.sessions == 1 ? "SESSION" : "SESSIONS")
+                    .font(.system(size: 18, design: .monospaced).weight(.bold))
+                    .tracking(3)
+                    .foregroundStyle(.white)
+                    .padding(.bottom, 16)
+
+                Text("\(data.sets) SETS   ·   \(data.minutes) MIN")
+                    .font(.system(size: 15, design: .monospaced).weight(.bold))
+                    .tracking(1.2)
+                    .foregroundStyle(.white)
+
+                if data.prCount > 0 {
+                    HStack(spacing: 8) {
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(MorpheTheme.brandYellow)
+                        Text("\(data.prCount) NEW PR\(data.prCount == 1 ? "" : "S")")
+                            .font(.system(size: 13, design: .monospaced).weight(.bold))
+                            .tracking(1.2)
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.top, 12)
+                }
+
+                if data.streak >= 2 {
+                    HStack(spacing: 8) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(MorpheTheme.brandYellow)
+                        Text("\(data.streak)-DAY STREAK")
+                            .font(.system(size: 13, design: .monospaced).weight(.bold))
+                            .tracking(1.2)
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.top, 8)
+                }
+            }
+        }
+    }
+}
+
 @MainActor
 enum ShareCardRenderer {
     /// 360×640 view at 3× = a 1080×1920 story-ready PNG.
     static func image(for data: ShareCardData) -> UIImage? {
         render(ShareCardView(data: data))
+    }
+
+    static func image(for data: WeeklyRecapData) -> UIImage? {
+        render(RecapShareCardView(data: data))
     }
 
     static func image(for data: PRShareCardData) -> UIImage? {

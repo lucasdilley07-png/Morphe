@@ -349,6 +349,7 @@ final class MorpheAppStore {
     /// `FirebaseAppointmentService`; no-op default for tests/previews.
     private let appointmentService: AppointmentSyncing
     private let telemetryService: TelemetrySyncing
+    private let referralService: ReferralSyncing
     /// Weekly leaderboard + challenges. Resolved in `init` (injected, or
     /// inferred Firebase/no-op alongside the party service).
     private let leaderboardService: LeaderboardSyncing
@@ -532,7 +533,8 @@ final class MorpheAppStore {
          leaderboardService: LeaderboardSyncing? = nil,
          messagingService: MessagingSyncing? = nil,
          feedService: FeedSyncing? = nil,
-         telemetryService: TelemetrySyncing? = nil) {
+         telemetryService: TelemetrySyncing? = nil,
+         referralService: ReferralSyncing? = nil) {
         // Tests build a second store to simulate a relaunch — land the live
         // store's pending coalesced writes before this instance reads the files.
         Self.mostRecentInstance?.flushPendingPersists()
@@ -568,6 +570,11 @@ final class MorpheAppStore {
             ?? (partyService is FirebasePartyService
                 ? FirebaseTelemetryService()
                 : NoOpTelemetryService())
+        // And for referral receipts (the recruiter-visible join ledger).
+        self.referralService = referralService
+            ?? (partyService is FirebasePartyService
+                ? FirebaseReferralService()
+                : NoOpReferralService())
         let templates = MorpheDemoContent.workoutTemplates
         let clients = MorpheDemoContent.coachClients
         let threads = MorpheDemoContent.messageThreads
@@ -758,6 +765,7 @@ final class MorpheAppStore {
         // reminder; a launch after training today clears it. Widgets get the
         // freshest numbers on every launch too.
         refreshStreakRiskReminder()
+        refreshWeeklyRecapReminder()
         publishWidgetSnapshot()
         trackDayActiveIfNeeded()
 
@@ -870,6 +878,15 @@ final class MorpheAppStore {
         // erases this event too — the policy outranks the metric.)
         track("account_deleted")
         await telemetryService.eraseAll(uid: uid)
+        // Referral receipts this account wrote into recruiters' ledgers —
+        // erased with the account, same promise as telemetry.
+        await referralService.eraseReceipts(
+            referredUid: uid,
+            recruiterUids: UserDefaults.standard.stringArray(forKey: Self.referralWrittenKey(uid)) ?? []
+        )
+        UserDefaults.standard.removeObject(forKey: Self.referralWrittenKey(uid))
+        UserDefaults.standard.removeObject(forKey: Self.referralCountKey(uid))
+        referralCount = 0
         do {
             try await authService.deleteAccount()
         } catch {
@@ -2822,6 +2839,37 @@ final class MorpheAppStore {
         return StreakShareCardData(
             streak: streak,
             dateLabel: Date.now.formatted(date: .abbreviated, time: .omitted),
+            username: profileShowcase.username.isEmpty ? "" : "@\(profileShowcase.username)"
+        )
+    }
+
+    /// The most recent COMPLETED Mon–Sun week as story-card facts — nil when
+    /// that week holds no logged sessions (an empty recap is not a recap).
+    var weeklyRecapData: WeeklyRecapData? {
+        let calendar = Calendar.current
+        guard let thisWeekStart = calendar.dateInterval(of: .weekOfYear, for: .now)?.start,
+              let lastWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeekStart)
+        else { return nil }
+        return weeklyRecapData(weekStart: lastWeekStart, weekEnd: thisWeekStart)
+    }
+
+    /// Recap facts for one [weekStart, weekEnd) window — every number is a
+    /// sum over the logs actually inside it.
+    private func weeklyRecapData(weekStart: Date, weekEnd: Date) -> WeeklyRecapData? {
+        let logs = currentAthleteWorkoutLogs.filter {
+            $0.completedAt >= weekStart && $0.completedAt < weekEnd
+        }
+        guard !logs.isEmpty else { return nil }
+        let dayFormat = Date.FormatStyle().month(.abbreviated).day()
+        let lastDay = weekEnd.addingTimeInterval(-1)
+        return WeeklyRecapData(
+            rangeLabel: "\(weekStart.formatted(dayFormat)) – \(lastDay.formatted(dayFormat))",
+            sessions: logs.count,
+            sets: logs.reduce(0) { $0 + Self.loggedSetCount(of: $1) },
+            minutes: logs.reduce(0) { $0 + $1.durationMinutes },
+            prCount: recentPersonalRecords(limit: 100)
+                .filter { $0.date >= weekStart && $0.date < weekEnd }.count,
+            streak: currentWorkoutStreak(from: currentAthleteWorkoutLogs),
             username: profileShowcase.username.isEmpty ? "" : "@\(profileShowcase.username)"
         )
     }
@@ -7111,15 +7159,20 @@ final class MorpheAppStore {
 
     /// Unlocked by level — or grandfathered: whatever is currently applied
     /// stays yours regardless (an update never revokes a choice).
+    /// Recruiter is the one non-level palette: it unlocks when someone
+    /// joins Morphe through this user's invite (server-backed count).
     func isPaletteUnlocked(_ palette: AccentPalette) -> Bool {
-        palette == profileShowcase.accentPalette
-            || currentLevelNumber >= paletteUnlockLevel(palette)
+        if palette == profileShowcase.accentPalette { return true }
+        if palette == .recruiter { return referralCount >= 1 }
+        return currentLevelNumber >= paletteUnlockLevel(palette)
     }
 
     func updateAccentPalette(_ palette: AccentPalette) {
         guard profileShowcase.accentPalette != palette else { return }
         guard isPaletteUnlocked(palette) else {
-            showToast("\(palette.rawValue) unlocks at level \(paletteUnlockLevel(palette)) — keep logging.")
+            showToast(palette == .recruiter
+                ? "Recruiter unlocks when someone joins through your invite."
+                : "\(palette.rawValue) unlocks at level \(paletteUnlockLevel(palette)) — keep logging.")
             return
         }
         profileShowcase.accentPalette = palette
@@ -7319,11 +7372,54 @@ final class MorpheAppStore {
 
     private static let pendingReferralKey = "morphe.referral.pending"
 
+    /// Athletes who joined through this user's invite — the recruiter-side
+    /// count of their own receipts ledger. Cached per-uid so the Profile row
+    /// is honest offline; a failed refresh keeps the cache, never fakes 0.
+    var referralCount: Int = 0
+
+    private static func referralCountKey(_ uid: String) -> String { "morphe.referrals.count.\(uid)" }
+    /// Recruiter uids this account wrote receipts under — remembered so
+    /// account deletion can erase exactly what it created.
+    private static func referralWrittenKey(_ uid: String) -> String { "morphe.referrals.written.\(uid)" }
+
+    /// Cache-then-network refresh of the recruiter's own ledger count.
+    func refreshReferralCount() async {
+        guard let uid = authUser?.id else {
+            referralCount = 0
+            return
+        }
+        referralCount = UserDefaults.standard.integer(forKey: Self.referralCountKey(uid))
+        if let live = await referralService.referralCount(uid: uid) {
+            referralCount = live
+            UserDefaults.standard.set(live, forKey: Self.referralCountKey(uid))
+        }
+    }
+
     /// Entry point for morphe:// URLs. Registering the scheme means the iOS
     /// Camera now launches Morphe for EVERY morphe:// QR — party and connect
     /// payloads must route, not silently drop. Invite links remember WHO
     /// invited, then connect the graph as soon as a signed-in session can.
     func handleIncomingURL(_ url: URL) {
+        // Universal Links (https://<domain>/invite/<handle>) parse the same
+        // as morphe://invite/<handle>. iOS only delivers https URLs the
+        // AASA file matched, so the handler is host-agnostic on purpose —
+        // it keeps working when the domain moves. Until the Associated
+        // Domains entitlement ships (paid account gate), this path simply
+        // never fires. docs/UNIVERSAL-LINKS.md has the flip.
+        if url.scheme == "https" {
+            let parts = url.pathComponents.filter { $0 != "/" }
+            if parts.count >= 2, parts[parts.count - 2] == "invite" {
+                let username = UsernameRules.normalize(parts[parts.count - 1])
+                guard !username.isEmpty else { return }
+                UserDefaults.standard.set(username, forKey: Self.pendingReferralKey)
+                if isRealFeedActive {
+                    Task { await consumePendingReferral() }
+                } else {
+                    showToast("Invite from @\(username) saved — it connects when you're signed in.")
+                }
+            }
+            return
+        }
         guard url.scheme == "morphe" else { return }
         switch url.host {
         case "invite":
@@ -7374,6 +7470,18 @@ final class MorpheAppStore {
         if !followedUids.contains(hit.uid) {
             toggleFollow(uid: hit.uid, name: "@\(hit.username)")
             track("referral_consumed")
+            // The recruiter-visible receipt: written by THIS account into
+            // the recruiter's ledger (rules pin the doc id to this uid).
+            // The recruiter uid is remembered so account deletion can
+            // erase the receipt this device created.
+            if let myUid = authUser?.id {
+                referralService.recordReferral(recruiterUid: hit.uid, referredUid: myUid)
+                var written = UserDefaults.standard.stringArray(forKey: Self.referralWrittenKey(myUid)) ?? []
+                if !written.contains(hit.uid) {
+                    written.append(hit.uid)
+                    UserDefaults.standard.set(written, forKey: Self.referralWrittenKey(myUid))
+                }
+            }
         }
     }
 
@@ -8123,6 +8231,9 @@ final class MorpheAppStore {
         // A referral captured before sign-in connects on the first real
         // feed load after it.
         await consumePendingReferral()
+        // And the recruiter side of the same loop: how many joined through
+        // this account's invites (drives the Profile row + Recruiter accent).
+        await refreshReferralCount()
     }
 
     // MARK: Report + block (App Store 1.2: report, block, filter)
@@ -8579,6 +8690,7 @@ final class MorpheAppStore {
         case session = "share_card_shared"
         case pr = "pr_card_shared"
         case streak = "streak_card_shared"
+        case recap = "recap_card_shared"
     }
 
     /// The share-card loop fired for real (the user completed the system
@@ -8588,6 +8700,39 @@ final class MorpheAppStore {
     }
 
     private static let streakRiskNotificationID = "morphe.streak.risk"
+    private static let weeklyRecapNotificationID = "morphe.recap.week"
+
+    /// One-shot "week in review" for next Monday 9:05, re-derived on every
+    /// log so the numbers are final by the time it fires. Honest by
+    /// construction: scheduled ONLY when the ending week actually holds
+    /// sessions — a week with nothing logged sends nothing. Same ambient
+    /// gate as the other reminders (never a cold permission prompt).
+    private func refreshWeeklyRecapReminder() {
+        guard appointmentRemindersEnabled else { return }
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.weeklyRecapNotificationID])
+
+        let calendar = Calendar.current
+        guard let thisWeekStart = calendar.dateInterval(of: .weekOfYear, for: .now)?.start,
+              let nextWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: thisWeekStart),
+              let recap = weeklyRecapData(weekStart: thisWeekStart, weekEnd: nextWeekStart),
+              let fireDate = calendar.date(bySettingHour: 9, minute: 5, second: 0, of: nextWeekStart)
+        else { return }
+
+        let body = "\(recap.sessions) session\(recap.sessions == 1 ? "" : "s"), \(recap.sets) sets logged — your recap card is in Progress."
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Your week in review"
+            content.body = body
+            content.sound = .default
+            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            center.add(UNNotificationRequest(
+                identifier: Self.weeklyRecapNotificationID, content: content, trigger: trigger))
+        }
+    }
 
     /// Schedules (or clears) the one streak-at-risk reminder: 7pm on the LAST
     /// allowed rest day of the schedule-aware streak. Honest by construction —
@@ -10328,9 +10473,11 @@ final class MorpheAppStore {
         guard log.athleteID == clientProfile.id else { return }
 
         // Fresh training day: the streak deadline moved — re-arm (or clear)
-        // tonight's at-risk reminder against the new latest day, hand the
-        // widgets the new numbers, and refresh the coach's consented view.
+        // tonight's at-risk reminder against the new latest day, refresh
+        // Monday's week-in-review numbers, hand the widgets the new
+        // numbers, and refresh the coach's consented view.
         refreshStreakRiskReminder()
+        refreshWeeklyRecapReminder()
         publishWidgetSnapshot()
         pushCoachShareIfEnabled()
 

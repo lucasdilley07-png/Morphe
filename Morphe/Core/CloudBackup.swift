@@ -892,6 +892,60 @@ final class FirebaseTelemetryService: TelemetrySyncing {
     }
 }
 
+// MARK: - Referral receipts (who joined through your invite)
+//
+// One doc per athlete who joined through a user's invite link:
+// users/{recruiterUid}/referrals/{referredUid} { createdAt }. The REFERRED
+// user writes their own receipt at consume time (rules pin the doc id to
+// their auth uid — a receipt nobody else can mint for them, in a ledger
+// only the recruiter can read). The count this yields is as honest as the
+// auth layer: forging it costs one real account per fake referral.
+
+protocol ReferralSyncing: AnyObject {
+    /// The referred user's receipt in the recruiter's ledger — create-once,
+    /// fire-and-forget (a duplicate create is denied by rules and ignored).
+    func recordReferral(recruiterUid: String, referredUid: String)
+    /// Recruiter-side: size of their own ledger. Nil on failure (offline),
+    /// so a cached count is never overwritten with a fake zero.
+    func referralCount(uid: String) async -> Int?
+    /// Account erasure: the referred user deletes the receipts they wrote.
+    /// Paths are remembered client-side (recruiter uids), because rules
+    /// give the referred user delete on exactly those docs.
+    func eraseReceipts(referredUid: String, recruiterUids: [String]) async
+}
+
+final class NoOpReferralService: ReferralSyncing {
+    func recordReferral(recruiterUid: String, referredUid: String) {}
+    func referralCount(uid: String) async -> Int? { nil }
+    func eraseReceipts(referredUid: String, recruiterUids: [String]) async {}
+}
+
+final class FirebaseReferralService: ReferralSyncing {
+    private var db: Firestore { Firestore.firestore() }
+
+    private func receiptDoc(recruiterUid: String, referredUid: String) -> DocumentReference {
+        db.collection("users").document(recruiterUid)
+            .collection("referrals").document(referredUid)
+    }
+
+    func recordReferral(recruiterUid: String, referredUid: String) {
+        receiptDoc(recruiterUid: recruiterUid, referredUid: referredUid)
+            .setData(["createdAt": FieldValue.serverTimestamp()])
+    }
+
+    func referralCount(uid: String) async -> Int? {
+        guard let snapshot = try? await db.collection("users").document(uid)
+            .collection("referrals").getDocuments() else { return nil }
+        return snapshot.documents.count
+    }
+
+    func eraseReceipts(referredUid: String, recruiterUids: [String]) async {
+        for recruiterUid in recruiterUids {
+            try? await receiptDoc(recruiterUid: recruiterUid, referredUid: referredUid).delete()
+        }
+    }
+}
+
 // MARK: - Appointments (personal schedule, per-doc sync)
 //
 // Each appointment is its OWN document — users/{uid}/appointments/{id} —

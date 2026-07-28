@@ -91,6 +91,24 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
 
+      // Referral receipts — one doc per athlete who joined through this
+      // user's invite link ({ createdAt }). The REFERRED user creates
+      // their own receipt: the doc id is pinned to their auth uid, so a
+      // receipt can't be minted for anyone else, can't be self-referred,
+      // and can't be re-minted (no update). Only the recruiter reads the
+      // ledger; the referred user keeps delete for account erasure.
+      // Forging the count costs one real signed-in account per fake row —
+      // the same trust level as the rest of the social graph.
+      match /referrals/{referredUid} {
+        allow read: if isOwner(uid);
+        allow create: if isSignedIn()
+          && request.auth.uid == referredUid
+          && request.auth.uid != uid
+          && request.resource.data.keys().hasOnly(['createdAt']);
+        allow update: if false;
+        allow delete: if isSignedIn() && request.auth.uid == referredUid;
+      }
+
       // Block list — one doc per blocked account ({ name, createdAt }).
       // Owner-only: who you block is your business. The app filters every
       // feed/comment/search render through this list.

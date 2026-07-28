@@ -768,6 +768,37 @@ struct ProfileView: View {
                     }
                 }
 
+                Divider().overlay(Color.white.opacity(0.08))
+
+                // Referral loop, recruiter side: the server-backed count of
+                // athletes who joined through this user's invite. The empty
+                // state names its unlock, per the house rule.
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Referrals")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    HStack(alignment: .center, spacing: 12) {
+                        Text(store.referralCount > 0
+                            ? "\(store.referralCount) athlete\(store.referralCount == 1 ? "" : "s") joined through you."
+                            : "Nobody has joined through you yet — share your invite to change that.")
+                            .font(.subheadline)
+                            .foregroundStyle(store.referralCount > 0 ? .white : MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        ShareLink(item: store.networkInviteMessage) {
+                            Text("Share Invite")
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .frame(width: 118)
+                    }
+                    Text(store.referralCount >= 1
+                        ? "Recruiter accent unlocked."
+                        : "The first join unlocks the Recruiter accent.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .task { await store.refreshReferralCount() }
+
                 if !isCoach {
                     Divider().overlay(Color.white.opacity(0.08))
 
@@ -1061,7 +1092,9 @@ struct ProfileView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(isUnlocked
             ? "\(palette.rawValue) accent"
-            : "\(palette.rawValue) accent, unlocks at level \(store.paletteUnlockLevel(palette))")
+            : palette == .recruiter
+                ? "Recruiter accent, unlocks when someone joins through your invite"
+                : "\(palette.rawValue) accent, unlocks at level \(store.paletteUnlockLevel(palette))")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 

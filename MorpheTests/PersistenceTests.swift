@@ -3585,10 +3585,102 @@ final class SocialFeedTests: XCTestCase {
         store.handleIncomingURL(URL(string: "morphe://invite/LucasD")!)
         XCTAssertEqual(UserDefaults.standard.string(forKey: "morphe.referral.pending"), "lucasd",
                        "invite handle is normalized like every username")
-        store.handleIncomingURL(URL(string: "https://evil.example/invite/x")!)
-        XCTAssertEqual(UserDefaults.standard.string(forKey: "morphe.referral.pending"), "lucasd",
-                       "non-morphe schemes are ignored")
+        // Universal-Link form: https /invite/<handle> parses like the
+        // custom scheme (iOS only delivers AASA-matched hosts, so the
+        // handler is host-agnostic — see docs/UNIVERSAL-LINKS.md).
+        store.handleIncomingURL(URL(string: "https://morphe.example/invite/Sarah_Lifts")!)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "morphe.referral.pending"), "sarah_lifts",
+                       "https invite links store the normalized handle")
+        // A non-invite https path changes nothing.
+        store.handleIncomingURL(URL(string: "https://morphe.example/privacy")!)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "morphe.referral.pending"), "sarah_lifts")
         UserDefaults.standard.removeObject(forKey: "morphe.referral.pending")
+    }
+
+    // MARK: Referral receipts (the recruiter-visible join ledger)
+
+    final class SpyReferralService: ReferralSyncing {
+        var recorded: [(recruiterUid: String, referredUid: String)] = []
+        var countToReturn: Int?
+        func recordReferral(recruiterUid: String, referredUid: String) {
+            recorded.append((recruiterUid, referredUid))
+        }
+        func referralCount(uid: String) async -> Int? { countToReturn }
+        func eraseReceipts(referredUid: String, recruiterUids: [String]) async {}
+    }
+
+    /// Any non-NoOp FeedSyncing flips isRealFeedActive — behavior matches
+    /// NoOp so the assertions stay about store state.
+    final class LiveFeedStub: FeedSyncing {
+        func publish(post: FeedPost) async -> Bool { false }
+        func fetchRecent(limit: Int) async -> [FeedPost]? { nil }
+        func react(postId: String, uid: String, type: String?) {}
+        func fetchReactionCounts(postIds: [String]) async -> [String: Int] { [:] }
+        func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]? { nil }
+        func fetchComments(postId: String, limit: Int) async -> [PostComment]? { nil }
+        func addComment(_ comment: PostComment) async -> Bool { false }
+        func deleteComment(postId: String, commentId: String) {}
+        func savePost(uid: String, postId: String, on: Bool) {}
+        func fetchSavedPostIds(uid: String) async -> Set<String>? { nil }
+        func setFollow(uid: String, targetUid: String, on: Bool) {}
+        func fetchFollowing(uid: String) async -> Set<String>? { nil }
+        func submitReport(reporterUid: String, kind: String, targetId: String,
+                          targetUid: String, reason: String, excerpt: String) async -> Bool { false }
+        func setBlocked(uid: String, targetUid: String, name: String, on: Bool) {}
+        func fetchBlocked(uid: String) async -> [String: String]? { nil }
+        func delete(postId: String) {}
+    }
+
+    final class StubUsernameDirectory: UsernameDirectoryService {
+        var entries: [(username: String, uid: String)] = []
+        func isAvailable(_ username: String, for uid: String) async -> Bool { true }
+        func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult { .claimed }
+        func search(prefix: String, limit: Int) async -> [(username: String, uid: String)] {
+            entries.filter { $0.username.hasPrefix(prefix) }
+        }
+        func release(_ username: String, for uid: String) async {}
+    }
+
+    func testConsumingAReferralWritesTheRecruiterReceipt() async {
+        UserDefaults.standard.set("lucasd", forKey: "morphe.referral.pending")
+        UserDefaults.standard.removeObject(forKey: "morphe.referrals.written.uid-test")
+        let spy = SpyReferralService()
+        let directory = StubUsernameDirectory()
+        directory.entries = [("lucasd", "uid-recruiter")]
+        let store = MorpheAppStore(usernameDirectory: directory,
+                                   feedService: LiveFeedStub(),
+                                   referralService: spy)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(
+            id: "uid-test", email: "t@morphe.app", role: .athlete,
+            displayName: "Sarah", createdAt: .now
+        )
+
+        await store.consumePendingReferral()
+
+        XCTAssertEqual(spy.recorded.count, 1, "one receipt in the recruiter's ledger")
+        XCTAssertEqual(spy.recorded.first?.recruiterUid, "uid-recruiter")
+        XCTAssertEqual(spy.recorded.first?.referredUid, "uid-test",
+                       "the referred user writes their OWN receipt")
+        XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "morphe.referrals.written.uid-test"),
+                       ["uid-recruiter"],
+                       "the receipt path is remembered for account erasure")
+        UserDefaults.standard.removeObject(forKey: "morphe.referrals.written.uid-test")
+    }
+
+    func testRecruiterPaletteUnlocksByReferralNotLevel() {
+        let store = signedInStore()
+        XCTAssertFalse(store.isPaletteUnlocked(.recruiter), "no joins, no Recruiter")
+        let before = store.profileShowcase.accentPalette
+        store.updateAccentPalette(.recruiter)
+        XCTAssertEqual(store.profileShowcase.accentPalette, before,
+                       "a locked palette can't be applied")
+
+        store.referralCount = 1
+        XCTAssertTrue(store.isPaletteUnlocked(.recruiter))
+        store.updateAccentPalette(.recruiter)
+        XCTAssertEqual(store.profileShowcase.accentPalette, .recruiter)
     }
 
     func testSessionStatsRideTheFeedPost() {
@@ -3722,6 +3814,34 @@ final class StrengthAnalyticsTests: XCTestCase {
         store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 1, reps: [8], weights: [135]))
         store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 0, reps: [8], weights: [135]))
         XCTAssertEqual(store.streakShareCardData?.streak, 2)
+    }
+
+    func testWeeklyRecapCoversOnlyTheLastCompletedWeek() {
+        let store = freshStore()
+        XCTAssertNil(store.weeklyRecapData, "no logs, no recap")
+
+        let calendar = Calendar.current
+        let thisWeekStart = calendar.dateInterval(of: .weekOfYear, for: .now)!.start
+        let lastWeekDay = calendar.date(byAdding: .day, value: -1, to: thisWeekStart)!
+        let daysAgo = calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: lastWeekDay),
+            to: calendar.startOfDay(for: .now)
+        ).day ?? 1
+
+        // A session today sits in the RUNNING week — no early recap.
+        store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 0, reps: [8], weights: [135]))
+        XCTAssertNil(store.weeklyRecapData, "the running week never recaps early")
+
+        // Two sessions on the last day of the completed week.
+        store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: daysAgo, reps: [8, 8], weights: [135, 135]))
+        store.workoutLogs.append(log(for: store, exercise: "Squat", daysAgo: daysAgo, reps: [5], weights: [225]))
+
+        let recap = store.weeklyRecapData
+        XCTAssertEqual(recap?.sessions, 2, "only the completed week's logs count")
+        XCTAssertEqual(recap?.sets, 3)
+        XCTAssertEqual(recap?.minutes, 60)
+        XCTAssertEqual(recap?.prCount, 2, "first-time records that week ride the recap")
     }
 
     func testExportFileContainsLogsAndWeightHistory() throws {
