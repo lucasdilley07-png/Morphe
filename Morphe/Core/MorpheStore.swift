@@ -3341,6 +3341,7 @@ final class MorpheAppStore {
         if !joinedChallengeCodes.contains(challenge.code) {
             joinedChallengeCodes.append(challenge.code)
         }
+        track("challenge_created")
         Haptics.success()
         return challenge
     }
@@ -3383,6 +3384,9 @@ final class MorpheAppStore {
         if !joinedChallengeCodes.contains(joined.code) {
             joinedChallengeCodes.append(joined.code)
         }
+        // Challenge drops are a growth loop — count the joins (first-party,
+        // same disclosure as every other milestone event).
+        track("challenge_joined")
         showCelebration(title: "Challenge joined", detail: joined.title, symbol: "flag.checkered")
         return true
     }
