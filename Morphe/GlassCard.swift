@@ -270,6 +270,94 @@ struct CelebrationOverlay: View {
     }
 }
 
+/// The ESCALATED celebration: a full-screen stamp for PRs and finished
+/// programs. Deliberately no confetti — the moment stays in the HUD
+/// language (ink, mono, hairlines) and the share card is one tap away.
+/// Everything else keeps the small banner above.
+struct RecordStampOverlay: View {
+    let moment: RecordStampMoment
+    /// Caption for the share sheet (carries the referral handle).
+    let caption: String
+    /// Fired only on a COMPLETED system share — telemetry hook.
+    let onShareCompleted: () -> Void
+    let onDismiss: () -> Void
+
+    @State private var sharePayload: ShareCardPayload?
+
+    var body: some View {
+        ZStack {
+            MorpheTheme.ink.opacity(0.97)
+                .ignoresSafeArea()
+                .onTapGesture(perform: onDismiss)
+
+            VStack(spacing: 0) {
+                Text(moment.kicker)
+                    .font(.system(size: 13, design: .monospaced).weight(.bold))
+                    .tracking(3)
+                    .foregroundStyle(MorpheTheme.brandYellow)
+                    .padding(.bottom, 16)
+
+                Text(moment.headline)
+                    .font(.system(size: 34, weight: .black))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.6)
+                    .padding(.bottom, 14)
+
+                Text(moment.valueLine.uppercased())
+                    .font(.system(size: 28, design: .monospaced).weight(.bold))
+                    .foregroundStyle(MorpheTheme.brandYellow)
+
+                if !moment.detailLine.isEmpty {
+                    Text(moment.detailLine.uppercased())
+                        .font(.system(size: 12, design: .monospaced).weight(.semibold))
+                        .tracking(1.6)
+                        .foregroundStyle(Color.white.opacity(0.55))
+                        .padding(.top, 10)
+                }
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.18))
+                    .frame(width: 180, height: 1)
+                    .padding(.vertical, 24)
+
+                VStack(spacing: 10) {
+                    if let card = moment.prCard {
+                        Button("Share Card") {
+                            sharePayload = ShareCardPayload(
+                                image: ShareCardRenderer.image(for: card),
+                                caption: caption
+                            )
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandYellow))
+                        .frame(width: 220)
+                    }
+                    Button("Done", action: onDismiss)
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .frame(width: 220)
+                }
+            }
+            .padding(36)
+
+            HUDCornerTicks(arm: 22, color: Color.white.opacity(0.35))
+                .padding(24)
+        }
+        .onAppear {
+            Haptics.impact(.heavy)
+            SoundEffects.play(.star)
+        }
+        .sheet(item: $sharePayload) { payload in
+            ImageShareSheet(image: payload.image, caption: payload.caption) { completed in
+                if completed { onShareCompleted() }
+                sharePayload = nil
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .accessibilityAddTraits(.isModal)
+    }
+}
+
 struct MorpheAvatarView: View {
     let avatar: AvatarProfile
     let size: CGFloat
@@ -315,22 +403,6 @@ struct MorpheAvatarView: View {
         }
     }
 
-    private var iconAccent: LinearGradient {
-        switch avatar.style {
-        case .cleanStarter:
-            return LinearGradient(colors: [Color.white.opacity(0.95), MorpheTheme.accentAlt.opacity(0.75)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .fightReady:
-            return LinearGradient(colors: [Color(red: 0.98, green: 0.50, blue: 0.40), Color(red: 0.95, green: 0.26, blue: 0.30)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .matchFit:
-            return LinearGradient(colors: [Color(red: 0.54, green: 0.95, blue: 0.66), Color(red: 0.17, green: 0.72, blue: 0.41)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .jumpDay:
-            return LinearGradient(colors: [Color(red: 1.00, green: 0.78, blue: 0.46), Color(red: 0.97, green: 0.46, blue: 0.14)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .roadRunner:
-            return LinearGradient(colors: [Color(red: 0.70, green: 0.93, blue: 1.0), MorpheTheme.accent], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .strengthBuilder:
-            return LinearGradient(colors: [MorpheTheme.lavender, Color(red: 0.58, green: 0.42, blue: 0.92)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        }
-    }
 }
 
 struct ProfileBannerView: View {
@@ -385,27 +457,6 @@ struct ProfileBannerView: View {
             .padding(18)
         }
         .frame(maxWidth: .infinity, minHeight: 148)
-    }
-
-    private func gradientColors(for theme: ThemePreset) -> [Color] {
-        switch theme {
-        case .boxingRedCharcoal:
-            return [Color(red: 0.88, green: 0.30, blue: 0.24), Color.black.opacity(0.9)]
-        case .soccerGreenWhite:
-            return [Color(red: 0.18, green: 0.70, blue: 0.40), Color.white.opacity(0.18)]
-        case .basketballOrangeBlack:
-            return [Color(red: 0.95, green: 0.48, blue: 0.18), Color.black.opacity(0.92)]
-        case .recoveryBlueGray:
-            return [Color(red: 0.32, green: 0.62, blue: 0.94), Color(red: 0.42, green: 0.46, blue: 0.54)]
-        case .strengthPurpleGraphite:
-            return [MorpheTheme.lavender, Color(red: 0.18, green: 0.20, blue: 0.24)]
-        case .minimalWhiteBlack:
-            return [Color.white.opacity(0.20), Color.black.opacity(0.92)]
-        case .goldPremium:
-            return [Color(red: 0.92, green: 0.80, blue: 0.42), Color(red: 0.26, green: 0.22, blue: 0.12)]
-        default:
-            return [MorpheTheme.accentAlt, Color.black.opacity(0.88)]
-        }
     }
 
     private func eyebrowText(for preset: BannerPreset) -> String {
@@ -1522,22 +1573,83 @@ struct WrapStack<Content: View>: View {
     }
 }
 
+// MARK: - Manifesto (the house rules, said out loud)
+//
+// The brand promise as a user-facing card. Every line is enforced in code —
+// if a line stops being true, the fix is the product, not this copy.
+
+struct ManifestoCard: View {
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("WHY MORPHE")
+                    .font(MorpheTheme.microLabel())
+                    .tracking(1.4)
+                    .foregroundStyle(MorpheTheme.accent)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    ManifestoLine(index: 1, title: "Real scores only",
+                                  detail: "Every stat is computed from sets you actually logged.")
+                    ManifestoLine(index: 2, title: "No ads. No trackers.",
+                                  detail: "Your numbers are yours — never sold, never used to target you.")
+                    ManifestoLine(index: 3, title: "Safety stays free",
+                                  detail: "Your data, your export, and every safety feature — free, always.")
+                    ManifestoLine(index: 4, title: "Nothing fake",
+                                  detail: "No invented streaks, no padded progress. If Morphe shows it, you did it.")
+                }
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.14))
+                    .frame(height: 1)
+
+                // Brand yellow on purpose — the motto doesn't follow the
+                // user's accent palette, same as the share card footer.
+                Text("TRAIN HONEST")
+                    .font(.system(size: 13, design: .monospaced).weight(.bold))
+                    .tracking(2.4)
+                    .foregroundStyle(MorpheTheme.brandYellow)
+            }
+        }
+    }
+}
+
+private struct ManifestoLine: View {
+    let index: Int
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(String(format: "%02d", index))
+                .font(MorpheTheme.microLabel(11))
+                .tracking(1.2)
+                .foregroundStyle(MorpheTheme.accent)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
 // MARK: - Share card (the outward face of a session)
 //
 // A branded 9:16 story image rendered on demand with ImageRenderer — the
 // telemetry HUD look, sized for IG/Snap stories. Every number on it is a
 // logged fact from ShareCardData; there is nothing to embellish.
 
-struct ShareCardView: View {
-    let data: ShareCardData
-
-    private var factLine: String {
-        var facts: [String] = []
-        if data.setCount > 0 { facts.append("\(data.setCount) SETS") }
-        if data.exerciseCount > 0 { facts.append("\(data.exerciseCount) MOVES") }
-        if data.minutes > 0 { facts.append("\(data.minutes) MIN") }
-        return facts.joined(separator: "   ·   ")
-    }
+/// Shared 9:16 poster chrome: ink canvas, wordmark + date header, hairline
+/// footer with handle + motto, corner ticks. Each card variant supplies
+/// only its middle block.
+private struct ShareCardFrame<Content: View>: View {
+    let dateLabel: String
+    let username: String
+    @ViewBuilder var content: Content
 
     var body: some View {
         ZStack {
@@ -1551,7 +1663,7 @@ struct ShareCardView: View {
                         .tracking(6)
                         .foregroundStyle(MorpheTheme.brandYellow)
                     Spacer()
-                    Text(data.dateLabel.uppercased())
+                    Text(dateLabel.uppercased())
                         .font(.system(size: 11, design: .monospaced).weight(.semibold))
                         .tracking(1.6)
                         .foregroundStyle(Color.white.opacity(0.55))
@@ -1559,10 +1671,68 @@ struct ShareCardView: View {
 
                 Spacer()
 
-                Text("SESSION COMPLETE")
-                    .font(.system(size: 12, design: .monospaced).weight(.semibold))
-                    .tracking(2.4)
-                    .foregroundStyle(Color.white.opacity(0.55))
+                content
+
+                Spacer()
+
+                // Footer: hairline + handle + motto.
+                Rectangle()
+                    .fill(Color.white.opacity(0.18))
+                    .frame(height: 1)
+                    .padding(.bottom, 12)
+                HStack {
+                    if !username.isEmpty {
+                        Text(username.uppercased())
+                            .font(.system(size: 12, design: .monospaced).weight(.semibold))
+                            .tracking(1.6)
+                            .foregroundStyle(Color.white.opacity(0.7))
+                    }
+                    Spacer()
+                    // The motto rides every card — the brand line travels
+                    // with the stats, not instead of them.
+                    Text("TRAIN HONEST")
+                        .font(.system(size: 12, design: .monospaced).weight(.bold))
+                        .tracking(1.6)
+                        .foregroundStyle(MorpheTheme.brandYellow)
+                }
+            }
+            .padding(36)
+
+            // The HUD corner ticks, scaled up for the poster format.
+            HUDCornerTicks(arm: 16, color: Color.white.opacity(0.35))
+                .padding(18)
+        }
+        .frame(width: 360, height: 640)
+    }
+}
+
+/// The mono tracked section label every card opens with.
+private struct ShareCardKicker: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 12, design: .monospaced).weight(.semibold))
+            .tracking(2.4)
+            .foregroundStyle(Color.white.opacity(0.55))
+    }
+}
+
+struct ShareCardView: View {
+    let data: ShareCardData
+
+    private var factLine: String {
+        var facts: [String] = []
+        if data.setCount > 0 { facts.append("\(data.setCount) SETS") }
+        if data.exerciseCount > 0 { facts.append("\(data.exerciseCount) MOVES") }
+        if data.minutes > 0 { facts.append("\(data.minutes) MIN") }
+        return facts.joined(separator: "   ·   ")
+    }
+
+    var body: some View {
+        ShareCardFrame(dateLabel: data.dateLabel, username: data.username) {
+            VStack(alignment: .leading, spacing: 0) {
+                ShareCardKicker(text: "SESSION COMPLETE")
                     .padding(.bottom, 10)
 
                 Text(data.workoutName)
@@ -1606,32 +1776,81 @@ struct ShareCardView: View {
                     }
                     .padding(.top, 4)
                 }
+            }
+        }
+    }
+}
 
-                Spacer()
+/// One PR, one poster. The weight is the hero; the "up from" row only
+/// renders when the beaten record is actually known.
+struct PRShareCardView: View {
+    let data: PRShareCardData
 
-                // Footer: hairline + handle.
-                Rectangle()
-                    .fill(Color.white.opacity(0.18))
-                    .frame(height: 1)
-                    .padding(.bottom, 12)
-                HStack {
-                    Text(data.username.isEmpty ? "TRAIN HONEST" : data.username.uppercased())
-                        .font(.system(size: 12, design: .monospaced).weight(.semibold))
-                        .tracking(1.6)
-                        .foregroundStyle(Color.white.opacity(0.7))
-                    Spacer()
-                    Rectangle()
-                        .fill(MorpheTheme.brandYellow)
-                        .frame(width: 26, height: 3)
+    var body: some View {
+        ShareCardFrame(dateLabel: data.dateLabel, username: data.username) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 8) {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(MorpheTheme.brandYellow)
+                    ShareCardKicker(text: "NEW RECORD")
+                }
+                .padding(.bottom, 10)
+
+                Text(data.exerciseName)
+                    .font(.system(size: 40, weight: .black))
+                    .foregroundStyle(.white)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.6)
+                    .padding(.bottom, 18)
+
+                Text(data.weightLabel.uppercased())
+                    .font(.system(size: 34, design: .monospaced).weight(.bold))
+                    .foregroundStyle(MorpheTheme.brandYellow)
+
+                if !data.previousLabel.isEmpty {
+                    Text("UP FROM \(data.previousLabel.uppercased())")
+                        .font(.system(size: 13, design: .monospaced).weight(.semibold))
+                        .tracking(1.2)
+                        .foregroundStyle(Color.white.opacity(0.55))
+                        .padding(.top, 10)
                 }
             }
-            .padding(36)
-
-            // The HUD corner ticks, scaled up for the poster format.
-            HUDCornerTicks(arm: 16, color: Color.white.opacity(0.35))
-                .padding(18)
         }
-        .frame(width: 360, height: 640)
+    }
+}
+
+/// The schedule-aware streak as a poster — the number is the whole story.
+struct StreakShareCardView: View {
+    let data: StreakShareCardData
+
+    var body: some View {
+        ShareCardFrame(dateLabel: data.dateLabel, username: data.username) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 8) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(MorpheTheme.brandYellow)
+                    ShareCardKicker(text: "CONSISTENCY")
+                }
+                .padding(.bottom, 14)
+
+                Text("\(data.streak)")
+                    .font(.system(size: 96, design: .monospaced).weight(.bold))
+                    .foregroundStyle(MorpheTheme.brandYellow)
+
+                Text("DAY STREAK")
+                    .font(.system(size: 18, design: .monospaced).weight(.bold))
+                    .tracking(3)
+                    .foregroundStyle(.white)
+                    .padding(.bottom, 14)
+
+                Text("EVERY DAY EARNED")
+                    .font(.system(size: 12, design: .monospaced).weight(.semibold))
+                    .tracking(1.6)
+                    .foregroundStyle(Color.white.opacity(0.55))
+            }
+        }
     }
 }
 
@@ -1639,10 +1858,31 @@ struct ShareCardView: View {
 enum ShareCardRenderer {
     /// 360×640 view at 3× = a 1080×1920 story-ready PNG.
     static func image(for data: ShareCardData) -> UIImage? {
-        let renderer = ImageRenderer(content: ShareCardView(data: data))
+        render(ShareCardView(data: data))
+    }
+
+    static func image(for data: PRShareCardData) -> UIImage? {
+        render(PRShareCardView(data: data))
+    }
+
+    static func image(for data: StreakShareCardData) -> UIImage? {
+        render(StreakShareCardView(data: data))
+    }
+
+    private static func render(_ view: some View) -> UIImage? {
+        let renderer = ImageRenderer(content: view)
         renderer.scale = 3
         return renderer.uiImage
     }
+}
+
+/// A rendered card + caption, alive while a share sheet is up — the shared
+/// Identifiable payload for every card-share entry point.
+struct ShareCardPayload: Identifiable {
+    let id = UUID()
+    /// Nil = render failed; the sheet shares the caption text alone.
+    let image: UIImage?
+    let caption: String
 }
 
 /// System share sheet for a rendered card image (+ caption text). Same

@@ -3671,7 +3671,7 @@ private struct WorkoutRestControlBar: View {
                     .foregroundStyle(.white)
                 Spacer()
                 Text(timeString)
-                    .font(.system(.title, design: .rounded).weight(.bold))
+                    .font(.system(.title, design: .monospaced).weight(.bold))
                     .foregroundStyle(.white)
             }
 
@@ -4143,7 +4143,7 @@ private struct CircuitModeView: View {
 
             VStack(spacing: 8) {
                 Text(displayStationName)
-                    .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+                    .font(.largeTitle.weight(.heavy))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)

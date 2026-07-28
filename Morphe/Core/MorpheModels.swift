@@ -1638,6 +1638,23 @@ struct CelebrationMoment: Identifiable, Hashable {
     var symbol: String
 }
 
+/// The one ESCALATED moment — a full-screen stamp reserved for the facts
+/// that outrank the banner (a new PR, a finished program). Same honesty
+/// contract as the banner: every line is a logged fact.
+struct RecordStampMoment: Identifiable, Hashable {
+    var id = UUID()
+    /// "NEW RECORD" / "PROGRAM COMPLETE" — the mono tracked kicker.
+    var kicker: String
+    /// Exercise or program name.
+    var headline: String
+    /// The big number line ("225 LB" / "8 WEEKS").
+    var valueLine: String
+    /// "UP FROM 205 LB" / "EVERY SESSION LOGGED" — "" hides the row.
+    var detailLine: String
+    /// Non-nil makes the stamp shareable as a PR story card.
+    var prCard: PRShareCardData?
+}
+
 struct LessonCard: Identifiable, Hashable {
     var title: String
     var subtitle: String
@@ -1707,7 +1724,7 @@ struct OnboardingDraft: Hashable {
     var confidence: ConfidenceLevel = .maybe
     var biggestObstacle: ObstacleOption = .time
     var theme: ThemePreset = .morpheBlackBlue
-    var accentPalette: AccentPalette = .electricBlue
+    var accentPalette: AccentPalette = .gold
     var avatarStyle: AvatarStyle = .cleanStarter
 
     var goal: FitnessGoalOption {
@@ -2128,6 +2145,27 @@ struct ShareCardData: Hashable {
     var streak: Int
     var prNames: [String]
     /// "@username", or "" before a handle is claimed.
+    var username: String
+}
+
+/// A single PR as its own story card — the log's highest-emotion fact,
+/// shareable on its own instead of riding inside the session card.
+struct PRShareCardData: Hashable {
+    var exerciseName: String
+    /// Formatted in the user's display unit ("225 lb").
+    var weightLabel: String
+    /// The beaten record, or "" for a first record / when the prior top
+    /// isn't known (the timeline shows standing records only — the card
+    /// never invents an "up from" claim).
+    var previousLabel: String
+    var dateLabel: String
+    var username: String
+}
+
+/// The schedule-aware streak as a story card.
+struct StreakShareCardData: Hashable {
+    var streak: Int
+    var dateLabel: String
     var username: String
 }
 

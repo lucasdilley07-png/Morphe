@@ -104,7 +104,7 @@ private struct MorpheTodayWidgetView: View {
                 Image(systemName: "flame.fill")
                     .font(.caption2)
                 Text("\(snapshot.streak)")
-                    .font(.system(.title3, design: .rounded).weight(.bold))
+                    .font(.system(.title3, design: .monospaced).weight(.bold))
             }
             .accessibilityLabel("\(snapshot.streak) day streak")
         case .accessoryRectangular:
@@ -130,7 +130,7 @@ private struct MorpheTodayWidgetView: View {
                         .font(.caption)
                         .foregroundStyle(Self.gold)
                     Text("\(snapshot.streak)")
-                        .font(.system(.title3, design: .rounded).weight(.bold))
+                        .font(.system(.title3, design: .monospaced).weight(.bold))
                         .foregroundStyle(.white)
                     Text("DAY STREAK")
                         .font(.system(size: 9, weight: .bold, design: .monospaced))

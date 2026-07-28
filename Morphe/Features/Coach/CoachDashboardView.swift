@@ -3583,7 +3583,7 @@ private struct CoachMetricCard: View {
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
                 Text(value)
-                    .font(.system(.title, design: .rounded).weight(.bold))
+                    .font(.system(.title, design: .monospaced).weight(.bold))
                     .foregroundStyle(.white)
             }
             .frame(width: 170, alignment: .leading)

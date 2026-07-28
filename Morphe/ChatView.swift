@@ -116,7 +116,7 @@ private struct NetworkEmptyState: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Build your network")
-                            .font(.system(.title2, design: .rounded).weight(.bold))
+                            .font(.title2.weight(.bold))
                             .foregroundStyle(.white)
                         Text("Morphe is better with people. Connect with athletes and coaches near you — then your feed fills with real sessions, wins, and ideas worth stealing.")
                             .font(.subheadline)
@@ -970,64 +970,6 @@ private struct CoachChatPreviewCard: View {
 
                 Text(preview)
                     .foregroundStyle(MorpheTheme.textSecondary)
-            }
-        }
-    }
-}
-
-private struct AICoachChatCard: View {
-    @Binding var prompt: String
-    let quickPrompts: [String]
-    let onSend: (String) -> Void
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Ask Morphe AI")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                TextField(
-                    "Ask Morphe anything about your workout, nutrition, or progress...",
-                    text: $prompt,
-                    axis: .vertical
-                )
-                .lineLimit(2...4)
-                .textFieldStyle(MorpheFieldStyle())
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(quickPrompts, id: \.self) { item in
-                            Button(item) {
-                                onSend(item)
-                            }
-                            .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
-                        }
-                    }
-                }
-
-                Button("Ask Coach") {
-                    onSend(prompt)
-                }
-                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
-            }
-        }
-    }
-}
-
-private struct MessageThreadCard: View {
-    let messages: [ThreadMessage]
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Coach + AI Thread")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                ForEach(messages) { message in
-                    ClientConversationRow(message: message)
-                }
             }
         }
     }

@@ -232,6 +232,19 @@ struct RootView: View {
             }
             .padding(.horizontal, 20)
         }
+        .overlay {
+            // The escalated moment (PRs, finished programs) — full-screen,
+            // above everything, dismissed only by the user.
+            if let stamp = store.recordStamp {
+                RecordStampOverlay(
+                    moment: stamp,
+                    caption: store.shareCardCaption,
+                    onShareCompleted: { store.noteShareCardShared(.pr) },
+                    onDismiss: { store.dismissRecordStamp() }
+                )
+                .transition(.scale(scale: 1.06).combined(with: .opacity))
+            }
+        }
         .overlay(alignment: .bottomTrailing) {
             // Only in the real app shell — never over the sign-in or onboarding
             // screens (a signed-out account still has hasCompletedOnboarding set).
@@ -247,9 +260,11 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.25), value: store.selectedClientTab)
         .animation(.easeInOut(duration: 0.25), value: store.selectedCoachTab)
         .animation(.easeInOut(duration: 0.25), value: store.toastMessage)
-        // The celebration is the app's ONE emotional beat (PRs land here) —
-        // it gets a spring pop where everything else stays mechanical.
+        // The celebrations are the app's ONE emotional beat — the banner and
+        // the full-screen stamp get a spring pop where everything else stays
+        // mechanical.
         .animation(.spring(response: 0.38, dampingFraction: 0.65), value: store.celebration)
+        .animation(.spring(response: 0.38, dampingFraction: 0.65), value: store.recordStamp)
         // Referral deep links (morphe://invite/<username>) land here whether
         // the app was cold-launched or already running.
         .onOpenURL { url in

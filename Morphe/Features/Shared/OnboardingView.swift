@@ -573,6 +573,8 @@ private struct WelcomeLandingStep: View {
                     }
                 }
             }
+
+            ManifestoCard()
         }
     }
 }

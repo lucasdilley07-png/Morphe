@@ -957,6 +957,7 @@ private struct AthletePatternInsightsCard: View {
 }
 
 private struct ProgressHeroStrip: View {
+    @Environment(MorpheAppStore.self) private var store
     let score: Int
     let consistency: Int
     /// The user's own weekly training-day goal from onboarding — not a
@@ -967,6 +968,8 @@ private struct ProgressHeroStrip: View {
     /// False on first run — same principle as Today: zeros aren't metrics.
     var showMetrics: Bool = true
 
+    @State private var sharePayload: ShareCardPayload?
+
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
@@ -975,6 +978,26 @@ private struct ProgressHeroStrip: View {
                         MetricPill(label: "Morphe Score", value: "\(score)")
                         MetricPill(label: "This Week", value: "\(consistency)/\(max(consistencyTarget, 1))")
                         MetricPill(label: "Streak", value: "\(streak) days")
+
+                        Spacer(minLength: 0)
+
+                        // A streak worth keeping is a streak worth posting —
+                        // same ≥2 bar as the reminder and the session card.
+                        if streak >= 2 {
+                            Button {
+                                guard let card = store.streakShareCardData else { return }
+                                sharePayload = ShareCardPayload(
+                                    image: ShareCardRenderer.image(for: card),
+                                    caption: store.shareCardCaption
+                                )
+                            } label: {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Share a story card of your \(streak)-day streak")
+                        }
                     }
                 }
 
@@ -988,6 +1011,13 @@ private struct ProgressHeroStrip: View {
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
             }
+        }
+        .sheet(item: $sharePayload) { payload in
+            ImageShareSheet(image: payload.image, caption: payload.caption) { completed in
+                if completed { store.noteShareCardShared(.streak) }
+                sharePayload = nil
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 }
@@ -1325,8 +1355,11 @@ private struct BodyWeightTrendCard: View {
 /// The last five personal records — first session each all-time top set
 /// was hit, straight from the logs.
 private struct PRTimelineCard: View {
+    @Environment(MorpheAppStore.self) private var store
     let records: [(date: Date, exerciseName: String, weight: Double)]
     let weightUnit: WeightUnit
+
+    @State private var sharePayload: ShareCardPayload?
 
     var body: some View {
         GlassCard {
@@ -1365,6 +1398,27 @@ private struct PRTimelineCard: View {
                             Text(weightUnit.format(record.weight))
                                 .font(.subheadline.weight(.bold))
                                 .foregroundStyle(MorpheTheme.accent)
+
+                            // Each record is its own story card — the
+                            // timeline shows standing records, so the card
+                            // states the weight without an "up from" claim.
+                            Button {
+                                let card = store.prShareCardData(
+                                    exerciseName: record.exerciseName,
+                                    weight: record.weight,
+                                    date: record.date
+                                )
+                                sharePayload = ShareCardPayload(
+                                    image: ShareCardRenderer.image(for: card),
+                                    caption: store.shareCardCaption
+                                )
+                            } label: {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Share a story card of the \(record.exerciseName) record")
                         }
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel(
@@ -1377,6 +1431,13 @@ private struct PRTimelineCard: View {
                     }
                 }
             }
+        }
+        .sheet(item: $sharePayload) { payload in
+            ImageShareSheet(image: payload.image, caption: payload.caption) { completed in
+                if completed { store.noteShareCardShared(.pr) }
+                sharePayload = nil
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 }

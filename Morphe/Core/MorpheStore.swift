@@ -107,6 +107,9 @@ final class MorpheAppStore {
     var selectedAppearance: ColorScheme? = .dark
     var toastMessage: String?
     var celebration: CelebrationMoment?
+    /// The full-screen stamp — only PRs and finished programs land here;
+    /// everything else stays on the small `celebration` banner.
+    var recordStamp: RecordStampMoment?
 
     var isShowingLaunchSequence = true
     var hasCompletedOnboarding = false
@@ -2796,6 +2799,31 @@ final class MorpheAppStore {
         let handle = profileShowcase.username
         guard !handle.isEmpty else { return "Training on Morphe." }
         return "Training on Morphe — I'm @\(handle). Install it, then open morphe://invite/\(handle) and we're connected."
+    }
+
+    /// One PR as story-card facts. `previous` is only known at log time
+    /// (the timeline shows standing records) — 0 hides the "up from" row
+    /// rather than inventing a prior.
+    func prShareCardData(exerciseName: String, weight: Double, previous: Double = 0, date: Date = .now) -> PRShareCardData {
+        PRShareCardData(
+            exerciseName: exerciseName,
+            weightLabel: weightUnit.format(weight),
+            previousLabel: previous > 0 ? weightUnit.format(previous) : "",
+            dateLabel: date.formatted(date: .abbreviated, time: .omitted),
+            username: profileShowcase.username.isEmpty ? "" : "@\(profileShowcase.username)"
+        )
+    }
+
+    /// The current schedule-aware streak as story-card facts — nil under 2
+    /// days (a 1-day "streak" isn't a brag, same bar the streak reminder uses).
+    var streakShareCardData: StreakShareCardData? {
+        let streak = currentWorkoutStreak(from: currentAthleteWorkoutLogs)
+        guard streak >= 2 else { return nil }
+        return StreakShareCardData(
+            streak: streak,
+            dateLabel: Date.now.formatted(date: .abbreviated, time: .omitted),
+            username: profileShowcase.username.isEmpty ? "" : "@\(profileShowcase.username)"
+        )
     }
 
     // MARK: - Daily series (recovery + nutrition history)
@@ -6208,22 +6236,32 @@ final class MorpheAppStore {
             track("activation_first_log")
         }
         // Celebration ranking: finishing a whole PROGRAM outranks a PR,
-        // which outranks the generic XP line. One banner, the biggest fact.
+        // which outranks the generic XP line. The top two get the
+        // full-screen stamp — the app's ONE escalated moment, with the
+        // share card a tap away; everything else stays on the banner.
         if programJustCompleted, let finished = programProgress {
-            showCelebration(
-                title: "Program complete",
-                detail: "\(finished.program.name) — every session of all \(finished.program.weeks) weeks, logged.",
-                symbol: "trophy.fill"
+            recordStamp = RecordStampMoment(
+                kicker: "PROGRAM COMPLETE",
+                headline: finished.program.name,
+                valueLine: "\(finished.program.weeks) weeks",
+                detailLine: "Every session logged",
+                prCard: nil
             )
         } else if let pr = newPRs.first {
             let extraPRs = newPRs.count - 1
             var detail = pr.previous > 0
-                ? "\(weightUnit.format(pr.weight)) — up from \(weightUnit.format(pr.previous))."
-                : "\(weightUnit.format(pr.weight)) — your first record."
+                ? "Up from \(weightUnit.format(pr.previous))"
+                : "Your first record"
             if extraPRs > 0 {
-                detail += " Plus \(extraPRs) more PR\(extraPRs == 1 ? "" : "s")."
+                detail += " · +\(extraPRs) more PR\(extraPRs == 1 ? "" : "s")"
             }
-            showCelebration(title: "New PR — \(pr.name)", detail: detail, symbol: "trophy.fill")
+            recordStamp = RecordStampMoment(
+                kicker: "NEW RECORD",
+                headline: pr.name,
+                valueLine: weightUnit.format(pr.weight),
+                detailLine: detail,
+                prCard: prShareCardData(exerciseName: pr.name, weight: pr.weight, previous: pr.previous)
+            )
             recentWins.insert("New PR: \(pr.name) at \(weightUnit.format(pr.weight)).", at: 0)
         } else {
             // The celebration speaks in the coaching tone the user picked.
@@ -8535,10 +8573,18 @@ final class MorpheAppStore {
         track("day_active")
     }
 
+    /// Which card left the app — each kind is its own telemetry event so
+    /// the metrics report shows which emotional moments actually travel.
+    enum ShareCardKind: String {
+        case session = "share_card_shared"
+        case pr = "pr_card_shared"
+        case streak = "streak_card_shared"
+    }
+
     /// The share-card loop fired for real (the user completed the system
     /// share, not just opened the sheet).
-    func noteShareCardShared() {
-        track("share_card_shared")
+    func noteShareCardShared(_ kind: ShareCardKind = .session) {
+        track(kind.rawValue)
     }
 
     private static let streakRiskNotificationID = "morphe.streak.risk"
@@ -12005,6 +12051,12 @@ final class MorpheAppStore {
         }
 
         return streak
+    }
+
+    /// User-driven dismissal only — the stamp is a deliberate moment, not
+    /// a toast, so it never times itself out.
+    func dismissRecordStamp() {
+        recordStamp = nil
     }
 
     private func showCelebration(title: String, detail: String, symbol: String) {

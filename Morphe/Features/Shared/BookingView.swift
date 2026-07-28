@@ -570,7 +570,7 @@ private struct EarningsStat: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(.system(.title2, design: .rounded).weight(.bold))
+                .font(.system(.title2, design: .monospaced).weight(.bold))
                 .foregroundStyle(tint)
             Text(label)
                 .font(.caption)

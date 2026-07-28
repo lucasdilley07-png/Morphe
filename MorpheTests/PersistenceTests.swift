@@ -476,18 +476,28 @@ final class WorkoutSessionTests: XCTestCase {
         startedTwoExerciseSession(store)
         let firstExerciseName = store.activeWorkoutExercise!.name
 
-        // Session 1: first-ever weighted sets — a first record is a PR.
+        // Session 1: first-ever weighted sets — a first record is a PR, and
+        // a PR gets the full-screen stamp, not the banner.
         store.completeTrackedSet(reps: 8, weight: 50)
         store.completeTrackedSet(reps: 8, weight: 50)
         store.completeTrackedSet(reps: 8, weight: 40)
         store.completeTrackedSet(reps: 8, weight: 40)
         store.finishTrackedWorkoutSession()
         store.logWorkout()
-        XCTAssertEqual(store.celebration?.title, "New PR — \(firstExerciseName)",
+        XCTAssertEqual(store.recordStamp?.kicker, "NEW RECORD",
                        "a session that sets a record must celebrate THAT, not generic XP")
-        XCTAssertEqual(store.celebration?.symbol, "trophy.fill")
+        XCTAssertEqual(store.recordStamp?.headline, firstExerciseName)
+        // Both exercises hit first records — the detail cites the first and
+        // counts the rest.
+        XCTAssertTrue(store.recordStamp?.detailLine.contains("Your first record") == true)
+        XCTAssertNotNil(store.recordStamp?.prCard,
+                        "a PR stamp carries its share card")
+        XCTAssertNotEqual(store.celebration?.title, "+50 XP",
+                          "the stamp replaces the XP banner — never both for one log")
+        store.dismissRecordStamp()
 
-        // Session 2: matching the record is NOT a new PR — generic celebration.
+        // Session 2: matching the record is NOT a new PR — generic banner,
+        // no stamp.
         startedTwoExerciseSession(store)
         store.completeTrackedSet(reps: 8, weight: 50)
         store.completeTrackedSet(reps: 8, weight: 50)
@@ -497,6 +507,8 @@ final class WorkoutSessionTests: XCTestCase {
         store.logWorkout()
         XCTAssertEqual(store.celebration?.title, "+50 XP",
                        "matching an existing record must not claim a PR")
+        XCTAssertNil(store.recordStamp,
+                     "matching an existing record earns no stamp")
 
         // Session 3: beating the record celebrates with the honest delta.
         startedTwoExerciseSession(store)
@@ -506,9 +518,12 @@ final class WorkoutSessionTests: XCTestCase {
         store.completeTrackedSet(reps: 8, weight: 40)
         store.finishTrackedWorkoutSession()
         store.logWorkout()
-        XCTAssertEqual(store.celebration?.title, "New PR — \(firstExerciseName)")
-        XCTAssertTrue(store.celebration?.detail.contains("up from") == true,
+        XCTAssertEqual(store.recordStamp?.kicker, "NEW RECORD")
+        XCTAssertEqual(store.recordStamp?.headline, firstExerciseName)
+        XCTAssertTrue(store.recordStamp?.detailLine.contains("Up from") == true,
                       "a beaten record cites the previous best it beat")
+        XCTAssertEqual(store.recordStamp?.prCard?.previousLabel.isEmpty, false,
+                       "the share card carries the beaten record too")
     }
 
     func testTrainingPreferencesPersistAndShareToggleReArms() {
@@ -3686,6 +3701,27 @@ final class StrengthAnalyticsTests: XCTestCase {
         XCTAssertEqual(card?.exerciseCount, 1)
         XCTAssertEqual(card?.minutes, 30)
         XCTAssertEqual(card?.prNames, ["Bench"], "a record set on the log's day rides as a PR line")
+    }
+
+    func testPRAndStreakShareCardsStateOnlyLoggedFacts() {
+        let store = freshStore()
+
+        // PR card from the timeline: the prior top isn't known there, so
+        // the card omits the "up from" claim instead of inventing one.
+        let standing = store.prShareCardData(exerciseName: "Bench", weight: 135)
+        XCTAssertEqual(standing.exerciseName, "Bench")
+        XCTAssertTrue(standing.previousLabel.isEmpty,
+                      "an unknown prior is omitted, never invented")
+
+        let beaten = store.prShareCardData(exerciseName: "Bench", weight: 145, previous: 135)
+        XCTAssertFalse(beaten.previousLabel.isEmpty,
+                       "a log-time PR cites the record it beat")
+
+        // Streak card: same ≥2-day bar as the streak-risk reminder.
+        XCTAssertNil(store.streakShareCardData, "no streak, no card")
+        store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 1, reps: [8], weights: [135]))
+        store.workoutLogs.append(log(for: store, exercise: "Bench", daysAgo: 0, reps: [8], weights: [135]))
+        XCTAssertEqual(store.streakShareCardData?.streak, 2)
     }
 
     func testExportFileContainsLogsAndWeightHistory() throws {

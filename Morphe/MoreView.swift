@@ -63,6 +63,7 @@ struct MoreView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     featureContent
+                    ManifestoCard()
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 4)
