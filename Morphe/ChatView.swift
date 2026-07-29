@@ -4,8 +4,7 @@ struct CommunityView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var selectedStory: CommunityStoryPreview?
     @State private var showNetworkExtras = false
-    /// Tab landing clears the floating header icons; sheets (the Home
-    /// Messages sheet) have a nav bar instead and pass a small value.
+    /// Tab landing clears the floating header icons.
     var topPadding: CGFloat = MorpheTheme.Spacing.pageTopStacked
 
     var body: some View {
@@ -81,11 +80,67 @@ struct CommunityView: View {
     }
 
     private var contactScreen: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            AthleteContactInbox()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        Group {
+            if FeatureFlags.multiUserEnabled {
+                // Demo inbox — flag-gated sample threads only. A real
+                // account never sees these.
+                VStack(alignment: .leading, spacing: 0) {
+                    AthleteContactInbox()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                }
+            } else {
+                realContactScreen
+            }
         }
         .padding(.bottom, 120)
+    }
+
+    /// THE messaging home for real accounts: the coach-thread inbox. Every
+    /// "message" door in the app (Home Coach tile, story-viewer shortcut,
+    /// post-workout prompt) deep-links here instead of forking its own
+    /// sheet — one destination, many doors.
+    private var realContactScreen: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Button {
+                store.selectedCommunitySection = .forYou
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .font(.subheadline.weight(.bold))
+                    Text("FOR YOU")
+                        .font(MorpheTheme.microLabel(11))
+                        .tracking(1.4)
+                }
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .frame(height: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back to For You")
+            .padding(.horizontal, 20)
+
+            if store.liveThreads.isEmpty {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("No conversations yet")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Text("Messaging opens when a coach links you to their roster — join with their invite code and the thread appears here.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                }
+                .padding(.horizontal, 20)
+                Spacer()
+            } else {
+                AthleteInboxView(autoOpenOnlyThread: true)
+            }
+        }
+        .padding(.top, topPadding)
+        // Threads load async — without this refresh the empty card could
+        // stick for a coached athlete, since the inbox (which owns its own
+        // refresh) only mounts once threads exist.
+        .task { await store.refreshThreads() }
     }
 
     private var communityHeaderControls: some View {
@@ -1778,7 +1833,7 @@ private struct StorySessionViewer: View {
                     if entry.id == store.linkedCoachUid, !store.linkedCoachUid.isEmpty {
                         Button {
                             dismiss()
-                            store.selectedCommunitySection = .contact
+                            store.openCommunity(.contact)
                         } label: {
                             Image(systemName: "bubble.left.and.bubble.right.fill")
                                 .font(.subheadline.weight(.bold))
@@ -2799,7 +2854,15 @@ struct ThreadChatView: View {
             .padding(16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .onAppear { store.openThread(thread) }
+        .onAppear {
+            store.openThread(thread)
+            // Doors like the post-workout "Message Coach" prompt seed a
+            // draft before routing here; a typed draft is never clobbered.
+            if draft.isEmpty, let seed = store.athleteThreadDraftSeed {
+                draft = seed
+                store.athleteThreadDraftSeed = nil
+            }
+        }
         .onDisappear { store.closeThread() }
     }
 }
@@ -2848,11 +2911,15 @@ private struct LiveMessageBubble: View {
 }
 
 /// Athlete inbox: the real threads this account participates in (in practice
-/// their coach). Mounted from the home "Coach" card — an athlete with no
-/// claimed link never sees this surface at all.
+/// their coach). Lives in Network → Contact — an athlete with no claimed
+/// link sees the honest empty state there instead.
 struct AthleteInboxView: View {
     @Environment(MorpheAppStore.self) private var store
+    /// Tab-context nicety: exactly one thread (the usual solo-athlete case)
+    /// opens straight into the conversation; back still reveals the list.
+    var autoOpenOnlyThread: Bool = false
     @State private var openedThread: MessageThreadSummary?
+    @State private var didAutoOpen = false
 
     private var myUid: String { store.authUser?.id ?? "" }
 
@@ -2864,7 +2931,14 @@ struct AthleteInboxView: View {
                 threadList
             }
         }
-        .task { await store.refreshThreads() }
+        .task {
+            await store.refreshThreads()
+            if autoOpenOnlyThread, !didAutoOpen, openedThread == nil,
+               store.liveThreads.count == 1 {
+                didAutoOpen = true
+                openedThread = store.liveThreads.first
+            }
+        }
     }
 
     private var threadList: some View {

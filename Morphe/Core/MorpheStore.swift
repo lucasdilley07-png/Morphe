@@ -6260,7 +6260,14 @@ final class MorpheAppStore {
 
     func openPostWorkoutCoachThread() {
         athleteThreadDraftSeed = postWorkoutCoachDraft()
-        openAthleteMessageThread(named: clientProfile.coachName)
+        if liveThreads.isEmpty {
+            // Demo-flag path: the sample inbox thread named after the coach.
+            openAthleteMessageThread(named: clientProfile.coachName)
+        } else {
+            // Real path: land on Contact — the inbox auto-opens a lone
+            // coach thread and ThreadChatView consumes the draft seed.
+            openCommunity(.contact)
+        }
         showToast("Coach thread ready.")
     }
 
@@ -6964,10 +6971,10 @@ final class MorpheAppStore {
     }
 
     func openCommunity(_ section: ClientCommunitySection = .forYou) {
-        // The Network tab's For You feed is REAL in v1, so navigation to it
-        // is always allowed. Only Contact deep-links stay flag-gated: their
-        // callers seed the demo inbox threads, which are multi-user surfaces.
-        guard section == .forYou || FeatureFlags.multiUserEnabled else { return }
+        // Both Network sections are REAL in v1: For You is the Firestore
+        // feed, Contact is the coach-thread inbox (with an honest empty
+        // state naming the coach-link unlock). Contact is THE messaging
+        // destination — every "message" door in the app routes here.
         selectedCommunitySection = section
         selectedClientTab = .community
         Haptics.impact(.light)

@@ -4637,3 +4637,54 @@ final class TelemetryTests: XCTestCase {
         XCTAssertTrue(spy.events.isEmpty, "no account, no telemetry — ever")
     }
 }
+
+// MARK: - Messaging-door consolidation (wave 8)
+//
+// Network → Contact is THE messaging surface. Every door (Home Coach tile,
+// story-viewer shortcut, post-workout prompt) deep-links there; nothing
+// presents a parallel messaging sheet anymore.
+@MainActor
+final class MessagingDoorTests: XCTestCase {
+
+    private func freshStore() -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    func testContactIsReachableWithoutTheMultiUserFlag() {
+        let store = freshStore()
+        XCTAssertFalse(FeatureFlags.multiUserEnabled, "v1 precondition")
+        store.openCommunity(.contact)
+        XCTAssertEqual(store.selectedClientTab, .community)
+        XCTAssertEqual(store.selectedCommunitySection, .contact,
+                       "Contact is real now — the old flag gate must not swallow deep-links")
+    }
+
+    func testPostWorkoutCoachDoorRoutesToContactWhenARealThreadExists() {
+        let store = freshStore()
+        store.liveThreads = [MessageThreadSummary(
+            id: "t1", coachUid: "coach-uid", athleteUid: "me-uid",
+            coachName: "Coach", athleteName: "Sarah"
+        )]
+        store.openPostWorkoutCoachThread()
+        XCTAssertEqual(store.selectedClientTab, .community)
+        XCTAssertEqual(store.selectedCommunitySection, .contact)
+        XCTAssertNotNil(store.athleteThreadDraftSeed,
+                        "the seed must survive routing so ThreadChatView can consume it")
+    }
+
+    func testPostWorkoutCoachDoorWithoutRealThreadsDoesNotStrandTheUser() {
+        let store = freshStore()
+        XCTAssertTrue(store.liveThreads.isEmpty)
+        let tabBefore = store.selectedClientTab
+        store.openPostWorkoutCoachThread()
+        // No demo thread matches the coach name on a real fresh account, so
+        // the demo fallback declines to navigate — the user stays put
+        // instead of landing on an empty demo inbox.
+        XCTAssertEqual(store.selectedClientTab, tabBefore)
+    }
+}

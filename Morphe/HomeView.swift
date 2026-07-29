@@ -4,9 +4,7 @@ struct HomeView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var showAdjustments = false
     @State private var showSupport = false
-    @State private var showMessages = false
     @State private var showAppointments = false
-    @State private var showCoachMessages = false
     @State private var showEmptyLibraryNotice = false
 
     private var morpheScoreTitle: String {
@@ -210,15 +208,6 @@ struct HomeView: View {
                 }
                 }
 
-                // Solo v1 has nobody to message — the card returns with
-                // accounts/coach linking, same gate as the header.
-                if FeatureFlags.multiUserEnabled {
-                    MessagesCard(latest: store.athleteMessageThreads.first) {
-                        store.selectedCommunitySection = .contact
-                        showMessages = true
-                    }
-                }
-
                 // REAL coach messaging: only exists once a coach link is real
                 // (the athlete claimed an invite and a thread exists). An
                 // athlete without a coach never sees a Coach card at all.
@@ -236,7 +225,9 @@ struct HomeView: View {
                             detailIsMuted: coachTileDetailIsMuted,
                             accessibilityLabel: "Coach messages"
                         ) {
-                            showCoachMessages = true
+                            // Deep-link into the one messaging surface —
+                            // Network → Contact auto-opens a lone thread.
+                            store.openCommunity(.contact)
                         }
 
                         HomeLinkTile(
@@ -270,52 +261,11 @@ struct HomeView: View {
                     .environment(store)
             }
         }
-        .sheet(isPresented: $showCoachMessages) {
-            NavigationStack {
-                Group {
-                    // One coach = straight into the conversation; the inbox
-                    // list only appears when there's something to list.
-                    if store.liveThreads.count == 1, let only = store.liveThreads.first {
-                        ThreadChatView(thread: only)
-                    } else {
-                        AthleteInboxView()
-                    }
-                }
-                .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        Text("Coach").font(.headline).foregroundStyle(.white)
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") { showCoachMessages = false }
-                            .foregroundStyle(.white)
-                    }
-                }
-                .navigationBarTitleDisplayMode(.inline)
-            }
-            .environment(store)
-            .background(PremiumBackground())
-        }
         .alert("Your library is empty", isPresented: $showEmptyLibraryNotice) {
             Button("Browse Discover") { store.showDiscoverTab() }
             Button("Got It", role: .cancel) {}
         } message: {
             Text("Save or start workouts from the Discover page, or build your own in Train under My Library.")
-        }
-        .sheet(isPresented: $showMessages) {
-            NavigationStack {
-                CommunityView(topPadding: 8)
-                    .environment(store)
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .principal) {
-                            Text("Messages").font(.headline).foregroundStyle(.white)
-                        }
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") { showMessages = false }.foregroundStyle(.white)
-                        }
-                    }
-            }
-            .background(PremiumBackground())
         }
     }
 
@@ -819,52 +769,6 @@ private struct TodayNextMoveCard: View {
 /// Bottom-of-Today entry into coach + friend messaging. Morphe AI lives on the
 /// floating button, not here. For a solo v1 user this opens an honest empty
 /// inbox — real conversations arrive with accounts/coach linking.
-private struct MessagesCard: View {
-    let latest: MessageThread?
-    let onOpen: () -> Void
-
-    var body: some View {
-        Button(action: onOpen) {
-            GlassCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.accent)
-                        Text("MESSAGES")
-                            .font(MorpheTheme.microLabel(11)).tracking(1.4)
-                            .foregroundStyle(MorpheTheme.accent)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption).foregroundStyle(MorpheTheme.textMuted)
-                    }
-
-                    if let latest {
-                        Text(latest.participant)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Text(latest.preview)
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .lineLimit(2)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
-                        Text("Coaches & friends")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Text("When you connect with a coach or training friends, your conversations live here.")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Opens your coach and friend messages")
-    }
-}
-
 private struct WorkoutPlanByCoachMiniCard: View {
     let profile: ClientProfile
     let phase: String
