@@ -9425,7 +9425,11 @@ final class MorpheAppStore {
         )
         track("workout_logged")
         // The streak deadline and Monday recap just changed shape — re-arm
-        // both, and hand widgets the new numbers.
+        // both, and hand widgets the new numbers. The board/challenge
+        // mirrors re-derive from logs too: a back-dated session inside the
+        // current ISO week must count there the moment it lands, not on
+        // the next regular log. (Inspection find 2026-07-28.)
+        publishCompetitionScores()
         refreshStreakRiskReminder()
         refreshWeeklyRecapReminder()
         detectStreakLapse()
