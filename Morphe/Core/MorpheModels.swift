@@ -632,6 +632,10 @@ enum AccentPalette: String, CaseIterable, Identifiable {
     /// Earned by referral, not level — unlocks when someone joins Morphe
     /// through this user's invite link (see `isPaletteUnlocked`).
     case recruiter = "Recruiter"
+    /// Any color at all: the hex lives in ProfileShowcase.customAccentHex
+    /// and MorpheTheme resolves it. Free for everyone — customization is a
+    /// launch feature, not a grind reward.
+    case custom = "Custom"
 
     var id: String { rawValue }
 }
@@ -1697,6 +1701,8 @@ struct ProfileShowcase: Hashable {
     var banner: BannerProfile
     var theme: ThemePreset
     var accentPalette: AccentPalette
+    /// The hex behind AccentPalette.custom ("" = never picked → gold).
+    var customAccentHex: String = ""
     var currentPhase: String
     var coachingTone: CoachingTone
     var badges: [ProfileBadge]

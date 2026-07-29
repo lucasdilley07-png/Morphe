@@ -4991,3 +4991,85 @@ final class AIAgentCommandTests: XCTestCase {
         XCTAssertTrue(store.isWorkoutSessionActive)
     }
 }
+
+// MARK: - Custom accent + network identity controls (L1)
+@MainActor
+final class CustomizationTests: XCTestCase {
+
+    private func freshStore() -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    func testHexRoundTripAndTolerance() {
+        XCTAssertEqual(MorpheTheme.hex(from: MorpheTheme.color(fromHex: "#3AF2D6")!), "#3AF2D6")
+        XCTAssertEqual(MorpheTheme.hex(from: MorpheTheme.color(fromHex: "3AF2D6")!), "#3AF2D6",
+                       "leading # is optional")
+        XCTAssertNil(MorpheTheme.color(fromHex: "not-a-color"))
+        XCTAssertNil(MorpheTheme.color(fromHex: "#12345"))
+    }
+
+    func testForeignAccentIdsResolveSafely() {
+        // A hex on the wire renders as that color for every viewer.
+        XCTAssertEqual(MorpheTheme.hex(from: MorpheTheme.accentColor(forPaletteId: "#FF0000")), "#FF0000")
+        // A foreign "Custom" id must NOT read this device's custom color.
+        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "Custom"), MorpheTheme.brandYellow)
+        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "garbage"), MorpheTheme.brandYellow)
+    }
+
+    func testCustomAccentPersistsAcrossRelaunch() {
+        let store = freshStore()
+        store.updateAccentPalette(.custom)
+        store.updateCustomAccent(hex: "#123456")
+        XCTAssertEqual(store.profileShowcase.customAccentHex, "#123456")
+
+        let relaunched = MorpheAppStore()
+        XCTAssertEqual(relaunched.profileShowcase.accentPalette, .custom)
+        XCTAssertEqual(relaunched.profileShowcase.customAccentHex, "#123456")
+    }
+
+    func testMalformedHexIsRejected() {
+        let store = freshStore()
+        store.updateCustomAccent(hex: "#123456")
+        store.updateCustomAccent(hex: "nope")
+        XCTAssertEqual(store.profileShowcase.customAccentHex, "#123456")
+    }
+
+    func testFeedIdentityRespectsTheControls() {
+        let store = freshStore()
+        store.clientProfile.level.streak = 5
+
+        // Defaults: both on.
+        XCTAssertTrue(store.feedAuthorHeadline.contains("streak"))
+        store.updateAccentPalette(.custom)
+        store.updateCustomAccent(hex: "#00FF88")
+        XCTAssertEqual(store.feedAuthorAccentId, "#00FF88")
+
+        store.postStreakByline = false
+        XCTAssertFalse(store.feedAuthorHeadline.contains("streak"),
+                       "byline falls back to sport only")
+        XCTAssertEqual(store.feedAuthorHeadline, store.clientProfile.sportMode.rawValue)
+
+        store.postAccentIdentity = false
+        XCTAssertEqual(store.feedAuthorAccentId, "", "no accent rides the post when off")
+    }
+
+    func testIdentityControlsPersistAcrossRelaunch() {
+        let store = freshStore()
+        store.postStreakByline = false
+        store.postAccentIdentity = false
+
+        let relaunched = MorpheAppStore()
+        XCTAssertFalse(relaunched.postStreakByline)
+        XCTAssertFalse(relaunched.postAccentIdentity)
+    }
+
+    func testCustomPaletteIsFreeForEveryone() {
+        let store = freshStore()
+        XCTAssertTrue(store.isPaletteUnlocked(.custom))
+    }
+}

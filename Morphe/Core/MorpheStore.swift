@@ -476,6 +476,15 @@ final class MorpheAppStore {
     var effortScaleRIR = false {
         didSet { persistTrainingPreferences() }
     }
+    /// Network identity controls: what rides YOUR posts. Both on by
+    /// default; both purely subtractive — turning them off shares less,
+    /// never fabricates more.
+    var postStreakByline = true {
+        didSet { persistTrainingPreferences() }
+    }
+    var postAccentIdentity = true {
+        didSet { persistTrainingPreferences() }
+    }
     /// Global opt-in for auto-posting finished sessions to the real feed.
     /// Off by default — publishing on the user's behalf is never a surprise.
     var autoShareWorkoutsEnabled = false {
@@ -739,7 +748,7 @@ final class MorpheAppStore {
         self.leadRecords = MorpheDemoContent.leadRecords
         self.coachAnalytics = MorpheDemoContent.coachAnalytics
 
-        MorpheTheme.apply(accentPalette: profileShowcase.accentPalette)
+        MorpheTheme.apply(accentPalette: profileShowcase.accentPalette, customHex: profileShowcase.customAccentHex)
 
         // NOTE: demo logs are intentionally NOT persisted on first launch. A
         // brand-new user starts empty after onboarding (see resetToFreshUser);
@@ -1605,6 +1614,7 @@ final class MorpheAppStore {
         if let accent = AccentPalette(rawValue: snapshot.accentPalette) {
             profileShowcase.accentPalette = accent
         }
+        profileShowcase.customAccentHex = snapshot.customAccentHex
         if let tone = CoachingTone(rawValue: snapshot.coachingTone) {
             profileShowcase.coachingTone = tone
         }
@@ -1630,7 +1640,7 @@ final class MorpheAppStore {
             clientProfile.sportMode = sport
             applyPrimarySport(sport)
         }
-        MorpheTheme.apply(accentPalette: profileShowcase.accentPalette)
+        MorpheTheme.apply(accentPalette: profileShowcase.accentPalette, customHex: profileShowcase.customAccentHex)
 
         // A returning user must also start clean of seeded demo content (fake
         // wins, records, recovery, and "other people") — only their own persisted
@@ -1916,6 +1926,7 @@ final class MorpheAppStore {
                 injuries: clientProfile.limitations,
                 theme: profileShowcase.theme.rawValue,
                 accentPalette: profileShowcase.accentPalette.rawValue,
+                customAccentHex: profileShowcase.customAccentHex,
                 coachingTone: profileShowcase.coachingTone.rawValue,
                 avatarStyle: profileShowcase.avatar.style.rawValue,
                 displayName: profileShowcase.displayName,
@@ -3249,6 +3260,8 @@ final class MorpheAppStore {
         var firstWeekStart: Date?
         var archivedClientCodes: [String]?
         var effortRIR: Bool?
+        var postStreakByline: Bool?
+        var postAccentIdentity: Bool?
     }
 
     private var trainingPreferencesDefaultsKey: String {
@@ -3274,6 +3287,8 @@ final class MorpheAppStore {
             firstWeekStart = nil
             archivedClientCodes = []
             effortScaleRIR = false
+            postStreakByline = true
+            postAccentIdentity = true
             return
         }
         autoRestTimerEnabled = snapshot.autoRestTimer
@@ -3286,6 +3301,8 @@ final class MorpheAppStore {
         firstWeekStart = snapshot.firstWeekStart
         archivedClientCodes = Set(snapshot.archivedClientCodes ?? [])
         effortScaleRIR = snapshot.effortRIR ?? false
+        postStreakByline = snapshot.postStreakByline ?? true
+        postAccentIdentity = snapshot.postAccentIdentity ?? true
     }
 
     private func persistTrainingPreferences() {
@@ -3300,7 +3317,9 @@ final class MorpheAppStore {
             healthSleep: healthSleepEnabled,
             firstWeekStart: firstWeekStart,
             archivedClientCodes: Array(archivedClientCodes),
-            effortRIR: effortScaleRIR
+            effortRIR: effortScaleRIR,
+            postStreakByline: postStreakByline,
+            postAccentIdentity: postAccentIdentity
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: trainingPreferencesDefaultsKey)
@@ -7583,6 +7602,7 @@ final class MorpheAppStore {
     /// joins Morphe through this user's invite (server-backed count).
     func isPaletteUnlocked(_ palette: AccentPalette) -> Bool {
         if palette == profileShowcase.accentPalette { return true }
+        if palette == .custom { return true }
         if palette == .recruiter { return referralCount >= 1 }
         return currentLevelNumber >= paletteUnlockLevel(palette)
     }
@@ -7688,9 +7708,20 @@ final class MorpheAppStore {
             return
         }
         profileShowcase.accentPalette = palette
-        MorpheTheme.apply(accentPalette: palette)
+        MorpheTheme.apply(accentPalette: palette, customHex: profileShowcase.customAccentHex)
         persistLocalProfile()
         Haptics.impact(.light)
+    }
+
+    /// The custom accent's color changed (ColorPicker). Persists the hex and
+    /// re-applies live when Custom is the active palette.
+    func updateCustomAccent(hex: String) {
+        guard MorpheTheme.color(fromHex: hex) != nil else { return }
+        profileShowcase.customAccentHex = hex
+        if profileShowcase.accentPalette == .custom {
+            MorpheTheme.apply(accentPalette: .custom, customHex: hex)
+        }
+        persistLocalProfile()
     }
 
     func updateDisplayName(_ newName: String) {
@@ -8816,14 +8847,28 @@ final class MorpheAppStore {
     }
 
     /// The byline stamped onto posts: sport focus, plus the live workout
-    /// streak only when one exists (≥2 days). Derived from logged facts at
-    /// publish time — a lapsed streak simply stops appearing on new posts.
+    /// streak only when one exists (≥2 days) AND the user shares it
+    /// (postStreakByline). Derived from logged facts at publish time — a
+    /// lapsed streak simply stops appearing on new posts.
     var feedAuthorHeadline: String {
         if selectedRole == .coach { return "Coach" }
         let sport = clientProfile.sportMode.rawValue
         let streak = clientProfile.level.streak
-        let headline = streak >= 2 ? "\(sport) · \(streak)-day streak" : sport
+        let headline = (postStreakByline && streak >= 2)
+            ? "\(sport) · \(streak)-day streak" : sport
         return String(headline.prefix(80))
+    }
+
+    /// The accent id posts carry: the custom hex when Custom is active
+    /// (readable by every client via MorpheTheme.accentColor), otherwise
+    /// the palette name. Empty when the user keeps identity off posts.
+    var feedAuthorAccentId: String {
+        guard postAccentIdentity else { return "" }
+        if profileShowcase.accentPalette == .custom {
+            let hex = profileShowcase.customAccentHex
+            return hex.isEmpty ? AccentPalette.gold.rawValue : String(hex.prefix(24))
+        }
+        return profileShowcase.accentPalette.rawValue
     }
 
     /// One feed page (READINESS-300 R4): small enough that the per-post
@@ -9103,9 +9148,10 @@ final class MorpheAppStore {
             setCount: setCount,
             exerciseCount: exerciseCount,
             prNames: Array(prNames.prefix(3)),
-            // Identity rides every post: the accent this profile trains in,
-            // and a byline derived from real facts at this moment.
-            authorAccent: profileShowcase.accentPalette.rawValue,
+            // Identity rides posts on the user's terms: accent + byline are
+            // both derived from real facts and both switchable off in
+            // Profile → Network identity.
+            authorAccent: feedAuthorAccentId,
             authorHeadline: feedAuthorHeadline
         )
         guard await feedService.publish(post: post) else { return false }

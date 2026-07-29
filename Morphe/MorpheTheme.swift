@@ -107,15 +107,46 @@ enum MorpheTheme {
         currentAccentPalette == .gold ? brandGold : colors(for: currentAccentPalette).secondary
     }
 
-    static func apply(accentPalette: AccentPalette) {
+    /// The resolved color behind AccentPalette.custom for THIS profile.
+    /// Set through apply(accentPalette:customHex:) — defaults to gold.
+    private(set) static var customAccentColor: Color = brandYellow
+
+    static func apply(accentPalette: AccentPalette, customHex: String = "") {
         currentAccentPalette = accentPalette
+        customAccentColor = color(fromHex: customHex) ?? brandYellow
     }
 
-    /// Identity color for a feed author's self-declared palette id (the
-    /// `authorAccent` riding their posts). Unknown or empty → brand gold,
-    /// so old posts and tampered values degrade to the default, never crash.
+    /// "#RRGGBB" (leading # optional) → Color. Nil on anything malformed —
+    /// callers fall back to gold rather than guessing.
+    static func color(fromHex raw: String) -> Color? {
+        var hex = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if hex.hasPrefix("#") { hex.removeFirst() }
+        guard hex.count == 6, let value = UInt64(hex, radix: 16) else { return nil }
+        return Color(
+            red: Double((value >> 16) & 0xFF) / 255.0,
+            green: Double((value >> 8) & 0xFF) / 255.0,
+            blue: Double(value & 0xFF) / 255.0
+        )
+    }
+
+    /// Color → "#RRGGBB" for persistence + the wire (posts carry it).
+    static func hex(from color: Color) -> String {
+        let ui = UIColor(color)
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        ui.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        func byte(_ component: CGFloat) -> Int { Int((max(0, min(1, component)) * 255).rounded()) }
+        return String(format: "#%02X%02X%02X", byte(red), byte(green), byte(blue))
+    }
+
+    /// Identity color for a feed author's self-declared accent id (the
+    /// `authorAccent` riding their posts): a "#RRGGBB" hex renders as-is,
+    /// a palette name maps to its primary. Unknown/empty → brand gold, so
+    /// old posts and tampered values degrade to the default, never crash.
+    /// A foreign "Custom" id is gold too — another athlete's custom hex
+    /// travels ON their posts, never through this device's setting.
     static func accentColor(forPaletteId id: String) -> Color {
-        guard let palette = AccentPalette(rawValue: id) else { return brandYellow }
+        if let hexColor = color(fromHex: id) { return hexColor }
+        guard let palette = AccentPalette(rawValue: id), palette != .custom else { return brandYellow }
         return colors(for: palette).primary
     }
 
@@ -162,6 +193,15 @@ enum MorpheTheme {
                 Color(red: 0.34, green: 0.93, blue: 0.84),
                 Color(red: 0.12, green: 0.70, blue: 0.65)
             )
+        case .custom:
+            // Whatever the user picked; secondary is the same hue pulled
+            // darker so the accent pair keeps its depth.
+            let ui = UIColor(customAccentColor)
+            var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
+            ui.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+            let secondary = Color(uiColor: UIColor(
+                hue: hue, saturation: saturation, brightness: max(0.25, brightness * 0.72), alpha: 1))
+            return (customAccentColor, secondary)
         }
     }
 

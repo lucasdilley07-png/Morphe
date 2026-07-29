@@ -766,6 +766,15 @@ struct ProfileView: View {
                                 .frame(maxWidth: .infinity)
                         }
                     }
+                    // The Custom dot's editor: any color at all. Applies
+                    // live and persists with the profile (cloud included).
+                    if store.profileShowcase.accentPalette == .custom {
+                        ColorPicker(selection: customAccentBinding, supportsOpacity: false) {
+                            Text("Pick your color")
+                                .font(.subheadline)
+                                .foregroundStyle(.white)
+                        }
+                    }
                 }
 
                 Divider().overlay(Color.white.opacity(0.08))
@@ -823,6 +832,24 @@ struct ProfileView: View {
                         title: "Auto-share workouts",
                         caption: "Posts an honest recap to the feed when you log a session. Each session shows a toggle to keep it private.",
                         isOn: $store.autoShareWorkoutsEnabled
+                    )
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    // Network identity: what rides YOUR posts. Subtractive
+                    // only — off shares less, never invents more.
+                    preferenceToggleRow(
+                        title: "Streak in byline",
+                        caption: "New posts carry \"\(store.clientProfile.sportMode.rawValue) · N-day streak\" under your name. Off keeps just the sport.",
+                        isOn: $store.postStreakByline
+                    )
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    preferenceToggleRow(
+                        title: "Accent on posts",
+                        caption: "Your accent color tints your name and story bubble for others. Off posts in the default gold.",
+                        isOn: $store.postAccentIdentity
                     )
 
                     Divider().overlay(Color.white.opacity(0.08))
@@ -1063,6 +1090,18 @@ struct ProfileView: View {
     /// means the brand-yellow pair, not the muted legacy gold swatch.
     private func accentDotColor(for palette: AccentPalette) -> Color {
         palette == .gold ? MorpheTheme.brandYellow : MorpheTheme.colors(for: palette).primary
+    }
+
+    /// ColorPicker ↔ stored hex. Setting routes through the store so the
+    /// theme re-applies live and the profile snapshot persists.
+    private var customAccentBinding: Binding<Color> {
+        Binding(
+            get: {
+                MorpheTheme.color(fromHex: store.profileShowcase.customAccentHex)
+                    ?? MorpheTheme.brandYellow
+            },
+            set: { store.updateCustomAccent(hex: MorpheTheme.hex(from: $0)) }
+        )
     }
 
     private func accentDot(for palette: AccentPalette) -> some View {
