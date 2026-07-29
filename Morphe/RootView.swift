@@ -712,6 +712,33 @@ private struct MorpheAIAgentSheet: View {
     /// Full-width composer pinned to the bottom of the chat.
     private var composerBar: some View {
         VStack(spacing: 8) {
+            // Capability chips (READINESS-300 AI-4): what Morphe AI can do,
+            // visible where you type — not hidden behind typing "help" or a
+            // long-press nobody finds. One tap sends the prompt.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(store.aiAgentQuickPrompts, id: \.self) { quickPrompt in
+                        Button {
+                            prompt = quickPrompt
+                            send()
+                        } label: {
+                            Text(quickPrompt)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .padding(.horizontal, 12)
+                                .frame(height: 34)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .stroke(MorpheTheme.stroke, lineWidth: 1)
+                                )
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+
             HStack(spacing: 8) {
                 Text("Context".uppercased())
                     .font(MorpheTheme.microLabel(10))

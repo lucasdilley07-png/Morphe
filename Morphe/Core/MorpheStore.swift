@@ -1812,9 +1812,16 @@ final class MorpheAppStore {
     }
 
     /// Mirrors the server-owned facts (badge + request status) locally.
-    func refreshVerificationStatus() async {
+    func refreshVerificationStatus(force: Bool = false) async {
         guard let uid = authUser?.id else { return }
+        // Daily gate (READINESS-300 R9): the badge changes rarely — one
+        // check per uid per day unless something explicitly forces it.
+        let checkedKey = "morphe.verify.checked.\(uid)"
+        let parts = Calendar.current.dateComponents([.year, .month, .day], from: .now)
+        let today = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+        if !force, UserDefaults.standard.string(forKey: checkedKey) == today { return }
         if let status = await verificationService.fetchStatus(uid: uid) {
+            UserDefaults.standard.set(today, forKey: checkedKey)
             let wasVerified = isVerifiedUser
             isVerifiedUser = status.verified
             verificationRequestStatus = status.request
@@ -3076,8 +3083,17 @@ final class MorpheAppStore {
     /// contract as every other backup push.
     private func mirrorExtrasToCloud() {
         guard hasCompletedOnboarding else { return }
-        cloudBackup.pushExtras(perProfileExtrasBlobs())
+        // Trailing-debounced (READINESS-300 R6): each push costs a read AND
+        // a write (merge-by-name requires the current doc), and settings
+        // toggles come in bursts. Local persistence already happened.
+        extrasPushDebounce?.cancel()
+        extrasPushDebounce = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.cloudBackup.pushExtras(self.perProfileExtrasBlobs())
+        }
     }
+    private var extrasPushDebounce: Task<Void, Never>?
 
     /// Stored mirrors of the persisted series — decoded ONCE per profile
     /// load instead of on every view-body access (firstWeekSteps reads
@@ -3363,7 +3379,8 @@ final class MorpheAppStore {
         }
         leaderboardOptIn = true
         postWeeklyBoardScore()
-        Task { await refreshLeaderboard() }
+        // Forced: the user just joined — they must see themselves land.
+        Task { await refreshLeaderboard(force: true) }
         refreshWeeklyBoardReminder()
         showToast("You're on this week's board.")
     }
@@ -3410,7 +3427,17 @@ final class MorpheAppStore {
 
     /// Pulls the top of this week's board, plus the user's own entry (which
     /// may sit outside the fetched top — shown honestly as unranked).
-    func refreshLeaderboard() async {
+    /// Within this window a non-forced board/challenge refresh reuses what's
+    /// loaded (READINESS-300 R8) — each board fetch is 50 reads.
+    private static let boardStalenessWindow: TimeInterval = 300
+    private var lastLeaderboardRefreshAt: Date?
+    private var lastChallengesRefreshAt: Date?
+
+    func refreshLeaderboard(force: Bool = false) async {
+        if !force, !weeklyLeaderboard.isEmpty, let last = lastLeaderboardRefreshAt,
+           Date.now.timeIntervalSince(last) < Self.boardStalenessWindow {
+            return
+        }
         if leaderboardFetchState != .loaded { leaderboardFetchState = .loading }
         let weekKey = LeaderboardWeek.key()
         if let top = await leaderboardService.fetchTop(weekKey: weekKey, limit: 50) {
@@ -3418,6 +3445,7 @@ final class MorpheAppStore {
                 weeklyLeaderboard = top
             }
             leaderboardFetchState = .loaded
+            lastLeaderboardRefreshAt = .now
         } else if weeklyLeaderboard.isEmpty {
             // Failed with nothing on screen — show it, don't fake "no
             // scores yet". A failed re-fetch keeps the standing board.
@@ -3558,10 +3586,14 @@ final class MorpheAppStore {
 
     /// Re-fetches every joined challenge. A code that can't be fetched right
     /// now (offline) keeps its last-known data instead of vanishing.
-    func refreshChallenges() async {
+    func refreshChallenges(force: Bool = false) async {
         guard !joinedChallengeCodes.isEmpty else {
             // No joined challenges IS the loaded truth, not a fetch gap.
             challengesFetchState = .loaded
+            return
+        }
+        if !force, !activeChallenges.isEmpty, let last = lastChallengesRefreshAt,
+           Date.now.timeIntervalSince(last) < Self.boardStalenessWindow {
             return
         }
         if challengesFetchState != .loaded { challengesFetchState = .loading }
@@ -3580,6 +3612,7 @@ final class MorpheAppStore {
             activeChallenges = refreshed.sorted { $0.endsAt < $1.endsAt }
         }
         challengesFetchState = (anyFetched || !refreshed.isEmpty) ? .loaded : .failed
+        if anyFetched { lastChallengesRefreshAt = .now }
     }
 
     /// After a real log lands: mirror the new totals to the weekly board
@@ -6841,6 +6874,34 @@ final class MorpheAppStore {
         }
     }
 
+    /// "log 3x10 at 135" / "did 5x5 @ 225" → (sets, reps, weight). The
+    /// weight clause is optional. Pure + static for tests.
+    static func parseSetCommand(_ text: String) -> (sets: Int, reps: Int, weight: Double?)? {
+        let pattern = #"(?:log|did|add)\s+(\d{1,2})\s*[x×]\s*(\d{1,3})(?:\s*(?:at|@)\s*(\d{1,4}(?:\.\d+)?))?"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let setsRange = Range(match.range(at: 1), in: text),
+              let repsRange = Range(match.range(at: 2), in: text),
+              let sets = Int(text[setsRange]), let reps = Int(text[repsRange]),
+              sets >= 1, reps >= 1
+        else { return nil }
+        var weight: Double?
+        if match.range(at: 3).location != NSNotFound,
+           let weightRange = Range(match.range(at: 3), in: text) {
+            weight = Double(text[weightRange])
+        }
+        return (sets, reps, weight)
+    }
+
+    /// Longest-name-first template match so "Upper Body Power" beats
+    /// "Upper Body"; ≥4 chars keeps "abs" from matching inside words.
+    func namedWorkoutMatch(in lower: String) -> WorkoutTemplate? {
+        workoutTemplates
+            .filter { $0.name.count >= 4 }
+            .sorted { $0.name.count > $1.name.count }
+            .first { lower.contains($0.name.lowercased()) }
+    }
+
     /// Morphe AI's action layer: understands common asks and actually performs
     /// them — navigation, session control, settings — instead of only replying
     /// with text. Returns nil when nothing actionable matched. (The
@@ -6851,7 +6912,7 @@ final class MorpheAppStore {
         func has(_ words: String...) -> Bool { words.contains { lower.contains($0) } }
 
         if has("what can you do", "help me use", "commands") || lower == "help" {
-            return "I can start your workout, turn on Minimum Win mode, open Discover, Progress, Lessons, the exercise library, or your profile, and switch lb/kg. Just ask."
+            return "I can start your workout (today's or one by name, like \"start Push Day\"), log sets mid-session (\"log 3x10 at 135\"), turn on Minimum Win mode, open Discover, Progress, Lessons, the exercise library, or your profile, and switch lb/kg. Just ask."
         }
 
         // Questions get answers, not actions. "Should I stop training when my
@@ -6883,6 +6944,43 @@ final class MorpheAppStore {
             startTodayWorkout()
             closeAIAgent()
             return "Done — \(currentWorkout.name) is live in Train. Log your first set when you're ready."
+        }
+
+        // Named start: "start Push Day" — the workout IS the keyword.
+        if has("start", "begin"), let named = namedWorkoutMatch(in: lower) {
+            guard !isWorkoutSessionActive else {
+                showTrainTab()
+                closeAIAgent()
+                return "You're already mid-session — finish or discard that one in Train first."
+            }
+            guard !hasUnsavedSessionWork else {
+                return "You've got a finished session that isn't logged yet. Log it from Train first, then ask me again."
+            }
+            beginLiveWorkout(named)
+            showTrainTab()
+            closeAIAgent()
+            return "Done — \(named.name) is live in Train."
+        }
+
+        // Mid-session set logging: "log 3x10 at 135". Weight omitted falls
+        // back to the same suggestion the console uses — a real number from
+        // this user's history, never an invention.
+        if has("log", "did", "add"), let parsed = Self.parseSetCommand(lower) {
+            guard isWorkoutSessionActive else {
+                return "Nothing's in session yet — say \"start my workout\" first and I'll log sets straight into the console."
+            }
+            guard let exercise = activeWorkoutExercise else {
+                return "The session has no active exercise to log against — pick one in Train."
+            }
+            let weight = parsed.weight
+                ?? lastSessionWeight(for: exercise.id)
+                ?? suggestedWorkingWeight(for: exercise)
+                ?? 0
+            let sets = min(parsed.sets, 10)
+            for _ in 0..<sets {
+                completeTrackedSet(reps: parsed.reps, weight: weight, allowExtra: true)
+            }
+            return "Logged \(sets)×\(parsed.reps) at \(weightUnit.format(weight)) on \(exercise.name). It's in the console — adjust any set there."
         }
 
         // Deliberately NOT executed from chat: logged sets are unrecoverable,
@@ -9148,9 +9246,10 @@ final class MorpheAppStore {
 
     /// Chat streak: consecutive days BOTH parties sent a message, walking
     /// back from today with the same yesterday-grace as duoStreak (a live
-    /// streak may not include today yet). Computed from the open thread's
-    /// FULL history — the message listener streams every message, so this
-    /// is exact, not a sample. Static + injectable dates for tests.
+    /// streak may not include today yet). Computed from the loaded window
+    /// (the listener delivers the newest 300 messages) — a very long,
+    /// very chatty streak can UNDERCOUNT past the window, never overclaim.
+    /// Static + injectable dates for tests.
     static func messageStreak(
         messages: [ChatMessage], uidA: String, uidB: String,
         today: Date = .now, calendar: Calendar = .current
@@ -10778,6 +10877,24 @@ final class MorpheAppStore {
                 return "You haven't set your goal targets yet. Add a physical target, weight goal, and deadline in Profile and I'll answer with the real numbers."
             }
             return "Here's what you're aiming at — \(parts.joined(separator: " / ")). Every logged session counts toward those."
+        }
+
+        // "What's next" reads the REAL queue — question phrasing lands here
+        // (the action layer's question guard routes it), so the answer layer
+        // owns it. On any tab: session truth outranks tab context.
+        if lowercasedPrompt.contains("next"),
+           lowercasedPrompt.contains("exercise") || lowercasedPrompt.contains("what's next")
+            || lowercasedPrompt.contains("whats next") || lowercasedPrompt.contains("up next") {
+            guard isWorkoutSessionActive else {
+                return "No session is live. Up today: \(currentWorkout.name) — say \"start my workout\" and I'll open it."
+            }
+            let queue = currentWorkout.exercises
+            let nextIndex = activeWorkoutExerciseIndex + 1
+            let current = activeWorkoutExercise?.name ?? "your current movement"
+            if queue.indices.contains(nextIndex) {
+                return "You're on \(current). Up next: \(queue[nextIndex].name)."
+            }
+            return "You're on \(current) — it's the last one. Finish it and the session's done."
         }
 
         switch selectedClientTab {

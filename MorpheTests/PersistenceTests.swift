@@ -4930,3 +4930,64 @@ final class FeedReadDietTests: XCTestCase {
         XCTAssertTrue(Set(service.reactionCountCalls[0]).isDisjoint(with: service.reactionCountCalls[1]))
     }
 }
+
+// MARK: - AI agent commands (READINESS-300 AI-3)
+@MainActor
+final class AIAgentCommandTests: XCTestCase {
+
+    private func freshStore() -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    func testParseSetCommand() {
+        let parsed = MorpheAppStore.parseSetCommand("log 3x10 at 135")
+        XCTAssertEqual(parsed?.sets, 3)
+        XCTAssertEqual(parsed?.reps, 10)
+        XCTAssertEqual(parsed?.weight, 135)
+
+        let decimal = MorpheAppStore.parseSetCommand("did 5x5 @ 225.5")
+        XCTAssertEqual(decimal?.sets, 5)
+        XCTAssertEqual(decimal?.weight, 225.5)
+
+        let noWeight = MorpheAppStore.parseSetCommand("log 4x8")
+        XCTAssertEqual(noWeight?.reps, 8)
+        XCTAssertNil(noWeight?.weight)
+
+        XCTAssertNil(MorpheAppStore.parseSetCommand("log my workout"))
+        XCTAssertNil(MorpheAppStore.parseSetCommand("3x10"), "a bare rep scheme is not a command")
+    }
+
+    func testLogCommandLogsRealSetsIntoTheLiveSession() {
+        let store = freshStore()
+        store.beginLiveWorkout(store.workoutTemplates.first!)
+
+        XCTAssertTrue(store.sendAIAgentPrompt("log 2x8 at 100"), "an action, not a chat reply")
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+
+        let logged = store.workoutLogs.first?.exercises.first
+        XCTAssertEqual(logged?.repsPerSet, [8, 8])
+        XCTAssertEqual(logged?.weightsPerSet, [100, 100])
+    }
+
+    func testLogCommandWithoutASessionLogsNothing() {
+        let store = freshStore()
+        _ = store.sendAIAgentPrompt("log 3x10 at 135")
+        XCTAssertTrue(store.workoutLogs.isEmpty)
+        XCTAssertFalse(store.isWorkoutSessionActive)
+    }
+
+    func testNamedWorkoutStart() {
+        let store = freshStore()
+        guard let template = store.workoutTemplates.first(where: { $0.name.count >= 4 }) else {
+            return XCTFail("no template to start")
+        }
+        XCTAssertTrue(store.sendAIAgentPrompt("start \(template.name.lowercased())"))
+        XCTAssertTrue(store.isWorkoutSessionActive)
+    }
+}

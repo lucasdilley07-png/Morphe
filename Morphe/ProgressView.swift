@@ -267,10 +267,11 @@ struct ProgressScreenView: View {
             .padding(.top, MorpheTheme.Spacing.pageTopCompact)
             .padding(.bottom, 120)
         }
-        // Board + challenges are the fetched pieces of this page.
+        // Board + challenges are the fetched pieces of this page. Pull is
+        // the explicit ask — it always hits the network.
         .refreshable {
-            await store.refreshLeaderboard()
-            await store.refreshChallenges()
+            await store.refreshLeaderboard(force: true)
+            await store.refreshChallenges(force: true)
         }
         // A PR-row tap: bring the strength chart into view while it
         // adopts the exercise (see StrengthOverTimeCard.onChange).
@@ -2180,7 +2181,7 @@ private struct WeeklyBoardCard: View {
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                     Button("Retry") {
-                        Task { await store.refreshLeaderboard() }
+                        Task { await store.refreshLeaderboard(force: true) }
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
                     .frame(width: 118)
