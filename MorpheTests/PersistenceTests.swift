@@ -4803,3 +4803,43 @@ final class ThreadReadStateTests: XCTestCase {
         XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: ""), MorpheTheme.brandYellow)
     }
 }
+
+// MARK: - Author headline (N1 — professional-feed byline)
+@MainActor
+final class AuthorHeadlineTests: XCTestCase {
+
+    private func freshStore() -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    func testHeadlineIsSportOnlyWithoutAStreak() {
+        let store = freshStore()
+        XCTAssertEqual(store.clientProfile.level.streak, 0, "fresh account precondition")
+        XCTAssertEqual(store.feedAuthorHeadline, store.clientProfile.sportMode.rawValue,
+                       "no streak → no streak claim, just the sport")
+        XCTAssertFalse(store.feedAuthorHeadline.contains("streak"))
+    }
+
+    func testHeadlineCarriesARealStreak() {
+        let store = freshStore()
+        store.clientProfile.level.streak = 5
+        XCTAssertTrue(store.feedAuthorHeadline.hasSuffix("· 5-day streak"))
+        XCTAssertTrue(store.feedAuthorHeadline.hasPrefix(store.clientProfile.sportMode.rawValue))
+    }
+
+    func testSingleDayIsNotAStreak() {
+        let store = freshStore()
+        store.clientProfile.level.streak = 1
+        XCTAssertFalse(store.feedAuthorHeadline.contains("streak"),
+                       "one day is a start, not a streak")
+    }
+
+    func testModelDefaultIsEmptyAndDecodesTolerantly() {
+        XCTAssertEqual(FeedPost(id: "p", authorUid: "u", authorName: "A", text: "t").authorHeadline, "")
+    }
+}

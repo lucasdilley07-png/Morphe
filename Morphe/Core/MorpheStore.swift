@@ -8711,6 +8711,17 @@ final class MorpheAppStore {
         return name.isEmpty ? (authUser?.displayName ?? "Athlete") : name
     }
 
+    /// The byline stamped onto posts: sport focus, plus the live workout
+    /// streak only when one exists (≥2 days). Derived from logged facts at
+    /// publish time — a lapsed streak simply stops appearing on new posts.
+    var feedAuthorHeadline: String {
+        if selectedRole == .coach { return "Coach" }
+        let sport = clientProfile.sportMode.rawValue
+        let streak = clientProfile.level.streak
+        let headline = streak >= 2 ? "\(sport) · \(streak)-day streak" : sport
+        return String(headline.prefix(80))
+    }
+
     /// Pulls the newest posts + their real reaction counts + this account's
     /// bookmarks. Runs on launch/sign-in (same pattern as `refreshThreads`)
     /// and from pull-to-refresh. A nil fetch (offline, signed out, no-op
@@ -8937,8 +8948,10 @@ final class MorpheAppStore {
             setCount: setCount,
             exerciseCount: exerciseCount,
             prNames: Array(prNames.prefix(3)),
-            // Identity rides every post: the accent this profile trains in.
-            authorAccent: profileShowcase.accentPalette.rawValue
+            // Identity rides every post: the accent this profile trains in,
+            // and a byline derived from real facts at this moment.
+            authorAccent: profileShowcase.accentPalette.rawValue,
+            authorHeadline: feedAuthorHeadline
         )
         guard await feedService.publish(post: post) else { return false }
         feedPosts.insert(post, at: 0)

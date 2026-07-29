@@ -465,7 +465,7 @@ service cloud.firestore {
              ['authorUid', 'authorName', 'verified', 'text', 'workoutName',
               'repostOfId', 'repostOfAuthor', 'createdAt',
               'durationMinutes', 'setCount', 'exerciseCount', 'prNames',
-              'authorAccent'])
+              'authorAccent', 'authorHeadline'])
         && request.resource.data.authorName is string
         && request.resource.data.authorName.size() >= 1
         && request.resource.data.text is string
@@ -503,6 +503,11 @@ service cloud.firestore {
         && (!('authorAccent' in request.resource.data)
             || (request.resource.data.authorAccent is string
                 && request.resource.data.authorAccent.size() <= 24))
+        // Author byline ("Strength · 12-day streak") — display text, bounded.
+        // Like every post field, a bound is a sanity cap, not proof.
+        && (!('authorHeadline' in request.resource.data)
+            || (request.resource.data.authorHeadline is string
+                && request.resource.data.authorHeadline.size() <= 80))
         && (request.resource.data.get('verified', false) != true
             || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('verified', false) == true);
 

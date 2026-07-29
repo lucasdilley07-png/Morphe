@@ -642,6 +642,7 @@ final class FirebaseFeedService: FeedSyncing {
         if let exercises = post.exerciseCount { data["exerciseCount"] = exercises }
         if !post.prNames.isEmpty { data["prNames"] = Array(post.prNames.prefix(3)) }
         if !post.authorAccent.isEmpty { data["authorAccent"] = String(post.authorAccent.prefix(24)) }
+        if !post.authorHeadline.isEmpty { data["authorHeadline"] = String(post.authorHeadline.prefix(80)) }
         do {
             try await posts.document(post.id).setData(data)
             return true
@@ -848,7 +849,8 @@ final class FirebaseFeedService: FeedSyncing {
             setCount: data["setCount"] as? Int,
             exerciseCount: data["exerciseCount"] as? Int,
             prNames: data["prNames"] as? [String] ?? [],
-            authorAccent: data["authorAccent"] as? String ?? ""
+            authorAccent: data["authorAccent"] as? String ?? "",
+            authorHeadline: data["authorHeadline"] as? String ?? ""
         )
     }
 }

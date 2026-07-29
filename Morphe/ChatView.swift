@@ -1501,30 +1501,49 @@ private struct RealFeedSection: View {
     // owns account-finding — presence took the hero slot it occupied.)
 
     private var composer: some View {
-        GlassCard {
+        // "Start a post" anatomy: your avatar leads a rounded prompt; the
+        // counter + Post controls only appear once the composer is active.
+        // The field stays mounted so the story rail's focus hook works.
+        let isActive = composerFocused || !draft.isEmpty
+        let myAccent = MorpheTheme.colors(for: store.profileShowcase.accentPalette).primary
+        return GlassCard {
             VStack(alignment: .leading, spacing: 10) {
-                TextField("Share a win…", text: $draft, axis: .vertical)
-                    .lineLimit(2...5)
-                    .textFieldStyle(MorpheFieldStyle())
-                    .focused($composerFocused)
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(MorpheTheme.panelStrong)
+                        .frame(width: 38, height: 38)
+                        .overlay(
+                            Text(String(store.clientProfile.name.prefix(1)).uppercased())
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(myAccent)
+                        )
+                        .accessibilityHidden(true)
 
-                HStack {
-                    Text("\(draft.count)/\(Self.postLimit)")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(draft.count > Self.postLimit ? MorpheTheme.warning : MorpheTheme.textMuted)
+                    TextField("Share a win…", text: $draft, axis: .vertical)
+                        .lineLimit(isActive ? 2...5 : 1...1)
+                        .textFieldStyle(MorpheFieldStyle())
+                        .focused($composerFocused)
+                }
 
-                    Spacer()
+                if isActive {
+                    HStack {
+                        Text("\(draft.count)/\(Self.postLimit)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(draft.count > Self.postLimit ? MorpheTheme.warning : MorpheTheme.textMuted)
 
-                    Button("Post") {
-                        let text = cleanDraft
-                        draft = ""
-                        Task { await store.publishPost(text: text) }
+                        Spacer()
+
+                        Button("Post") {
+                            let text = cleanDraft
+                            draft = ""
+                            Task { await store.publishPost(text: text) }
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        // Same send control as the chat composer (ThreadChatView):
+                        // 84x44 primary CTA next to a MorpheFieldStyle field.
+                        .frame(width: 84, height: 44)
+                        .disabled(cleanDraft.isEmpty || draft.count > Self.postLimit)
                     }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    // Same send control as the chat composer (ThreadChatView):
-                    // 84x44 primary CTA next to a MorpheFieldStyle field.
-                    .frame(width: 84, height: 44)
-                    .disabled(cleanDraft.isEmpty || draft.count > Self.postLimit)
                 }
             }
         }
@@ -2206,6 +2225,14 @@ private struct FeedAuthorView: View {
                                         .accessibilityLabel("Verified")
                                 }
                             }
+                            // Byline from their newest post — publish-time
+                            // facts, so it's as current as their last share.
+                            if let headline = authorPosts.first?.authorHeadline, !headline.isEmpty {
+                                Text(headline)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                                    .lineLimit(1)
+                            }
                             Text("\(authorPosts.count) post\(authorPosts.count == 1 ? "" : "s") in your feed")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -2309,6 +2336,15 @@ private struct FeedPostCard: View {
                                             .foregroundStyle(feedVerifiedSealBlue)
                                             .accessibilityLabel("Verified")
                                     }
+                                }
+
+                                // The byline: real facts stamped at publish
+                                // time (sport + streak), never typed.
+                                if !post.authorHeadline.isEmpty {
+                                    Text(post.authorHeadline)
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textSecondary)
+                                        .lineLimit(1)
                                 }
 
                                 HStack(spacing: 6) {
@@ -2431,7 +2467,35 @@ private struct FeedPostCard: View {
                     )
                 }
 
-                HStack(spacing: 8) {
+                // Social-proof line — counts live HERE (the professional-feed
+                // anatomy), so the action row below stays clean labels. Only
+                // counts we actually hold: reactions are bulk-fetched;
+                // comment counts exist once loaded, so unknown stays silent
+                // instead of showing a fake zero.
+                if reactionCount > 0 || (store.postComments[post.id]?.isEmpty == false) {
+                    HStack {
+                        if reactionCount > 0 {
+                            HStack(spacing: 4) {
+                                Image(systemName: "flame.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(MorpheTheme.accent)
+                                Text("\(reactionCount)")
+                            }
+                        }
+                        Spacer()
+                        if let comments = store.postComments[post.id], !comments.isEmpty {
+                            Text("\(comments.count) comment\(comments.count == 1 ? "" : "s")")
+                        }
+                    }
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+                Divider()
+                    .overlay(MorpheTheme.stroke.opacity(0.6))
+
+                // Equal-width labeled action row.
+                HStack(spacing: 0) {
                     // Tap toggles a heart; long-press picks the reaction type.
                     // One doc per uid either way — the count stays honest.
                     Menu {
@@ -2452,9 +2516,10 @@ private struct FeedPostCard: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: myReactionSymbol)
-                            Text("\(reactionCount)")
+                            Text("React")
                         }
                         .feedActionChrome(isActive: hasReacted, activeColor: MorpheTheme.accent)
+                        .frame(maxWidth: .infinity)
                     } primaryAction: {
                         store.toggleReaction(post)
                     }
@@ -2468,25 +2533,12 @@ private struct FeedPostCard: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: showComments ? "bubble.right.fill" : "bubble.right")
-                            if let comments = store.postComments[post.id] {
-                                Text("\(comments.count)")
-                            } else {
-                                Text("Comment")
-                            }
+                            Text("Comment")
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(FeedActionButtonStyle(isActive: showComments, activeColor: MorpheTheme.accentAlt))
                     .accessibilityLabel(showComments ? "Hide comments" : "Show comments")
-
-                    Button {
-                        store.toggleSaved(post)
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                            Text(isSaved ? "Saved" : "Save")
-                        }
-                    }
-                    .buttonStyle(FeedActionButtonStyle(isActive: isSaved, activeColor: MorpheTheme.accentAlt))
 
                     Button {
                         onRepost()
@@ -2495,10 +2547,20 @@ private struct FeedPostCard: View {
                             Image(systemName: "arrow.2.squarepath")
                             Text("Repost")
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(FeedActionButtonStyle(isActive: false, activeColor: MorpheTheme.accent))
 
-                    Spacer()
+                    Button {
+                        store.toggleSaved(post)
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                            Text(isSaved ? "Saved" : "Save")
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(FeedActionButtonStyle(isActive: isSaved, activeColor: MorpheTheme.accentAlt))
                 }
 
                 if showComments {

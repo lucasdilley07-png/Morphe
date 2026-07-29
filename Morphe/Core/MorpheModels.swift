@@ -2116,6 +2116,10 @@ struct FeedPost: Identifiable, Hashable {
     /// the identity color their bubbles and rows wear across Network.
     /// Self-declared style, not a data claim.
     var authorAccent: String = ""
+    /// One-line author byline stamped at publish time from REAL profile
+    /// facts (sport focus, live workout streak) — "Strength · 12-day
+    /// streak". Derived, never typed, so it can't claim what wasn't logged.
+    var authorHeadline: String = ""
 
     var isRepost: Bool { !repostOfId.isEmpty }
     var hasSessionStats: Bool {

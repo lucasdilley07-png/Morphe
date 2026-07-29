@@ -122,11 +122,17 @@ try:
           fs_call(B, "PATCH", f"posts/{post_id}-f",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Fake A"),
                               "verified": b(False), "text": s("impostor")}}))
-    check("A posts with an accent identity", True,
+    check("A posts with accent + headline identity", True,
           fs_call(A, "PATCH", f"posts/{post_id}-a",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
                               "verified": b(False), "text": s("accent test"),
-                              "authorAccent": s("Electric Blue")}}))
+                              "authorAccent": s("Electric Blue"),
+                              "authorHeadline": s("Strength · 12-day streak")}}))
+    check("A posts an oversized headline", False,
+          fs_call(A, "PATCH", f"posts/{post_id}-h",
+                  {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                              "verified": b(False), "text": s("headline abuse"),
+                              "authorHeadline": s("x" * 120)}}))
     check("A posts an oversized accent value", False,
           fs_call(A, "PATCH", f"posts/{post_id}-a2",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
