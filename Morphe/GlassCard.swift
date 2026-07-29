@@ -41,7 +41,9 @@ struct CoachLayout<Content: View>: View {
 
 /// Thin L-brackets at the panel corners — the HUD signature. Neutral white so
 /// yellow stays reserved for actions and data.
-private struct HUDCornerTicks: View {
+// Internal (not private): the story viewer frames itself with the same
+// corner ticks the cards and posters use.
+struct HUDCornerTicks: View {
     var arm: CGFloat = 9
     var color: Color = Color.white.opacity(0.22)
 

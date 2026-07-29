@@ -8840,6 +8840,72 @@ final class MorpheAppStore {
     }
 
     /// Reaction types the picker offers, with their SF Symbols.
+    // MARK: Trained Today (the last 24h as presence)
+    //
+    // Data-driven stories: every logged session already renders an honest
+    // story-shaped card, so the presence row needs no uploads, no Storage,
+    // no moderation — just a 24h lens over the loaded feed.
+
+    struct TrainedTodayEntry: Identifiable, Hashable {
+        var id: String          // author uid
+        var name: String
+        var verified: Bool
+        /// This author's <24h posts, oldest first (the viewer's page order).
+        var posts: [FeedPost]
+        var hasUnseen: Bool
+    }
+
+    /// Bumped by markStorySeen so ring states refresh — UserDefaults isn't
+    /// observable on its own.
+    private(set) var storySeenTick = 0
+
+    private var storySeenKey: String { "morphe.stories.seen.\(clientProfile.id.uuidString)" }
+
+    /// Followed presence from the loaded feed: authors with sub-24h posts.
+    /// Self sorts first (your bubble is the mirror), then unseen, then most
+    /// recent activity.
+    var trainedTodayEntries: [TrainedTodayEntry] {
+        _ = storySeenTick
+        let cutoff = Date.now.addingTimeInterval(-24 * 3600)
+        let seen = Set(UserDefaults.standard.stringArray(forKey: storySeenKey) ?? [])
+        let fresh = feedPosts.filter { $0.createdAt >= cutoff }
+        guard !fresh.isEmpty else { return [] }
+        let myUid = authUser?.id ?? ""
+        return Dictionary(grouping: fresh, by: \.authorUid)
+            .map { uid, posts in
+                let ordered = posts.sorted { $0.createdAt < $1.createdAt }
+                return TrainedTodayEntry(
+                    id: uid,
+                    name: ordered.last?.authorName ?? "Athlete",
+                    verified: ordered.contains { $0.verified },
+                    posts: ordered,
+                    hasUnseen: ordered.contains { !seen.contains($0.id) }
+                )
+            }
+            .sorted { lhs, rhs in
+                if (lhs.id == myUid) != (rhs.id == myUid) { return lhs.id == myUid }
+                if lhs.hasUnseen != rhs.hasUnseen { return lhs.hasUnseen }
+                return (lhs.posts.last?.createdAt ?? .distantPast)
+                    > (rhs.posts.last?.createdAt ?? .distantPast)
+            }
+    }
+
+    /// A story reply landed — the presence loop's engagement pulse, next
+    /// to the share/referral/challenge counters in the metrics report.
+    func noteStoryReplySent() {
+        track("story_reply_sent")
+    }
+
+    /// Seen is per-profile and capped — a lens state, not data.
+    func markStorySeen(_ post: FeedPost) {
+        var seen = UserDefaults.standard.stringArray(forKey: storySeenKey) ?? []
+        guard !seen.contains(post.id) else { return }
+        seen.append(post.id)
+        if seen.count > 400 { seen.removeFirst(seen.count - 400) }
+        UserDefaults.standard.set(seen, forKey: storySeenKey)
+        storySeenTick += 1
+    }
+
     static let reactionTypes: [(type: String, symbol: String, label: String)] = [
         ("heart", "heart.fill", "Heart"),
         ("fire", "flame.fill", "Fire"),

@@ -3713,6 +3713,34 @@ final class SocialFeedTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "morphe.referrals.written.uid-test")
     }
 
+    func testTrainedTodayEntriesAreA24hSelfFirstLens() {
+        let store = signedInStore()
+        let seenKey = "morphe.stories.seen.\(store.clientProfile.id.uuidString)"
+        UserDefaults.standard.removeObject(forKey: seenKey)
+
+        store.feedPosts = [
+            FeedPost(id: "mine", authorUid: "uid-test", authorName: "Sarah", text: "win",
+                     createdAt: .now.addingTimeInterval(-3600)),
+            FeedPost(id: "fresh", authorUid: "friend", authorName: "Alex", text: "session",
+                     createdAt: .now.addingTimeInterval(-7200)),
+            FeedPost(id: "stale", authorUid: "old", authorName: "Riley", text: "ancient",
+                     createdAt: .now.addingTimeInterval(-30 * 3600))
+        ]
+
+        var entries = store.trainedTodayEntries
+        XCTAssertEqual(entries.map(\.id), ["uid-test", "friend"],
+                       "24h lens: stale authors drop out; self sorts first")
+        XCTAssertTrue(entries.allSatisfy(\.hasUnseen))
+
+        // Seeing the friend's only post clears their ring, not the order rule.
+        store.markStorySeen(store.feedPosts[1])
+        entries = store.trainedTodayEntries
+        XCTAssertFalse(entries[1].hasUnseen, "seen state flips the ring")
+        XCTAssertTrue(entries[0].hasUnseen, "own unseen post untouched")
+
+        UserDefaults.standard.removeObject(forKey: seenKey)
+    }
+
     func testFetchStatesDistinguishLoadingFailedAndLoaded() async {
         let store = signedInStore()
         XCTAssertEqual(store.feedFetchState, .idle)

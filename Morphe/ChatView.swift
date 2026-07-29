@@ -1294,7 +1294,9 @@ private struct RealFeedSection: View {
     @State private var repostTarget: FeedPost?
     /// The post whose author view is pushed (a real push, swipe-back works).
     @State private var authorTarget: FeedPost?
-    @State private var athleteQuery = ""
+    /// The author whose <24h story cards are playing full-screen.
+    @State private var storyTarget: MorpheAppStore.TrainedTodayEntry?
+    @FocusState private var composerFocused: Bool
 
     private enum FeedFilter: String, CaseIterable {
         case all = "All"
@@ -1329,11 +1331,19 @@ private struct RealFeedSection: View {
             }
             .pickerStyle(.segmented)
 
+            // Presence leads the page: who trained in the last 24h, gold
+            // ring = unseen. (Athlete search moved to the header magnifier —
+            // universal search owns account-finding now.)
+            TrainedTodayRow(
+                entries: store.trainedTodayEntries,
+                myUid: store.authUser?.id ?? "",
+                onOpen: { storyTarget = $0 },
+                onEmptySelf: { composerFocused = true }
+            )
+
             composer
 
             CompetitionPulseCard()
-
-            athleteSearch
 
             HStack(spacing: 8) {
                 ForEach(FeedFilter.allCases, id: \.self) { option in
@@ -1378,6 +1388,10 @@ private struct RealFeedSection: View {
                            authorName: post.authorName,
                            verified: post.verified)
         }
+        .fullScreenCover(item: $storyTarget) { entry in
+            StorySessionViewer(entry: entry)
+                .environment(store)
+        }
         .task {
             await store.refreshFeed()
             await store.refreshLeaderboard()
@@ -1385,53 +1399,8 @@ private struct RealFeedSection: View {
         }
     }
 
-    /// Username search → follow. The directory is the only thing scanned —
-    /// no profiles, no suggestion engine, just "type a name, follow it".
-    private var athleteSearch: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    TextField("Find athletes by @username…", text: $athleteQuery)
-                        .textFieldStyle(MorpheFieldStyle())
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-
-                if !store.athleteSearchResults.isEmpty {
-                    ForEach(store.athleteSearchResults) { result in
-                        HStack(spacing: 10) {
-                            Text("@\(result.username)")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-
-                            Spacer(minLength: 0)
-
-                            Button(store.isFollowing(result.uid) ? "Following" : "Follow") {
-                                store.toggleFollow(uid: result.uid, name: "@\(result.username)")
-                            }
-                            .buttonStyle(FilterChipStyle(isSelected: store.isFollowing(result.uid), selectedColor: MorpheTheme.accent))
-                            .accessibilityLabel(store.isFollowing(result.uid)
-                                ? "Unfollow \(result.username)" : "Follow \(result.username)")
-                        }
-                    }
-                } else if athleteQuery.trimmingCharacters(in: .whitespaces).count >= 2 {
-                    Text("No usernames match yet — names claim on sign-up.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-            }
-        }
-        // Re-query as typing settles; .task(id:) auto-cancels the stale run.
-        .task(id: athleteQuery) {
-            try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled else { return }
-            await store.searchAthletes(query: athleteQuery)
-        }
-    }
+    // (athleteSearch card removed: the header magnifier's universal search
+    // owns account-finding — presence took the hero slot it occupied.)
 
     private var composer: some View {
         GlassCard {
@@ -1439,6 +1408,7 @@ private struct RealFeedSection: View {
                 TextField("Share a win…", text: $draft, axis: .vertical)
                     .lineLimit(2...5)
                     .textFieldStyle(MorpheFieldStyle())
+                    .focused($composerFocused)
 
                 HStack {
                     Text("\(draft.count)/\(Self.postLimit)")
@@ -1598,6 +1568,338 @@ private struct CompetitionPulseCard: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Trained Today (presence row + story viewer)
+//
+// Story MECHANICS in the HUD's own skin: squared gold rings, mono
+// progress ticks, full-screen stat cards — never anyone else's chrome.
+
+private struct TrainedTodayRow: View {
+    let entries: [MorpheAppStore.TrainedTodayEntry]
+    let myUid: String
+    let onOpen: (MorpheAppStore.TrainedTodayEntry) -> Void
+    let onEmptySelf: () -> Void
+
+    private var selfHasStory: Bool {
+        entries.contains { $0.id == myUid }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("TRAINED TODAY")
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.4)
+                .foregroundStyle(MorpheTheme.textMuted)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    if !selfHasStory {
+                        // Your empty slot: the mirror. Tapping it opens the
+                        // composer — your people can't see a session you
+                        // didn't share.
+                        StoryBubble(initial: "+", name: "You", ringState: .empty) {
+                            onEmptySelf()
+                        }
+                        .accessibilityLabel("Share today's session")
+                    }
+                    ForEach(entries) { entry in
+                        StoryBubble(
+                            initial: String(entry.name.prefix(1)).uppercased(),
+                            name: entry.id == myUid ? "You" : entry.name,
+                            ringState: entry.hasUnseen ? .unseen : .seen
+                        ) {
+                            onOpen(entry)
+                        }
+                        .accessibilityLabel("\(entry.id == myUid ? "Your" : "\(entry.name)'s") sessions from the last day\(entry.hasUnseen ? ", new" : "")")
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+    }
+}
+
+private struct StoryBubble: View {
+    enum RingState { case unseen, seen, empty }
+
+    let initial: String
+    let name: String
+    let ringState: RingState
+    let action: () -> Void
+
+    private var ringColor: Color {
+        switch ringState {
+        case .unseen: return MorpheTheme.brandYellow
+        case .seen: return Color.white.opacity(0.18)
+        case .empty: return Color.white.opacity(0.30)
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                // Squared HUD ring — deliberately NOT a soft gradient circle.
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .stroke(ringColor, style: StrokeStyle(
+                        lineWidth: ringState == .unseen ? 2 : 1,
+                        dash: ringState == .empty ? [4, 3] : []
+                    ))
+                    .frame(width: 58, height: 58)
+                    .overlay(
+                        Circle()
+                            .fill(MorpheTheme.panelStrong)
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                Text(initial)
+                                    .font(.headline)
+                                    .foregroundStyle(ringState == .empty ? MorpheTheme.accent : .white)
+                            )
+                    )
+                Text(name)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .lineLimit(1)
+                    .frame(width: 62)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Full-screen pager over one author's <24h session cards. Mechanics:
+/// tap right = next, tap left = back, swipe down = close, ~5s auto-
+/// advance, mono progress ticks. Content is the HUD stat-card language —
+/// every number a logged fact.
+private struct StorySessionViewer: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let entry: MorpheAppStore.TrainedTodayEntry
+
+    @State private var index = 0
+    @State private var replyDraft = ""
+    @FocusState private var replyFocused: Bool
+
+    private var post: FeedPost { entry.posts[min(index, entry.posts.count - 1)] }
+
+    var body: some View {
+        ZStack {
+            PremiumBackground().ignoresSafeArea()
+
+            // Tap zones: leading third = back, the rest = forward.
+            HStack(spacing: 0) {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { step(-1) }
+                    .frame(maxWidth: .infinity)
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { step(1) }
+                    .frame(maxWidth: .infinity)
+            }
+
+            VStack(spacing: 14) {
+                // Mono progress ticks — thin rectangles, not rounded pills.
+                HStack(spacing: 4) {
+                    ForEach(entry.posts.indices, id: \.self) { tick in
+                        Rectangle()
+                            .fill(tick <= index ? MorpheTheme.brandYellow : Color.white.opacity(0.18))
+                            .frame(height: 2)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    Text(entry.name.uppercased())
+                        .font(MorpheTheme.microLabel(11))
+                        .tracking(1.4)
+                        .foregroundStyle(.white)
+                    if entry.verified {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.caption)
+                            .foregroundStyle(feedVerifiedSealBlue)
+                    }
+                    Text(post.createdAt.formatted(.relative(presentation: .named)).uppercased())
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Close stories")
+                }
+
+                Spacer()
+
+                StoryCardView(post: post)
+
+                Spacer()
+
+                // The reactions, VISIBLE — no long-press discovery problem —
+                // writing the same one-per-uid docs as the feed.
+                HStack(spacing: 10) {
+                    ForEach(MorpheAppStore.reactionTypes, id: \.type) { reaction in
+                        let isMine = store.myReactionTypes[post.id] == reaction.type
+                        Button {
+                            store.react(to: post, type: isMine ? nil : reaction.type)
+                        } label: {
+                            Image(systemName: reaction.symbol)
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(isMine ? MorpheTheme.brandYellow : .white)
+                                .frame(width: 44, height: 44)
+                                .background(
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                        .stroke(isMine ? MorpheTheme.brandYellow.opacity(0.6) : Color.white.opacity(0.16), lineWidth: 1)
+                                )
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(isMine ? "Remove \(reaction.label)" : reaction.label)
+                    }
+
+                    TextField("Reply…", text: $replyDraft)
+                        .textFieldStyle(MorpheFieldStyle())
+                        .focused($replyFocused)
+                        .onSubmit { sendReply() }
+                        .submitLabel(.send)
+                }
+            }
+            .padding(20)
+
+            HUDCornerTicks(arm: 22, color: Color.white.opacity(0.35))
+                .padding(14)
+                .allowsHitTesting(false)
+        }
+        .gesture(
+            DragGesture(minimumDistance: 40)
+                .onEnded { value in
+                    if value.translation.height > 60 { dismiss() }
+                }
+        )
+        // Seen + auto-advance ride the index: each card marks itself, then
+        // ~5s later steps forward (typing a reply pauses the clock).
+        .task(id: index) {
+            store.markStorySeen(post)
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled, !replyFocused else { return }
+            step(1)
+        }
+    }
+
+    private func step(_ delta: Int) {
+        let next = index + delta
+        if next < 0 { return }
+        if next >= entry.posts.count {
+            dismiss()
+            return
+        }
+        index = next
+        Haptics.selection()
+    }
+
+    private func sendReply() {
+        let text = replyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        let target = post
+        replyDraft = ""
+        replyFocused = false
+        Task {
+            if await store.addComment(to: target, text: text) {
+                store.noteStoryReplySent()
+            }
+        }
+    }
+}
+
+/// One post as a full-screen HUD stat poster — the share-card language,
+/// live in the viewer.
+private struct StoryCardView: View {
+    let post: FeedPost
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("SESSION")
+                .font(MorpheTheme.microLabel(11))
+                .tracking(2.4)
+                .foregroundStyle(Color.white.opacity(0.55))
+                .padding(.bottom, 10)
+
+            Text(post.workoutName.isEmpty ? "Training Session" : post.workoutName)
+                .scaledFont(size: 34, weight: .black)
+                .foregroundStyle(.white)
+                .lineLimit(3)
+                .minimumScaleFactor(0.6)
+                .padding(.bottom, 14)
+
+            if post.hasSessionStats {
+                Text([
+                    post.setCount.map { "\($0) SETS" },
+                    post.exerciseCount.map { "\($0) MOVES" },
+                    post.durationMinutes.map { "\($0) MIN" }
+                ].compactMap(\.self).joined(separator: "   ·   "))
+                    .scaledFont(size: 14, weight: .bold, design: .monospaced)
+                    .tracking(1.2)
+                    .foregroundStyle(MorpheTheme.brandYellow)
+                    .padding(.bottom, 12)
+            }
+
+            ForEach(post.prNames.prefix(3), id: \.self) { name in
+                HStack(spacing: 8) {
+                    Image(systemName: "trophy.fill")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.brandYellow)
+                    Text("NEW PR · \(name.uppercased())")
+                        .scaledFont(size: 12, weight: .bold, design: .monospaced)
+                        .tracking(1.2)
+                        .foregroundStyle(.white)
+                }
+                .padding(.bottom, 6)
+            }
+
+            if !post.text.isEmpty {
+                Text(post.text)
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
+            }
+
+            Rectangle()
+                .fill(Color.white.opacity(0.18))
+                .frame(height: 1)
+                .padding(.vertical, 14)
+
+            HStack {
+                Text(post.authorName.uppercased())
+                    .scaledFont(size: 11, weight: .semibold, design: .monospaced)
+                    .tracking(1.6)
+                    .foregroundStyle(Color.white.opacity(0.7))
+                Spacer()
+                Text("TRAIN HONEST")
+                    .scaledFont(size: 11, weight: .bold, design: .monospaced)
+                    .tracking(1.6)
+                    .foregroundStyle(MorpheTheme.brandYellow)
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panel)
+                .overlay(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                )
+        )
+        .allowsHitTesting(false)
     }
 }
 
