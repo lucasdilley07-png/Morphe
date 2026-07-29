@@ -4683,6 +4683,7 @@ final class MorpheAppStore {
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
         supersetPartners = [:]
+        sessionUserNote = ""
         return true
     }
 
@@ -5601,6 +5602,7 @@ final class MorpheAppStore {
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
         supersetPartners = [:]
+        sessionUserNote = ""
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         showTrainTab()
@@ -5945,7 +5947,6 @@ final class MorpheAppStore {
     /// Abandons the live session without logging anything.
     func cancelTrackedWorkoutSession() {
         restoreSessionTemplateBaseline()
-        sessionUserNote = ""
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false
         hasCompletedWorkoutFlow = false
@@ -5959,6 +5960,7 @@ final class MorpheAppStore {
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
         supersetPartners = [:]
+        sessionUserNote = ""
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         showToast("Workout discarded.")
@@ -6969,6 +6971,7 @@ final class MorpheAppStore {
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
         supersetPartners = [:]
+        sessionUserNote = ""
         showTrainTab()
         showToast("\(template.name) ready in Train.")
     }
@@ -10202,6 +10205,7 @@ final class MorpheAppStore {
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
         supersetPartners = [:]
+        sessionUserNote = ""
     }
 
     private func updateCurrentWorkout(_ update: (inout WorkoutTemplate) -> Void) {
