@@ -866,13 +866,22 @@ struct WorkoutView: View {
             )
         }
 
-        // Solo: only offer what actually works. A pinned favorite needs
-        // nothing more — no card beats a card full of dead buttons.
-        guard !currentWorkoutIsPinnedFavorite else { return nil }
+        // Solo: only offer what actually works. A real coach thread makes
+        // Message Coach real (it lands in Network → Contact); without one
+        // the button stays hidden — no card full of dead buttons.
+        let hasCoachThread = !store.liveThreads.isEmpty
+        guard !currentWorkoutIsPinnedFavorite else {
+            guard hasCoachThread else { return nil }
+            return PostWorkoutPromptConfiguration(
+                title: "Nice work. Close the loop.",
+                detail: "Send your coach a quick note while the session is still fresh.",
+                actions: [.messageCoach]
+            )
+        }
         return PostWorkoutPromptConfiguration(
             title: "This one is worth keeping close",
             detail: "If this session landed well, pin it as a favorite so it's one tap away next time.",
-            actions: [.saveFavorite]
+            actions: hasCoachThread ? [.saveFavorite, .messageCoach] : [.saveFavorite]
         )
     }
 

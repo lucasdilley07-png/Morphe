@@ -380,20 +380,6 @@ private struct NetworkDisclosureSection<Content: View>: View {
     }
 }
 
-private struct ContactSectionSwitcher: View {
-    @Environment(MorpheAppStore.self) private var store
-
-    var body: some View {
-        @Bindable var store = store
-        return Picker("Community Section", selection: $store.selectedCommunitySection) {
-            ForEach(ClientCommunitySection.allCases) { section in
-                Text(section.rawValue).tag(section)
-            }
-        }
-        .pickerStyle(.segmented)
-    }
-}
-
 private struct NetworkStoriesRail: View {
     @Environment(MorpheAppStore.self) private var store
     let onSelectStory: (CommunityStoryPreview) -> Void
@@ -1425,8 +1411,7 @@ private struct RealFeedSection: View {
     }
 
     var body: some View {
-        @Bindable var store = store
-        return VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 14) {
             // Section switching lives in the shell header (tabs + swipe) —
             // no in-scroll picker.
             // Presence leads the page: who trained in the last 24h, gold
@@ -2805,6 +2790,14 @@ struct ThreadChatView: View {
             messages: store.activeThreadMessages, uidA: myUid, uidB: counterpartUid)
     }
 
+    /// Doors seed a draft before routing here; a typed draft is never
+    /// clobbered, and the seed is cleared so it can't pop up stale later.
+    private func consumeDraftSeedIfPresent() {
+        guard let seed = store.athleteThreadDraftSeed else { return }
+        if draft.isEmpty { draft = seed }
+        store.athleteThreadDraftSeed = nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
@@ -2920,12 +2913,13 @@ struct ThreadChatView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear {
             store.openThread(thread)
-            // Doors like the post-workout "Message Coach" prompt seed a
-            // draft before routing here; a typed draft is never clobbered.
-            if draft.isEmpty, let seed = store.athleteThreadDraftSeed {
-                draft = seed
-                store.athleteThreadDraftSeed = nil
-            }
+            consumeDraftSeedIfPresent()
+        }
+        // The client shell is a TabView, so this view can already be
+        // mounted when a door (post-workout Message Coach) seeds a draft
+        // and routes here — onAppear won't refire, this will.
+        .onChange(of: store.athleteThreadDraftSeed) { _, _ in
+            consumeDraftSeedIfPresent()
         }
         .onDisappear { store.closeThread() }
     }
