@@ -3945,6 +3945,7 @@ private struct WorkoutRestControlBar: View {
                         // A mid-countdown change moves the lock-screen timer too.
                         if isRunning {
                             countdownEndDate = Date().addingTimeInterval(TimeInterval(preset))
+                            RestTimerSharedState.write(endDate: countdownEndDate)
                             RestTimerActivityController.update(secondsRemaining: preset)
                         }
                     }
@@ -3994,6 +3995,7 @@ private struct WorkoutRestControlBar: View {
         .onChange(of: seconds) { oldValue, newValue in
             guard isRunning, newValue != oldValue - 1 else { return }
             countdownEndDate = Date().addingTimeInterval(TimeInterval(newValue))
+            RestTimerSharedState.write(endDate: countdownEndDate)
             RestTimerActivityController.update(secondsRemaining: newValue)
         }
         .onAppear {
@@ -4040,6 +4042,12 @@ private struct WorkoutRestControlBar: View {
     private func startCountdown() {
         cancelCountdown()
         countdownEndDate = Date().addingTimeInterval(TimeInterval(seconds))
+        // The BAR owns the shared anchor: the controller only writes it
+        // when Live Activities are enabled, and the foreground resync
+        // reads nil as "skipped on the lock screen" — so the bar must
+        // write unconditionally or it would stop itself for users with
+        // activities off. (Inspection find 2026-07-29.)
+        RestTimerSharedState.write(endDate: countdownEndDate)
         // Mirror the countdown to the lock screen / Dynamic Island.
         RestTimerActivityController.start(exerciseName: exerciseName, secondsRemaining: seconds)
         countdownTask = Task {
@@ -4059,6 +4067,7 @@ private struct WorkoutRestControlBar: View {
         countdownTask?.cancel()
         countdownTask = nil
         countdownEndDate = nil
+        RestTimerSharedState.write(endDate: nil)
         RestTimerActivityController.end()
     }
 }
