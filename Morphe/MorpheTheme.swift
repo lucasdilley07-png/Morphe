@@ -111,6 +111,14 @@ enum MorpheTheme {
         currentAccentPalette = accentPalette
     }
 
+    /// Identity color for a feed author's self-declared palette id (the
+    /// `authorAccent` riding their posts). Unknown or empty → brand gold,
+    /// so old posts and tampered values degrade to the default, never crash.
+    static func accentColor(forPaletteId id: String) -> Color {
+        guard let palette = AccentPalette(rawValue: id) else { return brandYellow }
+        return colors(for: palette).primary
+    }
+
     static func colors(for accentPalette: AccentPalette) -> (primary: Color, secondary: Color) {
         switch accentPalette {
         case .electricBlue:

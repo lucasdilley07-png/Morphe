@@ -8588,6 +8588,7 @@ final class MorpheAppStore {
     func openThread(_ thread: MessageThreadSummary) {
         activeThreadId = thread.id
         activeThreadMessages = []
+        markThreadRead(thread.id)
         messagingService.listenMessages(threadId: thread.id) { [weak self] messages in
             Task { @MainActor [weak self] in
                 guard let self, self.activeThreadId == thread.id else { return }
@@ -8598,10 +8599,49 @@ final class MorpheAppStore {
 
     /// Stops the live listener and clears the open-thread state.
     func closeThread() {
+        // Everything that streamed in while the thread was on screen was
+        // seen — stamp read on the way out so a message that arrived
+        // mid-conversation doesn't resurface as "unread".
+        if let activeThreadId { markThreadRead(activeThreadId) }
         messagingService.stopListening()
         activeThreadId = nil
         activeThreadMessages = []
     }
+
+    // MARK: Thread read-state (honest local lens)
+    //
+    // Per-profile, device-local. It claims exactly what it knows: whether
+    // THIS profile opened the thread on THIS device since the last message
+    // arrived — never synced, never a cross-device promise.
+
+    private var threadReadKey: String { "morphe.threads.read.\(clientProfile.id.uuidString)" }
+    /// Bumped on every read-stamp so ring/row states refresh — UserDefaults
+    /// isn't observable on its own (same trick as storySeenTick).
+    private(set) var threadReadTick = 0
+
+    private func threadLastRead(_ threadId: String) -> Date {
+        let map = UserDefaults.standard.dictionary(forKey: threadReadKey) as? [String: Double] ?? [:]
+        return map[threadId].map { Date(timeIntervalSince1970: $0) } ?? .distantPast
+    }
+
+    func markThreadRead(_ threadId: String) {
+        var map = UserDefaults.standard.dictionary(forKey: threadReadKey) as? [String: Double] ?? [:]
+        map[threadId] = Date.now.timeIntervalSince1970
+        UserDefaults.standard.set(map, forKey: threadReadKey)
+        threadReadTick += 1
+    }
+
+    /// Unread = the newest message is the counterpart's and landed after
+    /// this profile last had the thread open.
+    func isThreadUnread(_ thread: MessageThreadSummary) -> Bool {
+        guard let myUid = authUser?.id else { return false }
+        _ = threadReadTick
+        return !thread.lastMessage.isEmpty
+            && thread.lastSender != myUid
+            && thread.updatedAt > threadLastRead(thread.id)
+    }
+
+    var unreadThreadCount: Int { liveThreads.filter { isThreadUnread($0) }.count }
 
     /// Sends one immutable message into the open thread. The listener streams
     /// it back into `activeThreadMessages`; the local inbox preview rolls
@@ -8896,7 +8936,9 @@ final class MorpheAppStore {
             durationMinutes: durationMinutes,
             setCount: setCount,
             exerciseCount: exerciseCount,
-            prNames: Array(prNames.prefix(3))
+            prNames: Array(prNames.prefix(3)),
+            // Identity rides every post: the accent this profile trains in.
+            authorAccent: profileShowcase.accentPalette.rawValue
         )
         guard await feedService.publish(post: post) else { return false }
         feedPosts.insert(post, at: 0)

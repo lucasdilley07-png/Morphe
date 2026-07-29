@@ -2112,6 +2112,10 @@ struct FeedPost: Identifiable, Hashable {
     var exerciseCount: Int?
     /// Exercise names that set a PR in this session (max 3 ride the post).
     var prNames: [String] = []
+    /// The author's chosen accent palette rawValue ("" = default gold) —
+    /// the identity color their bubbles and rows wear across Network.
+    /// Self-declared style, not a data claim.
+    var authorAccent: String = ""
 
     var isRepost: Bool { !repostOfId.isEmpty }
     var hasSessionStats: Bool {

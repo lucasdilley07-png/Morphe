@@ -122,6 +122,16 @@ try:
           fs_call(B, "PATCH", f"posts/{post_id}-f",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Fake A"),
                               "verified": b(False), "text": s("impostor")}}))
+    check("A posts with an accent identity", True,
+          fs_call(A, "PATCH", f"posts/{post_id}-a",
+                  {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                              "verified": b(False), "text": s("accent test"),
+                              "authorAccent": s("Electric Blue")}}))
+    check("A posts an oversized accent value", False,
+          fs_call(A, "PATCH", f"posts/{post_id}-a2",
+                  {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                              "verified": b(False), "text": s("accent abuse"),
+                              "authorAccent": s("x" * 60)}}))
 
     print("\n— Reactions (one per uid, typed) —")
     check("B reacts to A's post (fire)", True,
@@ -251,6 +261,7 @@ finally:
         (B, f"posts/{post_id}/comments/c-{RUN_ID}"),
         (B, f"posts/{post_id}/reactions/{B['uid']}"),
         (A, f"posts/{post_id}"),
+        (A, f"posts/{post_id}-a"),
         (A, f"telemetry/t-{RUN_ID}"),
         (A, f"users/{A['uid']}/state/profile"),
         (A, f"users/{A['uid']}/following/{B['uid']}"),

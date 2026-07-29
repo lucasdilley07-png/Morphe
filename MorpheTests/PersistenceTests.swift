@@ -4737,3 +4737,69 @@ final class ChatStreakTests: XCTestCase {
         XCTAssertEqual(MorpheAppStore.messageStreak(messages: messages, uidA: "a", uidB: "b", today: today), 0)
     }
 }
+
+// MARK: - Thread read-state + accent identity (S5)
+@MainActor
+final class ThreadReadStateTests: XCTestCase {
+
+    private func coachedStore() -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "me-uid", email: "sarah@morphe.app", role: .athlete,
+                                 displayName: "Sarah", createdAt: .now)
+        return store
+    }
+
+    private func thread(lastSender: String, updatedAt: Date = .now,
+                        lastMessage: String = "see you at 8") -> MessageThreadSummary {
+        MessageThreadSummary(id: "t-read", coachUid: "coach-uid", athleteUid: "me-uid",
+                             coachName: "Coach", athleteName: "Sarah",
+                             lastMessage: lastMessage, lastSender: lastSender,
+                             updatedAt: updatedAt)
+    }
+
+    func testCounterpartMessageIsUnreadUntilOpened() {
+        let store = coachedStore()
+        let t = thread(lastSender: "coach-uid")
+        store.liveThreads = [t]
+        XCTAssertTrue(store.isThreadUnread(t))
+        XCTAssertEqual(store.unreadThreadCount, 1)
+
+        store.openThread(t)
+        XCTAssertFalse(store.isThreadUnread(t), "opening the thread stamps it read")
+        XCTAssertEqual(store.unreadThreadCount, 0)
+    }
+
+    func testNewerMessageMakesItUnreadAgain() {
+        let store = coachedStore()
+        var t = thread(lastSender: "coach-uid")
+        store.liveThreads = [t]
+        store.openThread(t)
+        store.closeThread()
+
+        t.updatedAt = Date.now.addingTimeInterval(60)
+        store.liveThreads = [t]
+        XCTAssertTrue(store.isThreadUnread(t), "a message after the last open is news")
+    }
+
+    func testOwnMessagesAndEmptyThreadsAreNeverUnread() {
+        let store = coachedStore()
+        let mine = thread(lastSender: "me-uid")
+        let empty = thread(lastSender: "", lastMessage: "")
+        XCTAssertFalse(store.isThreadUnread(mine), "your own message needs no badge")
+        XCTAssertFalse(store.isThreadUnread(empty))
+    }
+
+    func testAccentIdentityDefaultsAndMapping() {
+        // Tolerant identity: unknown/empty palette ids degrade to brand gold
+        // at the mapping layer; the model default is "".
+        XCTAssertEqual(FeedPost(id: "p", authorUid: "u", authorName: "A", text: "t").authorAccent, "")
+        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "Electric Blue"),
+                       MorpheTheme.colors(for: .electricBlue).primary)
+        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "not-a-palette"), MorpheTheme.brandYellow)
+        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: ""), MorpheTheme.brandYellow)
+    }
+}

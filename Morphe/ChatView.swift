@@ -46,7 +46,7 @@ struct CommunityView: View {
     /// gold page tick, plus the camera door. HUD skin, not borrowed chrome.
     private var networkHeader: some View {
         HStack(alignment: .bottom, spacing: 22) {
-            sectionTab("CHATS", .contact)
+            sectionTab("CHATS", .contact, showsBadge: store.unreadThreadCount > 0)
             sectionTab("FOR YOU", .forYou)
 
             Spacer()
@@ -68,7 +68,8 @@ struct CommunityView: View {
         .padding(.bottom, 6)
     }
 
-    private func sectionTab(_ label: String, _ section: ClientCommunitySection) -> some View {
+    private func sectionTab(_ label: String, _ section: ClientCommunitySection,
+                            showsBadge: Bool = false) -> some View {
         let isActive = store.selectedCommunitySection == section
         return Button {
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -76,10 +77,17 @@ struct CommunityView: View {
             }
         } label: {
             VStack(alignment: .leading, spacing: 5) {
-                Text(label)
-                    .font(MorpheTheme.microLabel(12))
-                    .tracking(1.6)
-                    .foregroundStyle(isActive ? .white : MorpheTheme.textMuted)
+                HStack(spacing: 5) {
+                    Text(label)
+                        .font(MorpheTheme.microLabel(12))
+                        .tracking(1.6)
+                        .foregroundStyle(isActive ? .white : MorpheTheme.textMuted)
+                    if showsBadge {
+                        Circle()
+                            .fill(MorpheTheme.brandYellow)
+                            .frame(width: 6, height: 6)
+                    }
+                }
                 Rectangle()
                     .fill(isActive ? MorpheTheme.accent : .clear)
                     .frame(width: 26, height: 3)
@@ -88,7 +96,7 @@ struct CommunityView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(label.capitalized)
+        .accessibilityLabel(showsBadge ? "\(label.capitalized), new messages" : label.capitalized)
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
@@ -1702,10 +1710,12 @@ private struct TrainedTodayRow: View {
                     }
                     ForEach(entries) { entry in
                         let duo = entry.id == myUid ? 0 : duoStreakFor(entry.id)
+                        let accentId = entry.posts.first?.authorAccent ?? ""
                         StoryBubble(
                             initial: String(entry.name.prefix(1)).uppercased(),
                             name: entry.id == myUid ? "You" : entry.name,
                             ringState: entry.hasUnseen ? .unseen : .seen,
+                            accent: accentId.isEmpty ? .white : MorpheTheme.accentColor(forPaletteId: accentId),
                             duoStreak: duo
                         ) {
                             onOpen(entry)
@@ -1737,6 +1747,8 @@ private struct StoryBubble: View {
     let initial: String
     let name: String
     let ringState: RingState
+    /// The author's self-declared identity color; white = none declared.
+    var accent: Color = .white
     /// ≥2 shows the Duo Streak flame chip (Morphe's name, Morphe's chip).
     var duoStreak: Int = 0
     let action: () -> Void
@@ -1766,7 +1778,7 @@ private struct StoryBubble: View {
                             .overlay(
                                 Text(initial)
                                     .font(.headline)
-                                    .foregroundStyle(ringState == .empty ? MorpheTheme.accent : .white)
+                                    .foregroundStyle(ringState == .empty ? MorpheTheme.accent : accent)
                             )
                     )
                     .overlay(alignment: .topTrailing) {
@@ -1844,7 +1856,9 @@ private struct StorySessionViewer: View {
                     Text(entry.name.uppercased())
                         .font(MorpheTheme.microLabel(11))
                         .tracking(1.4)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(post.authorAccent.isEmpty
+                            ? .white
+                            : MorpheTheme.accentColor(forPaletteId: post.authorAccent))
                     if entry.verified {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.caption)
@@ -2169,13 +2183,16 @@ private struct FeedAuthorView: View {
 
                 GlassCard {
                     HStack(spacing: 14) {
+                        let accentId = authorPosts.first?.authorAccent ?? ""
                         Circle()
                             .fill(MorpheTheme.panelStrong)
                             .frame(width: 56, height: 56)
                             .overlay(
                                 Text(String(authorName.prefix(1)).uppercased())
                                     .font(.title2.weight(.bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(accentId.isEmpty
+                                        ? .white
+                                        : MorpheTheme.accentColor(forPaletteId: accentId))
                             )
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(spacing: 6) {
@@ -2274,7 +2291,9 @@ private struct FeedPostCard: View {
                                 .overlay(
                                     Text(String(post.authorName.prefix(1)).uppercased())
                                         .font(.headline)
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(post.authorAccent.isEmpty
+                                            ? .white
+                                            : MorpheTheme.accentColor(forPaletteId: post.authorAccent))
                                 )
 
                             VStack(alignment: .leading, spacing: 2) {
@@ -3006,7 +3025,8 @@ struct AthleteInboxView: View {
                     Button {
                         openedThread = thread
                     } label: {
-                        LiveThreadRow(thread: thread, viewerUid: myUid)
+                        LiveThreadRow(thread: thread, viewerUid: myUid,
+                                      isUnread: store.isThreadUnread(thread))
                     }
                     .buttonStyle(.plain)
 
@@ -3029,6 +3049,9 @@ struct AthleteInboxView: View {
 struct LiveThreadRow: View {
     let thread: MessageThreadSummary
     let viewerUid: String
+    /// Honest local lens: the newest message is theirs and arrived since
+    /// this profile last opened the thread on this device.
+    var isUnread: Bool = false
 
     private var name: String { thread.counterpartName(for: viewerUid) }
 
@@ -3044,25 +3067,32 @@ struct LiveThreadRow: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
+                HStack(spacing: 6) {
+                    if isUnread {
+                        Circle()
+                            .fill(MorpheTheme.brandYellow)
+                            .frame(width: 8, height: 8)
+                    }
                     Text(name)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                     Spacer()
                     Text(thread.updatedAt.formatted(.relative(presentation: .named)))
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
+                        .foregroundStyle(isUnread ? MorpheTheme.brandYellow : MorpheTheme.textMuted)
                 }
 
                 Text(thread.lastMessage.isEmpty ? "No messages yet" : thread.lastMessage)
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .font(isUnread ? .caption.weight(.semibold) : .caption)
+                    .foregroundStyle(isUnread ? .white : MorpheTheme.textSecondary)
                     .lineLimit(2)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(isUnread ? "\(name), new message" : name)
     }
 }
 

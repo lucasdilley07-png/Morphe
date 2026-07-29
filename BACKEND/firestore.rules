@@ -464,7 +464,8 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(
              ['authorUid', 'authorName', 'verified', 'text', 'workoutName',
               'repostOfId', 'repostOfAuthor', 'createdAt',
-              'durationMinutes', 'setCount', 'exerciseCount', 'prNames'])
+              'durationMinutes', 'setCount', 'exerciseCount', 'prNames',
+              'authorAccent'])
         && request.resource.data.authorName is string
         && request.resource.data.authorName.size() >= 1
         && request.resource.data.text is string
@@ -497,6 +498,11 @@ service cloud.firestore {
         && (!('prNames' in request.resource.data)
             || (request.resource.data.prNames is list
                 && request.resource.data.prNames.size() <= 3))
+        // Self-declared identity color (palette id string) — cosmetic, the
+        // client maps unknown values to the default. Bounded, never trusted.
+        && (!('authorAccent' in request.resource.data)
+            || (request.resource.data.authorAccent is string
+                && request.resource.data.authorAccent.size() <= 24))
         && (request.resource.data.get('verified', false) != true
             || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('verified', false) == true);
 
