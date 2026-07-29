@@ -70,7 +70,7 @@ struct MoreView: View {
                 .padding(.bottom, 120)
             }
         }
-        .padding(.top, MorpheTheme.Spacing.pageTop)
+        .padding(.top, MorpheTheme.Spacing.pageTopCompact)
     }
 
     private func chipTitle(for feature: ClientHubFeature) -> String {

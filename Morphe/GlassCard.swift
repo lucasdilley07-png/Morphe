@@ -325,10 +325,12 @@ struct RecordStampOverlay: View {
                 VStack(spacing: 10) {
                     if let card = moment.prCard {
                         Button("Share Card") {
-                            sharePayload = ShareCardPayload(
-                                image: ShareCardRenderer.image(for: card),
-                                caption: caption
-                            )
+                            Task {
+                                sharePayload = ShareCardPayload(
+                                    image: await ShareCardRenderer.imageAsync(for: card),
+                                    caption: caption
+                                )
+                            }
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandYellow))
                         .frame(width: 220)
@@ -1983,6 +1985,34 @@ enum ShareCardRenderer {
         let renderer = ImageRenderer(content: view)
         renderer.scale = 3
         return renderer.uiImage
+    }
+}
+
+// Async rendering: ImageRenderer is MainActor-isolated (the compiler
+// enforces it), so the 3x poster raster still runs on main — but these
+// wrappers detach it from the share tap's OWN transaction: the button
+// feedback and sheet presentation commit first, then the render lands.
+// A true off-main render needs a CoreGraphics re-implementation of the
+// cards (Tools/make_brand_assets.swift has one) — deferred.
+extension ShareCardRenderer {
+    static func imageAsync(for data: ShareCardData) async -> UIImage? {
+        await Task.yield()
+        return image(for: data)
+    }
+
+    static func imageAsync(for data: PRShareCardData) async -> UIImage? {
+        await Task.yield()
+        return image(for: data)
+    }
+
+    static func imageAsync(for data: StreakShareCardData) async -> UIImage? {
+        await Task.yield()
+        return image(for: data)
+    }
+
+    static func imageAsync(for data: WeeklyRecapData) async -> UIImage? {
+        await Task.yield()
+        return image(for: data)
     }
 }
 

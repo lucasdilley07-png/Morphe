@@ -3982,6 +3982,18 @@ final class StrengthAnalyticsTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: completionsKey)
     }
 
+    func testWarmupSetsNeverMintRecords() {
+        let store = freshStore()
+        var entry = log(for: store, exercise: "Bench", daysAgo: 0, reps: [5, 8], weights: [225, 135])
+        entry.exercises[0].warmupPerSet = [true, false]
+        store.workoutLogs.append(entry)
+
+        XCTAssertEqual(entry.exercises[0].workingWeightsPerSet, [135],
+                       "warm-up indices drop out of the working weights")
+        XCTAssertEqual(store.recentPersonalRecords(limit: 5).first?.weight ?? 0, 135,
+                       "the heavy warm-up single is not the record — the working set is")
+    }
+
     func testWeeklyRecapCoversOnlyTheLastCompletedWeek() {
         let store = freshStore()
         XCTAssertNil(store.weeklyRecapData, "no logs, no recap")

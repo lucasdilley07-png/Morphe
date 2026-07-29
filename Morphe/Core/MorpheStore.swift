@@ -265,6 +265,7 @@ final class MorpheAppStore {
     /// e.g. "Dropset 80×8 → 60×6" or "Superset + Push-Up ×12"). A superset
     /// or dropset counts as ONE set, with its sub-work described here.
     var trackedSetLabels: [String: [String]] = [:] { didSet { persistWorkoutSession() } }
+    var trackedSetWarmups: [String: [Bool]] = [:] { didSet { persistWorkoutSession() } }
     /// Unsaved draft from the custom set logger, per exercise id — everything
     /// typed into the "More" sheet survives dismissal and app relaunch.
     var pendingSetDrafts: [String: PendingSetDraft] = [:] { didSet { persistWorkoutSession() } }
@@ -2268,6 +2269,7 @@ final class MorpheAppStore {
         trackedSetWeights = snapshot.trackedSetWeights
         trackedSetRPE = snapshot.trackedSetRPE
         trackedSetLabels = snapshot.trackedSetLabels
+        trackedSetWarmups = snapshot.trackedSetWarmups
         pendingSetDrafts = snapshot.pendingSetDrafts
         workoutSessionStartedAt = snapshot.workoutSessionStartedAt
         completedSessionMinutes = snapshot.completedSessionMinutes
@@ -2321,6 +2323,7 @@ final class MorpheAppStore {
                 trackedSetWeights: trackedSetWeights,
                 trackedSetRPE: trackedSetRPE,
                 trackedSetLabels: trackedSetLabels,
+                trackedSetWarmups: trackedSetWarmups,
                 pendingSetDrafts: pendingSetDrafts,
                 workoutSessionStartedAt: workoutSessionStartedAt,
                 completedSessionMinutes: completedSessionMinutes,
@@ -3757,7 +3760,7 @@ final class MorpheAppStore {
                 let sessionTop = log.exercises
                     .filter { $0.name == exerciseName }
                     .compactMap { exercise -> Double? in
-                        guard let weights = exercise.weightsPerSet,
+                        guard let weights = exercise.workingWeightsPerSet,
                               let top = weights.max(), top > 0 else { return nil }
                         return normalizedLoggedWeight(top, recordedUnit: exercise.weightUnit)
                     }
@@ -3781,7 +3784,11 @@ final class MorpheAppStore {
             for exercise in log.exercises where exercise.name == exerciseName {
                 guard let weights = exercise.weightsPerSet,
                       let reps = exercise.repsPerSet else { continue }
-                for (weight, repCount) in zip(weights, reps) where weight > 0 && repCount > 0 {
+                let warmups = exercise.warmupPerSet ?? []
+                for (index, pair) in zip(weights, reps).enumerated() where pair.0 > 0 && pair.1 > 0 {
+                    // Warm-up sets never feed the e1RM estimate.
+                    if warmups.indices.contains(index), warmups[index] { continue }
+                    let (weight, repCount) = pair
                     let epley: Double = weight * (1 + Double(min(repCount, 15)) / 30)
                     let rounded: Double = (epley * 10).rounded() / 10
                     let normalized = normalizedLoggedWeight(rounded, recordedUnit: exercise.weightUnit)
@@ -3902,7 +3909,7 @@ final class MorpheAppStore {
         var best: [String: (weight: Double, date: Date)] = [:]
         for log in currentAthleteWorkoutLogs.sorted(by: { $0.completedAt < $1.completedAt }) {
             for exercise in log.exercises {
-                guard let weights = exercise.weightsPerSet,
+                guard let weights = exercise.workingWeightsPerSet,
                       let top = weights.max(), top > 0 else { continue }
                 let normalized = normalizedLoggedWeight(top, recordedUnit: exercise.weightUnit)
                 if normalized > (best[exercise.name]?.weight ?? 0) {
@@ -3927,7 +3934,7 @@ final class MorpheAppStore {
         var best: [String: Double] = [:]
         for log in currentAthleteWorkoutLogs {
             for exercise in log.exercises {
-                guard let top = exercise.weightsPerSet?.max(), top > 0 else { continue }
+                guard let top = exercise.workingWeightsPerSet?.max(), top > 0 else { continue }
                 let normalized = normalizedLoggedWeight(top, recordedUnit: exercise.weightUnit)
                 best[exercise.name] = max(best[exercise.name] ?? 0, normalized)
             }
@@ -4653,6 +4660,7 @@ final class MorpheAppStore {
         trackedSetWeights = [:]
         trackedSetRPE = [:]
         trackedSetLabels = [:]
+        trackedSetWarmups = [:]
         return true
     }
 
@@ -5569,6 +5577,7 @@ final class MorpheAppStore {
         trackedSetWeights = [:]
         trackedSetRPE = [:]
         trackedSetLabels = [:]
+        trackedSetWarmups = [:]
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         showTrainTab()
@@ -5805,7 +5814,7 @@ final class MorpheAppStore {
     /// Returns whether the set actually logged, so callers can gate follow-on
     /// behavior (the auto rest timer) on a real set, not a rejected tap.
     @discardableResult
-    func completeTrackedSet(reps: Int, weight: Double? = nil, rpe: Int? = nil, allowExtra: Bool = false, label: String = "") -> Bool {
+    func completeTrackedSet(reps: Int, weight: Double? = nil, rpe: Int? = nil, allowExtra: Bool = false, label: String = "", isWarmup: Bool = false) -> Bool {
         guard let exercise = activeWorkoutExercise else { return false }
         let targetSets = targetSetCount(for: exercise)
         let currentCount = completedWorkoutSets[exercise.id, default: 0]
@@ -5823,6 +5832,8 @@ final class MorpheAppStore {
         trackedSetRPE[exercise.id, default: []].append(rpe ?? 0)
         // A superset/dropset is ONE set — the label carries its sub-work.
         trackedSetLabels[exercise.id, default: []].append(label)
+        // Warm-ups count toward the session's work but never toward PRs.
+        trackedSetWarmups[exercise.id, default: []].append(isWarmup)
         // The set logged; its draft is spent.
         pendingSetDrafts[exercise.id] = nil
         Haptics.impact(.light)
@@ -5889,6 +5900,10 @@ final class MorpheAppStore {
             labelsLogged.remove(at: setIndex)
             trackedSetLabels[exerciseID] = labelsLogged
         }
+        if var warmupsLogged = trackedSetWarmups[exerciseID], warmupsLogged.indices.contains(setIndex) {
+            warmupsLogged.remove(at: setIndex)
+            trackedSetWarmups[exerciseID] = warmupsLogged
+        }
         completedWorkoutSets[exerciseID] = repsLogged.count
         showToast("Set removed.")
     }
@@ -5907,6 +5922,7 @@ final class MorpheAppStore {
         trackedSetWeights = [:]
         trackedSetRPE = [:]
         trackedSetLabels = [:]
+        trackedSetWarmups = [:]
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         showToast("Workout discarded.")
@@ -6051,15 +6067,21 @@ final class MorpheAppStore {
         return "\(exercise.name) has \(loggedSets) logged set\(loggedSets == 1 ? "" : "s") this session — remove them in the tracker before swapping."
     }
 
-    func swapExercise(_ exercise: WorkoutExercise) {
-        // Use the first alternative that actually exists in the library —
-        // several exercises list a dangling first alt, which used to kill
-        // the swap even when a valid second option existed.
-        guard let libraryExercise = exerciseDatabase.first(where: { $0.id == exercise.exerciseLibraryID }),
-              let replacement = libraryExercise.alternatives
-                  .compactMap({ name in exerciseDatabase.first { $0.name == name } })
-                  .first
-        else {
+    /// Library alternatives for `exercise` that actually exist — the
+    /// tappable choices the swap sheet renders. (Several exercises list
+    /// dangling alternative names; those are filtered, never shown.)
+    func swapChoices(for exercise: WorkoutExercise) -> [ExerciseReference] {
+        guard let libraryExercise = exerciseDatabase.first(where: { $0.id == exercise.exerciseLibraryID }) else { return [] }
+        return libraryExercise.alternatives.compactMap { name in
+            exerciseDatabase.first { $0.name == name }
+        }
+    }
+
+    /// `chosen` nil = first valid alternative (the one-tap path). The swap
+    /// sheet passes the user's pick — auto-deciding FOR the user was the
+    /// audit's complaint.
+    func swapExercise(_ exercise: WorkoutExercise, with chosen: ExerciseReference? = nil) {
+        guard let replacement = chosen ?? swapChoices(for: exercise).first else {
             showToast("No swap available for \(exercise.name).")
             return
         }
@@ -6295,7 +6317,8 @@ final class MorpheAppStore {
         // A PR is pure arithmetic: this session's top logged weight beats the
         // all-time top. Both sides are in the current display unit.
         let newPRs: [(name: String, weight: Double, previous: Double)] = loggedExercises.compactMap { exercise in
-            guard let top = exercise.weightsPerSet?.max(), top > 0 else { return nil }
+            // Working sets only — a heavy warm-up single is not a record.
+            guard let top = exercise.workingWeightsPerSet?.max(), top > 0 else { return nil }
             let previous = priorBests[exercise.name] ?? 0
             return top > previous ? (exercise.name, top, previous) : nil
         }
@@ -6851,6 +6874,7 @@ final class MorpheAppStore {
         trackedSetWeights = [:]
         trackedSetRPE = [:]
         trackedSetLabels = [:]
+        trackedSetWarmups = [:]
         showTrainTab()
         showToast("\(template.name) ready in Train.")
     }
@@ -9866,6 +9890,7 @@ final class MorpheAppStore {
         trackedSetWeights = [:]
         trackedSetRPE = [:]
         trackedSetLabels = [:]
+        trackedSetWarmups = [:]
     }
 
     private func updateCurrentWorkout(_ update: (inout WorkoutTemplate) -> Void) {
@@ -11185,7 +11210,10 @@ final class MorpheAppStore {
                 weightsPerSet: repsLogged.isEmpty ? nil : weightsLogged,
                 rpePerSet: repsLogged.isEmpty ? nil : rpesLogged,
                 weightUnit: repsLogged.isEmpty ? nil : weightUnit.rawValue,
-                muscleGroup: exercise.muscleGroup.rawValue
+                muscleGroup: exercise.muscleGroup.rawValue,
+                warmupPerSet: repsLogged.isEmpty
+                    ? nil
+                    : trackedSetWarmups[exercise.id, default: []]
             )
         }
     }

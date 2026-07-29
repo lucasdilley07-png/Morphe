@@ -206,12 +206,13 @@ struct WorkoutView: View {
                         suggestedReps: suggestedRepCount(for: activeExercise),
                         repsLogged: store.trackedSetReps[activeExercise.id, default: []],
                         weightsLogged: store.trackedSetWeights[activeExercise.id, default: []],
+                        warmupsLogged: store.trackedSetWarmups[activeExercise.id, default: []],
                         weight: $pendingWeight,
                         rpe: $pendingRPE,
                         weightUnit: store.weightUnit,
                         onPrevious: { store.goToPreviousTrackedExercise() },
-                        onQuickLogSet: { reps in
-                            if store.completeTrackedSet(reps: reps, weight: pendingWeight, rpe: pendingRPE) {
+                        onQuickLogSet: { reps, isWarmup in
+                            if store.completeTrackedSet(reps: reps, weight: pendingWeight, rpe: pendingRPE, isWarmup: isWarmup) {
                                 // RPE is a per-set read — a stale rating must
                                 // never silently ride into the next set.
                                 pendingRPE = nil
@@ -356,7 +357,7 @@ struct WorkoutView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, MorpheTheme.Spacing.pageTop)
+            .padding(.top, MorpheTheme.Spacing.pageTopTrain)
             .padding(.bottom, 120)
         }
         .onChange(of: store.activeWorkoutExerciseIndex) { _, _ in
@@ -718,7 +719,7 @@ struct WorkoutView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, MorpheTheme.Spacing.pageTop)
+            .padding(.top, MorpheTheme.Spacing.pageTopTrain)
             .padding(.bottom, 120)
         }
         .onAppear { revealLibraryIfRequested(proxy) }
@@ -878,7 +879,7 @@ struct DiscoverScreenView: View {
                     )
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, MorpheTheme.Spacing.pageTop)
+                .padding(.top, MorpheTheme.Spacing.pageTopTrain)
                 .padding(.bottom, 120)
             }
             .toolbar(.hidden, for: .navigationBar)
@@ -1306,13 +1307,15 @@ private struct ActiveWorkoutTrackerCard: View {
     let suggestedReps: Int
     let repsLogged: [Int]
     let weightsLogged: [Double]
+    let warmupsLogged: [Bool]
     @Binding var weight: Double
     /// Optional effort rating for the NEXT logged set — cleared by the owner
     /// after each log so a stale rating can't stick.
     @Binding var rpe: Int?
     let weightUnit: WeightUnit
     let onPrevious: () -> Void
-    let onQuickLogSet: (Int) -> Void
+    let onQuickLogSet: (Int, Bool) -> Void
+    @State private var isWarmupSet = false
     let onOpenCustomRepLogger: () -> Void
     let onEditSet: (Int) -> Void
     let onDeleteSet: (Int) -> Void
@@ -1438,6 +1441,20 @@ private struct ActiveWorkoutTrackerCard: View {
                                 Text("\(reps) reps · \(weightUnit.format(weightsLogged.indices.contains(index) ? weightsLogged[index] : 0))")
                                     .font(.caption)
                                     .foregroundStyle(.white)
+
+                                if warmupsLogged.indices.contains(index), warmupsLogged[index] {
+                                    Text("W")
+                                        .font(MorpheTheme.microLabel(9))
+                                        .tracking(0.5)
+                                        .foregroundStyle(MorpheTheme.accentAlt)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 2)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                                                .stroke(MorpheTheme.accentAlt.opacity(0.5), lineWidth: 1)
+                                        )
+                                        .accessibilityLabel("Warm-up set")
+                                }
 
                                 Spacer(minLength: 0)
 
@@ -1580,10 +1597,22 @@ private struct ActiveWorkoutTrackerCard: View {
                             }
 
                             Spacer(minLength: 0)
+
+                            // Warm-up: counts as work in the session, never
+                            // toward PRs or e1RM. Resets after each log —
+                            // it's a per-set flag, not a mode.
+                            Button("Warm-up") {
+                                isWarmupSet.toggle()
+                                Haptics.selection()
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: isWarmupSet, selectedColor: MorpheTheme.accentAlt))
+                            .accessibilityLabel(isWarmupSet ? "Logging as warm-up set" : "Mark as warm-up set")
+                            .accessibilityAddTraits(isWarmupSet ? .isSelected : [])
                         }
 
                         Button(logButtonTitle) {
-                            onQuickLogSet(repsToLog)
+                            onQuickLogSet(repsToLog, isWarmupSet)
+                            isWarmupSet = false
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                         .accessibilityLabel(
@@ -2236,7 +2265,7 @@ private struct DiscoverCatalogSection: View {
                 ScrollView(showsIndicators: false) {
                     detailView(current)
                         .padding(.horizontal, 20)
-                        .padding(.top, MorpheTheme.Spacing.pageTop)
+                        .padding(.top, MorpheTheme.Spacing.pageTopStacked)
                         .padding(.bottom, 120)
                 }
                 .background(PremiumBackground().ignoresSafeArea())
@@ -5470,20 +5499,15 @@ private struct ExerciseSwapFlowSheet: View {
                         }
                     }
 
-                    if let selectedReason, let libraryExercise {
+                    if let selectedReason, libraryExercise != nil {
                         GlassCard {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Suggested Alternatives")
+                                Text("Pick Your Swap")
                                     .font(.headline)
                                     .foregroundStyle(.white)
 
                                 Text(reasonDescription(for: selectedReason))
                                     .foregroundStyle(MorpheTheme.textSecondary)
-
-                                ForEach(libraryExercise.alternatives, id: \.self) { option in
-                                    Text("- \(option)")
-                                        .foregroundStyle(.white)
-                                }
 
                                 if let blockReason = store.swapBlockReason(for: exercise) {
                                     // Surface the refusal up front instead of
@@ -5493,13 +5517,41 @@ private struct ExerciseSwapFlowSheet: View {
                                         .foregroundStyle(MorpheTheme.warning)
                                 }
 
-                                Button("Swap Exercise") {
-                                    store.swapExercise(exercise)
-                                    dismiss()
+                                // Each valid alternative is ITS OWN button —
+                                // the user picks; the app stopped deciding.
+                                let blocked = store.swapBlockReason(for: exercise) != nil
+                                let choices = store.swapChoices(for: exercise)
+                                if choices.isEmpty {
+                                    Text("No library alternatives for this movement yet.")
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textSecondary)
                                 }
-                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                                .disabled(store.swapBlockReason(for: exercise) != nil)
-                                .opacity(store.swapBlockReason(for: exercise) != nil ? 0.5 : 1)
+                                ForEach(choices) { choice in
+                                    Button {
+                                        store.swapExercise(exercise, with: choice)
+                                        dismiss()
+                                    } label: {
+                                        HStack(spacing: 10) {
+                                            Text(choice.name)
+                                                .font(.subheadline.weight(.semibold))
+                                                .foregroundStyle(.white)
+                                            Spacer(minLength: 0)
+                                            Image(systemName: "arrow.left.arrow.right")
+                                                .font(.caption.weight(.bold))
+                                                .foregroundStyle(MorpheTheme.accent)
+                                        }
+                                        .padding(12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                                .fill(MorpheTheme.panelStrong)
+                                        )
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(blocked)
+                                    .opacity(blocked ? 0.5 : 1)
+                                    .accessibilityLabel("Swap to \(choice.name)")
+                                }
                             }
                         }
                     }

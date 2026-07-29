@@ -40,6 +40,9 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
     /// Per-set style labels ("" = standard; superset/dropset sub-work text).
     /// Tolerantly decoded.
     var trackedSetLabels: [String: [String]]
+    /// Per-set warm-up flags, parallel to trackedSetReps. Tolerantly
+    /// decoded (older sessions = all working sets).
+    var trackedSetWarmups: [String: [Bool]]
     /// Unsaved custom-logger drafts per exercise. Tolerantly decoded.
     var pendingSetDrafts: [String: PendingSetDraft]
     /// Session timing (tolerantly decoded): when the live session started and
@@ -57,6 +60,7 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
          completedWorkoutSets: [String: Int], trackedSetReps: [String: [Int]],
          trackedSetWeights: [String: [Double]], trackedSetRPE: [String: [Int]],
          trackedSetLabels: [String: [String]] = [:],
+         trackedSetWarmups: [String: [Bool]] = [:],
          pendingSetDrafts: [String: PendingSetDraft] = [:],
          workoutSessionStartedAt: Date?, completedSessionMinutes: Int?,
          isWorkoutLoggedToday: Bool, currentWorkoutName: String = "") {
@@ -71,6 +75,7 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
         self.trackedSetWeights = trackedSetWeights
         self.trackedSetRPE = trackedSetRPE
         self.trackedSetLabels = trackedSetLabels
+        self.trackedSetWarmups = trackedSetWarmups
         self.pendingSetDrafts = pendingSetDrafts
         self.workoutSessionStartedAt = workoutSessionStartedAt
         self.completedSessionMinutes = completedSessionMinutes
@@ -90,6 +95,7 @@ struct WorkoutSessionSnapshot: Codable, Equatable {
         trackedSetWeights = try c.decode([String: [Double]].self, forKey: .trackedSetWeights)
         trackedSetRPE = ((try? c.decodeIfPresent([String: [Int]].self, forKey: .trackedSetRPE)) ?? nil) ?? [:]
         trackedSetLabels = ((try? c.decodeIfPresent([String: [String]].self, forKey: .trackedSetLabels)) ?? nil) ?? [:]
+        trackedSetWarmups = ((try? c.decodeIfPresent([String: [Bool]].self, forKey: .trackedSetWarmups)) ?? nil) ?? [:]
         pendingSetDrafts = ((try? c.decodeIfPresent([String: PendingSetDraft].self, forKey: .pendingSetDrafts)) ?? nil) ?? [:]
         workoutSessionStartedAt = ((try? c.decodeIfPresent(Date.self, forKey: .workoutSessionStartedAt)) ?? nil)
         completedSessionMinutes = ((try? c.decodeIfPresent(Int.self, forKey: .completedSessionMinutes)) ?? nil)

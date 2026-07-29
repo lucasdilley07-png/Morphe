@@ -264,7 +264,7 @@ struct ProgressScreenView: View {
                 progressPanel
             }
             .padding(.horizontal, 20)
-            .padding(.top, MorpheTheme.Spacing.pageTop)
+            .padding(.top, MorpheTheme.Spacing.pageTopCompact)
             .padding(.bottom, 120)
         }
         // Board + challenges are the fetched pieces of this page.
@@ -1012,10 +1012,12 @@ private struct ProgressHeroStrip: View {
                         if streak >= 2 {
                             Button {
                                 guard let card = store.streakShareCardData else { return }
-                                sharePayload = ShareCardPayload(
-                                    image: ShareCardRenderer.image(for: card),
-                                    caption: store.shareCardCaption
-                                )
+                                Task {
+                                    sharePayload = ShareCardPayload(
+                                        image: await ShareCardRenderer.imageAsync(for: card),
+                                        caption: store.shareCardCaption
+                                    )
+                                }
                             } label: {
                                 Image(systemName: "square.and.arrow.up")
                                     .font(.caption.weight(.semibold))
@@ -1454,10 +1456,12 @@ private struct PRTimelineCard: View {
                                     weight: record.weight,
                                     date: record.date
                                 )
-                                sharePayload = ShareCardPayload(
-                                    image: ShareCardRenderer.image(for: card),
-                                    caption: store.shareCardCaption
-                                )
+                                Task {
+                                    sharePayload = ShareCardPayload(
+                                        image: await ShareCardRenderer.imageAsync(for: card),
+                                        caption: store.shareCardCaption
+                                    )
+                                }
                             } label: {
                                 Image(systemName: "square.and.arrow.up")
                                     .font(.caption.weight(.semibold))
@@ -1513,10 +1517,12 @@ private struct WeeklyRecapCard: View {
                     }
                     Spacer(minLength: 0)
                     Button("Share Week") {
-                        sharePayload = ShareCardPayload(
-                            image: ShareCardRenderer.image(for: recap),
-                            caption: store.shareCardCaption
-                        )
+                        Task {
+                            sharePayload = ShareCardPayload(
+                                image: await ShareCardRenderer.imageAsync(for: recap),
+                                caption: store.shareCardCaption
+                            )
+                        }
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
                     .frame(width: 118)

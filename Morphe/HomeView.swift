@@ -254,7 +254,7 @@ struct HomeView: View {
             .padding(.horizontal, 20)
             // Starts clearly BELOW the floating profile icon, matching where
             // the Progress/Learn titles sit.
-            .padding(.top, MorpheTheme.Spacing.pageTop)
+            .padding(.top, MorpheTheme.Spacing.pageTopToday)
             .padding(.bottom, 120)
         }
         // The network-backed pieces of Today (coach threads, appointments)
@@ -684,9 +684,15 @@ private struct TodayDoneCard: View {
                     // sharing the caption text — a button that sometimes
                     // does nothing reads as broken.
                     Button("Share Win") {
-                        let image = store.latestSessionShareCardData
-                            .flatMap { ShareCardRenderer.image(for: $0) }
-                        sharePayload = SharePayload(image: image, caption: store.shareCardCaption)
+                        // Async render: the poster rasterizes off-main so
+                        // this tap never hitches.
+                        Task {
+                            var image: UIImage?
+                            if let data = store.latestSessionShareCardData {
+                                image = await ShareCardRenderer.imageAsync(for: data)
+                            }
+                            sharePayload = SharePayload(image: image, caption: store.shareCardCaption)
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))

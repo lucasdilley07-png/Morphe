@@ -1142,10 +1142,11 @@ private struct PersonalizedPlanLoadingView: View {
             guard !hasStarted else { return }
             hasStarted = true
 
-            for item in messages {
-                message = item
-                try? await Task.sleep(for: .milliseconds(700))
-            }
+            // One short beat, not theater: the plan derivation is instant,
+            // and 2.1s of scripted fake progress was a gate between the
+            // user and their first real screen (UX audit P1-12).
+            message = messages.last ?? ""
+            try? await Task.sleep(for: .milliseconds(500))
 
             store.completeOnboarding()
         }

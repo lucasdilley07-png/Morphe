@@ -6,7 +6,7 @@ struct CommunityView: View {
     @State private var showNetworkExtras = false
     /// Tab landing clears the floating header icons; sheets (the Home
     /// Messages sheet) have a nav bar instead and pass a small value.
-    var topPadding: CGFloat = MorpheTheme.Spacing.pageTop
+    var topPadding: CGFloat = MorpheTheme.Spacing.pageTopStacked
 
     var body: some View {
         Group {

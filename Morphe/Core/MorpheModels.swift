@@ -1010,6 +1010,23 @@ struct LoggedExercise: Identifiable, Hashable, Codable {
     /// MuscleGroup rawValue at log time — optional so every older log still
     /// decodes; the balance chart only counts sets that carry it.
     var muscleGroup: String?
+    /// Per-set warm-up flags, parallel to repsPerSet. Optional: older logs
+    /// decode as all-working. Warm-ups count toward volume (work is work)
+    /// but never toward PRs, e1RM, or strength trends.
+    var warmupPerSet: [Bool]?
+}
+
+extension LoggedExercise {
+    /// Weights from WORKING sets only — the numbers PR/e1RM/strength
+    /// derivations are allowed to read. A heavy warm-up single must never
+    /// mint a record.
+    var workingWeightsPerSet: [Double]? {
+        guard let weights = weightsPerSet else { return nil }
+        guard let flags = warmupPerSet, flags.contains(true) else { return weights }
+        return weights.enumerated().compactMap { index, weight in
+            (flags.indices.contains(index) && flags[index]) ? nil : weight
+        }
+    }
 }
 
 struct WorkoutLog: Identifiable, Hashable, Codable {

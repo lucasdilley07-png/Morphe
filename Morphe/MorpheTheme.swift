@@ -48,6 +48,16 @@ enum MorpheTheme {
         /// 36 — where page content starts below the floating header icons.
         /// One knob for every tab landing (athlete shell).
         static let pageTop: CGFloat = 36
+        // Hand-tuned per-surface page tops (Lucas's on-device pass,
+        // 2026-07-28): tabs whose roots sit in a NavigationStack consume
+        // the shell's top safe-area inset differently than plain scrolls,
+        // so ONE constant rendered six different gaps. Targets below aim
+        // every tab at the same visual start line under the icon row —
+        // adjust these four, never per-view literals.
+        static let pageTopToday: CGFloat = 48
+        static let pageTopTrain: CGFloat = 60
+        static let pageTopStacked: CGFloat = 60   // Discover, Network
+        static let pageTopCompact: CGFloat = 24   // Progress, Learn
     }
 
     /// Monospaced micro-label — the telemetry signature. Pair with
