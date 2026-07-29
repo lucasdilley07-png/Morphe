@@ -812,6 +812,14 @@ struct ProfileView: View {
                     Divider().overlay(Color.white.opacity(0.08))
 
                     preferenceToggleRow(
+                        title: "Effort scale: RIR",
+                        caption: "Show effort as reps in reserve instead of RPE. Your history stays the same — only the display flips.",
+                        isOn: $store.effortScaleRIR
+                    )
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    preferenceToggleRow(
                         title: "Auto-share workouts",
                         caption: "Posts an honest recap to the feed when you log a session. Each session shows a toggle to keep it private.",
                         isOn: $store.autoShareWorkoutsEnabled

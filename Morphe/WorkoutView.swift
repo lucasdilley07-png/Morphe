@@ -4729,6 +4729,7 @@ private struct SetRepLoggingSheet: View {
     @State private var showRPEHelp = false
     @State private var style: SetStyle = .standard
     @State private var subEntries: [SubEntry] = []
+    @State private var setNote = ""
 
     private var logButtonTitle: String {
         switch style {
@@ -4859,20 +4860,25 @@ private struct SetRepLoggingSheet: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Effort (RPE) — optional")
+                    // Renders in the user's chosen scale; storage stays RPE
+                    // (RIR = 10 − RPE), so flipping the preference never
+                    // rewrites history.
+                    Text("Effort (\(store.effortScaleRIR ? "RIR" : "RPE")) — optional")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textSecondary)
                     HStack(spacing: 8) {
                         ForEach([6, 7, 8, 9, 10], id: \.self) { level in
-                            Button("\(level)") {
+                            Button(store.effortScaleRIR ? "\(10 - level)" : "\(level)") {
                                 rpe = (rpe == level) ? nil : level
                             }
                             .buttonStyle(FilterChipStyle(isSelected: rpe == level, selectedColor: MorpheTheme.accent))
-                            .accessibilityLabel("RPE \(level)\(rpe == level ? ", selected" : "")")
+                            .accessibilityLabel("\(store.effortLabel(forRPE: level))\(rpe == level ? ", selected" : "")")
                         }
                     }
                     HStack(spacing: 10) {
-                        Text("10 = nothing left in the tank. Tap again to clear.")
+                        Text(store.effortScaleRIR
+                            ? "0 = nothing left in the tank. Tap again to clear."
+                            : "10 = nothing left in the tank. Tap again to clear.")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textMuted)
 
@@ -4901,6 +4907,14 @@ private struct SetRepLoggingSheet: View {
                             )
                             .transition(.opacity)
                     }
+                }
+
+                // Per-set note — "grip slipped", "belt on", "left knee".
+                // Standard sets carry it via the label pipeline into the
+                // history's "Set N:" lines.
+                if style == .standard {
+                    TextField("Set note (optional)", text: $setNote)
+                        .textFieldStyle(MorpheFieldStyle())
                 }
 
                 HStack(spacing: 10) {
@@ -4949,6 +4963,9 @@ private struct SetRepLoggingSheet: View {
         switch style {
         case .standard:
             weight = mainWeight
+            // A plain set's note rides the label pipeline — it lands in
+            // history as "Set N: <note>" with zero new plumbing.
+            label = setNote.trimmingCharacters(in: .whitespacesAndNewlines)
         case .dropset:
             let drops = subEntries.compactMap { entry -> (Double, Int)? in
                 let w = Double(entry.weightText.trimmingCharacters(in: .whitespaces)) ?? 0

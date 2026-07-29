@@ -456,6 +456,12 @@ final class MorpheAppStore {
     var autoRestTimerEnabled = true {
         didSet { persistTrainingPreferences() }
     }
+    /// Effort display scale: false = RPE (default), true = RIR. Stored
+    /// values stay RPE internally — RIR is a view (RIR = 10 − RPE), so
+    /// flipping the preference never rewrites history.
+    var effortScaleRIR = false {
+        didSet { persistTrainingPreferences() }
+    }
     /// Global opt-in for auto-posting finished sessions to the real feed.
     /// Off by default — publishing on the user's behalf is never a surprise.
     var autoShareWorkoutsEnabled = false {
@@ -3202,6 +3208,7 @@ final class MorpheAppStore {
         var healthSleep: Bool?
         var firstWeekStart: Date?
         var archivedClientCodes: [String]?
+        var effortRIR: Bool?
     }
 
     private var trainingPreferencesDefaultsKey: String {
@@ -3226,6 +3233,7 @@ final class MorpheAppStore {
             healthSleepEnabled = false
             firstWeekStart = nil
             archivedClientCodes = []
+            effortScaleRIR = false
             return
         }
         autoRestTimerEnabled = snapshot.autoRestTimer
@@ -3237,6 +3245,7 @@ final class MorpheAppStore {
         healthSleepEnabled = snapshot.healthSleep ?? false
         firstWeekStart = snapshot.firstWeekStart
         archivedClientCodes = Set(snapshot.archivedClientCodes ?? [])
+        effortScaleRIR = snapshot.effortRIR ?? false
     }
 
     private func persistTrainingPreferences() {
@@ -3250,7 +3259,8 @@ final class MorpheAppStore {
             linkedCoachName: linkedCoachName,
             healthSleep: healthSleepEnabled,
             firstWeekStart: firstWeekStart,
-            archivedClientCodes: Array(archivedClientCodes)
+            archivedClientCodes: Array(archivedClientCodes),
+            effortRIR: effortScaleRIR
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: trainingPreferencesDefaultsKey)
@@ -5756,6 +5766,11 @@ final class MorpheAppStore {
     /// A short, honest note for the tracker citing the real signal (session
     /// rating or top-set RPE) behind the suggestion; nil when there's nothing
     /// to say.
+    /// Internally-stored RPE rendered in the user's chosen effort scale.
+    func effortLabel(forRPE rpe: Int) -> String {
+        effortScaleRIR ? "RIR \(max(0, 10 - rpe))" : "RPE \(rpe)"
+    }
+
     func progressionNote(for exercise: WorkoutExercise) -> String? {
         guard let last = lastLoggedTopWeight(forExerciseNamed: exercise.name),
               last.unit == weightUnit, last.weight > 0 else { return nil }
@@ -5767,10 +5782,10 @@ final class MorpheAppStore {
         }
         if let rpe = last.topSetRPE {
             if rpe <= 6 {
-                return "MORPHE SUGGESTS +\(weightUnit.format(progressionIncrement())) — last time was RPE \(rpe), room to add"
+                return "MORPHE SUGGESTS +\(weightUnit.format(progressionIncrement())) — last time was \(effortLabel(forRPE: rpe)), room to add"
             }
             if Double(rpe) >= 9.5 {
-                return "MORPHE SUGGESTS holding — last top set was RPE \(rpe)"
+                return "MORPHE SUGGESTS holding — last top set was \(effortLabel(forRPE: rpe))"
             }
         }
         return nil
