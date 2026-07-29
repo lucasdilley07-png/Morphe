@@ -3713,6 +3713,32 @@ final class SocialFeedTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "morphe.referrals.written.uid-test")
     }
 
+    func testDuoStreakCountsConsecutiveBothPostedDays() {
+        let store = signedInStore()
+        let calendar = Calendar.current
+        func post(_ id: String, _ uid: String, daysAgo: Int) -> FeedPost {
+            FeedPost(id: id, authorUid: uid, authorName: uid, text: "s",
+                     createdAt: calendar.date(byAdding: .day, value: -daysAgo, to: .now)!)
+        }
+
+        // Both posted yesterday and the day before; only the friend posted
+        // 3 days ago — the streak is the BOTH run: 2, alive via yesterday.
+        store.feedPosts = [
+            post("m1", "uid-test", daysAgo: 1), post("m2", "uid-test", daysAgo: 2),
+            post("f1", "friend", daysAgo: 1), post("f2", "friend", daysAgo: 2),
+            post("f3", "friend", daysAgo: 3)
+        ]
+        XCTAssertEqual(store.duoStreak(with: "friend"), 2)
+
+        // A gap two days back kills the run at 1.
+        store.feedPosts.removeAll { $0.id == "m2" }
+        XCTAssertEqual(store.duoStreak(with: "friend"), 1)
+
+        // Nothing shared, no streak — and never with yourself.
+        XCTAssertEqual(store.duoStreak(with: "stranger"), 0)
+        XCTAssertEqual(store.duoStreak(with: "uid-test"), 0)
+    }
+
     func testTrainedTodayEntriesAreA24hSelfFirstLens() {
         let store = signedInStore()
         let seenKey = "morphe.stories.seen.\(store.clientProfile.id.uuidString)"

@@ -1296,6 +1296,7 @@ private struct RealFeedSection: View {
     @State private var authorTarget: FeedPost?
     /// The author whose <24h story cards are playing full-screen.
     @State private var storyTarget: MorpheAppStore.TrainedTodayEntry?
+    @State private var showBoardStory = false
     @FocusState private var composerFocused: Bool
 
     private enum FeedFilter: String, CaseIterable {
@@ -1337,6 +1338,9 @@ private struct RealFeedSection: View {
             TrainedTodayRow(
                 entries: store.trainedTodayEntries,
                 myUid: store.authUser?.id ?? "",
+                duoStreakFor: { store.duoStreak(with: $0) },
+                boardLeader: store.leaderboardOptIn ? store.weeklyLeaderboard.first?.name : nil,
+                onOpenBoard: { showBoardStory = true },
                 onOpen: { storyTarget = $0 },
                 onEmptySelf: { composerFocused = true }
             )
@@ -1390,6 +1394,10 @@ private struct RealFeedSection: View {
         }
         .fullScreenCover(item: $storyTarget) { entry in
             StorySessionViewer(entry: entry)
+                .environment(store)
+        }
+        .fullScreenCover(isPresented: $showBoardStory) {
+            BoardStoryView()
                 .environment(store)
         }
         .task {
@@ -1579,6 +1587,12 @@ private struct CompetitionPulseCard: View {
 private struct TrainedTodayRow: View {
     let entries: [MorpheAppStore.TrainedTodayEntry]
     let myUid: String
+    /// Duo Streak per author (consecutive both-posted days) — ≥2 renders
+    /// the flame chip on that bubble.
+    var duoStreakFor: (String) -> Int = { _ in 0 }
+    /// Weekly-board leader name — non-nil adds the BOARD bubble.
+    var boardLeader: String? = nil
+    var onOpenBoard: () -> Void = {}
     let onOpen: (MorpheAppStore.TrainedTodayEntry) -> Void
     let onEmptySelf: () -> Void
 
@@ -1605,14 +1619,28 @@ private struct TrainedTodayRow: View {
                         .accessibilityLabel("Share today's session")
                     }
                     ForEach(entries) { entry in
+                        let duo = entry.id == myUid ? 0 : duoStreakFor(entry.id)
                         StoryBubble(
                             initial: String(entry.name.prefix(1)).uppercased(),
                             name: entry.id == myUid ? "You" : entry.name,
-                            ringState: entry.hasUnseen ? .unseen : .seen
+                            ringState: entry.hasUnseen ? .unseen : .seen,
+                            duoStreak: duo
                         ) {
                             onOpen(entry)
                         }
-                        .accessibilityLabel("\(entry.id == myUid ? "Your" : "\(entry.name)'s") sessions from the last day\(entry.hasUnseen ? ", new" : "")")
+                        .accessibilityLabel(
+                            "\(entry.id == myUid ? "Your" : "\(entry.name)'s") sessions from the last day\(entry.hasUnseen ? ", new" : "")"
+                                + (duo >= 2 ? ", \(duo)-day duo streak" : "")
+                        )
+                    }
+
+                    // The board rides the row as its own tile: presence for
+                    // the week's competition, not just the last 24h.
+                    if let boardLeader {
+                        StoryBubble(initial: "#1", name: boardLeader, ringState: .seen) {
+                            onOpenBoard()
+                        }
+                        .accessibilityLabel("Weekly board — \(boardLeader) leads")
                     }
                 }
                 .padding(.vertical, 2)
@@ -1627,6 +1655,8 @@ private struct StoryBubble: View {
     let initial: String
     let name: String
     let ringState: RingState
+    /// ≥2 shows the Duo Streak flame chip (Morphe's name, Morphe's chip).
+    var duoStreak: Int = 0
     let action: () -> Void
 
     private var ringColor: Color {
@@ -1657,6 +1687,24 @@ private struct StoryBubble: View {
                                     .foregroundStyle(ringState == .empty ? MorpheTheme.accent : .white)
                             )
                     )
+                    .overlay(alignment: .topTrailing) {
+                        if duoStreak >= 2 {
+                            HStack(spacing: 2) {
+                                Image(systemName: "flame.fill")
+                                    .font(.system(size: 8, weight: .bold))
+                                Text("\(duoStreak)")
+                                    .font(MorpheTheme.microLabel(9))
+                            }
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                                    .fill(MorpheTheme.brandYellow)
+                            )
+                            .offset(x: 6, y: -6)
+                        }
+                    }
                 Text(name)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -1725,6 +1773,21 @@ private struct StorySessionViewer: View {
                         .tracking(1.2)
                         .foregroundStyle(MorpheTheme.textMuted)
                     Spacer()
+                    // The author IS my coach: one tap to the messaging
+                    // surface — a story reply sometimes wants a thread.
+                    if entry.id == store.linkedCoachUid, !store.linkedCoachUid.isEmpty {
+                        Button {
+                            dismiss()
+                            store.selectedCommunitySection = .contact
+                        } label: {
+                            Image(systemName: "bubble.left.and.bubble.right.fill")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(MorpheTheme.accentAlt)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .accessibilityLabel("Message your coach")
+                    }
                     Button {
                         dismiss()
                     } label: {
@@ -1816,6 +1879,88 @@ private struct StorySessionViewer: View {
                 store.noteStoryReplySent()
             }
         }
+    }
+}
+
+/// The weekly board as a full-screen HUD poster — the row's competition
+/// tile. Reads the fetched board only; opt-in gates the bubble upstream.
+private struct BoardStoryView: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            PremiumBackground().ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("THIS WEEK'S BOARD")
+                        .font(MorpheTheme.microLabel(11))
+                        .tracking(2.4)
+                        .foregroundStyle(Color.white.opacity(0.55))
+                    Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Close board")
+                }
+
+                Spacer()
+
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(Array(store.weeklyLeaderboard.prefix(3).enumerated()), id: \.element.uid) { index, entry in
+                        HStack(spacing: 12) {
+                            Text("#\(index + 1)")
+                                .scaledFont(size: 22, weight: .bold, design: .monospaced)
+                                .foregroundStyle(index == 0 ? MorpheTheme.brandYellow : Color.white.opacity(0.55))
+                                .frame(width: 44, alignment: .leading)
+                            Text(entry.name)
+                                .scaledFont(size: 22, weight: .black)
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                            Spacer()
+                            Text("\(entry.score) SETS")
+                                .scaledFont(size: 14, weight: .bold, design: .monospaced)
+                                .tracking(1.2)
+                                .foregroundStyle(MorpheTheme.brandYellow)
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Button("Open Progress") {
+                    dismiss()
+                    store.openProgress()
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandYellow))
+
+                HStack {
+                    Spacer()
+                    Text("TRAIN HONEST")
+                        .scaledFont(size: 11, weight: .bold, design: .monospaced)
+                        .tracking(1.6)
+                        .foregroundStyle(MorpheTheme.brandYellow)
+                }
+            }
+            .padding(20)
+
+            HUDCornerTicks(arm: 22, color: Color.white.opacity(0.35))
+                .padding(14)
+                .allowsHitTesting(false)
+        }
+        .gesture(
+            DragGesture(minimumDistance: 40)
+                .onEnded { value in
+                    if value.translation.height > 60 { dismiss() }
+                }
+        )
     }
 }
 
@@ -2065,9 +2210,27 @@ private struct FeedPostCard: View {
                                     }
                                 }
 
-                                Text(post.createdAt.formatted(.relative(presentation: .named)))
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(MorpheTheme.textMuted)
+                                HStack(spacing: 6) {
+                                    Text(post.createdAt.formatted(.relative(presentation: .named)))
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                    // Duo Streak: consecutive days you BOTH
+                                    // posted — presence turned into a bond.
+                                    if !isMine {
+                                        let duo = store.duoStreak(with: post.authorUid)
+                                        if duo >= 2 {
+                                            HStack(spacing: 2) {
+                                                Image(systemName: "flame.fill")
+                                                    .font(.system(size: 8, weight: .bold))
+                                                Text("DUO \(duo)")
+                                                    .font(MorpheTheme.microLabel(9))
+                                                    .tracking(0.5)
+                                            }
+                                            .foregroundStyle(MorpheTheme.brandYellow)
+                                            .accessibilityLabel("\(duo)-day duo streak with \(post.authorName)")
+                                        }
+                                    }
+                                }
                             }
                         }
                         .contentShape(Rectangle())

@@ -8896,6 +8896,36 @@ final class MorpheAppStore {
         track("story_reply_sent")
     }
 
+    /// Consecutive days BOTH this account and `authorUid` posted a session,
+    /// walking back from today (a live streak may not include today YET, so
+    /// yesterday anchors too — same grace idea as the workout streak).
+    /// Derived from the LOADED feed: the honest window we can actually see;
+    /// mutual-follow status is unknowable client-side by rules design.
+    func duoStreak(with authorUid: String) -> Int {
+        guard let myUid = authUser?.id, authorUid != myUid else { return 0 }
+        let calendar = Calendar.current
+        func postDays(_ uid: String) -> Set<Date> {
+            Set(feedPosts.filter { $0.authorUid == uid }
+                .map { calendar.startOfDay(for: $0.createdAt) })
+        }
+        let both = postDays(myUid).intersection(postDays(authorUid))
+        guard !both.isEmpty else { return 0 }
+
+        var day = calendar.startOfDay(for: .now)
+        if !both.contains(day) {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: day),
+                  both.contains(yesterday) else { return 0 }
+            day = yesterday
+        }
+        var streak = 0
+        while both.contains(day) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+        }
+        return streak
+    }
+
     /// Seen is per-profile and capped — a lens state, not data.
     func markStorySeen(_ post: FeedPost) {
         var seen = UserDefaults.standard.stringArray(forKey: storySeenKey) ?? []
