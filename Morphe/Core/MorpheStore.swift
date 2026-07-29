@@ -931,7 +931,8 @@ final class MorpheAppStore {
         for key in [trainingPreferencesDefaultsKey, competitionStateDefaultsKey,
                     bodyWeightHistoryDefaultsKey, recoverySeriesDefaultsKey,
                     nutritionSeriesDefaultsKey, activeProgramDefaultsKey,
-                    programCompletionsDefaultsKey, Self.pendingReferralKey] {
+                    programCompletionsDefaultsKey, libraryFoldersKey,
+                    Self.pendingReferralKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
         workoutPersistence.clear()
@@ -3014,6 +3015,7 @@ final class MorpheAppStore {
             "nutritionSeries": nutritionSeriesDefaultsKey,
             "activeProgram": activeProgramDefaultsKey,
             "programCompletions": programCompletionsDefaultsKey,
+            "libraryFolders": libraryFoldersKey,
         ]
     }
 
@@ -3071,6 +3073,7 @@ final class MorpheAppStore {
         nutritionSeries = loadSeries(nutritionSeriesDefaultsKey)
         activeProgramState = loadActiveProgramSnapshot()
         loadProgramCompletions()
+        loadLibraryFolders()
     }
 
     /// Called from `submitRecoveryCheckIn` — records today's real inputs.
@@ -6023,6 +6026,25 @@ final class MorpheAppStore {
     /// Moves one live-session exercise up or down the queue. The active
     /// pointer follows the exercise it was on — reordering never silently
     /// changes what the console is tracking.
+    /// Drag-reorder: drop `id` at `destination` (clamped). Same baseline
+    /// capture and active-index preservation as the chevron variant.
+    func moveSessionExercise(id: String, toIndex destination: Int) {
+        guard let from = currentWorkout.exercises.firstIndex(where: { $0.id == id }),
+              from != destination else { return }
+        captureSessionBaselineIfNeeded()
+        let activeID = activeWorkoutExercise?.id
+        updateCurrentWorkout { workout in
+            var exercises = workout.exercises
+            let item = exercises.remove(at: from)
+            exercises.insert(item, at: min(max(destination, 0), exercises.count))
+            workout.exercises = exercises
+        }
+        if let activeID,
+           let newIndex = currentWorkout.exercises.firstIndex(where: { $0.id == activeID }) {
+            activeWorkoutExerciseIndex = newIndex
+        }
+    }
+
     func moveSessionExercise(id: String, up: Bool) {
         guard let index = currentWorkout.exercises.firstIndex(where: { $0.id == id }) else { return }
         let target = up ? index - 1 : index + 1
@@ -7745,6 +7767,76 @@ final class MorpheAppStore {
             message += " After you install, open morphe://invite/\(handle) and we're connected."
         }
         return message + " 💪"
+    }
+
+    // MARK: Library folders (per-profile; ride the extras cloud backup)
+    //
+    // Keyed by workoutTemplateID — the STABLE id (library row ids re-mint
+    // per launch). One blob: folder names + templateID→folder assignments.
+
+    private var libraryFoldersKey: String { "morphe.library.folders.\(clientProfile.id.uuidString)" }
+
+    private struct LibraryFoldersBlob: Codable {
+        var folders: [String] = []
+        var assignments: [String: String] = [:]
+    }
+
+    private(set) var libraryFolders: [String] = []
+    private(set) var libraryFolderAssignments: [String: String] = [:]
+
+    func loadLibraryFolders() {
+        guard let data = UserDefaults.standard.data(forKey: libraryFoldersKey),
+              let blob = try? JSONDecoder().decode(LibraryFoldersBlob.self, from: data) else {
+            libraryFolders = []
+            libraryFolderAssignments = [:]
+            return
+        }
+        libraryFolders = blob.folders
+        libraryFolderAssignments = blob.assignments
+    }
+
+    private func persistLibraryFolders() {
+        let blob = LibraryFoldersBlob(folders: libraryFolders, assignments: libraryFolderAssignments)
+        if let data = try? JSONEncoder().encode(blob) {
+            UserDefaults.standard.set(data, forKey: libraryFoldersKey)
+            mirrorExtrasToCloud()
+        }
+    }
+
+    func createLibraryFolder(_ name: String) {
+        let clean = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(24))
+        guard !clean.isEmpty else { return }
+        guard !libraryFolders.contains(where: { $0.caseInsensitiveCompare(clean) == .orderedSame }) else {
+            showToast("\(clean) already exists.")
+            return
+        }
+        guard libraryFolders.count < 12 else {
+            showToast("Twelve folders is the cap — merge a couple first.")
+            return
+        }
+        libraryFolders.append(clean)
+        persistLibraryFolders()
+        showToast("Folder \(clean) created.")
+    }
+
+    func assignLibraryWorkout(templateID: UUID, to folder: String?) {
+        if let folder {
+            libraryFolderAssignments[templateID.uuidString] = folder
+        } else {
+            libraryFolderAssignments.removeValue(forKey: templateID.uuidString)
+        }
+        persistLibraryFolders()
+    }
+
+    func deleteLibraryFolder(_ name: String) {
+        libraryFolders.removeAll { $0 == name }
+        libraryFolderAssignments = libraryFolderAssignments.filter { $0.value != name }
+        persistLibraryFolders()
+        showToast("Folder \(name) removed — its workouts are back in All.")
+    }
+
+    func libraryFolder(forTemplateID id: UUID) -> String? {
+        libraryFolderAssignments[id.uuidString]
     }
 
     // MARK: Referral deep links (morphe://invite/<username>)

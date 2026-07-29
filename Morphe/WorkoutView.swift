@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct WorkoutView: View {
     @Environment(MorpheAppStore.self) private var store
@@ -354,7 +355,8 @@ struct WorkoutView: View {
                         onMove: { id, up in store.moveSessionExercise(id: id, up: up) },
                         onAddExercise: { showAddExercise = true },
                         supersetPartners: store.supersetPartners,
-                        onToggleSuperset: { store.toggleSupersetLink(for: $0) }
+                        onToggleSuperset: { store.toggleSupersetLink(for: $0) },
+                        onMoveTo: { id, index in store.moveSessionExercise(id: id, toIndex: index) }
                     )
 
                     if isShowingPainFlow || store.selectedWorkoutFeedback == .pain {
@@ -1678,6 +1680,30 @@ private struct ActiveWorkoutTrackerCard: View {
     }
 }
 
+/// Live drag-reorder for the session queue: entering a row moves the
+/// dragged exercise there immediately (the reorder IS the preview).
+private struct QueueRowDropDelegate: DropDelegate {
+    let targetIndex: Int
+    let targetID: String
+    @Binding var draggingID: String?
+    let onMoveTo: ((String, Int) -> Void)?
+
+    func dropEntered(info: DropInfo) {
+        guard let draggingID, draggingID != targetID else { return }
+        onMoveTo?(draggingID, targetIndex)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggingID = nil
+        Haptics.impact(.light)
+        return true
+    }
+}
+
 /// One telemetry adjuster row: micro label, mono value, fine (and optionally
 /// coarse) stepper buttons flanking it.
 private struct SetConsoleRow: View {
@@ -1862,6 +1888,11 @@ private struct FocusedWorkoutQueueCard: View {
     var supersetPartners: [String: String] = [:]
     /// Link/unlink this exercise with the next — nil hides the control.
     var onToggleSuperset: ((WorkoutExercise) -> Void)? = nil
+    /// Drag-reorder: drop the dragged id at an index — nil disables drag.
+    /// Chevrons stay for VoiceOver and precision.
+    var onMoveTo: ((String, Int) -> Void)? = nil
+
+    @State private var draggingID: String?
 
     var body: some View {
         GlassCard {
@@ -1960,6 +1991,21 @@ private struct FocusedWorkoutQueueCard: View {
                             .accessibilityLabel("Move \(exercise.name) later")
                         }
                     }
+                    // Long-press drag to reorder — live reordering as the
+                    // drag passes over rows; chevrons stay for VoiceOver.
+                    .contentShape(Rectangle())
+                    .opacity(draggingID == exercise.id ? 0.45 : 1)
+                    .onDrag {
+                        guard onMoveTo != nil else { return NSItemProvider() }
+                        draggingID = exercise.id
+                        return NSItemProvider(object: exercise.id as NSString)
+                    }
+                    .onDrop(of: [UTType.text], delegate: QueueRowDropDelegate(
+                        targetIndex: index,
+                        targetID: exercise.id,
+                        draggingID: $draggingID,
+                        onMoveTo: onMoveTo
+                    ))
                 }
 
                 if let onAddExercise {
@@ -5045,8 +5091,12 @@ private struct WorkoutHistoryCard: View {
 }
 
 private struct SavedWorkoutsLibraryCard: View {
+    @Environment(MorpheAppStore.self) private var store
     @State private var selectedFilter: SavedWorkoutLibraryFilter = .all
     @State private var searchQuery = ""
+    @State private var selectedFolder: String?
+    @State private var showNewFolderPrompt = false
+    @State private var newFolderName = ""
     // Remove is destructive from the menu's point of view — same
     // confirm-first pattern as deleting a custom workout.
     @State private var pendingRemoval: SavedWorkoutLibraryItem?
@@ -5071,9 +5121,30 @@ private struct SavedWorkoutsLibraryCard: View {
         searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
+    /// The shared "Folder ▸" submenu both row menus use — assign, move,
+    /// or clear, keyed by the stable template id.
+    @ViewBuilder
+    private func folderSubmenu(templateID: UUID) -> some View {
+        Menu("Folder") {
+            let current = store.libraryFolder(forTemplateID: templateID)
+            Button("None\(current == nil ? " ✓" : "")") {
+                store.assignLibraryWorkout(templateID: templateID, to: nil)
+            }
+            ForEach(store.libraryFolders, id: \.self) { folder in
+                Button("\(folder)\(current == folder ? " ✓" : "")") {
+                    store.assignLibraryWorkout(templateID: templateID, to: folder)
+                }
+            }
+        }
+    }
+
     private var visibleBuiltWorkouts: [WorkoutTemplate] {
-        guard !cleanQuery.isEmpty else { return builtWorkouts }
-        return builtWorkouts.filter { $0.name.lowercased().contains(cleanQuery) }
+        var pool = builtWorkouts
+        if let selectedFolder {
+            pool = pool.filter { store.libraryFolder(forTemplateID: $0.id) == selectedFolder }
+        }
+        guard !cleanQuery.isEmpty else { return pool }
+        return pool.filter { $0.name.lowercased().contains(cleanQuery) }
     }
 
     private var showsBuiltWorkouts: Bool {
@@ -5208,6 +5279,44 @@ private struct SavedWorkoutsLibraryCard: View {
                 }
                 .pickerStyle(.segmented)
 
+                // Folders: a second lens over whatever segment is active.
+                // Long-press a folder chip to delete it (workouts fall back
+                // to All — never lost).
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        Button("All") { selectedFolder = nil }
+                            .buttonStyle(FilterChipStyle(isSelected: selectedFolder == nil))
+                        ForEach(store.libraryFolders, id: \.self) { folder in
+                            Button(folder) {
+                                selectedFolder = (selectedFolder == folder) ? nil : folder
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: selectedFolder == folder))
+                            .contextMenu {
+                                Button("Delete Folder", role: .destructive) {
+                                    if selectedFolder == folder { selectedFolder = nil }
+                                    store.deleteLibraryFolder(folder)
+                                }
+                            }
+                        }
+                        Button {
+                            newFolderName = ""
+                            showNewFolderPrompt = true
+                        } label: {
+                            Label("Folder", systemImage: "plus")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
+                        .accessibilityLabel("New folder")
+                    }
+                }
+                .alert("New Folder", isPresented: $showNewFolderPrompt) {
+                    TextField("Folder name", text: $newFolderName)
+                    Button("Create") { store.createLibraryFolder(newFolderName) }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Group saved workouts your way — push day, travel, deloads.")
+                }
+
                 if showsBuiltWorkouts {
                     ForEach(visibleBuiltWorkouts) { template in
                         HStack(alignment: .center, spacing: 12) {
@@ -5227,6 +5336,7 @@ private struct SavedWorkoutsLibraryCard: View {
                                 Button("Start") { onStartBuilt(template) }
                                 Button("Stage Today") { onQueueBuilt(template) }
                                 Button("Edit") { onEditBuilt(template) }
+                                folderSubmenu(templateID: template.id)
                                 Button("Delete", role: .destructive) { onDeleteBuilt(template) }
                             } label: {
                                 Image(systemName: "ellipsis")
@@ -5332,6 +5442,8 @@ private struct SavedWorkoutsLibraryCard: View {
                                         onEdit(item)
                                     }
 
+                                    folderSubmenu(templateID: item.workoutTemplateID)
+
                                     Button("Remove", role: .destructive) {
                                         pendingRemoval = item
                                     }
@@ -5394,7 +5506,12 @@ private struct SavedWorkoutsLibraryCard: View {
                     || $0.sourceContext.lowercased().contains(cleanQuery)
             }
 
-        return searched.sorted { lhs, rhs in
+        // Folder lens on top — keyed by the stable template id.
+        let foldered = selectedFolder.map { folder in
+            searched.filter { store.libraryFolder(forTemplateID: $0.workoutTemplateID) == folder }
+        } ?? searched
+
+        return foldered.sorted { lhs, rhs in
             if lhs.isPinned != rhs.isPinned {
                 return lhs.isPinned && !rhs.isPinned
             }

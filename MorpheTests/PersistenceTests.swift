@@ -526,6 +526,43 @@ final class WorkoutSessionTests: XCTestCase {
                        "the share card carries the beaten record too")
     }
 
+    func testLibraryFoldersAssignFilterAndSurviveReload() {
+        let store = freshStore()
+        let key = "morphe.library.folders.\(store.clientProfile.id.uuidString)"
+        UserDefaults.standard.removeObject(forKey: key)
+        store.loadLibraryFolders()
+
+        store.createLibraryFolder("Push Day")
+        store.createLibraryFolder("push day")   // case-insensitive dup refused
+        XCTAssertEqual(store.libraryFolders, ["Push Day"])
+
+        let templateID = UUID()
+        store.assignLibraryWorkout(templateID: templateID, to: "Push Day")
+        XCTAssertEqual(store.libraryFolder(forTemplateID: templateID), "Push Day")
+
+        // Reload from disk — the blob round-trips.
+        store.loadLibraryFolders()
+        XCTAssertEqual(store.libraryFolder(forTemplateID: templateID), "Push Day")
+
+        // Deleting the folder frees its workouts instead of losing them.
+        store.deleteLibraryFolder("Push Day")
+        XCTAssertTrue(store.libraryFolders.isEmpty)
+        XCTAssertNil(store.libraryFolder(forTemplateID: templateID))
+
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+
+    func testDragReorderMovesExerciseToIndex() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        let first = store.currentWorkout.exercises[0]
+        store.moveSessionExercise(id: first.id, toIndex: 1)
+        XCTAssertEqual(store.currentWorkout.exercises[1].id, first.id,
+                       "drag lands the exercise at the drop index")
+        XCTAssertEqual(store.activeWorkoutExercise?.id, first.id,
+                       "the active exercise follows its new position")
+    }
+
     func testSupersetLinksHopAlternatelyAndUnlinkCleanly() {
         let store = freshStore()
         startedTwoExerciseSession(store)
