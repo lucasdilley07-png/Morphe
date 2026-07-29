@@ -1007,6 +1007,7 @@ final class FirebaseAppointmentService: AppointmentSyncing {
             "durationMinutes": appointment.durationMinutes,
             "kind": appointment.kind.rawValue,
             "withName": appointment.withName,
+            "withUid": appointment.withUid ?? "",
             "createdByRole": appointment.createdByRole,
             "status": appointment.status,
             "updatedAt": FieldValue.serverTimestamp()
@@ -1037,6 +1038,7 @@ final class FirebaseAppointmentService: AppointmentSyncing {
             durationMinutes: data["durationMinutes"] as? Int ?? 60,
             kind: (data["kind"] as? String).flatMap(AppointmentKind.init(rawValue:)) ?? .custom,
             withName: data["withName"] as? String ?? "",
+            withUid: (data["withUid"] as? String).flatMap { $0.isEmpty ? nil : $0 },
             createdByRole: data["createdByRole"] as? String ?? "",
             status: data["status"] as? String ?? Appointment.statusScheduled
         )

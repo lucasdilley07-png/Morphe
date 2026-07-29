@@ -507,16 +507,11 @@ struct WorkoutView: View {
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 }
 
-                // Structured programs: the weeks × sessions arc above the
-                // single-session picks. Post-finish it stays out of the way —
-                // the recap owns that moment.
-                if !store.hasCompletedWorkoutFlow {
-                    ProgramSectionCard()
-                }
-
                 // ONE workout, one name: the same session the Today hero
                 // shows, with Morphe's readiness-based pick demoted to an
                 // inline suggestion instead of a competing second entry point.
+                // Today's session LEADS the page — programs sit below it
+                // (the next action outranks the multi-week arc).
                 if store.isWorkoutLoggedToday && !store.hasCompletedWorkoutFlow {
                     // Today's session is in the books — offer something new
                     // instead of re-showing the plan they already finished.
@@ -555,6 +550,13 @@ struct WorkoutView: View {
                     )
                 }
 
+                // Structured programs: the weeks × sessions arc, below the
+                // day's session. Post-finish it stays out of the way — the
+                // recap owns that moment.
+                if !store.hasCompletedWorkoutFlow {
+                    ProgramSectionCard()
+                }
+
                 if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
                     PartnerSessionCard(
                         partner: partner,
@@ -578,40 +580,8 @@ struct WorkoutView: View {
                     .buttonStyle(SecondaryCTAButtonStyle())
                     .accessibilityLabel("Build your own workout")
 
-                    let myWorkouts = store.workoutTemplates.filter { store.isCustomWorkout($0.id) }
-                    if !myWorkouts.isEmpty {
-                        YourWorkoutsCard(
-                            workouts: myWorkouts,
-                            onStart: { template in
-                                isShowingPainFlow = false
-                                store.beginLiveWorkout(template)
-                            },
-                            onQueue: { template in
-                                store.openWorkoutTemplate(template)
-                            },
-                            onEdit: { template in
-                                editingWorkout = EditingWorkout(id: template.id)
-                            },
-                            onDelete: { template in
-                                workoutPendingDelete = template
-                            }
-                        )
-                        .confirmationDialog(
-                            deleteWorkoutDialogTitle,
-                            isPresented: Binding(
-                                get: { workoutPendingDelete != nil },
-                                set: { if !$0 { workoutPendingDelete = nil } }
-                            ),
-                            titleVisibility: .visible,
-                            presenting: workoutPendingDelete
-                        ) { template in
-                            Button("Delete Workout", role: .destructive) {
-                                store.deleteCustomWorkout(template.id)
-                            }
-                            Button("Keep It", role: .cancel) {}
-                        }
-                    }
-
+                    // Built workouts live INSIDE the library now (the "My
+                    // Workouts" segment) — one home, not a second card.
                     SavedWorkoutsLibraryCard(
                         items: store.savedWorkouts,
                         insightFor: { item in
@@ -640,8 +610,36 @@ struct WorkoutView: View {
                             if let templateID = store.editableTemplateID(for: item) {
                                 editingWorkout = EditingWorkout(id: templateID)
                             }
+                        },
+                        builtWorkouts: store.workoutTemplates.filter { store.isCustomWorkout($0.id) },
+                        onStartBuilt: { template in
+                            isShowingPainFlow = false
+                            store.beginLiveWorkout(template)
+                        },
+                        onQueueBuilt: { template in
+                            store.openWorkoutTemplate(template)
+                        },
+                        onEditBuilt: { template in
+                            editingWorkout = EditingWorkout(id: template.id)
+                        },
+                        onDeleteBuilt: { template in
+                            workoutPendingDelete = template
                         }
                     )
+                    .confirmationDialog(
+                        deleteWorkoutDialogTitle,
+                        isPresented: Binding(
+                            get: { workoutPendingDelete != nil },
+                            set: { if !$0 { workoutPendingDelete = nil } }
+                        ),
+                        titleVisibility: .visible,
+                        presenting: workoutPendingDelete
+                    ) { template in
+                        Button("Delete Workout", role: .destructive) {
+                            store.deleteCustomWorkout(template.id)
+                        }
+                        Button("Keep It", role: .cancel) {}
+                    }
                 }
                 .id("myLibrary")
 
@@ -1146,7 +1144,7 @@ private struct ProgramSectionCard: View {
 
     @ViewBuilder
     private var programLibraryBody: some View {
-        Text("Programs")
+        Text("Morphe's Programs")
             .font(.headline)
             .foregroundStyle(.white)
         Text("A plan measured in weeks, not days — sessions in order, progression built in, one deload before the end.")
@@ -1404,9 +1402,35 @@ private struct ActiveWorkoutTrackerCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(exercise.name)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
+                    HStack(alignment: .center, spacing: 10) {
+                        Text(exercise.name)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(.white)
+
+                        Spacer(minLength: 0)
+
+                        // Form check rides the ACTIVE exercise — it was
+                        // parked next to "Up next", which read as form help
+                        // for the wrong movement.
+                        Button(action: onOpenFormCheck) {
+                            VStack(spacing: 3) {
+                                Image(systemName: "camera.viewfinder")
+                                    .font(.headline)
+                                Text("Form")
+                                    .font(MorpheTheme.microLabel(9))
+                                    .tracking(0.8)
+                            }
+                            .foregroundStyle(MorpheTheme.accent)
+                            .frame(width: 52, height: 48)
+                            .background(
+                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                    .stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1)
+                            )
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Open Form Check for \(exercise.name)")
+                    }
                     Text("\(exercise.sets) • \(exercise.reps) • \(exercise.difficulty.rawValue)")
                         .foregroundStyle(MorpheTheme.textSecondary)
                     ProgressBarView(progress: setProgress, color: MorpheTheme.accent)
@@ -1512,27 +1536,6 @@ private struct ActiveWorkoutTrackerCard: View {
                         }
 
                         Spacer(minLength: 0)
-
-                        // Quick jump into the camera form guide for the
-                        // CURRENT exercise, right where eyes already are.
-                        Button(action: onOpenFormCheck) {
-                            VStack(spacing: 3) {
-                                Image(systemName: "camera.viewfinder")
-                                    .font(.headline)
-                                Text("Form")
-                                    .font(MorpheTheme.microLabel(9))
-                                    .tracking(0.8)
-                            }
-                            .foregroundStyle(MorpheTheme.accent)
-                            .frame(width: 52, height: 48)
-                            .background(
-                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                    .stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1)
-                            )
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Open Form Check for \(exercise.name)")
                     }
                     .padding(12)
                     .background(
@@ -1577,30 +1580,11 @@ private struct ActiveWorkoutTrackerCard: View {
                                 .accessibilityLabel("Plate loading: \(plateBreakdown)")
                         }
 
-                        // Inline RPE: the progression engine feeds on this,
-                        // so rating a set is ONE optional tap here — not a
-                        // trip through the More sheet. Tap again to unset.
+                        // RPE moved to the More sheet (Lucas's call) — the
+                        // console keeps only the warm-up flag. Warm-ups
+                        // count as work in the session, never toward PRs
+                        // or e1RM; the chip resets after each log.
                         HStack(spacing: 6) {
-                            Text("RPE")
-                                .font(MorpheTheme.microLabel(10))
-                                .tracking(1.2)
-                                .foregroundStyle(MorpheTheme.textMuted)
-                                .frame(width: 40, alignment: .leading)
-
-                            ForEach([6, 7, 8, 9, 10], id: \.self) { value in
-                                Button("\(value)") {
-                                    rpe = (rpe == value) ? nil : value
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: rpe == value))
-                                .accessibilityLabel("Rate effort \(value) of 10")
-                                .accessibilityAddTraits(rpe == value ? .isSelected : [])
-                            }
-
-                            Spacer(minLength: 0)
-
-                            // Warm-up: counts as work in the session, never
-                            // toward PRs or e1RM. Resets after each log —
-                            // it's a per-set flag, not a mode.
                             Button("Warm-up") {
                                 isWarmupSet.toggle()
                                 Haptics.selection()
@@ -1608,6 +1592,8 @@ private struct ActiveWorkoutTrackerCard: View {
                             .buttonStyle(FilterChipStyle(isSelected: isWarmupSet, selectedColor: MorpheTheme.accentAlt))
                             .accessibilityLabel(isWarmupSet ? "Logging as warm-up set" : "Mark as warm-up set")
                             .accessibilityAddTraits(isWarmupSet ? .isSelected : [])
+
+                            Spacer(minLength: 0)
                         }
 
                         Button(logButtonTitle) {
@@ -2694,28 +2680,21 @@ private struct DiscoverCatalogSection: View {
                     .accessibilityLabel("Clear \(activeFilterCount) active filters")
                 }
 
-                ForEach(Self.durationBuckets, id: \.self) { bucket in
-                    Button(bucket) {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            durationFilter = durationFilter == bucket ? nil : bucket
-                        }
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: durationFilter == bucket))
-                    .accessibilityLabel("\(bucket) duration filter")
-                }
+                // Four uniform groups in one read: Time, Equipment, Goals,
+                // Difficulty — every group is a menu chip now (Time and
+                // Goals used to be seven loose chips beside two menus).
+                filterMenuChip("Time", selection: $durationFilter, options: Self.durationBuckets) { $0 }
 
                 if equipmentOptions.count > 1 {
                     filterMenuChip("Equipment", selection: $equipmentFilter, options: equipmentOptions) { $0 }
                 }
 
-                ForEach(Self.goalOptions, id: \.tag) { option in
-                    Button(option.label) {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            goalFilter = goalFilter == option.tag ? nil : option.tag
-                        }
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: goalFilter == option.tag))
-                    .accessibilityLabel("\(option.label) goal filter")
+                filterMenuChip(
+                    "Goals",
+                    selection: $goalFilter,
+                    options: Self.goalOptions.map(\.tag)
+                ) { tag in
+                    Self.goalOptions.first(where: { $0.tag == tag })?.label ?? tag
                 }
 
                 filterMenuChip(
@@ -4892,6 +4871,17 @@ private struct SavedWorkoutsLibraryCard: View {
     let onTogglePin: (SavedWorkoutLibraryItem) -> Void
     let onRemove: (SavedWorkoutLibraryItem) -> Void
     let onEdit: (SavedWorkoutLibraryItem) -> Void
+    // Built-from-scratch workouts, folded into the "My Workouts" segment —
+    // they used to live in a separate card below this one.
+    var builtWorkouts: [WorkoutTemplate] = []
+    var onStartBuilt: (WorkoutTemplate) -> Void = { _ in }
+    var onQueueBuilt: (WorkoutTemplate) -> Void = { _ in }
+    var onEditBuilt: (WorkoutTemplate) -> Void = { _ in }
+    var onDeleteBuilt: (WorkoutTemplate) -> Void = { _ in }
+
+    private var showsBuiltWorkouts: Bool {
+        (selectedFilter == .all || selectedFilter == .myCopies) && !builtWorkouts.isEmpty
+    }
 
     var body: some View {
         GlassCard {
@@ -5012,7 +5002,42 @@ private struct SavedWorkoutsLibraryCard: View {
                 }
                 .pickerStyle(.segmented)
 
-                if filteredItems.isEmpty {
+                if showsBuiltWorkouts {
+                    ForEach(builtWorkouts) { template in
+                        HStack(alignment: .center, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(template.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(2)
+                                Text("Built by you • \(template.exercises.count) exercises")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Menu {
+                                Button("Start") { onStartBuilt(template) }
+                                Button("Stage Today") { onQueueBuilt(template) }
+                                Button("Edit") { onEditBuilt(template) }
+                                Button("Delete", role: .destructive) { onDeleteBuilt(template) }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .accessibilityLabel("Actions for \(template.name)")
+                        }
+                        .padding(.vertical, 2)
+
+                        Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+                    }
+                }
+
+                if filteredItems.isEmpty && !showsBuiltWorkouts {
                     Text("Nothing saved yet. Save workouts from Discover — or build your own in Train — and they’ll show up here.")
                         .foregroundStyle(MorpheTheme.textSecondary)
                 } else {
@@ -5600,64 +5625,6 @@ private enum ExerciseSwapReason: String, CaseIterable, Identifiable {
 }
 
 // MARK: - Workout builder
-
-private struct YourWorkoutsCard: View {
-    let workouts: [WorkoutTemplate]
-    let onStart: (WorkoutTemplate) -> Void
-    let onQueue: (WorkoutTemplate) -> Void
-    let onEdit: (WorkoutTemplate) -> Void
-    let onDelete: (WorkoutTemplate) -> Void
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Your Workouts")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                ForEach(workouts) { workout in
-                    HStack(spacing: 10) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(workout.name)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-                            Text("\(workout.exercises.count) exercises • \(workout.durationMinutes) min")
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.textMuted)
-                        }
-                        Spacer()
-                        Button("Start") { onStart(workout) }
-                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                            .frame(width: 92)
-                        // Queue = stage as today's workout without starting.
-                        Button {
-                            onQueue(workout)
-                        } label: {
-                            Image(systemName: "calendar.badge.plus")
-                                .foregroundStyle(MorpheTheme.accentAlt)
-                        }
-                        .accessibilityLabel("Queue \(workout.name) as today's workout")
-                        Button {
-                            onEdit(workout)
-                        } label: {
-                            Image(systemName: "pencil")
-                                .foregroundStyle(MorpheTheme.accent)
-                        }
-                        .accessibilityLabel("Edit \(workout.name)")
-                        Button {
-                            onDelete(workout)
-                        } label: {
-                            Image(systemName: "trash")
-                                .foregroundStyle(MorpheTheme.danger)
-                        }
-                        .accessibilityLabel("Delete \(workout.name)")
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-        }
-    }
-}
 
 // Shared with the coach Discover tab, so not private.
 struct WorkoutBuilderSheet: View {

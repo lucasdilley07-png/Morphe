@@ -1549,6 +1549,188 @@ private struct WeeklyRecapCard: View {
     }
 }
 
+/// Back-logs a session the user did but never tracked: pick the workout,
+/// the day (14-day cap), and what was actually done — the log lands on
+/// that date so streak/PRs recompute from the truth.
+private struct LogOldWorkoutSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var query = ""
+    @State private var selected: WorkoutTemplate?
+    @State private var day = Calendar.current.date(byAdding: .day, value: -1, to: .now) ?? .now
+    @State private var durationMinutes = 45
+    @State private var entries: [EntryDraft] = []
+
+    private struct EntryDraft: Identifiable {
+        let id = UUID()
+        var name: String
+        var muscleGroup: String?
+        var sets: Int
+        var reps: Int
+        var weightText: String
+    }
+
+    private var matches: [WorkoutTemplate] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return [] }
+        return Array(store.workoutTemplates.filter { $0.name.lowercased().contains(q) }.prefix(12))
+    }
+
+    private var dateRange: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let earliest = calendar.date(byAdding: .day, value: -14, to: today) ?? today
+        return earliest...Date.now
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Log Old Workout")
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(.white)
+                            Text("Trained but didn't track it? Pick the session and the day — your streak and stats recompute from what actually happened.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    if let selected {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Text(selected.name)
+                                        .font(.headline)
+                                        .foregroundStyle(.white)
+                                    Spacer()
+                                    Button("Change") {
+                                        self.selected = nil
+                                        entries = []
+                                    }
+                                    .buttonStyle(FilterChipStyle(isSelected: false))
+                                }
+
+                                DatePicker("Day", selection: $day, in: dateRange, displayedComponents: .date)
+                                    .tint(MorpheTheme.accent)
+                                    .foregroundStyle(.white)
+
+                                Stepper("Duration: \(durationMinutes) min", value: $durationMinutes, in: 5...240, step: 5)
+                                    .foregroundStyle(.white)
+                            }
+                        }
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("What You Did")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+
+                                ForEach($entries) { $entry in
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(entry.name)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                        Stepper("Sets: \(entry.sets)", value: $entry.sets, in: 0...12)
+                                            .foregroundStyle(MorpheTheme.textSecondary)
+                                        Stepper("Reps: \(entry.reps)", value: $entry.reps, in: 1...50)
+                                            .foregroundStyle(MorpheTheme.textSecondary)
+                                        TextField("Weight (optional, \(store.weightUnit.rawValue))", text: $entry.weightText)
+                                            .textFieldStyle(MorpheFieldStyle())
+                                            .keyboardType(.decimalPad)
+                                    }
+                                    Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+                                }
+
+                                Text("Set an exercise to 0 sets to skip it.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                        }
+
+                        Button("Save Workout") {
+                            let payload = entries.map { entry in
+                                (name: entry.name,
+                                 sets: entry.sets,
+                                 reps: entry.reps,
+                                 weight: Double(entry.weightText.replacingOccurrences(of: ",", with: ".")) ?? 0,
+                                 muscleGroup: entry.muscleGroup)
+                            }
+                            if store.logPastWorkout(template: selected, on: day,
+                                                    durationMinutes: durationMinutes, entries: payload) {
+                                dismiss()
+                            }
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle())
+                        .accessibilityLabel("Save the back-dated workout")
+                    } else {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Which workout was it?")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+
+                                TextField("Search your workouts…", text: $query)
+                                    .textFieldStyle(MorpheFieldStyle())
+
+                                ForEach(matches) { template in
+                                    Button {
+                                        select(template)
+                                    } label: {
+                                        HStack {
+                                            Text(template.name)
+                                                .font(.subheadline.weight(.semibold))
+                                                .foregroundStyle(.white)
+                                            Spacer()
+                                            Text("\(template.exercises.count) moves")
+                                                .font(.caption)
+                                                .foregroundStyle(MorpheTheme.textSecondary)
+                                        }
+                                        .padding(.vertical, 6)
+                                        .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+
+                                if matches.isEmpty {
+                                    Text("Type a workout name — Discover picks, your builds, and saved copies all match.")
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+    }
+
+    private func select(_ template: WorkoutTemplate) {
+        selected = template
+        entries = template.exercises.map { exercise in
+            EntryDraft(
+                name: exercise.name,
+                muscleGroup: exercise.muscleGroup.rawValue,
+                sets: Int(exercise.sets.prefix(while: \.isNumber)) ?? 3,
+                reps: Int(exercise.reps.prefix(while: \.isNumber)) ?? 10,
+                weightText: ""
+            )
+        }
+    }
+}
+
 private struct WorkoutSourceMixCard: View {
     let summary: WorkoutLogSummary
 
@@ -1766,6 +1948,7 @@ private struct WorkoutHistoryCard: View {
     @State private var showAll = false
     @State private var editingLog: WorkoutLog?
     @State private var deletingLog: WorkoutLog?
+    @State private var showLogOld = false
 
     /// The default note written by the log flow; pure filler in history.
     private static let fillerNote = "Logged from the live workout flow."
@@ -1807,6 +1990,13 @@ private struct WorkoutHistoryCard: View {
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(MorpheTheme.textMuted)
                     }
+                    // A trained-but-untracked day shouldn't cost the streak —
+                    // back-log it (14-day cap, honest "after the fact" note).
+                    Button("Log Old") {
+                        showLogOld = true
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
+                    .accessibilityLabel("Log an old workout to a past day")
                 }
 
                 if logs.isEmpty {
@@ -1886,6 +2076,9 @@ private struct WorkoutHistoryCard: View {
                 confirmLabel: "Save Changes",
                 onConfirm: { store.updateOwnWorkoutLog($0) }
             )
+        }
+        .sheet(isPresented: $showLogOld) {
+            LogOldWorkoutSheet()
         }
         .confirmationDialog(
             "Delete \(deletingLog?.workoutTitle ?? "workout")?",

@@ -1716,11 +1716,21 @@ struct AppointmentRowView: View {
                 Text(appointment.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
-                Text(appointment.withName.isEmpty
-                    ? "\(whenLabel) · \(appointment.durationMinutes) min"
-                    : "\(whenLabel) · \(appointment.durationMinutes) min · \(appointment.withName)")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textSecondary)
+                HStack(spacing: 4) {
+                    Text(appointment.withName.isEmpty
+                        ? "\(whenLabel) · \(appointment.durationMinutes) min"
+                        : "\(whenLabel) · \(appointment.durationMinutes) min · \(appointment.withName)")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    if appointment.withUid != nil {
+                        // Picked from known people — a real profile link,
+                        // not just a typed name.
+                        Image(systemName: "link")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(MorpheTheme.accent)
+                            .accessibilityLabel("Linked profile")
+                    }
+                }
             }
 
             Spacer(minLength: 0)
@@ -1799,6 +1809,10 @@ struct AppointmentEditorSheet: View {
     @State private var date = Date.now.addingTimeInterval(60 * 60)
     @State private var durationMinutes = 60
     @State private var withName = ""
+    /// Set when "With" was PICKED from known people — the appointment
+    /// links to that account/connection. Typing over the picked name
+    /// clears the link (free text may not be a Morphe person at all).
+    @State private var withUid: String?
     @State private var notes = ""
 
     private var canSave: Bool {
@@ -1843,6 +1857,40 @@ struct AppointmentEditorSheet: View {
 
                             TextField("Who it's with (optional)", text: $withName)
                                 .textFieldStyle(MorpheFieldStyle())
+                                .onChange(of: withName) { _, newValue in
+                                    // Editing away from the picked person
+                                    // breaks the link — free text may not
+                                    // be a Morphe account at all.
+                                    if let linked = store.appointmentPeopleChoices.first(where: { $0.id == withUid }),
+                                       linked.name != newValue {
+                                        withUid = nil
+                                    }
+                                }
+
+                            // Every person this account knows — connections,
+                            // partners, roster — pickable so the session
+                            // links to a real profile, not just a string.
+                            if !store.appointmentPeopleChoices.isEmpty {
+                                Menu {
+                                    ForEach(store.appointmentPeopleChoices) { person in
+                                        Button("\(person.name) — \(person.detail)") {
+                                            withName = person.name
+                                            withUid = person.id
+                                        }
+                                    }
+                                } label: {
+                                    Label("Pick Person", systemImage: "person.crop.circle.badge.checkmark")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(MorpheTheme.accentAlt)
+                                }
+                            }
+
+                            if withUid != nil {
+                                Label("Linked to their profile", systemImage: "link")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.accent)
+                                    .accessibilityLabel("Appointment linked to \(withName)'s profile")
+                            }
 
                             if !nameSuggestions.isEmpty {
                                 Menu {
@@ -1869,6 +1917,7 @@ struct AppointmentEditorSheet: View {
                             durationMinutes: durationMinutes,
                             kind: kind,
                             withName: withName,
+                            withUid: withUid,
                             notes: notes
                         )
                         dismiss()

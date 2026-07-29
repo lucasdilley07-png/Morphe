@@ -3982,6 +3982,36 @@ final class StrengthAnalyticsTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: completionsKey)
     }
 
+    func testLogPastWorkoutLandsOnTheChosenDay() {
+        let store = freshStore()
+        let template = store.workoutTemplates[0]
+        let calendar = Calendar.current
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: .now)!
+
+        XCTAssertTrue(store.logPastWorkout(
+            template: template, on: twoDaysAgo, durationMinutes: 40,
+            entries: [(name: "Bench", sets: 3, reps: 8, weight: 100, muscleGroup: nil)]))
+        let logged = store.currentAthleteWorkoutLogs.first
+        XCTAssertEqual(calendar.startOfDay(for: logged?.completedAt ?? .now),
+                       calendar.startOfDay(for: twoDaysAgo),
+                       "the log lands on the chosen day, not today")
+        XCTAssertTrue(logged?.notes.contains("after the fact") == true,
+                      "back-logs say they were logged later")
+
+        // The future and beyond the 14-day window are refused.
+        XCTAssertFalse(store.logPastWorkout(
+            template: template,
+            on: calendar.date(byAdding: .day, value: 1, to: .now)!,
+            durationMinutes: 40,
+            entries: [(name: "Bench", sets: 3, reps: 8, weight: 100, muscleGroup: nil)]))
+        XCTAssertFalse(store.logPastWorkout(
+            template: template,
+            on: calendar.date(byAdding: .day, value: -20, to: .now)!,
+            durationMinutes: 40,
+            entries: [(name: "Bench", sets: 3, reps: 8, weight: 100, muscleGroup: nil)]))
+        XCTAssertEqual(store.currentAthleteWorkoutLogs.count, 1)
+    }
+
     func testWarmupSetsNeverMintRecords() {
         let store = freshStore()
         var entry = log(for: store, exercise: "Bench", daysAgo: 0, reps: [5, 8], weights: [225, 135])

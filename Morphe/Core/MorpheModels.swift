@@ -868,7 +868,9 @@ enum SavedWorkoutLibraryFilter: String, CaseIterable, Identifiable {
     case all = "All"
     case coach = "Coach"
     case athletes = "Athletes"
-    case myCopies = "My Copies"
+    // Renamed from "My Copies": this segment now holds EVERYTHING the user
+    // made — built-from-scratch workouts and edited catalog copies.
+    case myCopies = "My Workouts"
 
     var id: String { rawValue }
 }
@@ -1643,6 +1645,9 @@ struct Appointment: Identifiable, Codable, Hashable {
     var kind: AppointmentKind = .session
     /// Who it's with — free text, or a managed client's name on the coach side.
     var withName: String = ""
+    /// Linked account/connection id when the person was PICKED from known
+    /// people rather than typed. Optional: older records decode as unlinked.
+    var withUid: String? = nil
     /// "client"/"coach" — which role created it (AppRole rawValue).
     var createdByRole: String = ""
     var status: String = Appointment.statusScheduled

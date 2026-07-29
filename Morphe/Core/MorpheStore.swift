@@ -8831,6 +8831,40 @@ final class MorpheAppStore {
         appointments.filter { $0.isScheduled && $0.endDate >= .now }
     }
 
+    /// One row of the appointment editor's "With" picker: every person this
+    /// account actually knows — QR connections, workout partners, and (for
+    /// a coach) the roster. Free-text stays possible; the picker just links
+    /// the appointment to a real profile when one exists.
+    struct AppointmentPersonChoice: Identifiable, Hashable {
+        var id: String
+        var name: String
+        var detail: String
+    }
+
+    var appointmentPeopleChoices: [AppointmentPersonChoice] {
+        var choices: [AppointmentPersonChoice] = []
+        var seen = Set<String>()
+        func add(id: String, name: String, detail: String) {
+            let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !clean.isEmpty, seen.insert(id).inserted else { return }
+            choices.append(AppointmentPersonChoice(id: id, name: clean, detail: detail))
+        }
+        for connection in scannedConnections {
+            add(id: connection.id, name: connection.name,
+                detail: connection.handle.isEmpty ? connection.role.capitalized : "@\(connection.handle)")
+        }
+        for partner in workoutPartners {
+            add(id: partner.linkedAthleteID?.uuidString ?? "partner-\(partner.id)",
+                name: partner.name, detail: "Training partner")
+        }
+        if selectedRole == .coach {
+            for client in coachClients {
+                add(id: client.id.uuidString, name: client.name, detail: "Client")
+            }
+        }
+        return choices
+    }
+
     /// Adds a personal appointment and mirrors it to the cloud (one doc).
     /// Works signed-out too — the entry just stays local until sign-in.
     @discardableResult
@@ -8840,6 +8874,7 @@ final class MorpheAppStore {
         durationMinutes: Int,
         kind: AppointmentKind,
         withName: String,
+        withUid: String? = nil,
         notes: String
     ) -> Appointment? {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -8854,6 +8889,7 @@ final class MorpheAppStore {
             durationMinutes: max(durationMinutes, 5),
             kind: kind,
             withName: withName.trimmingCharacters(in: .whitespacesAndNewlines),
+            withUid: withUid,
             createdByRole: selectedRole.rawValue
         )
         appointments.append(appointment)
@@ -9320,6 +9356,86 @@ final class MorpheAppStore {
         workoutLogs.removeAll { $0.id == log.id }
         refreshWorkoutLogDerivedState(for: log.athleteID)
         showToast("Workout log removed.")
+    }
+
+    /// Logs a PAST session after the fact: the user picks the workout, the
+    /// day it happened, and what they actually did — the log lands on THAT
+    /// date, so streak/PRs/score recompute from the truth instead of
+    /// punishing a day they trained but didn't track. Honesty rails:
+    /// back-dating caps at 14 days, never the future, and the note says it
+    /// was logged after the fact.
+    @discardableResult
+    func logPastWorkout(
+        template: WorkoutTemplate,
+        on day: Date,
+        durationMinutes: Int,
+        entries: [(name: String, sets: Int, reps: Int, weight: Double, muscleGroup: String?)]
+    ) -> Bool {
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: day)
+        guard dayStart <= calendar.startOfDay(for: .now),
+              let earliest = calendar.date(byAdding: .day, value: -14, to: calendar.startOfDay(for: .now)),
+              dayStart >= earliest else {
+            showToast("Old sessions can be logged up to 14 days back.")
+            return false
+        }
+        let cleanEntries = entries.filter { $0.sets > 0 && $0.reps > 0 }
+        guard !cleanEntries.isEmpty else {
+            showToast("Add at least one exercise with sets and reps.")
+            return false
+        }
+
+        // Noon on the chosen day: date-honest without inventing a time.
+        let completedAt = calendar.date(byAdding: .hour, value: 12, to: dayStart) ?? dayStart
+        let loggedExercises: [LoggedExercise] = cleanEntries.map { entry in
+            let reps = Array(repeating: entry.reps, count: entry.sets)
+            let weights = Array(repeating: max(0, entry.weight), count: entry.sets)
+            return LoggedExercise(
+                name: entry.name,
+                sets: "\(entry.sets) sets",
+                reps: reps.map(String.init).joined(separator: ", "),
+                weight: entry.weight > 0 ? weightUnit.format(entry.weight) : "Bodyweight",
+                note: "",
+                rpe: nil,
+                repsPerSet: reps,
+                weightsPerSet: weights,
+                rpePerSet: reps.map { _ in 0 },
+                weightUnit: weightUnit.rawValue,
+                muscleGroup: entry.muscleGroup
+            )
+        }
+
+        appendWorkoutLog(
+            WorkoutLog(
+                athleteID: clientProfile.id,
+                athleteName: clientProfile.name,
+                workoutTemplateID: template.id,
+                workoutTitle: template.name,
+                sport: template.sport,
+                completedAt: completedAt,
+                durationMinutes: max(5, durationMinutes),
+                exercises: loggedExercises,
+                notes: "Logged after the fact on \(Self.workoutDateLabel(for: .now)).",
+                source: .athleteManual,
+                enteredByUserID: clientProfile.id,
+                enteredByRole: .client,
+                enteredByName: clientProfile.name,
+                verificationStatus: .athleteSubmitted
+            )
+        )
+        track("workout_logged")
+        // The streak deadline and Monday recap just changed shape — re-arm
+        // both, and hand widgets the new numbers.
+        refreshStreakRiskReminder()
+        refreshWeeklyRecapReminder()
+        detectStreakLapse()
+        publishWidgetSnapshot()
+        if calendar.isDateInToday(completedAt) {
+            isWorkoutLoggedToday = true
+        }
+        Haptics.success()
+        showToast("\(template.name) logged for \(Self.workoutDateLabel(for: completedAt)). Streak and stats recomputed.")
+        return true
     }
 
     // MARK: Athlete-owned log corrections
