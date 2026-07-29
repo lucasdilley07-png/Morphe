@@ -78,14 +78,32 @@ The centerpiece. All from data already on the device.
    coach/claimed thread when linked, else drops a comment — one
    gesture, honest destinations.
 
-## S3 — Post-$99 / Storage (the deferred real-media tier)
+## S3 — split into the honest-now half and the gated half
 
-8. Camera stories (photo/video) with the moderation pipeline the
-   handoff already scopes; Form Check becomes a capture mode ("form
-   clip to your story"). Only here does UGC media risk/mod cost enter.
+**SHIPPED (2026-07-29): Form Clips.** The Form Check camera records
+≤30s clips with the pose overlay running (movie output on the same
+capture session, mirrored to match the preview), then hands the file
+to the SYSTEM share sheet — Photos, Messages, IG, TikTok. The clip
+never touches Morphe's backend, so there is no Storage bucket and no
+moderation surface: capture-in-Morphe, share-anywhere. Telemetry:
+`form_clip_captured`.
+
+**STILL GATED: in-app photo/video stories.** Three unlocks, all
+Lucas's to make — none of them code:
+1. **Blaze billing** — new Firebase projects require the paid plan
+   for a Cloud Storage bucket; uploads are impossible without it.
+2. **The $99 Apple account** — UGC media isn't even TestFlight-able
+   without it.
+3. **The moderation commitment** — App Store 1.2 for user photo/video
+   means a review pipeline, image-capable report tooling, and takedown
+   SLAs. That's an operational promise, not a feature.
+Once those flip: Storage rules + upload path + story-media documents +
+image moderation queue (extend Tools/review_reports.py), and Form
+Clips gain a "to your story" destination next to the share sheet.
+
 9. Avatar identity upgrades (Morphe's own HUD-style avatar system —
    angular, mono-accented; never Bitmoji-adjacent rounded cartoon
-   people).
+   people) — unchanged, post-launch.
 
 ## Do-not-copy list (expression, not mechanics)
 

@@ -323,6 +323,18 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     private(set) var liveCue: String?
     private(set) var lastRepGrade: FormRepGrade?
 
+    // Form Clips: a movie output rides the same session. The clip lives in
+    // the temp directory and leaves through the SYSTEM share sheet — it
+    // never touches Morphe's backend, so no Storage bucket and no
+    // moderation surface exist to build (that's full S3, gated on Blaze).
+    private let movieOutput = AVCaptureMovieFileOutput()
+    private(set) var isRecording = false
+    private(set) var recordingSeconds = 0
+    private(set) var finishedClipURL: URL?
+    private var recordingTimer: Timer?
+    /// Clips cap at 30s — form clips, not vlogs.
+    private static let clipSecondsCap = 30
+
     // Rep-counting + metric-capture state machine (knee-angle based, squat).
     private var repPhase: RepPhase = .up
     private enum RepPhase { case up, down }
@@ -384,6 +396,18 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
             if let connection = output.connection(with: .video), connection.isVideoRotationAngleSupported(90) {
                 connection.videoRotationAngle = 90  // portrait
             }
+            if self.session.canAddOutput(self.movieOutput) {
+                self.session.addOutput(self.movieOutput)
+                if let clipConnection = self.movieOutput.connection(with: .video) {
+                    if clipConnection.isVideoRotationAngleSupported(90) {
+                        clipConnection.videoRotationAngle = 90
+                    }
+                    // Mirror to match what the athlete sees in the preview.
+                    if clipConnection.isVideoMirroringSupported {
+                        clipConnection.isVideoMirrored = true
+                    }
+                }
+            }
             self.session.commitConfiguration()
             self.isConfigured = true
 
@@ -401,6 +425,45 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
             self?.session.startRunning()
             DispatchQueue.main.async { self?.isRunning = true }
         }
+    }
+
+    // MARK: Form Clips (record + hand off to the system share sheet)
+
+    func toggleClipRecording() {
+        isRecording ? stopClipRecording() : startClipRecording()
+    }
+
+    private func startClipRecording() {
+        guard availability == .authorized, !isRecording else { return }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("morphe-form-clip-\(Int(Date.now.timeIntervalSince1970)).mov")
+        try? FileManager.default.removeItem(at: url)
+        movieOutput.startRecording(to: url, recordingDelegate: self)
+        isRecording = true
+        recordingSeconds = 0
+        recordingTimer?.invalidate()
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.isRecording else { return }
+                self.recordingSeconds += 1
+                if self.recordingSeconds >= Self.clipSecondsCap {
+                    self.stopClipRecording()
+                }
+            }
+        }
+    }
+
+    func stopClipRecording() {
+        guard isRecording else { return }
+        // isRecording flips in the delegate — when the file is actually real.
+        movieOutput.stopRecording()
+    }
+
+    func clearFinishedClip() {
+        if let url = finishedClipURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        finishedClipURL = nil
     }
 
     func stop() {
@@ -591,6 +654,20 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     }
 }
 
+extension FormCheckSession: AVCaptureFileOutputRecordingDelegate {
+    func fileOutput(_ output: AVCaptureFileOutput,
+                    didFinishRecordingTo outputFileURL: URL,
+                    from connections: [AVCaptureConnection],
+                    error: Error?) {
+        DispatchQueue.main.async {
+            self.isRecording = false
+            self.recordingTimer?.invalidate()
+            self.recordingTimer = nil
+            self.finishedClipURL = error == nil ? outputFileURL : nil
+        }
+    }
+}
+
 // MARK: - Camera preview (AVCaptureVideoPreviewLayer)
 
 private struct CameraPreview: UIViewRepresentable {
@@ -765,6 +842,7 @@ private struct PoseOverlay: View {
 // MARK: - Screen
 
 struct FormCheckView: View {
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var session: FormCheckSession
     @State private var summaryPayload: SummaryPayload?
@@ -812,7 +890,24 @@ struct FormCheckView: View {
             }
         }
         .task { session.configure() }
-        .onDisappear { session.stop() }
+        .onDisappear {
+            session.stopClipRecording()
+            session.stop()
+        }
+        // The finished clip hands straight to the system share sheet —
+        // Photos, Messages, IG, wherever. Dismissing cleans the temp file.
+        .sheet(isPresented: Binding(
+            get: { session.finishedClipURL != nil },
+            set: { if !$0 { session.clearFinishedClip() } }
+        )) {
+            if let url = session.finishedClipURL {
+                DataExportShareSheet(url: url) {
+                    store.noteFormClipCaptured()
+                    session.clearFinishedClip()
+                }
+                .presentationDetents([.medium, .large])
+            }
+        }
         .sheet(item: $summaryPayload) { payload in
             FormSummarySheet(
                 summary: payload.summary,
@@ -918,6 +1013,30 @@ struct FormCheckView: View {
                 HStack(spacing: 10) {
                     Button("Reset") { session.resetReps() }
                         .buttonStyle(SecondaryCTAButtonStyle())
+
+                    // Form Clips: record ≤30s with the overlay running,
+                    // then share through the SYSTEM sheet — the clip never
+                    // touches Morphe's backend.
+                    Button {
+                        session.toggleClipRecording()
+                        Haptics.impact(session.isRecording ? .light : .medium)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(session.isRecording ? MorpheTheme.danger : .white)
+                                .frame(width: 8, height: 8)
+                            Text(session.isRecording ? "0:\(String(format: "%02d", session.recordingSeconds))" : "Clip")
+                                .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityLabel(session.isRecording
+                        ? "Stop recording, \(session.recordingSeconds) seconds"
+                        : "Record a form clip")
+
                     Button("Finish") {
                         let result = session.finishSet()
                         summaryPayload = SummaryPayload(

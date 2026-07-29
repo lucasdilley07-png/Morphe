@@ -1432,7 +1432,8 @@ private struct VerificationSelfieCamera: UIViewControllerRepresentable {
 /// System share sheet for the JSON data export. The completion handler
 /// closes the HOSTING SwiftUI sheet too — without it, finishing or
 /// cancelling the share left a blank panel the user had to swipe away.
-private struct DataExportShareSheet: UIViewControllerRepresentable {
+// Internal (not private): Form Clips hand their file to the same sheet.
+struct DataExportShareSheet: UIViewControllerRepresentable {
     let url: URL
     let onFinish: () -> Void
 

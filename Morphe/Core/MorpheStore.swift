@@ -8899,6 +8899,12 @@ final class MorpheAppStore {
         track("story_reply_sent")
     }
 
+    /// A form clip left through the system share sheet — content capture
+    /// as a growth signal, with zero backend surface.
+    func noteFormClipCaptured() {
+        track("form_clip_captured")
+    }
+
     /// Consecutive days BOTH this account and `authorUid` posted a session,
     /// walking back from today (a live streak may not include today YET, so
     /// yesterday anchors too — same grace idea as the workout streak).
