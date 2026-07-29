@@ -57,7 +57,7 @@ enum MorpheTheme {
         static let pageTopToday: CGFloat = 48
         static let pageTopTrain: CGFloat = 60
         static let pageTopStacked: CGFloat = 60   // Discover, Network
-        static let pageTopCompact: CGFloat = 24   // Progress, Learn
+        static let pageTopCompact: CGFloat = 12   // Progress, Learn
     }
 
     /// Monospaced micro-label — the telemetry signature. Pair with
