@@ -157,8 +157,12 @@ struct WorkoutView: View {
                             ?? 0
                         store.completeTrackedSet(reps: reps, weight: weight)
                     }
+                    // Explicit like every other cover — FormCheckView reads
+                    // the store now (clip telemetry).
+                    .environment(store)
                 } else {
                     FormCheckView()
+                        .environment(store)
                 }
             }
         )
