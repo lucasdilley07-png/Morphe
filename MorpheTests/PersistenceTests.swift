@@ -526,6 +526,32 @@ final class WorkoutSessionTests: XCTestCase {
                        "the share card carries the beaten record too")
     }
 
+    func testSupersetLinksHopAlternatelyAndUnlinkCleanly() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        let first = store.currentWorkout.exercises[0]
+        let second = store.currentWorkout.exercises[1]
+
+        store.toggleSupersetLink(for: first)
+        XCTAssertEqual(store.supersetPartners[first.id], second.id)
+        XCTAssertEqual(store.supersetPartners[second.id], first.id, "pairs store both directions")
+
+        // A1 set → hop to A2 (caller suppresses rest on a hop).
+        store.completeTrackedSet(reps: 8, weight: 50)
+        XCTAssertTrue(store.hopToSupersetPartnerIfNeeded(after: first))
+        XCTAssertEqual(store.activeWorkoutExercise?.id, second.id)
+
+        // A2 set → back to A1.
+        store.completeTrackedSet(reps: 8, weight: 30)
+        XCTAssertTrue(store.hopToSupersetPartnerIfNeeded(after: second))
+        XCTAssertEqual(store.activeWorkoutExercise?.id, first.id)
+
+        // Unlink clears both directions; a hop no longer fires.
+        store.toggleSupersetLink(for: first)
+        XCTAssertTrue(store.supersetPartners.isEmpty)
+        XCTAssertFalse(store.hopToSupersetPartnerIfNeeded(after: first))
+    }
+
     func testReplacingAFinishedSessionLogsItFirst() {
         let store = freshStore()
         startedTwoExerciseSession(store)

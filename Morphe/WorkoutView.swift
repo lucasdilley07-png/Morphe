@@ -97,7 +97,11 @@ struct WorkoutView: View {
                         let exercise = store.activeWorkoutExercise
                         if store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true, label: label) {
                             pendingRPE = nil
-                            if let exercise { autoStartRest(after: exercise) }
+                            // Superset halves hop with no rest — the timer
+                            // belongs after the pair.
+                            if let exercise, !store.hopToSupersetPartnerIfNeeded(after: exercise) {
+                                autoStartRest(after: exercise)
+                            }
                         }
                     }
                     repLoggerContext = nil
@@ -216,7 +220,11 @@ struct WorkoutView: View {
                                 // RPE is a per-set read — a stale rating must
                                 // never silently ride into the next set.
                                 pendingRPE = nil
-                                autoStartRest(after: activeExercise)
+                                // Superset halves hop with no rest — the
+                                // timer belongs after the pair.
+                                if !store.hopToSupersetPartnerIfNeeded(after: activeExercise) {
+                                    autoStartRest(after: activeExercise)
+                                }
                             }
                         },
                         onOpenCustomRepLogger: {
@@ -340,7 +348,9 @@ struct WorkoutView: View {
                         activeExerciseID: store.activeWorkoutExercise?.id,
                         completedWorkoutSets: store.completedWorkoutSets,
                         onMove: { id, up in store.moveSessionExercise(id: id, up: up) },
-                        onAddExercise: { showAddExercise = true }
+                        onAddExercise: { showAddExercise = true },
+                        supersetPartners: store.supersetPartners,
+                        onToggleSuperset: { store.toggleSupersetLink(for: $0) }
                     )
 
                     if isShowingPainFlow || store.selectedWorkoutFeedback == .pain {
@@ -1844,6 +1854,10 @@ private struct FocusedWorkoutQueueCard: View {
     var onMove: ((String, Bool) -> Void)? = nil
     /// Mid-session "one more movement" — nil hides the button.
     var onAddExercise: (() -> Void)? = nil
+    /// Session superset pairs (both directions) — drives the SS tags.
+    var supersetPartners: [String: String] = [:]
+    /// Link/unlink this exercise with the next — nil hides the control.
+    var onToggleSuperset: ((WorkoutExercise) -> Void)? = nil
 
     var body: some View {
         GlassCard {
@@ -1859,9 +1873,24 @@ private struct FocusedWorkoutQueueCard: View {
                             .frame(width: 8, height: 8)
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(exercise.name)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                            HStack(spacing: 6) {
+                                Text(exercise.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                if supersetPartners[exercise.id] != nil {
+                                    Text("SS")
+                                        .font(MorpheTheme.microLabel(9))
+                                        .tracking(0.5)
+                                        .foregroundStyle(MorpheTheme.accentAlt)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 2)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                                                .stroke(MorpheTheme.accentAlt.opacity(0.5), lineWidth: 1)
+                                        )
+                                        .accessibilityLabel("In a superset")
+                                }
+                            }
                             Text("\(exercise.sets) • \(exercise.reps)")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -1873,6 +1902,26 @@ private struct FocusedWorkoutQueueCard: View {
                             Text("\(loggedSets) logged")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(MorpheTheme.accentAlt)
+                        }
+
+                        // Link with the NEXT exercise — alternating console
+                        // hops, rest after the pair. Tap again to unlink.
+                        if let onToggleSuperset, index < exercises.count - 1 || supersetPartners[exercise.id] != nil {
+                            Button {
+                                onToggleSuperset(exercise)
+                            } label: {
+                                Image(systemName: supersetPartners[exercise.id] != nil ? "link.circle.fill" : "link")
+                                    .font(.caption.weight(.bold))
+                                    .frame(width: 28, height: 28)
+                                    .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(supersetPartners[exercise.id] != nil ? MorpheTheme.accentAlt : .white)
+                            .accessibilityLabel(supersetPartners[exercise.id] != nil
+                                ? "Unlink \(exercise.name) from its superset"
+                                : "Link \(exercise.name) with the next exercise as a superset")
                         }
 
                         if let onMove {

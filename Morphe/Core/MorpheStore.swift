@@ -269,6 +269,9 @@ final class MorpheAppStore {
     /// or dropset counts as ONE set, with its sub-work described here.
     var trackedSetLabels: [String: [String]] = [:] { didSet { persistWorkoutSession() } }
     var trackedSetWarmups: [String: [Bool]] = [:] { didSet { persistWorkoutSession() } }
+    /// Session-scoped superset pairs, stored BOTH directions (A1→A2 and
+    /// A2→A1). The template never changes; the pairing dies with the session.
+    var supersetPartners: [String: String] = [:] { didSet { persistWorkoutSession() } }
     /// Unsaved draft from the custom set logger, per exercise id — everything
     /// typed into the "More" sheet survives dismissal and app relaunch.
     var pendingSetDrafts: [String: PendingSetDraft] = [:] { didSet { persistWorkoutSession() } }
@@ -2276,6 +2279,7 @@ final class MorpheAppStore {
         trackedSetRPE = snapshot.trackedSetRPE
         trackedSetLabels = snapshot.trackedSetLabels
         trackedSetWarmups = snapshot.trackedSetWarmups
+        supersetPartners = snapshot.supersetPartners
         pendingSetDrafts = snapshot.pendingSetDrafts
         workoutSessionStartedAt = snapshot.workoutSessionStartedAt
         completedSessionMinutes = snapshot.completedSessionMinutes
@@ -2330,6 +2334,7 @@ final class MorpheAppStore {
                 trackedSetRPE: trackedSetRPE,
                 trackedSetLabels: trackedSetLabels,
                 trackedSetWarmups: trackedSetWarmups,
+                supersetPartners: supersetPartners,
                 pendingSetDrafts: pendingSetDrafts,
                 workoutSessionStartedAt: workoutSessionStartedAt,
                 completedSessionMinutes: completedSessionMinutes,
@@ -4667,6 +4672,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
+        supersetPartners = [:]
         return true
     }
 
@@ -5584,6 +5590,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
+        supersetPartners = [:]
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         showTrainTab()
@@ -5857,6 +5864,12 @@ final class MorpheAppStore {
             }
         } else if updatedCount > targetSets {
             showToast("Extra set logged — \(updatedCount) of \(targetSets) planned.")
+        } else if let weight, weight > 0, !isWarmup {
+            // Instant strength feedback on working sets: the same Epley
+            // estimate the Progress chart uses, marked as the estimate it
+            // is. Warm-ups never rate one.
+            let epley = weight * (1 + Double(min(reps, 15)) / 30)
+            showToast("Set \(updatedCount) of \(targetSets) — est. 1RM ≈ \(weightUnit.format((epley * 10).rounded() / 10)).")
         } else {
             showToast("\(reps) reps logged for set \(updatedCount) of \(targetSets).")
         }
@@ -5930,6 +5943,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
+        supersetPartners = [:]
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         showToast("Workout discarded.")
@@ -6010,6 +6024,50 @@ final class MorpheAppStore {
 
     /// After an exercise completes, jump to the next one that still has sets
     /// remaining (wrapping), instead of dead-ending on the last exercise.
+    // MARK: Supersets (session-scoped linked pairs)
+
+    /// Links `exercise` with the NEXT exercise in the session as a
+    /// superset — or unlinks it when already paired. Session-scoped on
+    /// purpose: the saved template never changes.
+    func toggleSupersetLink(for exercise: WorkoutExercise) {
+        if let partnerID = supersetPartners[exercise.id] {
+            supersetPartners.removeValue(forKey: exercise.id)
+            supersetPartners.removeValue(forKey: partnerID)
+            showToast("Superset unlinked.")
+            return
+        }
+        let exercises = currentWorkout.exercises
+        guard let index = exercises.firstIndex(where: { $0.id == exercise.id }),
+              index + 1 < exercises.count else {
+            showToast("Nothing after \(exercise.name) to pair with.")
+            return
+        }
+        let partner = exercises[index + 1]
+        guard supersetPartners[partner.id] == nil else {
+            showToast("\(partner.name) is already in a superset.")
+            return
+        }
+        supersetPartners[exercise.id] = partner.id
+        supersetPartners[partner.id] = exercise.id
+        Haptics.impact(.light)
+        showToast("Superset: \(exercise.name) + \(partner.name).")
+    }
+
+    /// After a logged set on a paired exercise: hop the console to the
+    /// partner while the partner still has sets left. Returns whether it
+    /// hopped — the caller suppresses the rest timer between halves,
+    /// because rest belongs after the PAIR, not inside it.
+    func hopToSupersetPartnerIfNeeded(after exercise: WorkoutExercise) -> Bool {
+        guard let partnerID = supersetPartners[exercise.id],
+              let partnerIndex = currentWorkout.exercises.firstIndex(where: { $0.id == partnerID })
+        else { return false }
+        let partner = currentWorkout.exercises[partnerIndex]
+        guard completedWorkoutSets[partner.id, default: 0] < targetSetCount(for: partner) else { return false }
+        activeWorkoutExerciseIndex = partnerIndex
+        Haptics.impact(.light)
+        return true
+    }
+
     private func advanceToNextIncompleteExercise() {
         let exercises = currentWorkout.exercises
         guard !exercises.isEmpty else { return }
@@ -6091,6 +6149,13 @@ final class MorpheAppStore {
         guard let replacement = chosen ?? swapChoices(for: exercise).first else {
             showToast("No swap available for \(exercise.name).")
             return
+        }
+
+        // A swapped-in exercise gets a fresh id — a stale pair pointing at
+        // the old id would orphan; unlink first.
+        if let pairedID = supersetPartners[exercise.id] {
+            supersetPartners.removeValue(forKey: exercise.id)
+            supersetPartners.removeValue(forKey: pairedID)
         }
 
         // A swap drops the exercise's logged sets from the recap and the log —
@@ -6888,6 +6953,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
+        supersetPartners = [:]
         showTrainTab()
         showToast("\(template.name) ready in Train.")
     }
@@ -10024,6 +10090,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
+        supersetPartners = [:]
     }
 
     private func updateCurrentWorkout(_ update: (inout WorkoutTemplate) -> Void) {
