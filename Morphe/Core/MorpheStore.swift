@@ -118,6 +118,9 @@ final class MorpheAppStore {
     var showClientProfile = false
     var showUniversalSearch = false
     var showQuickAdd = false
+    /// Ask-Morphe from inside the QuickAdd sheet: the AI cover opens from
+    /// the sheet's onDismiss completion, not a guessed timer.
+    var pendingAIAgentOpen = false
     var showAIAgent = false
     /// Set by the coach Quick Add grid; the Build tab's client roster observes
     /// it to present AddManagedClientSheet (a real client, not a fake lead).
@@ -275,6 +278,9 @@ final class MorpheAppStore {
     /// Elapsed minutes captured at finish (clamped 1min–8h); nil = no live
     /// session timing, fall back to the template's planned duration.
     var completedSessionMinutes: Int? { didSet { persistWorkoutSession() } }
+    /// Optional free-text the user adds on the recap — appended to the
+    /// log's notes at commit, cleared with the session either way.
+    var sessionUserNote: String = ""
     var weightUnit: WeightUnit = .pounds {
         didSet {
             guard oldValue != weightUnit else { return }
@@ -5911,6 +5917,7 @@ final class MorpheAppStore {
     /// Abandons the live session without logging anything.
     func cancelTrackedWorkoutSession() {
         restoreSessionTemplateBaseline()
+        sessionUserNote = ""
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false
         hasCompletedWorkoutFlow = false
@@ -6330,6 +6337,12 @@ final class MorpheAppStore {
         if isDeloadActiveForCurrentSession {
             sessionNotes = sessionNotes.isEmpty ? "Deload week." : "\(sessionNotes) Deload week."
         }
+        // The user's own words lead the note — the flow boilerplate follows.
+        let userNote = sessionUserNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !userNote.isEmpty {
+            sessionNotes = sessionNotes.isEmpty ? userNote : "\(userNote) \(sessionNotes)"
+        }
+        sessionUserNote = ""
 
         // Train Together: publish this user's totals to the party so buddies
         // see them in their shared recap, and stamp the log with who was there.

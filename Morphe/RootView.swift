@@ -195,7 +195,15 @@ struct RootView: View {
             }
             .background(PremiumBackground())
         }
-        .sheet(isPresented: $store.showQuickAdd) {
+        .sheet(isPresented: $store.showQuickAdd, onDismiss: {
+            // Retires the 0.6s guess-timer: if Ask Morphe queued the AI
+            // cover, open it the moment THIS sheet has actually gone —
+            // the completion fires exactly when the transition has room.
+            if store.pendingAIAgentOpen {
+                store.pendingAIAgentOpen = false
+                store.openAIAgent()
+            }
+        }) {
             NavigationStack {
                 QuickAddSheet()
                     .environment(store)
@@ -1520,12 +1528,11 @@ private struct QuickAddSheet: View {
                             dismissQuickAdd()
                         },
                         QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {
-                            // Two sheets can't co-present: dismiss this one,
-                            // then open the chat once the transition has room.
+                            // Two sheets can't co-present: queue the AI
+                            // cover, dismiss this one, and the sheet's
+                            // onDismiss opens it — no guessed delay.
+                            store.pendingAIAgentOpen = true
                             dismissQuickAdd()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                                store.openAIAgent()
-                            }
                         }
                     ])
                 }

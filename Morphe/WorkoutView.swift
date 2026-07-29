@@ -441,6 +441,32 @@ struct WorkoutView: View {
                         weightUnit: store.weightUnit
                     )
 
+                    // Auto-captured duration, correctable before the commit
+                    // (phone left on the bench = 3 fake hours), plus an
+                    // optional note that rides the log.
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Session Details")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+
+                            Stepper(
+                                "Duration: \(store.completedSessionMinutes ?? store.currentWorkout.durationMinutes) min",
+                                value: Binding(
+                                    get: { store.completedSessionMinutes ?? store.currentWorkout.durationMinutes },
+                                    set: { store.completedSessionMinutes = $0 }
+                                ),
+                                in: 5...480,
+                                step: 5
+                            )
+                            .foregroundStyle(.white)
+
+                            TextField("Session note (optional)", text: $store.sessionUserNote, axis: .vertical)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .lineLimit(2...4)
+                        }
+                    }
+
                     // Shared recap: who trained with you and their totals
                     // (published to the party as each person logs).
                     if store.activeParty != nil, !store.partyBuddies.isEmpty {
@@ -1899,11 +1925,18 @@ private struct AddExerciseToSessionSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
+    @State private var muscleFilter: MuscleGroup?
+    @State private var isCreating = false
+    @State private var newExerciseName = ""
+    @State private var newExerciseMuscle: MuscleGroup = .conditioning
 
     private var results: [ExerciseReference] {
         let clean = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !clean.isEmpty else { return Array(store.allExercises.prefix(30)) }
-        return store.allExercises.filter { $0.name.lowercased().contains(clean) }
+        let pool = muscleFilter.map { group in
+            store.allExercises.filter { $0.muscleGroup == group }
+        } ?? store.allExercises
+        guard !clean.isEmpty else { return Array(pool.prefix(30)) }
+        return pool.filter { $0.name.lowercased().contains(clean) }
     }
 
     var body: some View {
@@ -1912,6 +1945,60 @@ private struct AddExerciseToSessionSheet: View {
                 VStack(alignment: .leading, spacing: 10) {
                     TextField("Search exercises…", text: $query)
                         .textFieldStyle(MorpheFieldStyle())
+
+                    // Parity with the builder's picker: filter by muscle
+                    // group, and create a custom movement without leaving
+                    // the live session.
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            Button("All") { muscleFilter = nil }
+                                .buttonStyle(FilterChipStyle(isSelected: muscleFilter == nil))
+                            ForEach(MuscleGroup.allCases) { group in
+                                Button(group.rawValue) {
+                                    muscleFilter = (muscleFilter == group) ? nil : group
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: muscleFilter == group))
+                            }
+                        }
+                    }
+
+                    if isCreating {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("Exercise name", text: $newExerciseName)
+                                .textFieldStyle(MorpheFieldStyle())
+                            Picker("Muscle group", selection: $newExerciseMuscle) {
+                                ForEach(MuscleGroup.allCases) { group in
+                                    Text(group.rawValue).tag(group)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .tint(MorpheTheme.accent)
+                            Button("Add Exercise") {
+                                let created = store.addCustomExercise(
+                                    name: newExerciseName,
+                                    muscleGroup: newExerciseMuscle
+                                )
+                                store.addExerciseToSession(created)
+                                dismiss()
+                            }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                            .disabled(newExerciseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                        .padding(10)
+                        .background(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .fill(MorpheTheme.panelStrong)
+                        )
+                    } else {
+                        Button {
+                            newExerciseName = query
+                            isCreating = true
+                        } label: {
+                            Label("Create Exercise", systemImage: "plus.circle.fill")
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityLabel("Create a custom exercise")
+                    }
 
                     ForEach(results) { exercise in
                         Button {
@@ -3772,11 +3859,26 @@ private struct WorkoutRestControlBar: View {
                 }
                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
 
-                Button("Reset") {
-                    isRunning = false
-                    seconds = defaultSeconds
+                // +15s rides the onChange re-anchor below, so the lock
+                // screen moves with it. Works paused too — it just arms
+                // a longer start.
+                Button("+15s") {
+                    seconds += 15
+                    Haptics.selection()
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
+                .accessibilityLabel("Add fifteen seconds of rest")
+
+                // Skip = "I'm ready now": stop, re-arm the default for the
+                // next set, and say so — Reset's mechanics with the verb
+                // people actually mean.
+                Button("Skip") {
+                    isRunning = false
+                    seconds = defaultSeconds
+                    SoundEffects.play(.ding)
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .accessibilityLabel("Skip the rest of this rest")
             }
         }
         // The countdown is driven by the `isRunning` binding itself, so ANY
@@ -4859,6 +4961,7 @@ private struct WorkoutHistoryCard: View {
 
 private struct SavedWorkoutsLibraryCard: View {
     @State private var selectedFilter: SavedWorkoutLibraryFilter = .all
+    @State private var searchQuery = ""
     // Remove is destructive from the menu's point of view — same
     // confirm-first pattern as deleting a custom workout.
     @State private var pendingRemoval: SavedWorkoutLibraryItem?
@@ -4879,8 +4982,17 @@ private struct SavedWorkoutsLibraryCard: View {
     var onEditBuilt: (WorkoutTemplate) -> Void = { _ in }
     var onDeleteBuilt: (WorkoutTemplate) -> Void = { _ in }
 
+    private var cleanQuery: String {
+        searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var visibleBuiltWorkouts: [WorkoutTemplate] {
+        guard !cleanQuery.isEmpty else { return builtWorkouts }
+        return builtWorkouts.filter { $0.name.lowercased().contains(cleanQuery) }
+    }
+
     private var showsBuiltWorkouts: Bool {
-        (selectedFilter == .all || selectedFilter == .myCopies) && !builtWorkouts.isEmpty
+        (selectedFilter == .all || selectedFilter == .myCopies) && !visibleBuiltWorkouts.isEmpty
     }
 
     var body: some View {
@@ -4995,6 +5107,15 @@ private struct SavedWorkoutsLibraryCard: View {
                     }
                 }
 
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    TextField("Search your library…", text: $searchQuery)
+                        .textFieldStyle(MorpheFieldStyle())
+                        .autocorrectionDisabled()
+                }
+
                 Picker("Saved workout filter", selection: $selectedFilter) {
                     ForEach(SavedWorkoutLibraryFilter.allCases) { filter in
                         Text(filter.rawValue).tag(filter)
@@ -5003,7 +5124,7 @@ private struct SavedWorkoutsLibraryCard: View {
                 .pickerStyle(.segmented)
 
                 if showsBuiltWorkouts {
-                    ForEach(builtWorkouts) { template in
+                    ForEach(visibleBuiltWorkouts) { template in
                         HStack(alignment: .center, spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(template.name)
@@ -5179,7 +5300,16 @@ private struct SavedWorkoutsLibraryCard: View {
             filtered = items.filter { $0.sourceContext == "Built by you" }
         }
 
-        return filtered.sorted { lhs, rhs in
+        // Search cuts across whatever segment is active — a growing
+        // library without search was the audit's gap.
+        let searched = cleanQuery.isEmpty
+            ? filtered
+            : filtered.filter {
+                $0.workoutName.lowercased().contains(cleanQuery)
+                    || $0.sourceContext.lowercased().contains(cleanQuery)
+            }
+
+        return searched.sorted { lhs, rhs in
             if lhs.isPinned != rhs.isPinned {
                 return lhs.isPinned && !rhs.isPinned
             }

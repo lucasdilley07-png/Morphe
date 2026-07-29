@@ -139,16 +139,19 @@ private struct CoachPinnedHeader: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Your coach profile")
 
             Spacer()
 
             CoachHeaderCircleButton(systemImage: "plus") {
                 store.openQuickAdd()
             }
+            .accessibilityLabel("Quick add")
 
             CoachHeaderCircleButton(systemImage: "bubble.left.and.bubble.right.fill") {
                 store.selectedCoachTab = .messages
             }
+            .accessibilityLabel("Messages")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -747,6 +750,7 @@ private struct AddManagedClientSheet: View {
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
+                    .accessibilityLabel("Copy invite code")
                     .buttonStyle(.plain)
                     .foregroundStyle(MorpheTheme.accent)
                     .accessibilityLabel("Copy invite code")
@@ -823,6 +827,7 @@ private struct ManagedClientDetailSheet: View {
                                         .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel("Copy invite code")
                                 .foregroundStyle(MorpheTheme.accent)
                                 .accessibilityLabel("Copy invite code")
                                 ShareLink(
