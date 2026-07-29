@@ -215,10 +215,24 @@ final class MorpheAppStore {
         didSet {
             workoutPersistence.saveLogs(workoutLogs)
             // Mirror to the cloud only for a real, onboarded account — never the
-            // pre-onboarding demo seed.
-            if hasCompletedOnboarding { cloudBackup.pushLogs(workoutLogs) }
+            // pre-onboarding demo seed. Trailing-debounced (READINESS-300 R5):
+            // the push uploads the FULL history doc, and a finish flow mutates
+            // logs several times in a burst — one upload covers all of them.
+            // The local file above is written synchronously either way, so a
+            // kill inside the window loses nothing; the next mutation pushes.
+            guard hasCompletedOnboarding, !suppressLogCloudPush else { return }
+            logPushDebounce?.cancel()
+            logPushDebounce = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 8_000_000_000)
+                guard !Task.isCancelled, let self else { return }
+                self.cloudBackup.pushLogs(self.workoutLogs)
+            }
         }
     }
+    private var logPushDebounce: Task<Void, Never>?
+    /// True while a cloud restore writes logs — pulled data must not echo
+    /// straight back up as a fresh push.
+    private var suppressLogCloudPush = false
     var workoutAccessGrants: [AthleteAccessGrant]
     var workoutHistory: [WorkoutHistoryEntry]
     var healthTrend: [DayScore]
@@ -874,6 +888,8 @@ final class MorpheAppStore {
         savedPostIds = []
         feedReactionCounts = [:]
         myReactedPostIds = []
+        reactionStateFetchedIds = []
+        lastFeedRefreshAt = nil
         // The rest of the fetched social/coach state follows the same
         // "another account must never see it" rule.
         myReactionTypes = [:]
@@ -1459,7 +1475,8 @@ final class MorpheAppStore {
         Task { await refreshVerificationStatus() }
         Task { await refreshAppointments() }
         Task { await refreshThreads() }
-        Task { await refreshFeed() }
+        // Forced: a fresh identity must never trust another account's page.
+        Task { await refreshFeed(force: true) }
     }
 
     /// After sign-in, restore the account's cloud backup. A returning user
@@ -1474,7 +1491,11 @@ final class MorpheAppStore {
         // Logs first, so the derived-state rebuild at the end of
         // applyPersistedProfile (history, streak, score) sees the restored
         // history. Setting workoutLogs also writes them to the local file.
+        // The suppress flag stops the didSet from re-uploading what we
+        // just downloaded (the pull→push echo, READINESS-300 R5).
+        suppressLogCloudPush = true
         workoutLogs = (cloud.logs ?? []).sorted { $0.completedAt > $1.completedAt }
+        suppressLogCloudPush = false
         applyPersistedProfile(profile)
         // AFTER applyPersistedProfile: the weight-history defaults key is
         // scoped by profile id, which the restore may have just changed.
@@ -6676,25 +6697,10 @@ final class MorpheAppStore {
         }
     }
 
-    func sendClientPrompt(_ text: String) {
-        let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanText.isEmpty else { return }
-
-        if let threadIndex = athleteMessageThreads.firstIndex(where: { $0.participant == "Morphe AI" }) {
-            athleteMessageThreads[threadIndex].messages.append(
-                ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now")
-            )
-            let reply = MorpheDemoContent.aiCoachReply(to: cleanText, tone: profileShowcase.coachingTone)
-            athleteMessageThreads[threadIndex].messages.append(
-                ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now")
-            )
-            athleteMessageThreads[threadIndex].preview = reply
-            selectedAthleteThreadID = athleteMessageThreads[threadIndex].id
-        }
-
-        openCommunity(.contact)
-        showToast("Morphe AI replied.")
-    }
+    // sendClientPrompt is GONE (AI-2 in docs/READINESS-300.md): it was a
+    // second, dumber "Morphe AI" pipeline with zero callers, feeding the
+    // demo inbox thread with no actions and no context. The pill/cover
+    // action layer (sendAIAgentPrompt) is the one brain.
 
     func sendTrainerMessage() {
         if let threadIndex = athleteMessageThreads.firstIndex(where: { $0.participant == clientProfile.coachName }) {
@@ -8722,12 +8728,30 @@ final class MorpheAppStore {
         return String(headline.prefix(80))
     }
 
+    /// One feed page (READINESS-300 R4): small enough that the per-post
+    /// reaction hydration stays cheap, big enough to fill a screen twice.
+    static let feedPageSize = 20
+    /// Within this window a non-forced refresh is a no-op (R1) — launch
+    /// and tab-visit reuse the loaded page; only pull-to-refresh forces.
+    private static let feedStalenessWindow: TimeInterval = 300
+    private var lastFeedRefreshAt: Date?
+    /// Post ids whose reaction state (count + my own) was fetched this
+    /// session (R2/R3): scrolling back over known posts costs zero reads.
+    private var reactionStateFetchedIds: Set<String> = []
+    /// False once a page comes back short — hides the "Load older" row.
+    private(set) var feedHasOlderPosts = false
+
     /// Pulls the newest posts + their real reaction counts + this account's
-    /// bookmarks. Runs on launch/sign-in (same pattern as `refreshThreads`)
-    /// and from pull-to-refresh. A nil fetch (offline, signed out, no-op
+    /// bookmarks. Runs on launch/sign-in and tab visits (both soft: within
+    /// the staleness window they reuse the loaded page) and from
+    /// pull-to-refresh (forced). A nil fetch (offline, signed out, no-op
     /// service) keeps whatever is local.
-    func refreshFeed() async {
+    func refreshFeed(force: Bool = false) async {
         guard let uid = authUser?.id else { return }
+        if !force, !feedPosts.isEmpty, let last = lastFeedRefreshAt,
+           Date.now.timeIntervalSince(last) < Self.feedStalenessWindow {
+            return
+        }
         // Loaded content stays visible through a re-fetch; only a first
         // load (or a retry after failure) shows the loading surface.
         if feedFetchState != .loaded { feedFetchState = .loading }
@@ -8735,8 +8759,10 @@ final class MorpheAppStore {
         if let blocked = await feedService.fetchBlocked(uid: uid) {
             blockedAccounts = blocked
         }
-        if let fetched = await feedService.fetchRecent(limit: 50) {
+        if let fetched = await feedService.fetchRecent(limit: Self.feedPageSize, before: nil) {
             feedFetchState = .loaded
+            lastFeedRefreshAt = .now
+            feedHasOlderPosts = fetched.count == Self.feedPageSize
             // Two-layer render filter: blocked authors are the user's call;
             // the term filter is the App Store 1.2 hygiene net for content
             // other clients let through. workoutName is user-typed text too —
@@ -8744,20 +8770,9 @@ final class MorpheAppStore {
             // Arrivals fade in instead of popping — the shell animates,
             // the content shouldn't snap.
             withAnimation(.easeInOut(duration: 0.25)) {
-                feedPosts = fetched.filter {
-                    !blockedUids.contains($0.authorUid)
-                        && !ContentModeration.containsBlockedTerm($0.text)
-                        && !ContentModeration.containsBlockedTerm($0.workoutName)
-                }
+                feedPosts = fetched.filter { renderableFeedPost($0) }
             }
-            feedReactionCounts = await feedService.fetchReactionCounts(postIds: feedPosts.map(\.id))
-            // Hydrate the filled-heart state: which of these posts THIS
-            // account already reacted to (and with what type) — without
-            // this, a relaunch forgets and a re-tap double-counts locally.
-            if let mine = await feedService.fetchMyReactions(uid: uid, postIds: feedPosts.map(\.id)) {
-                myReactedPostIds = Set(mine.keys)
-                myReactionTypes = mine
-            }
+            await hydrateReactionState(for: feedPosts.map(\.id), uid: uid, force: force)
         } else if feedPosts.isEmpty {
             // Nothing fetched AND nothing on screen — that's a failure the
             // user must see, not an empty state. Existing content just
@@ -8776,6 +8791,48 @@ final class MorpheAppStore {
         // And the recruiter side of the same loop: how many joined through
         // this account's invites (drives the Profile row + Recruiter accent).
         await refreshReferralCount()
+    }
+
+    /// Appends the next page below the loaded feed (cursor on createdAt).
+    func loadOlderFeedPosts() async {
+        guard let uid = authUser?.id, let oldest = feedPosts.last?.createdAt,
+              feedHasOlderPosts else { return }
+        guard let fetched = await feedService.fetchRecent(
+            limit: Self.feedPageSize, before: oldest) else { return }
+        feedHasOlderPosts = fetched.count == Self.feedPageSize
+        let known = Set(feedPosts.map(\.id))
+        let fresh = fetched.filter { !known.contains($0.id) && renderableFeedPost($0) }
+        guard !fresh.isEmpty else { return }
+        feedPosts.append(contentsOf: fresh)
+        await hydrateReactionState(for: fresh.map(\.id), uid: uid, force: false)
+    }
+
+    private func renderableFeedPost(_ post: FeedPost) -> Bool {
+        !blockedUids.contains(post.authorUid)
+            && !ContentModeration.containsBlockedTerm(post.text)
+            && !ContentModeration.containsBlockedTerm(post.workoutName)
+    }
+
+    /// Reaction counts + my own reactions, fetched only for ids not yet
+    /// seen this session (forced pull refetches the given page so counts
+    /// stay honest when the user explicitly asks for fresh). MERGES into
+    /// the caches — hydrating a new page never blanks known state.
+    private func hydrateReactionState(for ids: [String], uid: String, force: Bool) async {
+        // A forced refresh reset the feed to page one — the session cache
+        // restarts with it, so re-scrolled older pages re-hydrate honestly.
+        if force { reactionStateFetchedIds.removeAll() }
+        let wanted = force ? ids : ids.filter { !reactionStateFetchedIds.contains($0) }
+        guard !wanted.isEmpty else { return }
+        let counts = await feedService.fetchReactionCounts(postIds: wanted)
+        feedReactionCounts.merge(counts) { _, new in new }
+        // Hydrate the filled-heart state: which of these posts THIS
+        // account already reacted to (and with what type) — without
+        // this, a relaunch forgets and a re-tap double-counts locally.
+        if let mine = await feedService.fetchMyReactions(uid: uid, postIds: wanted) {
+            for id in wanted { myReactionTypes[id] = mine[id] }
+            myReactedPostIds = Set(myReactionTypes.keys)
+        }
+        reactionStateFetchedIds.formUnion(wanted)
     }
 
     // MARK: Report + block (App Store 1.2: report, block, filter)
@@ -8829,7 +8886,7 @@ final class MorpheAppStore {
         let name = blockedAccounts.removeValue(forKey: targetUid) ?? "Athlete"
         feedService.setBlocked(uid: uid, targetUid: targetUid, name: name, on: false)
         // Their content comes back NOW, not on the next manual refresh.
-        Task { await refreshFeed() }
+        Task { await refreshFeed(force: true) }
         showToast("Unblocked \(name).")
     }
 
@@ -9626,65 +9683,11 @@ final class MorpheAppStore {
         showToast("Coach workout log saved.")
     }
 
-    func makeAIParsedWorkoutLogDraft(to athlete: CoachClient, photoLabel: String) -> WorkoutLog? {
-        guard canCurrentCoachApproveAIEntries(for: athlete.id) else {
-            showToast("Coach approval access is required for AI imports.")
-            return nil
-        }
-
-        let template = workoutTemplates.first(where: { $0.sport == athlete.sport }) ?? workoutTemplates.first
-        let cleanLabel = photoLabel.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parsedExercises = exerciseLogs(from: template).map { exercise in
-            LoggedExercise(
-                name: exercise.name,
-                sets: exercise.sets,
-                reps: exercise.reps,
-                weight: exercise.weight.isEmpty ? "Parsed from photo" : exercise.weight,
-                note: "AI extracted this entry from \(cleanLabel.isEmpty ? "a workout photo" : cleanLabel)."
-            )
-        }
-
-        return WorkoutLog(
-            athleteID: athlete.id,
-            athleteName: athlete.name,
-            workoutTemplateID: template?.id,
-            workoutTitle: template?.name ?? "\(athlete.sport.rawValue) photo import",
-            sport: template?.sport ?? athlete.sport,
-            completedAt: .now,
-            durationMinutes: template?.durationMinutes ?? 35,
-            exercises: parsedExercises,
-            notes: cleanLabel.isEmpty
-                ? "Morphe AI parsed a workout photo. Review the sets, reps, and notes before saving."
-                : "Morphe AI parsed \(cleanLabel). Review the sets, reps, and notes before saving.",
-            source: .aiPhotoParsed,
-            enteredByUserID: coachProfile.id,
-            enteredByRole: .coach,
-            enteredByName: "Morphe AI",
-            verificationStatus: .aiPendingReview
-        )
-    }
-
-    func confirmAIParsedWorkoutLog(_ draft: WorkoutLog) {
-        guard canCurrentCoachApproveAIEntries(for: draft.athleteID) else {
-            showToast("Coach approval access is required for AI imports.")
-            return
-        }
-
-        var log = draft
-        log.verificationStatus = .coachApproved
-        log.enteredByUserID = coachProfile.id
-        log.enteredByRole = .coach
-        log.enteredByName = "Morphe AI + \(coachProfile.name)"
-
-        appendWorkoutLog(log)
-        addCoachTrainingActivityPost(
-            title: "AI workout import reviewed",
-            detail: "Reviewed \(log.workoutTitle) from a workout photo and saved it to \(log.athleteName)'s progress.",
-            tags: [log.sport.shortTitle, "AI Review", "Shared Progress"]
-        )
-        showCelebration(title: "AI log added", detail: log.athleteName, symbol: "camera.metering.partial")
-        showToast("Photo parsed into a workout log.")
-    }
+    // The "AI photo parse" pair is GONE (AI-1 in docs/READINESS-300.md):
+    // it never parsed anything — it copied a template and stamped the log
+    // "Morphe AI parsed a workout photo". Fabricated provenance violates
+    // the house rule. Coach manual entry above is the honest path; a real
+    // vision import can return when a real model reads real photos.
 
     func updateWorkoutLog(_ updatedLog: WorkoutLog) {
         guard canCoachModifyWorkoutLog(updatedLog) else {
@@ -9707,26 +9710,9 @@ final class MorpheAppStore {
 
         guard let index = workoutLogs.firstIndex(where: { $0.id == log.id }) else { return }
         workoutLogs[index].verificationStatus = .coachApproved
-
-        if workoutLogs[index].source == .aiPhotoParsed {
-            workoutLogs[index].enteredByUserID = coachProfile.id
-            workoutLogs[index].enteredByRole = .coach
-            workoutLogs[index].enteredByName = "Morphe AI + \(coachProfile.name)"
-
-            if log.athleteID == clientProfile.id {
-                addAthleteActivityPost(
-                    title: "AI workout import approved",
-                    detail: "Morphe AI and \(coachProfile.name) reviewed \(workoutLogs[index].workoutTitle) and saved it to your progress.",
-                    tags: [workoutLogs[index].sport.shortTitle, "AI Review"]
-                )
-            }
-
-            addCoachTrainingActivityPost(
-                title: "AI workout import approved",
-                detail: "Approved \(workoutLogs[index].workoutTitle) for \(workoutLogs[index].athleteName) after review.",
-                tags: [workoutLogs[index].sport.shortTitle, "AI Review", "Coach Review"]
-            )
-        }
+        // Legacy .aiPhotoParsed logs (pre-AI-1 demo data) just get the
+        // approval stamp — no "Morphe AI + coach" provenance rewrite; the
+        // fabricated-import pipeline is gone.
 
         refreshWorkoutLogDerivedState(for: log.athleteID)
         showToast("Workout log approved.")

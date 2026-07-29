@@ -3694,7 +3694,7 @@ final class SocialFeedTests: XCTestCase {
     /// NoOp so the assertions stay about store state.
     final class LiveFeedStub: FeedSyncing {
         func publish(post: FeedPost) async -> Bool { false }
-        func fetchRecent(limit: Int) async -> [FeedPost]? { nil }
+        func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]? { nil }
         func react(postId: String, uid: String, type: String?) {}
         func fetchReactionCounts(postIds: [String]) async -> [String: Int] { [:] }
         func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]? { nil }
@@ -4841,5 +4841,92 @@ final class AuthorHeadlineTests: XCTestCase {
 
     func testModelDefaultIsEmptyAndDecodesTolerantly() {
         XCTAssertEqual(FeedPost(id: "p", authorUid: "u", authorName: "A", text: "t").authorHeadline, "")
+    }
+}
+
+// MARK: - Feed read diet (READINESS-300 R1–R4)
+@MainActor
+final class FeedReadDietTests: XCTestCase {
+
+    final class CountingFeedService: FeedSyncing {
+        var posts: [FeedPost] = []
+        var olderPosts: [FeedPost] = []
+        var fetchRecentCalls = 0
+        var reactionCountCalls: [[String]] = []
+        func publish(post: FeedPost) async -> Bool { true }
+        func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]? {
+            fetchRecentCalls += 1
+            return Array((before == nil ? posts : olderPosts).prefix(limit))
+        }
+        func react(postId: String, uid: String, type: String?) {}
+        func fetchReactionCounts(postIds: [String]) async -> [String: Int] {
+            reactionCountCalls.append(postIds)
+            return postIds.reduce(into: [:]) { $0[$1] = 1 }
+        }
+        func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]? { [:] }
+        func fetchComments(postId: String, limit: Int) async -> [PostComment]? { nil }
+        func addComment(_ comment: PostComment) async -> Bool { false }
+        func deleteComment(postId: String, commentId: String) {}
+        func savePost(uid: String, postId: String, on: Bool) {}
+        func fetchSavedPostIds(uid: String) async -> Set<String>? { nil }
+        func setFollow(uid: String, targetUid: String, on: Bool) {}
+        func fetchFollowing(uid: String) async -> Set<String>? { nil }
+        func submitReport(reporterUid: String, kind: String, targetId: String,
+                          targetUid: String, reason: String, excerpt: String) async -> Bool { false }
+        func setBlocked(uid: String, targetUid: String, name: String, on: Bool) {}
+        func fetchBlocked(uid: String) async -> [String: String]? { nil }
+        func delete(postId: String) {}
+    }
+
+    private func post(_ i: Int) -> FeedPost {
+        FeedPost(id: "p\(i)", authorUid: "author-x", authorName: "A",
+                 text: "post \(i)", createdAt: Date.now.addingTimeInterval(-Double(i) * 60))
+    }
+
+    private func makeStore(_ service: CountingFeedService) -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore(feedService: service)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "me-uid", email: "s@m.app", role: .athlete,
+                                 displayName: "Sarah", createdAt: .now)
+        return store
+    }
+
+    func testRefreshIsPagedAndStalenessGated() async {
+        let service = CountingFeedService()
+        service.posts = (0..<25).map(post)
+        let store = makeStore(service)
+
+        await store.refreshFeed()
+        XCTAssertEqual(service.fetchRecentCalls, 1)
+        XCTAssertEqual(store.feedPosts.count, MorpheAppStore.feedPageSize, "one page, not the firehose")
+        XCTAssertTrue(store.feedHasOlderPosts)
+
+        await store.refreshFeed()
+        XCTAssertEqual(service.fetchRecentCalls, 1, "a fresh page within the window is a no-op")
+
+        await store.refreshFeed(force: true)
+        XCTAssertEqual(service.fetchRecentCalls, 2, "pull-to-refresh always hits the network")
+    }
+
+    func testLoadOlderAppendsAndHydratesOnlyNewIds() async {
+        let service = CountingFeedService()
+        service.posts = (0..<20).map(post)
+        service.olderPosts = (20..<28).map(post)
+        let store = makeStore(service)
+
+        await store.refreshFeed()
+        XCTAssertEqual(store.feedPosts.count, 20)
+        await store.loadOlderFeedPosts()
+        XCTAssertEqual(store.feedPosts.count, 28)
+        XCTAssertFalse(store.feedHasOlderPosts, "a short page means the end")
+
+        // Reaction hydration: page one's 20 ids, then ONLY the 8 new ones.
+        XCTAssertEqual(service.reactionCountCalls.count, 2)
+        XCTAssertEqual(service.reactionCountCalls[0].count, 20)
+        XCTAssertEqual(service.reactionCountCalls[1].count, 8)
+        XCTAssertTrue(Set(service.reactionCountCalls[0]).isDisjoint(with: service.reactionCountCalls[1]))
     }
 }

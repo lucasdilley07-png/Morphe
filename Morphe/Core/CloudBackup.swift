@@ -550,8 +550,9 @@ extension String {
 protocol FeedSyncing: AnyObject {
     /// Publishes one post exactly as given (id = doc id). False on failure.
     func publish(post: FeedPost) async -> Bool
-    /// Newest posts first, or nil when offline/unavailable.
-    func fetchRecent(limit: Int) async -> [FeedPost]?
+    /// Newest posts first, or nil when offline/unavailable. `before`
+    /// pages older content (createdAt strictly earlier than the cursor).
+    func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]?
     /// Writes this uid's single reaction doc with `type` ("heart"/"fire"/
     /// "power"/"clap"), or removes it when type is nil. Still one doc per
     /// uid, so counts stay honest whatever the type.
@@ -591,7 +592,7 @@ protocol FeedSyncing: AnyObject {
 
 final class NoOpFeedService: FeedSyncing {
     func publish(post: FeedPost) async -> Bool { false }
-    func fetchRecent(limit: Int) async -> [FeedPost]? { nil }
+    func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]? { nil }
     func react(postId: String, uid: String, type: String?) {}
     func fetchReactionCounts(postIds: [String]) async -> [String: Int] { [:] }
     func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]? { nil }
@@ -651,9 +652,13 @@ final class FirebaseFeedService: FeedSyncing {
         }
     }
 
-    func fetchRecent(limit: Int) async -> [FeedPost]? {
-        guard let snapshot = try? await posts
-            .order(by: "createdAt", descending: true)
+    func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]? {
+        var query: Query = posts.order(by: "createdAt", descending: true)
+        if let before {
+            // Same field as the ordering — no composite index needed.
+            query = query.whereField("createdAt", isLessThan: Timestamp(date: before))
+        }
+        guard let snapshot = try? await query
             .limit(to: limit)
             .getDocuments()
         else { return nil }

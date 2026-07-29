@@ -150,8 +150,6 @@ struct AthleteProfileView: View {
     @State private var manualWorkoutDuration = 35
     @State private var manualWorkoutNotes = ""
     @State private var manualTemplateID: UUID?
-    @State private var aiPhotoLabel = ""
-    @State private var aiImportDraft: WorkoutLog?
     @State private var editingLog: WorkoutLog?
     @State private var selectedLogFilter: CoachWorkoutLogFilter = .all
     @State private var showProfileDetails = false
@@ -309,7 +307,7 @@ struct AthleteProfileView: View {
 
                     CoachAthleteDisclosureSection(
                         title: "Workout Data Input",
-                        subtitle: "Manual coach entry and AI photo review stay available without crowding the profile.",
+                        subtitle: "Manual coach entry without crowding the profile.",
                         isExpanded: $showWorkoutInput
                     ) {
                         CoachWorkoutLogEntryCard(
@@ -319,7 +317,6 @@ struct AthleteProfileView: View {
                             workoutTitle: $manualWorkoutTitle,
                             durationMinutes: $manualWorkoutDuration,
                             notes: $manualWorkoutNotes,
-                            aiPhotoLabel: $aiPhotoLabel,
                             onSaveManual: {
                                 store.coachAddManualWorkoutLog(
                                     to: currentAthlete,
@@ -329,9 +326,6 @@ struct AthleteProfileView: View {
                                     notes: manualWorkoutNotes
                                 )
                                 manualWorkoutNotes = ""
-                            },
-                            onImportPhoto: {
-                                aiImportDraft = store.makeAIParsedWorkoutLogDraft(to: currentAthlete, photoLabel: aiPhotoLabel)
                             }
                         )
                     }
@@ -427,18 +421,6 @@ struct AthleteProfileView: View {
             }
         }
         .background(PremiumBackground())
-        .sheet(item: $aiImportDraft) { draft in
-            WorkoutLogEditorSheet(
-                draft: draft,
-                title: "Review AI Import",
-                subtitle: "Check the workout title, duration, and parsed exercises before saving this to the athlete profile.",
-                confirmLabel: "Confirm Save"
-            ) { approvedDraft in
-                store.confirmAIParsedWorkoutLog(approvedDraft)
-                aiPhotoLabel = ""
-                aiImportDraft = nil
-            }
-        }
         .sheet(item: $editingLog) { log in
             WorkoutLogEditorSheet(
                 draft: log,
@@ -1035,9 +1017,7 @@ private struct CoachWorkoutLogEntryCard: View {
     @Binding var workoutTitle: String
     @Binding var durationMinutes: Int
     @Binding var notes: String
-    @Binding var aiPhotoLabel: String
     let onSaveManual: () -> Void
-    let onImportPhoto: () -> Void
 
     var body: some View {
         GlassCard {
@@ -1046,7 +1026,7 @@ private struct CoachWorkoutLogEntryCard: View {
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text("Add a workout for \(athlete.name) manually, or turn a workout photo into a shared log with Morphe AI.")
+                Text("Add a workout for \(athlete.name) manually — every number you enter is the record.")
                     .foregroundStyle(MorpheTheme.textSecondary)
 
                 Picker("Template", selection: $selectedTemplateID) {
@@ -1070,20 +1050,6 @@ private struct CoachWorkoutLogEntryCard: View {
                 Button("Save Log", action: onSaveManual)
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
                     .accessibilityLabel("Save manual workout log")
-
-                Divider()
-                    .overlay(Color.white.opacity(0.08))
-
-                TextField("Photo label or screenshot note", text: $aiPhotoLabel)
-                    .textFieldStyle(MorpheFieldStyle())
-
-                Text("Morphe AI will parse the workout first, then you can review and confirm before it saves anything.")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-
-                Button("Review Photo", action: onImportPhoto)
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .accessibilityLabel("Review workout from photo")
             }
         }
     }

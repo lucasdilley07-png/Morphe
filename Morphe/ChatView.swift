@@ -146,7 +146,9 @@ struct CommunityView: View {
             .padding(.bottom, 120)
         }
         .refreshable {
-            await store.refreshFeed()
+            // The one surface that always hits the network — an explicit
+            // pull is the user asking for fresh.
+            await store.refreshFeed(force: true)
         }
     }
 
@@ -1459,7 +1461,7 @@ private struct RealFeedSection: View {
                     FetchPlaceholderCard(line: "Loading the feed…")
                 case .failed:
                     FetchRetryCard(message: "The feed couldn't load — check your connection.") {
-                        Task { await store.refreshFeed() }
+                        Task { await store.refreshFeed(force: true) }
                     }
                 case .loaded:
                     emptyState
@@ -1471,6 +1473,23 @@ private struct RealFeedSection: View {
                         onRepost: { repostTarget = post },
                         onAuthorTap: { authorTarget = post }
                     )
+                }
+
+                // Cursor paging (READINESS-300 R4): the feed loads one page;
+                // history is a tap away instead of 50 posts of reads up front.
+                if store.feedHasOlderPosts, !store.feedPosts.isEmpty {
+                    Button {
+                        Task { await store.loadOlderFeedPosts() }
+                    } label: {
+                        Text("LOAD OLDER")
+                            .font(MorpheTheme.microLabel(11))
+                            .tracking(1.4)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Load older posts")
                 }
             }
         }
