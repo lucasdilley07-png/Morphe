@@ -19,6 +19,9 @@ enum RestTimerActivityController {
             startDate: now,
             endDate: now.addingTimeInterval(TimeInterval(secondsRemaining))
         )
+        // The shared anchor is what the lock-screen intents retarget and
+        // the in-app bar reconciles against on foreground.
+        RestTimerSharedState.write(endDate: state.endDate)
         activity = try? Activity.request(
             attributes: RestTimerAttributes(exerciseName: exerciseName),
             content: ActivityContent(state: state, staleDate: state.endDate)
@@ -33,6 +36,7 @@ enum RestTimerActivityController {
             startDate: now,
             endDate: now.addingTimeInterval(TimeInterval(max(secondsRemaining, 0)))
         )
+        RestTimerSharedState.write(endDate: state.endDate)
         Task {
             await activity.update(ActivityContent(state: state, staleDate: state.endDate))
         }
@@ -44,6 +48,9 @@ enum RestTimerActivityController {
     }
 
     private static func endImmediately() {
+        // Clear the anchor even with no live activity — a stale end date
+        // must never resurrect a rest on the next foreground.
+        RestTimerSharedState.write(endDate: nil)
         guard let current = activity else { return }
         activity = nil
         Task {

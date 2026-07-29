@@ -172,30 +172,51 @@ struct RestTimerLiveActivity: Widget {
 
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RestTimerAttributes.self) { context in
-            // Lock screen banner.
-            HStack(spacing: 14) {
-                Image(systemName: "timer")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(Self.gold)
+            // Lock screen banner — with the two controls a gym app's lock
+            // screen actually wants: more rest, or back to the bar NOW.
+            VStack(spacing: 12) {
+                HStack(spacing: 14) {
+                    Image(systemName: "timer")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(Self.gold)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("REST")
-                        .font(.caption2.weight(.bold))
-                        .tracking(1.4)
-                        .foregroundStyle(.secondary)
-                    Text(context.attributes.exerciseName)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("REST")
+                            .font(.caption2.weight(.bold))
+                            .tracking(1.4)
+                            .foregroundStyle(.secondary)
+                        Text(context.attributes.exerciseName)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    Text(timerInterval: context.state.startDate...context.state.endDate, countsDown: true)
+                        .font(.system(.title, design: .monospaced).weight(.bold))
+                        .foregroundStyle(Self.gold)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 96)
                 }
 
-                Spacer()
+                HStack(spacing: 10) {
+                    Button(intent: AddRestTimeIntent()) {
+                        Text("+15s")
+                            .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .tint(Self.gold)
+                    .buttonStyle(.bordered)
 
-                Text(timerInterval: context.state.startDate...context.state.endDate, countsDown: true)
-                    .font(.system(.title, design: .monospaced).weight(.bold))
-                    .foregroundStyle(Self.gold)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: 96)
+                    Button(intent: SkipRestIntent()) {
+                        Text("SKIP")
+                            .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .tint(.white.opacity(0.7))
+                    .buttonStyle(.bordered)
+                }
             }
             .padding(16)
             .activityBackgroundTint(Self.ink.opacity(0.92))
@@ -216,10 +237,25 @@ struct RestTimerLiveActivity: Widget {
                         .multilineTextAlignment(.trailing)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text(context.attributes.exerciseName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    HStack(spacing: 10) {
+                        Text(context.attributes.exerciseName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Spacer()
+                        Button(intent: AddRestTimeIntent()) {
+                            Text("+15s")
+                                .font(.system(.caption, design: .monospaced).weight(.bold))
+                        }
+                        .tint(Self.gold)
+                        .buttonStyle(.bordered)
+                        Button(intent: SkipRestIntent()) {
+                            Text("SKIP")
+                                .font(.system(.caption, design: .monospaced).weight(.bold))
+                        }
+                        .tint(.white.opacity(0.7))
+                        .buttonStyle(.bordered)
+                    }
                 }
             } compactLeading: {
                 Image(systemName: "timer")

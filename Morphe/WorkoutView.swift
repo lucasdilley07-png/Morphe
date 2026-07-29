@@ -3958,9 +3958,24 @@ private struct WorkoutRestControlBar: View {
         }
         // The 1s loop suspends with the app; the lock-screen Live Activity
         // runs on wall clock. Coming back to the foreground, the in-app
-        // number resyncs to the same wall clock so they never disagree.
+        // number resyncs to the SHARED anchor — which the lock-screen
+        // +15s/Skip intents may have moved or cleared while we slept.
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, isRunning, let end = countdownEndDate else { return }
+            guard phase == .active, isRunning else { return }
+            let sharedEnd = RestTimerSharedState.readEndDate()
+            if let sharedEnd {
+                if let localEnd = countdownEndDate,
+                   abs(sharedEnd.timeIntervalSince(localEnd)) > 1 {
+                    // Lock-screen +15s moved the end — adopt it.
+                    countdownEndDate = sharedEnd
+                }
+            } else if countdownEndDate != nil {
+                // Lock-screen Skip: the rest is over everywhere.
+                isRunning = false
+                seconds = defaultSeconds
+                return
+            }
+            guard let end = countdownEndDate else { return }
             seconds = max(Int(end.timeIntervalSinceNow.rounded()), 0)
             if seconds == 0 {
                 isRunning = false
