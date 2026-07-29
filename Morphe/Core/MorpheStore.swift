@@ -9034,6 +9034,38 @@ final class MorpheAppStore {
         return streak
     }
 
+    /// Chat streak: consecutive days BOTH parties sent a message, walking
+    /// back from today with the same yesterday-grace as duoStreak (a live
+    /// streak may not include today yet). Computed from the open thread's
+    /// FULL history — the message listener streams every message, so this
+    /// is exact, not a sample. Static + injectable dates for tests.
+    static func messageStreak(
+        messages: [ChatMessage], uidA: String, uidB: String,
+        today: Date = .now, calendar: Calendar = .current
+    ) -> Int {
+        guard uidA != uidB else { return 0 }
+        func days(_ uid: String) -> Set<Date> {
+            Set(messages.filter { $0.senderUid == uid }
+                .map { calendar.startOfDay(for: $0.sentAt) })
+        }
+        let both = days(uidA).intersection(days(uidB))
+        guard !both.isEmpty else { return 0 }
+
+        var day = calendar.startOfDay(for: today)
+        if !both.contains(day) {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: day),
+                  both.contains(yesterday) else { return 0 }
+            day = yesterday
+        }
+        var streak = 0
+        while both.contains(day) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+        }
+        return streak
+    }
+
     /// Seen is per-profile and capped — a lens state, not data.
     func markStorySeen(_ post: FeedPost) {
         var seen = UserDefaults.standard.stringArray(forKey: storySeenKey) ?? []

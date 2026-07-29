@@ -4688,3 +4688,52 @@ final class MessagingDoorTests: XCTestCase {
         XCTAssertEqual(store.selectedClientTab, tabBefore)
     }
 }
+
+// MARK: - Chat streaks (S4)
+//
+// Consecutive days BOTH parties messaged, yesterday-grace like duoStreak.
+// Pure derivation over the full thread history — dates injected.
+@MainActor
+final class ChatStreakTests: XCTestCase {
+
+    private let calendar = Calendar.current
+
+    private func message(_ uid: String, daysAgo: Int, from today: Date) -> ChatMessage {
+        let day = calendar.date(byAdding: .day, value: -daysAgo, to: today)!
+        return ChatMessage(id: UUID().uuidString, senderUid: uid, text: "hi", sentAt: day)
+    }
+
+    func testBothMessagingConsecutiveDaysCounts() {
+        let today = Date()
+        let messages = (0...2).flatMap { day in
+            [message("a", daysAgo: day, from: today), message("b", daysAgo: day, from: today)]
+        }
+        XCTAssertEqual(MorpheAppStore.messageStreak(messages: messages, uidA: "a", uidB: "b", today: today), 3)
+    }
+
+    func testYesterdayGraceKeepsALiveStreak() {
+        let today = Date()
+        // Both messaged the last two days but not yet today.
+        let messages = [1, 2].flatMap { day in
+            [message("a", daysAgo: day, from: today), message("b", daysAgo: day, from: today)]
+        }
+        XCTAssertEqual(MorpheAppStore.messageStreak(messages: messages, uidA: "a", uidB: "b", today: today), 2,
+                       "an unanswered morning must not kill a streak")
+    }
+
+    func testOneSidedDayBreaksTheStreak() {
+        let today = Date()
+        var messages = [message("a", daysAgo: 0, from: today), message("b", daysAgo: 0, from: today)]
+        // Yesterday only A messaged; the day before both did.
+        messages.append(message("a", daysAgo: 1, from: today))
+        messages.append(contentsOf: [message("a", daysAgo: 2, from: today), message("b", daysAgo: 2, from: today)])
+        XCTAssertEqual(MorpheAppStore.messageStreak(messages: messages, uidA: "a", uidB: "b", today: today), 1,
+                       "a one-sided day is not a mutual streak day")
+    }
+
+    func testStaleHistoryIsZero() {
+        let today = Date()
+        let messages = [message("a", daysAgo: 5, from: today), message("b", daysAgo: 5, from: today)]
+        XCTAssertEqual(MorpheAppStore.messageStreak(messages: messages, uidA: "a", uidB: "b", today: today), 0)
+    }
+}

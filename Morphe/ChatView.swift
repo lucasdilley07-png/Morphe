@@ -4,36 +4,99 @@ struct CommunityView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var selectedStory: CommunityStoryPreview?
     @State private var showNetworkExtras = false
+    @State private var showFormCamera = false
     /// Tab landing clears the floating header icons.
     var topPadding: CGFloat = MorpheTheme.Spacing.pageTopStacked
 
     var body: some View {
-        Group {
-            switch store.selectedCommunitySection {
-            case .forYou:
+        @Bindable var store = store
+        return VStack(spacing: 0) {
+            networkHeader
+
+            // The swipe shell: Chats on the left, the feed on the right —
+            // one horizontal gesture between your people and their work.
+            // Selection is the SAME store var every deep link already sets,
+            // so doors keep landing exactly where they always did.
+            TabView(selection: $store.selectedCommunitySection) {
+                contactScreen
+                    .tag(ClientCommunitySection.contact)
+
                 // The stack hosts the feed's author push (swipe-back). The
                 // system bar stays hidden — the HUD has its own chrome.
                 NavigationStack {
                     forYouScreen
                         .toolbar(.hidden, for: .navigationBar)
                 }
-            case .contact:
-                contactScreen
+                .tag(ClientCommunitySection.forYou)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
         }
         .sheet(item: $selectedStory) { story in
             StoryHighlightSheet(story: story)
         }
+        .fullScreenCover(isPresented: $showFormCamera) {
+            // The camera door: Form Check with no exercise context —
+            // record a form clip, share anywhere (S3's honest half).
+            FormCheckView()
+                .environment(store)
+        }
+    }
+
+    /// Fixed chrome above the swipe panes: two mono section tabs with the
+    /// gold page tick, plus the camera door. HUD skin, not borrowed chrome.
+    private var networkHeader: some View {
+        HStack(alignment: .bottom, spacing: 22) {
+            sectionTab("CHATS", .contact)
+            sectionTab("FOR YOU", .forYou)
+
+            Spacer()
+
+            Button {
+                showFormCamera = true
+            } label: {
+                Image(systemName: "camera.fill")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(MorpheTheme.accent)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(MorpheTheme.panelStrong))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Form camera")
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, topPadding)
+        .padding(.bottom, 6)
+    }
+
+    private func sectionTab(_ label: String, _ section: ClientCommunitySection) -> some View {
+        let isActive = store.selectedCommunitySection == section
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                store.selectedCommunitySection = section
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(label)
+                    .font(MorpheTheme.microLabel(12))
+                    .tracking(1.6)
+                    .foregroundStyle(isActive ? .white : MorpheTheme.textMuted)
+                Rectangle()
+                    .fill(isActive ? MorpheTheme.accent : .clear)
+                    .frame(width: 26, height: 3)
+            }
+            .frame(minHeight: 44, alignment: .bottomLeading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label.capitalized)
+        .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
     private var forYouScreen: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                SectionTitleView(
-                    title: "Network",
-                    subtitle: "For You keeps the training feed useful. Contact keeps coaches, partners, and support close."
-                )
-
+                // No page title here — the shell header owns the chrome, so
+                // the feed opens straight onto presence (Trained Today).
                 if store.isRealFeedActive {
                     // The REAL feed (Firestore posts/*) replaces the demo
                     // rankedCommunityPosts list for signed-in users. The demo
@@ -71,7 +134,7 @@ struct CommunityView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, topPadding)
+            .padding(.top, 6)
             .padding(.bottom, 120)
         }
         .refreshable {
@@ -101,24 +164,8 @@ struct CommunityView: View {
     /// sheet — one destination, many doors.
     private var realContactScreen: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Button {
-                store.selectedCommunitySection = .forYou
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.left")
-                        .font(.subheadline.weight(.bold))
-                    Text("FOR YOU")
-                        .font(MorpheTheme.microLabel(11))
-                        .tracking(1.4)
-                }
-                .foregroundStyle(MorpheTheme.textSecondary)
-                .frame(height: 44, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back to For You")
-            .padding(.horizontal, 20)
-
+            // The shell header owns section navigation now — swiping right
+            // or tapping FOR YOU leaves; no back row needed.
             if store.liveThreads.isEmpty {
                 GlassCard {
                     VStack(alignment: .leading, spacing: 10) {
@@ -136,7 +183,7 @@ struct CommunityView: View {
                 AthleteInboxView(autoOpenOnlyThread: true)
             }
         }
-        .padding(.top, topPadding)
+        .padding(.top, 6)
         // Threads load async — without this refresh the empty card could
         // stick for a coached athlete, since the inbox (which owns its own
         // refresh) only mounts once threads exist.
@@ -1380,13 +1427,8 @@ private struct RealFeedSection: View {
     var body: some View {
         @Bindable var store = store
         return VStack(alignment: .leading, spacing: 14) {
-            Picker("Community Section", selection: $store.selectedCommunitySection) {
-                ForEach(ClientCommunitySection.allCases) { section in
-                    Text(section.rawValue).tag(section)
-                }
-            }
-            .pickerStyle(.segmented)
-
+            // Section switching lives in the shell header (tabs + swipe) —
+            // no in-scroll picker.
             // Presence leads the page: who trained in the last 24h, gold
             // ring = unseen. (Athlete search moved to the header magnifier —
             // universal search owns account-finding now.)
@@ -2754,6 +2796,14 @@ struct ThreadChatView: View {
 
     private var myUid: String { store.authUser?.id ?? "" }
     private var counterpart: String { thread.counterpartName(for: myUid) }
+    private var counterpartUid: String {
+        thread.coachUid == myUid ? thread.athleteUid : thread.coachUid
+    }
+    /// Consecutive days both of you messaged — exact, from full history.
+    private var chatStreak: Int {
+        MorpheAppStore.messageStreak(
+            messages: store.activeThreadMessages, uidA: myUid, uidB: counterpartUid)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -2785,9 +2835,23 @@ struct ThreadChatView: View {
                     Text(counterpart)
                         .font(.headline)
                         .foregroundStyle(.white)
-                    Text("Conversation")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
+                    // A streak needs at least two days to be a streak; day
+                    // one stays quiet instead of celebrating a single hello.
+                    if chatStreak >= 2 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "flame.fill")
+                                .font(.caption2.weight(.bold))
+                            Text("STREAK \(chatStreak)")
+                                .font(MorpheTheme.microLabel(10))
+                                .tracking(1.2)
+                        }
+                        .foregroundStyle(MorpheTheme.accent)
+                        .accessibilityLabel("\(chatStreak) day chat streak")
+                    } else {
+                        Text("Conversation")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
                 }
 
                 Spacer()
