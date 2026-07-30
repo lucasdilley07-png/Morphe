@@ -823,13 +823,25 @@ struct MinimumWinModeCard: View {
     let message: String
     let tasks: [TaskItem]
     let onToggle: (TaskItem) -> Void
+    /// The way back out — activation was a one-way door until midnight,
+    /// which read as "my workout is gone" (audit finding).
+    var onExit: (() -> Void)? = nil
 
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Minimum Win Mode")
-                    .font(.headline)
-                    .foregroundStyle(.white)
+                HStack {
+                    Text("Minimum Win Mode")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Spacer()
+                    if let onExit {
+                        Button("Full Plan", action: onExit)
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .frame(width: 96)
+                            .accessibilityLabel("Exit Minimum Win mode and restore the full workout")
+                    }
+                }
                 Text(message)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -862,6 +874,9 @@ struct StreakProtectionCard: View {
                 } else {
                     Text("You missed today's workout, but your streak is still saveable.")
                         .foregroundStyle(MorpheTheme.textSecondary)
+                    Text("Pick any option below and finish it today — it counts as showing up, and your streak stays alive. Nothing is spent or lost.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
 
                     WrapStack(spacing: 8) {
                         ForEach(options, id: \.self) { option in
@@ -1316,16 +1331,23 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                     Haptics.selection()
                     onSelect(item)
                 } label: {
-                    VStack(spacing: 5) {
+                    VStack(spacing: 4) {
                         Image(systemName: item.systemImage)
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.system(size: 21, weight: .semibold))
+                        // Named, not icons-only: six abstract glyphs made
+                        // new users guess what Discover/Network/Learn were
+                        // (audit BLOCKER). Mono micro-labels keep the HUD.
+                        Text(item.title.uppercased())
+                            .font(MorpheTheme.microLabel(8))
+                            .tracking(0.8)
+                            .lineLimit(1)
                         Circle()
                             .fill(selected == item ? MorpheTheme.accent : .clear)
                             .frame(width: 4, height: 4)
                     }
                     .foregroundStyle(selected == item ? MorpheTheme.accent : Color.white.opacity(0.70))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 7)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

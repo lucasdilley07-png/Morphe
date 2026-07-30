@@ -894,11 +894,13 @@ final class MorpheAppStore {
         liveThreads = []
         // The fetched feed, bookmarks, and reaction state too.
         feedPosts = []
+        presencePosts = []
         savedPostIds = []
         feedReactionCounts = [:]
         myReactedPostIds = []
         reactionStateFetchedIds = []
         lastFeedRefreshAt = nil
+        feedPageCursor = nil
         // The rest of the fetched social/coach state follows the same
         // "another account must never see it" rule.
         myReactionTypes = [:]
@@ -4481,9 +4483,17 @@ final class MorpheAppStore {
             }
         }
 
-        // The welcome sheet IS the completion celebration — but the terms
-        // gate comes first, so the celebration waits behind acceptance.
-        welcomeAwaitsTermsAcceptance = true
+        // The welcome sheet IS the completion celebration. Onboarding's
+        // review step collected explicit terms consent (with the full text
+        // one tap away) — honoring it here keeps ONE gate instead of
+        // making users agree twice ten seconds apart. The wall still
+        // catches accounts that never agreed (pre-toggle restores).
+        if onboardingDraft.agreedToTerms {
+            hasAcceptedTerms = true
+            showWelcomeExperience = true
+        } else {
+            welcomeAwaitsTermsAcceptance = true
+        }
         // First real save of the account — and push it to the cloud
         // immediately: the rate limit is for routine edits, not for the
         // moment the account starts existing. (The actual write happens in
@@ -5038,6 +5048,17 @@ final class MorpheAppStore {
         showCelebration(title: "Plan B activated", detail: "Smaller still counts", symbol: "figure.walk")
         persistLocalProfile()
         showToast("Minimum Win Mode is on.")
+    }
+
+    /// The way back OUT — audit finding: activation was a one-way door
+    /// until the nightly reset, which read as losing the day's workout.
+    func deactivateMinimumWinMode() {
+        guard minimumWinModeEnabled else { return }
+        minimumWinModeEnabled = false
+        currentPlanAdjustment = Self.neutralPlanAdjustment
+        persistLocalProfile()
+        Haptics.impact(.light)
+        showToast("Back to the full plan.")
     }
 
     func choosePlanB(_ reason: PlanBReason) {
@@ -6162,7 +6183,15 @@ final class MorpheAppStore {
         supersetPartners[exercise.id] = partner.id
         supersetPartners[partner.id] = exercise.id
         Haptics.impact(.light)
-        showToast("Superset: \(exercise.name) + \(partner.name).")
+        // First link ever gets the mechanic spelled out; after that the
+        // short confirmation is enough.
+        let explainedKey = "morphe.superset.explained"
+        if !UserDefaults.standard.bool(forKey: explainedKey) {
+            UserDefaults.standard.set(true, forKey: explainedKey)
+            showToast("Superset linked — the console alternates \(exercise.name) and \(partner.name); rest comes after the pair.")
+        } else {
+            showToast("Superset: \(exercise.name) + \(partner.name).")
+        }
     }
 
     /// After a logged set on a paired exercise: hop the console to the
@@ -6177,6 +6206,9 @@ final class MorpheAppStore {
         guard completedWorkoutSets[partner.id, default: 0] < targetSetCount(for: partner) else { return false }
         activeWorkoutExerciseIndex = partnerIndex
         Haptics.impact(.light)
+        // Say WHY the console just swapped exercises — a silent jump reads
+        // as a bug, not a superset.
+        showToast("Superset → \(partner.name)")
         return true
     }
 
@@ -6501,6 +6533,9 @@ final class MorpheAppStore {
         // Activation = the FIRST logged workout — captured before the append
         // makes it un-first.
         let isActivation = currentAthleteWorkoutLogs.isEmpty
+        // Tier changes make new Today cards appear — SAY so, or the page
+        // silently rearranging reads as a glitch (audit finding).
+        let tierBefore = todayExperienceTier
         let loggedExercises = makeLoggedExercisesFromCurrentWorkout()
         // PRs must be diffed against the bests BEFORE this session lands in
         // the logs — afterwards the new top IS the best and nothing is new.
@@ -6590,6 +6625,12 @@ final class MorpheAppStore {
         // Weekly board + joined challenges: the freshly-appended log is now
         // part of the weekly totals — mirror them up (opt-in gated inside).
         publishCompetitionScores()
+
+        if todayExperienceTier > tierBefore {
+            showToast(todayExperienceTier == 1
+                ? "Today unlocked new cards — your metrics and adjustment tools are live."
+                : "Today unlocked pattern insights — keep logging.")
+        }
 
         // A logged session that IS the program's next session advances the
         // program (count-based, so a missed week just resumes).
@@ -6813,7 +6854,11 @@ final class MorpheAppStore {
     var hasUsedAIAgent: Bool = UserDefaults.standard.bool(forKey: "morphe.ai.used")
 
     func openAIAgent() {
-        if !hasUsedAIAgent {
+        // The pill keeps its "Morphe AI" label for the first few opens —
+        // de-labeling after ONE tap left a mystery sparkle (audit finding).
+        let opens = UserDefaults.standard.integer(forKey: "morphe.ai.opens") + 1
+        UserDefaults.standard.set(opens, forKey: "morphe.ai.opens")
+        if !hasUsedAIAgent, opens >= 3 {
             hasUsedAIAgent = true
             UserDefaults.standard.set(true, forKey: "morphe.ai.used")
         }
@@ -6981,6 +7026,16 @@ final class MorpheAppStore {
             return "Done — \(named.name) is live in Train."
         }
 
+        // "log bench 3x10" names an exercise the parser ignores — logging
+        // it against whatever's active would be a silent mis-log. Guide
+        // instead of guessing.
+        if has("log", "did", "add"), Self.parseSetCommand(lower) == nil,
+           lower.range(of: #"(?:log|did|add)\s+[a-z][a-z ]+\d{1,2}\s*[x×]\s*\d"#,
+                       options: .regularExpression) != nil {
+            let active = activeWorkoutExercise?.name ?? "the active exercise"
+            return "I log against \(active) — swap to the exercise you mean in Train, then say \"log 3x10 at 135\"."
+        }
+
         // Mid-session set logging: "log 3x10 at 135". Weight omitted falls
         // back to the same suggestion the console uses — a real number from
         // this user's history, never an invention.
@@ -7093,11 +7148,19 @@ final class MorpheAppStore {
         Haptics.impact(.light)
     }
 
+    /// Consumed by the inbox: a deep link that wants a SPECIFIC thread
+    /// open, surviving the pane's session-long mount (the local
+    /// auto-open-once flag can't re-fire for later deep links).
+    var pendingThreadOpenID: String?
+
     func openCommunity(_ section: ClientCommunitySection = .forYou) {
         // Both Network sections are REAL in v1: For You is the Firestore
         // feed, Contact is the coach-thread inbox (with an honest empty
         // state naming the coach-link unlock). Contact is THE messaging
         // destination — every "message" door in the app routes here.
+        if section == .contact, liveThreads.count == 1, let only = liveThreads.first {
+            pendingThreadOpenID = only.id
+        }
         selectedCommunitySection = section
         selectedClientTab = .community
         Haptics.impact(.light)
@@ -7718,9 +7781,10 @@ final class MorpheAppStore {
     func updateCustomAccent(hex: String) {
         guard MorpheTheme.color(fromHex: hex) != nil else { return }
         profileShowcase.customAccentHex = hex
-        if profileShowcase.accentPalette == .custom {
-            MorpheTheme.apply(accentPalette: .custom, customHex: hex)
-        }
+        // Always re-apply (with the CURRENT palette): the Custom dot's
+        // preview swatch reads the theme's custom color, so it must track
+        // the picker even while another palette is active.
+        MorpheTheme.apply(accentPalette: profileShowcase.accentPalette, customHex: hex)
         persistLocalProfile()
     }
 
@@ -8728,6 +8792,11 @@ final class MorpheAppStore {
             Task { @MainActor [weak self] in
                 guard let self, self.activeThreadId == thread.id else { return }
                 self.activeThreadMessages = messages
+                // Every delivery while the thread is on screen IS seen —
+                // stamping here (not just open/close) means a message you
+                // watched arrive can't resurface as unread after a swipe
+                // that never fires onDisappear.
+                self.markThreadRead(thread.id)
             }
         }
     }
@@ -8883,6 +8952,14 @@ final class MorpheAppStore {
     private var reactionStateFetchedIds: Set<String> = []
     /// False once a page comes back short — hides the "Load older" row.
     private(set) var feedHasOlderPosts = false
+    /// Paging cursor tracked from the RAW fetched page (not the filtered
+    /// render list) — a fully-filtered page still advances it, so LOAD
+    /// OLDER can never stall re-fetching the same blocked page forever.
+    private var feedPageCursor: Date?
+    /// Presence window: every post of the last 24h, fetched independently
+    /// of the paginated feed — Trained Today and Duo Streaks read this
+    /// union so page size can't shrink who shows as present.
+    private(set) var presencePosts: [FeedPost] = []
 
     /// Pulls the newest posts + their real reaction counts + this account's
     /// bookmarks. Runs on launch/sign-in and tab visits (both soft: within
@@ -8905,17 +8982,37 @@ final class MorpheAppStore {
         if let fetched = await feedService.fetchRecent(limit: Self.feedPageSize, before: nil) {
             feedFetchState = .loaded
             lastFeedRefreshAt = .now
-            feedHasOlderPosts = fetched.count == Self.feedPageSize
             // Two-layer render filter: blocked authors are the user's call;
             // the term filter is the App Store 1.2 hygiene net for content
             // other clients let through. workoutName is user-typed text too —
             // a slur in the pill is still a slur.
             // Arrivals fade in instead of popping — the shell animates,
             // the content shouldn't snap.
+            let cleanPage = fetched.filter { renderableFeedPost($0) }
             withAnimation(.easeInOut(duration: 0.25)) {
-                feedPosts = fetched.filter { renderableFeedPost($0) }
+                if feedPosts.isEmpty {
+                    feedPosts = cleanPage
+                } else {
+                    // MERGE, never replace: a refresh must not delete the
+                    // pages the user scrolled through (or their scroll
+                    // position). New posts go on top; known posts update
+                    // in place; older pages stay.
+                    let pageIds = Set(cleanPage.map(\.id))
+                    let kept = feedPosts.filter { !pageIds.contains($0.id) }
+                    feedPosts = (cleanPage + kept).sorted { $0.createdAt > $1.createdAt }
+                }
             }
-            await hydrateReactionState(for: feedPosts.map(\.id), uid: uid, force: force)
+            if feedPageCursor == nil || feedPosts.count <= Self.feedPageSize {
+                feedPageCursor = fetched.last?.createdAt
+                feedHasOlderPosts = fetched.count == Self.feedPageSize
+            }
+            await hydrateReactionState(for: cleanPage.map(\.id), uid: uid, force: force)
+            // Presence is its own bounded query — the 24h rail must not
+            // shrink just because the feed paginates in 20s.
+            if let recent = await feedService.fetchSince(
+                date: Date.now.addingTimeInterval(-24 * 3600), limit: 60) {
+                presencePosts = recent.filter { renderableFeedPost($0) }
+            }
         } else if feedPosts.isEmpty {
             // Nothing fetched AND nothing on screen — that's a failure the
             // user must see, not an empty state. Existing content just
@@ -8936,13 +9033,16 @@ final class MorpheAppStore {
         await refreshReferralCount()
     }
 
-    /// Appends the next page below the loaded feed (cursor on createdAt).
+    /// Appends the next page below the loaded feed. The cursor advances
+    /// from the RAW page even when every row was filtered out — otherwise
+    /// one fully-blocked page would stall pagination forever.
     func loadOlderFeedPosts() async {
-        guard let uid = authUser?.id, let oldest = feedPosts.last?.createdAt,
-              feedHasOlderPosts else { return }
+        guard let uid = authUser?.id, feedHasOlderPosts,
+              let cursor = feedPageCursor ?? feedPosts.last?.createdAt else { return }
         guard let fetched = await feedService.fetchRecent(
-            limit: Self.feedPageSize, before: oldest) else { return }
+            limit: Self.feedPageSize, before: cursor) else { return }
         feedHasOlderPosts = fetched.count == Self.feedPageSize
+        feedPageCursor = fetched.last?.createdAt ?? cursor
         let known = Set(feedPosts.map(\.id))
         let fresh = fetched.filter { !known.contains($0.id) && renderableFeedPost($0) }
         guard !fresh.isEmpty else { return }
@@ -9222,11 +9322,20 @@ final class MorpheAppStore {
     /// Followed presence from the loaded feed: authors with sub-24h posts.
     /// Self sorts first (your bubble is the mirror), then unseen, then most
     /// recent activity.
+    /// The union the presence surfaces read: the dedicated 24h query plus
+    /// whatever feed pages are loaded, deduped by post id.
+    private var presenceUnionPosts: [FeedPost] {
+        var byId: [String: FeedPost] = [:]
+        for post in feedPosts { byId[post.id] = post }
+        for post in presencePosts { byId[post.id] = post }
+        return Array(byId.values)
+    }
+
     var trainedTodayEntries: [TrainedTodayEntry] {
         _ = storySeenTick
         let cutoff = Date.now.addingTimeInterval(-24 * 3600)
         let seen = Set(UserDefaults.standard.stringArray(forKey: storySeenKey) ?? [])
-        let fresh = feedPosts.filter { $0.createdAt >= cutoff }
+        let fresh = presenceUnionPosts.filter { $0.createdAt >= cutoff }
         guard !fresh.isEmpty else { return [] }
         let myUid = authUser?.id ?? ""
         return Dictionary(grouping: fresh, by: \.authorUid)
@@ -9237,7 +9346,9 @@ final class MorpheAppStore {
                     name: ordered.last?.authorName ?? "Athlete",
                     verified: ordered.contains { $0.verified },
                     posts: ordered,
-                    hasUnseen: ordered.contains { !seen.contains($0.id) }
+                    // Your own bubble is the mirror, not "new content you
+                    // haven't watched" — it never wears the unseen ring.
+                    hasUnseen: uid == myUid ? false : ordered.contains { !seen.contains($0.id) }
                 )
             }
             .sorted { lhs, rhs in
@@ -9268,8 +9379,12 @@ final class MorpheAppStore {
     func duoStreak(with authorUid: String) -> Int {
         guard let myUid = authUser?.id, authorUid != myUid else { return 0 }
         let calendar = Calendar.current
+        // Window-derived (loaded pages + the 24h presence query): a long
+        // streak whose posts sit past the loaded window UNDERCOUNTS —
+        // never overclaims. Same honesty stance as the chat streak.
+        let pool = presenceUnionPosts
         func postDays(_ uid: String) -> Set<Date> {
-            Set(feedPosts.filter { $0.authorUid == uid }
+            Set(pool.filter { $0.authorUid == uid }
                 .map { calendar.startOfDay(for: $0.createdAt) })
         }
         let both = postDays(myUid).intersection(postDays(authorUid))
@@ -10992,7 +11107,14 @@ final class MorpheAppStore {
             }
         case .hub:
             if lowercasedPrompt.contains("score") || lowercasedPrompt.contains("trend") || lowercasedPrompt.contains("report") {
-                return "Your current Morphe score is \(clientProfile.health.score), and the trend is moving in the right direction because consistency is holding. The next improvement is less about pushing harder and more about keeping recovery and logging tighter."
+                // The narrative is gated on the actual streak — "moving in
+                // the right direction" was claimed unconditionally before,
+                // including while the score was falling.
+                let streak = clientProfile.level.streak
+                let trendLine = streak >= 2
+                    ? "the trend is holding because your \(streak)-day streak is doing the work"
+                    : "the fastest way to move it is simply logging the next session"
+                return "Your current Morphe score is \(clientProfile.health.score), and \(trendLine). Score grows with sessions this week and your streak — nothing else feeds it."
             }
 
             if lowercasedPrompt.contains("pattern") || lowercasedPrompt.contains("fix") {

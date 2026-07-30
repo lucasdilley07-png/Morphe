@@ -31,6 +31,14 @@ struct CommunityView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
+        // The paged panes stay mounted, so .task never re-fires on a
+        // swipe — without this, the inbox (one-shot fetch) only updated
+        // on cold launch and unread state froze.
+        .onChange(of: store.selectedCommunitySection) { _, section in
+            if section == .contact {
+                Task { await store.refreshThreads() }
+            }
+        }
         .sheet(item: $selectedStory) { story in
             StoryHighlightSheet(story: story)
         }
@@ -54,14 +62,22 @@ struct CommunityView: View {
             Button {
                 showFormCamera = true
             } label: {
-                Image(systemName: "camera.fill")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(MorpheTheme.accent)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(MorpheTheme.panelStrong))
+                // Labeled: a bare camera glyph in a social header reads as
+                // "post a photo" — this one records a form-check clip.
+                VStack(spacing: 2) {
+                    Image(systemName: "camera.fill")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accent)
+                    Text("FORM")
+                        .font(MorpheTheme.microLabel(8))
+                        .tracking(1.0)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .frame(width: 48, height: 48)
+                .background(Circle().fill(MorpheTheme.panelStrong))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Form camera")
+            .accessibilityLabel("Form Check camera")
         }
         .padding(.horizontal, 20)
         .padding(.top, topPadding)
@@ -147,8 +163,11 @@ struct CommunityView: View {
         }
         .refreshable {
             // The one surface that always hits the network — an explicit
-            // pull is the user asking for fresh.
+            // pull is the user asking for fresh. The board + challenges
+            // render on this page too, so they refresh with it.
             await store.refreshFeed(force: true)
+            await store.refreshLeaderboard(force: true)
+            await store.refreshChallenges(force: true)
         }
     }
 
@@ -1437,6 +1456,14 @@ private struct RealFeedSection: View {
                 onEmptySelf: { composerFocused = true }
             )
 
+            // The rail's one-line legend — the ring colors and flame chip
+            // were an unexplained color puzzle (audit finding).
+            if !store.trainedTodayEntries.isEmpty {
+                Text("Gold ring = sessions you haven't watched · flame = Duo Streak (days you both posted)")
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+
             composer
 
             CompetitionPulseCard()
@@ -1478,18 +1505,31 @@ private struct RealFeedSection: View {
                 // Cursor paging (READINESS-300 R4): the feed loads one page;
                 // history is a tap away instead of 50 posts of reads up front.
                 if store.feedHasOlderPosts, !store.feedPosts.isEmpty {
-                    Button {
-                        Task { await store.loadOlderFeedPosts() }
-                    } label: {
-                        Text("LOAD OLDER")
-                            .font(MorpheTheme.microLabel(11))
-                            .tracking(1.4)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .contentShape(Rectangle())
+                    if filter == .all {
+                        Button {
+                            Task { await store.loadOlderFeedPosts() }
+                        } label: {
+                            Text("Load Older")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .stroke(MorpheTheme.stroke, lineWidth: 1)
+                                )
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Load older posts")
+                    } else {
+                        // Paging under a filter looked broken: a fetched
+                        // page can contain zero matching posts, so the list
+                        // "does nothing". Name the behavior instead.
+                        Text("Filtering what's loaded — switch to All to load older posts.")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Load older posts")
                 }
             }
         }
@@ -1767,7 +1807,10 @@ private struct TrainedTodayRow: View {
                     // The board rides the row as its own tile: presence for
                     // the week's competition, not just the last 24h.
                     if let boardLeader {
-                        StoryBubble(initial: "#1", name: boardLeader, ringState: .seen) {
+                        // Named "Board", not the leader — a person's name
+                        // under a presence-style bubble reads as "they
+                        // posted a story", which this is not.
+                        StoryBubble(initial: "#1", name: "Board", ringState: .seen) {
                             onOpenBoard()
                         }
                         .accessibilityLabel("Weekly board — \(boardLeader) leads")
@@ -1962,7 +2005,10 @@ private struct StorySessionViewer: View {
                         .accessibilityLabel(isMine ? "Remove \(reaction.label)" : reaction.label)
                     }
 
-                    TextField("Reply…", text: $replyDraft)
+                    // "Comment" not "Reply": every story app trains people
+                    // that a story reply is private. This one publishes a
+                    // public comment on the post — the label must say so.
+                    TextField("Comment publicly…", text: $replyDraft)
                         .textFieldStyle(MorpheFieldStyle())
                         .focused($replyFocused)
                         .onSubmit { sendReply() }
@@ -2878,6 +2924,7 @@ struct ThreadChatView: View {
     /// chevron when the view is presented on its own (single-thread sheet).
     var onBack: (() -> Void)? = nil
     @State private var draft = ""
+    @State private var streakExplainerVisible = false
 
     private var myUid: String { store.authUser?.id ?? "" }
     private var counterpart: String { thread.counterpartName(for: myUid) }
@@ -2940,6 +2987,15 @@ struct ThreadChatView: View {
                         }
                         .foregroundStyle(MorpheTheme.accent)
                         .accessibilityLabel("\(chatStreak) day chat streak")
+                        // The chip explains itself on tap — no glossary hunt.
+                        .onTapGesture {
+                            streakExplainerVisible = true
+                        }
+                        .alert("Chat Streak", isPresented: $streakExplainerVisible) {
+                            Button("Got It", role: .cancel) {}
+                        } message: {
+                            Text("\(chatStreak) days in a row you've both sent a message. An unanswered morning doesn't break it — a full silent day does.")
+                        }
                     } else {
                         Text("Conversation")
                             .font(.caption)
@@ -3091,12 +3147,25 @@ struct AthleteInboxView: View {
         }
         .task {
             await store.refreshThreads()
+            consumePendingThreadOpen()
             if autoOpenOnlyThread, !didAutoOpen, openedThread == nil,
                store.liveThreads.count == 1 {
                 didAutoOpen = true
                 openedThread = store.liveThreads.first
             }
         }
+        // Deep links re-fire while the pane stays mounted — the local
+        // auto-open-once flag can't serve them, the pending id can.
+        .onChange(of: store.pendingThreadOpenID) { _, _ in
+            consumePendingThreadOpen()
+        }
+    }
+
+    private func consumePendingThreadOpen() {
+        guard let pending = store.pendingThreadOpenID,
+              let thread = store.liveThreads.first(where: { $0.id == pending }) else { return }
+        store.pendingThreadOpenID = nil
+        openedThread = thread
     }
 
     private var threadList: some View {

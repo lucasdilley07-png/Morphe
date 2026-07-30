@@ -932,6 +932,15 @@ struct FormCheckView: View {
             VStack {
                 header
 
+                // Expectations set BEFORE the first rep, not in a footnote:
+                // this frames and counts — it does not diagnose form.
+                Text("Framing + rep counting. A training aid, not a form diagnosis.")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Color.black.opacity(0.45)))
+
                 // Per-rep grade pop-up at the top — clear of the framing pill
                 // and rep counter at the bottom.
                 if let flashGrade {

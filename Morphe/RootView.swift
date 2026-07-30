@@ -8,6 +8,9 @@ import AVFoundation
 struct TermsGateView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var showDeclineConfirm = false
+    /// Read-only mode: the onboarding "read the terms" link shows the SAME
+    /// document without the accept/decline controls — one text, two doors.
+    var readOnly = false
 
     private static let sections: [(title: String, body: String)] = [
         ("Not medical advice",
@@ -61,20 +64,22 @@ struct TermsGateView: View {
                 .padding(.bottom, 16)
             }
 
-            VStack(spacing: 10) {
-                Button("I Agree") {
-                    store.acceptTerms()
-                }
-                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+            if !readOnly {
+                VStack(spacing: 10) {
+                    Button("I Agree") {
+                        store.acceptTerms()
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
-                Button("I Disagree") {
-                    showDeclineConfirm = true
+                    Button("I Disagree") {
+                        showDeclineConfirm = true
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
                 }
-                .buttonStyle(SecondaryCTAButtonStyle())
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+                .background(.black.opacity(0.35))
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background(.black.opacity(0.35))
         }
         .alert("Decline the terms?", isPresented: $showDeclineConfirm) {
             Button("Sign Out", role: .destructive) {
@@ -613,13 +618,13 @@ private struct FloatingAIAgentButton: View {
         .contextMenu {
             ForEach(store.aiAgentQuickPrompts.prefix(4), id: \.self) { prompt in
                 Button(prompt) {
-                    // Action prompts navigate — the result IS the feedback,
-                    // so no sheet. Conversational prompts open the chat so
-                    // the reply is actually visible (it used to open a sheet
-                    // that the action layer instantly closed).
-                    if !store.sendAIAgentPrompt(prompt) {
-                        store.openAIAgent()
-                    }
+                    // Open FIRST, then send: navigation actions close the
+                    // sheet in the same transaction (never presents), while
+                    // conversational replies AND action declines ("you have
+                    // an unlogged session…") stay visible. The old
+                    // open-on-false logic swallowed declines entirely.
+                    store.openAIAgent()
+                    store.sendAIAgentPrompt(prompt)
                 }
             }
         }

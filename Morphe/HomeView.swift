@@ -111,10 +111,12 @@ struct HomeView: View {
                     if store.minimumWinModeEnabled {
                         MinimumWinModeCard(
                             message: store.minimumWinMessage,
-                            tasks: store.minimumWinTasks
-                        ) { task in
-                            store.toggleMinimumWinTask(task)
-                        }
+                            tasks: store.minimumWinTasks,
+                            onToggle: { task in
+                                store.toggleMinimumWinTask(task)
+                            },
+                            onExit: { store.deactivateMinimumWinMode() }
+                        )
                     } else {
                         // Daily wins stay visible from day 0 — small
                         // checkable tasks give a brand-new user something to
@@ -493,7 +495,7 @@ private struct TodayStatusStrip: View {
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                 } else {
-                    Text("Your Morphe Score, readiness, and energy show up here once you log your first workout.")
+                    Text("Morphe Score reads your consistency (sessions + streak, 10–100), readiness comes from your check-ins, and energy is what you report. All three go live with your first logged workout.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -781,7 +783,7 @@ private struct WorkoutPlanByCoachMiniCard: View {
                     MetricPill(label: "Current Phase", value: phase)
                 }
 
-                Text("\(profile.currentProgram) was built from your goal, sport, and schedule. Morphe adjusts the daily plan as you check in and log.")
+                Text("\(profile.currentProgram) is your starting plan, built from your goal, sport, and schedule. Adjust anything — your check-ins shape the day-to-day suggestions.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
             }
@@ -881,7 +883,7 @@ private struct DailyCheckInPlannerCard: View {
                 }
 
                 HStack {
-                    Text("Need a Plan B?")
+                    Text("Not feeling it? Easier options")
                         .font(.headline)
                         .foregroundStyle(.white)
                     Spacer()
@@ -998,9 +1000,11 @@ private struct RecoveryCheckInSheet: View {
                         }
                     }
 
-                    ratingRow("Energy", value: $energy, range: 1...10)
-                    ratingRow("Soreness", value: $soreness, range: 0...10)
-                    ratingRow("Mood", value: $mood, range: 1...10)
+                    // Anchored scales — bare 1–10 numbers left "what does a
+                    // 6 mean" as guesswork (audit finding).
+                    ratingRow("Energy", value: $energy, range: 1...10, anchors: "1 = drained · 10 = fully charged")
+                    ratingRow("Soreness", value: $soreness, range: 0...10, anchors: "0 = fresh · 10 = can barely move")
+                    ratingRow("Mood", value: $mood, range: 1...10, anchors: "1 = rough day · 10 = great")
 
                     Toggle(isOn: $pain) {
                         Text("Any pain or sharp discomfort?")
@@ -1050,17 +1054,24 @@ private struct RecoveryCheckInSheet: View {
         }
     }
 
-    private func ratingRow(_ title: String, value: Binding<Int>, range: ClosedRange<Int>) -> some View {
-        HStack {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
-            Spacer()
-            Stepper("\(value.wrappedValue)/\(range.upperBound)", value: value, in: range)
-                .labelsHidden()
-            Text("\(value.wrappedValue)/\(range.upperBound)")
-                .foregroundStyle(MorpheTheme.accent)
-                .frame(width: 48, alignment: .trailing)
+    private func ratingRow(_ title: String, value: Binding<Int>, range: ClosedRange<Int>, anchors: String = "") -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Spacer()
+                Stepper("\(value.wrappedValue)/\(range.upperBound)", value: value, in: range)
+                    .labelsHidden()
+                Text("\(value.wrappedValue)/\(range.upperBound)")
+                    .foregroundStyle(MorpheTheme.accent)
+                    .frame(width: 48, alignment: .trailing)
+            }
+            if !anchors.isEmpty {
+                Text(anchors)
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(title))

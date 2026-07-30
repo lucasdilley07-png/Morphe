@@ -288,7 +288,7 @@ struct WorkoutView: View {
                 // — a second Finish/Discard row here would just compete.
                 if !store.isTrackedWorkoutComplete {
                     HStack(spacing: 10) {
-                        Button("Finish Session") {
+                        Button("Finish & Review") {
                             if store.finishTrackedWorkoutSession() {
                                 restRunning = false
                             }
@@ -452,6 +452,24 @@ struct WorkoutView: View {
                 // Right after a finish, reviewing and logging IS the task —
                 // it leads the screen instead of hiding below planning cards.
                 if store.hasCompletedWorkoutFlow {
+                    // The unmissable truth: finished ≠ saved. The celebration
+                    // used to FEEL terminal while nothing was in history yet.
+                    HStack(spacing: 10) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.subheadline.weight(.bold))
+                        Text("Not saved yet — tap Log Workout below to keep this session.")
+                            .font(.caption.weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(.black)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(MorpheTheme.brandYellow)
+                    )
+                    .accessibilityElement(children: .combine)
+
                     SessionRecapCard(
                         items: store.sessionRecapItems,
                         weightUnit: store.weightUnit
@@ -991,7 +1009,7 @@ private struct WorkoutCompleteCard: View {
                     }
                 }
 
-                Button("Finish Session", action: onFinish)
+                Button("Finish & Review", action: onFinish)
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
             }
         }
@@ -1754,6 +1772,12 @@ private struct SetConsoleRow: View {
                     .frame(maxWidth: .infinity)
                     .focused($fieldFocused)
                     .onAppear { fieldFocused = true }
+                    // Commit on EVERY keystroke, not just focus loss: "type
+                    // 102.5 → tap Log Set without dismissing the pad" used
+                    // to race the commit and log the stale value.
+                    .onChange(of: draft) { _, _ in
+                        commitKeepingFocus(onDirectEntry)
+                    }
                     .onChange(of: fieldFocused) { _, focused in
                         if !focused { commit(onDirectEntry) }
                     }
@@ -1762,7 +1786,15 @@ private struct SetConsoleRow: View {
                     draft = ""
                     isTyping = true
                 } label: {
+                    // The dashed underline is the "you can type here" hint —
+                    // the affordance used to live only in the VoiceOver label.
                     valueText
+                        .overlay(alignment: .bottom) {
+                            Rectangle()
+                                .fill(MorpheTheme.textMuted.opacity(0.45))
+                                .frame(height: 1)
+                                .padding(.horizontal, 14)
+                        }
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -1790,6 +1822,12 @@ private struct SetConsoleRow: View {
 
     private func commit(_ handler: (Double) -> Void) {
         defer { isTyping = false }
+        commitKeepingFocus(handler)
+    }
+
+    /// The live-typing commit: pushes every valid partial value into the
+    /// binding without ending editing (a trailing "." parses next stroke).
+    private func commitKeepingFocus(_ handler: (Double) -> Void) {
         // Comma decimals type fine on EU keyboards; empty/garbage = no-op.
         let normalized = draft.replacingOccurrences(of: ",", with: ".")
         guard let parsed = Double(normalized), parsed.isFinite else { return }
@@ -2722,6 +2760,29 @@ private struct DiscoverCatalogSection: View {
 
             if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 searchResultsList
+            } else if activeFilterCount > 0, filteredWorkouts.isEmpty {
+                // Stacked filters CAN zero out the catalog — without this
+                // the page just went blank and read as broken.
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("No workouts match these filters")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Text("The combination is too narrow — loosen one, or start fresh.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                        Button("Clear Filters") {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                goalFilter = nil
+                                durationFilter = nil
+                                equipmentFilter = nil
+                                levelFilter = nil
+                            }
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .frame(width: 140)
+                    }
+                }
             } else {
             newThisWeekSection
             mostDoneSection
@@ -2880,9 +2941,11 @@ private struct DiscoverCatalogSection: View {
                 // Goals used to be seven loose chips beside two menus).
                 filterMenuChip("Time", selection: $durationFilter, options: Self.durationBuckets) { $0 }
 
-                if equipmentOptions.count > 1 {
-                    filterMenuChip("Equipment", selection: $equipmentFilter, options: equipmentOptions) { $0 }
-                }
+                // Always present — a filter that vanishes between categories
+                // reads as a glitch and jolts the row's layout.
+                filterMenuChip("Equipment", selection: $equipmentFilter, options: equipmentOptions) { $0 }
+                    .disabled(equipmentOptions.count <= 1)
+                    .opacity(equipmentOptions.count <= 1 ? 0.4 : 1)
 
                 filterMenuChip(
                     "Goals",
@@ -3233,7 +3296,7 @@ private struct DiscoverWorkoutDetailSheet: View {
                         // "Stage Today" (was "Queue"): sets it as today's
                         // workout in Train WITHOUT starting the session —
                         // the old label read like a synonym for Start.
-                        Button("Stage Today") {
+                        Button("Train Today") {
                             dismiss()
                             store.openWorkoutTemplate(template)
                         }
@@ -4008,7 +4071,16 @@ private struct WorkoutRestControlBar: View {
             RestTimerActivityController.update(secondsRemaining: newValue)
         }
         .onAppear {
-            if isRunning { startCountdown() }
+            if isRunning {
+                startCountdown()
+            } else if let end = RestTimerSharedState.readEndDate(), end > .now {
+                // Mid-session relaunch: the session restored but this bar's
+                // state is view-local — a FUTURE shared anchor means rest
+                // was running when the app died. Resume from the wall clock
+                // instead of coming back dead.
+                seconds = max(Int(end.timeIntervalSinceNow.rounded()), 1)
+                isRunning = true
+            }
         }
         .onDisappear {
             cancelCountdown()
@@ -4967,8 +5039,10 @@ private struct SetRepLoggingSheet: View {
 
                         Spacer(minLength: 0)
 
-                        // The RPE lesson, at the exact moment RPE is asked.
-                        Button(showRPEHelp ? "Hide" : "What's RPE?") {
+                        // The effort lesson, at the exact moment it's asked —
+                        // and named for the scale actually displayed (the
+                        // button used to say "RPE" even in RIR mode).
+                        Button(showRPEHelp ? "Hide" : "What's \(store.effortScaleRIR ? "RIR" : "RPE")?") {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 showRPEHelp.toggle()
                             }
@@ -4979,7 +5053,9 @@ private struct SetRepLoggingSheet: View {
 
                     if showRPEHelp,
                        let lesson = store.lessons.first(where: { $0.title == "The RPE Scale" }) {
-                        Text(lesson.detail)
+                        // Per-value anchors — "10 = empty tank" alone left
+                        // 6-9 as guesswork.
+                        Text(lesson.detail + "\n\nQuick anchors — 6: easy, could talk. 7: solid work, 3+ reps left. 8: hard, 2 left. 9: 1 left. 10: nothing left." + (store.effortScaleRIR ? " RIR flips the count: RIR = reps left in the tank." : ""))
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -5352,7 +5428,7 @@ private struct SavedWorkoutsLibraryCard: View {
 
                             Menu {
                                 Button("Start") { onStartBuilt(template) }
-                                Button("Stage Today") { onQueueBuilt(template) }
+                                Button("Train Today") { onQueueBuilt(template) }
                                 Button("Edit") { onEditBuilt(template) }
                                 folderSubmenu(templateID: template.id)
                                 Button("Delete", role: .destructive) { onDeleteBuilt(template) }
@@ -5436,7 +5512,7 @@ private struct SavedWorkoutsLibraryCard: View {
                                 Menu {
                                     // Stage Today = make it today's workout,
                                     // staged in Train without starting.
-                                    Button("Stage Today") {
+                                    Button("Train Today") {
                                         onQueue(item)
                                     }
 

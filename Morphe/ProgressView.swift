@@ -996,13 +996,27 @@ private struct ProgressHeroStrip: View {
     var showMetrics: Bool = true
 
     @State private var sharePayload: ShareCardPayload?
+    @State private var showScoreExplainer = false
 
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
                 if showMetrics {
                     HStack(spacing: 8) {
-                        MetricPill(label: "Morphe Score", value: "\(score)")
+                        // The headline number finally explains itself — it
+                        // was presented with zero definition (audit finding).
+                        Button {
+                            showScoreExplainer = true
+                        } label: {
+                            MetricPill(label: "Morphe Score", value: "\(score)")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Morphe Score \(score) — tap to learn what drives it")
+                        .alert("Morphe Score", isPresented: $showScoreExplainer) {
+                            Button("Got It", role: .cancel) {}
+                        } message: {
+                            Text("A 10–100 consistency read: it grows with the sessions you log this week and your day streak (capped at a week's worth) — nothing else feeds it. Peak ≥90 · Strong 75+ · Momentum 60+ · Building 40+ · Rebuilding below that.")
+                        }
                         MetricPill(label: "This Week", value: "\(consistency)/\(max(consistencyTarget, 1))")
                         MetricPill(label: "Streak", value: "\(streak) days")
 
@@ -1123,8 +1137,8 @@ private struct StrengthOverTimeCard: View {
                 }
 
                 Text(metric == .topSet
-                     ? "Heaviest set per session for one exercise."
-                     : "Estimated 1RM per session — weight × (1 + reps/30) on your best set. Arithmetic, not a promise.")
+                     ? "Heaviest set per session for one exercise. Warm-up sets excluded."
+                     : "Estimated 1RM per session — weight × (1 + reps/30) on your best set. Warm-up sets excluded. Arithmetic, not a promise.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -1594,7 +1608,7 @@ private struct LogOldWorkoutSheet: View {
                             Text("Log Old Workout")
                                 .font(.title3.weight(.bold))
                                 .foregroundStyle(.white)
-                            Text("Trained but didn't track it? Pick the session and the day — your streak and stats recompute from what actually happened.")
+                            Text("Trained but didn't track it? Pick the session and the day (up to 14 days back) — your streak and stats recompute from what actually happened.")
                                 .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -2021,11 +2035,20 @@ private struct WorkoutHistoryCard: View {
                                     Button("Edit") { editingLog = log }
                                     Button("Delete", role: .destructive) { deletingLog = log }
                                 } label: {
-                                    Image(systemName: "ellipsis")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundStyle(MorpheTheme.textMuted)
-                                        .frame(width: 44, height: 32)
-                                        .contentShape(Rectangle())
+                                    // A visible word, not a bare ellipsis —
+                                    // users never discovered logs were
+                                    // editable, so bad data stayed.
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "pencil")
+                                            .font(.caption2.weight(.bold))
+                                        Text("EDIT")
+                                            .font(MorpheTheme.microLabel(9))
+                                            .tracking(0.8)
+                                    }
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                                    .frame(height: 32)
+                                    .padding(.horizontal, 8)
+                                    .contentShape(Rectangle())
                                 }
                                 .accessibilityLabel("Edit or delete \(log.workoutTitle)")
                             }

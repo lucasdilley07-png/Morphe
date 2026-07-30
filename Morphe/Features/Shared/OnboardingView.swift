@@ -364,7 +364,8 @@ struct OnboardingFlowView: View {
             UsernameStep(
                 entry: $usernameEntry,
                 isChecking: isReservingUsername,
-                error: usernameError
+                error: usernameError,
+                suggestedBase: store.onboardingDraft.name
             )
         case .gender:
             GenderStep()
@@ -458,6 +459,9 @@ private struct UsernameStep: View {
     @Binding var entry: String
     let isChecking: Bool
     let error: String?
+    /// Prefill seed (the user's name) — the step suggests a handle instead
+    /// of demanding invention; it stays fully editable.
+    var suggestedBase: String = ""
 
     private var preview: String { UsernameRules.normalize(entry) }
 
@@ -473,7 +477,7 @@ private struct UsernameStep: View {
                     .font(.title2.weight(.bold))
                     .foregroundStyle(.white)
 
-                Text("This is how coaches and training partners find you. Letters, numbers, and underscores — every username is one of a kind.")
+                Text("This is how coaches and training partners find you later. We suggested one — keep it, tweak it, or replace it. You can change it anytime in Profile.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -481,6 +485,12 @@ private struct UsernameStep: View {
                     .textFieldStyle(MorpheFieldStyle())
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .onAppear {
+                        guard entry.isEmpty else { return }
+                        let base = UsernameRules.normalize(suggestedBase)
+                        guard !base.isEmpty else { return }
+                        entry = "\(base)\(Int.random(in: 10...99))"
+                    }
 
                 if !preview.isEmpty {
                     Text("@\(preview)")
@@ -511,7 +521,7 @@ private struct CoachCodeStep: View {
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
-                Text("TRAIN WITH A COACH")
+                Text("OPTIONAL — TRAIN WITH A COACH")
                     .font(MorpheTheme.microLabel())
                     .tracking(1.4)
                     .foregroundStyle(MorpheTheme.accent)
@@ -565,12 +575,18 @@ private struct WelcomeLandingStep: View {
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
 
+                    // The promise matches the flow — it used to say "4 quick
+                    // things" while the flow ran 13 screens (audit finding).
                     VStack(alignment: .leading, spacing: 10) {
-                        LandingPoint(index: 1, text: "Create your profile")
-                        LandingPoint(index: 2, text: "Pick your goal and sport")
-                        LandingPoint(index: 3, text: "Set your weekly schedule")
+                        LandingPoint(index: 1, text: "Set up your profile and handle")
+                        LandingPoint(index: 2, text: "Pick your goals, sport, and schedule")
+                        LandingPoint(index: 3, text: "Tell us about gear, food, and injuries")
                         LandingPoint(index: 4, text: "Morphe builds your starting plan")
                     }
+
+                    Text("A dozen quick taps — a couple of minutes, and every answer shapes the plan.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
                 }
             }
 
@@ -772,7 +788,7 @@ private struct AccountTypeStep: View {
 
                 GlassCard {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(store.onboardingDraft.accountType == .coach ? "Coach account includes athlete oversight, CRM, outreach, and program tools." : "Athlete account includes daily plans, workouts, progress, coach support, and community.")
+                        Text(store.onboardingDraft.accountType == .coach ? "Coach account: track your athletes, message them, and build their programs." : "Athlete account includes daily plans, workouts, progress, coach support, and community.")
                             .foregroundStyle(MorpheTheme.textPrimary)
 
                         Text("You are setting up the main identity Morphe should open into first.")
@@ -822,11 +838,17 @@ private struct GoalSelectionStep: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
 
+                    // Marked optional with worked examples — three blank
+                    // required-looking boxes stalled new users cold.
+                    Text("All optional — skip these and set them later in Profile.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+
                     // 30/60/90-day horizons: short placeholders that never
                     // truncate, and vertical-axis fields so anything longer
                     // wraps into view instead of getting cut off.
                     TextField(
-                        "Your 30-day goal",
+                        "30 days — e.g. \"train 3x a week\"",
                         text: $store.onboardingDraft.physicalGoalTarget,
                         axis: .vertical
                     )
@@ -834,7 +856,7 @@ private struct GoalSelectionStep: View {
                     .lineLimit(1...4)
 
                     TextField(
-                        "Your 60-day goal",
+                        "60 days — e.g. \"down 5 lb, stronger squat\"",
                         text: $store.onboardingDraft.weightGoalTarget,
                         axis: .vertical
                     )
@@ -842,7 +864,7 @@ private struct GoalSelectionStep: View {
                     .lineLimit(1...4)
 
                     TextField(
-                        "Your 90-day goal",
+                        "90 days — e.g. \"first 5K\" or a date",
                         text: $store.onboardingDraft.goalDeadline,
                         axis: .vertical
                     )
@@ -917,7 +939,7 @@ private struct InjuryPainStep: View {
     var body: some View {
         OnboardingCard(
             title: "Any injuries, pain, or health considerations?",
-            subtitle: "Include past surgeries, implants, or medications that affect training. Morphe uses this to suggest safer options — it never replaces your doctor's advice."
+            subtitle: "Optional — share only what you're comfortable with. It stays in your profile (on your device + your own backup) and only shapes safer workout suggestions. Never a substitute for your doctor's advice."
         ) {
             TextField("Example: Knee surgery 2024, blood-pressure medication", text: $text, axis: .vertical)
                 .textFieldStyle(MorpheFieldStyle())
@@ -955,6 +977,7 @@ private struct ScheduleStep: View {
 
 private struct ProfileReviewStep: View {
     @Environment(MorpheAppStore.self) private var store
+    @State private var showFullTerms = false
 
     private var generatedPlan: (phase: String, goalTranslation: GoalTranslation, firstTask: String, message: String) {
         MorpheDemoContent.generatedPlan(from: store.onboardingDraft)
@@ -1065,11 +1088,24 @@ private struct ProfileReviewStep: View {
                 // Required consent — the finish button stays disabled until
                 // checked, and agreeing here satisfies the terms gate too.
                 Toggle(isOn: $store.onboardingDraft.agreedToTerms) {
-                    Text("I agree to Morphe's Terms of Use and Privacy Policy")
+                    Text("I agree to Morphe's Terms of Use")
                         .font(.subheadline)
                         .foregroundStyle(.white)
                 }
                 .tint(MorpheTheme.accent)
+
+                // The document the toggle refers to, one tap away — agreeing
+                // to invisible terms was an audit (and App Store) problem.
+                Button("Read the full terms") {
+                    showFullTerms = true
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.accentAlt)
+                .sheet(isPresented: $showFullTerms) {
+                    TermsGateView(readOnly: true)
+                        .environment(store)
+                        .background(PremiumBackground().ignoresSafeArea())
+                }
 
                 // App Store 1.2: consenting users must know abusive content
                 // has zero tolerance and gets people removed.

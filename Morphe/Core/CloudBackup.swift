@@ -557,6 +557,9 @@ protocol FeedSyncing: AnyObject {
     /// Newest posts first, or nil when offline/unavailable. `before`
     /// pages older content (createdAt strictly earlier than the cursor).
     func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]?
+    /// Posts newer than `date` (presence window) — independent of the
+    /// paginated feed so "Trained Today" can't shrink with page size.
+    func fetchSince(date: Date, limit: Int) async -> [FeedPost]?
     /// Writes this uid's single reaction doc with `type` ("heart"/"fire"/
     /// "power"/"clap"), or removes it when type is nil. Still one doc per
     /// uid, so counts stay honest whatever the type.
@@ -597,6 +600,7 @@ protocol FeedSyncing: AnyObject {
 final class NoOpFeedService: FeedSyncing {
     func publish(post: FeedPost) async -> Bool { false }
     func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]? { nil }
+    func fetchSince(date: Date, limit: Int) async -> [FeedPost]? { nil }
     func react(postId: String, uid: String, type: String?) {}
     func fetchReactionCounts(postIds: [String]) async -> [String: Int] { [:] }
     func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]? { nil }
@@ -654,6 +658,17 @@ final class FirebaseFeedService: FeedSyncing {
         } catch {
             return false
         }
+    }
+
+    func fetchSince(date: Date, limit: Int) async -> [FeedPost]? {
+        // Same-field range + order — no composite index needed.
+        guard let snapshot = try? await posts
+            .order(by: "createdAt", descending: true)
+            .whereField("createdAt", isGreaterThan: Timestamp(date: date))
+            .limit(to: limit)
+            .getDocuments()
+        else { return nil }
+        return snapshot.documents.compactMap { Self.post(from: $0.documentID, data: $0.data()) }
     }
 
     func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]? {

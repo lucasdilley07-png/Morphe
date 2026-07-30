@@ -3695,6 +3695,7 @@ final class SocialFeedTests: XCTestCase {
     final class LiveFeedStub: FeedSyncing {
         func publish(post: FeedPost) async -> Bool { false }
         func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]? { nil }
+        func fetchSince(date: Date, limit: Int) async -> [FeedPost]? { nil }
         func react(postId: String, uid: String, type: String?) {}
         func fetchReactionCounts(postIds: [String]) async -> [String: Int] { [:] }
         func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]? { nil }
@@ -3793,13 +3794,15 @@ final class SocialFeedTests: XCTestCase {
         var entries = store.trainedTodayEntries
         XCTAssertEqual(entries.map(\.id), ["uid-test", "friend"],
                        "24h lens: stale authors drop out; self sorts first")
-        XCTAssertTrue(entries.allSatisfy(\.hasUnseen))
+        // Your own bubble is the mirror — it NEVER claims "new content you
+        // haven't seen" (audit fix); only others' bubbles carry the ring.
+        XCTAssertFalse(entries[0].hasUnseen, "self bubble never wears the unseen ring")
+        XCTAssertTrue(entries[1].hasUnseen)
 
         // Seeing the friend's only post clears their ring, not the order rule.
         store.markStorySeen(store.feedPosts[1])
         entries = store.trainedTodayEntries
         XCTAssertFalse(entries[1].hasUnseen, "seen state flips the ring")
-        XCTAssertTrue(entries[0].hasUnseen, "own unseen post untouched")
 
         UserDefaults.standard.removeObject(forKey: seenKey)
     }
@@ -4858,6 +4861,10 @@ final class FeedReadDietTests: XCTestCase {
             fetchRecentCalls += 1
             return Array((before == nil ? posts : olderPosts).prefix(limit))
         }
+        var sincePosts: [FeedPost] = []
+        func fetchSince(date: Date, limit: Int) async -> [FeedPost]? {
+            Array(sincePosts.prefix(limit))
+        }
         func react(postId: String, uid: String, type: String?) {}
         func fetchReactionCounts(postIds: [String]) async -> [String: Int] {
             reactionCountCalls.append(postIds)
@@ -5071,5 +5078,81 @@ final class CustomizationTests: XCTestCase {
     func testCustomPaletteIsFreeForEveryone() {
         let store = freshStore()
         XCTAssertTrue(store.isPaletteUnlocked(.custom))
+    }
+}
+
+// MARK: - Full-audit regression fixes
+@MainActor
+final class AuditFixTests: XCTestCase {
+
+    private func post(_ i: Int, minutesAgo: Int) -> FeedPost {
+        FeedPost(id: "ap\(i)", authorUid: "author-\(i)", authorName: "A\(i)",
+                 text: "p", createdAt: Date.now.addingTimeInterval(-Double(minutesAgo) * 60))
+    }
+
+    private func makeStore(_ service: FeedReadDietTests.CountingFeedService) -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore(feedService: service)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "me-uid", email: "s@m.app", role: .athlete,
+                                 displayName: "Sarah", createdAt: .now)
+        return store
+    }
+
+    func testForcedRefreshPreservesLoadedPages() async {
+        let service = FeedReadDietTests.CountingFeedService()
+        service.posts = (0..<20).map { post($0, minutesAgo: $0 + 1) }
+        service.olderPosts = (20..<28).map { post($0, minutesAgo: $0 + 1) }
+        let store = makeStore(service)
+
+        await store.refreshFeed()
+        await store.loadOlderFeedPosts()
+        XCTAssertEqual(store.feedPosts.count, 28)
+
+        await store.refreshFeed(force: true)
+        XCTAssertEqual(store.feedPosts.count, 28,
+                       "pull-to-refresh must merge, never delete paginated pages")
+    }
+
+    func testPresenceRailIsIndependentOfPageSize() async {
+        let service = FeedReadDietTests.CountingFeedService()
+        service.posts = (0..<20).map { post($0, minutesAgo: $0 + 1) }
+        // An author whose only <24h post sits BEYOND page one.
+        service.sincePosts = [post(99, minutesAgo: 300)]
+        let store = makeStore(service)
+
+        await store.refreshFeed()
+        XCTAssertTrue(store.trainedTodayEntries.contains { $0.id == "author-99" },
+                      "presence must come from the 24h query, not the paginated window")
+    }
+
+    func testMinimumWinModeHasAnExit() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.activateMinimumWinMode()
+        XCTAssertTrue(store.minimumWinModeEnabled)
+        store.deactivateMinimumWinMode()
+        XCTAssertFalse(store.minimumWinModeEnabled, "activation must not be a one-way door")
+    }
+
+    func testNamedExerciseLogCommandGuidesInsteadOfMislogging() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.beginLiveWorkout(store.workoutTemplates.first!)
+
+        XCTAssertTrue(store.sendAIAgentPrompt("log bench press 3x10 at 135"))
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+        let sets = store.workoutLogs.first?.exercises.first?.repsPerSet ?? []
+        XCTAssertTrue(sets.isEmpty, "a named exercise must guide, never silently log against the active one")
     }
 }
