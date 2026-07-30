@@ -915,6 +915,52 @@ struct ProfileView: View {
                         .accessibilityLabel("Export your data as JSON")
                     }
 
+                    // Backup health — failures used to be invisible (the
+                    // upload was fire-and-forget). Only rendered when a real
+                    // signed-in backup target exists.
+                    if store.cloudBackupActive {
+                        Divider().overlay(Color.white.opacity(0.08))
+
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                switch store.logBackupState {
+                                case .idle:
+                                    Text("Cloud backup")
+                                        .foregroundStyle(.white)
+                                    Text("Your history uploads after each change.")
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                case .current(let at):
+                                    Text("Cloud backup ✓")
+                                        .foregroundStyle(.white)
+                                    Text("History backed up \(at.formatted(.relative(presentation: .named))).")
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                case .behind:
+                                    Text("Backup behind")
+                                        .foregroundStyle(MorpheTheme.warning)
+                                    Text("The last upload didn't land — retrying. Your data is safe on this phone.")
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                }
+                                if store.logBackupNearLimit {
+                                    Text("Heads up: your history is approaching the backup size limit.")
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.warning)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                            if store.logBackupState == .behind {
+                                Button("Back Up Now") {
+                                    store.requestImmediateLogBackup()
+                                }
+                                .buttonStyle(SecondaryCTAButtonStyle())
+                                .frame(width: 120)
+                                .accessibilityLabel("Retry the cloud backup now")
+                            }
+                        }
+                    }
+
                     // Morphe Pro — DORMANT until App Store Connect products
                     // exist; while the storefront flag is off nothing here
                     // renders and everything stays free.

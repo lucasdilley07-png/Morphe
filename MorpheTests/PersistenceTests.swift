@@ -5212,3 +5212,72 @@ final class AIParityTests: XCTestCase {
         XCTAssertEqual(insight.title, "This week, from your logs")
     }
 }
+
+// MARK: - Backup health (surfaced failures + retry)
+@MainActor
+final class BackupHealthTests: XCTestCase {
+
+    final class SpyBackup: CloudBackingUp {
+        var pushResult = true
+        var pushCount = 0
+        func setUser(_ uid: String?) {}
+        func pushProfile(_ snapshot: LocalProfileSnapshot) {}
+        func pushLogs(_ logs: [WorkoutLog]) async -> Bool {
+            pushCount += 1
+            return pushResult
+        }
+        func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry]) {}
+        func pushExtras(_ blobs: [String: String]) {}
+        func pull() async -> CloudSnapshot { CloudSnapshot() }
+        func eraseUser() async {}
+    }
+
+    private func freshStore(backup: CloudBackingUp) -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore(cloudBackup: backup)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "me-uid", email: "s@m.app", role: .athlete,
+                                 displayName: "Sarah", createdAt: .now)
+        return store
+    }
+
+    func testSuccessfulPushIsCurrent() async {
+        let spy = SpyBackup()
+        let store = freshStore(backup: spy)
+        await store.flushLogBackupNow()
+        XCTAssertEqual(spy.pushCount, 1)
+        if case .current = store.logBackupState {} else {
+            XCTFail("a landed push must read as current, got \(store.logBackupState)")
+        }
+    }
+
+    func testFailedPushSurfacesBehindAndArmsRetry() async {
+        let spy = SpyBackup()
+        spy.pushResult = false
+        let store = freshStore(backup: spy)
+        await store.flushLogBackupNow()
+        XCTAssertEqual(store.logBackupState, .behind,
+                       "a failed upload must be VISIBLE, not silent")
+
+        // Manual retry after the network comes back.
+        spy.pushResult = true
+        await store.flushLogBackupNow()
+        if case .current = store.logBackupState {} else {
+            XCTFail("recovery must clear the behind state")
+        }
+    }
+
+    func testInertBackupNeverClaimsBackedUp() async {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        XCTAssertFalse(store.cloudBackupActive)
+        await store.flushLogBackupNow()
+        XCTAssertEqual(store.logBackupState, .idle,
+                       "no real backup target → no 'backed up ✓' claim")
+    }
+}

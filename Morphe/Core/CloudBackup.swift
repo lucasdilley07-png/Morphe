@@ -40,7 +40,11 @@ protocol CloudBackingUp: AnyObject {
     /// are dropped, so demo/pre-sign-in state never lands in the cloud.
     func setUser(_ uid: String?)
     func pushProfile(_ snapshot: LocalProfileSnapshot)
-    func pushLogs(_ logs: [WorkoutLog])
+    /// True when the history doc landed. False = the backup is BEHIND —
+    /// callers surface it; fire-and-forget silently stranded users whose
+    /// uploads failed (audit finding).
+    @discardableResult
+    func pushLogs(_ logs: [WorkoutLog]) async -> Bool
     func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry])
     /// The per-profile blob bag (see CloudSnapshot.extras) — merged by
     /// name server-side-of-write, so a device missing a blob can't erase it.
@@ -56,7 +60,8 @@ protocol CloudBackingUp: AnyObject {
 final class NoOpCloudBackup: CloudBackingUp {
     func setUser(_ uid: String?) {}
     func pushProfile(_ snapshot: LocalProfileSnapshot) {}
-    func pushLogs(_ logs: [WorkoutLog]) {}
+    // "Nothing to back up to" is not "behind" — inert reports success.
+    func pushLogs(_ logs: [WorkoutLog]) async -> Bool { true }
     func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry]) {}
     func pushExtras(_ blobs: [String: String]) {}
     func pull() async -> CloudSnapshot { CloudSnapshot() }
@@ -1112,16 +1117,21 @@ final class FirebaseCloudBackup: CloudBackingUp {
         ])
     }
 
-    func pushLogs(_ logs: [WorkoutLog]) {
+    func pushLogs(_ logs: [WorkoutLog]) async -> Bool {
         guard let doc = stateDoc("logs"),
               let data = try? encoder.encode(logs),
-              let json = String(data: data, encoding: .utf8) else { return }
-        doc.setData([
-            "schemaVersion": 1,
-            "count": logs.count,
-            "json": json,
-            "updatedAt": FieldValue.serverTimestamp()
-        ])
+              let json = String(data: data, encoding: .utf8) else { return false }
+        do {
+            try await doc.setData([
+                "schemaVersion": 1,
+                "count": logs.count,
+                "json": json,
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+            return true
+        } catch {
+            return false
+        }
     }
 
     func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry]) {

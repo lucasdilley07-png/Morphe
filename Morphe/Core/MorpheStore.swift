@@ -225,7 +225,7 @@ final class MorpheAppStore {
             logPushDebounce = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: 8_000_000_000)
                 guard !Task.isCancelled, let self else { return }
-                self.cloudBackup.pushLogs(self.workoutLogs)
+                await self.flushLogBackupNow()
             }
         }
     }
@@ -233,6 +233,58 @@ final class MorpheAppStore {
     /// True while a cloud restore writes logs — pulled data must not echo
     /// straight back up as a fresh push.
     private var suppressLogCloudPush = false
+
+    // MARK: Backup health (surfaced, not silent)
+    //
+    // The history upload used to be fire-and-forget: a failed push meant
+    // cloud backup silently stopped and the user never knew. Now every
+    // push reports, failures show in Profile, and a bounded retry ladder
+    // (30s → 2m → 5m) runs before giving up until the next change or a
+    // manual Back Up Now.
+
+    enum LogBackupState: Equatable {
+        case idle
+        case current(Date)
+        case behind
+    }
+    private(set) var logBackupState: LogBackupState = .idle
+    /// Firestore's hard document cap is 1 MiB — flips at ~800 KB so the
+    /// warning shows well before writes start failing outright.
+    private(set) var logBackupNearLimit = false
+    private var logPushRetryCount = 0
+
+    /// A real signed-in backup target exists (inert/no-op doesn't count).
+    var cloudBackupActive: Bool {
+        !(cloudBackup is NoOpCloudBackup) && authUser != nil
+    }
+
+    /// Profile's "Back Up Now": skip the debounce, push immediately.
+    func requestImmediateLogBackup() {
+        logPushDebounce?.cancel()
+        Task { await flushLogBackupNow() }
+    }
+
+    func flushLogBackupNow() async {
+        guard hasCompletedOnboarding else { return }
+        let logs = workoutLogs
+        if let data = try? JSONEncoder().encode(logs) {
+            logBackupNearLimit = data.count > 800_000
+        }
+        if await cloudBackup.pushLogs(logs) {
+            logBackupState = cloudBackupActive ? .current(.now) : .idle
+            logPushRetryCount = 0
+        } else {
+            logBackupState = .behind
+            guard logPushRetryCount < 3 else { return }
+            let delaySeconds: UInt64 = [30, 120, 300][logPushRetryCount]
+            logPushRetryCount += 1
+            logPushDebounce = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: delaySeconds * 1_000_000_000)
+                guard !Task.isCancelled, let self else { return }
+                await self.flushLogBackupNow()
+            }
+        }
+    }
     var workoutAccessGrants: [AthleteAccessGrant]
     var workoutHistory: [WorkoutHistoryEntry]
     var healthTrend: [DayScore]
@@ -901,6 +953,10 @@ final class MorpheAppStore {
         reactionStateFetchedIds = []
         lastFeedRefreshAt = nil
         feedPageCursor = nil
+        // Backup health belongs to the signed-out account.
+        logBackupState = .idle
+        logBackupNearLimit = false
+        logPushRetryCount = 0
         // The rest of the fetched social/coach state follows the same
         // "another account must never see it" rule.
         myReactionTypes = [:]
