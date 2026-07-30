@@ -148,7 +148,9 @@ struct HomeView: View {
                         SmartPlanAdjustmentCard(adjustment: store.currentPlanAdjustment)
                     }
 
-                    AIInsightCard(insight: store.isWorkoutLoggedToday ? store.clientProfile.aiProgressInsight : store.clientProfile.aiTodayInsight)
+                    // Derived from real logs/check-ins when they exist; the
+                    // static tips are only the zero-data fallback (AI-6).
+                    AIInsightCard(insight: store.isWorkoutLoggedToday ? store.derivedProgressInsight : store.derivedTodayInsight)
 
                     if !store.isWorkoutLoggedToday {
                         DailyCheckInPlannerCard(

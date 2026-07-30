@@ -2417,10 +2417,13 @@ final class MorpheAppStore {
     var aiAgentQuickPrompts: [String] {
         if selectedRole == .coach {
             switch selectedCoachTab {
+            // Every advertised prompt gets a real answer or a real action —
+            // the "Draft…" prompts pretended to a feature that doesn't exist
+            // (AI-7 audit finding).
             case .dashboard:
-                return ["Who needs attention today?", "Summarize this week's priorities", "Draft a quick outreach message", "Suggest a lighter plan adjustment"]
+                return ["Who needs attention today?", "Open athletes", "Summarize this week's priorities", "What can you do?"]
             case .athletes:
-                return ["Summarize this athlete", "What should I watch for?", "Draft a coach note", "What follow-up should I send?"]
+                return ["Summarize this athlete", "Who needs attention today?", "Open programs", "What can you do?"]
             case .train:
                 return ["Start my workout", "Suggest a swap", "I'm short on time", "What can you do?"]
             case .discover:
@@ -6924,8 +6927,13 @@ final class MorpheAppStore {
 
         if selectedRole == .coach {
             coachAIAgentConversation.append(ThreadMessage(sender: .user, senderName: coachProfile.name, text: cleanText, timestamp: "Now"))
-            coachAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: coachAgentReply(to: cleanText), timestamp: "Now"))
-            return false
+            // Coaches get an action layer too (AI-7): navigation and a
+            // real who-needs-attention answer — parity with the athlete
+            // side instead of advertising actions that did nothing.
+            let actionReply = coachAssistantActionReply(for: cleanText)
+            let reply = actionReply ?? coachAgentReply(to: cleanText)
+            coachAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now"))
+            return actionReply != nil
         } else {
             athleteAIAgentConversation.append(ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now"))
             // Actions first: if the ask maps to something Morphe AI can DO
@@ -7095,6 +7103,13 @@ final class MorpheAppStore {
             closeAIAgent()
             return "Opened Progress — your score, strength trend, and workout history are there."
         }
+        // Library BEFORE lessons (AI-5): "learn proper form" is a form-guide
+        // ask, and "learn" alone used to hijack it into Lessons.
+        if has("library", "exercise", "form guide", "form", "anatomy", "technique") {
+            openMore(.library)
+            closeAIAgent()
+            return "Opened the exercise library — pick a muscle group to browse form guides."
+        }
         if has("lesson", "quiz", "learn") {
             openMore(.learn)
             closeAIAgent()
@@ -7104,11 +7119,6 @@ final class MorpheAppStore {
             selectedClientTab = .discover
             closeAIAgent()
             return "Opened Discover — pick a training style to browse its workouts."
-        }
-        if has("library", "exercise", "form guide", "anatomy") {
-            openMore(.library)
-            closeAIAgent()
-            return "Opened the exercise library — pick a muscle group to browse form guides."
         }
         if has("profile", "settings", "injur", "rename", "training days") {
             // Two sheets can't co-present: dismiss the chat, then present the
@@ -9438,6 +9448,47 @@ final class MorpheAppStore {
         return streak
     }
 
+    // MARK: Derived insights (AI-6) — read from real logs, never templates
+    // when data exists. The static profile tips remain the honest zero-data
+    // fallback.
+
+    /// The Progress-flavored Home insight: this week's real numbers.
+    var derivedProgressInsight: AIInsight {
+        let logs = currentAthleteWorkoutLogs
+        guard !logs.isEmpty else { return clientProfile.aiProgressInsight }
+        let calendar = Calendar.current
+        let thisWeek = logs.filter {
+            calendar.isDate($0.completedAt, equalTo: .now, toGranularity: .weekOfYear)
+        }.count
+        let streak = clientProfile.level.streak
+        var summary = thisWeek == 0
+            ? "Nothing logged yet this week — your history is \(logs.count) session\(logs.count == 1 ? "" : "s") deep, so the next one just continues the story."
+            : "\(thisWeek) session\(thisWeek == 1 ? "" : "s") logged this week."
+        if streak >= 2 { summary += " Streak: \(streak) days." }
+        return AIInsight(
+            title: "This week, from your logs",
+            summary: summary,
+            risk: .low,
+            recommendation: thisWeek == 0
+                ? "One session today restarts the week's count."
+                : "Repeatable beats perfect — same again next session.",
+            suggestedAction: "Review your progress"
+        )
+    }
+
+    /// The Today-flavored insight: the actual planned session + the real
+    /// check-in when one exists; the rotating generic tip only before data.
+    var derivedTodayInsight: AIInsight {
+        guard didCompleteQuickCheckIn else { return clientProfile.aiTodayInsight }
+        return AIInsight(
+            title: "Today, from your check-in",
+            summary: "Up: \(currentWorkout.name). Readiness \(recovery.score) from what you reported — \(recovery.score >= 70 ? "green light for the full plan" : recovery.score >= 40 ? "train, but leave a rep in the tank" : "a lighter day protects the streak better than a heroic one").",
+            risk: recovery.score >= 70 ? .low : recovery.score >= 40 ? .medium : .high,
+            recommendation: "The plan already reflects your check-in.",
+            suggestedAction: "Start today's workout"
+        )
+    }
+
     /// Seen is per-profile and capped — a lens state, not data.
     func markStorySeen(_ post: FeedPost) {
         var seen = UserDefaults.standard.stringArray(forKey: storySeenKey) ?? []
@@ -11134,6 +11185,52 @@ final class MorpheAppStore {
         return MorpheDemoContent.aiCoachReply(to: prompt, tone: profileShowcase.coachingTone)
     }
 
+    /// Coach action layer (AI-7): what it can actually DO. Everything here
+    /// either navigates or answers from real store data — no drafting
+    /// theater. Returns nil for conversational asks.
+    private func coachAssistantActionReply(for text: String) -> String? {
+        let lower = text.lowercased()
+        func has(_ words: String...) -> Bool { words.contains { lower.contains($0) } }
+
+        if has("what can you do", "help me use", "commands") || lower == "help" {
+            return "I can open any workspace tab (\"open athletes\"), tell you who needs attention today — derived from your athletes' real logs — and answer coaching questions. I don't draft messages yet, and I won't pretend to."
+        }
+
+        // Real data, not vibes: quiet = no logged session this week.
+        if has("who needs attention", "needs attention", "who's behind", "whos behind", "who is behind") {
+            guard !coachClients.isEmpty else {
+                return "No athletes on your roster yet — add one from Athletes and I'll track who goes quiet."
+            }
+            let calendar = Calendar.current
+            let quiet = coachClients.filter { athlete in
+                !workoutLogs(for: athlete.id).contains {
+                    calendar.isDate($0.completedAt, equalTo: .now, toGranularity: .weekOfYear)
+                }
+            }.map(\.name)
+            if quiet.isEmpty {
+                return "All \(coachClients.count) athletes have a logged session this week. Nobody's quiet — good week."
+            }
+            return "\(quiet.prefix(4).joined(separator: ", ")) \(quiet.count == 1 ? "hasn't" : "haven't") logged a session this week — start there."
+        }
+
+        if has("open athletes", "show athletes", "my athletes", "my roster", "open roster") {
+            selectedCoachTab = .athletes; closeAIAgent(); return "Opened Athletes."
+        }
+        if has("open dashboard", "go to dashboard", "show dashboard") {
+            selectedCoachTab = .dashboard; closeAIAgent(); return "Opened the dashboard."
+        }
+        if has("open programs", "go to programs", "show programs") {
+            selectedCoachTab = .programs; closeAIAgent(); return "Opened Programs."
+        }
+        if has("open discover", "browse workouts", "find a workout") {
+            selectedCoachTab = .discover; closeAIAgent(); return "Opened Discover."
+        }
+        if has("open train", "my training", "my own workout") {
+            selectedCoachTab = .train; closeAIAgent(); return "Opened Train."
+        }
+        return nil
+    }
+
     private func coachAgentReply(to prompt: String) -> String {
         let lowercasedPrompt = prompt.lowercased()
         let athleteName = selectedCoachClient?.name ?? coachClients.first?.name ?? "your athlete"
@@ -11142,7 +11239,9 @@ final class MorpheAppStore {
 
         switch selectedCoachTab {
         case .dashboard:
-            if lowercasedPrompt.contains("attention") || lowercasedPrompt.contains("priority") {
+            // "priorit" catches both "priority" and "priorities" — the
+            // advertised quick prompt used to miss its own branch.
+            if lowercasedPrompt.contains("attention") || lowercasedPrompt.contains("priorit") {
                 return "\(coachOverview.insight.summary) Start with the highest-friction athlete first, remove one blocker, and keep the next step easy to complete today."
             }
         case .athletes:

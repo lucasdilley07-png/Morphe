@@ -5156,3 +5156,59 @@ final class AuditFixTests: XCTestCase {
         XCTAssertTrue(sets.isEmpty, "a named exercise must guide, never silently log against the active one")
     }
 }
+
+// MARK: - AI parity wave (AI-5/6/7)
+@MainActor
+final class AIParityTests: XCTestCase {
+
+    private func freshStore() -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    func testFormAsksRouteToTheLibraryNotLessons() {
+        let store = freshStore()
+        XCTAssertTrue(store.sendAIAgentPrompt("show me proper form for squats"))
+        XCTAssertEqual(store.selectedClientTab, .more)
+        XCTAssertEqual(store.selectedHubFeature, .library,
+                       "a form ask is a form-guide ask — Lessons used to hijack it")
+    }
+
+    func testCoachActionLayerNavigates() {
+        let store = freshStore()
+        store.selectedRole = .coach
+        XCTAssertTrue(store.sendAIAgentPrompt("open athletes"))
+        XCTAssertEqual(store.selectedCoachTab, .athletes)
+    }
+
+    func testCoachAttentionAnswerDerivesFromRealLogs() {
+        let store = freshStore()
+        store.selectedRole = .coach
+        XCTAssertTrue(store.sendAIAgentPrompt("who needs attention today?"),
+                      "the attention ask is an answered action, not template chat")
+        let reply = store.coachAIAgentConversation.last?.text ?? ""
+        // Whatever the roster state, the reply must be the derived shape —
+        // never the old canned "highest-friction athlete" template.
+        XCTAssertFalse(reply.contains("highest-friction athlete"))
+    }
+
+    func testDerivedInsightsAreHonestAboutData() {
+        let store = freshStore()
+        // Zero data: falls back to the generic tip, no invented numbers.
+        XCTAssertEqual(store.derivedProgressInsight.title, store.clientProfile.aiProgressInsight.title)
+
+        store.beginLiveWorkout(store.workoutTemplates.first!)
+        store.completeTrackedSet(reps: 8, weight: 50, allowExtra: true)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+
+        let insight = store.derivedProgressInsight
+        XCTAssertTrue(insight.summary.contains("1 session"),
+                      "with real logs the insight reads the real count")
+        XCTAssertEqual(insight.title, "This week, from your logs")
+    }
+}

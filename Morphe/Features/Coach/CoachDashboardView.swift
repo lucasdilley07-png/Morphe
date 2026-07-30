@@ -471,7 +471,7 @@ private struct CoachCommandCenterScreen: View {
             if let athlete = store.coachClients.first(where: { $0.id == recommendation.athleteID }) {
                 store.selectedCoachTab = .programs
                 store.openClientHub(athlete)
-                store.announce("Opened \(athlete.name) for AI review.")
+                store.announce("Opened \(athlete.name) for log review.")
             }
         case .reviewBuddy:
             if let athlete = store.coachClients.first(where: { $0.id == recommendation.athleteID }) {
@@ -2833,12 +2833,14 @@ private struct CoachMessagesScreen: View {
         }
 
         if pendingCount > 0 {
-            return "AI review"
+            return "Log review"
         }
         if store.coachOverview.checkInsNeeded > 0 {
             return "Coach summary"
         }
-        return "AI ready"
+        // No badge when idle — "AI ready" advertised a pipeline that no
+        // longer exists (AI-1 removal).
+        return nil
     }
 
     private var coachAIContextDetail: String {
@@ -2847,10 +2849,10 @@ private struct CoachMessagesScreen: View {
         }
 
         if pendingCount > 0 {
-            return "\(pendingCount) AI-imported workout \(pendingCount == 1 ? "log needs" : "logs need") coach review."
+            return "\(pendingCount) imported workout \(pendingCount == 1 ? "log needs" : "logs need") coach review."
         }
         if store.coachOverview.checkInsNeeded > 0 {
-            return "Use Morphe AI to summarize who needs attention and draft clean outreach quickly."
+            return "Ask Morphe who needs attention today — answered from your athletes\u{2019} real logs."
         }
         return "Ask Morphe quick training questions and workspace how-tos while you coach."
     }
@@ -2942,7 +2944,7 @@ private struct CoachMessagesScreen: View {
                 return "\(intervention.reason) • \(intervention.suggestedAction)"
             }
             if pendingAIReviewCount > 0 {
-                return "\(pendingAIReviewCount) AI-imported workout \(pendingAIReviewCount == 1 ? "log still needs" : "logs still need") review."
+                return "\(pendingAIReviewCount) imported workout \(pendingAIReviewCount == 1 ? "log still needs" : "logs still need") review."
             }
             if let session = upcomingSessionForAthlete(athlete) {
                 return "\(session.title) • \(session.day) at \(session.time)"
@@ -3209,7 +3211,7 @@ private struct CoachDashboardTriageCard: View {
             return "Your next live coaching moment is \(nextSession.title)."
         }
         if pendingAIReviewCount > 0 {
-            return "AI review is the fastest way to clear the board right now."
+            return "A pending log review is the fastest way to clear the board."
         }
         return "The board is calm. Keep the next coaching move simple and fast."
     }
