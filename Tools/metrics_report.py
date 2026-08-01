@@ -33,6 +33,12 @@ PROJECT = json.loads(KEY_PATH.read_text())["project_id"]
 FS = f"https://firestore.googleapis.com/v1/projects/{PROJECT}/databases/(default)/documents"
 
 
+# QA/walkthrough accounts (deleted from Auth/Firestore, but telemetry docs
+# are append-only): excluded so the traction table never counts ourselves.
+EXCLUDED_QA_UIDS = {
+    "B7s0xTYRstPfRkcHraxn0LQH7Cq2",  # 2026-08-01 sim onboarding walkthrough
+}
+
 def token() -> str:
     if not credentials.valid:
         credentials.refresh(google.auth.transport.requests.Request())
@@ -57,6 +63,8 @@ def fetch_all_events() -> list:
             uid = fields.get("uid", {}).get("stringValue")
             name = fields.get("name", {}).get("stringValue")
             day = fields.get("day", {}).get("stringValue")
+            if uid in EXCLUDED_QA_UIDS:
+                continue   # internal QA walkthrough accounts — never traction
             if uid and name and day:
                 events.append((uid, name, day))
         page_token = data.get("nextPageToken")
