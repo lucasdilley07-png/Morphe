@@ -9126,6 +9126,52 @@ final class MorpheAppStore {
         await hydrateReactionState(for: fresh.map(\.id), uid: uid, force: false)
     }
 
+    /// Ranked feed (NETWORK-TIKTOK-PLAN T2): a transparent heuristic, not
+    /// a black box — recency decays over ~36h, every reaction and loaded
+    /// comment counts, followed authors get a boost, and a diversity guard
+    /// keeps one hot author from monopolizing the top. Pure + static so
+    /// the ranking is testable and explainable in one sentence.
+    static func rankFeedPosts(
+        _ posts: [FeedPost],
+        reactionCounts: [String: Int],
+        commentCounts: [String: Int],
+        followedUids: Set<String>,
+        now: Date = .now
+    ) -> [FeedPost] {
+        func score(_ post: FeedPost) -> Double {
+            let ageHours = max(0, now.timeIntervalSince(post.createdAt) / 3600)
+            let recency = 100.0 * exp(-ageHours / 36.0)
+            let engagement = Double(reactionCounts[post.id] ?? 0) * 6.0
+                + Double(commentCounts[post.id] ?? 0) * 10.0
+            let followBoost = followedUids.contains(post.authorUid) ? 25.0 : 0.0
+            return recency + engagement + followBoost
+        }
+        let scored = posts.sorted { score($0) > score($1) }
+        // Diversity guard: demote consecutive same-author runs so a burst
+        // poster can't own the whole first screen.
+        var result: [FeedPost] = []
+        var deferred: [FeedPost] = []
+        for post in scored {
+            if post.authorUid == result.last?.authorUid {
+                deferred.append(post)
+            } else {
+                result.append(post)
+            }
+        }
+        result.append(contentsOf: deferred)
+        return result
+    }
+
+    /// The feed in ranked order, from state the store already holds.
+    var rankedFeedPosts: [FeedPost] {
+        Self.rankFeedPosts(
+            feedPosts,
+            reactionCounts: feedReactionCounts,
+            commentCounts: postComments.mapValues(\.count),
+            followedUids: followedUids
+        )
+    }
+
     private func renderableFeedPost(_ post: FeedPost) -> Bool {
         !blockedUids.contains(post.authorUid)
             && !ContentModeration.containsBlockedTerm(post.text)

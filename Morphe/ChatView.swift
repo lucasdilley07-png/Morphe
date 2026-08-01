@@ -1416,7 +1416,7 @@ private let feedVerifiedSealBlue = Color(red: 0.25, green: 0.56, blue: 0.96)
 private struct RealFeedSection: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var draft = ""
-    @State private var filter: FeedFilter = .all
+    @State private var filter: FeedFilter = .ranked
     @State private var repostTarget: FeedPost?
     /// The post whose author view is pushed (a real push, swipe-back works).
     @State private var authorTarget: FeedPost?
@@ -1424,10 +1424,13 @@ private struct RealFeedSection: View {
     @State private var storyTarget: MorpheAppStore.TrainedTodayEntry?
     @State private var showBoardStory = false
     @State private var showRailLegend = false
+    @State private var showImmersive = false
     @FocusState private var composerFocused: Bool
 
     private enum FeedFilter: String, CaseIterable {
-        case all = "All"
+        /// Engagement-ranked (transparent heuristic — see rankFeedPosts).
+        case ranked = "For You"
+        case latest = "Latest"
         case following = "Following"
         case saved = "Saved"
     }
@@ -1436,13 +1439,21 @@ private struct RealFeedSection: View {
 
     private var visiblePosts: [FeedPost] {
         switch filter {
-        case .all:
+        case .ranked:
+            return store.rankedFeedPosts
+        case .latest:
             return store.feedPosts
         case .following:
             return store.feedPosts.filter { store.followedUids.contains($0.authorUid) }
         case .saved:
             return store.feedPosts.filter { store.savedPostIds.contains($0.id) }
         }
+    }
+
+    /// Paging works on both orderings (ranked re-sorts whatever's loaded);
+    /// the filtered lenses page nothing — they're views over loaded posts.
+    private var filterSupportsPaging: Bool {
+        filter == .ranked || filter == .latest
     }
 
     private var cleanDraft: String {
@@ -1542,6 +1553,25 @@ private struct RealFeedSection: View {
                 }
 
                 Spacer()
+
+                // The full-screen door (TIKTOK-PLAN T1).
+                if !visiblePosts.isEmpty {
+                    Button {
+                        showImmersive = true
+                    } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .frame(width: 40, height: 36)
+                            .background(
+                                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                    .stroke(MorpheTheme.stroke, lineWidth: 1)
+                            )
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Open the feed full screen")
+                }
             }
 
             if visiblePosts.isEmpty {
@@ -1565,12 +1595,20 @@ private struct RealFeedSection: View {
                         onRepost: { repostTarget = post },
                         onAuthorTap: { authorTarget = post }
                     )
+                    // Infinite scroll (TIKTOK-PLAN T8): the last loaded card
+                    // pulls the next page in — continuation should be free.
+                    .onAppear {
+                        if post.id == visiblePosts.last?.id, filterSupportsPaging,
+                           store.feedHasOlderPosts {
+                            Task { await store.loadOlderFeedPosts() }
+                        }
+                    }
                 }
 
                 // Cursor paging (READINESS-300 R4): the feed loads one page;
                 // history is a tap away instead of 50 posts of reads up front.
                 if store.feedHasOlderPosts, !store.feedPosts.isEmpty {
-                    if filter == .all {
+                    if filterSupportsPaging {
                         Button {
                             Task { await store.loadOlderFeedPosts() }
                         } label: {
@@ -1590,7 +1628,7 @@ private struct RealFeedSection: View {
                         // Paging under a filter looked broken: a fetched
                         // page can contain zero matching posts, so the list
                         // "does nothing". Name the behavior instead.
-                        Text("Filtering what's loaded — switch to All to load older posts.")
+                        Text("Filtering what's loaded — switch to For You or Latest to load older posts.")
                             .font(.caption2)
                             .foregroundStyle(MorpheTheme.textMuted)
                             .frame(maxWidth: .infinity)
@@ -1612,6 +1650,12 @@ private struct RealFeedSection: View {
         }
         .fullScreenCover(isPresented: $showBoardStory) {
             BoardStoryView()
+                .environment(store)
+        }
+        .fullScreenCover(isPresented: $showImmersive) {
+            // Snapshot of the current lens order at open — the pager owns
+            // continuation from there (it pulls pages itself).
+            ImmersiveFeedViewer(posts: visiblePosts)
                 .environment(store)
         }
         .task {
@@ -1694,7 +1738,7 @@ private struct RealFeedSection: View {
 
     private var emptyStateSymbol: String {
         switch filter {
-        case .all: return "sparkles"
+        case .ranked, .latest: return "sparkles"
         case .following: return "person.2"
         case .saved: return "bookmark"
         }
@@ -1702,7 +1746,7 @@ private struct RealFeedSection: View {
 
     private var emptyStateTitle: String {
         switch filter {
-        case .all: return "No posts yet — share the first win"
+        case .ranked, .latest: return "No posts yet — share the first win"
         case .following: return store.followedUids.isEmpty ? "Nobody followed yet" : "No posts here yet"
         case .saved: return "Nothing saved yet"
         }
@@ -1710,7 +1754,7 @@ private struct RealFeedSection: View {
 
     private var emptyStateDetail: String {
         switch filter {
-        case .all:
+        case .ranked, .latest:
             return "This feed is real people's real training. Your post can be the one that starts it."
         case .following:
             return store.followedUids.isEmpty
@@ -2211,6 +2255,95 @@ private struct BoardStoryView: View {
 
 /// One post as a full-screen HUD stat poster — the share-card language,
 /// live in the viewer.
+/// TIKTOK-PLAN T1: full-screen, one-post-per-screen vertical pager over
+/// the loaded feed — TikTok's consumption pattern on Morphe's honest
+/// data-driven cards. Swipe up advances; the X (or swipe-down on the
+/// cover) exits. When video lands post-Blaze, it slots into these same
+/// pages unchanged.
+struct ImmersiveFeedViewer: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let posts: [FeedPost]
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            PremiumBackground().ignoresSafeArea()
+
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(spacing: 0) {
+                    ForEach(posts) { post in
+                        immersivePage(post)
+                            .containerRelativeFrame(.vertical)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.paging)
+
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close immersive feed")
+            .padding(.trailing, 8)
+        }
+    }
+
+    private func immersivePage(_ post: FeedPost) -> some View {
+        VStack(spacing: 14) {
+            Spacer(minLength: 0)
+            StoryCardView(post: post)
+                .padding(.horizontal, 24)
+
+            // One-gesture engagement: the visible react row from the story
+            // viewer, plus double-tap anywhere on the page.
+            HStack(spacing: 18) {
+                ForEach(MorpheAppStore.reactionTypes, id: \.type) { option in
+                    Button {
+                        store.react(to: post, type: option.type)
+                        Haptics.impact(.light)
+                    } label: {
+                        Image(systemName: option.symbol)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(store.myReactionTypes[post.id] == option.type
+                                ? MorpheTheme.accent : .white)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(option.label)
+                }
+                Spacer()
+                if let count = store.feedReactionCounts[post.id], count > 0 {
+                    Text("\(count)")
+                        .font(.caption.weight(.bold).monospaced())
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                }
+            }
+            .padding(.horizontal, 28)
+            Spacer(minLength: 0)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            store.toggleReaction(post)
+            Haptics.impact(.light)
+        }
+        .onAppear {
+            store.markStorySeen(post)
+            // The pager pulls the next page in before the user runs out.
+            if post.id == posts.last?.id, store.feedHasOlderPosts {
+                Task { await store.loadOlderFeedPosts() }
+            }
+        }
+    }
+}
+
 private struct StoryCardView: View {
     let post: FeedPost
 
@@ -2699,6 +2832,12 @@ private struct FeedPostCard: View {
                     commentsSection
                 }
             }
+        }
+        // Double-tap = react (TIKTOK-PLAN T4): system-wide muscle memory.
+        // Buttons inside keep their single taps; this rides card chrome.
+        .onTapGesture(count: 2) {
+            store.toggleReaction(post)
+            Haptics.impact(.light)
         }
         .contextMenu {
             if isMine {

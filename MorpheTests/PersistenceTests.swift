@@ -5302,3 +5302,47 @@ final class SimplificationTests: XCTestCase {
         XCTAssertTrue(store.isWorkoutLoggedToday)
     }
 }
+
+// MARK: - Ranked feed (TIKTOK-PLAN T2)
+@MainActor
+final class FeedRankingTests: XCTestCase {
+
+    private func post(_ id: String, author: String, hoursAgo: Double) -> FeedPost {
+        FeedPost(id: id, authorUid: author, authorName: author, text: "p",
+                 createdAt: Date.now.addingTimeInterval(-hoursAgo * 3600))
+    }
+
+    func testEngagementOutranksBareRecency() {
+        let fresh = post("fresh", author: "a", hoursAgo: 1)
+        let engaged = post("engaged", author: "b", hoursAgo: 6)
+        let ranked = MorpheAppStore.rankFeedPosts(
+            [fresh, engaged],
+            reactionCounts: ["engaged": 8],
+            commentCounts: ["engaged": 3],
+            followedUids: []
+        )
+        XCTAssertEqual(ranked.first?.id, "engaged",
+                       "8 reactions + 3 comments must beat a 5-hour head start")
+    }
+
+    func testFollowBoostBreaksTies() {
+        let stranger = post("s", author: "stranger", hoursAgo: 2)
+        let friend = post("f", author: "friend", hoursAgo: 2)
+        let ranked = MorpheAppStore.rankFeedPosts(
+            [stranger, friend], reactionCounts: [:], commentCounts: [:],
+            followedUids: ["friend"]
+        )
+        XCTAssertEqual(ranked.first?.id, "f")
+    }
+
+    func testDiversityGuardBreaksAuthorRuns() {
+        let a1 = post("a1", author: "a", hoursAgo: 1)
+        let a2 = post("a2", author: "a", hoursAgo: 2)
+        let b1 = post("b1", author: "b", hoursAgo: 3)
+        let ranked = MorpheAppStore.rankFeedPosts(
+            [a1, a2, b1], reactionCounts: [:], commentCounts: [:], followedUids: []
+        )
+        XCTAssertNotEqual(ranked[1].authorUid, ranked[0].authorUid,
+                          "one author must not own consecutive top slots when others exist")
+    }
+}
