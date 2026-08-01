@@ -537,6 +537,20 @@ final class MorpheAppStore {
     var postAccentIdentity = true {
         didSet { persistTrainingPreferences() }
     }
+    /// Weekday numbers (Calendar 1=Sun…7=Sat) the user plans to train.
+    /// EMPTY = feature off (every day shows the workout hero, as before).
+    var trainingDays: Set<Int> = [] {
+        didSet { persistTrainingPreferences(); refreshDailyTrainingReminder() }
+    }
+
+    /// A planned rest day: the user picked training days and today isn't
+    /// one — and nothing's logged yet (a logged rest day is a training
+    /// day in every way that matters).
+    func plannedRestDay(on date: Date = .now, calendar: Calendar = .current) -> Bool {
+        guard !trainingDays.isEmpty else { return false }
+        return !trainingDays.contains(calendar.component(.weekday, from: date))
+    }
+    var isPlannedRestDay: Bool { plannedRestDay() && !isWorkoutLoggedToday }
     /// Global opt-in for auto-posting finished sessions to the real feed.
     /// Off by default — publishing on the user's behalf is never a surprise.
     var autoShareWorkoutsEnabled = false {
@@ -3324,6 +3338,7 @@ final class MorpheAppStore {
         var effortRIR: Bool?
         var postStreakByline: Bool?
         var postAccentIdentity: Bool?
+        var trainingDaysOfWeek: [Int]?
     }
 
     private var trainingPreferencesDefaultsKey: String {
@@ -3351,6 +3366,7 @@ final class MorpheAppStore {
             effortScaleRIR = false
             postStreakByline = true
             postAccentIdentity = true
+            trainingDays = []
             return
         }
         autoRestTimerEnabled = snapshot.autoRestTimer
@@ -3365,6 +3381,7 @@ final class MorpheAppStore {
         effortScaleRIR = snapshot.effortRIR ?? false
         postStreakByline = snapshot.postStreakByline ?? true
         postAccentIdentity = snapshot.postAccentIdentity ?? true
+        trainingDays = Set(snapshot.trainingDaysOfWeek ?? [])
     }
 
     private func persistTrainingPreferences() {
@@ -3381,7 +3398,8 @@ final class MorpheAppStore {
             archivedClientCodes: Array(archivedClientCodes),
             effortRIR: effortScaleRIR,
             postStreakByline: postStreakByline,
-            postAccentIdentity: postAccentIdentity
+            postAccentIdentity: postAccentIdentity,
+            trainingDaysOfWeek: Array(trainingDays)
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: trainingPreferencesDefaultsKey)
@@ -9887,6 +9905,13 @@ final class MorpheAppStore {
                     bySettingHour: 17, minute: 0, second: 0, of: .now) ?? .now
                 if isWorkoutLoggedToday || target <= .now {
                     target = calendar.date(byAdding: .day, value: 1, to: target) ?? target
+                }
+                // Planned rest days never get a training nag — advance to
+                // the next picked day (bounded walk; empty set = every day).
+                var hops = 0
+                while plannedRestDay(on: target, calendar: calendar), hops < 7 {
+                    target = calendar.date(byAdding: .day, value: 1, to: target) ?? target
+                    hops += 1
                 }
                 let content = UNMutableNotificationContent()
                 content.title = "Today's session: \(self.currentWorkout.name)"

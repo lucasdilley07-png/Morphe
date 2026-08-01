@@ -59,7 +59,28 @@ struct HomeView: View {
                     )
                 }
 
-                if store.isWorkoutLoggedToday {
+                if store.isPlannedRestDay {
+                    // Planned rest day (audit E4): no false "you owe a
+                    // session" hero. Training anyway stays one tap away —
+                    // the card reframes, it never blocks.
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "moon.zzz.fill")
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.accentAlt)
+                                Text("Planned rest day")
+                                    .font(.title3.weight(.bold))
+                                    .foregroundStyle(.white)
+                            }
+                            Text("Today isn't on your training schedule. Recovery is part of the program — or train anyway if you're feeling it.")
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                            Button("Train Anyway") { store.startTodayWorkout() }
+                                .buttonStyle(SecondaryCTAButtonStyle())
+                                .frame(width: 150)
+                        }
+                    }
+                } else if store.isWorkoutLoggedToday {
                     TodayDoneCard(
                         workoutName: store.currentWorkout.name,
                         // The tomorrow-hook (audit E3): the done-state names

@@ -1029,6 +1029,33 @@ struct ProfileView: View {
                         }
                     }
 
+                    // WHICH days (rest-day model): pick them and Today shows
+                    // an honest rest card on off days + the daily reminder
+                    // skips them. None picked = every day is a training day.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Training days")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        HStack(spacing: 6) {
+                            ForEach(Array(zip(1...7, ["S", "M", "T", "W", "T", "F", "S"])), id: \.0) { weekday, label in
+                                Button(label) {
+                                    if store.trainingDays.contains(weekday) {
+                                        store.trainingDays.remove(weekday)
+                                    } else {
+                                        store.trainingDays.insert(weekday)
+                                    }
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: store.trainingDays.contains(weekday), selectedColor: MorpheTheme.accent))
+                                .accessibilityLabel("\(Calendar.current.weekdaySymbols[weekday - 1])\(store.trainingDays.contains(weekday) ? ", training day" : "")")
+                            }
+                        }
+                        Text(store.trainingDays.isEmpty
+                            ? "No days picked — every day shows your workout."
+                            : "Off days show a rest card and skip the reminder.")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+
                     Divider().overlay(Color.white.opacity(0.08))
 
                     // Injuries are safety data — collected in onboarding and

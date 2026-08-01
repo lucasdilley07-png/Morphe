@@ -5376,3 +5376,28 @@ final class ActivityDiffTests: XCTestCase {
         XCTAssertEqual(store.unseenActivityCount, 2, "new engagement re-arms the diff")
     }
 }
+
+// MARK: - Rest days (E4)
+@MainActor
+final class RestDayTests: XCTestCase {
+    func testRestDayDerivationAndPersistence() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertFalse(store.plannedRestDay(), "empty set = feature off, never a rest day")
+
+        let calendar = Calendar.current
+        let todayWeekday = calendar.component(.weekday, from: .now)
+        let otherDay = todayWeekday == 7 ? 1 : todayWeekday + 1
+        store.trainingDays = [otherDay]
+        XCTAssertTrue(store.plannedRestDay(), "today isn't picked → planned rest")
+        store.trainingDays = [todayWeekday]
+        XCTAssertFalse(store.plannedRestDay())
+
+        let relaunched = MorpheAppStore()
+        XCTAssertEqual(relaunched.trainingDays, [todayWeekday], "picked days survive relaunch")
+    }
+}
