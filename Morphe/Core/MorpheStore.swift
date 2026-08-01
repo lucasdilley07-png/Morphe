@@ -972,6 +972,11 @@ final class MorpheAppStore {
         logBackupState = .idle
         logBackupNearLimit = false
         logPushRetryCount = 0
+        // AI transcripts too (audit find): replies interpolate the signed-
+        // out user's real score/goals — the next account must not read
+        // them. Back to the seeded greeting, same as a fresh chat.
+        athleteAIAgentConversation = [athleteAIAgentConversation.first].compactMap { $0 }
+        coachAIAgentConversation = [coachAIAgentConversation.first].compactMap { $0 }
         // The rest of the fetched social/coach state follows the same
         // "another account must never see it" rule.
         myReactionTypes = [:]

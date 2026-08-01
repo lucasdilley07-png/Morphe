@@ -5433,3 +5433,22 @@ final class AIChatUITests: XCTestCase {
         XCTAssertEqual(store.athleteAIAgentConversation.first?.sender, .ai)
     }
 }
+
+// MARK: - Audit fix: AI transcript wiped on sign-out
+@MainActor
+final class AITranscriptPrivacyTests: XCTestCase {
+    func testSignOutClearsTheAITranscript() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        _ = store.sendAIAgentPrompt("what's my goal")
+        XCTAssertGreaterThan(store.athleteAIAgentConversation.count, 1)
+        store.signOut()
+        XCTAssertEqual(store.athleteAIAgentConversation.count, 1,
+                       "the next account must never read a previous user's AI chat")
+        XCTAssertEqual(store.athleteAIAgentConversation.first?.sender, .ai)
+    }
+}
