@@ -37,6 +37,7 @@ FS = f"https://firestore.googleapis.com/v1/projects/{PROJECT}/databases/(default
 # are append-only): excluded so the traction table never counts ourselves.
 EXCLUDED_QA_UIDS = {
     "B7s0xTYRstPfRkcHraxn0LQH7Cq2",  # 2026-08-01 sim onboarding walkthrough
+    "Ggio3jXjlnXlb7dBDtQeb3jU4EB2",  # 2026-08-01 sim walkthrough #2 (crash-fix rerun)
 }
 
 def token() -> str:

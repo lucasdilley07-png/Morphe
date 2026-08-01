@@ -216,7 +216,9 @@ struct OnboardingFlowView: View {
     }
 
     private var currentStep: OnboardingStep {
-        steps[stepIndex]
+        // Clamped: `steps` is computed and can shrink mid-flow (the coach
+        // list is longer than the solo one), so a raw subscript can trap.
+        steps[min(stepIndex, steps.count - 1)]
     }
 
     private var canAdvance: Bool {
@@ -326,7 +328,11 @@ struct OnboardingFlowView: View {
                                             }
                                         }
                                     }
-                                } else if currentStep == .review {
+                                } else if stepIndex >= steps.count - 1 {
+                                    // The LAST step finishes — solo ends on
+                                    // .week, coach on .review. Keying off the
+                                    // index (not the case) means a reordered
+                                    // flow can never walk past the array again.
                                     isGeneratingPlan = true
                                 } else {
                                     withAnimation(.easeInOut(duration: 0.2)) {
