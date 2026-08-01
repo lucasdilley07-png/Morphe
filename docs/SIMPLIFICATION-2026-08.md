@@ -69,4 +69,16 @@ demote, one-door. Status updated as fixes land.
 - G9/G11 DEFERRED: dismiss-style extraction + spacing-token migration
   (~1,460 magic gaps — grew since July; schedule as background debt).
 
+## Debt-tier closeout (2026-08-01)
+- W/SS tag legend: SHIPPED (one line in Session tools).
+- G10 hand-rolled headers: VERIFY-REJECTED — one is already shared
+  chrome (sectionHeader func), the other a deliberate compact variant;
+  converting would change semantics for zero user value.
+- B20 CHATS/FOR YOU purpose copy: REJECTED as covered — both panes'
+  empty states already name their purpose; adding permanent captions
+  re-clutters what the density pass just cleaned.
+- G11 spacing migration: stays parked deliberately — a week of
+  mechanical churn with regression risk and no user-visible payoff
+  pre-launch. Revisit post-TestFlight.
+
 Verified-status legend maintained in commits.

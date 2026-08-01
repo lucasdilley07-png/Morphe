@@ -328,6 +328,13 @@ struct WorkoutView: View {
                         .buttonStyle(SecondaryCTAButtonStyle())
                         .accessibilityHint("Timed stations with auto-advance; only finished intervals get logged")
 
+                    // The two-letter tags finally have a key (audit debt):
+                    // one line, where session tooling already lives.
+                    Text("Tags — W: warm-up set (excluded from PRs and charts) · SS: superset pair (console alternates them)")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+
                     if let activeExercise = store.activeWorkoutExercise {
                         LiveWorkoutSupportToolsCard(
                             workout: store.currentWorkout,
