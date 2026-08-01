@@ -199,6 +199,7 @@ struct RootView: View {
                     .environment(store)
             }
             .background(PremiumBackground())
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $store.showQuickAdd, onDismiss: {
             // Retires the 0.6s guess-timer: if Ask Morphe queued the AI
@@ -214,6 +215,10 @@ struct RootView: View {
                     .environment(store)
             }
             .background(PremiumBackground())
+            // Quick actions get a quick sheet (HIG): medium detent first,
+            // expandable when the note editor needs room.
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .fullScreenCover(isPresented: $store.showAIAgent) {
             NavigationStack {
@@ -1205,6 +1210,8 @@ private struct UniversalSearchSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var category: UniversalSearchCategory = .accounts
+    @State private var searchDebounce: Task<Void, Never>?
+    @FocusState private var searchFocused: Bool
 
     private var normalizedQuery: String {
         query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -1289,6 +1296,22 @@ private struct UniversalSearchSheet: View {
 
                 TextField("Search accounts, workouts, exercises, posts...", text: $query)
                     .textFieldStyle(MorpheFieldStyle())
+                    .focused($searchFocused)
+                    .submitLabel(.search)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    // Debounced remote lookup (Apple-pattern Task-cancel):
+                    // one directory query ~350ms after typing stops, never
+                    // one per keystroke.
+                    .onChange(of: query) { _, newValue in
+                        searchDebounce?.cancel()
+                        guard store.selectedRole != .coach else { return }
+                        searchDebounce = Task {
+                            try? await Task.sleep(nanoseconds: 350_000_000)
+                            guard !Task.isCancelled else { return }
+                            await store.searchAthletes(query: newValue)
+                        }
+                    }
 
                 Picker("Search Category", selection: $category) {
                     ForEach(UniversalSearchCategory.allCases) { item in
@@ -1367,31 +1390,54 @@ private struct UniversalSearchSheet: View {
                 }
             }
         } else {
+            // REAL accounts (the username directory) — this tab used to show
+            // only demo "recommended connections" while searchAthletes sat
+            // wired to nothing. Debounced upstream; rows follow in place.
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Recommended Connections")
+                    Text("Accounts")
                         .font(.headline)
                         .foregroundStyle(.white)
 
-                    SearchResultRow(
-                        title: store.coachProfile.name,
-                        subtitle: store.coachProfile.headline,
-                        detail: store.coachProfile.networkRank
-                    ) {
-                        store.openCoachNetworkProfile()
-                        store.closeUniversalSearch()
-                        dismiss()
+                    if normalizedQuery.count < 2 {
+                        Text("Type at least two characters to search @usernames.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    } else if store.athleteSearchResults.isEmpty {
+                        Text("No accounts match \"\(normalizedQuery)\" yet.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    } else {
+                        ForEach(store.athleteSearchResults) { hit in
+                            HStack(spacing: 12) {
+                                Text("@\(hit.username)")
+                                    .font(.subheadline.weight(.semibold).monospaced())
+                                    .foregroundStyle(.white)
+                                Spacer()
+                                Button(store.isFollowing(hit.uid) ? "Following" : "Follow") {
+                                    store.toggleFollow(uid: hit.uid, name: hit.username)
+                                }
+                                .buttonStyle(FilterChipStyle(
+                                    isSelected: store.isFollowing(hit.uid),
+                                    selectedColor: MorpheTheme.accent))
+                                .accessibilityLabel(store.isFollowing(hit.uid)
+                                    ? "Unfollow \(hit.username)" : "Follow \(hit.username)")
+                            }
+                            .frame(minHeight: 44)
+                        }
                     }
 
-                    ForEach(filteredSuggestions) { suggestion in
-                        SearchResultRow(
-                            title: suggestion.name,
-                            subtitle: suggestion.headline,
-                            detail: suggestion.mutualContext
-                        ) {
-                            store.openNetworkProfile(for: suggestion)
-                            store.closeUniversalSearch()
-                            dismiss()
+                    if FeatureFlags.multiUserEnabled {
+                        ForEach(filteredSuggestions) { suggestion in
+                            SearchResultRow(
+                                title: suggestion.name,
+                                subtitle: suggestion.headline,
+                                detail: suggestion.mutualContext
+                            ) {
+                                store.openNetworkProfile(for: suggestion)
+                                store.closeUniversalSearch()
+                                dismiss()
+                            }
                         }
                     }
                 }
