@@ -66,8 +66,9 @@ live in Profile → Settings and are off until you turn them on.
   Morphe connect/party QR codes.
 - **Microphone & speech recognition** — dictating messages to the in-app
   assistant. Audio is processed for transcription only.
-- **Notifications** — local reminders you control (appointments, streak,
-  weekly leaderboard). Morphe currently sends no remote push notifications.
+- **Notifications** — local reminders you control (appointments, daily
+  session, streak risk, comeback, weekly leaderboard and recap). Morphe
+  currently sends no remote push notifications.
 
 Every permission is requested only when the feature needs it, and declining
 never breaks the rest of the app.
