@@ -33,7 +33,9 @@ struct HomeView: View {
             return "Keep the habit alive with one small win."
         }
 
-        return "Finish \(store.currentWorkout.name) and close the day with protein and water."
+        // Habit-only copy (audit D5): the hero owns the workout instruction;
+        // this card owns the small wins around it — no more echo.
+        return "Close the day strong — protein, water, and enough sleep to earn tomorrow."
     }
 
     var body: some View {
@@ -60,6 +62,10 @@ struct HomeView: View {
                 if store.isWorkoutLoggedToday {
                     TodayDoneCard(
                         workoutName: store.currentWorkout.name,
+                        // The tomorrow-hook (audit E3): the done-state names
+                        // what's next instead of ending the relationship
+                        // for the day.
+                        nextUpLine: "Up next: \(store.currentWorkout.name) — see you tomorrow.",
                         onViewProgress: { store.openProgress() },
                         onTrainAgain: { store.selectedClientTab = .train }
                     )
@@ -67,7 +73,9 @@ struct HomeView: View {
                     TodayNextMoveCard(
                         workout: store.currentWorkout,
                         minimumWinModeEnabled: store.minimumWinModeEnabled,
-                        showAssistRow: store.todayExperienceTier >= 1,
+                        // Assist chips demoted to the AI pill (audit D10) —
+                        // same answers, one fewer CTA pair on the hero.
+                        showAssistRow: false,
                         onStart: { store.startTodayWorkout() },
                         onActivateMinimumWin: { store.activateMinimumWinMode() },
                         onSwitch: {
@@ -176,9 +184,12 @@ struct HomeView: View {
                     subtitle: supportSubtitle,
                     isExpanded: $showSupport
                 ) {
+                    // One context card (audit D7): plan + phase + goal in a
+                    // single read instead of three look-alike link cards.
                     WorkoutPlanByCoachMiniCard(
                         profile: store.clientProfile,
-                        phase: store.profileShowcase.currentPhase
+                        phase: store.profileShowcase.currentPhase,
+                        goalLine: upcomingGoalText
                     )
 
                     if FeatureFlags.multiUserEnabled {
@@ -203,7 +214,6 @@ struct HomeView: View {
                         }
                     }
 
-                    UpcomingGoalCard(text: upcomingGoalText)
                     MorpheHubEntryCard {
                         store.openProgress()
                     } openMore: {
@@ -604,6 +614,7 @@ private struct ComebackCard: View {
 private struct TodayDoneCard: View {
     @Environment(MorpheAppStore.self) private var store
     let workoutName: String
+    var nextUpLine: String = ""
     let onViewProgress: () -> Void
     let onTrainAgain: () -> Void
 
@@ -630,6 +641,12 @@ private struct TodayDoneCard: View {
 
                 Text("You closed the loop on \(workoutName). Nice work — the rest of today is yours.")
                     .foregroundStyle(MorpheTheme.textSecondary)
+
+                if !nextUpLine.isEmpty {
+                    Text(nextUpLine)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accent)
+                }
 
                 HStack(spacing: 10) {
                     // The Strava-sticker play: a branded story IMAGE of the
@@ -776,6 +793,8 @@ private struct TodayNextMoveCard: View {
 private struct WorkoutPlanByCoachMiniCard: View {
     let profile: ClientProfile
     let phase: String
+    /// The goal line that used to be its own look-alike card (audit D7).
+    var goalLine: String = ""
 
     var body: some View {
         GlassCard {
@@ -788,21 +807,23 @@ private struct WorkoutPlanByCoachMiniCard: View {
                 Text("\(profile.currentProgram) is your starting plan, built from your goal, sport, and schedule. Adjust anything — your check-ins shape the day-to-day suggestions.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
+
+                if !goalLine.isEmpty {
+                    Divider().overlay(Color.white.opacity(0.08))
+                    HStack(spacing: 6) {
+                        Image(systemName: "target")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accent)
+                        Text(goalLine)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
             }
         }
     }
 }
 
-private struct UpcomingGoalCard: View {
-    let text: String
-
-    var body: some View {
-        StatCard(title: "Upcoming Goal / Event", value: "What this week points toward", detail: text)
-    }
-}
-
-/// Slim day-0 entry to the recovery check-in — the full planner card is
-/// earned at tier 1, but readiness input matters from the first session.
 private struct TierZeroCheckInCard: View {
     @Environment(MorpheAppStore.self) private var store
     let isComplete: Bool
@@ -884,18 +905,24 @@ private struct DailyCheckInPlannerCard: View {
                     }
                 }
 
-                HStack {
-                    Text("Not feeling it? Easier options")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                    Spacer()
-                    Button(showPlanBOptions ? "Hide" : "Show Options") {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showPlanBOptions.toggle()
+                // Progressive disclosure (audit D4): the easier-options
+                // layer only appears once the user has answered the
+                // confidence question — 13 simultaneous controls became
+                // two steps.
+                if selectedConfidence != nil || shouldShowFallbacks {
+                    HStack {
+                        Text("Not feeling it? Easier options")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Button(showPlanBOptions ? "Hide" : "Show Options") {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showPlanBOptions.toggle()
+                            }
                         }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .frame(width: 120)
                     }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .frame(width: 120)
                 }
 
                 if shouldShowFallbacks {

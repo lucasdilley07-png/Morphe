@@ -872,6 +872,7 @@ final class MorpheAppStore {
         // the one launch-time moment that already owns streak truth.
         refreshStreakRiskReminder()
         refreshWeeklyRecapReminder()
+        refreshDailyTrainingReminder()
         detectStreakLapse()
         publishWidgetSnapshot()
         trackDayActiveIfNeeded()
@@ -3661,6 +3662,9 @@ final class MorpheAppStore {
         // same disclosure as every other milestone event).
         track("challenge_joined")
         showCelebration(title: "Challenge joined", detail: joined.title, symbol: "flag.checkered")
+        // Land somewhere (audit E12): the celebration was terminal — now
+        // the standings you just joined are the destination.
+        openProgress()
         return true
     }
 
@@ -6755,11 +6759,17 @@ final class MorpheAppStore {
         // Fold the fresh rating/duration into the difficulty engine so the
         // very next plan day already reflects this session.
         rebuildPersonalizedPlan()
-        openProgress()
+        // NO tab yank (audit E5): the user tapped Log in Train and stays
+        // there — the celebration + Today's done-card carry the moment,
+        // and Progress is one tab away when they want the charts.
         track("workout_logged")
         if isActivation {
             track("activation_first_log")
+            // First log = the moment reminders become worth having (E1).
+            requestNotificationPermissionIfNeeded()
         }
+        // Re-aim the daily nudge past the session that just landed (E2).
+        refreshDailyTrainingReminder()
         // Celebration ranking: finishing a whole PROGRAM outranks a PR,
         // which outranks the generic XP line. The top two get the
         // full-screen stamp — the app's ONE escalated moment, with the
@@ -9754,6 +9764,63 @@ final class MorpheAppStore {
 
     /// Schedules a local notification 60 minutes before the appointment
     /// (identifier = appointment id, so cancel/delete can revoke exactly it).
+    /// The ONE permission ask (audit E1): it used to live only inside
+    /// appointment scheduling, so a solo user who never booked one was
+    /// never prompted — and every retention notification (streak-risk,
+    /// comeback, recap, board) silently no-oped for exactly the users
+    /// they exist to keep. Fired at the first workout log: the moment
+    /// the user has something worth being reminded about.
+    func requestNotificationPermissionIfNeeded() {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .notDetermined else { return }
+            center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+                guard granted else { return }
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    // Newly granted: arm everything that was waiting.
+                    self.refreshStreakRiskReminder()
+                    self.refreshWeeklyRecapReminder()
+                    self.refreshDailyTrainingReminder()
+                }
+            }
+        }
+    }
+
+    /// The category-table-stakes nudge that didn't exist (audit E2): ONE
+    /// pending "next session" reminder, re-aimed on every log and launch —
+    /// today 5pm if nothing's logged yet (and it's early enough),
+    /// otherwise tomorrow 5pm. Never repeats blindly, so a logged day
+    /// never gets a nag. Off switch rides the existing reminder prefs.
+    func refreshDailyTrainingReminder() {
+        let id = "morphe.daily.training"
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [id])
+        guard hasCompletedOnboarding, !currentWorkout.name.isEmpty else { return }
+        center.getNotificationSettings { [weak self] settings in
+            guard settings.authorizationStatus == .authorized
+                    || settings.authorizationStatus == .provisional else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let calendar = Calendar.current
+                var target = calendar.date(
+                    bySettingHour: 17, minute: 0, second: 0, of: .now) ?? .now
+                if isWorkoutLoggedToday || target <= .now {
+                    target = calendar.date(byAdding: .day, value: 1, to: target) ?? target
+                }
+                let content = UNMutableNotificationContent()
+                content.title = "Today's session: \(self.currentWorkout.name)"
+                content.body = "One tap to start — the streak takes care of itself."
+                content.sound = .default
+                let trigger = UNCalendarNotificationTrigger(
+                    dateMatching: calendar.dateComponents(
+                        [.year, .month, .day, .hour, .minute], from: target),
+                    repeats: false)
+                center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+            }
+        }
+    }
+
     private func scheduleAppointmentReminder(_ appointment: Appointment) {
         guard appointmentRemindersEnabled else { return }
         let fireDate = appointment.date.addingTimeInterval(-60 * 60)

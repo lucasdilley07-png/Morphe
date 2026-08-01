@@ -5281,3 +5281,24 @@ final class BackupHealthTests: XCTestCase {
                        "no real backup target → no 'backed up ✓' claim")
     }
 }
+
+// MARK: - Simplification wave (E5: no tab yank on log)
+@MainActor
+final class SimplificationTests: XCTestCase {
+    func testLoggingStaysOnTheCurrentTab() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        store.beginLiveWorkout(store.workoutTemplates.first!)
+        store.completeTrackedSet(reps: 8, weight: 50, allowExtra: true)
+        store.finishTrackedWorkoutSession()
+        let tabBefore = store.selectedClientTab
+        store.logWorkout()
+        XCTAssertEqual(store.selectedClientTab, tabBefore,
+                       "logging must not teleport the user to another tab")
+        XCTAssertTrue(store.isWorkoutLoggedToday)
+    }
+}

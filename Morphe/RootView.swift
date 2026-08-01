@@ -1524,12 +1524,12 @@ private struct QuickAddSheet: View {
                     QuickAddGridCard(items: [
                         QuickAddItem(
                             title: store.hasCompletedWorkoutFlow
-                                ? "Log Workout"
+                                ? "Finish in Train"
                                 : (store.isWorkoutSessionActive
                                     ? "Resume Workout"
                                     : (store.isWorkoutLoggedToday ? "New Workout" : "Open Workout")),
                             subtitle: store.hasCompletedWorkoutFlow
-                                ? "Close the loop now"
+                                ? "Your session is waiting to be logged"
                                 : (store.isWorkoutSessionActive
                                     ? "Jump back into Train"
                                     : (store.isWorkoutLoggedToday ? "Today's done — browse Discover" : "Start today's plan in Train")),
@@ -1538,7 +1538,10 @@ private struct QuickAddSheet: View {
                                 : (store.isWorkoutLoggedToday && !store.isWorkoutSessionActive ? "square.grid.2x2.fill" : "figure.run")
                         ) {
                             if store.hasCompletedWorkoutFlow {
-                                store.logWorkout()
+                                // ONE canonical Log button (audit E8): Train's
+                                // review flow owns the commit — this door
+                                // walks there instead of triple-wiring it.
+                                store.selectedClientTab = .train
                             } else if store.isWorkoutSessionActive {
                                 // Resume = return to the live console. The old
                                 // path restarted the session and wiped every
@@ -1553,7 +1556,9 @@ private struct QuickAddSheet: View {
                             }
                             dismissQuickAdd()
                         },
-                        QuickAddItem(title: "Browse Exercises", subtitle: "Open the exercise library", systemImage: "books.vertical.fill") {
+                        // Named for where it actually lands (audit E9):
+                        // "Browse" implied Discover; this opens the library.
+                        QuickAddItem(title: "Exercise Library", subtitle: "Form guides by muscle group", systemImage: "books.vertical.fill") {
                             // openMore selects the library panel — setting the
                             // tab alone landed on whatever panel was last open.
                             store.openMore(.library)

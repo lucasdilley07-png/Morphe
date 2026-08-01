@@ -317,18 +317,17 @@ struct WorkoutView: View {
                     }
                 }
 
-                // Circuit Mode: guided work/rest intervals over this session's
-                // exercises — sits with the session tools, off the set-logging
-                // fast path.
-                Button("Circuit Mode") { showCircuitMode = true }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .accessibilityHint("Timed stations with auto-advance; only finished intervals get logged")
-
                 TrainExpandableSection(
                     title: "Session tools",
-                    subtitle: "Queue, swaps, pain-safe adjustments, and quick tips stay here without pulling focus off the active set.",
+                    subtitle: "Queue, swaps, circuit mode, pain-safe adjustments, and quick tips stay here without pulling focus off the active set.",
                     isExpanded: $showSessionQueue
                 ) {
+                    // Circuit Mode: guided work/rest intervals — a session
+                    // tool, not a floating sibling of Finish (audit D-x).
+                    Button("Circuit Mode") { showCircuitMode = true }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityHint("Timed stations with auto-advance; only finished intervals get logged")
+
                     if let activeExercise = store.activeWorkoutExercise {
                         LiveWorkoutSupportToolsCard(
                             workout: store.currentWorkout,
@@ -617,6 +616,10 @@ struct WorkoutView: View {
                     ProgramSectionCard()
                 }
 
+                // Post-finish, the review flow owns the screen (audit D3):
+                // the library/adjust/form disclosures come back the moment
+                // the session is logged or discarded. Nothing is deleted.
+                if !store.hasCompletedWorkoutFlow {
                 if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
                     PartnerSessionCard(
                         partner: partner,
@@ -774,6 +777,7 @@ struct WorkoutView: View {
                     }
 
                     WorkoutHistoryCard(entries: store.workoutHistory)
+                }
                 }
             }
             .padding(.horizontal, 20)

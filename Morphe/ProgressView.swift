@@ -7,6 +7,7 @@ import SwiftUI
 struct ProgressScreenView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var showCompete = false
+    @State private var showDeepStats = false
 
     private var athleteReport: AthleteReport? {
         store.clientAthleteProfile?.reportCard
@@ -312,20 +313,30 @@ struct ProgressScreenView: View {
 
             if store.todayExperienceTier >= 2 {
                 AthletePatternInsightsCard(insights: athletePatternInsights)
-                TrainingPatternInsightCard(insight: trainingPatternInsight)
 
-                // Telemetry charts, all from the user's real per-set log
-                // data: strength, volume, effort, body weight, records.
-                // (Grouped: the tier-2 block would otherwise exceed the
-                // 10-view ViewBuilder limit.)
-                Group {
-                    StrengthOverTimeCard(
-                        exerciseOptions: store.mostLoggedExerciseNames(limit: 6),
-                        weightUnit: store.weightUnit,
-                        progression: { store.strengthProgression(for: $0) },
-                        e1RMProgression: { store.estimatedOneRMProgression(for: $0) }
-                    )
-                    .id("strengthOverTime")
+                // GLANCEABLE tier stays on the page: the strength curve and
+                // the PR wall answer "am I improving?" in one look.
+                StrengthOverTimeCard(
+                    exerciseOptions: store.mostLoggedExerciseNames(limit: 6),
+                    weightUnit: store.weightUnit,
+                    progression: { store.strengthProgression(for: $0) },
+                    e1RMProgression: { store.estimatedOneRMProgression(for: $0) }
+                )
+                .id("strengthOverTime")
+                PRTimelineCard(
+                    records: store.recentPersonalRecords(limit: 5),
+                    weightUnit: store.weightUnit
+                )
+
+                // The STUDY tier — seven analysis charts — moves behind one
+                // disclosure (audit D1: the tier-2 page stacked ~18 cards
+                // flat). Every chart is one tap away, none are deleted.
+                ProgressExpandableSection(
+                    title: "Deep stats",
+                    subtitle: "Volume, effort, balance, recovery, nutrition — the full telemetry read.",
+                    isExpanded: $showDeepStats
+                ) {
+                    TrainingPatternInsightCard(insight: trainingPatternInsight)
                     MuscleBalanceCard(balance: store.muscleGroupSetBalance(days: 7))
                     WeeklySetVolumeCard(points: store.weeklySetVolume(weeks: 8))
                     RPETrendCard(points: store.rpeTrendPerSession(sessions: 15))
@@ -333,15 +344,11 @@ struct ProgressScreenView: View {
                         entries: store.bodyWeightHistory,
                         weightUnit: store.weightUnit
                     )
-                    PRTimelineCard(
-                        records: store.recentPersonalRecords(limit: 5),
-                        weightUnit: store.weightUnit
-                    )
                     RecoveryTrendCard(entries: store.recoverySeries)
                     NutritionAdherenceCard(entries: store.nutritionSeries)
+                    SessionMixCard(insight: sessionMixInsight)
+                    RecoveryBalanceCard(insight: recoveryBalanceInsight)
                 }
-
-                SessionMixCard(insight: sessionMixInsight)
                 // Buddy comparison, source breakdowns, and coach report cards
                 // are multi-user concepts — hidden in solo v1. (Report and
                 // compliance were previously hidden only by accident: they
@@ -362,7 +369,7 @@ struct ProgressScreenView: View {
                         ProgramComplianceCard(compliance: compliance)
                     }
                 }
-                RecoveryBalanceCard(insight: recoveryBalanceInsight)
+                // RecoveryBalanceCard now lives in Deep stats (audit D1).
 
                 // Removed here on purpose (UX audit):
                 // - "Weekly Consistency" chart — weekly consistency already
@@ -2455,7 +2462,7 @@ private struct CreateChallengeSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("Done") { dismiss() }
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
             }

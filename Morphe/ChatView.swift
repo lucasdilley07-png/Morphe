@@ -43,10 +43,19 @@ struct CommunityView: View {
             StoryHighlightSheet(story: story)
         }
         .fullScreenCover(isPresented: $showFormCamera) {
-            // The camera door: Form Check with no exercise context —
-            // record a form clip, share anywhere (S3's honest half).
-            FormCheckView()
+            // The camera door (audit E7): exercise-scoped when a session is
+            // live — same personality as Train's Form button — generic
+            // clip-recorder otherwise.
+            if let exercise = store.activeWorkoutExercise, store.isWorkoutSessionActive {
+                FormCheckView(
+                    exerciseName: exercise.name,
+                    movement: .infer(exerciseName: exercise.name, muscleGroup: exercise.muscleGroup)
+                )
                 .environment(store)
+            } else {
+                FormCheckView()
+                    .environment(store)
+            }
         }
     }
 
@@ -1414,6 +1423,7 @@ private struct RealFeedSection: View {
     /// The author whose <24h story cards are playing full-screen.
     @State private var storyTarget: MorpheAppStore.TrainedTodayEntry?
     @State private var showBoardStory = false
+    @State private var showRailLegend = false
     @FocusState private var composerFocused: Bool
 
     private enum FeedFilter: String, CaseIterable {
@@ -1439,6 +1449,16 @@ private struct RealFeedSection: View {
         draft.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// "You're #N this week" from the REAL fetched board, or the leader's
+    /// name when the viewer isn't ranked. Honest either way.
+    private var boardChipLine: String {
+        let myUid = store.authUser?.id ?? ""
+        if let index = store.weeklyLeaderboard.firstIndex(where: { $0.uid == myUid }) {
+            return "You're #\(index + 1) on this week's board"
+        }
+        return "This week's board — \(store.weeklyLeaderboard.first?.name ?? "open") leads"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Section switching lives in the shell header (tabs + swipe) —
@@ -1456,17 +1476,62 @@ private struct RealFeedSection: View {
                 onEmptySelf: { composerFocused = true }
             )
 
-            // The rail's one-line legend — the ring colors and flame chip
-            // were an unexplained color puzzle (audit finding).
+            // Legend on demand (audit D8): a permanent caption was one more
+            // layer between the user and the feed — now it's an ⓘ tap.
             if !store.trainedTodayEntries.isEmpty {
-                Text("Gold ring = sessions you haven't watched · flame = Duo Streak (days you both posted)")
-                    .font(.caption2)
-                    .foregroundStyle(MorpheTheme.textMuted)
+                HStack(spacing: 6) {
+                    if showRailLegend {
+                        Text("Gold ring = sessions you haven't watched · flame = Duo Streak (days you both posted)")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    Spacer(minLength: 0)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) { showRailLegend.toggle() }
+                    } label: {
+                        Image(systemName: showRailLegend ? "info.circle.fill" : "info.circle")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .frame(width: 32, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("What the ring colors mean")
+                }
             }
 
             composer
 
-            CompetitionPulseCard()
+            // Slim board chip (audit E11): the full board + challenges UI
+            // lives on Progress — a second full copy here made "which tab
+            // was that in?" a real question. One line, one deep link.
+            if store.leaderboardOptIn, !store.weeklyLeaderboard.isEmpty {
+                Button {
+                    store.openProgress()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "trophy.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accent)
+                        Text(boardChipLine)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(MorpheTheme.panelStrong)
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Weekly board — open Progress")
+            }
 
             HStack(spacing: 8) {
                 ForEach(FeedFilter.allCases, id: \.self) { option in
@@ -2354,6 +2419,8 @@ private struct FeedPostCard: View {
     @State private var showComments = false
     @State private var commentDraft = ""
     @State private var showBlockConfirm = false
+    @State private var showDeletePostConfirm = false
+    @State private var deletingComment: PostComment?
     @State private var commentBlockTarget: PostComment?
 
     private var isMine: Bool { post.authorUid == (store.authUser?.id ?? "") }
@@ -2636,7 +2703,10 @@ private struct FeedPostCard: View {
         .contextMenu {
             if isMine {
                 Button(role: .destructive) {
-                    store.deleteMyPost(post)
+                    // Confirm first (audit G4): deleting a post is
+                    // irreversible, and blocking (which IS reversible)
+                    // already confirmed — the guard belonged here more.
+                    showDeletePostConfirm = true
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
@@ -2657,6 +2727,30 @@ private struct FeedPostCard: View {
                     Label("Block \(post.authorName)", systemImage: "hand.raised")
                 }
             }
+        }
+        .confirmationDialog(
+            "Delete this post? It disappears from the feed for everyone, and there's no undo.",
+            isPresented: $showDeletePostConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Post", role: .destructive) {
+                store.deleteMyPost(post)
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog(
+            "Delete this comment? There's no undo.",
+            isPresented: Binding(
+                get: { deletingComment != nil },
+                set: { if !$0 { deletingComment = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete Comment", role: .destructive) {
+                if let comment = deletingComment { store.deleteMyComment(comment) }
+                deletingComment = nil
+            }
+            Button("Cancel", role: .cancel) { deletingComment = nil }
         }
         .confirmationDialog(
             "Block \(post.authorName)? Their posts and comments disappear from your feed, and you unfollow them. You can unblock from Profile.",
@@ -2737,7 +2831,7 @@ private struct FeedPostCard: View {
                     .contextMenu {
                         if comment.authorUid == (store.authUser?.id ?? "") {
                             Button(role: .destructive) {
-                                store.deleteMyComment(comment)
+                                deletingComment = comment
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
@@ -2762,9 +2856,14 @@ private struct FeedPostCard: View {
                     }
                 }
             } else {
-                Text("Loading comments…")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textMuted)
+                // House loading idiom (audit G7) — a bare text line was one
+                // of three ad-hoc loading languages.
+                HStack(spacing: 8) {
+                    ProgressView().tint(MorpheTheme.accent)
+                    Text("Loading comments…")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
             }
 
             HStack(spacing: 8) {
@@ -2949,17 +3048,25 @@ struct ThreadChatView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
                 if let onBack {
+                    // Breadcrumb grammar (audit G3): backs NAME where they
+                    // go — the bare circle was one of two dialects in this
+                    // same file.
                     Button {
                         onBack()
                     } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 44, height: 44)
-                            .background(Circle().fill(MorpheTheme.panelStrong))
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .font(.subheadline.weight(.bold))
+                            Text("CHATS")
+                                .font(MorpheTheme.microLabel(11))
+                                .tracking(1.4)
+                        }
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .frame(height: 44)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Back")
+                    .accessibilityLabel("Back to chats")
                 }
 
                 Circle()

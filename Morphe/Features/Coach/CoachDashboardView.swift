@@ -702,11 +702,15 @@ private struct AddManagedClientSheet: View {
                     .keyboardType(.emailAddress)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                // Menu style keeps the house palette (audit G5) — the bare
+                // Form picker rendered an off-brand Apple push-list.
                 Picker("Sport", selection: $sport) {
                     ForEach(SportFocus.allCases) { sport in
                         Text(sport.rawValue).tag(sport)
                     }
                 }
+                .pickerStyle(.menu)
+                .tint(MorpheTheme.accent)
             }
             Section("Setup notes (optional)") {
                 TextField("Injuries, goals, anything they told you…", text: $notes, axis: .vertical)
@@ -986,7 +990,10 @@ private struct ManagedClientDetailSheet: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
+                        // White, like every other dismiss — this was the one
+                        // control in the app rendering system-blue (audit G2).
                         Button("Done") { dismiss() }
+                            .foregroundStyle(.white)
                     }
                 }
                 .sheet(isPresented: $isLoggingWorkout) {

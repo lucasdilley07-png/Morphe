@@ -1073,7 +1073,7 @@ struct ProfileView: View {
                         showSignOutConfirm = true
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
-                    .alert("Are you sure you want to sign out?", isPresented: $showSignOutConfirm) {
+                    .confirmationDialog("Are you sure you want to sign out?", isPresented: $showSignOutConfirm, titleVisibility: .visible) {
                         Button("Sign Out", role: .destructive) {
                             // Close the profile sheet first so the account
                             // screen is immediately visible underneath.
@@ -1093,7 +1093,7 @@ struct ProfileView: View {
                     .foregroundStyle(MorpheTheme.danger)
                     .disabled(isDeletingAccount)
                     .accessibilityLabel("Permanently delete your account")
-                    .alert("Delete your account forever?", isPresented: $showDeleteAccountConfirm) {
+                    .confirmationDialog("Delete your account forever?", isPresented: $showDeleteAccountConfirm, titleVisibility: .visible) {
                         Button("Delete Forever", role: .destructive) {
                             isDeletingAccount = true
                             Task {
