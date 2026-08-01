@@ -9126,6 +9126,40 @@ final class MorpheAppStore {
         await hydrateReactionState(for: fresh.map(\.id), uid: uid, force: false)
     }
 
+    // MARK: Activity diff (TIKTOK-PLAN T5) — the honest push substitute.
+    //
+    // Real engagement push needs FCM + Functions (Blaze-gated). Until
+    // then: a per-profile baseline of engagement counts on MY posts,
+    // diffed against what's currently loaded. Claims only what it can
+    // see — "new since you last checked here", never "new right now".
+
+    private var activitySeenKey: String { "morphe.activity.seen.\(clientProfile.id.uuidString)" }
+    private(set) var activitySeenTick = 0
+
+    /// Engagement on my loaded posts (reactions always; comments when
+    /// loaded) minus what this profile last acknowledged.
+    var unseenActivityCount: Int {
+        _ = activitySeenTick
+        guard let myUid = authUser?.id else { return 0 }
+        let seen = UserDefaults.standard.dictionary(forKey: activitySeenKey) as? [String: Int] ?? [:]
+        return feedPosts.filter { $0.authorUid == myUid }.reduce(0) { total, post in
+            let current = (feedReactionCounts[post.id] ?? 0) + (postComments[post.id]?.count ?? 0)
+            return total + max(0, current - (seen[post.id] ?? 0))
+        }
+    }
+
+    /// The user looked — today's counts become the new baseline.
+    func acknowledgeActivity() {
+        guard let myUid = authUser?.id else { return }
+        var seen = UserDefaults.standard.dictionary(forKey: activitySeenKey) as? [String: Int] ?? [:]
+        for post in feedPosts where post.authorUid == myUid {
+            seen[post.id] = (feedReactionCounts[post.id] ?? 0) + (postComments[post.id]?.count ?? 0)
+        }
+        if seen.count > 200 { seen = seen.filter { pair in feedPosts.contains { $0.id == pair.key } } }
+        UserDefaults.standard.set(seen, forKey: activitySeenKey)
+        activitySeenTick += 1
+    }
+
     /// Ranked feed (NETWORK-TIKTOK-PLAN T2): a transparent heuristic, not
     /// a black box — recency decays over ~36h, every reaction and loaded
     /// comment counts, followed authors get a boost, and a diversity guard

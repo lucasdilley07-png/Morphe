@@ -5346,3 +5346,33 @@ final class FeedRankingTests: XCTestCase {
                           "one author must not own consecutive top slots when others exist")
     }
 }
+
+// MARK: - Activity diff (TIKTOK-PLAN T5)
+@MainActor
+final class ActivityDiffTests: XCTestCase {
+    func testActivityDiffCountsAcknowledgesAndGrows() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "me-uid", email: "s@m.app", role: .athlete,
+                                 displayName: "Sarah", createdAt: .now)
+        UserDefaults.standard.removeObject(
+            forKey: "morphe.activity.seen.\(store.clientProfile.id.uuidString)")
+
+        store.feedPosts = [
+            FeedPost(id: "mine", authorUid: "me-uid", authorName: "Sarah", text: "w"),
+            FeedPost(id: "theirs", authorUid: "other", authorName: "O", text: "x")
+        ]
+        store.feedReactionCounts = ["mine": 3, "theirs": 9]
+
+        XCTAssertEqual(store.unseenActivityCount, 3,
+                       "only MY posts count, never other people's")
+        store.acknowledgeActivity()
+        XCTAssertEqual(store.unseenActivityCount, 0)
+
+        store.feedReactionCounts["mine"] = 5
+        XCTAssertEqual(store.unseenActivityCount, 2, "new engagement re-arms the diff")
+    }
+}

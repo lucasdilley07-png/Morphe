@@ -1513,6 +1513,40 @@ private struct RealFeedSection: View {
 
             composer
 
+            // Activity pulse (TIKTOK-PLAN T5): engagement on YOUR posts
+            // since you last checked — the client-side stand-in for the
+            // Blaze-gated push loop. Tap acknowledges.
+            if store.unseenActivityCount > 0 {
+                Button {
+                    store.acknowledgeActivity()
+                    Haptics.impact(.light)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bell.badge.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accent)
+                        Text("\(store.unseenActivityCount) new reaction\(store.unseenActivityCount == 1 ? "" : "s") on your posts since you last checked")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        Spacer()
+                        Text("OK")
+                            .font(MorpheTheme.microLabel(10))
+                            .tracking(1.0)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1)
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(store.unseenActivityCount) new reactions on your posts — tap to dismiss")
+            }
+
             // Slim board chip (audit E11): the full board + challenges UI
             // lives on Progress — a second full copy here made "which tab
             // was that in?" a real question. One line, one deep link.
