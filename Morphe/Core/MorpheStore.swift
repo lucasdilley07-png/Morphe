@@ -9880,6 +9880,10 @@ final class MorpheAppStore {
     /// they exist to keep. Fired at the first workout log: the moment
     /// the user has something worth being reminded about.
     func requestNotificationPermissionIfNeeded() {
+        // Unit tests run hosted inside Morphe.app and log workouts — without
+        // this guard every suite run queues a REAL permission alert against
+        // the simulator, which then ambushes the next manual QA session.
+        guard NSClassFromString("XCTestCase") == nil else { return }
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .notDetermined else { return }
