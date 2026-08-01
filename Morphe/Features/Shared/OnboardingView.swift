@@ -194,20 +194,15 @@ struct OnboardingFlowView: View {
                 .review
             ]
         }
+        // FOUR steps to first value (was 13). Deferred fields keep their
+        // Profile homes: gender, equipment, meal prep, injuries (chronic —
+        // acute pain has the mid-session flag), and the coach code moved
+        // to a Welcome link. Every deferred field defaults safely.
         let solo: [OnboardingStep] = [
             .welcome,
-            .name,
-            .username,
-            .gender,
-            .goal,
-            .sport,
-            .experience,
-            .schedule,
-            .equipment,
-            .mealPrep,
-            .injuryPain,
-            .coachCode,
-            .review
+            .identity,
+            .training,
+            .week
         ]
         guard FeatureFlags.multiUserEnabled else { return solo }
         // Multi-user adds the athlete/coach choice right after the name.
@@ -225,12 +220,19 @@ struct OnboardingFlowView: View {
     }
 
     private var canAdvance: Bool {
-        if currentStep == .name {
-            return !store.onboardingDraft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if currentStep == .name || currentStep == .identity {
+            let hasName = !store.onboardingDraft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            if currentStep == .name { return hasName }
+            return hasName
+                && UsernameRules.normalize(usernameEntry).count >= UsernameRules.minLength
+                && !isReservingUsername
         }
         if currentStep == .username {
             return UsernameRules.normalize(usernameEntry).count >= UsernameRules.minLength
                 && !isReservingUsername
+        }
+        if currentStep == .week {
+            return store.onboardingDraft.agreedToTerms
         }
         // Gender advances freely — it only tunes coaching language, and a
         // hard gate for soft value is the wrong trade. "Never asked" is a
@@ -246,7 +248,7 @@ struct OnboardingFlowView: View {
         switch currentStep {
         case .welcome:
             return "Start"
-        case .review:
+        case .review, .week:
             return isCoachFlow ? "Create Workspace" : "Create Plan"
         default:
             return "Next"
@@ -357,7 +359,28 @@ struct OnboardingFlowView: View {
         @Bindable var store = store
         switch step {
         case .welcome:
-            WelcomeLandingStep()
+            WelcomeLandingStep(coachCode: $store.onboardingDraft.coachInviteCode)
+        case .identity:
+            VStack(alignment: .leading, spacing: 16) {
+                NameStep(name: $store.onboardingDraft.name)
+                UsernameStep(
+                    entry: $usernameEntry,
+                    isChecking: isReservingUsername,
+                    error: usernameError,
+                    suggestedBase: store.onboardingDraft.name
+                )
+            }
+        case .training:
+            VStack(alignment: .leading, spacing: 16) {
+                GoalSelectionStep()
+                SportSelectionStep()
+                ExperienceLevelStep(selection: $store.onboardingDraft.experienceLevel)
+            }
+        case .week:
+            VStack(alignment: .leading, spacing: 16) {
+                ScheduleStep(days: $store.onboardingDraft.trainingDaysPerWeek)
+                ProfileReviewStep()
+            }
         case .name:
             NameStep(name: $store.onboardingDraft.name)
         case .username:
@@ -402,6 +425,11 @@ struct OnboardingFlowView: View {
 
 private enum OnboardingStep {
     case welcome
+    /// Composite steps (13→4 cut): each stacks existing step views —
+    /// nothing collected here was deleted, the rest moved to Profile.
+    case identity
+    case training
+    case week
     case name
     case username
     case gender
@@ -549,6 +577,9 @@ private struct CoachCodeStep: View {
 }
 
 private struct WelcomeLandingStep: View {
+    @Binding var coachCode: String
+    @State private var showCoachCodeSheet = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             ProfileBannerView(
@@ -578,15 +609,33 @@ private struct WelcomeLandingStep: View {
                     // The promise matches the flow — it used to say "4 quick
                     // things" while the flow ran 13 screens (audit finding).
                     VStack(alignment: .leading, spacing: 10) {
-                        LandingPoint(index: 1, text: "Set up your profile and handle")
-                        LandingPoint(index: 2, text: "Pick your goals, sport, and schedule")
-                        LandingPoint(index: 3, text: "Tell us about gear, food, and injuries")
+                        LandingPoint(index: 1, text: "Your name and handle")
+                        LandingPoint(index: 2, text: "Your goals, sport, and experience")
+                        LandingPoint(index: 3, text: "Your training week")
                         LandingPoint(index: 4, text: "Morphe builds your starting plan")
                     }
 
-                    Text("A dozen quick taps — a couple of minutes, and every answer shapes the plan.")
+                    Text("Four steps, about a minute — every answer shapes the plan.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
+
+                    // The coach handoff moved out of the step flow: solo
+                    // users never walk a step they'd "fail".
+                    Button("Have a coach code?") {
+                        showCoachCodeSheet = true
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentAlt)
+                    .sheet(isPresented: $showCoachCodeSheet) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            CoachCodeStep(code: $coachCode)
+                            Button("Done") { showCoachCodeSheet = false }
+                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        }
+                        .padding(20)
+                        .presentationDetents([.medium])
+                        .presentationDragIndicator(.visible)
+                    }
                 }
             }
 

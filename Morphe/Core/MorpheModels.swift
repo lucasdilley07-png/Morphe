@@ -105,9 +105,9 @@ enum ClientTab: String, CaseIterable, MorpheTabItem {
     /// react, save, repost). The other multi-user surfaces (coach networking,
     /// demo inbox, payments) stay individually gated on `multiUserEnabled`.
     static var visibleCases: [ClientTab] {
-        FeatureFlags.multiUserEnabled
-            ? allCases
-            : [.today, .train, .discover, .community, .hub, .more]
+        // Discover folded into Train (5-tab bar) — the case survives for
+        // compatibility but never renders as a tab or a page.
+        [.today, .train, .community, .hub, .more]
     }
 
     var title: String {

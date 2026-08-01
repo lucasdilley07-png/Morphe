@@ -55,12 +55,63 @@ struct WorkoutView: View {
         return store.currentWorkout.exercises[nextIndex]
     }
 
+    /// The Train shell tabs (same grammar as Network's CHATS/FOR YOU):
+    /// SESSION is the plan/console, DISCOVER is the catalog that used to
+    /// be its own bottom-bar tab.
+    private var trainSectionHeader: some View {
+        HStack(alignment: .bottom, spacing: 22) {
+            trainSectionTab("SESSION", .session)
+            trainSectionTab("DISCOVER", .discover)
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, MorpheTheme.Spacing.pageTopTrain)
+        .padding(.bottom, 2)
+    }
+
+    private func trainSectionTab(_ label: String, _ section: MorpheAppStore.TrainSection) -> some View {
+        let isActive = store.selectedTrainSection == section
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                store.selectedTrainSection = section
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(label)
+                    .font(MorpheTheme.microLabel(12))
+                    .tracking(1.6)
+                    .foregroundStyle(isActive ? .white : MorpheTheme.textMuted)
+                Rectangle()
+                    .fill(isActive ? MorpheTheme.accent : .clear)
+                    .frame(width: 26, height: 3)
+            }
+            .frame(minHeight: 44, alignment: .bottomLeading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label.capitalized)
+        .accessibilityAddTraits(isActive ? .isSelected : [])
+    }
+
     var body: some View {
         Group {
-            if store.isWorkoutSessionActive {
+            // Discover lives INSIDE Train now (5-tab fold): the catalog is
+            // a segment of the training surface, not a sibling tab. An
+            // explicit Discover selection wins even mid-session — the live
+            // session is one segment tap away, never lost.
+            if store.selectedTrainSection == .discover {
+                VStack(spacing: 0) {
+                    trainSectionHeader
+                    DiscoverScreenView()
+                        .id(store.tabResetKey("discover"))
+                }
+            } else if store.isWorkoutSessionActive {
                 activeWorkoutMode
             } else {
-                workoutPlanningMode
+                VStack(spacing: 0) {
+                    trainSectionHeader
+                    workoutPlanningMode
+                }
             }
         }
         // Each presentation lives on its own background view. SwiftUI
@@ -788,7 +839,7 @@ struct WorkoutView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, MorpheTheme.Spacing.pageTopTrain)
+            .padding(.top, 6)
             .padding(.bottom, 120)
         }
         .onAppear { revealLibraryIfRequested(proxy) }
@@ -957,7 +1008,7 @@ struct DiscoverScreenView: View {
                     )
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, MorpheTheme.Spacing.pageTopTrain)
+                .padding(.top, 6)
                 .padding(.bottom, 120)
             }
             .toolbar(.hidden, for: .navigationBar)
@@ -2495,7 +2546,7 @@ private struct DiscoverCatalogSection: View {
                 ScrollView(showsIndicators: false) {
                     detailView(current)
                         .padding(.horizontal, 20)
-                        .padding(.top, MorpheTheme.Spacing.pageTopStacked)
+                        .padding(.top, 12)
                         .padding(.bottom, 120)
                 }
                 .background(PremiumBackground().ignoresSafeArea())

@@ -238,7 +238,7 @@ struct RootView: View {
         .sessionWorkGateDialog()
         .alert("Save more workouts to switch", isPresented: $store.showSwitchNeedsSavedWorkouts) {
             Button("Open Discover") {
-                store.selectedClientTab = .discover
+                store.showDiscoverTab()
             }
             Button("OK", role: .cancel) {}
         } message: {
@@ -438,11 +438,6 @@ private struct ClientExperienceShell: View {
             WorkoutView()
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.train)
-
-            DiscoverScreenView()
-                .id(store.tabResetKey("discover"))
-                .toolbar(.hidden, for: .tabBar)
-                .tag(ClientTab.discover)
 
             // Un-gated: the For You feed is REAL now (Firestore posts).
             // CommunityView gates its own demo-only sections internally.
@@ -1629,7 +1624,7 @@ private struct QuickAddSheet: View {
                             } else if store.isWorkoutLoggedToday {
                                 // Today's workout is already in the books —
                                 // offer something new instead of a re-run.
-                                store.selectedClientTab = .discover
+                                store.showDiscoverTab()
                             } else {
                                 store.startTodayWorkout()
                             }

@@ -1887,7 +1887,9 @@ final class MetricsTests: XCTestCase {
         store.completeOnboarding()
 
         store.sendAIAgentPrompt("open discover")
-        XCTAssertEqual(store.selectedClientTab, .discover, "'open discover' navigates to the Discover tab")
+        // Discover is a Train segment now (5-tab fold).
+        XCTAssertEqual(store.selectedClientTab, .train, "'open discover' lands on Train…")
+        XCTAssertEqual(store.selectedTrainSection, .discover, "…with the Discover segment selected")
     }
 
     func testAssistantStartWinsOverStopPhrasing() {

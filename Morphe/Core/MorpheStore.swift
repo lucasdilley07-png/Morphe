@@ -1102,11 +1102,17 @@ final class MorpheAppStore {
     }
 
     /// Lands on the Discover surface for the CURRENT role.
+    enum TrainSection { case session, discover }
+    /// Discover is a SEGMENT of Train now (5-tab fold) — this is the
+    /// selection every old "open Discover" door routes through.
+    var selectedTrainSection: TrainSection = .session
+
     func showDiscoverTab() {
         if selectedRole == .coach {
             selectedCoachTab = .discover
         } else {
-            selectedClientTab = .discover
+            selectedClientTab = .train
+            selectedTrainSection = .discover
         }
         Haptics.impact(.light)
     }
@@ -7205,7 +7211,7 @@ final class MorpheAppStore {
             return "Opened Lessons — today's quiz is at the top."
         }
         if has("discover", "browse workouts", "find a workout", "catalog", "new workout") {
-            selectedClientTab = .discover
+            showDiscoverTab()
             closeAIAgent()
             return "Opened Discover — pick a training style to browse its workouts."
         }
