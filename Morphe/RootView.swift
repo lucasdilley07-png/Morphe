@@ -671,6 +671,44 @@ private struct MorpheAIAgentSheet: View {
                         .multilineTextAlignment(.center)
                         .padding(.bottom, 4)
 
+                    // Fresh-chat starters (the ChatGPT pattern): big
+                    // tappable cards while the chat is empty, gone the
+                    // moment a conversation exists. Every starter is a
+                    // prompt the action/answer layers actually handle.
+                    if messages.count <= 1 {
+                        VStack(spacing: 10) {
+                            ForEach(store.aiAgentQuickPrompts.prefix(4), id: \.self) { starter in
+                                Button {
+                                    prompt = starter
+                                    send()
+                                } label: {
+                                    HStack {
+                                        Text(starter)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Spacer()
+                                        Image(systemName: "arrow.up.right")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(MorpheTheme.accent)
+                                    }
+                                    .padding(14)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                            .fill(Color.white.opacity(0.05))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                                    .stroke(MorpheTheme.stroke, lineWidth: 1)
+                                            )
+                                    )
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.top, 12)
+                    }
+
                     ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
                         AIAgentMessageRow(
                             message: message,
@@ -698,6 +736,16 @@ private struct MorpheAIAgentSheet: View {
         }
         .safeAreaInset(edge: .bottom) { composerBar }
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    store.resetAIAgentConversation()
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundStyle(.white)
+                .accessibilityLabel("New chat")
+            }
             ToolbarItem(placement: .principal) {
                 Text("Morphe AI")
                     .font(.headline)
@@ -717,33 +765,6 @@ private struct MorpheAIAgentSheet: View {
     /// Full-width composer pinned to the bottom of the chat.
     private var composerBar: some View {
         VStack(spacing: 8) {
-            // Capability chips (READINESS-300 AI-4): what Morphe AI can do,
-            // visible where you type — not hidden behind typing "help" or a
-            // long-press nobody finds. One tap sends the prompt.
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(store.aiAgentQuickPrompts, id: \.self) { quickPrompt in
-                        Button {
-                            prompt = quickPrompt
-                            send()
-                        } label: {
-                            Text(quickPrompt)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                                .padding(.horizontal, 12)
-                                .frame(height: 34)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .stroke(MorpheTheme.stroke, lineWidth: 1)
-                                )
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 2)
-            }
-
             HStack(spacing: 8) {
                 Text("Context".uppercased())
                     .font(MorpheTheme.microLabel(10))
@@ -756,14 +777,18 @@ private struct MorpheAIAgentSheet: View {
                 Spacer()
             }
 
-            HStack(alignment: .bottom, spacing: 10) {
+            // One capsule, everything inside (the ChatGPT composer shape):
+            // field grows, mic and send live in the same container.
+            HStack(alignment: .bottom, spacing: 6) {
                 TextField(
                     store.aiAgentPlaceholder,
                     text: $prompt,
                     axis: .vertical
                 )
                 .lineLimit(1...4)
-                .textFieldStyle(MorpheFieldStyle())
+                .foregroundStyle(.white)
+                .padding(.leading, 14)
+                .padding(.vertical, 11)
                 .focused($inputFocused)
 
                 Button {
@@ -792,6 +817,14 @@ private struct MorpheAIAgentSheet: View {
                 .disabled(trimmedPrompt.isEmpty)
                 .accessibilityLabel("Send")
             }
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(MorpheTheme.stroke, lineWidth: 1)
+                    )
+            )
 
             if let notice = dictation.notice {
                 Text(notice)

@@ -5401,3 +5401,35 @@ final class RestDayTests: XCTestCase {
         XCTAssertEqual(relaunched.trainingDays, [todayWeekday], "picked days survive relaunch")
     }
 }
+
+// MARK: - AI chat UI wave (honest fallback + new chat)
+@MainActor
+final class AIChatUITests: XCTestCase {
+    func testUnmatchedAskGetsHonestCapabilities() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertFalse(store.sendAIAgentPrompt("what's the meaning of life"))
+        let reply = store.athleteAIAgentConversation.last?.text ?? ""
+        XCTAssertTrue(reply.contains("don't have a real answer"),
+                      "unmatched asks must admit it, not vibe")
+        XCTAssertTrue(reply.contains("start your workout"), "and say what it CAN do")
+    }
+
+    func testNewChatResetsToGreeting() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        _ = store.sendAIAgentPrompt("open progress")
+        XCTAssertGreaterThan(store.athleteAIAgentConversation.count, 1)
+        store.resetAIAgentConversation()
+        XCTAssertEqual(store.athleteAIAgentConversation.count, 1, "back to the greeting")
+        XCTAssertEqual(store.athleteAIAgentConversation.first?.sender, .ai)
+    }
+}

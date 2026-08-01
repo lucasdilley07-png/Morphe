@@ -11410,7 +11410,21 @@ final class MorpheAppStore {
             }
         }
 
-        return MorpheDemoContent.aiCoachReply(to: prompt, tone: profileShowcase.coachingTone)
+        // ACCURACY over vibes: the old last resort was generic coach-tone
+        // filler that pretended to answer anything. An honest assistant
+        // says what it doesn't know and what it CAN do instead.
+        return "I don't have a real answer for that yet — I'm a training assistant, not a general chatbot. What I can do: start your workout (today's or by name), log sets (\"log 3x10 at 135\"), tell you what's next, flip Minimum Win on, switch lb/kg, and open any part of the app. Ask about your goals, readiness, or score and I'll answer from your real data."
+    }
+
+    /// New chat (AI sheet toolbar): back to the seeded greeting. The old
+    /// transcript isn't history worth keeping — it's a rule-based session.
+    func resetAIAgentConversation() {
+        if selectedRole == .coach {
+            coachAIAgentConversation = [coachAIAgentConversation.first].compactMap { $0 }
+        } else {
+            athleteAIAgentConversation = [athleteAIAgentConversation.first].compactMap { $0 }
+        }
+        Haptics.impact(.light)
     }
 
     /// Coach action layer (AI-7): what it can actually DO. Everything here
