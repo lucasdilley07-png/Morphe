@@ -465,7 +465,14 @@ service cloud.firestore {
              ['authorUid', 'authorName', 'verified', 'text', 'workoutName',
               'repostOfId', 'repostOfAuthor', 'createdAt',
               'durationMinutes', 'setCount', 'exerciseCount', 'prNames',
-              'authorAccent', 'authorHeadline'])
+              'authorAccent', 'authorHeadline', 'imageB64'])
+        // Capture-camera photo (base64 JPEG). 90k chars ≈ 64KB — big enough
+        // for a 720px feed image, small enough that a 20-post page stays
+        // within Spark's egress budget.
+        && (!('imageB64' in request.resource.data)
+            || (request.resource.data.imageB64 is string
+                && request.resource.data.imageB64.size() >= 1
+                && request.resource.data.imageB64.size() <= 90000))
         && request.resource.data.authorName is string
         && request.resource.data.authorName.size() >= 1
         && request.resource.data.text is string

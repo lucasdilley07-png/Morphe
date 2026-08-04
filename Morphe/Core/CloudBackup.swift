@@ -657,6 +657,12 @@ final class FirebaseFeedService: FeedSyncing {
         if !post.prNames.isEmpty { data["prNames"] = Array(post.prNames.prefix(3)) }
         if !post.authorAccent.isEmpty { data["authorAccent"] = String(post.authorAccent.prefix(24)) }
         if !post.authorHeadline.isEmpty { data["authorHeadline"] = String(post.authorHeadline.prefix(80)) }
+        // Mirror of the rules cap (90k chars). Clamping here would corrupt
+        // the JPEG — an over-budget image is the encoder's bug to fix, so
+        // it's dropped whole rather than truncated into garbage.
+        if !post.imageB64.isEmpty, post.imageB64.count <= 90_000 {
+            data["imageB64"] = post.imageB64
+        }
         do {
             try await posts.document(post.id).setData(data)
             return true
@@ -879,7 +885,8 @@ final class FirebaseFeedService: FeedSyncing {
             exerciseCount: data["exerciseCount"] as? Int,
             prNames: data["prNames"] as? [String] ?? [],
             authorAccent: data["authorAccent"] as? String ?? "",
-            authorHeadline: data["authorHeadline"] as? String ?? ""
+            authorHeadline: data["authorHeadline"] as? String ?? "",
+            imageB64: data["imageB64"] as? String ?? ""
         )
     }
 }

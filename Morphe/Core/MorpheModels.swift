@@ -2126,6 +2126,12 @@ struct FeedPost: Identifiable, Hashable {
     /// facts (sport focus, live workout streak) — "Strength · 12-day
     /// streak". Derived, never typed, so it can't claim what wasn't logged.
     var authorHeadline: String = ""
+    /// Base64 JPEG attached from the capture camera ("" = text post).
+    /// Kept small on purpose — the rules cap it at 90k characters (~64KB)
+    /// so photo posts stay inside Spark's document and egress budgets.
+    var imageB64: String = ""
+
+    var hasImage: Bool { !imageB64.isEmpty }
 
     var isRepost: Bool { !repostOfId.isEmpty }
     var hasSessionStats: Bool {

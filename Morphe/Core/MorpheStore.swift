@@ -9407,10 +9407,13 @@ final class MorpheAppStore {
     private func publishToRealFeed(text: String, workoutName: String = "",
                                    repostOfId: String = "", repostOfAuthor: String = "",
                                    durationMinutes: Int? = nil, setCount: Int? = nil,
-                                   exerciseCount: Int? = nil, prNames: [String] = []) async -> Bool {
+                                   exerciseCount: Int? = nil, prNames: [String] = [],
+                                   imageB64: String = "") async -> Bool {
         guard let uid = authUser?.id else { return false }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty else { return false }
+        // A photo IS content — captionless photo posts pass with the
+        // single-space stand-in below (the rules require text.size() >= 1).
+        guard !clean.isEmpty || !imageB64.isEmpty else { return false }
         // The publish-time leg of the 1.2 filter — auto-share recaps are
         // template text and sail through; typed text (including the workout
         // name, which renders as a pill on every client) gets checked.
@@ -9425,7 +9428,7 @@ final class MorpheAppStore {
             authorName: feedAuthorName,
             // Honest mirror: the rules re-check this against users/{uid}.verified.
             verified: isVerifiedUser,
-            text: String(clean.prefix(1000)),
+            text: String((clean.isEmpty ? " " : clean).prefix(1000)),
             workoutName: String(workoutName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80)),
             repostOfId: repostOfId,
             repostOfAuthor: String(repostOfAuthor.prefix(60)),
@@ -9437,7 +9440,8 @@ final class MorpheAppStore {
             // both derived from real facts and both switchable off in
             // Profile → Network identity.
             authorAccent: feedAuthorAccentId,
-            authorHeadline: feedAuthorHeadline
+            authorHeadline: feedAuthorHeadline,
+            imageB64: imageB64
         )
         guard await feedService.publish(post: post) else { return false }
         feedPosts.insert(post, at: 0)
@@ -9480,6 +9484,57 @@ final class MorpheAppStore {
         }
         SoundEffects.play(.ding)
         showCelebration(title: "Post shared", detail: "Your win is live on the feed.", symbol: "bubble.left.and.exclamationmark.bubble.right.fill")
+    }
+
+    /// Capture-camera path: a photo post. The JPEG is already sized by the
+    /// camera (720px, compressed under the 90k-char rules cap) — this just
+    /// rides the same pipeline as every other post, moderation included.
+    /// Photo posts allow an empty caption — a single space stands in when
+    /// the user typed nothing, since `text` is required to be non-empty.
+    func publishPhotoPost(caption: String, imageB64: String) async -> Bool {
+        guard !imageB64.isEmpty, imageB64.count <= 90_000 else {
+            showToast("That photo didn't compress small enough — try again.")
+            return false
+        }
+        let published = await publishToRealFeed(text: caption, imageB64: imageB64)
+        if published {
+            SoundEffects.play(.ding)
+            showCelebration(title: "Posted", detail: "Your photo is live on the feed.", symbol: "camera.fill")
+        } else {
+            showToast("Post didn't publish — check your connection.")
+        }
+        return published
+    }
+
+    // MARK: Direct chats (athlete ↔ athlete)
+    //
+    // The thread schema is pair-shaped, not role-shaped: coachUid/athleteUid
+    // are just "participant A/B" slots. A DM claims the SAME deterministic
+    // id from both ends by ordering the pair lexicographically, so two
+    // people starting a chat with each other can never mint two threads.
+
+    /// Opens (creating if needed) the direct thread with another user, and
+    /// navigates to it. False when offline or the create was denied.
+    @discardableResult
+    func startDirectChat(with otherUid: String, name otherName: String) async -> Bool {
+        guard let myUid = authUser?.id, myUid != otherUid else { return false }
+        let myName = feedAuthorName
+        let firstIsMe = myUid < otherUid
+        let threadId = await messagingService.ensureThread(
+            coachUid: firstIsMe ? myUid : otherUid,
+            athleteUid: firstIsMe ? otherUid : myUid,
+            coachName: firstIsMe ? myName : otherName,
+            athleteName: firstIsMe ? otherName : myName
+        )
+        guard let threadId else {
+            showToast("Couldn't start the chat — check your connection.")
+            return false
+        }
+        await refreshThreads()
+        // The inbox owns navigation — the pending id is the same door every
+        // deep link already walks through (consumePendingThreadOpen).
+        pendingThreadOpenID = threadId
+        return true
     }
 
     /// Reaction types the picker offers, with their SF Symbols.

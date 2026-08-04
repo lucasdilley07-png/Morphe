@@ -43,19 +43,11 @@ struct CommunityView: View {
             StoryHighlightSheet(story: story)
         }
         .fullScreenCover(isPresented: $showFormCamera) {
-            // The camera door (audit E7): exercise-scoped when a session is
-            // live — same personality as Train's Form button — generic
-            // clip-recorder otherwise.
-            if let exercise = store.activeWorkoutExercise, store.isWorkoutSessionActive {
-                FormCheckView(
-                    exerciseName: exercise.name,
-                    movement: .infer(exerciseName: exercise.name, muscleGroup: exercise.muscleGroup)
-                )
+            // The capture camera (Snapchat parity): photos post to the feed,
+            // clips save honestly, and Form Check rides inside as a pill —
+            // same hardware, both jobs, one door.
+            CaptureView()
                 .environment(store)
-            } else {
-                FormCheckView()
-                    .environment(store)
-            }
         }
     }
 
@@ -71,22 +63,16 @@ struct CommunityView: View {
             Button {
                 showFormCamera = true
             } label: {
-                // Labeled: a bare camera glyph in a social header reads as
-                // "post a photo" — this one records a form-check clip.
-                VStack(spacing: 2) {
-                    Image(systemName: "camera.fill")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(MorpheTheme.accent)
-                    Text("FORM")
-                        .font(MorpheTheme.microLabel(8))
-                        .tracking(1.0)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-                .frame(width: 48, height: 48)
-                .background(Circle().fill(MorpheTheme.panelStrong))
+                // A bare camera glyph in a social header reads as "post a
+                // photo" — and now it IS one. Form Check rides inside.
+                Image(systemName: "camera.fill")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(MorpheTheme.accent)
+                    .frame(width: 48, height: 48)
+                    .background(Circle().fill(MorpheTheme.panelStrong))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Form Check camera")
+            .accessibilityLabel("Camera — shoot a photo or clip")
         }
         .padding(.horizontal, 20)
         .padding(.top, topPadding)
@@ -201,31 +187,11 @@ struct CommunityView: View {
     /// post-workout prompt) deep-links here instead of forking its own
     /// sheet — one destination, many doors.
     private var realContactScreen: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // The shell header owns section navigation now — swiping right
-            // or tapping FOR YOU leaves; no back row needed.
-            if store.liveThreads.isEmpty {
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("No conversations yet")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                        Text("Messaging opens when a coach links you to their roster — join with their invite code and the thread appears here.")
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                }
-                .padding(.horizontal, 20)
-                Spacer()
-            } else {
-                AthleteInboxView(autoOpenOnlyThread: true)
-            }
-        }
-        .padding(.top, 6)
-        // Threads load async — without this refresh the empty card could
-        // stick for a coached athlete, since the inbox (which owns its own
-        // refresh) only mounts once threads exist.
-        .task { await store.refreshThreads() }
+        // The inbox always mounts now — its search bar is the new-chat door,
+        // which has to exist even (especially) with zero conversations. The
+        // inbox owns its own refresh and empty state.
+        AthleteInboxView(autoOpenOnlyThread: true)
+            .padding(.top, 6)
     }
 
     private var communityHeaderControls: some View {
@@ -1425,6 +1391,8 @@ private struct RealFeedSection: View {
     @State private var showBoardStory = false
     @State private var showRailLegend = false
     @State private var showImmersive = false
+    /// Grid-tile tap: opens the immersive pager AT this post.
+    @State private var immersiveStartPost: FeedPost?
     @FocusState private var composerFocused: Bool
 
     private enum FeedFilter: String, CaseIterable {
@@ -1622,6 +1590,32 @@ private struct RealFeedSection: View {
                 case .loaded:
                     emptyState
                 }
+            } else if filter == .ranked {
+                // TRENDING as a browse wall (Snapchat's Spotlight grid): two
+                // columns of tiles ranked by the same transparent heuristic,
+                // each tap dropping into the immersive pager AT that post.
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10)
+                ], spacing: 10) {
+                    ForEach(visiblePosts) { post in
+                        Button {
+                            immersiveStartPost = post
+                        } label: {
+                            FeedGridTile(post: post)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Post by \(post.authorName) — open full screen")
+                        // Infinite scroll: the last loaded tile pulls the
+                        // next page in — continuation should be free.
+                        .onAppear {
+                            if post.id == visiblePosts.last?.id,
+                               store.feedHasOlderPosts {
+                                Task { await store.loadOlderFeedPosts() }
+                            }
+                        }
+                    }
+                }
             } else {
                 ForEach(visiblePosts) { post in
                     FeedPostCard(
@@ -1690,6 +1684,11 @@ private struct RealFeedSection: View {
             // Snapshot of the current lens order at open — the pager owns
             // continuation from there (it pulls pages itself).
             ImmersiveFeedViewer(posts: visiblePosts)
+                .environment(store)
+        }
+        .fullScreenCover(item: $immersiveStartPost) { post in
+            // The grid door: same pager, opened at the tapped tile.
+            ImmersiveFeedViewer(posts: visiblePosts, startAt: post.id)
                 .environment(store)
         }
         .task {
@@ -2298,21 +2297,29 @@ struct ImmersiveFeedViewer: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let posts: [FeedPost]
+    /// Post id to open on — the grid tap lands mid-feed, not at the top.
+    var startAt: String? = nil
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
             PremiumBackground().ignoresSafeArea()
 
-            ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(spacing: 0) {
-                    ForEach(posts) { post in
-                        immersivePage(post)
-                            .containerRelativeFrame(.vertical)
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(posts) { post in
+                            immersivePage(post)
+                                .containerRelativeFrame(.vertical)
+                                .id(post.id)
+                        }
                     }
+                    .scrollTargetLayout()
                 }
-                .scrollTargetLayout()
+                .scrollTargetBehavior(.paging)
+                .onAppear {
+                    if let startAt { proxy.scrollTo(startAt, anchor: .top) }
+                }
             }
-            .scrollTargetBehavior(.paging)
 
             Button {
                 dismiss()
@@ -2378,23 +2385,141 @@ struct ImmersiveFeedViewer: View {
     }
 }
 
+/// One trending-wall tile: the photo when the post has one, otherwise a
+/// mini stat poster in the author's accent — every tile is real content,
+/// never a gray placeholder. 4:5 like the feed images.
+struct FeedGridTile: View {
+    @Environment(MorpheAppStore.self) private var store
+    let post: FeedPost
+
+    private var accent: Color {
+        MorpheTheme.accentColor(forPaletteId: post.authorAccent)
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            if let image = FeedImageCache.image(for: post) {
+                Color.clear
+                    .aspectRatio(4 / 5, contentMode: .fit)
+                    .overlay(
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    )
+                    .clipped()
+                // Ink the caption strip so the name reads on any photo.
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.75)],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(post.workoutName.isEmpty ? "SESSION" : post.workoutName.uppercased())
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.4)
+                        .foregroundStyle(accent)
+                        .lineLimit(2)
+                    Text(post.text.trimmingCharacters(in: .whitespaces))
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(5)
+                        .multilineTextAlignment(.leading)
+                    Spacer(minLength: 0)
+                    if post.hasSessionStats {
+                        Text([
+                            post.setCount.map { "\($0) SETS" },
+                            post.durationMinutes.map { "\($0) MIN" }
+                        ].compactMap(\.self).joined(separator: " · "))
+                            .font(MorpheTheme.microLabel(9))
+                            .tracking(1.0)
+                            .foregroundStyle(MorpheTheme.brandYellow)
+                    }
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .aspectRatio(4 / 5, contentMode: .fit)
+                .background(MorpheTheme.panelStrong)
+            }
+
+            // Author + live reaction count — the "why tap this" line.
+            HStack(spacing: 5) {
+                Text(post.authorName)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                if post.verified {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(MorpheTheme.brandYellow)
+                }
+                Spacer(minLength: 0)
+                if let count = store.feedReactionCounts[post.id], count > 0 {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(MorpheTheme.brandYellow)
+                    Text("\(count)")
+                        .font(.caption2.weight(.bold).monospaced())
+                        .foregroundStyle(.white)
+                }
+            }
+            .padding(8)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+    }
+}
+
+/// Decoded-once photo store: base64 → UIImage per post id. Every surface
+/// (grid tile, feed card, immersive page) hits this instead of re-decoding
+/// a JPEG on each scroll frame.
+enum FeedImageCache {
+    private static let cache = NSCache<NSString, UIImage>()
+
+    static func image(for post: FeedPost) -> UIImage? {
+        guard post.hasImage else { return nil }
+        if let hit = cache.object(forKey: post.id as NSString) { return hit }
+        guard let data = Data(base64Encoded: post.imageB64),
+              let decoded = UIImage(data: data) else { return nil }
+        cache.setObject(decoded, forKey: post.id as NSString)
+        return decoded
+    }
+}
+
 private struct StoryCardView: View {
     let post: FeedPost
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("SESSION")
-                .font(MorpheTheme.microLabel(11))
-                .tracking(2.4)
-                .foregroundStyle(Color.white.opacity(0.55))
-                .padding(.bottom, 10)
+            // Photo posts lead with the photo — the poster IS the content,
+            // and the session chrome would just crowd it.
+            if post.hasImage, let image = FeedImageCache.image(for: post) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(4 / 5, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+                    .padding(.bottom, 14)
+            }
 
-            Text(post.workoutName.isEmpty ? "Training Session" : post.workoutName)
-                .scaledFont(size: 34, weight: .black)
-                .foregroundStyle(.white)
-                .lineLimit(3)
-                .minimumScaleFactor(0.6)
-                .padding(.bottom, 14)
+            // A pure photo post isn't a session — "SESSION / Training
+            // Session" chrome on it would claim a workout that wasn't
+            // attached. Session dressing renders only when session facts do.
+            if !post.hasImage || post.hasSessionStats || !post.workoutName.isEmpty {
+                Text("SESSION")
+                    .font(MorpheTheme.microLabel(11))
+                    .tracking(2.4)
+                    .foregroundStyle(Color.white.opacity(0.55))
+                    .padding(.bottom, 10)
+
+                Text(post.workoutName.isEmpty ? "Training Session" : post.workoutName)
+                    .scaledFont(size: 34, weight: .black)
+                    .foregroundStyle(.white)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.6)
+                    .padding(.bottom, 14)
+            }
 
             if post.hasSessionStats {
                 Text([
@@ -2421,7 +2546,7 @@ private struct StoryCardView: View {
                 .padding(.bottom, 6)
             }
 
-            if !post.text.isEmpty {
+            if !post.text.trimmingCharacters(in: .whitespaces).isEmpty {
                 Text(post.text)
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -2705,10 +2830,25 @@ private struct FeedPostCard: View {
                     )
                 }
 
-                Text(post.text)
-                    .font(.subheadline)
-                    .foregroundStyle(.white)
-                    .fixedSize(horizontal: false, vertical: true)
+                // Capture-camera photo — leads the card, caption below.
+                if post.hasImage, let image = FeedImageCache.image(for: post) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity)
+                        .aspectRatio(4 / 5, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+                        .accessibilityLabel("Photo by \(post.authorName)")
+                }
+
+                // Photo posts may carry the placeholder single-space caption
+                // — render nothing rather than a ghost line.
+                if !post.text.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text(post.text)
+                        .font(.subheadline)
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 if !post.workoutName.isEmpty {
                     HStack(spacing: 6) {
@@ -3414,8 +3554,32 @@ struct AthleteInboxView: View {
     var autoOpenOnlyThread: Bool = false
     @State private var openedThread: MessageThreadSummary?
     @State private var didAutoOpen = false
+    @State private var query = ""
+    @State private var searchTask: Task<Void, Never>?
+    @State private var startingChatUid: String?
+    @FocusState private var searchFocused: Bool
 
     private var myUid: String { store.authUser?.id ?? "" }
+
+    private var cleanQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Conversations matching the query by the OTHER person's name (all of
+    /// them when the query is empty).
+    private var visibleThreads: [MessageThreadSummary] {
+        guard !cleanQuery.isEmpty else { return store.liveThreads }
+        return store.liveThreads.filter {
+            $0.counterpartName(for: myUid).localizedCaseInsensitiveContains(cleanQuery)
+        }
+    }
+
+    /// Directory hits that aren't me and don't already have a thread — those
+    /// surface as conversations above.
+    private var newPeopleHits: [AthleteSearchResult] {
+        let threadUids = Set(store.liveThreads.flatMap { [$0.coachUid, $0.athleteUid] })
+        return store.athleteSearchResults.filter { $0.uid != myUid && !threadUids.contains($0.uid) }
+    }
 
     var body: some View {
         Group {
@@ -3439,6 +3603,18 @@ struct AthleteInboxView: View {
         .onChange(of: store.pendingThreadOpenID) { _, _ in
             consumePendingThreadOpen()
         }
+        // Same debounce discipline as universal search (350ms, cancel on
+        // retype) — the directory is a Firestore range scan, not free.
+        .onChange(of: query) { _, text in
+            searchTask?.cancel()
+            let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard clean.count >= 2 else { return }
+            searchTask = Task {
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                guard !Task.isCancelled else { return }
+                await store.searchAthletes(query: clean)
+            }
+        }
     }
 
     private func consumePendingThreadOpen() {
@@ -3451,7 +3627,11 @@ struct AthleteInboxView: View {
     private var threadList: some View {
         ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 0) {
-                ForEach(Array(store.liveThreads.enumerated()), id: \.element.id) { index, thread in
+                searchField
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+
+                ForEach(Array(visibleThreads.enumerated()), id: \.element.id) { index, thread in
                     Button {
                         openedThread = thread
                     } label: {
@@ -3460,16 +3640,137 @@ struct AthleteInboxView: View {
                     }
                     .buttonStyle(.plain)
 
-                    if index < store.liveThreads.count - 1 {
+                    if index < visibleThreads.count - 1 {
                         Divider()
                             .overlay(MorpheTheme.stroke.opacity(0.5))
                             .padding(.leading, 72)
                     }
                 }
+
+                if cleanQuery.count >= 2 {
+                    directoryResults
+                } else if store.liveThreads.isEmpty {
+                    // The pane's only empty state now lives WITH the search
+                    // that cures it.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("No conversations yet")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Text("Search a username above to start a chat, or join a coach with their invite code and that thread appears here.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                }
             }
             .padding(.vertical, 4)
         }
+        .scrollDismissesKeyboard(.immediately)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textMuted)
+            TextField("Search chats or find people…", text: $query)
+                .font(.subheadline)
+                .foregroundStyle(.white)
+                .focused($searchFocused)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .submitLabel(.search)
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                    store.athleteSearchResults = []
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 44)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panelStrong)
+        )
+    }
+
+    /// Real directory hits with a start-chat action — the "new chat" door.
+    private var directoryResults: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("PEOPLE")
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.6)
+                .foregroundStyle(MorpheTheme.textMuted)
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 6)
+
+            if newPeopleHits.isEmpty {
+                Text(visibleThreads.isEmpty
+                     ? "No one found for \"\(cleanQuery)\" — usernames are exact-prefix."
+                     : "No new people for \"\(cleanQuery)\".")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+            }
+
+            ForEach(newPeopleHits) { hit in
+                HStack(spacing: 12) {
+                    Circle()
+                        .fill(MorpheTheme.panelStrong)
+                        .frame(width: 44, height: 44)
+                        .overlay(
+                            Text(String(hit.username.prefix(1)).uppercased())
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                        )
+                    Text("@\(hit.username)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button {
+                        guard startingChatUid == nil else { return }
+                        startingChatUid = hit.uid
+                        Task {
+                            _ = await store.startDirectChat(with: hit.uid, name: hit.username)
+                            startingChatUid = nil
+                            query = ""
+                            store.athleteSearchResults = []
+                        }
+                    } label: {
+                        Group {
+                            if startingChatUid == hit.uid {
+                                ProgressView().tint(.black)
+                            } else {
+                                Text("CHAT")
+                                    .font(MorpheTheme.microLabel(10))
+                                    .tracking(1.4)
+                            }
+                        }
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 16)
+                        .frame(height: 34)
+                        .background(Capsule().fill(MorpheTheme.brandYellow))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Start a chat with \(hit.username)")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
+        }
     }
 }
 

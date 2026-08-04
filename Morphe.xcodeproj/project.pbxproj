@@ -35,6 +35,7 @@
 		1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010006A /* WorkoutCatalog.swift */; };
 		1B20F6002C400001001000AA /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000A9 /* PersistenceTests.swift */; };
 		1B20F6002C400001001000D0 /* FormCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000D1 /* FormCheckView.swift */; };
+		1B20F6002C400001001000E0 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000E1 /* CaptureView.swift */; };
 		1B20F6002C4000010010FA01 /* FirebaseAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */; };
 		1B20F6002C4000010010FB01 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB02 /* FirebaseAuth */; };
 		1B20F6002C4000010010FB03 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB04 /* FirebaseFirestore */; };
@@ -112,6 +113,7 @@
 		1B20F6002C400001001000A1 /* MorpheTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MorpheTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B20F6002C400001001000A9 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
 		1B20F6002C400001001000D1 /* FormCheckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormCheckView.swift; sourceTree = "<group>"; };
+		1B20F6002C400001001000E1 /* CaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureView.swift; sourceTree = "<group>"; };
 		1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseAuthService.swift; sourceTree = "<group>"; };
 		1B20F6002C4000010010FC02 /* CloudBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackup.swift; sourceTree = "<group>"; };
 		1B20F6002C4000010010FD02 /* QRConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRConnectView.swift; sourceTree = "<group>"; };
@@ -231,6 +233,7 @@
 				1B20F6002C40000100100061 /* ProfileView.swift */,
 				1B20F6002C40000100100054 /* JournalScheduleView.swift */,
 				1B20F6002C400001001000D1 /* FormCheckView.swift */,
+				1B20F6002C400001001000E1 /* CaptureView.swift */,
 			);
 			path = Client;
 			sourceTree = "<group>";
@@ -417,6 +420,7 @@
 				1B20F6002C4000010010004D /* BookingView.swift in Sources */,
 				1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */,
 				1B20F6002C400001001000D0 /* FormCheckView.swift in Sources */,
+				1B20F6002C400001001000E0 /* CaptureView.swift in Sources */,
 				1B20F6002C40000100100045 /* CoachDashboardView.swift in Sources */,
 				1B20F6002C40000100100046 /* ProfileView.swift in Sources */,
 				1B20F6002C40000100100047 /* MoreView.swift in Sources */,
@@ -600,7 +604,8 @@
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "With Sleep from Health on, Morphe reads last night's sleep to pre-fill your morning check-in. Nothing else is read, and nothing you decline changes the app.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves each finished workout to Apple Health so it counts toward your Activity rings.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device) and to scan Morphe connect codes. Video never leaves your phone.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device), to scan Morphe connect codes, and to shoot photos or clips you choose to share. Nothing is uploaded unless you tap Post.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Morphe saves the clips you record to your photo library only when you tap Save.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone so you can dictate messages to Morphe AI. Audio is processed for transcription only.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Morphe converts your speech to text so you can talk to Morphe AI instead of typing.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
@@ -639,7 +644,8 @@
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "With Sleep from Health on, Morphe reads last night's sleep to pre-fill your morning check-in. Nothing else is read, and nothing you decline changes the app.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves each finished workout to Apple Health so it counts toward your Activity rings.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device) and to scan Morphe connect codes. Video never leaves your phone.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device), to scan Morphe connect codes, and to shoot photos or clips you choose to share. Nothing is uploaded unless you tap Post.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Morphe saves the clips you record to your photo library only when you tap Save.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone so you can dictate messages to Morphe AI. Audio is processed for transcription only.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Morphe converts your speech to text so you can talk to Morphe AI instead of typing.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;

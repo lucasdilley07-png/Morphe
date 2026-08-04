@@ -5454,3 +5454,125 @@ final class AITranscriptPrivacyTests: XCTestCase {
         XCTAssertEqual(store.athleteAIAgentConversation.first?.sender, .ai)
     }
 }
+
+// MARK: - Snapchat wave: direct chats + photo posts
+
+@MainActor
+final class SnapNetworkTests: XCTestCase {
+
+    /// Records ensureThread's exact arguments and serves the resulting
+    /// threads back, so the canonical-pair contract is testable offline.
+    final class SpyMessaging: MessagingSyncing {
+        struct Ensured { var coachUid: String; var athleteUid: String
+                         var coachName: String; var athleteName: String }
+        var ensured: [Ensured] = []
+        func ensureThread(coachUid: String, athleteUid: String,
+                          coachName: String, athleteName: String) async -> String? {
+            ensured.append(Ensured(coachUid: coachUid, athleteUid: athleteUid,
+                                   coachName: coachName, athleteName: athleteName))
+            return "\(coachUid)_\(athleteUid)"
+        }
+        func send(threadId: String, senderUid: String, text: String) async -> Bool { true }
+        func fetchThreads(for uid: String) async -> [MessageThreadSummary]? {
+            ensured.map {
+                MessageThreadSummary(id: "\($0.coachUid)_\($0.athleteUid)",
+                                     coachUid: $0.coachUid, athleteUid: $0.athleteUid,
+                                     coachName: $0.coachName, athleteName: $0.athleteName)
+            }
+        }
+        func listenMessages(threadId: String, onChange: @escaping ([ChatMessage]) -> Void) {}
+        func stopListening() {}
+        func fetchMessages(threadId: String, limit: Int) async -> [ChatMessage]? { nil }
+    }
+
+    /// Captures the exact FeedPost handed to publish.
+    final class CapturingFeedService: FeedSyncing {
+        var published: [FeedPost] = []
+        func publish(post: FeedPost) async -> Bool { published.append(post); return true }
+        func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]? { [] }
+        func fetchSince(date: Date, limit: Int) async -> [FeedPost]? { [] }
+        func react(postId: String, uid: String, type: String?) {}
+        func fetchReactionCounts(postIds: [String]) async -> [String: Int] { [:] }
+        func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]? { [:] }
+        func fetchComments(postId: String, limit: Int) async -> [PostComment]? { nil }
+        func addComment(_ comment: PostComment) async -> Bool { false }
+        func deleteComment(postId: String, commentId: String) {}
+        func savePost(uid: String, postId: String, on: Bool) {}
+        func fetchSavedPostIds(uid: String) async -> Set<String>? { nil }
+        func setFollow(uid: String, targetUid: String, on: Bool) {}
+        func fetchFollowing(uid: String) async -> Set<String>? { nil }
+        func submitReport(reporterUid: String, kind: String, targetId: String,
+                          targetUid: String, reason: String, excerpt: String) async -> Bool { false }
+        func setBlocked(uid: String, targetUid: String, name: String, on: Bool) {}
+        func fetchBlocked(uid: String) async -> [String: String]? { nil }
+        func delete(postId: String) {}
+    }
+
+    private func makeStore(messaging: SpyMessaging = SpyMessaging(),
+                           feed: CapturingFeedService = CapturingFeedService(),
+                           myUid: String) -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore(messagingService: messaging, feedService: feed)
+        store.onboardingDraft.name = "Me"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: myUid, email: "me@m.app", role: .athlete,
+                                 displayName: "Me", createdAt: .now)
+        return store
+    }
+
+    func testDirectChatOrdersPairCanonically() async {
+        // My uid sorts AFTER theirs — I take the athlete slot.
+        let messaging = SpyMessaging()
+        let store = makeStore(messaging: messaging, myUid: "zed-uid")
+        let ok = await store.startDirectChat(with: "abe-uid", name: "abe")
+        XCTAssertTrue(ok)
+        XCTAssertEqual(messaging.ensured.count, 1)
+        XCTAssertEqual(messaging.ensured[0].coachUid, "abe-uid")
+        XCTAssertEqual(messaging.ensured[0].athleteUid, "zed-uid")
+        XCTAssertEqual(messaging.ensured[0].coachName, "abe")
+        XCTAssertEqual(store.pendingThreadOpenID, "abe-uid_zed-uid",
+                       "the inbox door opens the thread we just made")
+    }
+
+    func testDirectChatSameIdFromEitherEnd() async {
+        // My uid sorts BEFORE theirs — same thread id as the reverse case.
+        let messaging = SpyMessaging()
+        let store = makeStore(messaging: messaging, myUid: "abe-uid")
+        _ = await store.startDirectChat(with: "zed-uid", name: "zed")
+        XCTAssertEqual(messaging.ensured[0].coachUid, "abe-uid")
+        XCTAssertEqual(messaging.ensured[0].athleteUid, "zed-uid")
+        XCTAssertEqual(store.pendingThreadOpenID, "abe-uid_zed-uid",
+                       "both directions collapse onto one deterministic thread")
+    }
+
+    func testDirectChatRefusesSelf() async {
+        let messaging = SpyMessaging()
+        let store = makeStore(messaging: messaging, myUid: "abe-uid")
+        let ok = await store.startDirectChat(with: "abe-uid", name: "me")
+        XCTAssertFalse(ok)
+        XCTAssertTrue(messaging.ensured.isEmpty, "no self-threads")
+    }
+
+    func testPhotoPostRidesThePipelineWithPlaceholderCaption() async {
+        let feed = CapturingFeedService()
+        let store = makeStore(feed: feed, myUid: "me-uid")
+        let posted = await store.publishPhotoPost(caption: "", imageB64: "QUJD")
+        XCTAssertTrue(posted)
+        let published = feed.published.first
+        XCTAssertNotNil(published)
+        XCTAssertEqual(published?.imageB64, "QUJD")
+        XCTAssertEqual(published?.text, " ",
+                       "empty captions ride as the single-space placeholder, never invented text")
+        XCTAssertEqual(published?.hasImage, true)
+    }
+
+    func testPhotoPostRejectsOverCapImage() async {
+        let feed = CapturingFeedService()
+        let store = makeStore(feed: feed, myUid: "me-uid")
+        let oversized = String(repeating: "A", count: 90_001)
+        let posted = await store.publishPhotoPost(caption: "big", imageB64: oversized)
+        XCTAssertFalse(posted, "the client refuses what the rules would refuse")
+        XCTAssertTrue(feed.published.isEmpty)
+    }
+}

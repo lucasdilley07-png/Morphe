@@ -138,6 +138,16 @@ try:
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
                               "verified": b(False), "text": s("accent abuse"),
                               "authorAccent": s("x" * 60)}}))
+    check("A posts a photo within the image cap", True,
+          fs_call(A, "PATCH", f"posts/{post_id}-i",
+                  {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                              "verified": b(False), "text": s(" "),
+                              "imageB64": s("QUJD" * 1000)}}))
+    check("A posts an over-cap image blob", False,
+          fs_call(A, "PATCH", f"posts/{post_id}-i2",
+                  {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                              "verified": b(False), "text": s("image abuse"),
+                              "imageB64": s("QUJD" * 24000)}}))
 
     print("\n— Reactions (one per uid, typed) —")
     check("B reacts to A's post (fire)", True,
@@ -268,6 +278,7 @@ finally:
         (B, f"posts/{post_id}/reactions/{B['uid']}"),
         (A, f"posts/{post_id}"),
         (A, f"posts/{post_id}-a"),
+        (A, f"posts/{post_id}-i"),
         (A, f"telemetry/t-{RUN_ID}"),
         (A, f"users/{A['uid']}/state/profile"),
         (A, f"users/{A['uid']}/following/{B['uid']}"),
