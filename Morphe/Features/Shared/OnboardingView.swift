@@ -283,17 +283,26 @@ struct OnboardingFlowView: View {
                                         .font(.subheadline)
                                         .foregroundStyle(MorpheTheme.textSecondary)
 
-                                    // Welcome is index 0 and shows no header, so
-                                    // the first header a user sees is "Step 1".
+                                    // Goal gradient, honestly earned: the
+                                    // account they just created counts as a
+                                    // completed step, so the bar never reads
+                                    // "you're at zero" — and the credit line
+                                    // states a real fact, not a pep line.
                                     ProgressBarView(
-                                        progress: Double(stepIndex) / Double(max(steps.count - 1, 1)),
+                                        progress: Double(stepIndex + 1) / Double(steps.count + 1),
                                         color: MorpheTheme.accent
                                     )
 
-                                    Text("STEP \(stepIndex + 1) / \(steps.count)")
-                                        .font(MorpheTheme.microLabel(10))
-                                        .tracking(1.4)
-                                        .foregroundStyle(MorpheTheme.textMuted)
+                                    HStack(spacing: 8) {
+                                        Text("STEP \(stepIndex + 1) / \(steps.count)")
+                                            .font(MorpheTheme.microLabel(10))
+                                            .tracking(1.4)
+                                            .foregroundStyle(MorpheTheme.textMuted)
+                                        Label("Account created", systemImage: "checkmark")
+                                            .font(MorpheTheme.microLabel(10))
+                                            .tracking(1.0)
+                                            .foregroundStyle(MorpheTheme.accent)
+                                    }
                                 }
                             }
                         }
@@ -496,6 +505,10 @@ private struct UsernameStep: View {
     /// Prefill seed (the user's name) — the step suggests a handle instead
     /// of demanding invention; it stays fully editable.
     var suggestedBase: String = ""
+    /// Stable digits + the last value WE wrote, so live re-suggestion can
+    /// tell "untouched" apart from "user edited".
+    @State private var suggestionDigits = Int.random(in: 10...99)
+    @State private var lastSuggestion = ""
 
     private var preview: String { UsernameRules.normalize(entry) }
 
@@ -524,6 +537,18 @@ private struct UsernameStep: View {
                         let base = UsernameRules.normalize(suggestedBase)
                         guard !base.isEmpty else { return }
                         entry = "\(base)\(Int.random(in: 10...99))"
+                    }
+                    // The identity step stacks name ABOVE username, so the
+                    // name usually lands after this field appears — keep
+                    // suggesting while the field is untouched (empty or
+                    // still exactly our last suggestion), stop the moment
+                    // the user edits it.
+                    .onChange(of: suggestedBase) { _, base in
+                        guard entry.isEmpty || entry == lastSuggestion else { return }
+                        let clean = UsernameRules.normalize(base)
+                        guard !clean.isEmpty else { return }
+                        lastSuggestion = "\(clean)\(suggestionDigits)"
+                        entry = lastSuggestion
                     }
 
                 if !preview.isEmpty {
@@ -858,6 +883,9 @@ private struct AccountTypeStep: View {
 
 private struct GoalSelectionStep: View {
     @Environment(MorpheAppStore.self) private var store
+    /// Free-text milestones stay folded until asked for — the default step
+    /// is all taps, no writing.
+    @State private var showMilestones = false
 
     private var detailTitle: String {
         store.onboardingDraft.accountType == .coach ? "What outcome are you coaching toward first?" : "What result feels realistic right now?"
@@ -875,6 +903,15 @@ private struct GoalSelectionStep: View {
                 Text("\(store.onboardingDraft.selectedGoals.count) of 5 selected")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(MorpheTheme.textMuted)
+                    // Back-navigation must never hide text the user already
+                    // wrote behind a collapsed disclosure.
+                    .onAppear {
+                        if !store.onboardingDraft.physicalGoalTarget.isEmpty
+                            || !store.onboardingDraft.weightGoalTarget.isEmpty
+                            || !store.onboardingDraft.goalDeadline.isEmpty {
+                            showMilestones = true
+                        }
+                    }
 
                 WrapStack(spacing: 10) {
                     ForEach(FitnessGoalOption.allCases) { goal in
@@ -888,43 +925,64 @@ private struct GoalSelectionStep: View {
                 Divider()
                     .overlay(Color.white.opacity(0.08))
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(detailTitle)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                // Zero visible writing by default: taps carry the whole
+                // step, and the free-text milestones live behind one
+                // disclosure for the users who want them. (Three text
+                // boxes — even optional ones — read as homework.)
+                if showMilestones {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(detailTitle)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
 
-                    // Marked optional with worked examples — three blank
-                    // required-looking boxes stalled new users cold.
-                    Text("All optional — skip these and set them later in Profile.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
+                        Text("All optional — skip these and set them later in Profile.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
 
-                    // 30/60/90-day horizons: short placeholders that never
-                    // truncate, and vertical-axis fields so anything longer
-                    // wraps into view instead of getting cut off.
-                    TextField(
-                        "30 days — e.g. \"train 3x a week\"",
-                        text: $store.onboardingDraft.physicalGoalTarget,
-                        axis: .vertical
-                    )
-                    .textFieldStyle(MorpheFieldStyle())
-                    .lineLimit(1...4)
+                        // 30/60/90-day horizons: short placeholders that never
+                        // truncate, and vertical-axis fields so anything longer
+                        // wraps into view instead of getting cut off.
+                        TextField(
+                            "30 days — e.g. \"train 3x a week\"",
+                            text: $store.onboardingDraft.physicalGoalTarget,
+                            axis: .vertical
+                        )
+                        .textFieldStyle(MorpheFieldStyle())
+                        .lineLimit(1...4)
 
-                    TextField(
-                        "60 days — e.g. \"down 5 lb, stronger squat\"",
-                        text: $store.onboardingDraft.weightGoalTarget,
-                        axis: .vertical
-                    )
-                    .textFieldStyle(MorpheFieldStyle())
-                    .lineLimit(1...4)
+                        TextField(
+                            "60 days — e.g. \"down 5 lb, stronger squat\"",
+                            text: $store.onboardingDraft.weightGoalTarget,
+                            axis: .vertical
+                        )
+                        .textFieldStyle(MorpheFieldStyle())
+                        .lineLimit(1...4)
 
-                    TextField(
-                        "90 days — e.g. \"first 5K\" or a date",
-                        text: $store.onboardingDraft.goalDeadline,
-                        axis: .vertical
-                    )
-                    .textFieldStyle(MorpheFieldStyle())
-                    .lineLimit(1...4)
+                        TextField(
+                            "90 days — e.g. \"first 5K\" or a date",
+                            text: $store.onboardingDraft.goalDeadline,
+                            axis: .vertical
+                        )
+                        .textFieldStyle(MorpheFieldStyle())
+                        .lineLimit(1...4)
+                    }
+                } else {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) { showMilestones = true }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus.circle")
+                                .font(.caption.weight(.bold))
+                            Text("Add 30/60/90-day milestones (optional)")
+                                .font(.caption.weight(.semibold))
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add optional 30, 60, and 90 day milestones")
                 }
             }
         }

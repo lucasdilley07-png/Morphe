@@ -8698,6 +8698,20 @@ final class MorpheAppStore {
         let done: Bool
     }
 
+    /// Loss-framed nudge condition: the REAL streak that ends tonight
+    /// without a session. Nil unless there's a streak of 2+ days, today is
+    /// a training day, and nothing is logged yet — losing beats gaining in
+    /// the brain, but only when the thing at stake actually exists.
+    var streakOnTheLineDays: Int? {
+        let streak = currentAthleteWorkoutSummary.currentStreakDays
+        guard streak >= 2, selectedRole == .client else { return nil }
+        guard !plannedRestDay() else { return nil }
+        let loggedToday = currentAthleteWorkoutLogs.contains {
+            Calendar.current.isDateInToday($0.completedAt)
+        }
+        return loggedToday ? nil : streak
+    }
+
     /// The 7-day starter checklist, or nil once week one is over. Every
     /// step's completion is DERIVED from real state — nothing to tick, the
     /// app notices. Steps stay achievable in any order.
@@ -8709,6 +8723,10 @@ final class MorpheAppStore {
         guard daysIn < 7 else { return nil }
         let logCount = currentAthleteWorkoutLogs.count
         return [
+            // Goal gradient, honestly: this list only exists AFTER account +
+            // plan setup, so the first tick is a real completed fact — the
+            // user starts at 1/6, never a wall of empty circles.
+            FirstWeekStep(id: 0, title: "Create your account and plan", done: true),
             FirstWeekStep(id: 1, title: "Log your first session", done: logCount >= 1),
             FirstWeekStep(id: 2, title: "Do a recovery check-in", done: didCompleteQuickCheckIn || !recoverySeries.isEmpty),
             FirstWeekStep(id: 3, title: "Save your weight in Profile", done: Self.parsedBodyWeightLb(clientProfile.bodyWeight) != nil),

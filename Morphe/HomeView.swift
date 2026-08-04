@@ -91,6 +91,30 @@ struct HomeView: View {
                         onTrainAgain: { store.selectedClientTab = .train }
                     )
                 } else {
+                    // Loss framing over gain framing — but only for a REAL
+                    // streak (2+ days, training day, nothing logged). The
+                    // number is derived; the line disappears the moment a
+                    // session lands.
+                    if let atRisk = store.streakOnTheLineDays {
+                        HStack(spacing: 8) {
+                            Image(systemName: "flame.fill")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(MorpheTheme.warning)
+                            Text("\(atRisk)-day streak on the line — one session tonight keeps it.")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .stroke(MorpheTheme.warning.opacity(0.55), lineWidth: 1)
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Your \(atRisk) day streak ends tonight without a session")
+                    }
+
                     TodayNextMoveCard(
                         workout: store.currentWorkout,
                         minimumWinModeEnabled: store.minimumWinModeEnabled,
@@ -1312,7 +1336,7 @@ private struct FirstWeekCard: View {
 
                 Text(doneCount == steps.count
                      ? "Week one locked in — this is how habits start."
-                     : "Five small wins make the habit real. The app checks them off as they happen.")
+                     : "Small wins make the habit real. The app checks them off as they happen — you're already on the board.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
 

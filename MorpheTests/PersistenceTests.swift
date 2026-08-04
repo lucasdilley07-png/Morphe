@@ -4530,12 +4530,13 @@ final class BacklogBatchTests: XCTestCase {
         guard var steps = store.firstWeekSteps else {
             return XCTFail("fresh onboarding must start the first-week arc")
         }
-        XCTAssertEqual(steps.count, 5)
-        XCTAssertFalse(steps[0].done, "no session logged yet")
+        XCTAssertEqual(steps.count, 6)
+        XCTAssertTrue(steps[0].done, "the setup tick is pre-earned — account + plan exist")
+        XCTAssertFalse(steps[1].done, "no session logged yet")
 
         store.submitRecoveryCheckIn(sleepHours: 7, energy: 6, soreness: 3, mood: 7, pain: false)
         steps = store.firstWeekSteps!
-        XCTAssertTrue(steps[1].done, "check-in step derives from real state")
+        XCTAssertTrue(steps[2].done, "check-in step derives from real state")
 
         // Day 8: the arc is over, complete or not.
         store.firstWeekStart = Calendar.current.date(byAdding: .day, value: -8, to: .now)
@@ -5574,5 +5575,64 @@ final class SnapNetworkTests: XCTestCase {
         let posted = await store.publishPhotoPost(caption: "big", imageB64: oversized)
         XCTAssertFalse(posted, "the client refuses what the rules would refuse")
         XCTAssertTrue(feed.published.isEmpty)
+    }
+}
+
+// MARK: - UX psychology wave (goal gradient + honest loss framing)
+
+@MainActor
+final class UXPsychologyTests: XCTestCase {
+    private func makeStore() -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    private func backdateSession(_ store: MorpheAppStore, daysAgo: Int) {
+        let day = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now
+        XCTAssertTrue(store.logPastWorkout(
+            template: store.currentWorkout, on: day, durationMinutes: 30,
+            entries: [(name: "Goblet Squat", sets: 3, reps: 10, weight: 40, muscleGroup: nil)]
+        ), "backdated session should log (\(daysAgo) days ago is inside the 14-day window)")
+    }
+
+    func testFirstWeekStartsOnTheBoardHonestly() {
+        let store = makeStore()
+        let steps = store.firstWeekSteps
+        XCTAssertEqual(steps?.first?.title, "Create your account and plan")
+        XCTAssertEqual(steps?.first?.done, true,
+                       "the pre-checked tick is a REAL completed fact — setup happened")
+        XCTAssertEqual(steps?.filter(\.done).count, 1,
+                       "exactly one earned tick at start — nothing else invented")
+    }
+
+    func testStreakOnTheLineNeedsARealStreak() {
+        let store = makeStore()
+        XCTAssertNil(store.streakOnTheLineDays, "no logs → nothing at stake → no loss framing")
+
+        backdateSession(store, daysAgo: 2)
+        backdateSession(store, daysAgo: 1)
+        XCTAssertEqual(store.streakOnTheLineDays, 2,
+                       "two logged days and an unlogged today = a real streak at risk")
+
+        store.startTodayWorkout()
+        store.hasCompletedWorkoutFlow = true
+        store.logWorkout()
+        XCTAssertNil(store.streakOnTheLineDays, "today's session saves the streak — the line vanishes")
+    }
+
+    func testStreakOnTheLineRespectsPlannedRestDays() {
+        let store = makeStore()
+        backdateSession(store, daysAgo: 2)
+        backdateSession(store, daysAgo: 1)
+
+        let todayWeekday = Calendar.current.component(.weekday, from: .now)
+        let otherDay = todayWeekday == 7 ? 1 : todayWeekday + 1
+        store.trainingDays = [otherDay]
+        XCTAssertNil(store.streakOnTheLineDays,
+                     "a planned rest day never guilt-trips — rest is part of the program")
     }
 }
