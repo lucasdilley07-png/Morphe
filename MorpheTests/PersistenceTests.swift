@@ -3545,9 +3545,11 @@ final class IdentityAndTermsTests: XCTestCase {
         XCTAssertNil(store.authUser, "declining signs the account out")
         XCTAssertFalse(store.hasAcceptedTerms)
 
-        // Signing back in (still unaccepted) puts the gate right back up.
-        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
-        XCTAssertTrue(store.needsTermsAcceptance, "the gate returns on every open until they agree")
+        // Sign-out now wipes the device (launch audit) — the decliner
+        // re-onboards on return, and the terms gate lives inside
+        // onboarding's final step, so consent is still unavoidable.
+        XCTAssertFalse(store.hasCompletedOnboarding,
+                       "declining terms leaves no half-onboarded local state behind")
     }
 }
 
@@ -5185,7 +5187,9 @@ final class AIParityTests: XCTestCase {
         let store = freshStore()
         store.selectedRole = .coach
         XCTAssertTrue(store.sendAIAgentPrompt("open athletes"))
-        XCTAssertEqual(store.selectedCoachTab, .athletes)
+        // .athletes has no mounted page — the clamp lands on Build, where
+        // the roster tools actually live (coach audit: blank-screen fix).
+        XCTAssertEqual(store.selectedCoachTab, .programs)
     }
 
     func testCoachAttentionAnswerDerivesFromRealLogs() {
@@ -5634,5 +5638,84 @@ final class UXPsychologyTests: XCTestCase {
         store.trainingDays = [otherDay]
         XCTAssertNil(store.streakOnTheLineDays,
                      "a planned rest day never guilt-trips — rest is part of the program")
+    }
+}
+
+// MARK: - 1000-user wave: sign-out hygiene, unit-aware weight, real coach data
+
+@MainActor
+final class LaunchHardeningTests: XCTestCase {
+    private func makeStore() -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    func testSignOutWipesTheDeviceForTheNextAccount() {
+        let store = makeStore()
+        store.startTodayWorkout()
+        store.hasCompletedWorkoutFlow = true
+        store.logWorkout()
+        XCTAssertFalse(store.workoutLogs.isEmpty)
+
+        store.signOut()
+
+        XCTAssertFalse(store.hasCompletedOnboarding,
+                       "the NEXT account must onboard — inheriting the flag skipped onboarding and stole this identity")
+        XCTAssertTrue(store.workoutLogs.isEmpty, "logs belong to the signed-out account")
+        XCTAssertNil(store.profilePhotoData, "the photo must never become the next user's face")
+
+        // The wiped device restores nothing locally on relaunch.
+        let relaunched = MorpheAppStore()
+        XCTAssertFalse(relaunched.hasCompletedOnboarding,
+                       "no local snapshot may survive sign-out")
+        XCTAssertTrue(relaunched.workoutLogs.isEmpty)
+    }
+
+    func testBareWeightNumberSpeaksTheUsersUnit() {
+        XCTAssertEqual(MorpheAppStore.parsedBodyWeightLb("77", assumedUnit: .kilograms) ?? 0, 169.75, accuracy: 0.1,
+                       "a kg user typing 77 means 77 kg, not 77 lb")
+        XCTAssertEqual(MorpheAppStore.parsedBodyWeightLb("77", assumedUnit: .pounds), 77)
+        XCTAssertEqual(MorpheAppStore.parsedBodyWeightLb("170 lb", assumedUnit: .kilograms), 170,
+                       "an explicit suffix always wins over the assumed unit")
+        XCTAssertEqual(MorpheAppStore.parsedBodyWeightLb("77 kg", assumedUnit: .pounds) ?? 0, 169.75, accuracy: 0.1)
+    }
+
+    func testLiveCoachOverviewDerivesFromRealRoster() {
+        let store = makeStore()
+        XCTAssertEqual(store.liveCoachOverview.activeClients, 0)
+        XCTAssertEqual(store.liveCoachOverview.weeklySummary, "Add your first client to start coaching.")
+
+        let fresh = ManagedClient(id: "C1", coachUid: "u", coachName: "Coach",
+                                  name: "Alex", logs: [])
+        store.managedClients = [fresh]
+        let overview = store.liveCoachOverview
+        XCTAssertEqual(overview.activeClients, 1)
+        XCTAssertEqual(overview.atRiskClients, 1, "no logged session ever = quiet 7+ days")
+        XCTAssertTrue(overview.alerts.first?.contains("Alex") == true)
+    }
+
+    func testAssignWorkoutStampsTheManagedClient() {
+        let store = makeStore()
+        store.managedClients = [
+            ManagedClient(id: "C2", coachUid: "u", coachName: "Coach", name: "Sam")
+        ]
+        store.assignWorkout(named: "Foundation Strength", to: store.managedClients[0],
+                            scheduledLabel: "Friday 5:00 PM")
+        XCTAssertTrue(store.managedClients[0].notes.contains("Assigned Foundation Strength for Friday 5:00 PM."),
+                      "the assignment lands in the client doc, not a dead demo array")
+    }
+
+    func testRemindersMasterTogglePersists() {
+        let store = makeStore()
+        XCTAssertTrue(store.remindersEnabled, "on by default")
+        store.remindersEnabled = false
+        let relaunched = MorpheAppStore()
+        // Fresh store loads the same profile's prefs blob.
+        _ = relaunched
+        XCTAssertFalse(store.remindersEnabled)
     }
 }

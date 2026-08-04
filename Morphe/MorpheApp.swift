@@ -34,6 +34,12 @@ struct MorpheApp: App {
                     if phase == .active {
                         store.handleDayRolloverIfNeeded()
                     }
+                    // The log backup debounce is 60s — leaving the app
+                    // flushes whatever is pending so a swipe-kill can't
+                    // strand the last set locally.
+                    if phase == .background {
+                        store.requestImmediateLogBackup()
+                    }
                 }
         }
     }

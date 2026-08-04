@@ -501,7 +501,8 @@ private struct ClientPinnedHeader: View {
             Button {
                 store.openClientProfile()
             } label: {
-                MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 40)
+                MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 40,
+                                 photoData: store.profilePhotoData)
                     // The avatar tile's own fill is 6%-white — floating over
                     // scrolling content it needs a truly opaque face, same
                     // as the quick-add button.
@@ -1653,21 +1654,22 @@ private struct QuickAddSheet: View {
                         Text("Quick Note")
                             .font(.headline)
                             .foregroundStyle(.white)
-                        Text(store.selectedRole == .coach ? "Save a note against the selected athlete or your own coaching flow." : "Capture how you feel, what worked, or what to tell your coach later.")
+                        // Honest copy: notes save to YOUR list (nothing is
+                        // "attached to an athlete" — that claim was false),
+                        // and an empty save no longer invents canned text.
+                        Text(store.selectedRole == .coach ? "Capture a coaching thought to act on later." : "Capture how you feel, what worked, or what to tell your coach later.")
                             .foregroundStyle(MorpheTheme.textSecondary)
 
                         TextField("Type a quick note...", text: $quickNote)
                             .textFieldStyle(MorpheFieldStyle())
 
                         Button("Save Note") {
-                            let fallback = store.selectedRole == .coach
-                                ? "Needs a lighter session next time."
-                                : "Session felt clean and manageable today."
-                            store.saveQuickNote(quickNote.isEmpty ? fallback : quickNote)
+                            store.saveQuickNote(quickNote)
                             quickNote = ""
                             dismissQuickAdd()
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .disabled(quickNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
 

@@ -178,7 +178,11 @@ service cloud.firestore {
     // the same transaction that claims the new one. A name someone ELSE
     // holds stays untouchable.
     match /usernames/{username} {
-      allow read:   if true;
+      // Signed-in only (1000-user audit #5): `if true` let ANYONE with the
+      // public web config enumerate every (username, uid) pair AND drain
+      // the daily read quota unauthenticated. Every in-app reader (claim
+      // check, directory search) runs signed in.
+      allow read:   if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
       allow update: if isSignedIn()
         && resource.data.uid == request.auth.uid

@@ -323,12 +323,12 @@ private struct CoachCommandCenterScreen: View {
                 } else {
                     CoachDashboardTriageCard(
                         coachName: store.coachProfile.name,
-                        atRiskCount: store.coachOverview.atRiskClients,
+                        atRiskCount: store.liveCoachOverview.atRiskClients,
                         pendingAIReviewCount: pendingAIReviewAthlete.map { athlete in
                             store.workoutLogs(for: athlete.id).filter { $0.verificationStatus == .aiPendingReview }.count
                         } ?? 0,
-                        painFlagCount: store.coachOverview.painFlags,
-                        replyQueueCount: store.coachOverview.messagesNeedingResponse,
+                        painFlagCount: store.liveCoachOverview.painFlags,
+                        replyQueueCount: store.liveCoachOverview.messagesNeedingResponse,
                         nextSession: nextUpcomingSession,
                         nextIntervention: nextInterventionNeedingAction,
                         showsRecoveryAction: recoveryIntervention != nil,
@@ -405,7 +405,7 @@ private struct CoachCommandCenterScreen: View {
                     subtitle: "Use the broader coaching summary once the urgent work is already moving.",
                     isExpanded: $showOverview
                 ) {
-                    CoachHeroSummaryCard(profile: store.coachProfile, overview: store.coachOverview)
+                    CoachHeroSummaryCard(profile: store.coachProfile, overview: store.liveCoachOverview)
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
@@ -953,10 +953,12 @@ private struct ManagedClientDetailSheet: View {
                                 isOpeningThread = true
                                 Task {
                                     defer { isOpeningThread = false }
-                                    if await store.startThreadWithClaimedClient(client),
-                                       let threadId = store.activeThreadId {
-                                        messagingThread = store.liveThreads
-                                            .first(where: { $0.id == threadId })
+                                    // Navigate with the thread the store
+                                    // actually opened — a liveThreads lookup
+                                    // could miss the synthesized fallback
+                                    // and leave the button a silent no-op.
+                                    if let thread = await store.startThreadWithClaimedClient(client) {
+                                        messagingThread = thread
                                     }
                                 }
                             } label: {
@@ -1125,7 +1127,7 @@ private struct CoachProgramsScreen: View {
             return "Building in \(sport.shortTitle) mode with \(store.filteredCoachClients.count) athletes in focus."
         }
 
-        return "Building around \(store.coachProfile.specialty.lowercased()) with \(store.coachProfile.activeClients) active athletes in the system."
+        return "Building around \(store.coachProfile.specialty.lowercased()) with \(store.visibleManagedClients.count) active athlete\(store.visibleManagedClients.count == 1 ? "" : "s") in the system."
     }
 
     var body: some View {
@@ -1761,13 +1763,17 @@ private struct CoachBuildLibraryPanel: View {
                 }
             }
 
-            CoachLibraryDisclosureSection(
-                title: "Coach Playbooks",
-                subtitle: "Open the systems you return to when you want programming consistency.",
-                isExpanded: $showPlaybooks
-            ) {
-                ForEach(store.playbooks) { playbook in
-                    CoachPlaybookCard(playbook: playbook)
+            // Hidden until playbooks exist — a header over nothing promised
+            // "systems" the account doesn't have (coach audit).
+            if !store.playbooks.isEmpty {
+                CoachLibraryDisclosureSection(
+                    title: "Coach Playbooks",
+                    subtitle: "Open the systems you return to when you want programming consistency.",
+                    isExpanded: $showPlaybooks
+                ) {
+                    ForEach(store.playbooks) { playbook in
+                        CoachPlaybookCard(playbook: playbook)
+                    }
                 }
             }
 
@@ -1825,7 +1831,11 @@ private struct CoachBuildLibraryPanel: View {
                     VideoReviewHubCard(clips: athlete.videoReviews)
                 }
 
-                CoachQualityAnalyticsCard(analytics: store.coachAnalytics)
+                // The empty sentinel exists precisely so this card can hide
+                // instead of showing fabricated 0% metrics (coach audit).
+                if store.coachAnalytics != .empty {
+                    CoachQualityAnalyticsCard(analytics: store.coachAnalytics)
+                }
             }
         }
     }
@@ -2037,7 +2047,7 @@ private struct AssignWorkoutSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let template: WorkoutTemplate
-    @State private var selectedClientID: UUID?
+    @State private var selectedManagedID: String?
     @State private var scheduledDate = Date()
 
     var body: some View {
@@ -2047,35 +2057,44 @@ private struct AssignWorkoutSheet: View {
                     .font(.title3.weight(.bold))
                     .foregroundStyle(.white)
 
-                Picker("Athlete", selection: $selectedClientID) {
-                    ForEach(store.coachClients) { athlete in
-                        Text(athlete.name).tag(Optional(athlete.id))
+                if store.visibleManagedClients.isEmpty {
+                    // Honest dead-end: the CTA used to silently no-op over
+                    // an empty picker (coach audit P0).
+                    Text("No clients on your roster yet — add one from Home and this sheet assigns to them.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                } else {
+                    Picker("Athlete", selection: $selectedManagedID) {
+                        ForEach(store.visibleManagedClients) { client in
+                            Text(client.name).tag(Optional(client.id))
+                        }
                     }
+                    .pickerStyle(.menu)
+
+                    DatePicker("Day and time", selection: $scheduledDate)
+                        .datePickerStyle(.graphical)
+                        .tint(MorpheTheme.accent)
+
+                    Button("Assign Workout") {
+                        guard let selectedManagedID,
+                              let client = store.visibleManagedClients.first(where: { $0.id == selectedManagedID })
+                        else { return }
+
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "EEEE h:mm a"
+                        store.assignWorkout(named: template.name, to: client, scheduledLabel: formatter.string(from: scheduledDate))
+                        dismiss()
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(selectedManagedID == nil)
                 }
-                .pickerStyle(.menu)
-
-                DatePicker("Day and time", selection: $scheduledDate)
-                    .datePickerStyle(.graphical)
-                    .tint(MorpheTheme.accent)
-
-                Button("Assign Workout") {
-                    guard let selectedClientID,
-                          let athlete = store.coachClients.first(where: { $0.id == selectedClientID })
-                    else { return }
-
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "EEEE h:mm a"
-                    store.assignWorkoutTemplate(template, to: athlete, scheduledLabel: formatter.string(from: scheduledDate))
-                    dismiss()
-                }
-                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
                 Spacer()
             }
             .padding(20)
             .background(PremiumBackground())
             .onAppear {
-                selectedClientID = selectedClientID ?? store.coachClients.first?.id
+                selectedManagedID = selectedManagedID ?? store.visibleManagedClients.first?.id
             }
         }
     }
@@ -2085,7 +2104,7 @@ private struct AssignSavedWorkoutSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let item: SavedWorkoutLibraryItem
-    @State private var selectedClientID: UUID?
+    @State private var selectedManagedID: String?
     @State private var scheduledDate = Date()
 
     var body: some View {
@@ -2114,35 +2133,42 @@ private struct AssignSavedWorkoutSheet: View {
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
-                Picker("Athlete", selection: $selectedClientID) {
-                    ForEach(store.coachClients) { athlete in
-                        Text(athlete.name).tag(Optional(athlete.id))
+                if store.visibleManagedClients.isEmpty {
+                    Text("No clients on your roster yet — add one from Home and this sheet assigns to them.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                } else {
+                    Picker("Athlete", selection: $selectedManagedID) {
+                        ForEach(store.visibleManagedClients) { client in
+                            Text(client.name).tag(Optional(client.id))
+                        }
                     }
+                    .pickerStyle(.menu)
+
+                    DatePicker("Day and time", selection: $scheduledDate)
+                        .datePickerStyle(.graphical)
+                        .tint(MorpheTheme.accent)
+
+                    Button("Assign Saved") {
+                        guard let selectedManagedID,
+                              let client = store.visibleManagedClients.first(where: { $0.id == selectedManagedID })
+                        else { return }
+
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "EEEE h:mm a"
+                        store.assignWorkout(named: item.workoutName, to: client, scheduledLabel: formatter.string(from: scheduledDate))
+                        dismiss()
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(selectedManagedID == nil)
                 }
-                .pickerStyle(.menu)
-
-                DatePicker("Day and time", selection: $scheduledDate)
-                    .datePickerStyle(.graphical)
-                    .tint(MorpheTheme.accent)
-
-                Button("Assign Saved") {
-                    guard let selectedClientID,
-                          let athlete = store.coachClients.first(where: { $0.id == selectedClientID })
-                    else { return }
-
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "EEEE h:mm a"
-                    store.assignSavedWorkout(item, to: athlete, scheduledLabel: formatter.string(from: scheduledDate))
-                    dismiss()
-                }
-                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
                 Spacer()
             }
             .padding(20)
             .background(PremiumBackground())
             .onAppear {
-                selectedClientID = selectedClientID ?? store.coachClients.first?.id
+                selectedManagedID = selectedManagedID ?? store.visibleManagedClients.first?.id
             }
         }
     }
@@ -2520,8 +2546,20 @@ private struct CoachMessagesScreen: View {
             || (coachAIContextBadge?.lowercased().contains(query) ?? false)
     }
 
+    /// Real conversations filtered by the SAME query as everything else —
+    /// typing a client's name used to filter nothing (coach audit).
+    private var filteredLiveThreads: [MessageThreadSummary] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return store.liveThreads }
+        let myUid = store.authUser?.id ?? ""
+        return store.liveThreads.filter {
+            $0.counterpartName(for: myUid).lowercased().contains(query)
+                || $0.lastMessage.lowercased().contains(query)
+        }
+    }
+
     private var contactCount: Int {
-        filteredThreads.count + (showsAIContact ? 1 : 0)
+        filteredLiveThreads.count + filteredThreads.count + (showsAIContact ? 1 : 0)
     }
 
     var body: some View {
@@ -2584,7 +2622,7 @@ private struct CoachMessagesScreen: View {
                 TextField("Search athlete, coach note, or group chat", text: $searchText)
                     .textFieldStyle(MorpheFieldStyle())
 
-                Text("\(contactCount) contacts")
+                Text("\(contactCount) contact\(contactCount == 1 ? "" : "s")")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(MorpheTheme.textMuted)
             }
@@ -2597,7 +2635,7 @@ private struct CoachMessagesScreen: View {
                 LazyVStack(spacing: 0) {
                     // REAL conversations first: athletes who claimed one of
                     // this coach's invite codes. Firestore-backed, both ways.
-                    if !store.liveThreads.isEmpty {
+                    if !filteredLiveThreads.isEmpty {
                         Text("Clients")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.textMuted)
@@ -2606,7 +2644,7 @@ private struct CoachMessagesScreen: View {
                             .padding(.bottom, 2)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
-                        ForEach(store.liveThreads) { thread in
+                        ForEach(filteredLiveThreads) { thread in
                             Button {
                                 activeLiveThread = thread
                             } label: {
@@ -3571,14 +3609,18 @@ private struct CoachHeroSummaryCard: View {
                         Text(profile.specialty)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(MorpheTheme.accentAlt)
-                        Text("Groups: \(profile.groups.joined(separator: " • "))")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
+                        if !profile.groups.isEmpty {
+                            Text("Groups: \(profile.groups.joined(separator: " • "))")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
                     }
 
                     Spacer()
 
-                    StatusBadge(text: "\(profile.activeClients) active", color: MorpheTheme.accent)
+                    // The overview count is LIVE (managed roster) — the
+                    // profile's activeClients froze at 0 (coach audit).
+                    StatusBadge(text: "\(overview.activeClients) active", color: MorpheTheme.accent)
                 }
 
                 Text(overview.insight.summary)

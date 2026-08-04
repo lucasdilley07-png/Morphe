@@ -462,12 +462,13 @@ final class FirebaseMessagingService: MessagingSyncing {
 
     func listenMessages(threadId: String, onChange: @escaping ([ChatMessage]) -> Void) {
         stopListening()
-        // Bounded window (READINESS-300 R7): the newest 300, still delivered
-        // in chronological order. An unbounded listener re-delivered the
-        // whole history on every change.
+        // Bounded window (1000-user audit): the listener's INITIAL snapshot
+        // bills a read per doc, and opening a chat is the app's most
+        // repeated gesture — 30 keeps it cheap; older history stays in the
+        // cloud until a pager wants it.
         messageListener = threadDoc(threadId).collection("messages")
             .order(by: "sentAt")
-            .limit(toLast: 300)
+            .limit(toLast: 30)
             .addSnapshotListener { snap, _ in
                 guard let snap else { return }
                 onChange(snap.documents.compactMap(Self.message(from:)))

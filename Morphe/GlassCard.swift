@@ -365,10 +365,15 @@ struct RecordStampOverlay: View {
 struct MorpheAvatarView: View {
     let avatar: AvatarProfile
     let size: CGFloat
+    /// The user's real photo — when present it IS the avatar. The audit
+    /// found the uploaded photo displayed on exactly one screen; passing it
+    /// here puts the face where the identity tile already lives.
+    var photoData: Data? = nil
 
-    init(avatar: AvatarProfile, size: CGFloat = 64) {
+    init(avatar: AvatarProfile, size: CGFloat = 64, photoData: Data? = nil) {
         self.avatar = avatar
         self.size = size
+        self.photoData = photoData
     }
 
     var body: some View {
@@ -382,9 +387,17 @@ struct MorpheAvatarView: View {
                         .stroke(Color.white.opacity(0.14), lineWidth: 1)
                 )
 
-            Image(systemName: avatar.style.systemImage)
-                .font(.system(size: size * 0.4, weight: .semibold))
-                .foregroundStyle(MorpheTheme.accent)
+            if let photoData, let photo = UIImage(data: photoData) {
+                Image(uiImage: photo)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+            } else {
+                Image(systemName: avatar.style.systemImage)
+                    .font(.system(size: size * 0.4, weight: .semibold))
+                    .foregroundStyle(MorpheTheme.accent)
+            }
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)

@@ -103,7 +103,16 @@ final class MorpheAppStore {
 
     var selectedRole: AppRole = .client
     var selectedClientTab: ClientTab = .today
-    var selectedCoachTab: CoachTab = .dashboard
+    var selectedCoachTab: CoachTab = .dashboard {
+        didSet {
+            // Clamp to MOUNTED tabs: .athletes and (flag-off) .network have
+            // no page in the TabView — landing there was a blank screen
+            // with no dock selection (coach audit). Athletes' roster tools
+            // live in Build; social routing falls back to Messages.
+            guard !CoachTab.visibleCases.contains(selectedCoachTab) else { return }
+            selectedCoachTab = selectedCoachTab == .athletes ? .programs : .messages
+        }
+    }
     var selectedAppearance: ColorScheme? = .dark
     var toastMessage: String?
     var celebration: CelebrationMoment?
@@ -223,7 +232,12 @@ final class MorpheAppStore {
             guard hasCompletedOnboarding, !suppressLogCloudPush else { return }
             logPushDebounce?.cancel()
             logPushDebounce = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 8_000_000_000)
+                // 60s: each flush rewrites the WHOLE history doc, and sets
+                // land minutes apart mid-workout — 8s made every set its
+                // own full-history upload (1000-user audit #8). Backup
+                // still lands within a minute of the last change, and
+                // sign-out/foreground-exit flush immediately.
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
                 guard !Task.isCancelled, let self else { return }
                 await self.flushLogBackupNow()
             }
@@ -513,6 +527,20 @@ final class MorpheAppStore {
     var weeklyLeaderboardSelfEntry: WeeklyLeaderboardEntry?
     /// Weekly-board opt-in. Persisted in UserDefaults (documented exception —
     /// see `loadCompetitionState`).
+    /// Master switch for every scheduled reminder (training nudge, streak
+    /// risk, recap, board, appointments). The audit found five reminder
+    /// kinds and zero ways to opt out in-app.
+    var remindersEnabled = true {
+        didSet {
+            guard !isLoadingTrainingPreferences else { return }
+            persistTrainingPreferences()
+            if remindersEnabled {
+                refreshDailyTrainingReminder()
+            } else {
+                UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+            }
+        }
+    }
     var leaderboardOptIn = false {
         didSet { persistCompetitionState() }
     }
@@ -986,6 +1014,39 @@ final class MorpheAppStore {
         athleteSearchResults = []
         coachShareSummaries = [:]
         coachShareFetched = []
+        // Session fetch gates reset with the identity.
+        lastThreadsRefreshAt = nil
+        lastPresenceRefreshAt = nil
+        membershipSetsFetched = false
+
+        // FULL local wipe (launch audit P0): sign-out must leave the device
+        // as clean as account deletion does. Without this, the NEXT account
+        // to sign up on this phone skipped onboarding (the flag stayed
+        // true) and inherited this user's name, logs, streak, and photo —
+        // then pushed them into their OWN cloud backup. The cloud copy is
+        // the durable record; "signing back in restores everything" is the
+        // promise, and it still holds through restoreFromCloud.
+        logPushDebounce?.cancel()
+        extrasPushDebounce?.cancel()
+        workoutPersistence.clear()
+        profilePersistence.clear()
+        profilePersistence.clearPhoto()
+        profilePhotoData = nil
+        // Onboarding must run for whoever signs in next (a returning
+        // account restores past it; a new one builds a fresh identity —
+        // completeOnboarding stamps a new profile id via resetToFreshUser).
+        hasCompletedOnboarding = false
+        // AFTER the flag flip so the didSet mirror is a guarded no-op.
+        workoutLogs = []
+        for key in [trainingPreferencesDefaultsKey, competitionStateDefaultsKey,
+                    bodyWeightHistoryDefaultsKey, recoverySeriesDefaultsKey,
+                    nutritionSeriesDefaultsKey, activeProgramDefaultsKey,
+                    programCompletionsDefaultsKey, libraryFoldersKey] {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        loadTrainingPreferences()
+        loadCompetitionState()
+        reloadPerProfileMirrors()
     }
 
     /// Permanently deletes the account (App Store 5.1.1(v)): cloud backup
@@ -1604,6 +1665,12 @@ final class MorpheAppStore {
         if !profile.profilePhotoBase64.isEmpty,
            let photo = Data(base64Encoded: profile.profilePhotoBase64) {
             profilePersistence.savePhoto(photo)
+        } else {
+            // A cloud identity WITHOUT a photo must not adopt whatever
+            // photo file a previous account left on this disk (launch
+            // audit P0): the cloud snapshot is the whole truth here.
+            profilePersistence.clearPhoto()
+            profilePhotoData = nil
         }
         var localProfile = profile
         localProfile.profilePhotoBase64 = ""
@@ -2716,6 +2783,10 @@ final class MorpheAppStore {
     func updateInjuryNote(_ note: String) {
         clientProfile.limitations = note.trimmingCharacters(in: .whitespacesAndNewlines)
         rebuildPersonalRules()
+        // The one safety-relevant setting on the screen: the plan ranker
+        // reads flaggedAreas(from: limitations), so a new injury must
+        // re-rank TODAY, not on the next relaunch (launch audit).
+        rebuildPersonalizedPlan()
         persistLocalProfile()
         showToast(clientProfile.limitations.isEmpty ? "Injury note cleared." : "Injury note updated.")
     }
@@ -2774,7 +2845,7 @@ final class MorpheAppStore {
     /// differs from the last recorded one — re-saving "175" unchanged is
     /// not a data point.
     private func recordBodyWeightReadingIfChanged(_ weightText: String) {
-        guard let weightLb = Self.parsedBodyWeightLb(weightText) else { return }
+        guard let weightLb = Self.parsedBodyWeightLb(weightText, assumedUnit: weightUnit) else { return }
         var entries = loadBodyWeightHistoryEntries()
         if let last = entries.last, abs(last.weightLb - weightLb) < 0.05 { return }
         entries.append(BodyWeightHistoryEntry(date: .now, weightLb: weightLb))
@@ -3350,6 +3421,7 @@ final class MorpheAppStore {
         var postStreakByline: Bool?
         var postAccentIdentity: Bool?
         var trainingDaysOfWeek: [Int]?
+        var remindersEnabled: Bool?
     }
 
     private var trainingPreferencesDefaultsKey: String {
@@ -3378,6 +3450,7 @@ final class MorpheAppStore {
             postStreakByline = true
             postAccentIdentity = true
             trainingDays = []
+            remindersEnabled = true
             return
         }
         autoRestTimerEnabled = snapshot.autoRestTimer
@@ -3393,6 +3466,7 @@ final class MorpheAppStore {
         postStreakByline = snapshot.postStreakByline ?? true
         postAccentIdentity = snapshot.postAccentIdentity ?? true
         trainingDays = Set(snapshot.trainingDaysOfWeek ?? [])
+        remindersEnabled = snapshot.remindersEnabled ?? true
     }
 
     private func persistTrainingPreferences() {
@@ -3410,7 +3484,8 @@ final class MorpheAppStore {
             effortRIR: effortScaleRIR,
             postStreakByline: postStreakByline,
             postAccentIdentity: postAccentIdentity,
-            trainingDaysOfWeek: Array(trainingDays)
+            trainingDaysOfWeek: Array(trainingDays),
+            remindersEnabled: remindersEnabled
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: trainingPreferencesDefaultsKey)
@@ -3777,12 +3852,18 @@ final class MorpheAppStore {
     /// Parses the free-text body weight ("170", "170 lb", "77 kg") into
     /// pounds. Returns nil for anything unparseable or implausible, in which
     /// case the caller keeps honest starter defaults.
-    static func parsedBodyWeightLb(_ text: String) -> Double? {
+    /// `assumedUnit`: the unit a BARE number means. Callers pass the user's
+    /// weight-unit setting — a kg user typing "77" means 77 kg, and reading
+    /// it as pounds silently corrupted their chart and nutrition targets
+    /// (launch audit P0). An explicit "kg"/"lb" suffix always wins.
+    static func parsedBodyWeightLb(_ text: String, assumedUnit: WeightUnit = .pounds) -> Double? {
         let lowered = text.lowercased()
         guard let numberRange = lowered.range(of: #"[0-9]+([.,][0-9]+)?"#, options: .regularExpression),
               var value = Double(lowered[numberRange].replacingOccurrences(of: ",", with: ".")),
               value > 0 else { return nil }
-        if lowered.contains("kg") || lowered.contains("kilo") {
+        let saysKg = lowered.contains("kg") || lowered.contains("kilo")
+        let saysLb = lowered.contains("lb") || lowered.contains("pound")
+        if saysKg || (!saysLb && assumedUnit == .kilograms) {
             value *= 2.20462262
         }
         // Outside a plausible human range the "weight" is probably a typo —
@@ -3797,7 +3878,7 @@ final class MorpheAppStore {
     /// Falls back to the generic starter numbers, and says so, when no
     /// parseable weight has been logged.
     var nutritionTargets: NutritionTargets {
-        guard let weightLb = Self.parsedBodyWeightLb(clientProfile.bodyWeight) else {
+        guard let weightLb = Self.parsedBodyWeightLb(clientProfile.bodyWeight, assumedUnit: weightUnit) else {
             return NutritionTargets(
                 calories: 2200, proteinGrams: 160, waterCups: 8,
                 sourceNote: "Starter targets — log your weight in Profile to personalize"
@@ -5031,6 +5112,61 @@ final class MorpheAppStore {
                 risk: .low,
                 recommendation: "Invite an athlete or share your coach profile.",
                 suggestedAction: "Add a client"
+            )
+        )
+    }
+
+    /// The triage board derived from REAL coach data (coach audit P0): the
+    /// stored `coachOverview` is demo-only and froze at all-zero the moment
+    /// the demo purge ran — a coach with unread client messages was told
+    /// the reply queue was empty. Every number here has a live source:
+    /// roster = managed clients, reply queue = actual unread threads,
+    /// sessions = the cloud-backed appointment book, at-risk = no logged
+    /// session in 7 days.
+    var liveCoachOverview: CoachOverview {
+        let roster = visibleManagedClients
+        let calendar = Calendar.current
+        let weekAgo = calendar.date(byAdding: .day, value: -7, to: .now) ?? .now
+        let quiet = roster.filter { ($0.lastLoggedAt ?? .distantPast) < weekAgo }
+        let sessionsToday = upcomingAppointments.filter {
+            calendar.isDateInToday($0.date)
+        }
+        let summary: String
+        if roster.isEmpty {
+            summary = "Add your first client to start coaching."
+        } else {
+            var parts = ["\(roster.count) client\(roster.count == 1 ? "" : "s")"]
+            if !quiet.isEmpty { parts.append("\(quiet.count) quiet 7+ days") }
+            if unreadThreadCount > 0 { parts.append("\(unreadThreadCount) unread") }
+            summary = parts.joined(separator: " · ")
+        }
+        return CoachOverview(
+            activeClients: roster.count,
+            atRiskClients: quiet.count,
+            checkInsNeeded: quiet.count,
+            sessionsToday: sessionsToday.count,
+            // No pain-flag data source exists for managed clients yet —
+            // 0 here, and the dashboard hides the tile rather than claim
+            // monitoring that isn't happening.
+            painFlags: 0,
+            messagesNeedingResponse: unreadThreadCount,
+            alerts: quiet.map { "\($0.name) hasn't logged in 7+ days" },
+            wins: [],
+            todaySessions: sessionsToday.map {
+                "\($0.title) — \($0.date.formatted(date: .omitted, time: .shortened))"
+            },
+            sportAlerts: [],
+            weeklySummary: summary,
+            insight: AIInsight(
+                title: roster.isEmpty ? "Getting started" : "This week",
+                summary: roster.isEmpty
+                    ? "Connect your first athlete and your coaching dashboard fills in from their real activity."
+                    : summary,
+                risk: quiet.isEmpty ? .low : .medium,
+                recommendation: quiet.isEmpty
+                    ? (roster.isEmpty ? "Invite an athlete or share your coach profile." : "Roster's moving — keep the messages flowing.")
+                    : "Check in with \(quiet.first?.name ?? "your quiet clients") — a message restarts more streaks than a program tweak.",
+                suggestedAction: roster.isEmpty ? "Add a client" : "Open Messages"
             )
         )
     }
@@ -7771,6 +7907,9 @@ final class MorpheAppStore {
     func isPaletteUnlocked(_ palette: AccentPalette) -> Bool {
         if palette == profileShowcase.accentPalette { return true }
         if palette == .custom { return true }
+        // Coaches don't ride the athlete XP ladder — an athlete gate on a
+        // coach screen was a row of unearnable padlocks (coach audit).
+        if selectedRole == .coach { return true }
         if palette == .recruiter { return referralCount >= 1 }
         return currentLevelNumber >= paletteUnlockLevel(palette)
     }
@@ -7893,25 +8032,35 @@ final class MorpheAppStore {
         persistLocalProfile()
     }
 
-    func updateDisplayName(_ newName: String) {
+    /// Returns whether the change actually landed — the editor keeps the
+    /// draft open on a rejection (cooldown/empty) instead of silently
+    /// closing over an unchanged name.
+    @discardableResult
+    func updateDisplayName(_ newName: String) -> Bool {
         let trimmed = String(newName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
         guard !trimmed.isEmpty else {
             showToast("Your name can't be empty.")
-            return
+            return false
         }
-        guard trimmed != profileShowcase.displayName else { return }
+        guard trimmed != profileShowcase.displayName else { return true }
         // Renames are rate-limited; a no-op save above never burns the window.
         if let next = nextNameChangeDate {
             showToast("You can change your name again on \(next.formatted(date: .abbreviated, time: .omitted)).")
-            return
+            return false
         }
         clientProfile.name = trimmed
         profileShowcase.displayName = trimmed
+        // A coach IS this same person — their workspace name follows
+        // (coach audit: the coach profile had no name editor at all).
+        if !coachProfile.name.isEmpty || selectedRole == .coach {
+            coachProfile.name = trimmed
+        }
         // The @username is its own claimed identity now — a rename never
         // touches it (change it separately, on its own 14-day clock).
         nameChangedAtEpoch = Date.now.timeIntervalSince1970
         persistLocalProfile()
         showToast("Name updated.")
+        return true
     }
 
     func selectAvatarStyle(_ style: AvatarStyle) {
@@ -7991,6 +8140,9 @@ final class MorpheAppStore {
 
         clientProfile.goal = clientProfile.selectedGoals.first ?? goal.rawValue
         goalTranslation = MorpheDemoContent.goalTranslation(for: clientProfile.goal, sport: selectedSportMode)
+        // Calories/protein branch on the goal text — refresh now, not on
+        // the next relaunch.
+        applyNutritionTargets()
         persistLocalProfile()
         showToast("Goals updated.")
     }
@@ -8729,7 +8881,7 @@ final class MorpheAppStore {
             FirstWeekStep(id: 0, title: "Create your account and plan", done: true),
             FirstWeekStep(id: 1, title: "Log your first session", done: logCount >= 1),
             FirstWeekStep(id: 2, title: "Do a recovery check-in", done: didCompleteQuickCheckIn || !recoverySeries.isEmpty),
-            FirstWeekStep(id: 3, title: "Save your weight in Profile", done: Self.parsedBodyWeightLb(clientProfile.bodyWeight) != nil),
+            FirstWeekStep(id: 3, title: "Save your weight in Profile", done: Self.parsedBodyWeightLb(clientProfile.bodyWeight, assumedUnit: weightUnit) != nil),
             FirstWeekStep(id: 4, title: "Train a second time", done: logCount >= 2),
             FirstWeekStep(id: 5, title: "Train a third time", done: logCount >= 3)
         ]
@@ -8887,12 +9039,25 @@ final class MorpheAppStore {
 
     // MARK: - Real 1:1 messaging (coach ↔ claimed client)
 
+    /// Within this window a non-forced thread refresh is a no-op — the two
+    /// participant queries are unbounded, and DMs made thread count grow
+    /// with usage, so every ungated tab switch was a full-inbox read.
+    private static let threadsStalenessWindow: TimeInterval = 300
+    private var lastThreadsRefreshAt: Date?
+
     /// Pulls every real thread this account participates in — either role —
     /// on launch and sign-in (same pattern as `refreshManagedClients`). A nil
     /// fetch (offline, signed out, no-op service) keeps whatever is local.
-    func refreshThreads() async {
+    /// Soft by default (staleness-gated); force from sign-in and the
+    /// moments that just CHANGED the inbox (new chat started).
+    func refreshThreads(force: Bool = false) async {
         guard let uid = authUser?.id else { return }
+        if !force, !liveThreads.isEmpty, let last = lastThreadsRefreshAt,
+           Date.now.timeIntervalSince(last) < Self.threadsStalenessWindow {
+            return
+        }
         if let fetched = await messagingService.fetchThreads(for: uid) {
+            lastThreadsRefreshAt = .now
             liveThreads = fetched
             // Fallback link capture: an athlete who claimed BEFORE the
             // linked-coach fields existed still has a coach thread — adopt
@@ -8991,14 +9156,16 @@ final class MorpheAppStore {
     }
 
     /// Coach side: opens (creating if needed) the real thread with the
-    /// athlete who CLAIMED this managed client. Returns false when the link
-    /// isn't real yet (unclaimed / missing uid) or the network said no.
+    /// athlete who CLAIMED this managed client, and returns it (nil when
+    /// the link isn't real yet or the network said no) — the caller
+    /// navigates with THIS value; looking it up in liveThreads afterward
+    /// could silently miss the synthesized fallback (coach audit).
     @discardableResult
-    func startThreadWithClaimedClient(_ client: ManagedClient) async -> Bool {
-        guard selectedRole == .coach, let coachUid = authUser?.id else { return false }
+    func startThreadWithClaimedClient(_ client: ManagedClient) async -> MessageThreadSummary? {
+        guard selectedRole == .coach, let coachUid = authUser?.id else { return nil }
         guard client.isClaimed, !client.claimedByUid.isEmpty else {
             showToast("\(client.name) hasn't claimed their invite yet.")
-            return false
+            return nil
         }
         let athleteName = client.claimedByName.isEmpty ? client.name : client.claimedByName
         guard let threadId = await messagingService.ensureThread(
@@ -9008,9 +9175,9 @@ final class MorpheAppStore {
             athleteName: athleteName
         ) else {
             showToast("Couldn't open the conversation — check your connection.")
-            return false
+            return nil
         }
-        await refreshThreads()
+        await refreshThreads(force: true)
         let thread = liveThreads.first(where: { $0.id == threadId })
             ?? MessageThreadSummary(
                 id: threadId,
@@ -9020,7 +9187,7 @@ final class MorpheAppStore {
                 athleteName: athleteName
             )
         openThread(thread)
-        return true
+        return thread
     }
 
     // MARK: - Real community feed (posts, reactions, saves, reposts)
@@ -9083,6 +9250,14 @@ final class MorpheAppStore {
     /// of the paginated feed — Trained Today and Duo Streaks read this
     /// union so page size can't shrink who shows as present.
     private(set) var presencePosts: [FeedPost] = []
+    /// The presence query is the most expensive fetch per byte (it repeats
+    /// image-bearing posts the page already has) — hourly, not per refresh.
+    private var lastPresenceRefreshAt: Date?
+    /// Membership sets (blocked/saved/following) change only through THIS
+    /// device's own actions, which mutate local state directly — one fetch
+    /// per session hydrates them; refreshes stop re-reading whole
+    /// collections (1000-user audit #8).
+    private var membershipSetsFetched = false
 
     /// Pulls the newest posts + their real reaction counts + this account's
     /// bookmarks. Runs on launch/sign-in and tab visits (both soft: within
@@ -9098,8 +9273,10 @@ final class MorpheAppStore {
         // Loaded content stays visible through a re-fetch; only a first
         // load (or a retry after failure) shows the loading surface.
         if feedFetchState != .loaded { feedFetchState = .loading }
-        // Blocks load FIRST so the post filter below always has them.
-        if let blocked = await feedService.fetchBlocked(uid: uid) {
+        // Blocks load FIRST so the post filter below always has them —
+        // once per session: blocking from this device updates the local
+        // set directly, so a re-read per refresh bought nothing.
+        if !membershipSetsFetched, let blocked = await feedService.fetchBlocked(uid: uid) {
             blockedAccounts = blocked
         }
         if let fetched = await feedService.fetchRecent(limit: Self.feedPageSize, before: nil) {
@@ -9130,11 +9307,18 @@ final class MorpheAppStore {
                 feedHasOlderPosts = fetched.count == Self.feedPageSize
             }
             await hydrateReactionState(for: cleanPage.map(\.id), uid: uid, force: force)
-            // Presence is its own bounded query — the 24h rail must not
-            // shrink just because the feed paginates in 20s.
-            if let recent = await feedService.fetchSince(
-                date: Date.now.addingTimeInterval(-24 * 3600), limit: 60) {
-                presencePosts = recent.filter { renderableFeedPost($0) }
+            // Presence is its own bounded query — but it re-downloads posts
+            // (images included) the page already carries, so it runs at most
+            // hourly (1000-user audit #4): the rail is a 24h lens, an hour
+            // of staleness is invisible, and the union below keeps every
+            // freshly-fetched page feeding it for free.
+            if lastPresenceRefreshAt == nil
+                || Date.now.timeIntervalSince(lastPresenceRefreshAt!) > 3600 {
+                if let recent = await feedService.fetchSince(
+                    date: Date.now.addingTimeInterval(-24 * 3600), limit: 30) {
+                    presencePosts = recent.filter { renderableFeedPost($0) }
+                    lastPresenceRefreshAt = .now
+                }
             }
         } else if feedPosts.isEmpty {
             // Nothing fetched AND nothing on screen — that's a failure the
@@ -9142,11 +9326,14 @@ final class MorpheAppStore {
             // stays: a failed re-fetch never blanks a working feed.
             feedFetchState = .failed
         }
-        if let saved = await feedService.fetchSavedPostIds(uid: uid) {
-            savedPostIds = saved
-        }
-        if let following = await feedService.fetchFollowing(uid: uid) {
-            followedUids = following
+        if !membershipSetsFetched {
+            if let saved = await feedService.fetchSavedPostIds(uid: uid) {
+                savedPostIds = saved
+            }
+            if let following = await feedService.fetchFollowing(uid: uid) {
+                followedUids = following
+            }
+            membershipSetsFetched = true
         }
         // A referral captured before sign-in connects on the first real
         // feed load after it.
@@ -9264,10 +9451,12 @@ final class MorpheAppStore {
     /// stay honest when the user explicitly asks for fresh). MERGES into
     /// the caches — hydrating a new page never blanks known state.
     private func hydrateReactionState(for ids: [String], uid: String, force: Bool) async {
-        // A forced refresh reset the feed to page one — the session cache
-        // restarts with it, so re-scrolled older pages re-hydrate honestly.
-        if force { reactionStateFetchedIds.removeAll() }
-        let wanted = force ? ids : ids.filter { !reactionStateFetchedIds.contains($0) }
+        // A forced pull re-fetches THIS page's counts (that's what the user
+        // asked for) but keeps the session cache for pages behind it —
+        // wiping it made every pull-to-refresh re-hydrate the whole scroll
+        // history one page at a time (1000-user audit #11).
+        if force { reactionStateFetchedIds.subtract(ids) }
+        let wanted = ids.filter { !reactionStateFetchedIds.contains($0) }
         guard !wanted.isEmpty else { return }
         let counts = await feedService.fetchReactionCounts(postIds: wanted)
         feedReactionCounts.merge(counts) { _, new in new }
@@ -9548,7 +9737,8 @@ final class MorpheAppStore {
             showToast("Couldn't start the chat — check your connection.")
             return false
         }
-        await refreshThreads()
+        // Forced: this call just CHANGED the inbox on the server.
+        await refreshThreads(force: true)
         // The inbox owns navigation — the pending id is the same door every
         // deep link already walks through (consumePendingThreadOpen).
         pendingThreadOpenID = threadId
@@ -9982,7 +10172,7 @@ final class MorpheAppStore {
         let id = "morphe.daily.training"
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [id])
-        guard hasCompletedOnboarding, !currentWorkout.name.isEmpty else { return }
+        guard remindersEnabled, hasCompletedOnboarding, !currentWorkout.name.isEmpty else { return }
         center.getNotificationSettings { [weak self] settings in
             guard settings.authorizationStatus == .authorized
                     || settings.authorizationStatus == .provisional else { return }
@@ -10596,23 +10786,30 @@ final class MorpheAppStore {
         let cleanText = editedText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanText.isEmpty else { return }
 
-        communityPosts.insert(
-            ProgressPost(
-                author: coachProfile.name,
-                avatar: "🧠",
-                role: .coach,
-                headline: coachProfile.headline,
-                rank: coachProfile.networkRank,
-                timeAgo: "Now",
-                title: draft.title,
-                detail: cleanText,
-                tags: draft.tags,
-                reactions: 0,
-                comments: 0,
-                commentHighlights: []
-            ),
-            at: 0
-        )
+        if isRealFeedActive {
+            // The praise goes where people actually are — the REAL feed
+            // (coach audit: it used to insert into the dead demo array and
+            // toast "shared" over nothing).
+            Task { await publishToRealFeed(text: "\(draft.title) — \(cleanText)") }
+        } else {
+            communityPosts.insert(
+                ProgressPost(
+                    author: coachProfile.name,
+                    avatar: "🧠",
+                    role: .coach,
+                    headline: coachProfile.headline,
+                    rank: coachProfile.networkRank,
+                    timeAgo: "Now",
+                    title: draft.title,
+                    detail: cleanText,
+                    tags: draft.tags,
+                    reactions: 0,
+                    comments: 0,
+                    commentHighlights: []
+                ),
+                at: 0
+            )
+        }
 
         trackCoachOutreach(
             .praise,
@@ -10668,6 +10865,25 @@ final class MorpheAppStore {
         coachClients[index].currentProgram = template.name
         showCelebration(title: "Program assigned", detail: "\(template.name) -> \(client.name)", symbol: "checkmark.circle.fill")
         showToast("Program assigned successfully.")
+    }
+
+    /// REAL-roster assignment (coach audit: both Assign buttons fed off the
+    /// permanently-empty demo array and silently did nothing). The workout
+    /// stamps into the managed client's notes and pushes the doc — visible
+    /// on their client card now, and carried into their account when they
+    /// claim their code.
+    func assignWorkout(named workoutName: String, to client: ManagedClient, scheduledLabel: String) {
+        guard let index = managedClients.firstIndex(where: { $0.id == client.id }) else {
+            showToast("That client isn't on your roster anymore.")
+            return
+        }
+        let stamp = "Assigned \(workoutName) for \(scheduledLabel)."
+        managedClients[index].notes = managedClients[index].notes.isEmpty
+            ? stamp
+            : managedClients[index].notes + "\n" + stamp
+        managedClientService.push(managedClients[index])
+        showToast("\(workoutName) assigned to \(client.name).")
+        track("coach_assigned_workout")
     }
 
     func assignWorkoutTemplate(_ template: WorkoutTemplate, to client: CoachClient, scheduledLabel: String) {
@@ -11526,19 +11742,22 @@ final class MorpheAppStore {
             return "I can open any workspace tab (\"open athletes\"), tell you who needs attention today — derived from your athletes' real logs — and answer coaching questions. I don't draft messages yet, and I won't pretend to."
         }
 
-        // Real data, not vibes: quiet = no logged session this week.
+        // Real data, not vibes: quiet = no logged session this week. The
+        // REAL roster is managedClients — coachClients is the demo array
+        // and stays empty for a launched coach (coach audit).
         if has("who needs attention", "needs attention", "who's behind", "whos behind", "who is behind") {
-            guard !coachClients.isEmpty else {
-                return "No athletes on your roster yet — add one from Athletes and I'll track who goes quiet."
+            let roster = visibleManagedClients
+            guard !roster.isEmpty else {
+                return "No athletes on your roster yet — add one from Build's roster tools and I'll track who goes quiet."
             }
             let calendar = Calendar.current
-            let quiet = coachClients.filter { athlete in
-                !workoutLogs(for: athlete.id).contains {
+            let quiet = roster.filter { client in
+                !client.logs.contains {
                     calendar.isDate($0.completedAt, equalTo: .now, toGranularity: .weekOfYear)
                 }
             }.map(\.name)
             if quiet.isEmpty {
-                return "All \(coachClients.count) athletes have a logged session this week. Nobody's quiet — good week."
+                return "All \(roster.count) athletes have a logged session this week. Nobody's quiet — good week."
             }
             return "\(quiet.prefix(4).joined(separator: ", ")) \(quiet.count == 1 ? "hasn't" : "haven't") logged a session this week — start there."
         }
@@ -13824,7 +14043,9 @@ final class MorpheAppStore {
         }
     }
 
-    private func showToast(_ message: String) {
+    // Internal (was private): views surface their own failure states too —
+    // an export that silently no-ops is worse than a view-initiated toast.
+    func showToast(_ message: String) {
         toastMessage = message
         Task {
             try? await Task.sleep(for: .seconds(2))

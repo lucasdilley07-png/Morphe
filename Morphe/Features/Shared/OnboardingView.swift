@@ -1150,7 +1150,7 @@ private struct ProfileReviewStep: View {
                     // The coach reviews a WORKSPACE, not an athlete training
                     // plan — these are the real surfaces they land in.
                     ForEach([
-                        "An athlete roster that grows by QR connect",
+                        "An athlete roster that grows by invite codes",
                         "The full workout library, saves, and your own builds",
                         "An inbox for athlete outreach and follow-ups"
                     ], id: \.self) { item in
@@ -1186,7 +1186,7 @@ private struct ProfileReviewStep: View {
                     ProfileLine(title: "Injuries & limits", value: store.onboardingDraft.injuries)
                 }
                 if isCoach {
-                    ProfileLine(title: "First action", value: "Show your Morphe code to connect your first athlete")
+                    ProfileLine(title: "First action", value: "Add your first client and share their invite code")
                     ProfileLine(title: "Workspace summary", value: "A \(store.onboardingDraft.sport.rawValue) coaching workspace sized for \(store.onboardingDraft.coachRoster.rawValue.lowercased()) — roster, library, and outreach in one place. Everything grows from the athletes you connect.")
                 } else {
                     ProfileLine(title: "Today's first task", value: generatedPlan.firstTask)

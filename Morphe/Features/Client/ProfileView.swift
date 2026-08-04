@@ -4,6 +4,9 @@ import PhotosUI
 struct ProfileView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var isEditingName = false
+    @State private var isEnteringCoachCode = false
+    @State private var coachCodeDraft = ""
+    @State private var showTermsSheet = false
     @State private var nameDraft = ""
     @State private var isEditingInjuries = false
     @State private var injuriesDraft = ""
@@ -261,7 +264,9 @@ struct ProfileView: View {
                     HStack(spacing: 10) {
                         TextField("Height (5'10\" or 178 cm)", text: $heightDraft)
                             .textFieldStyle(MorpheFieldStyle())
-                        TextField("Weight (170 lb)", text: $weightDraft)
+                        // Placeholder speaks the user's own unit — a bare
+                        // number is parsed in that unit too.
+                        TextField(store.weightUnit == .kilograms ? "Weight (77 kg)" : "Weight (170 lb)", text: $weightDraft)
                             .textFieldStyle(MorpheFieldStyle())
                     }
                     if bodyMetricsChanged {
@@ -516,10 +521,13 @@ struct ProfileView: View {
     }
 
     /// Bio: shown for everyone, editable in place for athletes (a coach's
-    /// public blurb is their headline, edited in the coach workspace).
+    /// Coaches get the same typed bio as athletes now — the old skip claimed
+    /// their headline was "edited in the coach workspace," which had no
+    /// editor anywhere (coach audit). The derived headline stays derived;
+    /// this is the free-text line under it.
     @ViewBuilder
     private var bioSection: some View {
-        if !isCoach {
+        Group {
             VStack(alignment: .leading, spacing: 8) {
                 if isEditingBio {
                     TextField("Say something about your training…", text: $bioDraft, axis: .vertical)
@@ -597,7 +605,14 @@ struct ProfileView: View {
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                     Button {
-                        showVerificationCamera = true
+                        // Live capture only — without a camera the system
+                        // picker silently falls back to the photo library,
+                        // which would make the "live selfie" claim false.
+                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                            showVerificationCamera = true
+                        } else {
+                            store.showToast("Verification needs a camera — try from your phone.")
+                        }
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.seal")
@@ -661,31 +676,37 @@ struct ProfileView: View {
                     .foregroundStyle(.white)
 
                 if isEditingName {
-                    HStack(spacing: 8) {
-                        TextField("Your name", text: $nameDraft)
-                            .textFieldStyle(MorpheFieldStyle())
-                            .submitLabel(.done)
-                            .onSubmit { saveName() }
-                        Button("Save") {
-                            saveName()
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            TextField("Your name", text: $nameDraft)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .submitLabel(.done)
+                                .onSubmit { saveName() }
+                            Button("Save") {
+                                saveName()
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.accent)
+                            .accessibilityLabel("Save name")
+                            Button("Cancel") {
+                                isEditingName = false
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .accessibilityLabel("Cancel name edit")
                         }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(MorpheTheme.accent)
-                        .accessibilityLabel("Save name")
-                        Button("Cancel") {
-                            isEditingName = false
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                        .accessibilityLabel("Cancel name edit")
+                        // The cost is disclosed BEFORE the change burns the
+                        // window, not after (launch audit).
+                        Text("Names change once every 14 days — a typo locks you in, so double-check.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
                     }
                 } else {
                     settingsRow(
                         "Name",
-                        value: isCoach ? store.coachProfile.name : store.profileShowcase.displayName,
-                        showEdit: !isCoach
+                        value: isCoach ? store.coachProfile.name : store.profileShowcase.displayName
                     ) {
-                        nameDraft = store.profileShowcase.displayName
+                        nameDraft = isCoach ? store.coachProfile.name : store.profileShowcase.displayName
                         isEditingName = true
                     }
                     if let next = store.nextNameChangeDate {
@@ -760,10 +781,11 @@ struct ProfileView: View {
                     Text("Accent")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textMuted)
-                    HStack(spacing: 0) {
+                    // Wrapped: nine 44pt targets don't fit one row on a
+                    // 393pt device — crushed dots overlapped their rings.
+                    WrapStack(spacing: 8) {
                         ForEach(AccentPalette.allCases) { palette in
                             accentDot(for: palette)
-                                .frame(maxWidth: .infinity)
                         }
                     }
                     // The Custom dot's editor: any color at all. Applies
@@ -854,6 +876,63 @@ struct ProfileView: View {
 
                     Divider().overlay(Color.white.opacity(0.08))
 
+                    // The audit found five reminder kinds and no off switch.
+                    // One master toggle — off cancels everything pending.
+                    preferenceToggleRow(
+                        title: "Reminders",
+                        caption: "The 5pm session nudge, streak-risk heads-up, weekly recap, and board updates. Off silences all of them.",
+                        isOn: $store.remindersEnabled
+                    )
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
+                    // The board publishes your real name — the opt-in lives
+                    // with the other visibility controls, not just buried in
+                    // Progress.
+                    preferenceToggleRow(
+                        title: "Weekly board",
+                        caption: "Ranks your logged sessions against other athletes under your name. Leaving removes your row immediately.",
+                        isOn: Binding(
+                            get: { store.leaderboardOptIn },
+                            set: { $0 ? store.joinWeeklyBoard() : store.leaveWeeklyBoard() }
+                        )
+                    )
+
+                    // A coach's invite code used to work ONLY during
+                    // onboarding — existing athletes had nowhere to type it.
+                    if store.linkedCoachUid.isEmpty {
+                        Divider().overlay(Color.white.opacity(0.08))
+
+                        if isEnteringCoachCode {
+                            HStack(spacing: 8) {
+                                TextField("Coach code (e.g. 7KQ4TX)", text: $coachCodeDraft)
+                                    .textFieldStyle(MorpheFieldStyle())
+                                    .textInputAutocapitalization(.characters)
+                                    .autocorrectionDisabled()
+                                Button("Join") {
+                                    let code = coachCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    guard !code.isEmpty else { return }
+                                    Task {
+                                        await store.claimCoachInvite(code: code)
+                                        coachCodeDraft = ""
+                                        isEnteringCoachCode = false
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.accent)
+                                Button("Cancel") { isEnteringCoachCode = false }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                        } else {
+                            settingsRow("Coach code", value: "Have one? Join your coach") {
+                                isEnteringCoachCode = true
+                            }
+                        }
+                    }
+
+                    Divider().overlay(Color.white.opacity(0.08))
+
                     // Enabling walks through the system Health prompt; the
                     // store refuses the flip when access isn't granted.
                     preferenceToggleRow(
@@ -908,6 +987,8 @@ struct ProfileView: View {
                         Button("Export Data") {
                             if let url = store.exportDataFile() {
                                 exportFile = ExportFile(url: url)
+                            } else {
+                                store.showToast("Couldn't build the export — try again.")
                             }
                         }
                         .buttonStyle(SecondaryCTAButtonStyle())
@@ -1095,6 +1176,38 @@ struct ProfileView: View {
 
                 Divider().overlay(Color.white.opacity(0.08))
 
+                // About: the terms the user agreed to, the privacy policy,
+                // a human to email, and which build they're on — table
+                // stakes the audit found missing entirely.
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("ABOUT")
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.6)
+                        .foregroundStyle(MorpheTheme.textMuted)
+
+                    Button("Terms of Use") { showTermsSheet = true }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.accent)
+                        .frame(minHeight: 32)
+                        .sheet(isPresented: $showTermsSheet) {
+                            TermsGateView(readOnly: true)
+                        }
+
+                    Link("Privacy Policy", destination: URL(string: "https://lucasdilley07-png.github.io/Morphe/")!)
+                        .foregroundStyle(MorpheTheme.accent)
+                        .frame(minHeight: 32)
+
+                    Link("Contact Support", destination: URL(string: "mailto:lucasdilley.07@gmail.com")!)
+                        .foregroundStyle(MorpheTheme.accent)
+                        .frame(minHeight: 32)
+
+                    Text("Morphe \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"))")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+                Divider().overlay(Color.white.opacity(0.08))
+
                 if FeatureFlags.accountsEnabled {
                     Button("Sign Out") {
                         showSignOutConfirm = true
@@ -1140,22 +1253,23 @@ struct ProfileView: View {
     }
 
     private func saveName() {
-        let trimmed = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        store.updateDisplayName(nameDraft)
-        // Keep the editor open on an empty save so the silent-close bug
-        // (old name kept, no feedback) can't recur.
-        if !trimmed.isEmpty {
+        // The editor closes ONLY when the store confirms the change landed —
+        // a cooldown rejection used to close it over the unchanged name with
+        // just a toast to explain (launch audit).
+        if store.updateDisplayName(nameDraft) {
             isEditingName = false
         }
     }
 
     private func saveUsername() {
         let entered = usernameDraft
-        isEditingUsername = false
         Task {
             // The store handles the 14-day cooldown, validation, and the
             // atomic uniqueness claim — and reports each outcome as a toast.
-            await store.changeUsername(to: entered)
+            // AWAITED before closing: a taken/failed claim keeps the draft
+            // on screen for a retry instead of discarding the typed text.
+            let changed = await store.changeUsername(to: entered)
+            if changed { isEditingUsername = false }
         }
     }
 
@@ -1289,7 +1403,9 @@ private struct AthleteProfileBody: View {
             AthleteRecentLogsCard(logs: Array(store.currentAthleteWorkoutLogs.prefix(5)))
 
             if !store.derivedPersonalRecords.isEmpty {
-                PersonalRecordsListCard(records: store.derivedPersonalRecords)
+                // Top 8 — a year of training made this an unbounded list of
+                // every exercise ever touched. Full history lives in Progress.
+                PersonalRecordsListCard(records: Array(store.derivedPersonalRecords.prefix(8)))
             }
         }
     }
@@ -1303,6 +1419,15 @@ private struct CoachProfileBody: View {
 
     var body: some View {
         Group {
+            // Coaches train too: their own logged sessions and PRs used to
+            // vanish after the finish celebration — same derived cards the
+            // athlete profile shows (coach audit).
+            if !store.currentAthleteWorkoutLogs.isEmpty {
+                AthleteRecentLogsCard(logs: Array(store.currentAthleteWorkoutLogs.prefix(5)))
+            }
+            if !store.derivedPersonalRecords.isEmpty {
+                PersonalRecordsListCard(records: Array(store.derivedPersonalRecords.prefix(8)))
+            }
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Coaching Snapshot")

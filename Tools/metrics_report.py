@@ -46,9 +46,52 @@ def token() -> str:
     return credentials.token
 
 
+import datetime
+
+# Window: reading the WHOLE collection would eventually exceed a full day's
+# read quota in one report run (1000-user audit #10) — 35 days covers every
+# table below (D1/D7/D30 need ≤31 days of lookback).
+WINDOW_DAYS = 35
+
+
 def fetch_all_events() -> list:
-    """Pages through the whole telemetry collection. Fine for pilot scale
-    (thousands of events); revisit with BigQuery export past ~100k."""
+    """Pages through the last WINDOW_DAYS of telemetry via a structured
+    query on `day` (stored as YYYY-MM-DD strings, so range-comparable).
+    Full-history analytics belong in a BigQuery export, not client reads."""
+    cutoff = (datetime.date.today() - datetime.timedelta(days=WINDOW_DAYS)).isoformat()
+    events, page_token = [], None
+    body = {
+        "structuredQuery": {
+            "from": [{"collectionId": "telemetry"}],
+            "where": {"fieldFilter": {
+                "field": {"fieldPath": "day"},
+                "op": "GREATER_THAN_OR_EQUAL",
+                "value": {"stringValue": cutoff},
+            }},
+            "limit": 50000,
+        }
+    }
+    response = requests.post(
+        f"{FS.rsplit('/documents', 1)[0]}/documents:runQuery",
+        json=body, headers={"Authorization": f"Bearer {token()}"}, timeout=120)
+    response.raise_for_status()
+    for row in response.json():
+        doc = row.get("document")
+        if not doc:
+            continue
+        fields = doc.get("fields", {})
+        uid = fields.get("uid", {}).get("stringValue")
+        name = fields.get("name", {}).get("stringValue")
+        day = fields.get("day", {}).get("stringValue")
+        if uid in EXCLUDED_QA_UIDS:
+            continue   # internal QA walkthrough accounts — never traction
+        if uid and name and day:
+            events.append((uid, name, day))
+    return events
+
+
+def _fetch_all_events_unfiltered_legacy() -> list:
+    """Old full-collection pager, kept for one-off historical pulls."""
     events, page_token = [], None
     while True:
         params = {"pageSize": 1000}
