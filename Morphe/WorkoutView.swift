@@ -94,23 +94,39 @@ struct WorkoutView: View {
     }
 
     var body: some View {
-        Group {
+        @Bindable var store = store
+        return Group {
             // Discover lives INSIDE Train now (5-tab fold): the catalog is
             // a segment of the training surface, not a sibling tab. An
             // explicit Discover selection wins even mid-session — the live
             // session is one segment tap away, never lost.
-            if store.selectedTrainSection == .discover {
-                VStack(spacing: 0) {
-                    trainSectionHeader
-                    DiscoverScreenView()
-                        .id(store.tabResetKey("discover"))
-                }
-            } else if store.isWorkoutSessionActive {
+            if store.selectedTrainSection == .session, store.isWorkoutSessionActive {
                 activeWorkoutMode
             } else {
                 VStack(spacing: 0) {
                     trainSectionHeader
-                    workoutPlanningMode
+                    // Swipe shell (same gesture grammar as Network's
+                    // CHATS ↔ FOR YOU): one horizontal drag between the
+                    // session and the catalog, selection still the SAME
+                    // store var every segment tap and deep link sets.
+                    TabView(selection: $store.selectedTrainSection) {
+                        Group {
+                            if store.isWorkoutSessionActive {
+                                // Only visible mid-drag: the moment the
+                                // swipe lands on SESSION, the outer branch
+                                // swaps in the live session console.
+                                Color.clear
+                            } else {
+                                workoutPlanningMode
+                            }
+                        }
+                        .tag(MorpheAppStore.TrainSection.session)
+
+                        DiscoverScreenView()
+                            .id(store.tabResetKey("discover"))
+                            .tag(MorpheAppStore.TrainSection.discover)
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
                 }
             }
         }
