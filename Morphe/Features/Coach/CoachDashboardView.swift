@@ -254,6 +254,7 @@ private struct CoachCommandCenterScreen: View {
     @State private var sessionRequest: CoachSessionLaunchRequest?
     @State private var coachPraiseDraft: CoachPublicPraiseDraft?
     @State private var triageFocus: CoachTriageFocus?
+    @State private var showSchedule = false
 
     private var pendingAIReviewAthlete: CoachClient? {
         store.filteredCoachClients.first { athlete in
@@ -289,6 +290,42 @@ private struct CoachCommandCenterScreen: View {
         store.coachFollowUpRecommendations(limit: 3)
     }
 
+    /// One quick-action tile: 44pt+ target, optional unread dot.
+    private func coachQuickAction(_ symbol: String, _ label: String,
+                                  showsBadge: Bool = false,
+                                  action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: symbol)
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.accent)
+                        .frame(width: 44, height: 40)
+                    if showsBadge {
+                        Circle()
+                            .fill(MorpheTheme.brandYellow)
+                            .frame(width: 8, height: 8)
+                            .offset(x: 2, y: 2)
+                    }
+                }
+                Text(label)
+                    .font(MorpheTheme.microLabel(9))
+                    .tracking(0.8)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panelStrong)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(showsBadge ? "\(label), new activity" : label)
+    }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
@@ -296,6 +333,41 @@ private struct CoachCommandCenterScreen: View {
                     title: "Command Center",
                     subtitle: "See who needs attention first, what changed, and the next coaching move."
                 )
+
+                // Benchmark Tier 2: every headline coach action ONE tap from
+                // Home. (Trainerize's coach app is desktop-first — coaches
+                // avoid the phone. Mobile speed is the wedge; protect it.)
+                HStack(spacing: 10) {
+                    coachQuickAction("person.badge.plus", "Add Client") {
+                        store.openAddClient()
+                    }
+                    coachQuickAction("bubble.left.and.bubble.right.fill", "Messages",
+                                     showsBadge: store.unreadThreadCount > 0) {
+                        store.selectedCoachTab = .messages
+                    }
+                    coachQuickAction("square.and.arrow.up.on.square", "Assign") {
+                        // Build hosts every template's Assign button — one
+                        // more tap lands the workout on a client.
+                        store.selectedCoachTab = .programs
+                    }
+                    coachQuickAction("calendar", "Schedule") {
+                        showSchedule = true
+                    }
+                }
+                .sheet(isPresented: $showSchedule) {
+                    // The same schedule surface Profile's Schedule row opens —
+                    // one canonical door, now one tap from Home.
+                    NavigationStack {
+                        CoachBusinessView()
+                            .environment(store)
+                            .toolbar {
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    Button("Done") { showSchedule = false }
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                    }
+                }
 
                 if store.coachClients.isEmpty && store.managedClients.isEmpty {
                     // Day-1 command center: a real coach account starts with
@@ -1904,6 +1976,14 @@ private struct CoachBuildLibraryPanel: View {
                 // instead of showing fabricated 0% metrics (coach audit).
                 if store.coachAnalytics != .empty {
                     CoachQualityAnalyticsCard(analytics: store.coachAnalytics)
+                }
+
+                // Honest live analytics (benchmark Tier 2 — Trainerize's
+                // admitted gap): every number derived from real roster,
+                // shared progress, and actual threads. Renders only with a
+                // roster; completion only over confirmable data.
+                if store.liveCoachAnalytics.rosterCount > 0 {
+                    CoachHonestAnalyticsCard(analytics: store.liveCoachAnalytics)
                 }
             }
         }
@@ -4272,5 +4352,71 @@ private struct CoachQualityAnalyticsCard: View {
                     .foregroundStyle(MorpheTheme.textSecondary)
             }
         }
+    }
+}
+
+/// Roster health from REAL sources only (benchmark Tier 2): active/quiet
+/// from logged + shared sessions, reply queue from actual thread state,
+/// completion strictly over assignments old enough to judge AND covered by
+/// shared progress. No CSV export required, no invented percentages.
+struct CoachHonestAnalyticsCard: View {
+    let analytics: MorpheAppStore.LiveCoachAnalytics
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("ROSTER HEALTH")
+                    .font(MorpheTheme.microLabel())
+                    .tracking(1.4)
+                    .foregroundStyle(MorpheTheme.accent)
+
+                HStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(analytics.activeThisWeek)/\(analytics.rosterCount)")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Text("Active this wk")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(analytics.quietCount)")
+                            .font(.headline)
+                            .foregroundStyle(analytics.quietCount > 0 ? MorpheTheme.warning : .white)
+                        Text("Quiet 7+ days")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(analytics.awaitingReply)")
+                            .font(.headline)
+                            .foregroundStyle(analytics.awaitingReply > 0 ? MorpheTheme.brandYellow : .white)
+                        Text("Awaiting reply")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    if let completion = analytics.assignmentCompletion, completion.total > 0 {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(completion.done)/\(completion.total)")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                            Text("Assigned done")
+                                .font(.caption2)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                Text(analytics.assignmentCompletion == nil
+                     ? "Sessions count from client logs and shared progress. Assignment completion appears once clients share progress and due dates pass."
+                     : "Every number derives from client logs, shared progress, and your real inbox — nothing estimated.")
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Roster health: \(analytics.activeThisWeek) of \(analytics.rosterCount) active this week, \(analytics.quietCount) quiet, \(analytics.awaitingReply) awaiting your reply")
     }
 }

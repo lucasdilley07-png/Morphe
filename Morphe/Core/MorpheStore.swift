@@ -5174,6 +5174,65 @@ final class MorpheAppStore {
         )
     }
 
+    /// Honest roster analytics (benchmark Tier 2 — the gap Trainerize's own
+    /// users complain about). Every number names its source and appears
+    /// only when the underlying data exists; completion is computed ONLY
+    /// over assignments old enough to judge AND clients who share progress.
+    struct LiveCoachAnalytics {
+        var rosterCount = 0
+        /// Clients with a session (shared or coach-logged) inside 7 days.
+        var activeThisWeek = 0
+        /// Clients silent 7+ days — same derivation as the triage board.
+        var quietCount = 0
+        /// Threads whose LAST message is the client's — the real reply queue.
+        var awaitingReply = 0
+        /// Confirmable assignment completion — nil when no assignment is
+        /// both ≥1 day old and covered by shared progress (no invented %).
+        var assignmentCompletion: (done: Int, total: Int)?
+    }
+
+    var liveCoachAnalytics: LiveCoachAnalytics {
+        let roster = visibleManagedClients
+        var analytics = LiveCoachAnalytics()
+        analytics.rosterCount = roster.count
+        guard !roster.isEmpty else { return analytics }
+        let calendar = Calendar.current
+        let weekAgo = calendar.date(byAdding: .day, value: -7, to: .now) ?? .now
+        let myUid = authUser?.id ?? ""
+
+        for client in roster {
+            let sharedSessions = client.isClaimed
+                ? (coachShareSummaries[client.claimedByUid]?.recentSessions ?? [])
+                : []
+            let lastActivity = max(
+                client.lastLoggedAt ?? .distantPast,
+                sharedSessions.map(\.completedAt).max() ?? .distantPast
+            )
+            if lastActivity >= weekAgo {
+                analytics.activeThisWeek += 1
+            } else {
+                analytics.quietCount += 1
+            }
+            // Completion only where it can be VERIFIED: shared progress
+            // exists and the assignment day has passed.
+            if client.isClaimed, let summary = coachShareSummaries[client.claimedByUid] {
+                for assignment in client.assignments
+                where assignment.scheduledFor < calendar.startOfDay(for: .now) {
+                    let done = summary.recentSessions.contains {
+                        $0.title == assignment.workout.name
+                            && $0.completedAt >= calendar.startOfDay(for: assignment.scheduledFor)
+                    }
+                    let current = analytics.assignmentCompletion ?? (0, 0)
+                    analytics.assignmentCompletion = (current.done + (done ? 1 : 0), current.total + 1)
+                }
+            }
+        }
+        analytics.awaitingReply = liveThreads.filter {
+            !$0.lastSender.isEmpty && $0.lastSender != myUid
+        }.count
+        return analytics
+    }
+
     func selectSportMode(_ sport: SportFocus) {
         if clientProfile.selectedSports.contains(sport) {
             moveToFront(sport, in: &clientProfile.selectedSports)
@@ -9216,7 +9275,17 @@ final class MorpheAppStore {
     /// (postStreakByline). Derived from logged facts at publish time — a
     /// lapsed streak simply stops appearing on new posts.
     var feedAuthorHeadline: String {
-        if selectedRole == .coach { return "Coach" }
+        if selectedRole == .coach {
+            // Real roster, real byline (benchmark Tier 2): a coach's posts
+            // carry their practice size only when one exists — "Coach" alone
+            // stays honest at zero.
+            let roster = visibleManagedClients.count
+            let specialty = coachProfile.specialty
+            var parts = ["Coach"]
+            if !specialty.isEmpty, specialty != "Personal coaching" { parts.append(specialty) }
+            if roster > 0 { parts.append("\(roster) athlete\(roster == 1 ? "" : "s")") }
+            return String(parts.joined(separator: " · ").prefix(80))
+        }
         let sport = clientProfile.sportMode.rawValue
         let streak = clientProfile.level.streak
         let headline = (postStreakByline && streak >= 2)

@@ -5840,3 +5840,71 @@ final class ProgramDeliveryTests: XCTestCase {
         XCTAssertEqual(store.currentWorkout.type, "Coach Assignment")
     }
 }
+
+// MARK: - Tier 2: honest coach analytics + feed identity
+
+@MainActor
+final class CoachTier2Tests: XCTestCase {
+    private func makeStore() -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "coach-uid", email: "c@m.app", role: .coach,
+                                 displayName: "Sarah", createdAt: .now)
+        store.selectedRole = .coach
+        return store
+    }
+
+    func testCoachHeadlineDerivesFromRealRoster() {
+        let store = makeStore()
+        XCTAssertTrue(store.feedAuthorHeadline.hasPrefix("Coach"),
+                      "the byline leads with the role")
+        XCTAssertFalse(store.feedAuthorHeadline.contains("athlete"),
+                       "zero clients = no practice-size claim")
+        store.managedClients = [
+            ManagedClient(id: "C1", coachUid: "coach-uid", coachName: "S", name: "A"),
+            ManagedClient(id: "C2", coachUid: "coach-uid", coachName: "S", name: "B")
+        ]
+        XCTAssertTrue(store.feedAuthorHeadline.contains("2 athletes"),
+                      "the byline states the REAL roster count")
+    }
+
+    func testLiveAnalyticsStayHonestWithoutSharedData() {
+        let store = makeStore()
+        XCTAssertEqual(store.liveCoachAnalytics.rosterCount, 0)
+
+        var client = ManagedClient(id: "C3", coachUid: "coach-uid", coachName: "S",
+                                   name: "Alex", status: .claimed, claimedByUid: "alex-uid")
+        client.assignments = [WorkoutAssignment(
+            workout: PartyWorkoutSnapshot(template: WorkoutTemplate(
+                name: "W", type: "t", sport: .strength, goal: "", difficulty: .moderate,
+                durationMinutes: 30, equipment: "", exercises: [], notes: "", coachNote: "")),
+            scheduledFor: Calendar.current.date(byAdding: .day, value: -3, to: .now)!)]
+        store.managedClients = [client]
+
+        let analytics = store.liveCoachAnalytics
+        XCTAssertEqual(analytics.rosterCount, 1)
+        XCTAssertEqual(analytics.quietCount, 1, "no sessions anywhere = quiet")
+        XCTAssertNil(analytics.assignmentCompletion,
+                     "no shared progress = NO completion claim, not a fake 0%")
+    }
+
+    func testAwaitingReplyCountsThreadsWhereClientSpokeLast() {
+        let store = makeStore()
+        store.managedClients = [
+            ManagedClient(id: "C4", coachUid: "coach-uid", coachName: "S", name: "A")
+        ]
+        store.liveThreads = [
+            MessageThreadSummary(id: "t1", coachUid: "coach-uid", athleteUid: "a1",
+                                 coachName: "S", athleteName: "A",
+                                 lastMessage: "hey coach", lastSender: "a1"),
+            MessageThreadSummary(id: "t2", coachUid: "coach-uid", athleteUid: "a2",
+                                 coachName: "S", athleteName: "B",
+                                 lastMessage: "done!", lastSender: "coach-uid")
+        ]
+        XCTAssertEqual(store.liveCoachAnalytics.awaitingReply, 1,
+                       "only the thread where the client spoke last is a real reply queue item")
+    }
+}
