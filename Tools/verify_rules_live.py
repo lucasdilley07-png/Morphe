@@ -45,6 +45,23 @@ PASSWORD = secrets.token_urlsafe(18)
 results = []
 
 
+def run_query(user: dict, collection: str, field: str, value: str) -> int:
+    """Rules-checked structured query (LIST permission) as this user."""
+    body = {"structuredQuery": {
+        "from": [{"collectionId": collection}],
+        "where": {"fieldFilter": {
+            "field": {"fieldPath": field}, "op": "EQUAL",
+            "value": {"stringValue": value}}},
+        "limit": 5}}
+    response = requests.post(
+        f"{FS.rsplit('/documents', 1)[0]}/documents:runQuery",
+        json=body, headers={"Authorization": f"Bearer {user['token']}"}, timeout=30)
+    # runQuery can 200 with an in-body error entry on rules denial.
+    if response.ok and any("error" in row for row in response.json()):
+        return 403
+    return response.status_code
+
+
 def check(name: str, expect_allow: bool, status: int):
     allowed = 200 <= status < 300
     ok = allowed == expect_allow
@@ -258,6 +275,33 @@ try:
     check("C reads after revocation", False,
           fs_call(C, "GET", f"users/{A['uid']}/coachShare/summary"))
 
+    print("\n— Managed clients (program delivery) —")
+    mc_code = f"RULES{RUN_ID[:4].upper()}"
+    check("C (coach) creates an unclaimed client", True,
+          fs_call(C, "PATCH", f"managedClients/{mc_code}",
+                  {"fields": {"coachUid": s(C["uid"]), "coachName": s("Coach C"),
+                              "name": s("Rules Client"), "status": s("unclaimed"),
+                              "logsJSON": s("[]"), "assignmentsJSON": s("[]"),
+                              "athleteID": s("00000000-0000-0000-0000-000000000000")}}))
+    check("A claims it for themself", True,
+          fs_call(A, "PATCH", f"managedClients/{mc_code}"
+                  "?updateMask.fieldPaths=status&updateMask.fieldPaths=claimedByUid&updateMask.fieldPaths=claimedByName",
+                  {"fields": {"status": s("claimed"), "claimedByUid": s(A["uid"]),
+                              "claimedByName": s("Rules A")}}))
+    check("C assigns a program to the CLAIMED client", True,
+          fs_call(C, "PATCH", f"managedClients/{mc_code}?updateMask.fieldPaths=assignmentsJSON",
+                  {"fields": {"assignmentsJSON": s("[{\"id\":\"a1\"}]")}}))
+    check("C edits the claimed client's NAME (frozen history)", False,
+          fs_call(C, "PATCH", f"managedClients/{mc_code}?updateMask.fieldPaths=name",
+                  {"fields": {"name": s("Renamed")}}))
+    check("B (stranger) writes assignments to it", False,
+          fs_call(B, "PATCH", f"managedClients/{mc_code}?updateMask.fieldPaths=assignmentsJSON",
+                  {"fields": {"assignmentsJSON": s("[]")}}))
+    check("A lists their own claimed docs", True,
+          run_query(A, "managedClients", "claimedByUid", A["uid"]))
+    check("B lists A's claimed docs by uid", False,
+          run_query(B, "managedClients", "claimedByUid", A["uid"]))
+
     print("\n— Account deletion path —")
     check("B deletes A's post", False, fs_call(B, "DELETE", f"posts/{post_id}"))
     check("A deletes their own post", True, fs_call(A, "DELETE", f"posts/{post_id}"))
@@ -279,6 +323,9 @@ finally:
         (A, f"posts/{post_id}"),
         (A, f"posts/{post_id}-a"),
         (A, f"posts/{post_id}-i"),
+        # Claimed docs are undeletable by design (the athlete's history) —
+        # this 403s and leaves one ~1KB doc per run. Known, accepted.
+        (C, f"managedClients/RULES{RUN_ID[:4].upper()}"),
         (A, f"telemetry/t-{RUN_ID}"),
         (A, f"users/{A['uid']}/state/profile"),
         (A, f"users/{A['uid']}/following/{B['uid']}"),

@@ -287,19 +287,25 @@ service cloud.firestore {
     // history has moved into the athlete's own account).
     match /managedClients/{code} {
       // GET requires knowing the code (unguessable enough at 31^6); LIST is
-      // restricted to the owning coach's own roster query.
+      // the owning coach's roster query OR the claimed athlete's own docs
+      // (that's how coach-assigned programs reach their Train tab).
       allow get: if isSignedIn();
-      allow list: if isSignedIn() && resource.data.coachUid == request.auth.uid;
+      allow list: if isSignedIn()
+        && (resource.data.coachUid == request.auth.uid
+            || resource.data.claimedByUid == request.auth.uid);
 
       // Only a coach creates one, for themself, unclaimed.
       allow create: if isSignedIn()
         && request.resource.data.coachUid == request.auth.uid
         && request.resource.data.status == 'unclaimed';
 
-      // Two legal updates:
+      // Three legal updates:
       //   1. The owning coach edits/logs while the profile is unclaimed.
       //   2. Any signed-in athlete atomically claims an unclaimed profile for
-      //      THEMSELF — flipping status and stamping claimedByUid, nothing else.
+      //      THEMSELF — flipping status and stamping claimedByUid, nothing
+      //      else (logs, identity, and assignments frozen through the claim).
+      //   3. Program delivery: the owning coach updates ONLY the assignments
+      //      on a CLAIMED doc — the rest is the athlete's history now.
       allow update: if isSignedIn()
         && request.resource.data.coachUid == resource.data.coachUid
         && (
@@ -309,7 +315,14 @@ service cloud.firestore {
             && request.resource.data.status == 'claimed'
             && request.resource.data.claimedByUid == request.auth.uid
             && request.resource.data.logsJSON == resource.data.logsJSON
+            && request.resource.data.get('assignmentsJSON', '[]') == resource.data.get('assignmentsJSON', '[]')
             && request.resource.data.athleteID == resource.data.athleteID)
+          || (request.auth.uid == resource.data.coachUid
+            && resource.data.status == 'claimed'
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['assignmentsJSON', 'updatedAt'])
+            && request.resource.data.assignmentsJSON is string
+            && request.resource.data.assignmentsJSON.size() <= 200000)
         );
 
       // A coach can delete an unclaimed profile; a claimed one is the

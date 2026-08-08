@@ -798,6 +798,20 @@ private struct ManagedClientDetailSheet: View {
         store.managedClients.first(where: { $0.id == clientID })
     }
 
+    /// Honest delivery state: completion is only claimed when the athlete's
+    /// SHARED sessions confirm it — never inferred from silence.
+    private func assignmentStatus(for assignment: WorkoutAssignment) -> String {
+        guard let client, client.isClaimed else { return "Delivers on claim" }
+        if let summary = store.coachShareSummaries[client.claimedByUid] {
+            let dayStart = Calendar.current.startOfDay(for: assignment.scheduledFor)
+            let done = summary.recentSessions.contains {
+                $0.title == assignment.workout.name && $0.completedAt >= dayStart
+            }
+            if done { return "Done" }
+        }
+        return assignment.scheduledFor > .now ? "Scheduled" : "Assigned"
+    }
+
     var body: some View {
         NavigationStack {
             if let client {
@@ -856,6 +870,34 @@ private struct ManagedClientDetailSheet: View {
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
+                            }
+                        }
+                    }
+
+                    // Program delivery status — every assignment, with an
+                    // HONEST state: unclaimed docs deliver on claim; claimed
+                    // completion is confirmed only through shared progress.
+                    if !client.assignments.isEmpty {
+                        Section("Assignments") {
+                            ForEach(client.assignments.prefix(5)) { assignment in
+                                HStack(spacing: 10) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(assignment.workout.name)
+                                            .font(.subheadline.weight(.semibold))
+                                        Text(assignment.scheduledFor.formatted(date: .abbreviated, time: .omitted))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer(minLength: 6)
+                                    Text(assignmentStatus(for: assignment))
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(assignmentStatus(for: assignment) == "Done" ? MorpheTheme.accent : .secondary)
+                                }
+                            }
+                            if client.isClaimed, store.coachShareSummaries[client.claimedByUid] == nil {
+                                Text("Completion shows here once \(client.name) turns on \"Share with coach\".")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -924,6 +966,33 @@ private struct ManagedClientDetailSheet: View {
                                             .foregroundStyle(.secondary)
                                     }
                                 }
+
+                                // 7-day compliance strip (benchmark Tier 1):
+                                // filled = a shared session landed that day.
+                                // Derived from the sessions the athlete
+                                // actually shared — no invented adherence %.
+                                HStack(spacing: 6) {
+                                    ForEach(0..<7, id: \.self) { offset in
+                                        let day = Calendar.current.date(byAdding: .day, value: offset - 6, to: .now) ?? .now
+                                        let trained = summary.recentSessions.contains {
+                                            Calendar.current.isDate($0.completedAt, inSameDayAs: day)
+                                        }
+                                        VStack(spacing: 3) {
+                                            Circle()
+                                                .fill(trained ? MorpheTheme.accent : Color.secondary.opacity(0.25))
+                                                .frame(width: 14, height: 14)
+                                            Text(day.formatted(.dateTime.weekday(.narrow)))
+                                                .font(.system(size: 9, weight: .semibold))
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    Text("Last 7 days")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("Trained \(summary.recentSessions.filter { $0.completedAt > Calendar.current.date(byAdding: .day, value: -7, to: .now)! }.count) of the last 7 days, from shared sessions")
 
                                 Text("Shared by \(summary.athleteName.isEmpty ? client.name : summary.athleteName) · updated \(summary.updatedAt.formatted(.relative(presentation: .named)))")
                                     .font(.caption2)
@@ -2047,7 +2116,7 @@ private struct AssignWorkoutSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let template: WorkoutTemplate
-    @State private var selectedManagedID: String?
+    @State private var selectedManagedIDs: Set<String> = []
     @State private var scheduledDate = Date()
 
     var body: some View {
@@ -2064,29 +2133,39 @@ private struct AssignWorkoutSheet: View {
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
                 } else {
-                    Picker("Athlete", selection: $selectedManagedID) {
+                    // Multi-select (benchmark Tier 1 bulk-assign): tap every
+                    // client this session goes to.
+                    Text("\(selectedManagedIDs.count) of \(store.visibleManagedClients.count) selected")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
                         ForEach(store.visibleManagedClients) { client in
-                            Text(client.name).tag(Optional(client.id))
+                            Button(client.name) {
+                                if selectedManagedIDs.contains(client.id) {
+                                    selectedManagedIDs.remove(client.id)
+                                } else {
+                                    selectedManagedIDs.insert(client.id)
+                                }
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: selectedManagedIDs.contains(client.id)))
                         }
                     }
-                    .pickerStyle(.menu)
 
                     DatePicker("Day and time", selection: $scheduledDate)
                         .datePickerStyle(.graphical)
                         .tint(MorpheTheme.accent)
 
-                    Button("Assign Workout") {
-                        guard let selectedManagedID,
-                              let client = store.visibleManagedClients.first(where: { $0.id == selectedManagedID })
-                        else { return }
-
+                    Button(selectedManagedIDs.count > 1 ? "Assign to \(selectedManagedIDs.count) Clients" : "Assign Workout") {
+                        let targets = store.visibleManagedClients.filter { selectedManagedIDs.contains($0.id) }
+                        guard !targets.isEmpty else { return }
                         let formatter = DateFormatter()
                         formatter.dateFormat = "EEEE h:mm a"
-                        store.assignWorkout(named: template.name, to: client, scheduledLabel: formatter.string(from: scheduledDate))
+                        store.assignWorkout(template, to: targets, on: scheduledDate,
+                                            scheduledLabel: formatter.string(from: scheduledDate))
                         dismiss()
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    .disabled(selectedManagedID == nil)
+                    .disabled(selectedManagedIDs.isEmpty)
                 }
 
                 Spacer()
@@ -2094,7 +2173,9 @@ private struct AssignWorkoutSheet: View {
             .padding(20)
             .background(PremiumBackground())
             .onAppear {
-                selectedManagedID = selectedManagedID ?? store.visibleManagedClients.first?.id
+                if selectedManagedIDs.isEmpty, let first = store.visibleManagedClients.first {
+                    selectedManagedIDs = [first.id]
+                }
             }
         }
     }
@@ -2104,7 +2185,7 @@ private struct AssignSavedWorkoutSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let item: SavedWorkoutLibraryItem
-    @State private var selectedManagedID: String?
+    @State private var selectedManagedIDs: Set<String> = []
     @State private var scheduledDate = Date()
 
     var body: some View {
@@ -2137,30 +2218,45 @@ private struct AssignSavedWorkoutSheet: View {
                     Text("No clients on your roster yet — add one from Home and this sheet assigns to them.")
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
+                } else if resolvedTemplate == nil {
+                    // The saved row references a template that's gone from
+                    // the library — say so instead of delivering nothing.
+                    Text("The workout behind this saved item isn't in your library anymore, so there's nothing runnable to deliver.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
                 } else {
-                    Picker("Athlete", selection: $selectedManagedID) {
+                    Text("\(selectedManagedIDs.count) of \(store.visibleManagedClients.count) selected")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
                         ForEach(store.visibleManagedClients) { client in
-                            Text(client.name).tag(Optional(client.id))
+                            Button(client.name) {
+                                if selectedManagedIDs.contains(client.id) {
+                                    selectedManagedIDs.remove(client.id)
+                                } else {
+                                    selectedManagedIDs.insert(client.id)
+                                }
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: selectedManagedIDs.contains(client.id)))
                         }
                     }
-                    .pickerStyle(.menu)
 
                     DatePicker("Day and time", selection: $scheduledDate)
                         .datePickerStyle(.graphical)
                         .tint(MorpheTheme.accent)
 
-                    Button("Assign Saved") {
-                        guard let selectedManagedID,
-                              let client = store.visibleManagedClients.first(where: { $0.id == selectedManagedID })
-                        else { return }
-
+                    Button(selectedManagedIDs.count > 1 ? "Assign to \(selectedManagedIDs.count) Clients" : "Assign Saved") {
+                        guard let template = resolvedTemplate else { return }
+                        let targets = store.visibleManagedClients.filter { selectedManagedIDs.contains($0.id) }
+                        guard !targets.isEmpty else { return }
                         let formatter = DateFormatter()
                         formatter.dateFormat = "EEEE h:mm a"
-                        store.assignWorkout(named: item.workoutName, to: client, scheduledLabel: formatter.string(from: scheduledDate))
+                        store.assignWorkout(template, to: targets, on: scheduledDate,
+                                            scheduledLabel: formatter.string(from: scheduledDate))
                         dismiss()
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    .disabled(selectedManagedID == nil)
+                    .disabled(selectedManagedIDs.isEmpty)
                 }
 
                 Spacer()
@@ -2168,9 +2264,16 @@ private struct AssignSavedWorkoutSheet: View {
             .padding(20)
             .background(PremiumBackground())
             .onAppear {
-                selectedManagedID = selectedManagedID ?? store.visibleManagedClients.first?.id
+                if selectedManagedIDs.isEmpty, let first = store.visibleManagedClients.first {
+                    selectedManagedIDs = [first.id]
+                }
             }
         }
+    }
+
+    /// The runnable template the saved row points at.
+    private var resolvedTemplate: WorkoutTemplate? {
+        store.workoutTemplates.first { $0.id == item.workoutTemplateID }
     }
 }
 

@@ -2039,6 +2039,19 @@ enum ManagedClientStatus: String, Codable {
 /// scores. `id` doubles as the shareable invite code (party-code alphabet) and
 /// the Firestore document id; `athleteID` is the UUID coach-entered logs are
 /// keyed to, so the claim import can re-key them to the new account.
+/// One coach-assigned workout riding the managed-client doc as JSON —
+/// program delivery, Tier 1 of the Trainerize benchmark. The workout is the
+/// full runnable snapshot (the party wire shape reused), so the athlete's
+/// Train tab can start it exactly as built, offline included.
+struct WorkoutAssignment: Codable, Identifiable, Hashable {
+    var id: String = UUID().uuidString
+    var workout: PartyWorkoutSnapshot
+    var scheduledFor: Date
+    var scheduledLabel: String = ""
+    var assignedAt: Date = .now
+    var coachName: String = ""
+}
+
 struct ManagedClient: Identifiable, Codable, Hashable {
     var id: String
     var athleteID: UUID = UUID()
@@ -2056,6 +2069,9 @@ struct ManagedClient: Identifiable, Codable, Hashable {
     var claimedByName: String = ""
     var createdAt: Date = .now
     var logs: [WorkoutLog] = []
+    /// Coach-assigned workouts, newest first — delivered to the claimed
+    /// athlete's Train tab.
+    var assignments: [WorkoutAssignment] = []
 
     var isClaimed: Bool { status == .claimed }
     var lastLoggedAt: Date? { logs.map(\.completedAt).max() }

@@ -71,8 +71,8 @@ struct WorkoutParty: Hashable {
 
 /// The reduced, Codable form of a workout that travels inside the party doc —
 /// enough for a buddy's phone to run the exact same session.
-struct PartyWorkoutSnapshot: Codable {
-    struct Exercise: Codable {
+struct PartyWorkoutSnapshot: Codable, Hashable {
+    struct Exercise: Codable, Hashable {
         var id: String
         var exerciseLibraryID: String
         var name: String
@@ -110,12 +110,14 @@ struct PartyWorkoutSnapshot: Codable {
         }
     }
 
-    /// Rebuilds a runnable template on the joining phone. A fresh UUID keeps
-    /// it out of the way of the buddy's own library content.
-    func makeTemplate() -> WorkoutTemplate {
+    /// Rebuilds a runnable template on the receiving phone. A fresh UUID
+    /// keeps it out of the way of the local library content. The default
+    /// dressing is the buddy-session one; coach assignments pass their own.
+    func makeTemplate(type: String = "Buddy Session",
+                      notes: String = "Shared by your training partner.") -> WorkoutTemplate {
         WorkoutTemplate(
             name: name,
-            type: "Buddy Session",
+            type: type,
             sport: SportFocus(rawValue: sport) ?? .generalFitness,
             goal: goal,
             difficulty: .moderate,
@@ -135,7 +137,7 @@ struct PartyWorkoutSnapshot: Codable {
                     restSeconds: $0.restSeconds
                 )
             },
-            notes: "Shared by your training partner.",
+            notes: notes,
             coachNote: ""
         )
     }

@@ -171,6 +171,12 @@ protocol ManagedClientSyncing: AnyObject {
     func fetchMine(coachUid: String) async -> [ManagedClient]?
     /// Atomically claim an unclaimed profile for the signed-in athlete.
     func claim(code: String, athleteUid: String, athleteName: String) async -> Result<ManagedClient, ManagedClientClaimError>
+    /// Writes ONLY the assignments field — the one edit the rules allow a
+    /// coach on a CLAIMED doc (program delivery). Works on unclaimed too.
+    func pushAssignments(code: String, assignments: [WorkoutAssignment])
+    /// Athlete side: the managed-client docs claimed by this uid (their
+    /// coach-assigned programs ride them), or nil offline/unavailable.
+    func fetchClaimed(athleteUid: String) async -> [ManagedClient]?
     /// Remove an (unclaimed) managed client.
     func delete(code: String)
     /// Athlete side: publishes the consented progress summary the named
@@ -192,6 +198,8 @@ final class NoOpManagedClientService: ManagedClientSyncing {
     func claim(code: String, athleteUid: String, athleteName: String) async -> Result<ManagedClient, ManagedClientClaimError> {
         .failure(.network)
     }
+    func pushAssignments(code: String, assignments: [WorkoutAssignment]) {}
+    func fetchClaimed(athleteUid: String) async -> [ManagedClient]? { nil }
     func delete(code: String) {}
 }
 
@@ -261,6 +269,8 @@ final class FirebaseManagedClientService: ManagedClientSyncing {
             "claimedByName": client.claimedByName,
             "logsJSON": logsJSON,
             "logCount": client.logs.count,
+            "assignmentsJSON": (try? encoder.encode(client.assignments))
+                .flatMap { String(data: $0, encoding: .utf8) } ?? "[]",
             "createdAt": Timestamp(date: client.createdAt),
             "updatedAt": FieldValue.serverTimestamp()
         ])
@@ -303,6 +313,25 @@ final class FirebaseManagedClientService: ManagedClientSyncing {
         return .success(client)
     }
 
+    func pushAssignments(code: String, assignments: [WorkoutAssignment]) {
+        let json = (try? encoder.encode(assignments))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        // updateData, not setData: on a CLAIMED doc the rules allow the
+        // coach to touch ONLY this field (+ updatedAt).
+        doc(code).updateData([
+            "assignmentsJSON": json,
+            "updatedAt": FieldValue.serverTimestamp()
+        ])
+    }
+
+    func fetchClaimed(athleteUid: String) async -> [ManagedClient]? {
+        guard let snapshot = try? await db.collection("managedClients")
+            .whereField("claimedByUid", isEqualTo: athleteUid)
+            .getDocuments()
+        else { return nil }
+        return snapshot.documents.compactMap { client(from: $0.documentID, data: $0.data()) }
+    }
+
     func delete(code: String) {
         doc(code).delete()
     }
@@ -318,6 +347,12 @@ final class FirebaseManagedClientService: ManagedClientSyncing {
            let elements = try? decoder.decode([FailableElement<WorkoutLog>].self, from: bytes) {
             logs = elements.compactMap(\.value)
         }
+        var assignments: [WorkoutAssignment] = []
+        if let json = data["assignmentsJSON"] as? String,
+           let bytes = json.data(using: .utf8),
+           let elements = try? decoder.decode([FailableElement<WorkoutAssignment>].self, from: bytes) {
+            assignments = elements.compactMap(\.value)
+        }
         return ManagedClient(
             id: id,
             athleteID: (data["athleteID"] as? String).flatMap(UUID.init(uuidString:)) ?? UUID(),
@@ -331,7 +366,8 @@ final class FirebaseManagedClientService: ManagedClientSyncing {
             claimedByUid: data["claimedByUid"] as? String ?? "",
             claimedByName: data["claimedByName"] as? String ?? "",
             createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? .now,
-            logs: logs
+            logs: logs,
+            assignments: assignments
         )
     }
 }

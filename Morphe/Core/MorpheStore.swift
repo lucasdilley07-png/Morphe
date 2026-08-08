@@ -1018,6 +1018,8 @@ final class MorpheAppStore {
         lastThreadsRefreshAt = nil
         lastPresenceRefreshAt = nil
         membershipSetsFetched = false
+        coachAssignments = []
+        lastAssignmentsFetchAt = nil
 
         // FULL local wipe (launch audit P0): sign-out must leave the device
         // as clean as account deletion does. Without this, the NEXT account
@@ -1629,6 +1631,7 @@ final class MorpheAppStore {
         Task { await refreshVerificationStatus() }
         Task { await refreshAppointments() }
         Task { await refreshThreads() }
+        Task { await refreshCoachAssignments(force: true) }
         // Forced: a fresh identity must never trust another account's page.
         Task { await refreshFeed(force: true) }
     }
@@ -8820,6 +8823,9 @@ final class MorpheAppStore {
             linkedCoachUid = claimed.coachUid
             linkedCoachName = claimed.coachName
             track("coach_claimed")
+            // Programs assigned before the claim deliver immediately.
+            coachAssignments = claimed.assignments.sorted { $0.scheduledFor < $1.scheduledFor }
+            lastAssignmentsFetchAt = .now
             for var log in claimed.logs.sorted(by: { $0.completedAt < $1.completedAt }) {
                 log.athleteID = clientProfile.id
                 log.athleteName = clientProfile.name
@@ -10867,23 +10873,107 @@ final class MorpheAppStore {
         showToast("Program assigned successfully.")
     }
 
-    /// REAL-roster assignment (coach audit: both Assign buttons fed off the
-    /// permanently-empty demo array and silently did nothing). The workout
-    /// stamps into the managed client's notes and pushes the doc — visible
-    /// on their client card now, and carried into their account when they
-    /// claim their code.
-    func assignWorkout(named workoutName: String, to client: ManagedClient, scheduledLabel: String) {
+    /// REAL program delivery (Trainerize benchmark Tier 1): the FULL
+    /// runnable workout rides the managed-client doc as an assignment and
+    /// lands in the claimed athlete's Train tab as a scheduled session —
+    /// not a note. Capped at the newest 20 so the JSON stays small.
+    func assignWorkout(_ template: WorkoutTemplate, to client: ManagedClient,
+                       on date: Date, scheduledLabel: String) {
         guard let index = managedClients.firstIndex(where: { $0.id == client.id }) else {
             showToast("That client isn't on your roster anymore.")
             return
         }
-        let stamp = "Assigned \(workoutName) for \(scheduledLabel)."
+        let assignment = WorkoutAssignment(
+            workout: PartyWorkoutSnapshot(template: template),
+            scheduledFor: date,
+            scheduledLabel: scheduledLabel,
+            coachName: coachProfile.name
+        )
+        managedClients[index].assignments.insert(assignment, at: 0)
+        managedClients[index].assignments = Array(managedClients[index].assignments.prefix(20))
+        // The notes line stays as the coach's own paper trail.
+        let stamp = "Assigned \(template.name) for \(scheduledLabel)."
         managedClients[index].notes = managedClients[index].notes.isEmpty
             ? stamp
             : managedClients[index].notes + "\n" + stamp
-        managedClientService.push(managedClients[index])
-        showToast("\(workoutName) assigned to \(client.name).")
+        managedClientService.pushAssignments(
+            code: client.id, assignments: managedClients[index].assignments)
+        // Unclaimed docs still take a full push (keeps notes + count in
+        // sync); claimed docs are assignments-only by rule.
+        if !client.isClaimed {
+            managedClientService.push(managedClients[index])
+        }
+        showToast("\(template.name) assigned to \(client.name)\(client.isClaimed ? " — it's in their Train tab" : " — delivered when they claim their code").")
         track("coach_assigned_workout")
+    }
+
+    /// Bulk assign — the same delivery, one sheet, many clients.
+    func assignWorkout(_ template: WorkoutTemplate, to clients: [ManagedClient],
+                       on date: Date, scheduledLabel: String) {
+        for client in clients {
+            assignWorkout(template, to: client, on: date, scheduledLabel: scheduledLabel)
+        }
+        if clients.count > 1 {
+            showToast("\(template.name) assigned to \(clients.count) clients.")
+        }
+    }
+
+    // MARK: Athlete side — coach-assigned programs
+
+    /// Assignments across every claimed coach link, soonest first.
+    private(set) var coachAssignments: [WorkoutAssignment] = []
+    private var lastAssignmentsFetchAt: Date?
+
+    /// Pulls the managed-client docs this athlete claimed (hourly gate —
+    /// assignments change at coaching cadence, not feed cadence).
+    func refreshCoachAssignments(force: Bool = false) async {
+        guard let uid = authUser?.id, selectedRole == .client,
+              !linkedCoachUid.isEmpty else { return }
+        if !force, let last = lastAssignmentsFetchAt,
+           Date.now.timeIntervalSince(last) < 3600 { return }
+        guard let docs = await managedClientService.fetchClaimed(athleteUid: uid) else { return }
+        lastAssignmentsFetchAt = .now
+        coachAssignments = docs.flatMap(\.assignments)
+            .sorted { $0.scheduledFor < $1.scheduledFor }
+    }
+
+    /// Done = a REAL log with the assignment's name on/after its scheduled
+    /// day — completion is derived from what actually happened, never a
+    /// checkbox the athlete (or coach) has to remember.
+    func isAssignmentDone(_ assignment: WorkoutAssignment) -> Bool {
+        let dayStart = Calendar.current.startOfDay(for: assignment.scheduledFor)
+        return currentAthleteWorkoutLogs.contains {
+            $0.workoutTitle == assignment.workout.name && $0.completedAt >= dayStart
+        }
+    }
+
+    /// What the Train tab shows: not-yet-done assignments from the last 14
+    /// days plus everything upcoming — stale ones age out instead of
+    /// nagging forever.
+    var pendingCoachAssignments: [WorkoutAssignment] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -14, to: .now) ?? .now
+        return coachAssignments.filter { $0.scheduledFor >= cutoff && !isAssignmentDone($0) }
+    }
+
+    /// One tap from the assignment row into a live session running the
+    /// coach's exact workout.
+    func startAssignedWorkout(_ assignment: WorkoutAssignment) {
+        let template = assignment.workout.makeTemplate(
+            type: "Coach Assignment",
+            notes: assignment.coachName.isEmpty
+                ? "Assigned by your coach."
+                : "Assigned by \(assignment.coachName)."
+        )
+        // Reuse the already-imported copy — currentWorkoutID must point at
+        // a template that's actually in the list.
+        if let existing = workoutTemplates.first(where: {
+            $0.name == template.name && $0.type == "Coach Assignment"
+        }) {
+            beginLiveWorkout(existing)
+        } else {
+            workoutTemplates.append(template)
+            beginLiveWorkout(template)
+        }
     }
 
     func assignWorkoutTemplate(_ template: WorkoutTemplate, to client: CoachClient, scheduledLabel: String) {

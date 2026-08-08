@@ -5703,10 +5703,15 @@ final class LaunchHardeningTests: XCTestCase {
         store.managedClients = [
             ManagedClient(id: "C2", coachUid: "u", coachName: "Coach", name: "Sam")
         ]
-        store.assignWorkout(named: "Foundation Strength", to: store.managedClients[0],
-                            scheduledLabel: "Friday 5:00 PM")
+        let template = WorkoutTemplate(
+            name: "Foundation Strength", type: "Strength", sport: .strength,
+            goal: "", difficulty: .moderate, durationMinutes: 40,
+            equipment: "", exercises: [], notes: "", coachNote: "")
+        store.assignWorkout(template, to: store.managedClients[0],
+                            on: .now, scheduledLabel: "Friday 5:00 PM")
         XCTAssertTrue(store.managedClients[0].notes.contains("Assigned Foundation Strength for Friday 5:00 PM."),
                       "the assignment lands in the client doc, not a dead demo array")
+        XCTAssertEqual(store.managedClients[0].assignments.first?.workout.name, "Foundation Strength")
     }
 
     func testRemindersMasterTogglePersists() {
@@ -5717,5 +5722,121 @@ final class LaunchHardeningTests: XCTestCase {
         // Fresh store loads the same profile's prefs blob.
         _ = relaunched
         XCTAssertFalse(store.remindersEnabled)
+    }
+}
+
+// MARK: - Program delivery (Trainerize benchmark Tier 1)
+
+@MainActor
+final class ProgramDeliveryTests: XCTestCase {
+    final class SpyManagedService: ManagedClientSyncing {
+        var pushedAssignments: [(code: String, assignments: [WorkoutAssignment])] = []
+        var claimedDocs: [ManagedClient] = []
+        func push(_ client: ManagedClient) {}
+        func fetchMine(coachUid: String) async -> [ManagedClient]? { nil }
+        func claim(code: String, athleteUid: String, athleteName: String) async -> Result<ManagedClient, ManagedClientClaimError> { .failure(.network) }
+        func pushAssignments(code: String, assignments: [WorkoutAssignment]) {
+            pushedAssignments.append((code, assignments))
+        }
+        func fetchClaimed(athleteUid: String) async -> [ManagedClient]? { claimedDocs }
+        func delete(code: String) {}
+        func pushCoachShare(_ summary: CoachShareSummary, athleteUid: String) {}
+        func clearCoachShare(athleteUid: String) {}
+        func fetchCoachShare(athleteUid: String) async -> CoachShareSummary? { nil }
+    }
+
+    private func makeStore(service: SpyManagedService) -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore(managedClientService: service)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "me-uid", email: "s@m.app", role: .athlete,
+                                 displayName: "Sarah", createdAt: .now)
+        return store
+    }
+
+    private var sampleTemplate: WorkoutTemplate {
+        WorkoutTemplate(
+            name: "Coach Special", type: "Strength", sport: .strength,
+            goal: "Get stronger", difficulty: .moderate, durationMinutes: 40,
+            equipment: "", exercises: [
+                WorkoutExercise(id: "e1", exerciseLibraryID: "lib1", name: "Goblet Squat",
+                                muscleGroup: .legs, sets: "3", reps: "10",
+                                difficulty: .moderate, formCue: "", intensityLabel: "")
+            ], notes: "", coachNote: "")
+    }
+
+    func testAssignDeliversFullRunnableSnapshot() {
+        let service = SpyManagedService()
+        let store = makeStore(service: service)
+        store.managedClients = [
+            ManagedClient(id: "C1", coachUid: "me-uid", coachName: "Coach",
+                          name: "Alex", status: .claimed, claimedByUid: "alex-uid")
+        ]
+        store.assignWorkout(sampleTemplate, to: store.managedClients[0],
+                            on: .now, scheduledLabel: "Friday 5 PM")
+
+        XCTAssertEqual(service.pushedAssignments.count, 1)
+        let delivered = service.pushedAssignments[0]
+        XCTAssertEqual(delivered.code, "C1")
+        XCTAssertEqual(delivered.assignments.first?.workout.name, "Coach Special")
+        XCTAssertEqual(delivered.assignments.first?.workout.exercises.first?.name, "Goblet Squat",
+                       "the FULL runnable workout rides the doc — not a name-only note")
+        XCTAssertTrue(store.managedClients[0].notes.contains("Assigned Coach Special"),
+                      "the paper-trail note still lands")
+    }
+
+    func testAssignmentsCapAtTwenty() {
+        let service = SpyManagedService()
+        let store = makeStore(service: service)
+        store.managedClients = [
+            ManagedClient(id: "C2", coachUid: "me-uid", coachName: "Coach", name: "Sam")
+        ]
+        for _ in 0..<25 {
+            store.assignWorkout(sampleTemplate, to: store.managedClients[0],
+                                on: .now, scheduledLabel: "x")
+        }
+        XCTAssertEqual(store.managedClients[0].assignments.count, 20,
+                       "the doc's JSON stays bounded")
+    }
+
+    func testAthleteSeesPendingAndCompletionDerivesFromLogs() async {
+        let service = SpyManagedService()
+        let store = makeStore(service: service)
+        store.linkedCoachUid = "coach-uid"
+        let assignment = WorkoutAssignment(
+            workout: PartyWorkoutSnapshot(template: sampleTemplate),
+            scheduledFor: .now, scheduledLabel: "today", coachName: "Coach Q")
+        service.claimedDocs = [
+            ManagedClient(id: "C3", coachUid: "coach-uid", coachName: "Coach Q",
+                          name: "Sarah", status: .claimed, claimedByUid: "me-uid",
+                          assignments: [assignment])
+        ]
+
+        await store.refreshCoachAssignments(force: true)
+        XCTAssertEqual(store.pendingCoachAssignments.count, 1, "delivered and waiting")
+
+        // Logging the coach's workout completes it — derived, no checkbox.
+        XCTAssertTrue(store.logPastWorkout(
+            template: sampleTemplate, on: .now, durationMinutes: 40,
+            entries: [(name: "Goblet Squat", sets: 3, reps: 10, weight: 40, muscleGroup: nil)]))
+        XCTAssertTrue(store.isAssignmentDone(assignment))
+        XCTAssertTrue(store.pendingCoachAssignments.isEmpty,
+                      "a matching real log clears the row")
+    }
+
+    func testStartAssignedWorkoutRunsTheCoachsExactSession() {
+        let service = SpyManagedService()
+        let store = makeStore(service: service)
+        let assignment = WorkoutAssignment(
+            workout: PartyWorkoutSnapshot(template: sampleTemplate),
+            scheduledFor: .now, coachName: "Coach Q")
+
+        store.startAssignedWorkout(assignment)
+        XCTAssertTrue(store.isWorkoutSessionActive)
+        XCTAssertEqual(store.currentWorkout.name, "Coach Special")
+        XCTAssertEqual(store.currentWorkout.exercises.first?.name, "Goblet Squat")
+        XCTAssertEqual(store.currentWorkout.type, "Coach Assignment")
     }
 }

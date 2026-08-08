@@ -511,6 +511,10 @@ struct WorkoutView: View {
         @Bindable var store = store
         return ScrollViewReader { proxy in
         ScrollView(showsIndicators: false) {
+            // Hourly-gated inside the store — visiting Train is the natural
+            // moment coach assignments refresh.
+            Color.clear.frame(height: 0)
+                .task { await store.refreshCoachAssignments() }
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Train",
@@ -521,6 +525,45 @@ struct WorkoutView: View {
 
                 // Form Check lives inside the live session now (under the rest
                 // timer), matched to the exercise you're on — not here.
+
+                // Program delivery (Trainerize benchmark Tier 1): what the
+                // coach assigned, as runnable sessions — not notes. Rows
+                // disappear when a matching log lands (derived, no checkbox).
+                if !store.hasCompletedWorkoutFlow, !store.pendingCoachAssignments.isEmpty {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("FROM YOUR COACH")
+                                .font(MorpheTheme.microLabel())
+                                .tracking(1.4)
+                                .foregroundStyle(MorpheTheme.accent)
+
+                            ForEach(store.pendingCoachAssignments.prefix(3)) { assignment in
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(assignment.workout.name)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                        Text("\(assignment.scheduledFor.formatted(date: .abbreviated, time: .omitted)) · \(assignment.workout.exercises.count) exercise\(assignment.workout.exercises.count == 1 ? "" : "s")\(assignment.coachName.isEmpty ? "" : " · \(assignment.coachName)")")
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.textSecondary)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Button("START") {
+                                        store.startAssignedWorkout(assignment)
+                                    }
+                                    .font(MorpheTheme.microLabel(11))
+                                    .tracking(1.2)
+                                    .foregroundStyle(.black)
+                                    .padding(.horizontal, 14)
+                                    .frame(height: 36)
+                                    .background(Capsule().fill(MorpheTheme.brandYellow))
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Start \(assignment.workout.name), assigned by your coach")
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // Right after a finish, reviewing and logging IS the task —
                 // it leads the screen instead of hiding below planning cards.
