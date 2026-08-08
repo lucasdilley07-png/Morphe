@@ -5908,3 +5908,32 @@ final class CoachTier2Tests: XCTestCase {
                        "only the thread where the client spoke last is a real reply queue item")
     }
 }
+
+// MARK: - Tier 3 slice: rule-based session generation
+
+@MainActor
+final class SessionGenerationTests: XCTestCase {
+    func testGeneratorMatchesSportAndSkipsRecentAssignments() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        var client = ManagedClient(id: "G1", coachUid: "u", coachName: "C",
+                                   name: "Alex", sport: .strength)
+        guard let first = store.generateSessionTemplate(for: client) else {
+            return XCTFail("a seeded library must generate")
+        }
+        XCTAssertEqual(first.sport, .strength, "the pick matches the client's sport")
+
+        // Assign it — the next generation must pick something fresh when
+        // the library has an alternative.
+        client.assignments = [WorkoutAssignment(
+            workout: PartyWorkoutSnapshot(template: first), scheduledFor: .now)]
+        if let second = store.generateSessionTemplate(for: client),
+           store.workoutTemplates.filter({ $0.sport == .strength }).count > 1 {
+            XCTAssertNotEqual(second.name, first.name, "fresh-first, not a repeat")
+        }
+    }
+}

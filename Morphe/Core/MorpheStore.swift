@@ -10976,6 +10976,36 @@ final class MorpheAppStore {
         track("coach_assigned_workout")
     }
 
+    /// Rule-based session generation for a client (benchmark Tier 3, the
+    /// honest core of "AI builder" value): picks the best library match for
+    /// the client's sport, skipping what they were just assigned. Rules,
+    /// not AI — and labeled that way everywhere it surfaces.
+    func generateSessionTemplate(for client: ManagedClient) -> WorkoutTemplate? {
+        let recentNames = Set(client.assignments.prefix(3).map(\.workout.name))
+        let sportMatches = workoutTemplates.filter { $0.sport == client.sport }
+        let pool = sportMatches.isEmpty
+            ? workoutTemplates.filter { $0.sport == .generalFitness }
+            : sportMatches
+        // Fresh-first: the first template they haven't just done; else the
+        // first match; else nothing (an empty library can't generate).
+        return pool.first { !recentNames.contains($0.name) } ?? pool.first
+    }
+
+    /// One-tap generate-and-deliver from the client card: next 5pm slot,
+    /// straight into their Train tab.
+    func generateAndAssignSession(for client: ManagedClient) {
+        guard let template = generateSessionTemplate(for: client) else {
+            showToast("Your library has no workouts to pick from yet.")
+            return
+        }
+        let calendar = Calendar.current
+        var slot = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: .now) ?? .now
+        if slot <= .now { slot = calendar.date(byAdding: .day, value: 1, to: slot) ?? slot }
+        assignWorkout(template, to: client, on: slot,
+                      scheduledLabel: slot.formatted(date: .abbreviated, time: .shortened))
+        showToast("Picked \(template.name) from your library for \(client.sport.rawValue) — edit in Build if you want changes.")
+    }
+
     /// Bulk assign — the same delivery, one sheet, many clients.
     func assignWorkout(_ template: WorkoutTemplate, to clients: [ManagedClient],
                        on date: Date, scheduledLabel: String) {

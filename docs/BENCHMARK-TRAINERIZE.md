@@ -85,7 +85,16 @@ coach exit-survey roundups. Morphe side audited from the shipped codebase
    one social graph is a structural advantage — keep coaches visible in
    the feed (praise posts now publish for real).
 
-### Tier 3 — post-Blaze / post-revenue (don't build yet)
+### Tier 3 — status 2026-08-08: the Blaze-free slice shipped; the rest is gated
+
+**Shipped:** rule-based Generate & Assign on every client card — picks a
+library session by the client's sport, skips recent repeats, delivers to
+their Train tab for the next 5pm. Honestly labeled "rules, not AI."
+**Gated on Blaze:** LLM workout builder (AI proxy), photo food logging.
+**Gated on partner APIs/backend:** Garmin/Whoop/Oura, HRV beyond Apple
+Health. **Gated on revenue decisions:** Stripe payments/products.
+
+### Tier 3 backlog (don't build yet)
 9. AI workout builder (needs the AI proxy; their 75% claim sets the bar).
 10. Nutrition logging (barcode/photo) — big surface, add-on-priced in
     their world; our deterministic targets stay honest until then.

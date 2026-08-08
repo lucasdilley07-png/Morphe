@@ -946,6 +946,22 @@ private struct ManagedClientDetailSheet: View {
                         }
                     }
 
+                    // Rule-based generation (benchmark Tier 3): one tap
+                    // picks a library session for this client's sport and
+                    // delivers it. Honestly labeled — rules, not AI.
+                    Section {
+                        Button {
+                            store.generateAndAssignSession(for: client)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Generate & Assign Session")
+                                Text("Picks from your library by \(client.sport.rawValue) — rules, not AI. Delivered for their next 5pm.")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
                     // Program delivery status — every assignment, with an
                     // HONEST state: unclaimed docs deliver on claim; claimed
                     // completion is confirmed only through shared progress.
