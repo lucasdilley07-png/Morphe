@@ -116,7 +116,8 @@ struct HomeView: View {
                             .buttonStyle(.plain)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.textMuted)
-                            .frame(minHeight: 32)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -493,7 +494,7 @@ private struct HomePatternInsightCard: View {
                         .foregroundStyle(MorpheTheme.accentAlt)
                         .frame(width: 36, height: 36)
                         .background(
-                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
                                 .fill(MorpheTheme.panelRaised)
                         )
 

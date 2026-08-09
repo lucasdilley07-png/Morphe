@@ -7,8 +7,9 @@ calm clinical-but-human copy. What it FEELS like: considered, trustworthy,
 unhurried.
 
 ## What Morphe adopted (shipped through the token layer — every screen)
-1. **Soft geometry**: MorpheTheme.radius 3 → 16; chipRadius 2 → 8. Every
-   card, field, tile, sheet, and avatar in the app rounds with it.
+1. **Soft geometry**: MorpheTheme.radius 3 → 16; chipRadius 2 → 8. Cards, fields, tiles, and sheets round with it; sub-52pt chrome uses
+   radiusSmall (8) and legacy 2pt literals were migrated in the follow-up
+   polish wave. Circular avatars stay circles by design.
 2. **Pill CTAs in sentence case**: Primary/Secondary button styles are now
    full capsules with humanist rounded type — Hims' "one obvious next
    step" control replaces the shouted mono-caps command bar.

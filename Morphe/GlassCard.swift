@@ -1623,7 +1623,7 @@ struct FetchPlaceholderCard: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(0..<2, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                         .fill(Color.white.opacity(0.06))
                         .frame(height: 14)
                 }

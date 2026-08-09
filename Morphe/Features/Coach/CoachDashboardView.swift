@@ -177,7 +177,7 @@ private struct CoachHeaderCircleButton: View {
                 .foregroundStyle(.white)
                 .frame(width: 38, height: 38)
                 .background(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
                         .fill(MorpheTheme.panelRaised)
                         .overlay(
                             RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
@@ -3768,7 +3768,7 @@ private struct CoachTriageActionButton: View {
                     .foregroundStyle(.white)
                     .frame(width: 30, height: 30)
                     .background(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
                             .fill(accent.opacity(0.9))
                     )
             }

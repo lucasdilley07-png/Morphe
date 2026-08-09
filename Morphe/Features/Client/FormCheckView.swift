@@ -1035,7 +1035,7 @@ struct FormCheckView: View {
                                 .fill(session.isRecording ? MorpheTheme.danger : .white)
                                 .frame(width: 8, height: 8)
                             Text(session.isRecording ? "0:\(String(format: "%02d", session.recordingSeconds))" : "Clip")
-                                .font(.system(.subheadline, design: .monospaced).weight(.bold))
+                                
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)

@@ -1464,7 +1464,7 @@ private struct CoachProfileBody: View {
                     Text("Your Coaching Tools")
                         .font(.headline)
                         .foregroundStyle(.white)
-                    Text("Build programs, track clients, and run outreach from the coach tabs. Connecting real clients turns on with your account backend.")
+                    Text("Build programs, track clients, and run outreach from the coach tabs. Add a client from Home and share their invite code — claiming it links their real account to your roster.")
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
@@ -1482,7 +1482,7 @@ private struct CoachProfileBody: View {
                                 .font(.headline)
                                 .foregroundStyle(MorpheTheme.accent)
                                 .frame(width: 44, height: 44)
-                                .background(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous).fill(MorpheTheme.panelStrong))
+                                .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).fill(MorpheTheme.panelStrong))
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Schedule")
                                     .font(.subheadline.weight(.semibold))
@@ -1526,7 +1526,7 @@ private struct SelectionToken: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                     .fill(color)
             )
             .lineLimit(1)

@@ -290,7 +290,7 @@ private struct NetworkEmptyActionRow: View {
                     .foregroundStyle(MorpheTheme.accent)
                     .frame(width: 44, height: 44)
                     .background(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
                             .fill(MorpheTheme.panelStrong)
                     )
 
@@ -1519,7 +1519,7 @@ private struct RealFeedSection: View {
                             .foregroundStyle(MorpheTheme.textSecondary)
                             .frame(width: 40, height: 36)
                             .background(
-                                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                                     .stroke(MorpheTheme.stroke, lineWidth: 1)
                             )
                             .contentShape(Rectangle())
@@ -1723,7 +1723,7 @@ private struct RealFeedSection: View {
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                         // Same send control as the chat composer (ThreadChatView):
                         // 84x44 primary CTA next to a MorpheFieldStyle field.
-                        .frame(width: 84, height: 44)
+                        .frame(width: 96)
                         .disabled(cleanDraft.isEmpty || draft.count > Self.postLimit)
                     }
                 }
@@ -2030,7 +2030,7 @@ private struct StorySessionViewer: View {
                                 .foregroundStyle(isMine ? MorpheTheme.brandYellow : .white)
                                 .frame(width: 44, height: 44)
                                 .background(
-                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
                                         .stroke(isMine ? MorpheTheme.brandYellow.opacity(0.6) : Color.white.opacity(0.16), lineWidth: 1)
                                 )
                                 .contentShape(Rectangle())
@@ -3417,7 +3417,13 @@ struct ThreadChatView: View {
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     LazyVStack(alignment: .leading, spacing: 12) {
-                        if store.displayedThreadMessages.isEmpty, store.threadFirstSnapshotArrived {
+                        if store.displayedThreadMessages.isEmpty, !store.threadFirstSnapshotArrived {
+                            // Still waiting on the listener — say so instead
+                            // of silent blank (post-revamp audit P2-10).
+                            SwiftUI.ProgressView()
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 24)
+                        } else if store.displayedThreadMessages.isEmpty, store.threadFirstSnapshotArrived {
                             // Gated on the first snapshot (speed audit S0-5):
                             // "no messages" is only claimed once it's checked.
                             Text("No messages yet — say hello. This conversation is private to you and \(counterpart).")
@@ -3455,9 +3461,11 @@ struct ThreadChatView: View {
                 .overlay(MorpheTheme.stroke.opacity(0.8))
 
             HStack(spacing: 10) {
-                TextField("Type a message", text: $draft)
+                TextField("Type a message", text: $draft, axis: .vertical)
+                    .lineLimit(1...3)
                     // Keyboard send (speed audit S0-3): the return key IS
-                    // the send button, same as every messenger.
+                    // the send button; with a submit label set, return
+                    // submits and long text still wraps into view.
                     .submitLabel(.send)
                     .onSubmit {
                         let text = draft
@@ -3473,7 +3481,7 @@ struct ThreadChatView: View {
                     Task { await store.sendMessage(text) }
                 }
                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                .frame(width: 84, height: 44)
+                .frame(width: 96)
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding(16)

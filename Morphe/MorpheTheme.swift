@@ -28,6 +28,11 @@ enum MorpheTheme {
     // every card, field, tile, and sheet in the app follows.
     static let radius: CGFloat = 16
 
+    /// For chrome whose min dimension is under ~52pt (icon buttons,
+    /// thumbnails): 16pt clamps to a circle on a 28pt frame — 8 keeps the
+    /// squircle (post-revamp audit P1-2).
+    static let radiusSmall: CGFloat = 8
+
     /// Chip/badge radius — the deliberate second, tighter knob the small
     /// elements already used as a literal `2` in a dozen places.
     // Softened with the revamp — hard 2pt chips fought the 16pt cards.

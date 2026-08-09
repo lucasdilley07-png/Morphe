@@ -533,7 +533,7 @@ private struct ClientPinnedHeader: View {
                     // scrolling content it needs a truly opaque face, same
                     // as the quick-add button.
                     .background(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
                             .fill(MorpheTheme.ink)
                     )
                     .frame(width: 44, height: 44)
@@ -586,7 +586,7 @@ private struct HeaderCircleButton: View {
                 // Solid fill: the button floats OVER scrolling content, so
                 // its face must be opaque — never text showing through.
                 .background(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
                         .fill(MorpheTheme.ink)
                 )
                 .overlay(
@@ -1110,7 +1110,7 @@ private struct NetworkProfilePreviewSheet: View {
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                        RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                                             .stroke(Color.white.opacity(0.14), lineWidth: 1)
                                     )
                             }
@@ -1903,7 +1903,7 @@ private struct WelcomeTag: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                     .fill(color)
             )
     }

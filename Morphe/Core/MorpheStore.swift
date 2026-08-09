@@ -377,6 +377,10 @@ final class MorpheAppStore {
     var sessionUserNote: String = ""
     var weightUnit: WeightUnit = .pounds {
         didSet {
+            // The console's memoized "LAST:" lines are formatted in the
+            // OLD unit — clear on switch (post-revamp audit P2-6).
+            consoleHistoryCache = [:]
+            topWeightCache = [:]
             guard oldValue != weightUnit else { return }
             // Convert already-logged session weights so they keep meaning the
             // same physical load (45 lb -> 20.4 kg). Without this, toggling
@@ -1654,6 +1658,14 @@ final class MorpheAppStore {
         Task { await refreshAppointments() }
         Task { await refreshThreads() }
         Task { await refreshCoachAssignments(force: true) }
+        // Blocked set BEFORE the inbox can render (post-revamp audit
+        // P2-12): the CHATS landing raced the feed's gated fetch.
+        Task { [weak self] in
+            guard let self, let uid = self.authUser?.id else { return }
+            if let blocked = await self.feedService.fetchBlocked(uid: uid) {
+                self.blockedAccounts = blocked
+            }
+        }
         // Forced: a fresh identity must never trust another account's page.
         Task { await refreshFeed(force: true) }
     }
@@ -3309,6 +3321,9 @@ final class MorpheAppStore {
     /// the CURRENT profile id — called at launch, on profile restore, and
     /// after the onboarding identity mint.
     private func reloadPerProfileMirrors() {
+        // The read-stamp cache is keyed by profile id — drop it with every
+        // identity change, not just sign-out (post-revamp audit P2-7).
+        threadReadCache = nil
         recoverySeries = loadSeries(recoverySeriesDefaultsKey)
         nutritionSeries = loadSeries(nutritionSeriesDefaultsKey)
         activeProgramState = loadActiveProgramSnapshot()
@@ -7171,15 +7186,12 @@ final class MorpheAppStore {
         athleteMessageThreads[threadIndex].messages.append(
             ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now")
         )
-
-        let reply = athleteReply(for: athleteMessageThreads[threadIndex].participant, prompt: cleanText)
-        athleteMessageThreads[threadIndex].messages.append(
-            ThreadMessage(sender: reply.sender, senderName: reply.name, text: reply.text, timestamp: "Now")
-        )
-        athleteMessageThreads[threadIndex].preview = reply.text
+        // Demo-flag-only surface, and even here nobody "replies": the old
+        // fabricated coach response was the exact class of lie the honesty
+        // rules exist for (post-revamp audit). The message just sends.
+        athleteMessageThreads[threadIndex].preview = cleanText
         athleteMessageThreads[threadIndex].isUnread = false
         selectedAthleteThreadID = athleteMessageThreads[threadIndex].id
-        showToast("\(athleteMessageThreads[threadIndex].participant) replied.")
     }
 
     func openUniversalSearch() {
@@ -9222,7 +9234,12 @@ final class MorpheAppStore {
                 self.threadFirstSnapshotArrived = true
                 // The server copy replaces the optimistic echo.
                 self.pendingOutgoingMessages.removeAll { pending in
-                    messages.contains { $0.senderUid == pending.senderUid && $0.text == pending.text }
+                    messages.contains {
+                        $0.senderUid == pending.senderUid && $0.text == pending.text
+                            // A HISTORIC identical message must not eat the
+                            // echo (post-revamp audit P2-9).
+                            && $0.sentAt >= pending.sentAt.addingTimeInterval(-120)
+                    }
                 }
                 // Every delivery while the thread is on screen IS seen —
                 // stamping here (not just open/close) means a message you
@@ -9235,6 +9252,8 @@ final class MorpheAppStore {
 
     /// Stops the live listener and clears the open-thread state.
     func closeThread() {
+        pendingOutgoingMessages = []
+        threadFirstSnapshotArrived = false
         // Everything that streamed in while the thread was on screen was
         // seen — stamp read on the way out so a message that arrived
         // mid-conversation doesn't resurface as "unread".
@@ -9614,7 +9633,9 @@ final class MorpheAppStore {
         hasher.combine(feedPosts.count)
         hasher.combine(feedPosts.first?.id)
         hasher.combine(feedPosts.last?.id)
-        hasher.combine(feedReactionCounts.values.reduce(0, +))
+        // Per-post, not a sum — a reaction SWAP between posts must change
+        // the key (post-revamp audit P2-8).
+        hasher.combine(feedReactionCounts)
         hasher.combine(postComments.values.reduce(0) { $0 + $1.count })
         hasher.combine(followedUids.count)
         let key = hasher.finalize()
