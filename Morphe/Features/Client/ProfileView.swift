@@ -1411,8 +1411,8 @@ private struct AthleteProfileBody: View {
     }
 }
 
-/// Coach profile = coaching identity + client/outreach snapshot (real once the
-/// backend connects; sample data for now).
+/// Coach profile = coaching identity + a snapshot of the REAL roster
+/// (managed clients + live overview — same sources as the dashboard).
 private struct CoachProfileBody: View {
     let store: MorpheAppStore
     @State private var showBusiness = false
@@ -1434,9 +1434,8 @@ private struct CoachProfileBody: View {
                         .font(.headline)
                         .foregroundStyle(.white)
                     HStack(spacing: 8) {
-                        MetricPill(label: "Clients", value: "\(store.coachClients.count)")
-                        MetricPill(label: "Need check-in",
-                                   value: "\(store.coachClients.filter { $0.risk == .high }.count)")
+                        MetricPill(label: "Clients", value: "\(store.visibleManagedClients.count)")
+                        MetricPill(label: "Quiet 7+ days", value: "\(store.liveCoachOverview.atRiskClients)")
                         MetricPill(label: "Specialty", value: store.coachProfile.specialty)
                     }
                     Text(store.coachProfile.headline)

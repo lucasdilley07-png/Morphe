@@ -37,7 +37,14 @@ struct CommunityView: View {
         .onChange(of: store.selectedCommunitySection) { _, section in
             if section == .contact {
                 Task { await store.refreshThreads() }
+            } else {
+                // The paged shell keeps panes mounted, so onDisappear never
+                // fires — swiping away is the close (launch audit P2-20).
+                store.closeThread()
             }
+        }
+        .onChange(of: store.selectedClientTab) { _, tab in
+            if tab != .community { store.closeThread() }
         }
         .sheet(item: $selectedStory) { story in
             StoryHighlightSheet(story: story)
@@ -792,7 +799,7 @@ private struct AthleteContactEmptyState: View {
 
                 Text(isSearching
                      ? "Nobody in your contacts matches that search."
-                     : "Connect with your coach or a training partner from the Discover tab — show or scan a Morphe code under Connect.")
+                     : "Connect with your coach or a training partner from Train’s Discover segment — show or scan a Morphe code under Connect.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1003,74 +1010,7 @@ struct NetworkSummaryCard: View {
     }
 }
 
-struct NetworkComposerCard: View {
-    @Environment(MorpheAppStore.self) private var store
-    let perspective: AppRole
-    @State private var draft = ""
 
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(perspective == .coach ? "Share a coaching note" : "Share a training update")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-
-                TextField(
-                    perspective == .coach ? "Post a coaching idea, athlete win, or cue..." : "Share a win, lesson, recovery insight, or plan update...",
-                    text: $draft,
-                    axis: .vertical
-                )
-                .lineLimit(2...4)
-                .textFieldStyle(MorpheFieldStyle())
-
-                HStack(spacing: 8) {
-                    Button("Share Update") {
-                        store.shareCommunityPost(draft, as: perspective)
-                        draft = ""
-                    }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-
-                    Text("Professional-style feed, still centered on training.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-            }
-        }
-    }
-}
-
-private struct CoachChatPreviewCard: View {
-    let coachName: String
-    let coachStatus: String
-    let preview: String
-    let onMessage: () -> Void
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(coachName)
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                        Text(coachStatus)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accent)
-                    }
-
-                    Spacer()
-
-                    Button("Message Coach", action: onMessage)
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                        .frame(width: 150)
-                }
-
-                Text(preview)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-            }
-        }
-    }
-}
 
 struct CommunityPostCard: View {
     let post: ProgressPost
@@ -1374,11 +1314,8 @@ private struct LeaderboardCard: View {
 /// the yellow palette (same constant as the leaderboard/profile seals).
 private let feedVerifiedSealBlue = Color(red: 0.25, green: 0.56, blue: 0.96)
 
-/// The signed-in For You surface: section switcher, composer, Saved filter,
-/// and the real post list. A stories rail would mount at the top of this
-/// section — DEFERRED: it needs Firebase Storage (there is none yet, so no
-/// image/video hosting) and a moderation pipeline (none yet either) before
-/// user-submitted media can ship.
+                // Photo posts ship as base64 inside post docs (rules-capped);
+                // Firebase Storage upgrades the pipeline post-Blaze.
 private struct RealFeedSection: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var draft = ""
@@ -1606,6 +1543,31 @@ private struct RealFeedSection: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Post by \(post.authorName) — open full screen")
+                        // The default lens carries the full affordance set
+                        // (launch audit P1-6): author, save, repost, report,
+                        // block — long-press, same actions as the list cards.
+                        .contextMenu {
+                            Button("View \(post.authorName)", systemImage: "person") {
+                                authorTarget = post
+                            }
+                            Button(store.savedPostIds.contains(post.id) ? "Unsave" : "Save",
+                                   systemImage: store.savedPostIds.contains(post.id) ? "bookmark.fill" : "bookmark") {
+                                store.toggleSaved(post)
+                            }
+                            Button("Repost", systemImage: "arrow.2.squarepath") {
+                                repostTarget = post
+                            }
+                            Menu("Report Post") {
+                                ForEach(MorpheAppStore.reportReasons, id: \.self) { reason in
+                                    Button(reason) { store.reportPost(post, reason: reason) }
+                                }
+                            }
+                            if post.authorUid != store.authUser?.id {
+                                Button("Block \(post.authorName)", systemImage: "hand.raised", role: .destructive) {
+                                    store.blockAccount(uid: post.authorUid, name: post.authorName)
+                                }
+                            }
+                        }
                         // Infinite scroll: the last loaded tile pulls the
                         // next page in — continuation should be free.
                         .onAppear {
@@ -1664,33 +1626,36 @@ private struct RealFeedSection: View {
                 }
             }
         }
-        .sheet(item: $repostTarget) { post in
+        // Each presentation isolated on its own background view (same rule
+        // WorkoutView documents): stacking sheet/cover modifiers on ONE
+        // view makes later presents silently fail or crash.
+        .background(EmptyView().sheet(item: $repostTarget) { post in
             RepostSheet(post: post)
-        }
+        })
         .navigationDestination(item: $authorTarget) { post in
             FeedAuthorView(authorUid: post.authorUid,
                            authorName: post.authorName,
                            verified: post.verified)
         }
-        .fullScreenCover(item: $storyTarget) { entry in
+        .background(EmptyView().fullScreenCover(item: $storyTarget) { entry in
             StorySessionViewer(entry: entry)
                 .environment(store)
-        }
-        .fullScreenCover(isPresented: $showBoardStory) {
+        })
+        .background(EmptyView().fullScreenCover(isPresented: $showBoardStory) {
             BoardStoryView()
                 .environment(store)
-        }
-        .fullScreenCover(isPresented: $showImmersive) {
+        })
+        .background(EmptyView().fullScreenCover(isPresented: $showImmersive) {
             // Snapshot of the current lens order at open — the pager owns
             // continuation from there (it pulls pages itself).
             ImmersiveFeedViewer(posts: visiblePosts)
                 .environment(store)
-        }
-        .fullScreenCover(item: $immersiveStartPost) { post in
+        })
+        .background(EmptyView().fullScreenCover(item: $immersiveStartPost) { post in
             // The grid door: same pager, opened at the tapped tile.
             ImmersiveFeedViewer(posts: visiblePosts, startAt: post.id)
                 .environment(store)
-        }
+        })
         .task {
             await store.refreshFeed()
             await store.refreshLeaderboard()
@@ -1799,95 +1764,6 @@ private struct RealFeedSection: View {
     }
 }
 
-/// The weekly board + joined challenges, IN the real feed where signed-in
-/// users actually live — the backend scored these all along; this card just
-/// stops hiding them. Every number shown is a fetched Firestore row.
-private struct CompetitionPulseCard: View {
-    @Environment(MorpheAppStore.self) private var store
-
-    private var topThree: [WeeklyLeaderboardEntry] {
-        Array(store.weeklyLeaderboard.prefix(3))
-    }
-
-    private var selfRank: Int? {
-        guard let me = store.weeklyLeaderboardSelfEntry else { return nil }
-        return store.weeklyLeaderboard.firstIndex { $0.uid == me.uid }.map { $0 + 1 }
-    }
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("This Week")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                    Spacer()
-                    Button("Open Progress") {
-                        store.openProgress()
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
-                    .accessibilityLabel("Open Progress for the full board")
-                }
-
-                if store.leaderboardOptIn {
-                    if topThree.isEmpty {
-                        Text("The board is live — the first logged workout of the week takes #1.")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                    } else {
-                        ForEach(Array(topThree.enumerated()), id: \.element.uid) { index, entry in
-                            HStack(spacing: 8) {
-                                Text("#\(index + 1)")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(MorpheTheme.accent)
-                                    .frame(width: 26, alignment: .leading)
-                                Text(entry.name)
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
-                                Text("\(entry.score) sets")
-                                    .font(.caption)
-                                    .foregroundStyle(MorpheTheme.textSecondary)
-                            }
-                        }
-                        if let me = store.weeklyLeaderboardSelfEntry {
-                            Text(selfRank.map { "You're #\($0) with \(me.score) sets." }
-                                 ?? "You've posted \(me.score) sets — outside the fetched top 50.")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.accentAlt)
-                        }
-                    }
-                } else {
-                    // Honest unlock: the board exists, joining is the gate.
-                    Text("The weekly leaderboard is opt-in — join from Progress and your real logged sets score from Monday.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if !store.activeChallenges.isEmpty {
-                    Divider().overlay(Color.white.opacity(0.08))
-                    ForEach(store.activeChallenges.prefix(2)) { challenge in
-                        HStack(spacing: 8) {
-                            Image(systemName: "flag.checkered")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.accent)
-                            Text(challenge.title)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                            Text(challenge.isExpired ? "Ended" : "\(challenge.daysLeft)d left")
-                                .font(.caption)
-                                .foregroundStyle(challenge.isExpired ? MorpheTheme.textMuted : MorpheTheme.textSecondary)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 // MARK: - Trained Today (presence row + story viewer)
 //
@@ -2299,6 +2175,8 @@ struct ImmersiveFeedViewer: View {
     let posts: [FeedPost]
     /// Post id to open on — the grid tap lands mid-feed, not at the top.
     var startAt: String? = nil
+    /// The page the scroll settled on (drives honest seen-marking).
+    @State private var settledPostId: String?
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -2316,8 +2194,28 @@ struct ImmersiveFeedViewer: View {
                     .scrollTargetLayout()
                 }
                 .scrollTargetBehavior(.paging)
+                // Seen = the page you actually LANDED on — pre-rendered
+                // neighbors don't clear unseen rings (launch audit P2-21).
+                .scrollPosition(id: $settledPostId)
+                .onChange(of: settledPostId) { _, id in
+                    if let id, let post = posts.first(where: { $0.id == id }) {
+                        store.markStorySeen(post)
+                    }
+                }
                 .onAppear {
-                    if let startAt { proxy.scrollTo(startAt, anchor: .top) }
+                    // The opening page IS on screen — seed the settle id so
+                    // it gets marked seen like every later page.
+                    settledPostId = startAt ?? posts.first?.id
+                    // Two-beat landing (launch audit P1-9): the immediate
+                    // scrollTo can no-op while the lazy stack is still
+                    // materializing — re-issue after first layout so the
+                    // tapped tile is the page that shows.
+                    guard let startAt else { return }
+                    proxy.scrollTo(startAt, anchor: .top)
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 50_000_000)
+                        proxy.scrollTo(startAt, anchor: .top)
+                    }
                 }
             }
 
@@ -2376,8 +2274,9 @@ struct ImmersiveFeedViewer: View {
             Haptics.impact(.light)
         }
         .onAppear {
-            store.markStorySeen(post)
             // The pager pulls the next page in before the user runs out.
+            // (Seen-marking moved to the scroll-settle handler — rendering
+            // a neighbor is not watching it.)
             if post.id == posts.last?.id, store.feedHasOlderPosts {
                 Task { await store.loadOlderFeedPosts() }
             }
@@ -2677,10 +2576,23 @@ private struct FeedAuthorView: View {
                             Text(post.createdAt.formatted(.relative(presentation: .named)))
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(MorpheTheme.textMuted)
-                            Text(post.text)
-                                .font(.subheadline)
-                                .foregroundStyle(.white)
-                                .fixedSize(horizontal: false, vertical: true)
+                            // Photo posts render their photo here too — this
+                            // was the one surface the field never reached
+                            // (launch audit P1-7).
+                            if post.hasImage, let image = FeedImageCache.image(for: post) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(maxWidth: .infinity)
+                                    .aspectRatio(4 / 5, contentMode: .fit)
+                                    .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+                            }
+                            if !post.text.trimmingCharacters(in: .whitespaces).isEmpty {
+                                Text(post.text)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.white)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                     }
                 }
@@ -3290,7 +3202,14 @@ private struct RepostSheet: View {
                             Text(post.authorName)
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(MorpheTheme.textMuted)
-                            Text(post.text)
+                            if post.hasImage, let image = FeedImageCache.image(for: post) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(maxWidth: .infinity, maxHeight: 180)
+                            .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+                    }
+                    Text(post.text)
                                 .font(.subheadline)
                                 .foregroundStyle(.white)
                                 .lineLimit(4)
@@ -3336,6 +3255,8 @@ struct ThreadChatView: View {
     /// chevron when the view is presented on its own (single-thread sheet).
     var onBack: (() -> Void)? = nil
     @State private var draft = ""
+    @State private var showReportDialog = false
+    @State private var showBlockConfirm = false
     @State private var streakExplainerVisible = false
 
     private var myUid: String { store.authUser?.id ?? "" }
@@ -3424,6 +3345,43 @@ struct ThreadChatView: View {
                 }
 
                 Spacer()
+
+                // Safety controls IN the conversation (launch audit P0-2):
+                // report and block reach messaging, not just the feed.
+                Menu {
+                    Button("Report \(counterpart)", systemImage: "flag") {
+                        showReportDialog = true
+                    }
+                    Button("Block \(counterpart)", systemImage: "hand.raised", role: .destructive) {
+                        showBlockConfirm = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Conversation options")
+                .confirmationDialog("Report \(counterpart)?", isPresented: $showReportDialog, titleVisibility: .visible) {
+                    ForEach(MorpheAppStore.reportReasons, id: \.self) { reason in
+                        Button(reason) {
+                            store.reportUser(uid: counterpartUid, name: counterpart, reason: reason)
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("A human reviews every report.")
+                }
+                .confirmationDialog("Block \(counterpart)?", isPresented: $showBlockConfirm, titleVisibility: .visible) {
+                    Button("Block", role: .destructive) {
+                        store.blockAccount(uid: counterpartUid, name: counterpart)
+                        onBack?()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This conversation closes, their posts disappear, and they can't message you. Unblock anytime in Profile.")
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
@@ -3578,7 +3536,10 @@ struct AthleteInboxView: View {
     /// surface as conversations above.
     private var newPeopleHits: [AthleteSearchResult] {
         let threadUids = Set(store.liveThreads.flatMap { [$0.coachUid, $0.athleteUid] })
-        return store.athleteSearchResults.filter { $0.uid != myUid && !threadUids.contains($0.uid) }
+        return store.athleteSearchResults.filter {
+            $0.uid != myUid && !threadUids.contains($0.uid)
+                && store.blockedAccounts[$0.uid] == nil
+        }
     }
 
     var body: some View {
@@ -3659,6 +3620,16 @@ struct AthleteInboxView: View {
                         Text("Search a username above to start a chat, or join a coach with their invite code and that thread appears here.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
+                        // The code door WHERE the coach thread will appear
+                        // (launch audit P1-10) — not just buried in Profile.
+                        if store.linkedCoachUid.isEmpty {
+                            Button("Have a coach code? Enter it here") {
+                                store.openClientProfile()
+                            }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accent)
+                            .frame(minHeight: 32)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
@@ -3775,8 +3746,9 @@ struct AthleteInboxView: View {
 }
 
 /// One real-thread inbox row: counterpart name, honest last-message preview,
-/// relative time. No unread badges — Morphe doesn't track read state, so it
-/// doesn't pretend to.
+/// relative time. The unread dot is an honest LOCAL lens (isThreadUnread):
+/// newest message is theirs and arrived since this device last opened the
+/// thread — no server-side read receipts are claimed.
 struct LiveThreadRow: View {
     let thread: MessageThreadSummary
     let viewerUid: String

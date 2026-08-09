@@ -310,7 +310,11 @@ service cloud.firestore {
         && request.resource.data.coachUid == resource.data.coachUid
         && (
           (request.auth.uid == resource.data.coachUid
-            && resource.data.status == 'unclaimed')
+            && resource.data.status == 'unclaimed'
+            // Same assignments cap as the claimed branch — an unbounded
+            // field could push the doc past Firestore's 1MB write limit
+            // and brick every future update (launch audit P2-22).
+            && request.resource.data.get('assignmentsJSON', '[]').size() <= 200000)
           || (resource.data.status == 'unclaimed'
             && request.resource.data.status == 'claimed'
             && request.resource.data.claimedByUid == request.auth.uid

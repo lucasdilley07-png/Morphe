@@ -127,6 +127,32 @@ struct RootView: View {
                     LaunchSequenceView()
                 } else if FeatureFlags.accountsEnabled && store.authUser == nil {
                     AuthView()
+                } else if store.cloudRestoreBlocked, !store.hasCompletedOnboarding {
+                    // The cloud pull FAILED for an account with no local
+                    // profile — retry, never onboard over a real backup.
+                    VStack(spacing: 16) {
+                        Image(systemName: "icloud.slash")
+                            .font(.largeTitle)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        Text("Couldn't reach your backup")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(.white)
+                        Text("Your account may have training history in the cloud — Morphe won't set up a fresh profile until it can check. Verify your connection and retry.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                        Button("Retry") {
+                            Task { await store.retryCloudRestore() }
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .frame(width: 160)
+                        Button("Sign Out") { store.signOut() }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    .padding(32)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(PremiumBackground().ignoresSafeArea())
                 } else if !store.hasCompletedOnboarding {
                     OnboardingFlowView()
                 } else if store.needsTermsAcceptance {

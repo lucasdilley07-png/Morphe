@@ -794,7 +794,7 @@ private struct AddManagedClientSheet: View {
                 }
                 .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             } footer: {
-                Text("You can log their workouts right away. When they download Morphe, they enter your invite code during setup and everything you logged becomes their training history.")
+                Text("You can log their workouts right away. When they download Morphe, they enter your invite code during setup — or anytime in Profile → Coach code — and everything you logged becomes their training history.")
             }
         }
     }
@@ -842,7 +842,7 @@ private struct AddManagedClientSheet: View {
                 .multilineTextAlignment(.center)
 
             ShareLink(
-                item: "Join me on Morphe! Download the app and enter invite code \(client.id) during setup — your training history is already waiting."
+                item: "Join me on Morphe! Download the app and enter invite code \(client.id) during setup (or later in Profile → Coach code) — your training history is already waiting."
             ) {
                 Label("Share Invite", systemImage: "square.and.arrow.up")
                     .frame(maxWidth: .infinity)
@@ -921,7 +921,7 @@ private struct ManagedClientDetailSheet: View {
                                 .foregroundStyle(MorpheTheme.accent)
                                 .accessibilityLabel("Copy invite code")
                                 ShareLink(
-                                    item: "Join me on Morphe! Download the app and enter invite code \(client.id) during setup — your training history is already waiting."
+                                    item: "Join me on Morphe! Download the app and enter invite code \(client.id) during setup (or later in Profile → Coach code) — your training history is already waiting."
                                 ) {
                                     Image(systemName: "square.and.arrow.up")
                                 }

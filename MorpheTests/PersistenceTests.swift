@@ -5937,3 +5937,64 @@ final class SessionGenerationTests: XCTestCase {
         }
     }
 }
+
+// MARK: - Fresh-audit fix wave
+
+@MainActor
+final class AuditSeamTests: XCTestCase {
+    final class FailingCloudBackup: CloudBackingUp {
+        func setUser(_ uid: String?) {}
+        func pushProfile(_ snapshot: LocalProfileSnapshot) {}
+        func pushLogs(_ logs: [WorkoutLog]) async -> Bool { false }
+        func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry]) {}
+        func pushExtras(_ blobs: [String: String]) {}
+        func pull() async -> CloudSnapshot {
+            var snapshot = CloudSnapshot()
+            snapshot.fetchFailed = true
+            return snapshot
+        }
+        func eraseUser() async {}
+    }
+
+    func testFailedCloudPullBlocksOnboardingInsteadOfOverwriting() async {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore(cloudBackup: FailingCloudBackup())
+        store.authUser = AppUser(id: "returning-uid", email: "r@m.app", role: .athlete,
+                                 displayName: "Returner", createdAt: .now)
+        await store.retryCloudRestore()
+        XCTAssertTrue(store.cloudRestoreBlocked,
+                      "a FAILED pull must hold the gate — proceeding to onboarding could overwrite a real backup")
+        XCTAssertFalse(store.hasCompletedOnboarding)
+    }
+
+    func testBlockingReachesMessaging() {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "me", email: "s@m.app", role: .athlete,
+                                 displayName: "Sarah", createdAt: .now)
+        store.liveThreads = [
+            MessageThreadSummary(id: "bad_me", coachUid: "bad-uid", athleteUid: "me",
+                                 coachName: "Bad Actor", athleteName: "Sarah")
+        ]
+        store.blockAccount(uid: "bad-uid", name: "Bad Actor")
+        XCTAssertTrue(store.liveThreads.isEmpty,
+                      "blocking removes the conversation instantly")
+    }
+
+    func testStartDirectChatRefusesBlockedTargets() async {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.authUser = AppUser(id: "me", email: "s@m.app", role: .athlete,
+                                 displayName: "Sarah", createdAt: .now)
+        store.blockAccount(uid: "bad-uid", name: "Bad Actor")
+        let ok = await store.startDirectChat(with: "bad-uid", name: "bad")
+        XCTAssertFalse(ok, "no new chats with blocked accounts")
+    }
+}

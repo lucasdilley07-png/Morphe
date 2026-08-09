@@ -69,7 +69,11 @@ final class CaptureCameraController: NSObject {
                session.canAddInput(input) {
                 session.addInput(input)
             }
-            if let mic = AVCaptureDevice.default(for: .audio),
+            // Audio only in VIDEO mode (launch audit P1-8): a mic permission
+            // prompt on a photo camera reads as spyware — the ask waits
+            // until the user actually switches to clips.
+            if mode == .video,
+               let mic = AVCaptureDevice.default(for: .audio),
                let micInput = try? AVCaptureDeviceInput(device: mic),
                session.canAddInput(micInput) {
                 session.addInput(micInput)
@@ -83,6 +87,14 @@ final class CaptureCameraController: NSObject {
 
     func flipCamera() {
         position = position == .back ? .front : .back
+        buildSessionAndStart()
+    }
+
+    /// Mode changes rebuild the session so the mic input attaches only for
+    /// video (and its permission prompt fires only then).
+    func setMode(_ newMode: Mode) {
+        guard newMode != mode else { return }
+        mode = newMode
         buildSessionAndStart()
     }
 
@@ -236,7 +248,11 @@ struct CaptureView: View {
             }
         }
         .onAppear { camera.configure() }
-        .onDisappear { camera.stop() }
+        .onDisappear {
+            camera.stop()
+            // Abandoned recordings must not leak 60s of 1080p into tmp.
+            camera.clearCaptures()
+        }
     }
 
     // MARK: Viewfinder
@@ -322,7 +338,7 @@ struct CaptureView: View {
                         ForEach(CaptureCameraController.Mode.allCases, id: \.self) { mode in
                             Button(mode.rawValue) {
                                 guard !camera.isRecording else { return }
-                                camera.mode = mode
+                                camera.setMode(mode)
                             }
                             .font(MorpheTheme.microLabel(11))
                             .tracking(1.4)

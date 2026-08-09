@@ -23,7 +23,7 @@ stored on your device and backed up to your account in Google Firebase
 
 **Community content.** Posts, comments, reactions, reposts, who you follow,
 who you block, challenge and leaderboard entries (opt-in), Train Together
-party participation, and messages with a connected coach. Posts and
+party participation, and photos you choose to post, and private messages (with a connected coach or any member you start a chat with). Posts and
 comments are visible to other signed-in users; messages are visible only to
 the two people in the conversation.
 
@@ -62,9 +62,15 @@ live in Profile → Settings and are off until you turn them on.
 ## Device permissions
 
 - **Camera** — Form Check (movement analysis and rep counting happen
-  entirely on your device; video never leaves your phone) and scanning
+  entirely on your device; Form Check video never leaves your phone),
+  shooting photos or short clips in the capture camera (a photo is
+  uploaded ONLY when you tap Post, and then appears on the community
+  feed; clips are never uploaded), and scanning
   Morphe connect/party QR codes.
-- **Microphone & speech recognition** — dictating messages to the in-app
+- **Photo library (add-only)** — saving clips you record, only when you
+  tap Save. Morphe cannot read your library.
+- **Microphone & speech recognition** — recording audio for clips you
+  capture in video mode, and dictating messages to the in-app
   assistant. Audio is processed for transcription only.
 - **Notifications** — local reminders you control (appointments, daily
   session, streak risk, comeback, weekly leaderboard and recap). Morphe

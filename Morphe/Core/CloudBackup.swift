@@ -23,6 +23,10 @@ import FirebaseFirestore
 //      recovery/nutrition series, program state + completions)
 
 struct CloudSnapshot {
+    /// True when the pull couldn't reach the backend — DISTINCT from "this
+    /// account has no backup." Callers must not treat a failed pull as a
+    /// fresh account (launch audit P0-1).
+    var fetchFailed = false
     var profile: LocalProfileSnapshot?
     var logs: [WorkoutLog]?
     var weightHistory: [MorpheAppStore.BodyWeightHistoryEntry]?
@@ -1252,12 +1256,24 @@ final class FirebaseCloudBackup: CloudBackingUp {
         guard uid != nil else { return CloudSnapshot() }
         var result = CloudSnapshot()
 
-        if let doc = stateDoc("profile"),
-           let snap = try? await doc.getDocument(),
-           let json = snap.data()?["json"] as? String,
-           let data = json.data(using: .utf8),
-           let profile = try? decoder.decode(LocalProfileSnapshot.self, from: data) {
-            result.profile = profile
+        // The profile doc is the tri-state anchor (launch audit P0-1): a
+        // FAILED fetch must be distinguishable from "never backed up" —
+        // conflating them let a flaky first connection route a returning
+        // user into onboarding, whose fresh profile then overwrote their
+        // real backup. A thrown getDocument marks the pull failed; the
+        // store holds the user on a retry state instead of proceeding.
+        if let doc = stateDoc("profile") {
+            do {
+                let snap = try await doc.getDocument()
+                if let json = snap.data()?["json"] as? String,
+                   let data = json.data(using: .utf8),
+                   let profile = try? decoder.decode(LocalProfileSnapshot.self, from: data) {
+                    result.profile = profile
+                }
+            } catch {
+                result.fetchFailed = true
+                return result
+            }
         }
 
         if let doc = stateDoc("logs"),

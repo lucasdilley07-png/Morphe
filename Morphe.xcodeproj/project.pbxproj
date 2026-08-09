@@ -606,7 +606,7 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves each finished workout to Apple Health so it counts toward your Activity rings.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device), to scan Morphe connect codes, and to shoot photos or clips you choose to share. Nothing is uploaded unless you tap Post.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Morphe saves the clips you record to your photo library only when you tap Save.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone so you can dictate messages to Morphe AI. Audio is processed for transcription only.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone to record audio for clips you capture in video mode, and so you can dictate messages to Morphe AI (audio is processed for transcription only).";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Morphe converts your speech to text so you can talk to Morphe AI instead of typing.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -646,7 +646,7 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves each finished workout to Apple Health so it counts toward your Activity rings.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device), to scan Morphe connect codes, and to shoot photos or clips you choose to share. Nothing is uploaded unless you tap Post.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Morphe saves the clips you record to your photo library only when you tap Save.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone so you can dictate messages to Morphe AI. Audio is processed for transcription only.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone to record audio for clips you capture in video mode, and so you can dictate messages to Morphe AI (audio is processed for transcription only).";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Morphe converts your speech to text so you can talk to Morphe AI instead of typing.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

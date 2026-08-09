@@ -103,6 +103,17 @@ final class MorpheAppStore {
 
     var selectedRole: AppRole = .client
     var selectedClientTab: ClientTab = .today
+    /// Held-at-the-gate state: the cloud pull FAILED (network, not
+    /// no-backup) for a signed-in account with no local profile. RootView
+    /// shows a retry surface; proceeding to onboarding could overwrite a
+    /// real backup with a fresh profile (launch audit P0-1).
+    var cloudRestoreBlocked = false
+
+    /// The retry the blocked surface calls.
+    func retryCloudRestore() async {
+        await restoreFromCloud()
+    }
+
     var selectedCoachTab: CoachTab = .dashboard {
         didSet {
             // Clamp to MOUNTED tabs: .athletes and (flag-off) .network have
@@ -1020,6 +1031,7 @@ final class MorpheAppStore {
         membershipSetsFetched = false
         coachAssignments = []
         lastAssignmentsFetchAt = nil
+        cloudRestoreBlocked = false
 
         // FULL local wipe (launch audit P0): sign-out must leave the device
         // as clean as account deletion does. Without this, the NEXT account
@@ -1043,7 +1055,13 @@ final class MorpheAppStore {
         for key in [trainingPreferencesDefaultsKey, competitionStateDefaultsKey,
                     bodyWeightHistoryDefaultsKey, recoverySeriesDefaultsKey,
                     nutritionSeriesDefaultsKey, activeProgramDefaultsKey,
-                    programCompletionsDefaultsKey, libraryFoldersKey] {
+                    programCompletionsDefaultsKey, libraryFoldersKey,
+                    // Seen/read markers are per-profile too — leaving them
+                    // let the NEXT account inherit this one's read state
+                    // (launch audit P2-18). Cosmetic to lose on a device
+                    // switch, wrong to share across accounts.
+                    threadReadKey, activitySeenKey, storySeenKey,
+                    lastKnownStreakKey, comebackPendingKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
         loadTrainingPreferences()
@@ -1643,6 +1661,15 @@ final class MorpheAppStore {
     /// their real data mirrors up afterward via the save hooks.
     private func restoreFromCloud() async {
         let cloud = await cloudBackup.pull()
+        // FAILED ≠ EMPTY (launch audit P0-1): when the backend was
+        // unreachable we must not proceed as if this account is new —
+        // onboarding would mint a fresh profile and OVERWRITE the real
+        // backup. Hold the gate; RootView shows a retry surface.
+        if cloud.fetchFailed {
+            cloudRestoreBlocked = true
+            return
+        }
+        cloudRestoreBlocked = false
         guard let profile = cloud.profile, profile.hasCompletedOnboarding else { return }
 
         // Logs first, so the derived-state rebuild at the end of
@@ -9123,7 +9150,12 @@ final class MorpheAppStore {
         }
         if let fetched = await messagingService.fetchThreads(for: uid) {
             lastThreadsRefreshAt = .now
-            liveThreads = fetched
+            // Blocking reaches MESSAGING too (launch audit P0-2): a blocked
+            // account's thread never renders, in either direction.
+            liveThreads = fetched.filter { thread in
+                blockedAccounts[thread.coachUid] == nil
+                    && blockedAccounts[thread.athleteUid] == nil
+            }
             // Fallback link capture: an athlete who claimed BEFORE the
             // linked-coach fields existed still has a coach thread — adopt
             // it so the coachShare toggle appears for them too.
@@ -9575,6 +9607,19 @@ final class MorpheAppStore {
     /// Blocks one account: their posts/comments/search hits disappear now
     /// and stay gone (the block doc filters every future fetch), and any
     /// follow edge this side owns is severed.
+    /// Files a kind-'user' report — the rules allowed it all along; the DM
+    /// wave finally gives it a UI (launch audit P0-2).
+    func reportUser(uid targetUid: String, name: String, reason: String) {
+        guard let uid = authUser?.id else { return }
+        Task {
+            let sent = await feedService.submitReport(
+                reporterUid: uid, kind: "user", targetId: targetUid,
+                targetUid: targetUid, reason: reason, excerpt: name)
+            showToast(sent ? "Report sent — a human reviews every one."
+                           : "Report didn't send — check your connection.")
+        }
+    }
+
     func blockAccount(uid targetUid: String, name: String) {
         guard let uid = authUser?.id, targetUid != uid else { return }
         blockedAccounts[targetUid] = name
@@ -9588,6 +9633,14 @@ final class MorpheAppStore {
             postComments[postId] = comments.filter { $0.authorUid != targetUid }
         }
         athleteSearchResults.removeAll { $0.uid == targetUid }
+        // Blocking is instant in MESSAGING too (launch audit P0-2): their
+        // thread leaves the inbox now, and if it's open it closes.
+        if liveThreads.contains(where: {
+            ($0.coachUid == targetUid || $0.athleteUid == targetUid) && $0.id == activeThreadId
+        }) {
+            closeThread()
+        }
+        liveThreads.removeAll { $0.coachUid == targetUid || $0.athleteUid == targetUid }
         showToast("Blocked \(name). Their posts and comments are gone from your feed.")
     }
 
@@ -9800,6 +9853,10 @@ final class MorpheAppStore {
     @discardableResult
     func startDirectChat(with otherUid: String, name otherName: String) async -> Bool {
         guard let myUid = authUser?.id, myUid != otherUid else { return false }
+        guard blockedAccounts[otherUid] == nil else {
+            showToast("You've blocked this account — unblock them in Profile to message.")
+            return false
+        }
         let myName = feedAuthorName
         let firstIsMe = myUid < otherUid
         let threadId = await messagingService.ensureThread(
@@ -10071,8 +10128,11 @@ final class MorpheAppStore {
         // The rules require 1..1000 chars of text — an empty commentary
         // becomes an honest default rather than a rejected write.
         let text = clean.isEmpty ? "Sharing \(originalAuthor)'s win." : clean
+        // A photo post's repost carries the photo — without it, the repost
+        // rendered as commentary over nothing (launch audit P2-14).
         guard await publishToRealFeed(text: text, repostOfId: originalId,
-                                      repostOfAuthor: originalAuthor) else {
+                                      repostOfAuthor: originalAuthor,
+                                      imageB64: post.imageB64) else {
             showToast("Repost didn't publish — check your connection.")
             return
         }
@@ -10947,7 +11007,7 @@ final class MorpheAppStore {
     /// lands in the claimed athlete's Train tab as a scheduled session —
     /// not a note. Capped at the newest 20 so the JSON stays small.
     func assignWorkout(_ template: WorkoutTemplate, to client: ManagedClient,
-                       on date: Date, scheduledLabel: String) {
+                       on date: Date, scheduledLabel: String, silent: Bool = false) {
         guard let index = managedClients.firstIndex(where: { $0.id == client.id }) else {
             showToast("That client isn't on your roster anymore.")
             return
@@ -10972,7 +11032,11 @@ final class MorpheAppStore {
         if !client.isClaimed {
             managedClientService.push(managedClients[index])
         }
-        showToast("\(template.name) assigned to \(client.name)\(client.isClaimed ? " — it's in their Train tab" : " — delivered when they claim their code").")
+        if !silent {
+            // Claim state is a launch-time snapshot — word the pending case
+            // as "once claimed" rather than asserting they haven't (P2-16).
+            showToast("\(template.name) assigned to \(client.name) — it lands in their Train tab\(client.isClaimed ? "" : " once they claim their code").")
+        }
         track("coach_assigned_workout")
     }
 
@@ -11002,8 +11066,9 @@ final class MorpheAppStore {
         var slot = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: .now) ?? .now
         if slot <= .now { slot = calendar.date(byAdding: .day, value: 1, to: slot) ?? slot }
         assignWorkout(template, to: client, on: slot,
-                      scheduledLabel: slot.formatted(date: .abbreviated, time: .shortened))
-        showToast("Picked \(template.name) from your library for \(client.sport.rawValue) — edit in Build if you want changes.")
+                      scheduledLabel: slot.formatted(date: .abbreviated, time: .shortened),
+                      silent: true)
+        showToast("Picked \(template.name) for \(client.sport.rawValue) — delivered for \(slot.formatted(date: .abbreviated, time: .shortened)). Edit in Build if you want changes.")
     }
 
     /// Bulk assign — the same delivery, one sheet, many clients.
