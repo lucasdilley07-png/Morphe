@@ -529,7 +529,8 @@ struct WorkoutView: View {
                 // Program delivery (Trainerize benchmark Tier 1): what the
                 // coach assigned, as runnable sessions — not notes. Rows
                 // disappear when a matching log lands (derived, no checkbox).
-                if !store.hasCompletedWorkoutFlow, !store.pendingCoachAssignments.isEmpty {
+                let pendingAssignments = store.pendingCoachAssignments
+                if !store.hasCompletedWorkoutFlow, !pendingAssignments.isEmpty {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("FROM YOUR COACH")
@@ -537,7 +538,7 @@ struct WorkoutView: View {
                                 .tracking(1.4)
                                 .foregroundStyle(MorpheTheme.accent)
 
-                            ForEach(store.pendingCoachAssignments.prefix(3)) { assignment in
+                            ForEach(pendingAssignments.prefix(3)) { assignment in
                                 HStack(spacing: 12) {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(assignment.workout.name)
@@ -1893,6 +1894,15 @@ private struct SetConsoleRow: View {
                     .frame(maxWidth: .infinity)
                     .focused($fieldFocused)
                     .onAppear { fieldFocused = true }
+                    // The decimal pad has no Return key — Done lives in a
+                    // keyboard toolbar (speed audit S2-4). Values already
+                    // committed per keystroke; this just closes the pad.
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("Done") { fieldFocused = false }
+                        }
+                    }
                     // Commit on EVERY keystroke, not just focus loss: "type
                     // 102.5 → tap Log Set without dismissing the pad" used
                     // to race the commit and log the stale value.

@@ -90,6 +90,36 @@ struct HomeView: View {
                         onViewProgress: { store.openProgress() },
                         onTrainAgain: { store.selectedClientTab = .train }
                     )
+                } else if let assignment = store.dueCoachAssignment {
+                    // The coach's session leads Today (speed audit S0-2):
+                    // the one-tap Start used to launch the generic plan
+                    // over the coach's assignment.
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("FROM \(assignment.coachName.isEmpty ? "YOUR COACH" : assignment.coachName.uppercased())")
+                                .font(MorpheTheme.microLabel())
+                                .tracking(1.4)
+                                .foregroundStyle(MorpheTheme.accent)
+                            Text(assignment.workout.name)
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(.white)
+                            Text("\(assignment.workout.exercises.count) exercise\(assignment.workout.exercises.count == 1 ? "" : "s") · scheduled \(assignment.scheduledFor.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                            Button("Start Coach's Session") {
+                                store.startAssignedWorkout(assignment)
+                            }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                            Button("Train My Own Plan Instead") {
+                                store.startTodayWorkout()
+                            }
+                            .buttonStyle(.plain)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .frame(minHeight: 32)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 } else {
                     // Loss framing over gain framing — but only for a REAL
                     // streak (2+ days, training day, nothing logged). The
@@ -312,6 +342,7 @@ struct HomeView: View {
         .refreshable {
             await store.refreshThreads()
             await store.refreshAppointments()
+            await store.refreshCoachAssignments(force: true)
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
         .sheet(isPresented: $showAppointments) {

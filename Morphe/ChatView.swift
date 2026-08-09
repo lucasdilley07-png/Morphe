@@ -8,6 +8,11 @@ struct CommunityView: View {
     /// Tab landing clears the floating header icons.
     var topPadding: CGFloat = MorpheTheme.Spacing.pageTopStacked
 
+    /// One-shot per mount: land on CHATS when messages are waiting
+    /// (speed audit S2-3) — Snapchat's own default, and it cuts the reply
+    /// path by a tap. Deep links (pendingThreadOpenID) still win.
+    @State private var didApplyLandingPane = false
+
     var body: some View {
         @Bindable var store = store
         return VStack(spacing: 0) {
@@ -34,6 +39,13 @@ struct CommunityView: View {
         // The paged panes stay mounted, so .task never re-fires on a
         // swipe — without this, the inbox (one-shot fetch) only updated
         // on cold launch and unread state froze.
+        .onAppear {
+            guard !didApplyLandingPane else { return }
+            didApplyLandingPane = true
+            if store.unreadThreadCount > 0, store.pendingThreadOpenID == nil {
+                store.selectedCommunitySection = .contact
+            }
+        }
         .onChange(of: store.selectedCommunitySection) { _, section in
             if section == .contact {
                 Task { await store.refreshThreads() }
@@ -747,8 +759,12 @@ private struct AthleteContactInbox: View {
                     .overlay(MorpheTheme.stroke.opacity(0.8))
 
                 HStack(spacing: 10) {
-                    TextField("Type a message", text: $draft, axis: .vertical)
-                        .lineLimit(1...3)
+                    TextField("Type a message", text: $draft)
+                        .submitLabel(.send)
+                        .onSubmit {
+                            store.sendAthleteMessage(to: thread.id, text: draft)
+                            draft = ""
+                        }
                         .textFieldStyle(MorpheFieldStyle())
 
                     Button("Send") {
@@ -2373,15 +2389,24 @@ struct FeedGridTile: View {
 /// (grid tile, feed card, immersive page) hits this instead of re-decoding
 /// a JPEG on each scroll frame.
 enum FeedImageCache {
-    private static let cache = NSCache<NSString, UIImage>()
+    private static let cache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        // Bounded (speed audit S1-4): unbounded NSCache made eviction
+        // opaque, and every eviction is a main-thread re-decode later.
+        cache.countLimit = 200
+        return cache
+    }()
 
     static func image(for post: FeedPost) -> UIImage? {
         guard post.hasImage else { return nil }
         if let hit = cache.object(forKey: post.id as NSString) { return hit }
         guard let data = Data(base64Encoded: post.imageB64),
               let decoded = UIImage(data: data) else { return nil }
-        cache.setObject(decoded, forKey: post.id as NSString)
-        return decoded
+        // Pre-decoded bitmap: draw-time JPEG decompression was the hidden
+        // cost on the scroll path.
+        let prepared = decoded.preparingForDisplay() ?? decoded
+        cache.setObject(prepared, forKey: post.id as NSString)
+        return prepared
     }
 }
 
@@ -3267,7 +3292,7 @@ struct ThreadChatView: View {
     /// Consecutive days both of you messaged — exact, from full history.
     private var chatStreak: Int {
         MorpheAppStore.messageStreak(
-            messages: store.activeThreadMessages, uidA: myUid, uidB: counterpartUid)
+            messages: store.displayedThreadMessages, uidA: myUid, uidB: counterpartUid)
     }
 
     /// Doors seed a draft before routing here; a typed draft is never
@@ -3392,7 +3417,9 @@ struct ThreadChatView: View {
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     LazyVStack(alignment: .leading, spacing: 12) {
-                        if store.activeThreadMessages.isEmpty {
+                        if store.displayedThreadMessages.isEmpty, store.threadFirstSnapshotArrived {
+                            // Gated on the first snapshot (speed audit S0-5):
+                            // "no messages" is only claimed once it's checked.
                             Text("No messages yet — say hello. This conversation is private to you and \(counterpart).")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -3400,14 +3427,14 @@ struct ThreadChatView: View {
                                 .padding(.top, 24)
                         }
 
-                        ForEach(Array(store.activeThreadMessages.enumerated()), id: \.element.id) { index, message in
+                        ForEach(Array(store.displayedThreadMessages.enumerated()), id: \.element.id) { index, message in
                             LiveMessageBubble(
                                 message: message,
                                 isMine: message.senderUid == myUid,
                                 senderName: message.senderUid == myUid ? "You" : counterpart,
                                 // Sender-run captions: name only where a run starts.
                                 showsSender: index == 0
-                                    || store.activeThreadMessages[index - 1].senderUid != message.senderUid
+                                    || store.displayedThreadMessages[index - 1].senderUid != message.senderUid
                             )
                             .id(message.id)
                         }
@@ -3415,8 +3442,8 @@ struct ThreadChatView: View {
                     .padding(16)
                     .padding(.bottom, 8)
                 }
-                .onChange(of: store.activeThreadMessages.count) { _, _ in
-                    if let last = store.activeThreadMessages.last {
+                .onChange(of: store.displayedThreadMessages.count) { _, _ in
+                    if let last = store.displayedThreadMessages.last {
                         withAnimation(.easeOut(duration: 0.2)) {
                             proxy.scrollTo(last.id, anchor: .bottom)
                         }
@@ -3428,8 +3455,15 @@ struct ThreadChatView: View {
                 .overlay(MorpheTheme.stroke.opacity(0.8))
 
             HStack(spacing: 10) {
-                TextField("Type a message", text: $draft, axis: .vertical)
-                    .lineLimit(1...3)
+                TextField("Type a message", text: $draft)
+                    // Keyboard send (speed audit S0-3): the return key IS
+                    // the send button, same as every messenger.
+                    .submitLabel(.send)
+                    .onSubmit {
+                        let text = draft
+                        draft = ""
+                        Task { await store.sendMessage(text) }
+                    }
                     .textFieldStyle(MorpheFieldStyle())
 
                 Button("Send") {
@@ -3638,6 +3672,7 @@ struct AthleteInboxView: View {
             .padding(.vertical, 4)
         }
         .scrollDismissesKeyboard(.immediately)
+        .refreshable { await store.refreshThreads(force: true) }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 

@@ -346,9 +346,11 @@ private struct CoachCommandCenterScreen: View {
                         store.selectedCoachTab = .messages
                     }
                     coachQuickAction("square.and.arrow.up.on.square", "Assign") {
-                        // Build hosts every template's Assign button — one
-                        // more tap lands the workout on a client.
+                        // Straight to the LIBRARY panel, where every row has
+                        // Assign (speed audit S0-1) — the builder path hid
+                        // it under a section called "Save + archive".
                         store.selectedCoachTab = .programs
+                        store.selectedCoachBuildSection = .library
                     }
                     coachQuickAction("calendar", "Schedule") {
                         showSchedule = true
@@ -369,6 +371,7 @@ private struct CoachCommandCenterScreen: View {
                     }
                 }
 
+                let overview = store.liveCoachOverview
                 if store.coachClients.isEmpty && store.managedClients.isEmpty {
                     // Day-1 command center: a real coach account starts with
                     // zero athletes, so a triage board over nothing reads as
@@ -395,12 +398,12 @@ private struct CoachCommandCenterScreen: View {
                 } else {
                     CoachDashboardTriageCard(
                         coachName: store.coachProfile.name,
-                        atRiskCount: store.liveCoachOverview.atRiskClients,
+                        atRiskCount: overview.atRiskClients,
                         pendingAIReviewCount: pendingAIReviewAthlete.map { athlete in
                             store.workoutLogs(for: athlete.id).filter { $0.verificationStatus == .aiPendingReview }.count
                         } ?? 0,
-                        painFlagCount: store.liveCoachOverview.painFlags,
-                        replyQueueCount: store.liveCoachOverview.messagesNeedingResponse,
+                        painFlagCount: overview.painFlags,
+                        replyQueueCount: overview.messagesNeedingResponse,
                         nextSession: nextUpcomingSession,
                         nextIntervention: nextInterventionNeedingAction,
                         showsRecoveryAction: recoveryIntervention != nil,
@@ -477,7 +480,7 @@ private struct CoachCommandCenterScreen: View {
                     subtitle: "Use the broader coaching summary once the urgent work is already moving.",
                     isExpanded: $showOverview
                 ) {
-                    CoachHeroSummaryCard(profile: store.coachProfile, overview: store.liveCoachOverview)
+                    CoachHeroSummaryCard(profile: store.coachProfile, overview: overview)
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
@@ -525,6 +528,13 @@ private struct CoachCommandCenterScreen: View {
         .sheet(item: $sessionRequest) { request in
             CoachStartSessionSheet(request: request)
                 .environment(store)
+        }
+        .refreshable {
+            // The triage board drives every coaching decision — it can be
+            // pulled fresh now (speed audit S2-1).
+            await store.refreshManagedClients()
+            await store.refreshThreads(force: true)
+            await store.refreshAppointments()
         }
         .sheet(item: $coachPraiseDraft) { draft in
             CoachPublicPraiseSheet(draft: draft)
@@ -950,6 +960,25 @@ private struct ManagedClientDetailSheet: View {
                     // picks a library session for this client's sport and
                     // delivers it. Honestly labeled — rules, not AI.
                     Section {
+                        if let last = client.assignments.first {
+                            // Copy-forward (speed audit S2-5): the most
+                            // common coaching op is "same again next week."
+                            Button {
+                                store.assignWorkout(
+                                    last.workout.makeTemplate(type: "Coach Assignment",
+                                                              notes: "Assigned by \(store.coachProfile.name)."),
+                                    to: client,
+                                    on: MorpheAppStore.nextCoachSlot(),
+                                    scheduledLabel: MorpheAppStore.nextCoachSlot().formatted(date: .abbreviated, time: .shortened))
+                            } label: {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Repeat Last: \(last.workout.name)")
+                                    Text("Same session, delivered for their next 5pm.")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
                         Button {
                             store.generateAndAssignSession(for: client)
                         } label: {
@@ -2213,7 +2242,7 @@ private struct AssignWorkoutSheet: View {
     @Environment(\.dismiss) private var dismiss
     let template: WorkoutTemplate
     @State private var selectedManagedIDs: Set<String> = []
-    @State private var scheduledDate = Date()
+    @State private var scheduledDate = MorpheAppStore.nextCoachSlot()
 
     var body: some View {
         NavigationStack {
@@ -2247,8 +2276,22 @@ private struct AssignWorkoutSheet: View {
                         }
                     }
 
+                    // Compact + chips (speed audit S0-7): the full calendar
+                    // grid cost several taps to reach the obvious answers.
+                    HStack(spacing: 8) {
+                        Button("Today 5pm") {
+                            scheduledDate = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: .now) ?? .now
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: Calendar.current.isDateInToday(scheduledDate)))
+                        Button("Tomorrow") {
+                            scheduledDate = Calendar.current.date(byAdding: .day, value: 1,
+                                to: Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: .now) ?? .now) ?? .now
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: Calendar.current.isDateInTomorrow(scheduledDate)))
+                        Spacer(minLength: 0)
+                    }
                     DatePicker("Day and time", selection: $scheduledDate)
-                        .datePickerStyle(.graphical)
+                        .datePickerStyle(.compact)
                         .tint(MorpheTheme.accent)
 
                     Button(selectedManagedIDs.count > 1 ? "Assign to \(selectedManagedIDs.count) Clients" : "Assign Workout") {
@@ -2282,7 +2325,7 @@ private struct AssignSavedWorkoutSheet: View {
     @Environment(\.dismiss) private var dismiss
     let item: SavedWorkoutLibraryItem
     @State private var selectedManagedIDs: Set<String> = []
-    @State private var scheduledDate = Date()
+    @State private var scheduledDate = MorpheAppStore.nextCoachSlot()
 
     var body: some View {
         NavigationStack {
@@ -2337,8 +2380,22 @@ private struct AssignSavedWorkoutSheet: View {
                         }
                     }
 
+                    // Compact + chips (speed audit S0-7): the full calendar
+                    // grid cost several taps to reach the obvious answers.
+                    HStack(spacing: 8) {
+                        Button("Today 5pm") {
+                            scheduledDate = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: .now) ?? .now
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: Calendar.current.isDateInToday(scheduledDate)))
+                        Button("Tomorrow") {
+                            scheduledDate = Calendar.current.date(byAdding: .day, value: 1,
+                                to: Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: .now) ?? .now) ?? .now
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: Calendar.current.isDateInTomorrow(scheduledDate)))
+                        Spacer(minLength: 0)
+                    }
                     DatePicker("Day and time", selection: $scheduledDate)
-                        .datePickerStyle(.graphical)
+                        .datePickerStyle(.compact)
                         .tint(MorpheTheme.accent)
 
                     Button(selectedManagedIDs.count > 1 ? "Assign to \(selectedManagedIDs.count) Clients" : "Assign Saved") {

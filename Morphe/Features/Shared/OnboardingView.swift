@@ -46,8 +46,13 @@ struct LaunchSequenceView: View {
             // Returning users open this app daily — they get one quick beat,
             // not a ceremony. Only a first launch earns the full brand pause.
             message = launchMessage
-            try? await Task.sleep(for: .milliseconds(store.hasCompletedOnboarding ? 350 : 650))
-
+            // Returning users wait for NOTHING (speed audit S0-6): store
+            // init already finished before this view rendered, and the
+            // launch fetches are detached. Only the once-ever first run
+            // earns the brand pause.
+            if !store.hasCompletedOnboarding {
+                try? await Task.sleep(for: .milliseconds(650))
+            }
             store.finishLaunchSequence()
         }
     }

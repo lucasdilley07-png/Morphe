@@ -449,17 +449,21 @@ struct CaptureView: View {
                 Button {
                     guard !isPosting else { return }
                     isPosting = true
+                    // Optimistic close (speed audit S2-7): the camera
+                    // dismisses NOW; publish continues in the background and
+                    // the store toasts success or failure either way. The
+                    // base64 encode runs off the main actor (S2-8).
+                    let capturedCaption = caption
+                    camera.stop()
+                    dismiss()
                     Task {
-                        let posted = await store.publishPhotoPost(
-                            caption: caption,
-                            imageB64: jpeg.base64EncodedString()
+                        let encoded = await Task.detached(priority: .userInitiated) {
+                            jpeg.base64EncodedString()
+                        }.value
+                        _ = await store.publishPhotoPost(
+                            caption: capturedCaption,
+                            imageB64: encoded
                         )
-                        isPosting = false
-                        if posted {
-                            camera.clearCaptures()
-                            camera.stop()
-                            dismiss()
-                        }
                     }
                 } label: {
                     HStack(spacing: 8) {

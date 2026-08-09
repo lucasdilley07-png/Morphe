@@ -759,8 +759,11 @@ final class MorpheAppStore {
         // Bundled Discover catalog: content as data. Every document is
         // validated against the library — a workout with a missing exercise
         // is dropped rather than shipped broken.
+        // Index once (speed audit S1-3): the per-workout linear resolve ran
+        // ~61k comparisons on the main actor before the first frame.
+        let exerciseIndex = WorkoutCatalog.makeIndex(MorpheDemoContent.exerciseDatabase)
         self.catalogWorkouts = WorkoutCatalog.loadBundled().compactMap {
-            WorkoutCatalog.template(from: $0, library: MorpheDemoContent.exerciseDatabase)
+            WorkoutCatalog.template(from: $0, index: exerciseIndex)
         }
         self.availableAvatars = MorpheDemoContent.avatarStyles
 
@@ -1032,6 +1035,7 @@ final class MorpheAppStore {
         coachAssignments = []
         lastAssignmentsFetchAt = nil
         cloudRestoreBlocked = false
+        threadReadCache = nil
 
         // FULL local wipe (launch audit P0): sign-out must leave the device
         // as clean as account deletion does. Without this, the NEXT account
@@ -5966,7 +5970,10 @@ final class MorpheAppStore {
     /// True when replacing today's workout would silently destroy work the
     /// user hasn't logged yet.
     var hasUnsavedSessionWork: Bool {
-        isWorkoutSessionActive || hasCompletedWorkoutFlow
+        // Guard only when there's WORK to lose (speed audit S0-8): an
+        // accidentally-started session with zero sets doesn't earn a modal
+        // claiming "logged sets will be lost."
+        (isWorkoutSessionActive && trackedSetTotalCount > 0) || hasCompletedWorkoutFlow
     }
 
     private func confirmDiscardingSessionWork(_ title: String, then action: @escaping () -> Void) {
@@ -6126,7 +6133,17 @@ final class MorpheAppStore {
     /// The top weight the user last logged for an exercise of this name (across
     /// prior sessions, newest first), how that session felt, and the RPE they
     /// rated on that top set (0 / nil = not rated).
+    private var topWeightCache: [String: (weight: Double, unit: WeightUnit, feedback: WorkoutFeedbackOption?, topSetRPE: Int?)?] = [:]
+
     private func lastLoggedTopWeight(forExerciseNamed name: String)
+        -> (weight: Double, unit: WeightUnit, feedback: WorkoutFeedbackOption?, topSetRPE: Int?)? {
+        if let cached = topWeightCache[name] { return cached }
+        let value = computeLastLoggedTopWeight(forExerciseNamed: name)
+        topWeightCache[name] = value
+        return value
+    }
+
+    private func computeLastLoggedTopWeight(forExerciseNamed name: String)
         -> (weight: Double, unit: WeightUnit, feedback: WorkoutFeedbackOption?, topSetRPE: Int?)? {
         for log in workoutLogs where log.athleteID == clientProfile.id {
             // Deload sessions are deliberately light — deriving the next
@@ -6210,7 +6227,19 @@ final class MorpheAppStore {
     /// The previous session's actual work for this exercise — the console's
     /// "LAST:" line. Literal history (deloads included): the suggestion
     /// line editorializes, this one just states what happened.
+    /// Per-exercise memo for the console's history lines (speed audit
+    /// S1-5): these ran a filter+sort over ALL logs on every stepper tap —
+    /// 25×/second during hold-repeat. Invalidated when logs change.
+    private var consoleHistoryCache: [String: String?] = [:]
+
     func lastSessionLine(forExerciseNamed name: String) -> String? {
+        if let cached = consoleHistoryCache[name] { return cached }
+        let line = computeLastSessionLine(forExerciseNamed: name)
+        consoleHistoryCache[name] = line
+        return line
+    }
+
+    private func computeLastSessionLine(forExerciseNamed name: String) -> String? {
         for log in currentAthleteWorkoutLogs {   // newest first
             guard let exercise = log.exercises.first(where: { $0.name == name }),
                   let reps = exercise.repsPerSet, !reps.isEmpty else { continue }
@@ -9169,14 +9198,32 @@ final class MorpheAppStore {
 
     /// Opens a thread: clears stale messages and starts the live listener.
     /// Safe to call for a thread that's already open (listener restarts).
+    /// Locally-echoed sends awaiting their server copy (speed audit S0-4).
+    private(set) var pendingOutgoingMessages: [ChatMessage] = []
+    /// False until the open thread's listener delivers its first snapshot —
+    /// gates the "No messages yet" claim (speed audit S0-5).
+    private(set) var threadFirstSnapshotArrived = false
+
+    /// What the conversation renders: confirmed messages + optimistic tail.
+    var displayedThreadMessages: [ChatMessage] {
+        activeThreadMessages + pendingOutgoingMessages
+    }
+
     func openThread(_ thread: MessageThreadSummary) {
         activeThreadId = thread.id
         activeThreadMessages = []
+        pendingOutgoingMessages = []
+        threadFirstSnapshotArrived = false
         markThreadRead(thread.id)
         messagingService.listenMessages(threadId: thread.id) { [weak self] messages in
             Task { @MainActor [weak self] in
                 guard let self, self.activeThreadId == thread.id else { return }
                 self.activeThreadMessages = messages
+                self.threadFirstSnapshotArrived = true
+                // The server copy replaces the optimistic echo.
+                self.pendingOutgoingMessages.removeAll { pending in
+                    messages.contains { $0.senderUid == pending.senderUid && $0.text == pending.text }
+                }
                 // Every delivery while the thread is on screen IS seen —
                 // stamping here (not just open/close) means a message you
                 // watched arrive can't resurface as unread after a swipe
@@ -9204,18 +9251,26 @@ final class MorpheAppStore {
     // arrived — never synced, never a cross-device promise.
 
     private var threadReadKey: String { "morphe.threads.read.\(clientProfile.id.uuidString)" }
+    /// In-memory mirror of the read-stamp plist (speed audit S1-2): the
+    /// per-thread UserDefaults dictionary decode ran 8N times per coach
+    /// Home frame. Loaded once, written through, dropped on profile switch.
+    private var threadReadCache: [String: Double]?
     /// Bumped on every read-stamp so ring/row states refresh — UserDefaults
     /// isn't observable on its own (same trick as storySeenTick).
     private(set) var threadReadTick = 0
 
     private func threadLastRead(_ threadId: String) -> Date {
-        let map = UserDefaults.standard.dictionary(forKey: threadReadKey) as? [String: Double] ?? [:]
-        return map[threadId].map { Date(timeIntervalSince1970: $0) } ?? .distantPast
+        if threadReadCache == nil {
+            threadReadCache = UserDefaults.standard.dictionary(forKey: threadReadKey) as? [String: Double] ?? [:]
+        }
+        return threadReadCache?[threadId].map { Date(timeIntervalSince1970: $0) } ?? .distantPast
     }
 
     func markThreadRead(_ threadId: String) {
-        var map = UserDefaults.standard.dictionary(forKey: threadReadKey) as? [String: Double] ?? [:]
+        var map = threadReadCache
+            ?? UserDefaults.standard.dictionary(forKey: threadReadKey) as? [String: Double] ?? [:]
         map[threadId] = Date.now.timeIntervalSince1970
+        threadReadCache = map
         UserDefaults.standard.set(map, forKey: threadReadKey)
         threadReadTick += 1
     }
@@ -9239,8 +9294,15 @@ final class MorpheAppStore {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
         guard let uid = authUser?.id, let threadId = activeThreadId else { return }
+        // Optimistic echo (speed audit S0-4): the bubble renders NOW; the
+        // listener's server copy replaces it on arrival.
+        let pending = ChatMessage(id: "pending-\(UUID().uuidString)",
+                                  senderUid: uid, text: String(clean.prefix(2000)),
+                                  sentAt: .now)
+        pendingOutgoingMessages.append(pending)
         guard await messagingService.send(threadId: threadId, senderUid: uid,
                                           text: String(clean.prefix(2000))) else {
+            pendingOutgoingMessages.removeAll { $0.id == pending.id }
             showToast("Message didn't send — check your connection.")
             return
         }
@@ -9521,7 +9583,11 @@ final class MorpheAppStore {
             let followBoost = followedUids.contains(post.authorUid) ? 25.0 : 0.0
             return recency + engagement + followBoost
         }
-        let scored = posts.sorted { score($0) > score($1) }
+        // Score ONCE per post, sort on the pair (speed audit S1-1): the
+        // scorer-in-comparator shape ran exp() ~2·n·log n times per call.
+        let scored = posts.map { (score($0), $0) }
+            .sorted { $0.0 > $1.0 }
+            .map(\.1)
         // Diversity guard: demote consecutive same-author runs so a burst
         // poster can't own the whole first screen.
         var result: [FeedPost] = []
@@ -9538,13 +9604,29 @@ final class MorpheAppStore {
     }
 
     /// The feed in ranked order, from state the store already holds.
+    /// Memoized on a cheap revision key (speed audit S1-1): the ranked
+    /// order only changes when posts/reactions/comments/follows do — not
+    /// on every body evaluation of the app's main scroll surface.
+    private var rankedFeedCache: (key: Int, posts: [FeedPost])?
+
     var rankedFeedPosts: [FeedPost] {
-        Self.rankFeedPosts(
+        var hasher = Hasher()
+        hasher.combine(feedPosts.count)
+        hasher.combine(feedPosts.first?.id)
+        hasher.combine(feedPosts.last?.id)
+        hasher.combine(feedReactionCounts.values.reduce(0, +))
+        hasher.combine(postComments.values.reduce(0) { $0 + $1.count })
+        hasher.combine(followedUids.count)
+        let key = hasher.finalize()
+        if let cached = rankedFeedCache, cached.key == key { return cached.posts }
+        let ranked = Self.rankFeedPosts(
             feedPosts,
             reactionCounts: feedReactionCounts,
             commentCounts: postComments.mapValues(\.count),
             followedUids: followedUids
         )
+        rankedFeedCache = (key, ranked)
+        return ranked
     }
 
     private func renderableFeedPost(_ post: FeedPost) -> Bool {
@@ -11055,6 +11137,15 @@ final class MorpheAppStore {
         return pool.first { !recentNames.contains($0.name) } ?? pool.first
     }
 
+    /// The default delivery slot every assign surface shares: next 17:00,
+    /// rolled to tomorrow when today's has passed (speed audit S0-7).
+    static func nextCoachSlot(from now: Date = .now) -> Date {
+        let calendar = Calendar.current
+        var slot = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: now) ?? now
+        if slot <= now { slot = calendar.date(byAdding: .day, value: 1, to: slot) ?? slot }
+        return slot
+    }
+
     /// One-tap generate-and-deliver from the client card: next 5pm slot,
     /// straight into their Train tab.
     func generateAndAssignSession(for client: ManagedClient) {
@@ -11062,9 +11153,7 @@ final class MorpheAppStore {
             showToast("Your library has no workouts to pick from yet.")
             return
         }
-        let calendar = Calendar.current
-        var slot = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: .now) ?? .now
-        if slot <= .now { slot = calendar.date(byAdding: .day, value: 1, to: slot) ?? slot }
+        let slot = Self.nextCoachSlot()
         assignWorkout(template, to: client, on: slot,
                       scheduledLabel: slot.formatted(date: .abbreviated, time: .shortened),
                       silent: true)
@@ -11111,12 +11200,36 @@ final class MorpheAppStore {
         }
     }
 
+    /// The assignment Today's hero should lead with: due today or overdue,
+    /// not yet done (speed audit S0-2) — the coached athlete's one-tap
+    /// Start must start the COACH'S session, not the generic plan.
+    var dueCoachAssignment: WorkoutAssignment? {
+        let endOfToday = Calendar.current.date(
+            bySettingHour: 23, minute: 59, second: 59, of: .now) ?? .now
+        return pendingCoachAssignments.first { $0.scheduledFor <= endOfToday }
+    }
+
     /// What the Train tab shows: not-yet-done assignments from the last 14
     /// days plus everything upcoming — stale ones age out instead of
     /// nagging forever.
     var pendingCoachAssignments: [WorkoutAssignment] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -14, to: .now) ?? .now
-        return coachAssignments.filter { $0.scheduledFor >= cutoff && !isAssignmentDone($0) }
+        // One pass over the logs builds the done-lookup (speed audit S1-6) —
+        // the old shape re-scanned history per assignment per body eval.
+        let calendar = Calendar.current
+        let logKeys = Set(currentAthleteWorkoutLogs.map {
+            "\($0.workoutTitle)|\(calendar.startOfDay(for: $0.completedAt).timeIntervalSince1970)"
+        })
+        let logsByTitle = Dictionary(grouping: currentAthleteWorkoutLogs, by: \.workoutTitle)
+        _ = logKeys
+        return coachAssignments.filter { assignment in
+            guard assignment.scheduledFor >= cutoff else { return false }
+            let dayStart = calendar.startOfDay(for: assignment.scheduledFor)
+            let done = (logsByTitle[assignment.workout.name] ?? []).contains {
+                $0.completedAt >= dayStart
+            }
+            return !done
+        }
     }
 
     /// One tap from the assignment row into a live session running the
@@ -12949,6 +13062,8 @@ final class MorpheAppStore {
     }
 
     private func refreshWorkoutLogDerivedState(for athleteID: UUID, latestLog: WorkoutLog? = nil) {
+        consoleHistoryCache = [:]
+        topWeightCache = [:]
         let logs = workoutLogs(for: athleteID)
         refreshCoachClientDerivedWorkoutState(for: athleteID, logs: logs, latestLog: latestLog ?? logs.first)
 

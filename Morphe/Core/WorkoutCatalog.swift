@@ -62,20 +62,31 @@ enum WorkoutCatalog {
         return file.workouts
     }
 
+    /// O(1) exercise resolve via a prebuilt id index (speed audit S1-3):
+    /// the linear scan ran ~61k string comparisons synchronously before
+    /// the first frame.
+    static func makeIndex(_ library: [ExerciseReference]) -> [String: ExerciseReference] {
+        Dictionary(library.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
     /// Maps a catalog document onto the app's runtime template, resolving each
     /// exercise against the library. Returns nil if ANY exercise is missing —
     /// a catalog workout with holes teaches nothing.
     static func template(from workout: CatalogWorkout, library: [ExerciseReference]) -> WorkoutTemplate? {
+        template(from: workout, index: makeIndex(library))
+    }
+
+    static func template(from workout: CatalogWorkout, index: [String: ExerciseReference]) -> WorkoutTemplate? {
         guard let templateID = UUID(uuidString: workout.id) else { return nil }
 
         var exercises: [WorkoutExercise] = []
-        for (index, entry) in workout.exercises.enumerated() {
-            guard let reference = library.first(where: { $0.id == entry.libraryID }) else { return nil }
+        for (entryIndex, entry) in workout.exercises.enumerated() {
+            guard let reference = index[entry.libraryID] else { return nil }
             exercises.append(
                 WorkoutExercise(
                     // Deterministic per-workout id so tracked sets reattach
                     // across relaunches (same rule as custom workouts).
-                    id: "\(workout.id)-\(index)",
+                    id: "\(workout.id)-\(entryIndex)",
                     exerciseLibraryID: reference.id,
                     name: reference.name,
                     muscleGroup: reference.muscleGroup,
