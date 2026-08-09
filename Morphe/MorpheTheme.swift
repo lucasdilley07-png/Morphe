@@ -23,11 +23,15 @@ enum MorpheTheme {
     private static var currentAccentPalette: AccentPalette = .gold
 
     /// HUD corner radius — sharp, technical. One knob for the whole system.
-    static let radius: CGFloat = 3
+    // Hims-audit revamp (2026-08-09): soft, calm geometry. The hard 3pt
+    // HUD edge read as technical; 16pt reads as considered. One token —
+    // every card, field, tile, and sheet in the app follows.
+    static let radius: CGFloat = 16
 
     /// Chip/badge radius — the deliberate second, tighter knob the small
     /// elements already used as a literal `2` in a dozen places.
-    static let chipRadius: CGFloat = 2
+    // Softened with the revamp — hard 2pt chips fought the 16pt cards.
+    static let chipRadius: CGFloat = 8
 
     /// Spacing scale — a 4pt grid for the whole HUD. New code uses these;
     /// existing literals migrate as files get touched. (The audit counted
@@ -454,18 +458,18 @@ struct PrimaryCTAButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .textCase(.uppercase)
-            .font(.system(.subheadline, design: .monospaced).weight(.bold))
-            .tracking(1.2)
-            // Never hyphenate a button label ("DIS-CARD") — shrink to fit.
+            // Hims grammar: sentence-case pill, humanist weight — a calm
+            // "one obvious next step," not a shouted command.
+            .font(.system(.body, design: .rounded).weight(.semibold))
+            // Never hyphenate a button label — shrink to fit.
             .lineLimit(1)
             .minimumScaleFactor(0.55)
             .foregroundStyle(.black)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                Capsule(style: .continuous)
                     .fill(accent.opacity(configuration.isPressed ? 0.78 : 1))
             )
             .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
@@ -475,22 +479,21 @@ struct PrimaryCTAButtonStyle: ButtonStyle {
 struct SecondaryCTAButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .textCase(.uppercase)
-            .font(.system(.subheadline, design: .monospaced).weight(.bold))
-            .tracking(1.2)
+            // Same calm pill grammar as the primary — outlined, not filled.
+            .font(.system(.body, design: .rounded).weight(.semibold))
             // Never hyphenate a button label — shrink to fit.
             .lineLimit(1)
             .minimumScaleFactor(0.55)
             .foregroundStyle(configuration.isPressed ? MorpheTheme.textSecondary : .white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                Capsule(style: .continuous)
                     .fill(configuration.isPressed ? MorpheTheme.panelStrong : Color.clear)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                Capsule(style: .continuous)
                     .stroke(Color.white.opacity(0.16), lineWidth: 1)
             )
             .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
