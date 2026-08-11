@@ -33,8 +33,24 @@ guard let ctx = CGContext(data: nil, width: size, height: size,
 ctx.translateBy(x: 0, y: CGFloat(size))
 ctx.scaleBy(x: 1, y: -1)
 
-ctx.setFillColor(CGColor(srgbRed: ink.0, green: ink.1, blue: ink.2, alpha: 1))
-ctx.fill(CGRect(x: 0, y: 0, width: size, height: size))
+// Glass restyle (2026-08-10): same M, Apple-glass rendering — a subtle
+// depth gradient replaces the flat field so the mark reads as an object.
+let bgColors = [
+    CGColor(srgbRed: 0.075, green: 0.075, blue: 0.086, alpha: 1),   // lifted top
+    CGColor(srgbRed: 0.016, green: 0.016, blue: 0.020, alpha: 1)    // deep base
+] as CFArray
+let bgGradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            colors: bgColors, locations: [0, 1])!
+ctx.drawLinearGradient(bgGradient,
+                       start: CGPoint(x: 512, y: 0),
+                       end: CGPoint(x: 512, y: 1024), options: [])
+// Faint ambient gold bloom behind the mark.
+let bloom = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                       colors: [CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 0.16),
+                                CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 0)] as CFArray,
+                       locations: [0, 1])!
+ctx.drawRadialGradient(bloom, startCenter: CGPoint(x: 512, y: 470), startRadius: 0,
+                       endCenter: CGPoint(x: 512, y: 470), endRadius: 430, options: [])
 
 /// Rounded polygon path.
 func roundedPolygon(_ pts: [CGPoint], radius: CGFloat) -> CGPath {
@@ -58,7 +74,9 @@ func roundedPolygon(_ pts: [CGPoint], radius: CGFloat) -> CGPath {
     return path
 }
 
-ctx.setFillColor(CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 1))
+// Panels collected into one path so shadow, gradient, and sheen apply
+// to the whole mark as a single glass object.
+let markPath = CGMutablePath()
 
 // Left panel: outer edge vertical, top tilts up toward center, bottom tilts
 // down toward center.
@@ -68,8 +86,7 @@ let left: [CGPoint] = [
     CGPoint(x: 390, y: 757),   // bottom-right (inner, lower)
     CGPoint(x: 244, y: 694),   // bottom-left (outer)
 ]
-ctx.addPath(roundedPolygon(left, radius: 23))
-ctx.fillPath()
+markPath.addPath(roundedPolygon(left, radius: 23))
 
 // Right panel: mirror of the left around x = 512.
 let right: [CGPoint] = [
@@ -78,8 +95,7 @@ let right: [CGPoint] = [
     CGPoint(x: 780, y: 694),   // bottom-right (outer)
     CGPoint(x: 634, y: 757),   // bottom-left (inner, lower)
 ]
-ctx.addPath(roundedPolygon(right, radius: 23))
-ctx.fillPath()
+markPath.addPath(roundedPolygon(right, radius: 23))
 
 // Center stroke: chevron band pointing down — vertical sides, top V dip,
 // bottom V point.
@@ -91,8 +107,56 @@ let center: [CGPoint] = [
     CGPoint(x: 512, y: 656),   // bottom point
     CGPoint(x: 419, y: 559),   // left side bottom
 ]
-ctx.addPath(roundedPolygon(center, radius: 17))
+markPath.addPath(roundedPolygon(center, radius: 17))
+
+// 1. Soft lift: the mark floats off the field.
+ctx.saveGState()
+ctx.setShadow(offset: CGSize(width: 0, height: -14), blur: 36,
+              color: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.55))
+ctx.addPath(markPath)
+ctx.setFillColor(CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 1))
 ctx.fillPath()
+ctx.restoreGState()
+
+// 2. Glass body: light pours from the top of the M to a deeper base.
+ctx.saveGState()
+ctx.addPath(markPath)
+ctx.clip()
+let glassColors = [
+    CGColor(srgbRed: 1.0, green: 0.905, blue: 0.36, alpha: 1),      // lit top
+    CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 1), // brand mid
+    CGColor(srgbRed: 0.83, green: 0.62, blue: 0.0, alpha: 1)        // deep base
+] as CFArray
+let glass = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                       colors: glassColors, locations: [0, 0.55, 1])!
+ctx.drawLinearGradient(glass,
+                       start: CGPoint(x: 512, y: 253),
+                       end: CGPoint(x: 512, y: 757), options: [])
+
+// 3. Specular sheen: the bubble highlight — a broad ellipse of white
+// falling off across the upper half, clipped to the mark.
+ctx.saveGState()
+let sheenRect = CGRect(x: 160, y: 180, width: 704, height: 300)
+ctx.addEllipse(in: sheenRect)
+ctx.clip()
+let sheen = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                       colors: [CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.42),
+                                CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.0)] as CFArray,
+                       locations: [0, 1])!
+ctx.drawLinearGradient(sheen,
+                       start: CGPoint(x: 512, y: 200),
+                       end: CGPoint(x: 512, y: 480), options: [])
+ctx.restoreGState()
+
+// 4. Bottom edge glow: a whisper of reflected light along the base.
+let rim = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                     colors: [CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.0),
+                              CGColor(srgbRed: 1, green: 0.95, blue: 0.7, alpha: 0.18)] as CFArray,
+                     locations: [0, 1])!
+ctx.drawLinearGradient(rim,
+                       start: CGPoint(x: 512, y: 600),
+                       end: CGPoint(x: 512, y: 757), options: [])
+ctx.restoreGState()
 
 guard let image = ctx.makeImage() else { fatalError("no image") }
 let url = URL(fileURLWithPath: outPath) as CFURL
