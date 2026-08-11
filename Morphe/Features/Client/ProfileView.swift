@@ -92,7 +92,7 @@ struct ProfileView: View {
                         store.closeClientProfile()
                     }
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
             }
         }
         // A swipe-down can't silently eat unsaved edits either — with edits
@@ -191,7 +191,7 @@ struct ProfileView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Your Details")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Experience")
@@ -311,7 +311,7 @@ struct ProfileView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Your Targets")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if isEditingTargets {
                     VStack(alignment: .leading, spacing: 10) {
@@ -405,7 +405,7 @@ struct ProfileView: View {
                             .foregroundStyle(MorpheTheme.textMuted)
                         Text("\(level.currentXP) / \(level.targetXP)")
                             .font(.system(.title3, design: .monospaced).weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
                 }
 
@@ -431,7 +431,7 @@ struct ProfileView: View {
                         HStack(spacing: 6) {
                             Text(isCoach ? store.coachProfile.name : store.profileShowcase.displayName)
                                 .font(.title2.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             if store.isVerifiedUser {
                                 // Verification blue — a universal trust signal,
                                 // deliberately outside the yellow palette.
@@ -655,7 +655,7 @@ struct ProfileView: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(caption)
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
@@ -673,7 +673,7 @@ struct ProfileView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Settings")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if isEditingName {
                     VStack(alignment: .leading, spacing: 8) {
@@ -760,8 +760,22 @@ struct ProfileView: View {
                 Divider().overlay(Color.white.opacity(0.08))
 
                 HStack {
+                    Text("Appearance")
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Picker("Appearance", selection: $store.appearanceIsLight) {
+                        Text("Dark").tag(false)
+                        Text("Light").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 140)
+                }
+
+                Divider().overlay(Color.white.opacity(0.08))
+
+                HStack {
                     Text("Weight unit")
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Picker("Weight unit", selection: $store.weightUnit) {
                         ForEach(WeightUnit.allCases) { unit in
@@ -794,7 +808,7 @@ struct ProfileView: View {
                         ColorPicker(selection: customAccentBinding, supportsOpacity: false) {
                             Text("Pick your color")
                                 .font(.subheadline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                         }
                     }
                 }
@@ -978,7 +992,7 @@ struct ProfileView: View {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Your data")
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text("One JSON file: every logged workout, set by set, plus your weight history.")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textMuted)
@@ -1007,13 +1021,13 @@ struct ProfileView: View {
                                 switch store.logBackupState {
                                 case .idle:
                                     Text("Cloud backup")
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                     Text("Your history uploads after each change.")
                                         .font(.caption)
                                         .foregroundStyle(MorpheTheme.textMuted)
                                 case .current(let at):
                                     Text("Cloud backup ✓")
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                     Text("History backed up \(at.formatted(.relative(presentation: .named))).")
                                         .font(.caption)
                                         .foregroundStyle(MorpheTheme.textMuted)
@@ -1050,7 +1064,7 @@ struct ProfileView: View {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Morphe Pro")
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text("Programs, advanced analytics, coach tools. Your data stays free forever.")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textMuted)
@@ -1078,7 +1092,7 @@ struct ProfileView: View {
                                 HStack(spacing: 10) {
                                     Text(name)
                                         .font(.subheadline)
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                         .lineLimit(1)
                                     Spacer(minLength: 0)
                                     Button("Unblock") {
@@ -1339,7 +1353,7 @@ struct ProfileView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(MorpheTheme.textMuted)
                 Text(value)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .lineLimit(2)
             }
             Spacer()
@@ -1364,7 +1378,7 @@ private struct AthleteProfileBody: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Training Snapshot")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     if store.todayExperienceTier >= 1 {
                         HStack(spacing: 8) {
                             MetricPill(label: "Morphe Score", value: "\(store.clientProfile.health.score)")
@@ -1386,7 +1400,7 @@ private struct AthleteProfileBody: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Focus")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text(store.clientProfile.goal)
                         .foregroundStyle(MorpheTheme.textSecondary)
                     WrapStack(spacing: 8) {
@@ -1432,7 +1446,7 @@ private struct CoachProfileBody: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Coaching Snapshot")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     HStack(spacing: 8) {
                         MetricPill(label: "Clients", value: "\(store.visibleManagedClients.count)")
                         MetricPill(label: "Quiet 7+ days", value: "\(store.liveCoachOverview.atRiskClients)")
@@ -1447,7 +1461,7 @@ private struct CoachProfileBody: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Specialties")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     WrapStack(spacing: 8) {
                         ForEach(store.coachProfile.sports) { sport in
                             SelectionToken(text: sport.shortTitle, color: MorpheTheme.color(for: sport))
@@ -1463,7 +1477,7 @@ private struct CoachProfileBody: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Your Coaching Tools")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text("Build programs, track clients, and run outreach from the coach tabs. Add a client from Home and share their invite code — claiming it links their real account to your roster.")
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -1486,7 +1500,7 @@ private struct CoachProfileBody: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Schedule")
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text("Appointments with your clients — bookings and rates arrive with payments.")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -1507,7 +1521,7 @@ private struct CoachProfileBody: View {
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Done") { showBusiness = false }
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                         }
                     }
             }
@@ -1541,14 +1555,14 @@ private struct PersonalRecordsListCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Personal Records")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(records) { record in
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(record.title)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text(record.detail)
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -1572,7 +1586,7 @@ private struct AthleteRecentLogsCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Recent Workouts")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if logs.isEmpty {
                     Text("The workouts you log land here.")
@@ -1584,7 +1598,7 @@ private struct AthleteRecentLogsCard: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(log.workoutTitle)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                     Text("\(MorpheAppStore.workoutDateLabel(for: log.completedAt)) • \(log.durationMinutes) min")
                                         .font(.caption)
                                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -1695,7 +1709,7 @@ struct MorpheProPaywallSheet: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Morphe Pro")
                     .font(.title2.weight(.black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 VStack(alignment: .leading, spacing: 10) {
                     paywallRow("calendar.badge.clock", "Structured programs — multi-week arcs with deloads built in")

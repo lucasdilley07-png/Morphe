@@ -102,7 +102,7 @@ struct MoreView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Exercise Library")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text("Browse by muscle group, then open the movement for beginner-friendly form help and safer alternatives.")
                         .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -122,7 +122,7 @@ struct MoreView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(exercise.name)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text(exercise.musclesWorked)
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -145,7 +145,7 @@ struct MoreView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Skill Drill Spotlight")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
 
                     ForEach(featuredDrills) { drill in
                         LibraryDrillRow(drill: drill)
@@ -157,7 +157,7 @@ struct MoreView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Stretching + Mobility")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
 
                     ForEach(mobilityLibrary, id: \.self) { item in
                         HStack(spacing: 10) {
@@ -165,7 +165,7 @@ struct MoreView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.accent)
                             Text(item)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Spacer()
                         }
                     }
@@ -195,7 +195,7 @@ struct MoreView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Nutrition Basics")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text("Hit the basics before trying to be perfect.")
                         .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -315,7 +315,7 @@ struct MoreView: View {
                     HStack {
                         Text("Daily Quiz")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Spacer()
                         Text("\(store.completedQuizIDs.count) of \(store.quizzes.count)")
                             .font(.subheadline.weight(.bold))
@@ -334,7 +334,7 @@ struct MoreView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(quiz.question)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
 
                             ForEach(Array(quiz.options.enumerated()), id: \.offset) { index, option in
                                 Button(option) {
@@ -380,7 +380,7 @@ struct MoreView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Lessons")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text("Two-minute reads on training, recovery, and effort.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
@@ -429,7 +429,7 @@ struct MoreView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(lesson.title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(lesson.subtitle)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(MorpheTheme.accentAlt)
@@ -452,7 +452,7 @@ private struct LibraryDrillRow: View {
             HStack {
                 Text(drill.name)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Spacer()
                 StatusBadge(text: drill.sport.shortTitle, color: MorpheTheme.color(for: drill.sport))
             }

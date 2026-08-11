@@ -222,7 +222,7 @@ struct ToastBanner: View {
         // Floats over content, so the fill is solid ink — not a surface tint.
         Text(text)
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(MorpheTheme.textPrimary)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(
@@ -251,7 +251,7 @@ struct CelebrationOverlay: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(moment.title)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(moment.detail)
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -301,7 +301,7 @@ struct RecordStampOverlay: View {
 
                 Text(moment.headline)
                     .scaledFont(size: 34, weight: .black)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .multilineTextAlignment(.center)
                     .lineLimit(3)
                     .minimumScaleFactor(0.6)
@@ -315,7 +315,7 @@ struct RecordStampOverlay: View {
                     Text(moment.detailLine.uppercased())
                         .scaledFont(size: 12, weight: .semibold, design: .monospaced)
                         .tracking(1.6)
-                        .foregroundStyle(Color.white.opacity(0.55))
+                        .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
                         .padding(.top, 10)
                 }
 
@@ -437,7 +437,7 @@ struct ProfileBannerView: View {
                 .overlay(alignment: .topTrailing) {
                     Image(systemName: bannerSymbol(for: banner.preset))
                         .font(.system(.largeTitle).weight(.semibold))
-                        .foregroundStyle(Color.white.opacity(0.12))
+                        .foregroundStyle(MorpheTheme.textPrimary.opacity(0.12))
                         .padding(18)
                 }
                 .overlay(alignment: .topLeading) {
@@ -455,7 +455,7 @@ struct ProfileBannerView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(eyebrowText(for: banner.preset))
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(Color.white.opacity(0.82))
+                    .foregroundStyle(MorpheTheme.textPrimary.opacity(0.82))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
@@ -465,11 +465,11 @@ struct ProfileBannerView: View {
 
                 Text(banner.title)
                     .font(.title.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text(banner.subtitle)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.white.opacity(0.84))
+                    .foregroundStyle(MorpheTheme.textPrimary.opacity(0.84))
             }
             .padding(18)
         }
@@ -528,7 +528,7 @@ struct StatCard: View {
                     .foregroundStyle(MorpheTheme.textSecondary)
                 Text(value)
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if let detail {
                     Text(detail)
@@ -550,7 +550,7 @@ struct NotificationCard: View {
                 HStack {
                     Text(item.title)
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     StatusBadge(text: item.priority.rawValue, color: item.priority == .high ? MorpheTheme.warning : MorpheTheme.accentAlt)
                 }
@@ -589,7 +589,7 @@ struct ScoreRing: View {
             VStack(spacing: 2) {
                 Text("\(score)")
                     .font(.system(.title2, design: .monospaced).weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text("SCORE")
                     .font(MorpheTheme.microLabel(9))
                     .tracking(1.4)
@@ -613,10 +613,10 @@ struct HealthScoreCard: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Health Score")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(health.headline)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(health.tier.rawValue)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.color(for: health.tier))
@@ -644,7 +644,7 @@ struct AIInsightCard: View {
                 HStack {
                     Text(insight.title)
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
 
                     Spacer()
 
@@ -676,10 +676,10 @@ struct RecoveryScoreCard: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Recovery Score")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(recovery.status.rawValue)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(recovery.reason)
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -708,7 +708,7 @@ struct SmartPlanAdjustmentCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(adjustment.title)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text(adjustment.body)
                     .foregroundStyle(MorpheTheme.textPrimary)
@@ -717,7 +717,7 @@ struct SmartPlanAdjustmentCard: View {
                     ForEach(adjustment.reasons) { reason in
                         Text(reason.rawValue)
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 8)
                             .background(
@@ -743,10 +743,10 @@ struct GoalTranslationCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Goal Translation")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(translation.goal)
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(translation.weeklyActions, id: \.self) { action in
                     Text("- \(action)")
@@ -765,7 +765,7 @@ struct PersonalRulesCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Personal Rules")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text("Morphe uses these rules to adjust your plan.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -774,7 +774,7 @@ struct PersonalRulesCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(rule.title)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(rule.detail)
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -793,7 +793,7 @@ struct WhyThisMattersCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Why this matters")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(item.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(MorpheTheme.accent)
@@ -818,7 +818,7 @@ struct TaskRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(task.title)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text("\(task.difficulty.rawValue) - \(task.xp) XP")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -846,7 +846,7 @@ struct MinimumWinModeCard: View {
                 HStack {
                     Text("Minimum Win Mode")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     if let onExit {
                         Button("Full Plan", action: onExit)
@@ -878,7 +878,7 @@ struct StreakProtectionCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Streak Protection")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if isProtected {
                     Text("Momentum protected.")
@@ -917,10 +917,10 @@ struct WorkoutHeroCard: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Today's Workout")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(workout.name)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(workout.goal)
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -958,7 +958,7 @@ struct WorkoutDifficultyFeedbackCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("How did this session feel?")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 WrapStack(spacing: 8) {
                     ForEach(WorkoutFeedbackOption.allCases) { option in
@@ -989,7 +989,7 @@ struct FrictionInsightCard: View {
                 HStack {
                     Text("Pattern Insights")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Button("Next", action: onNext)
                         .buttonStyle(SecondaryCTAButtonStyle())
@@ -1018,7 +1018,7 @@ struct TransformationRoadmapCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Transformation Roadmap")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(phases) { phase in
                     VStack(alignment: .leading, spacing: 6) {
@@ -1029,7 +1029,7 @@ struct TransformationRoadmapCard: View {
                                     .foregroundStyle(color(for: phase.status))
                                 Text(phase.title)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                             }
                             Spacer()
                             Text(phase.status)
@@ -1089,7 +1089,7 @@ struct PhotoProgressAIScanCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Photo Progress + AI Scan")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 HStack(spacing: 8) {
                     PhotoSlotView(label: snapshot.frontLabel)
@@ -1133,7 +1133,7 @@ struct SportModeSelector: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Sport-Specific Mode")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text("Training type changes the goals, drills, and metrics Morphe highlights.")
                     .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -1162,7 +1162,7 @@ struct SportMetricsCard: View {
                 HStack {
                     Text("\(sport.rawValue) Focus")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     StatusBadge(text: sport.shortTitle, color: MorpheTheme.color(for: sport))
                 }
@@ -1174,7 +1174,7 @@ struct SportMetricsCard: View {
                         Spacer()
                         Text(metric.value)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
                 }
             }
@@ -1191,14 +1191,14 @@ struct SmartNotificationPreviewCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Smart Notifications")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(Array(notifications.prefix(3))) { item in
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text(item.title)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Spacer()
                             StatusBadge(text: item.priority.rawValue, color: item.priority == .high ? MorpheTheme.warning : MorpheTheme.accentAlt)
                         }
@@ -1224,11 +1224,11 @@ struct LevelProgressCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Level")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text(progress.currentTitle)
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ProgressBarView(progress: progress.progress, color: MorpheTheme.accent)
 
@@ -1243,7 +1243,7 @@ struct LevelProgressCard: View {
 
                 Text("Next Level: \(progress.nextTitle)")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
             }
         }
     }
@@ -1259,10 +1259,10 @@ struct QuickActionButton: View {
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: systemImage)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .multilineTextAlignment(.leading)
             }
             .padding(14)
@@ -1395,7 +1395,7 @@ struct ClientSnapshotCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(client.name)
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(client.goal)
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -1427,7 +1427,7 @@ struct BadgeGridCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Badges")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                     ForEach(badges) { badge in
@@ -1436,7 +1436,7 @@ struct BadgeGridCard: View {
                                 .foregroundStyle(MorpheTheme.accent)
                             Text(badge.title)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text(badge.detail)
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -1466,7 +1466,7 @@ struct CalendarEventCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(event.title)
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("\(event.day) - \(event.time)")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -1534,7 +1534,7 @@ struct MorpheFieldStyle: TextFieldStyle {
                             .stroke(Color.white.opacity(0.14), lineWidth: 1)
                     )
             )
-            .foregroundStyle(.white)
+            .foregroundStyle(MorpheTheme.textPrimary)
     }
 }
 
@@ -1547,7 +1547,7 @@ private struct PhotoSlotView: View {
             .overlay(
                 VStack(spacing: 8) {
                     Image(systemName: "photo")
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text(label)
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -1717,7 +1717,7 @@ private struct ManifestoLine: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(detail)
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -1756,7 +1756,7 @@ private struct ShareCardFrame<Content: View>: View {
                     Text(dateLabel.uppercased())
                         .font(.system(size: 11, design: .monospaced).weight(.semibold))
                         .tracking(1.6)
-                        .foregroundStyle(Color.white.opacity(0.55))
+                        .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
                 }
 
                 Spacer()
@@ -1775,7 +1775,7 @@ private struct ShareCardFrame<Content: View>: View {
                         Text(username.uppercased())
                             .font(.system(size: 12, design: .monospaced).weight(.semibold))
                             .tracking(1.6)
-                            .foregroundStyle(Color.white.opacity(0.7))
+                            .foregroundStyle(MorpheTheme.textPrimary.opacity(0.7))
                     }
                     Spacer()
                     // The motto rides every card — the brand line travels
@@ -1804,7 +1804,7 @@ private struct ShareCardKicker: View {
         Text(text)
             .font(.system(size: 12, design: .monospaced).weight(.semibold))
             .tracking(2.4)
-            .foregroundStyle(Color.white.opacity(0.55))
+            .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
     }
 }
 
@@ -1827,7 +1827,7 @@ struct ShareCardView: View {
 
                 Text(data.workoutName)
                     .font(.system(size: 40, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .lineLimit(3)
                     .minimumScaleFactor(0.6)
                     .padding(.bottom, 18)
@@ -1848,7 +1848,7 @@ struct ShareCardView: View {
                         Text("NEW PR · \(name.uppercased())")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .lineLimit(1)
                     }
                     .padding(.bottom, 8)
@@ -1862,7 +1862,7 @@ struct ShareCardView: View {
                         Text("\(data.streak)-DAY STREAK")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
                     .padding(.top, 4)
                 }
@@ -1889,7 +1889,7 @@ struct PRShareCardView: View {
 
                 Text(data.exerciseName)
                     .font(.system(size: 40, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .lineLimit(3)
                     .minimumScaleFactor(0.6)
                     .padding(.bottom, 18)
@@ -1902,7 +1902,7 @@ struct PRShareCardView: View {
                     Text("UP FROM \(data.previousLabel.uppercased())")
                         .font(.system(size: 13, design: .monospaced).weight(.semibold))
                         .tracking(1.2)
-                        .foregroundStyle(Color.white.opacity(0.55))
+                        .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
                         .padding(.top, 10)
                 }
             }
@@ -1932,13 +1932,13 @@ struct StreakShareCardView: View {
                 Text("DAY STREAK")
                     .font(.system(size: 18, design: .monospaced).weight(.bold))
                     .tracking(3)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .padding(.bottom, 14)
 
                 Text("EVERY DAY EARNED")
                     .font(.system(size: 12, design: .monospaced).weight(.semibold))
                     .tracking(1.6)
-                    .foregroundStyle(Color.white.opacity(0.55))
+                    .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
             }
         }
     }
@@ -1961,13 +1961,13 @@ struct RecapShareCardView: View {
                 Text(data.sessions == 1 ? "SESSION" : "SESSIONS")
                     .font(.system(size: 18, design: .monospaced).weight(.bold))
                     .tracking(3)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .padding(.bottom, 16)
 
                 Text("\(data.sets) SETS   ·   \(data.minutes) MIN")
                     .font(.system(size: 15, design: .monospaced).weight(.bold))
                     .tracking(1.2)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if data.prCount > 0 {
                     HStack(spacing: 8) {
@@ -1977,7 +1977,7 @@ struct RecapShareCardView: View {
                         Text("\(data.prCount) NEW PR\(data.prCount == 1 ? "" : "S")")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
                     .padding(.top, 12)
                 }
@@ -1990,7 +1990,7 @@ struct RecapShareCardView: View {
                         Text("\(data.streak)-DAY STREAK")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
                     .padding(.top, 8)
                 }

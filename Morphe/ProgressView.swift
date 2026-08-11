@@ -545,7 +545,7 @@ private struct ProgressExpandableSection<Content: View>: View {
                         Text(title.uppercased())
                             .font(MorpheTheme.microLabel(12))
                             .tracking(1.6)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .lineLimit(1)
                             .layoutPriority(1)
 
@@ -596,7 +596,7 @@ private struct TrainedDaysCard: View {
                 HStack {
                     Text("Last 7 Days")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Text("\(trainedCount) trained")
                         .font(.subheadline.weight(.bold))
@@ -684,7 +684,7 @@ private struct TrainingPatternInsightCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Training Patterns")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("The shape of your real training record — this week and all-time.")
                     .font(.subheadline)
@@ -700,7 +700,7 @@ private struct TrainingPatternInsightCard: View {
                 if insight.longestSessionMinutes > 0 {
                     Text("Longest session: \(insight.longestSessionTitle) (\(insight.longestSessionMinutes) min)")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 }
 
                 Text("Most often logged through: \(insight.dominantSourceLabel)")
@@ -727,7 +727,7 @@ private struct SessionMixCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Session Mix")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("This shows what kind of work is actually filling your training record lately.")
                     .font(.subheadline)
@@ -752,7 +752,7 @@ private struct SessionMixCard: View {
                     if let dominantCategory = insight.dominantCategory {
                         Text("Most common category: \(dominantCategory.rawValue)")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
 
                     if let dominantSessionType = insight.dominantSessionType {
@@ -793,7 +793,7 @@ private struct SoloVsBuddyProgressCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Solo vs Buddy")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("See how often you are getting it done on your own versus with a training partner.")
                     .font(.subheadline)
@@ -833,7 +833,7 @@ private struct SoloVsBuddyProgressCard: View {
 
                 Text(insight.athleteSummary)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if let lastPartnerName = insight.lastPartnerName {
                     Text("Last partner: \(lastPartnerName)")
@@ -853,7 +853,7 @@ private struct SourceTrendCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Recent Log Pattern")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("See who has been carrying the logging over the last few weeks.")
                     .font(.subheadline)
@@ -913,7 +913,7 @@ private struct RecoveryBalanceCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Recovery vs Output")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Your last month should not just be hard work. This reads the balance between lighter and heavier sessions.")
                     .font(.subheadline)
@@ -947,7 +947,7 @@ private struct AthletePatternInsightsCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("What Works for You")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("These are the patterns Morphe keeps seeing when your training actually lands.")
                     .font(.subheadline)
@@ -968,7 +968,7 @@ private struct AthletePatternInsightsCard: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(insight.title)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text(insight.detail)
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -1053,7 +1053,7 @@ private struct ProgressHeroStrip: View {
 
                 Text(latestWin)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if !showMetrics {
                     Text("Your Morphe Score, weekly count, and streak appear here with your first log.")
@@ -1110,7 +1110,7 @@ private struct StrengthOverTimeCard: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Strength Over Time")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     if !exerciseOptions.isEmpty, let activeExercise {
                         Menu {
@@ -1225,7 +1225,7 @@ private struct WeeklySetVolumeCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Weekly Volume")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Total sets logged per week — empty weeks stay visible.")
                     .font(.caption)
@@ -1262,7 +1262,7 @@ private struct RPETrendCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Effort Trend (RPE)")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Average rated RPE per session, most recent rated sessions.")
                     .font(.caption)
@@ -1348,7 +1348,7 @@ private struct BodyWeightTrendCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Body Weight")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text(smoothed.isEmpty
                      ? "Every weight you save in Profile becomes a dated reading here."
@@ -1427,7 +1427,7 @@ private struct PRTimelineCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("PR Timeline")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Your latest personal records — the day each top set first landed.")
                     .font(.caption)
@@ -1453,7 +1453,7 @@ private struct PRTimelineCard: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(record.exerciseName)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                     Text(MorpheAppStore.workoutDateLabel(for: record.date))
                                         .font(.caption2)
                                         .foregroundStyle(MorpheTheme.textMuted)
@@ -1532,7 +1532,7 @@ private struct WeeklyRecapCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Last Week")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(recap.rangeLabel)
                             .font(.caption2)
                             .foregroundStyle(MorpheTheme.textMuted)
@@ -1614,7 +1614,7 @@ private struct LogOldWorkoutSheet: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Log Old Workout")
                                 .font(.title3.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text("Trained but didn't track it? Pick the session and the day (up to 14 days back) — your streak and stats recompute from what actually happened.")
                                 .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -1628,7 +1628,7 @@ private struct LogOldWorkoutSheet: View {
                                 HStack {
                                     Text(selected.name)
                                         .font(.headline)
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                     Spacer()
                                     Button("Change") {
                                         self.selected = nil
@@ -1639,10 +1639,10 @@ private struct LogOldWorkoutSheet: View {
 
                                 DatePicker("Day", selection: $day, in: dateRange, displayedComponents: .date)
                                     .tint(MorpheTheme.accent)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
 
                                 Stepper("Duration: \(durationMinutes) min", value: $durationMinutes, in: 5...240, step: 5)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                             }
                         }
 
@@ -1650,13 +1650,13 @@ private struct LogOldWorkoutSheet: View {
                             VStack(alignment: .leading, spacing: 14) {
                                 Text("What You Did")
                                     .font(.headline)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
 
                                 ForEach($entries) { $entry in
                                     VStack(alignment: .leading, spacing: 8) {
                                         Text(entry.name)
                                             .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(MorpheTheme.textPrimary)
                                         Stepper("Sets: \(entry.sets)", value: $entry.sets, in: 0...12)
                                             .foregroundStyle(MorpheTheme.textSecondary)
                                         Stepper("Reps: \(entry.reps)", value: $entry.reps, in: 1...50)
@@ -1694,7 +1694,7 @@ private struct LogOldWorkoutSheet: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Which workout was it?")
                                     .font(.headline)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
 
                                 TextField("Search your workouts…", text: $query)
                                     .textFieldStyle(MorpheFieldStyle())
@@ -1706,7 +1706,7 @@ private struct LogOldWorkoutSheet: View {
                                         HStack {
                                             Text(template.name)
                                                 .font(.subheadline.weight(.semibold))
-                                                .foregroundStyle(.white)
+                                                .foregroundStyle(MorpheTheme.textPrimary)
                                             Spacer()
                                             Text("\(template.exercises.count) moves")
                                                 .font(.caption)
@@ -1733,7 +1733,7 @@ private struct LogOldWorkoutSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 }
             }
         }
@@ -1761,7 +1761,7 @@ private struct WorkoutSourceMixCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Log Sources")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("All trusted entries end up in one progress record, whether they came from you, your coach, or Morphe AI.")
                     .font(.subheadline)
@@ -1787,7 +1787,7 @@ private struct WeeklyReportCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Weekly Report")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(report.week)
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -1799,7 +1799,7 @@ private struct WeeklyReportCard: View {
                 }
 
                 Text("Main win: \(report.mainWin)")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text("Main issue: \(report.mainIssue)")
                     .foregroundStyle(MorpheTheme.textSecondary)
                 Text("Next focus: \(report.nextFocus)")
@@ -1817,7 +1817,7 @@ private struct RecentWinsCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Recent Wins")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(wins, id: \.self) { win in
                     Text("- \(win)")
@@ -1851,7 +1851,7 @@ private struct StrengthProgressCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Strength Progress")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text("Top set now vs. your previous session, per exercise.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -1861,7 +1861,7 @@ private struct StrengthProgressCard: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.exerciseName)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text("\(item.sessionCount) sessions")
                                 .font(.caption2)
                                 .foregroundStyle(MorpheTheme.textMuted)
@@ -1871,7 +1871,7 @@ private struct StrengthProgressCard: View {
 
                         Text(weightUnit.format(item.latestTopWeight))
                             .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
 
                         Text(deltaText(item))
                             .font(.caption.weight(.bold))
@@ -1923,7 +1923,7 @@ private struct MuscleBalanceCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Muscle Balance")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Sets per muscle group over the last 7 days.")
                     .font(.caption)
@@ -1938,7 +1938,7 @@ private struct MuscleBalanceCard: View {
                         HStack(spacing: 10) {
                             Text(row.group)
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                                 .frame(width: 84, alignment: .leading)
 
                             GeometryReader { proxy in
@@ -2005,7 +2005,7 @@ private struct WorkoutHistoryCard: View {
                 HStack {
                     Text("Workout History")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     if !logs.isEmpty {
                         Text("\(logs.count)")
@@ -2030,7 +2030,7 @@ private struct WorkoutHistoryCard: View {
                             HStack(alignment: .top) {
                                 Text(log.workoutTitle)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Spacer()
                                 Text("\(MorpheAppStore.workoutDateLabel(for: log.completedAt)) • \(log.durationMinutes) min")
                                     .font(.caption)
@@ -2163,7 +2163,7 @@ private struct WeeklyBoardCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Weekly Board")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if store.leaderboardOptIn {
                     optedInBody
@@ -2308,7 +2308,7 @@ private struct ChallengesCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Challenges")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Private scoreboards with people who have the code. Scores come from logged workouts only.")
                     .font(.caption)
@@ -2373,7 +2373,7 @@ private struct ChallengesCard: View {
             HStack(spacing: 8) {
                 Text(challenge.title)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .lineLimit(1)
 
                 Spacer()
@@ -2533,7 +2533,7 @@ private struct CreateChallengeSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             Text(challenge.title)
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
 
             Text("Share this code — anyone who enters it joins the scoreboard.")
                 .font(.caption)
@@ -2572,7 +2572,7 @@ private struct RecoveryTrendCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Recovery Trend")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Your daily check-in scores — sleep, energy, soreness, and mood rolled into one honest number.")
                     .font(.caption)
@@ -2628,7 +2628,7 @@ private struct NutritionAdherenceCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Protein Adherence")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Logged protein vs. that day's target. Unlogged days don't chart — no fake zeros.")
                     .font(.caption)

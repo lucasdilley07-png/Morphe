@@ -25,7 +25,7 @@ struct AuthView: View {
                             .foregroundStyle(MorpheTheme.accent)
                         Text(isSignUp ? "Create your account" : "Welcome back")
                             .font(.largeTitle.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(isSignUp ? "Transform. Evolve. Become." : "Sign in to keep your training going.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)

@@ -48,10 +48,10 @@ struct QRConnectSheet: View {
             .background(PremiumBackground())
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Connect").font(.headline).foregroundStyle(.white)
+                    Text("Connect").font(.headline).foregroundStyle(MorpheTheme.textPrimary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }.foregroundStyle(.white)
+                    Button("Done") { dismiss() }.foregroundStyle(MorpheTheme.textPrimary)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -63,7 +63,7 @@ struct QRConnectSheet: View {
             VStack(spacing: 14) {
                 Text(store.selectedRole == .coach ? store.coachProfile.name : store.clientProfile.name)
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if let image = QRCodeRenderer.image(for: store.qrConnectPayload) {
                     Image(uiImage: image)
@@ -122,7 +122,7 @@ struct QRConnectSheet: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Connections")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(store.scannedConnections) { connection in
                     HStack(spacing: 10) {
@@ -131,7 +131,7 @@ struct QRConnectSheet: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(connection.name)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text(connection.handle.isEmpty ? connection.role.capitalized : "@\(connection.handle) · \(connection.role.capitalized)")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)

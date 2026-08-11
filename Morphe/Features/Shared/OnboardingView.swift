@@ -27,12 +27,14 @@ struct LaunchSequenceView: View {
                 Text("MORPHE")
                     .scaledFont(size: 28, weight: .bold, design: .monospaced)
                     .tracking(6)
+                    // The launch beat is ALWAYS the black brand field —
+                    // literal white on purpose, both appearances.
                     .foregroundStyle(.white)
 
                 Text(message.uppercased())
                     .font(MorpheTheme.microLabel(12))
                     .tracking(1.8)
-                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .foregroundStyle(Color.white.opacity(0.66))
                     .transition(.opacity)
 
                 Spacer()
@@ -280,7 +282,7 @@ struct OnboardingFlowView: View {
 
                                     Text(isCoachFlow ? "Create your coach profile" : "Create your profile")
                                         .font(.title2.weight(.bold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
 
                                     Text(isCoachFlow
                                         ? "A few quick answers set up your coaching workspace — athletes, programs, and outreach in one place."
@@ -492,7 +494,7 @@ private struct MealPrepStep: View {
                     Toggle(isOn: $interested) {
                         Text("I'd like to start meal prepping")
                             .font(.subheadline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
                     .tint(MorpheTheme.accent)
                 }
@@ -527,7 +529,7 @@ private struct UsernameStep: View {
 
                 Text("Pick your @name")
                     .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("This is how coaches and training partners find you later. We suggested one — keep it, tweak it, or replace it. You can change it anytime in Profile.")
                     .font(.subheadline)
@@ -592,7 +594,7 @@ private struct CoachCodeStep: View {
 
                 Text("Did a coach set you up?")
                     .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("If your coach already created your profile on Morphe, enter the invite code they shared — the workouts they logged for you become your training history. No code? Just tap Next.")
                     .font(.subheadline)
@@ -636,7 +638,7 @@ private struct WelcomeLandingStep: View {
 
                     Text("Welcome to Morphe")
                         .font(.title.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
 
                     Text("Morphe helps you know what to do today, why it matters, and how to keep going when life gets noisy.")
                         .font(.subheadline)
@@ -692,7 +694,7 @@ private struct LandingPoint: View {
                 .tracking(1.2)
                 .foregroundStyle(MorpheTheme.accent)
             Text(text)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
         }
     }
 }
@@ -938,7 +940,7 @@ private struct GoalSelectionStep: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(detailTitle)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
 
                         Text("All optional — skip these and set them later in Profile.")
                             .font(.caption)
@@ -1139,7 +1141,7 @@ private struct ProfileReviewStep: View {
                         ? "Coaching experience: \(store.onboardingDraft.coachTenure.rawValue)"
                         : "Starting level: \(store.onboardingDraft.experienceLevel.rawValue)")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text(isCoach
                         ? "Coaching focus: \(store.onboardingDraft.sport.rawValue)"
                         : "Primary focus: \(store.onboardingDraft.sport.rawValue)")
@@ -1149,7 +1151,7 @@ private struct ProfileReviewStep: View {
 
                 Text(isCoach ? "What your workspace includes" : "What Morphe will build for you")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if isCoach {
                     // The coach reviews a WORKSPACE, not an athlete training
@@ -1208,7 +1210,7 @@ private struct ProfileReviewStep: View {
                 Toggle(isOn: $store.onboardingDraft.agreedToTerms) {
                     Text("I agree to Morphe's Terms of Use")
                         .font(.subheadline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 }
                 .tint(MorpheTheme.accent)
 
@@ -1268,11 +1270,11 @@ private struct PersonalizedPlanLoadingView: View {
             Text("MORPHE")
                 .scaledFont(size: 28, weight: .bold, design: .monospaced)
                 .tracking(6)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
 
             Text(store.onboardingDraft.accountType == .coach ? "Building your coach workspace..." : "Building your personalized plan...")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
 
             Text(message.uppercased())
                 .font(MorpheTheme.microLabel(11))
@@ -1323,7 +1325,7 @@ private struct OnboardingCard<Content: View>: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text(title)
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -1346,7 +1348,7 @@ private struct ProfileLine: View {
                     .foregroundStyle(MorpheTheme.textMuted)
                 Text(value)
                     .font(.subheadline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
             }
         }
     }

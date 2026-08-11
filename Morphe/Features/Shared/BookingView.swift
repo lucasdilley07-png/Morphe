@@ -55,7 +55,7 @@ struct CoachBookingSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close") { dismiss() }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 }
             }
         }
@@ -66,7 +66,7 @@ struct CoachBookingSheet: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("No packages yet")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text("\(coachName) hasn't published training packages yet. Check back soon or send a message.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -79,7 +79,7 @@ struct CoachBookingSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Choose a package")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
 
             ForEach(packages) { package in
                 BookingPackageCard(
@@ -98,7 +98,7 @@ struct CoachBookingSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Pick a time")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 10)], spacing: 10) {
                 ForEach(slots) { slot in
@@ -121,7 +121,7 @@ struct CoachBookingSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Summary")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
 
                     CheckoutRow(label: "Coach", value: coachName)
                     CheckoutRow(label: "Package", value: selectedPackage?.title ?? "—")
@@ -135,7 +135,7 @@ struct CoachBookingSheet: View {
                     HStack {
                         Text("Total")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Spacer()
                         Text(selectedPackage?.price ?? "$0")
                             .font(.title3.weight(.bold))
@@ -186,7 +186,7 @@ private struct BookingPackageCard: View {
                             HStack(spacing: 8) {
                                 Text(package.title)
                                     .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 if package.isPopular {
                                     Text("POPULAR")
                                         .font(.caption2.weight(.heavy))
@@ -272,7 +272,7 @@ private struct CheckoutRow: View {
             Spacer()
             Text(value)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
                 .multilineTextAlignment(.trailing)
         }
     }
@@ -289,7 +289,7 @@ struct MyBookingsCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("My Sessions")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if store.myUpcomingBookings.isEmpty {
                     Text("No booked sessions yet. Find a coach to train with and book your first.")
@@ -320,7 +320,7 @@ private struct BookingRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(booking.packageTitle)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text("\(booking.coachName) · \(booking.day) \(booking.time)")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -409,7 +409,7 @@ struct CoachBusinessView: View {
                 HStack {
                     Text("Upcoming Appointments")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Button("Add") { showAddAppointment = true }
                         .font(.caption.weight(.bold))
@@ -456,7 +456,7 @@ struct CoachBusinessView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Earnings")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 HStack(spacing: 12) {
                     EarningsStat(label: "Paid", value: dollars(store.coachPaidEarnings), tint: MorpheTheme.accent)
@@ -471,14 +471,14 @@ struct CoachBusinessView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Booking Requests")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(store.coachBookingRequests) { booking in
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("\(booking.clientName) · \(booking.packageTitle)")
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text("\(booking.day) \(booking.time) · \(booking.price)")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -504,7 +504,7 @@ struct CoachBusinessView: View {
                 HStack {
                     Text("Your Packages")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Text("\(store.trainingPackages.count)")
                         .font(.subheadline.weight(.bold))
@@ -522,7 +522,7 @@ struct CoachBusinessView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(package.title)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text(package.perSessionLabel)
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textMuted)
@@ -543,7 +543,7 @@ struct CoachBusinessView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Payouts", systemImage: "banknote")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text("Connect a payout account to get paid directly. Secure payments and payouts turn on at launch.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)

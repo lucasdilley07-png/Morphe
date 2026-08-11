@@ -124,7 +124,16 @@ final class MorpheAppStore {
             selectedCoachTab = selectedCoachTab == .athletes ? .programs : .messages
         }
     }
-    var selectedAppearance: ColorScheme? = .dark
+    /// Light/dark appearance — device-level (not per-profile: the person
+    /// holding the phone picks how it looks). Flips the whole token system.
+    var appearanceIsLight = UserDefaults.standard.bool(forKey: "morphe.appearance.light") {
+        didSet {
+            MorpheTheme.isLight = appearanceIsLight
+            UserDefaults.standard.set(appearanceIsLight, forKey: "morphe.appearance.light")
+        }
+    }
+
+    var selectedAppearance: ColorScheme? { appearanceIsLight ? .light : .dark }
     var toastMessage: String?
     var celebration: CelebrationMoment?
     /// The full-screen stamp — only PRs and finished programs land here;
@@ -704,6 +713,7 @@ final class MorpheAppStore {
         self.cloudBackup = cloudBackup
         self.partyService = partyService
         self.managedClientService = managedClientService
+        MorpheTheme.isLight = UserDefaults.standard.bool(forKey: "morphe.appearance.light")
         self.usernameDirectory = usernameDirectory
         self.verificationService = verificationService
         self.appointmentService = appointmentService

@@ -6,17 +6,47 @@ enum MorpheTheme {
     // MORPHE telemetry palette — flat black + #FFD600 yellow. HUD language:
     // flat surfaces, hairline strokes, monospaced micro-labels; no glass
     // gradients, no glows. Yellow is scarce — primary action + key data.
-    static let ink = Color(red: 0.020, green: 0.020, blue: 0.024)          // flat near-black base
-    static let inkAlt = Color(red: 0.043, green: 0.043, blue: 0.047)
-    static let panel = Color.white.opacity(0.035)                          // flat surface tints
-    static let panelStrong = Color.white.opacity(0.06)
-    static let panelRaised = Color.white.opacity(0.085)
-    static let panelInteractive = Color.white.opacity(0.13)
-    static let textPrimary = Color.white
-    static let textSecondary = Color.white.opacity(0.66)
-    static let textMuted = Color.white.opacity(0.56)
-    static let stroke = Color.white.opacity(0.10)
-    static let strokeSubtle = Color.white.opacity(0.05)
+    /// Light/dark appearance (2026-08-10): the whole surface system flips
+    /// on one switch. Dark = the ink HUD; light = a warm paper field (the
+    /// Hims-audit "Calm" option, now real). Views read tokens, never raw
+    /// white/black, so both modes stay legible.
+    static var isLight = false
+
+    static var ink: Color {
+        isLight ? Color(red: 0.965, green: 0.957, blue: 0.937)             // warm paper
+                : Color(red: 0.020, green: 0.020, blue: 0.024)             // flat near-black
+    }
+    static var inkAlt: Color {
+        isLight ? Color(red: 0.937, green: 0.929, blue: 0.906)
+                : Color(red: 0.043, green: 0.043, blue: 0.047)
+    }
+    static var panel: Color {
+        isLight ? Color.black.opacity(0.04) : Color.white.opacity(0.035)
+    }
+    static var panelStrong: Color {
+        isLight ? Color.black.opacity(0.065) : Color.white.opacity(0.06)
+    }
+    static var panelRaised: Color {
+        isLight ? Color.black.opacity(0.09) : Color.white.opacity(0.085)
+    }
+    static var panelInteractive: Color {
+        isLight ? Color.black.opacity(0.13) : Color.white.opacity(0.13)
+    }
+    static var textPrimary: Color {
+        isLight ? Color(red: 0.10, green: 0.095, blue: 0.075) : Color.white
+    }
+    static var textSecondary: Color {
+        isLight ? Color.black.opacity(0.60) : Color.white.opacity(0.66)
+    }
+    static var textMuted: Color {
+        isLight ? Color.black.opacity(0.45) : Color.white.opacity(0.56)
+    }
+    static var stroke: Color {
+        isLight ? Color.black.opacity(0.12) : Color.white.opacity(0.10)
+    }
+    static var strokeSubtle: Color {
+        isLight ? Color.black.opacity(0.06) : Color.white.opacity(0.05)
+    }
     static let warning = Color(red: 0.98, green: 0.70, blue: 0.25)         // amber, distinct from accent
     static let danger = Color(red: 0.95, green: 0.36, blue: 0.36)
     static let lavender = Color(red: 0.72, green: 0.72, blue: 0.74)        // neutral (no off-brand purple)

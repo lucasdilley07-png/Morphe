@@ -161,7 +161,7 @@ struct CommunityView: View {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text("Privacy")
                                     .font(.headline)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text("You control what friends can see. Weight and progress photos are private by default.")
                                     .foregroundStyle(MorpheTheme.textSecondary)
                             }
@@ -247,7 +247,7 @@ private struct NetworkEmptyState: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Build your network")
                             .font(.title2.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("Morphe is better with people. Connect with athletes and coaches near you — then your feed fills with real sessions, wins, and ideas worth stealing.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -297,7 +297,7 @@ private struct NetworkEmptyActionRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -327,7 +327,7 @@ private struct NetworkEmptyExpectations: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("What you'll get")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(perks, id: \.0) { perk in
                     HStack(alignment: .center, spacing: 12) {
@@ -363,7 +363,7 @@ private struct NetworkDisclosureSection<Content: View>: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title)
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(subtitle)
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -374,7 +374,7 @@ private struct NetworkDisclosureSection<Content: View>: View {
 
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                         .frame(width: 32, height: 32)
                         .background(
                             Circle()
@@ -499,7 +499,7 @@ struct StoryRingCard: View {
                 VStack(spacing: 2) {
                     Text(title)
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text(subtitle)
                         .font(.caption2)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -542,7 +542,7 @@ private struct StoryHighlightSheet: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(story.title)
                                         .font(.title3.weight(.bold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                     Text(story.subtitle)
                                         .font(.subheadline)
                                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -551,7 +551,7 @@ private struct StoryHighlightSheet: View {
 
                             ForEach(story.items, id: \.self) { item in
                                 Text("- \(item)")
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                             }
                         }
                     }
@@ -564,7 +564,7 @@ private struct StoryHighlightSheet: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 }
             }
         }
@@ -632,7 +632,7 @@ private struct AthleteContactInbox: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Messages")
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("Coach, Morphe AI, your partner, and your groups all live here like a real inbox.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -711,7 +711,7 @@ private struct AthleteContactInbox: View {
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                         .frame(width: 34, height: 34)
                         .background(
                             Circle()
@@ -731,7 +731,7 @@ private struct AthleteContactInbox: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(thread.participant)
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text(thread.isGroupChat ? "Group chat" : "Conversation")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -811,7 +811,7 @@ private struct AthleteContactEmptyState: View {
 
                 Text(isSearching ? "No matches" : "No conversations yet")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text(isSearching
                      ? "Nobody in your contacts matches that search."
@@ -851,7 +851,7 @@ private struct AthleteContactRow: View {
                         HStack {
                             Text(thread.participant)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Spacer()
                             Text(lastTimestamp)
                                 .font(.caption2.weight(.semibold))
@@ -925,7 +925,7 @@ struct CommunityNetworkFeed: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("For You")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(perspective == .coach
                              ? "Athlete wins, coach insights, and useful comments in one mixed network."
                              : "Training updates, coach ideas, athlete wins, and recovery notes worth actually reading.")
@@ -962,7 +962,7 @@ private struct TrainingHappeningNowCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Training Happening Now")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("The top of your feed now favors real momentum: completions, coach involvement, partner work, and recovery follow-through.")
                     .font(.subheadline)
@@ -980,7 +980,7 @@ private struct TrainingHappeningNowCard: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(post.title)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                     .lineLimit(2)
 
                                 Text("\(post.author) • \(post.timeAgo)")
@@ -1010,7 +1010,7 @@ struct NetworkSummaryCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Your Morphe Network")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Follow athlete progress, coach thinking, group momentum, and practical comments that help people keep going.")
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -1045,7 +1045,7 @@ struct CommunityPostCard: View {
                     HStack {
                         Text(post.author)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Spacer()
                         Text(post.timeAgo)
                             .font(.caption)
@@ -1065,7 +1065,7 @@ struct CommunityPostCard: View {
 
             Text(post.title)
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
 
             Text(post.detail)
                 .font(.subheadline)
@@ -1107,7 +1107,7 @@ struct CommunityPostCard: View {
                             HStack {
                                 Text("\(comment.avatar) \(comment.author)")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Spacer()
                                 Text(comment.rank)
                                     .font(.caption2)
@@ -1137,7 +1137,7 @@ private struct CompactCommunityActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(MorpheTheme.textPrimary)
             .padding(.horizontal, 10)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
@@ -1160,7 +1160,7 @@ private struct CommunityTagChip: View {
     var body: some View {
         Text(text)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(MorpheTheme.textPrimary)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
@@ -1178,7 +1178,7 @@ private struct TrainingGroupCard: View {
             HStack {
                 Text(group.title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Spacer()
                 Text("\(group.memberCount) members")
                     .font(.caption)
@@ -1201,7 +1201,7 @@ struct NetworkSuggestionsCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Grow Your Network")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(store.networkSuggestions) { suggestion in
                     HStack(alignment: .top, spacing: 10) {
@@ -1212,7 +1212,7 @@ struct NetworkSuggestionsCard: View {
                             HStack {
                                 Text(suggestion.name)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Spacer()
                                 StatusBadge(text: suggestion.rank, color: suggestion.role == .coach ? MorpheTheme.accentAlt : MorpheTheme.warning)
                             }
@@ -1248,12 +1248,12 @@ struct CommunityDiscoveryCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Groups, Challenges, and Ranks")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if !groups.isEmpty {
                     Text("Groups")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     ForEach(groups.prefix(2)) { group in
                         TrainingGroupCard(group: group)
                     }
@@ -1262,7 +1262,7 @@ struct CommunityDiscoveryCard: View {
                 if !challenges.isEmpty {
                     Text("Challenges")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     ForEach(challenges.prefix(2)) { challenge in
                         ChallengeCard(challenge: challenge)
                     }
@@ -1271,7 +1271,7 @@ struct CommunityDiscoveryCard: View {
                 if !leaderboard.isEmpty {
                     Text("Ranks")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     ForEach(leaderboard.prefix(3)) { entry in
                         LeaderboardCard(entry: entry)
                     }
@@ -1288,7 +1288,7 @@ private struct ChallengeCard: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(challenge.title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
             Text(challenge.detail)
                 .font(.caption)
                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -1305,7 +1305,7 @@ private struct LeaderboardCard: View {
             HStack {
                 Text(entry.category)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Spacer()
                 Text(entry.leader)
                     .font(.caption.weight(.semibold))
@@ -1448,7 +1448,7 @@ private struct RealFeedSection: View {
                             .foregroundStyle(MorpheTheme.accent)
                         Text("\(store.unseenActivityCount) new reaction\(store.unseenActivityCount == 1 ? "" : "s") on your posts since you last checked")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .lineLimit(1)
                         Spacer()
                         Text("OK")
@@ -1481,7 +1481,7 @@ private struct RealFeedSection: View {
                             .foregroundStyle(MorpheTheme.accent)
                         Text(boardChipLine)
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption2.weight(.bold))
@@ -1740,7 +1740,7 @@ private struct RealFeedSection: View {
 
                 Text(emptyStateTitle)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text(emptyStateDetail)
                     .font(.subheadline)
@@ -2004,7 +2004,7 @@ private struct StorySessionViewer: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
@@ -2111,14 +2111,14 @@ private struct BoardStoryView: View {
                     Text("THIS WEEK'S BOARD")
                         .font(MorpheTheme.microLabel(11))
                         .tracking(2.4)
-                        .foregroundStyle(Color.white.opacity(0.55))
+                        .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
                     Spacer()
                     Button {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
                             .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
@@ -2136,7 +2136,7 @@ private struct BoardStoryView: View {
                                 .frame(width: 44, alignment: .leading)
                             Text(entry.name)
                                 .scaledFont(size: 22, weight: .black)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                                 .lineLimit(1)
                             Spacer()
                             Text("\(entry.score) SETS")
@@ -2240,7 +2240,7 @@ struct ImmersiveFeedViewer: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
@@ -2337,7 +2337,7 @@ struct FeedGridTile: View {
                         .lineLimit(2)
                     Text(post.text.trimmingCharacters(in: .whitespaces))
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                         .lineLimit(5)
                         .multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
@@ -2361,7 +2361,7 @@ struct FeedGridTile: View {
             HStack(spacing: 5) {
                 Text(post.authorName)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .lineLimit(1)
                 if post.verified {
                     Image(systemName: "checkmark.seal.fill")
@@ -2375,7 +2375,7 @@ struct FeedGridTile: View {
                         .foregroundStyle(MorpheTheme.brandYellow)
                     Text("\(count)")
                         .font(.caption2.weight(.bold).monospaced())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 }
             }
             .padding(8)
@@ -2434,12 +2434,12 @@ private struct StoryCardView: View {
                 Text("SESSION")
                     .font(MorpheTheme.microLabel(11))
                     .tracking(2.4)
-                    .foregroundStyle(Color.white.opacity(0.55))
+                    .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
                     .padding(.bottom, 10)
 
                 Text(post.workoutName.isEmpty ? "Training Session" : post.workoutName)
                     .scaledFont(size: 34, weight: .black)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .lineLimit(3)
                     .minimumScaleFactor(0.6)
                     .padding(.bottom, 14)
@@ -2465,7 +2465,7 @@ private struct StoryCardView: View {
                     Text("NEW PR · \(name.uppercased())")
                         .scaledFont(size: 12, weight: .bold, design: .monospaced)
                         .tracking(1.2)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 }
                 .padding(.bottom, 6)
             }
@@ -2487,7 +2487,7 @@ private struct StoryCardView: View {
                 Text(post.authorName.uppercased())
                     .scaledFont(size: 11, weight: .semibold, design: .monospaced)
                     .tracking(1.6)
-                    .foregroundStyle(Color.white.opacity(0.7))
+                    .foregroundStyle(MorpheTheme.textPrimary.opacity(0.7))
                 Spacer()
                 Text("TRAIN HONEST")
                     .scaledFont(size: 11, weight: .bold, design: .monospaced)
@@ -2563,7 +2563,7 @@ private struct FeedAuthorView: View {
                             HStack(spacing: 6) {
                                 Text(authorName)
                                     .font(.title3.weight(.bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 if verified {
                                     Image(systemName: "checkmark.seal.fill")
                                         .font(.subheadline)
@@ -2615,7 +2615,7 @@ private struct FeedAuthorView: View {
                             if !post.text.trimmingCharacters(in: .whitespaces).isEmpty {
                                 Text(post.text)
                                     .font(.subheadline)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
@@ -2688,7 +2688,7 @@ private struct FeedPostCard: View {
                                 HStack(spacing: 5) {
                                     Text(post.authorName)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                         .lineLimit(1)
 
                                     if post.verified {
@@ -2783,7 +2783,7 @@ private struct FeedPostCard: View {
                 if !post.text.trimmingCharacters(in: .whitespaces).isEmpty {
                     Text(post.text)
                         .font(.subheadline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -2795,7 +2795,7 @@ private struct FeedPostCard: View {
                             .font(.caption.weight(.semibold))
                             .lineLimit(1)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
@@ -2831,7 +2831,7 @@ private struct FeedPostCard: View {
                                     .foregroundStyle(MorpheTheme.accent)
                                 Text("PR · \(name)")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                     .lineLimit(1)
                             }
                         }
@@ -3037,7 +3037,7 @@ private struct FeedPostCard: View {
                 .foregroundStyle(MorpheTheme.accentAlt)
             Text(text)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
                 .lineLimit(1)
         }
         .padding(.horizontal, 10)
@@ -3064,7 +3064,7 @@ private struct FeedPostCard: View {
                             HStack(spacing: 6) {
                                 Text(comment.authorName)
                                     .font(.caption.weight(.bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                     .lineLimit(1)
                                 Text(comment.createdAt.formatted(.relative(presentation: .named)))
                                     .font(.caption2)
@@ -3211,7 +3211,7 @@ private struct RepostSheet: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Repost \(originalAuthor)'s win")
                         .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
 
                     Text("Add your take — it publishes as your post, credited to \(originalAuthor).")
                         .font(.subheadline)
@@ -3236,7 +3236,7 @@ private struct RepostSheet: View {
                     }
                     Text(post.text)
                                 .font(.subheadline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                                 .lineLimit(4)
                         }
                     }
@@ -3256,7 +3256,7 @@ private struct RepostSheet: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 }
             }
         }
@@ -3334,13 +3334,13 @@ struct ThreadChatView: View {
                     .overlay(
                         Text(String(counterpart.prefix(1)).uppercased())
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     )
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(counterpart)
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     // A streak needs at least two days to be a streak; day
                     // one stays quiet instead of celebrating a single hello.
                     if chatStreak >= 2 {
@@ -3522,7 +3522,7 @@ private struct LiveMessageBubble: View {
 
                 Text(message.text)
                     .font(.subheadline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
@@ -3658,7 +3658,7 @@ struct AthleteInboxView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("No conversations yet")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("Search a username above to start a chat, or join a coach with their invite code and that thread appears here.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -3691,7 +3691,7 @@ struct AthleteInboxView: View {
                 .foregroundStyle(MorpheTheme.textMuted)
             TextField("Search chats or find people…", text: $query)
                 .font(.subheadline)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
                 .focused($searchFocused)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
@@ -3748,11 +3748,11 @@ struct AthleteInboxView: View {
                         .overlay(
                             Text(String(hit.username.prefix(1)).uppercased())
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                         )
                     Text("@\(hit.username)")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Button {
                         guard startingChatUid == nil else { return }
@@ -3809,7 +3809,7 @@ struct LiveThreadRow: View {
                 .overlay(
                     Text(String(name.prefix(1)).uppercased())
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 )
 
             VStack(alignment: .leading, spacing: 4) {
@@ -3821,7 +3821,7 @@ struct LiveThreadRow: View {
                     }
                     Text(name)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Text(thread.updatedAt.formatted(.relative(presentation: .named)))
                         .font(.caption2.weight(.semibold))
@@ -3875,7 +3875,7 @@ private struct ClientConversationRow: View {
 
             Text(message.text)
                 .font(.subheadline)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: message.sender == .user ? .trailing : .leading)
                 .background(

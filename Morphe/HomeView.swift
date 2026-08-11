@@ -71,7 +71,7 @@ struct HomeView: View {
                                     .foregroundStyle(MorpheTheme.accentAlt)
                                 Text("Planned rest day")
                                     .font(.title3.weight(.bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                             }
                             Text("Today isn't on your training schedule. Recovery is part of the program — or train anyway if you're feeling it.")
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -102,7 +102,7 @@ struct HomeView: View {
                                 .foregroundStyle(MorpheTheme.accent)
                             Text(assignment.workout.name)
                                 .font(.title3.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text("\(assignment.workout.exercises.count) exercise\(assignment.workout.exercises.count == 1 ? "" : "s") · scheduled \(assignment.scheduledFor.formatted(date: .abbreviated, time: .shortened))")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -133,7 +133,7 @@ struct HomeView: View {
                                 .foregroundStyle(MorpheTheme.warning)
                             Text("\(atRisk)-day streak on the line — one session tonight keeps it.")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Spacer(minLength: 0)
                         }
                         .padding(.horizontal, 14)
@@ -374,7 +374,7 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Schedule")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         if let next = store.upcomingAppointments.first {
                             Text("\(next.title) — \(next.date.formatted(date: .abbreviated, time: .shortened))")
                                 .font(.caption)
@@ -464,7 +464,7 @@ private struct HomeLinkTile: View {
 
                     Text(title)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                         .lineLimit(1)
 
                     Text(detail)
@@ -504,7 +504,7 @@ private struct HomePatternInsightCard: View {
                             .foregroundStyle(MorpheTheme.textMuted)
                         Text(insight.title)
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
 
                     Spacer()
@@ -552,7 +552,7 @@ private struct TodayStatusStrip: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(showcase.displayName)
                             .font(.headline.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("\(goal) • \(fitnessLevel)")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -567,7 +567,7 @@ private struct TodayStatusStrip: View {
                                 .foregroundStyle(MorpheTheme.textMuted)
                             Text(morpheTier)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                         }
                     }
                 }
@@ -614,7 +614,7 @@ private struct HomeExpandableSection<Content: View>: View {
                         Text(title.uppercased())
                             .font(MorpheTheme.microLabel(12))
                             .tracking(1.6)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .lineLimit(1)
                             .layoutPriority(1)
 
@@ -668,7 +668,7 @@ private struct ComebackCard: View {
                         .foregroundStyle(MorpheTheme.accent)
                     Text("Rebuilding starts today.")
                         .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 }
 
                 Text("Your \(lapsedStreak)-day streak ended. That run was real — and the next one starts with one small win, not a perfect week.")
@@ -713,7 +713,7 @@ private struct TodayDoneCard: View {
                         .foregroundStyle(MorpheTheme.accent)
                     Text("You're done for today.")
                         .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 }
 
                 Text("You closed the loop on \(workoutName). Nice work — the rest of today is yours.")
@@ -783,7 +783,7 @@ private struct TodayNextMoveCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text(minimumWinModeEnabled ? "Today's fallback is active" : "Today's Workout")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 if minimumWinModeEnabled {
                     Text("Momentum is the goal today. Keep the day light, protect the streak, and come back stronger tomorrow.")
@@ -802,7 +802,7 @@ private struct TodayNextMoveCard: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(workout.name)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("\(workout.durationMinutes) min • \(workout.goal)")
                             .foregroundStyle(MorpheTheme.textSecondary)
                         // Present only when recent ratings/finish times have
@@ -831,7 +831,7 @@ private struct TodayNextMoveCard: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Morphe can help right here")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
 
                         WrapStack(spacing: 8) {
                             Button("Why This?") {
@@ -893,7 +893,7 @@ private struct WorkoutPlanByCoachMiniCard: View {
                             .foregroundStyle(MorpheTheme.accent)
                         Text(goalLine)
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
                 }
             }
@@ -911,7 +911,7 @@ private struct TierZeroCheckInCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("How ready are you today?")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(isComplete
                      ? "Readiness \(store.recovery.score) • \(store.recovery.status.rawValue). \(store.recovery.reason)"
                      : "A 30-second check-in helps Morphe size today's workout to how you actually feel.")
@@ -953,7 +953,7 @@ private struct DailyCheckInPlannerCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Adjust My Day")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text(isComplete ? "Readiness \(store.recovery.score) • \(store.recovery.status.rawValue). \(store.recovery.reason)" : "A quick check-in lets Morphe read your recovery and adjust today.")
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -968,7 +968,7 @@ private struct DailyCheckInPlannerCard: View {
 
                 Text("How confident are you that you can complete this today?")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 HStack(spacing: 8) {
                     ForEach(ConfidenceLevel.allCases) { level in
@@ -990,7 +990,7 @@ private struct DailyCheckInPlannerCard: View {
                     HStack {
                         Text("Not feeling it? Easier options")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Spacer()
                         Button(showPlanBOptions ? "Hide" : "Show Options") {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -1092,7 +1092,7 @@ private struct RecoveryCheckInSheet: View {
                         HStack {
                             Text("Sleep last night")
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Spacer()
                             Text(String(format: "%.1f hr", sleepHours))
                                 .foregroundStyle(MorpheTheme.accent)
@@ -1115,7 +1115,7 @@ private struct RecoveryCheckInSheet: View {
                     Toggle(isOn: $pain) {
                         Text("Any pain or sharp discomfort?")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
                     .tint(MorpheTheme.danger)
 
@@ -1165,7 +1165,7 @@ private struct RecoveryCheckInSheet: View {
             HStack {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Spacer()
                 Stepper("\(value.wrappedValue)/\(range.upperBound)", value: value, in: range)
                     .labelsHidden()
@@ -1203,7 +1203,7 @@ private struct TodayPlanCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Today's Plan")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text(todayWinText)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -1232,7 +1232,7 @@ private struct MorpheHubEntryCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Need more than today's plan?")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text("Open Progress for reports and wins, or Learn for lessons, the daily quiz, exercise help, and nutrition basics.")
                     .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -1266,7 +1266,7 @@ private struct PartnerWorkoutCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Train With a Partner")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("Make the plan feel more social without losing the structure.")
                             .foregroundStyle(MorpheTheme.textSecondary)
                     }
@@ -1331,7 +1331,7 @@ private struct PartnerWorkoutCard: View {
 
                         Text(plan.headline)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(plan.detail)
                             .foregroundStyle(MorpheTheme.textSecondary)
                         Text("Mini challenge: \(plan.miniChallenge)")
@@ -1358,7 +1358,7 @@ private struct FirstWeekCard: View {
                 HStack {
                     Text("Your First Week")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     StatusBadge(
                         text: doneCount == steps.count ? "Complete" : "\(doneCount)/\(steps.count)",

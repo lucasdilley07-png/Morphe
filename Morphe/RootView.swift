@@ -41,7 +41,7 @@ struct TermsGateView: View {
 
                     Text("Before you train")
                         .font(.title.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
 
                     Text("Quick but important: read and accept these terms to use Morphe.")
                         .font(.subheadline)
@@ -52,7 +52,7 @@ struct TermsGateView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(section.title)
                                     .font(.headline)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text(section.body)
                                     .font(.subheadline)
                                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -136,7 +136,7 @@ struct RootView: View {
                             .foregroundStyle(MorpheTheme.textMuted)
                         Text("Couldn't reach your backup")
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("Your account may have training history in the cloud — Morphe won't set up a fresh profile until it can check. Verify your connection and retry.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -353,7 +353,7 @@ private struct PartnerSessionPostSheet: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("🔥 \(store.clientProfile.name)")
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text("with \(draft.partnerAvatar) \(draft.partnerName)")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -366,7 +366,7 @@ private struct PartnerSessionPostSheet: View {
 
                         Text(draft.workoutTitle)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
 
                         Text(draft.detail)
                             .font(.subheadline)
@@ -393,7 +393,7 @@ private struct PartnerSessionPostSheet: View {
                                 .foregroundStyle(MorpheTheme.textMuted)
                             Text(draft.miniChallenge)
                                 .font(.subheadline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                         }
                         .padding(12)
                         .background(
@@ -437,7 +437,7 @@ private struct PartnerSessionPostSheet: View {
                     store.dismissPendingPartnerSessionPost()
                     dismiss()
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
             }
         }
     }
@@ -581,7 +581,7 @@ private struct HeaderCircleButton: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(.subheadline).weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
                 .frame(width: 44, height: 44)
                 // Solid fill: the button floats OVER scrolling content, so
                 // its face must be opaque — never text showing through.
@@ -623,7 +623,7 @@ private struct FloatingAIAgentButton: View {
                 if isCompact {
                     Image(systemName: "sparkles")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                         .frame(width: 50, height: 50)
                         .background(buttonBackground.clipShape(Circle()))
                 } else {
@@ -633,7 +633,7 @@ private struct FloatingAIAgentButton: View {
                         Text(label)
                             .font(.subheadline.weight(.bold))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
                     .background(buttonBackground)
@@ -712,7 +712,7 @@ private struct MorpheAIAgentSheet: View {
                                     HStack {
                                         Text(starter)
                                             .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(MorpheTheme.textPrimary)
                                             .multilineTextAlignment(.leading)
                                         Spacer()
                                         Image(systemName: "arrow.up.right")
@@ -770,20 +770,20 @@ private struct MorpheAIAgentSheet: View {
                     Image(systemName: "square.and.pencil")
                         .font(.subheadline.weight(.semibold))
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
                 .accessibilityLabel("New chat")
             }
             ToolbarItem(placement: .principal) {
                 Text("Morphe AI")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Done") {
                     store.closeAIAgent()
                     dismiss()
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -813,7 +813,7 @@ private struct MorpheAIAgentSheet: View {
                     axis: .vertical
                 )
                 .lineLimit(1...4)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
                 .padding(.leading, 14)
                 .padding(.vertical, 11)
                 .focused($inputFocused)
@@ -920,7 +920,7 @@ private struct AIAgentMessageRow: View {
 
                 Text(message.text)
                     .font(.subheadline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
@@ -1083,7 +1083,7 @@ private struct NetworkProfilePreviewSheet: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(profile.name)
                                     .font(.title3.weight(.bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text("@\(profile.handle)")
                                     .font(.subheadline)
                                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -1106,7 +1106,7 @@ private struct NetworkProfilePreviewSheet: View {
                             ForEach(profile.featuredTags, id: \.self) { tag in
                                 Text(tag)
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
                                     .background(
@@ -1123,7 +1123,7 @@ private struct NetworkProfilePreviewSheet: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Train with \(profile.name)")
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text("Book a 1-on-1 session and work directly with this coach.")
                                 .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -1143,7 +1143,7 @@ private struct NetworkProfilePreviewSheet: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Quick Actions")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
 
                         HStack(spacing: 10) {
                             Button(primaryActionTitle) {
@@ -1174,7 +1174,7 @@ private struct NetworkProfilePreviewSheet: View {
                 Button("Done") {
                     dismissProfile()
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
             }
         }
         .sheet(isPresented: $showBooking) {
@@ -1363,7 +1363,7 @@ private struct UniversalSearchSheet: View {
                     store.closeUniversalSearch()
                     dismiss()
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
             }
         }
     }
@@ -1375,7 +1375,7 @@ private struct UniversalSearchSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Athlete Accounts")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
 
                     ForEach(filteredCoachClients) { athlete in
                         SearchResultRow(
@@ -1419,7 +1419,7 @@ private struct UniversalSearchSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Accounts")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
 
                     if normalizedQuery.count < 2 {
                         Text("Type at least two characters to search @usernames.")
@@ -1434,7 +1434,7 @@ private struct UniversalSearchSheet: View {
                             HStack(spacing: 12) {
                                 Text("@\(hit.username)")
                                     .font(.subheadline.weight(.semibold).monospaced())
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Spacer()
                                 Button(store.isFollowing(hit.uid) ? "Following" : "Follow") {
                                     store.toggleFollow(uid: hit.uid, name: hit.username)
@@ -1473,7 +1473,7 @@ private struct UniversalSearchSheet: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(store.selectedRole == .coach ? "Programs + Playbooks" : "Workout Plans")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(filteredWorkouts) { workout in
                     SearchResultRow(
@@ -1517,7 +1517,7 @@ private struct UniversalSearchSheet: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Exercise + Drill Library")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(filteredExercises) { exercise in
                     SearchResultRow(
@@ -1566,7 +1566,7 @@ private struct UniversalSearchSheet: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Network Posts")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(filteredPosts) { post in
                     SearchResultRow(
@@ -1679,7 +1679,7 @@ private struct QuickAddSheet: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Quick Note")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         // Honest copy: notes save to YOUR list (nothing is
                         // "attached to an athlete" — that claim was false),
                         // and an empty save no longer invents canned text.
@@ -1704,7 +1704,7 @@ private struct QuickAddSheet: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Recent Notes")
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
 
                             ForEach(Array(store.quickCaptureNotes.prefix(3)), id: \.self) { note in
                                 Text("• \(note)")
@@ -1723,7 +1723,7 @@ private struct QuickAddSheet: View {
                 Button("Done") {
                     dismissQuickAdd()
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
             }
         }
     }
@@ -1761,7 +1761,7 @@ private struct QuickAddGridCard: View {
                                 .foregroundStyle(MorpheTheme.accent)
                             Text(item.title)
                                 .font(.subheadline.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text(item.subtitle)
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -1796,7 +1796,7 @@ private struct SearchResultRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(subtitle)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(MorpheTheme.accentAlt)
@@ -1833,7 +1833,7 @@ private struct WelcomeExperienceView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Welcome to Morphe, \(isCoach ? store.coachProfile.name : store.clientProfile.name)")
                                         .font(.title3.weight(.bold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                     Text(isCoach ? "Your coach workspace is live and your first command center is ready." : "Your profile is live and your first plan is ready.")
                                         .foregroundStyle(MorpheTheme.textSecondary)
                                 }
@@ -1841,7 +1841,7 @@ private struct WelcomeExperienceView: View {
 
                             Text(isCoach ? "Your coaching system is live. Start with the athletes who need you most, then move into programs and outreach." : store.clientProfile.welcomeMessage)
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
 
                             HStack(spacing: 8) {
                                 if FeatureFlags.multiUserEnabled {
@@ -1869,7 +1869,7 @@ private struct WelcomeExperienceView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("What happens next")
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             // Names the tabs that actually exist, and promises
                             // only what tier 0 shows: one workout to start.
                             Text(isCoach ? "Open Home to triage the day, use Athletes for profiles and notes, then move into Build or Inbox when you want to act." : "Today has your first workout ready. Open Train when you're ready to move — and everything else in Morphe grows from the workouts you log.")

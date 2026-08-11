@@ -543,7 +543,7 @@ struct WorkoutView: View {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(assignment.workout.name)
                                             .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(MorpheTheme.textPrimary)
                                         Text("\(assignment.scheduledFor.formatted(date: .abbreviated, time: .omitted)) · \(assignment.workout.exercises.count) exercise\(assignment.workout.exercises.count == 1 ? "" : "s")\(assignment.coachName.isEmpty ? "" : " · \(assignment.coachName)")")
                                             .font(.caption)
                                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -594,7 +594,7 @@ struct WorkoutView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Session Details")
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
 
                             Stepper(
                                 "Duration: \(store.completedSessionMinutes ?? store.currentWorkout.durationMinutes) min",
@@ -605,7 +605,7 @@ struct WorkoutView: View {
                                 in: 5...480,
                                 step: 5
                             )
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
 
                             TextField("Session note (optional)", text: $store.sessionUserNote, axis: .vertical)
                                 .textFieldStyle(MorpheFieldStyle())
@@ -655,7 +655,7 @@ struct WorkoutView: View {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Share to feed")
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text("Posts this session's recap — sets, exercises, minutes, PRs — when you log it.")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textMuted)
@@ -871,7 +871,7 @@ struct WorkoutView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Need form help or substitutions?")
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text("Open Learn for the exercise library and beginner-friendly form help, or swap a move right from today's plan.")
                                 .foregroundStyle(MorpheTheme.textSecondary)
                             HStack(spacing: 10) {
@@ -1119,7 +1119,7 @@ private struct WorkoutCompleteCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("All sets logged")
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("\(workoutName) • \(totalSets) sets in the books.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -1162,7 +1162,7 @@ private struct SessionRecapCard: View {
                 HStack {
                     Text("Session Recap")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Text("\(totalSets) sets")
                         .font(.subheadline.weight(.bold))
@@ -1178,7 +1178,7 @@ private struct SessionRecapCard: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(item.name)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text(setLine(item))
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -1204,7 +1204,7 @@ private struct PostWorkoutSmartActionCard: View {
                         .foregroundStyle(MorpheTheme.textMuted)
                     Text(prompt.title)
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text(prompt.detail)
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -1222,7 +1222,7 @@ private struct PostWorkoutSmartActionCard: View {
                                     .font(.subheadline.weight(.semibold))
                                 Spacer()
                             }
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 12)
                             .frame(maxWidth: .infinity)
@@ -1271,7 +1271,7 @@ private struct ProgramSectionCard: View {
                     .foregroundStyle(MorpheTheme.textMuted)
                 Text(progress.program.name)
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
             }
             Spacer()
             if progress.isDeloadWeek {
@@ -1300,7 +1300,7 @@ private struct ProgramSectionCard: View {
         } else {
             Text("Up next: \(progress.nextSessionName)")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
 
             HStack(spacing: 10) {
                 Button("Start Session") {
@@ -1332,7 +1332,7 @@ private struct ProgramSectionCard: View {
     private var programLibraryBody: some View {
         Text("Morphe's Programs")
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(MorpheTheme.textPrimary)
         Text("A plan measured in weeks, not days — sessions in order, progression built in, one deload before the end.")
             .font(.caption)
             .foregroundStyle(MorpheTheme.textSecondary)
@@ -1342,7 +1342,7 @@ private struct ProgramSectionCard: View {
                 HStack {
                     Text(program.name)
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Text("\(program.weeks) WK · \(program.weeklySessionNames.count)/WK")
                         .font(MorpheTheme.microLabel(9))
@@ -1390,7 +1390,7 @@ private struct LiveWorkoutConsoleCard: View {
                             .foregroundStyle(MorpheTheme.textMuted)
                         Text(workout.name)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                     }
 
                     Spacer()
@@ -1405,7 +1405,7 @@ private struct LiveWorkoutConsoleCard: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Warm-up")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(warmupText)
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -1443,7 +1443,7 @@ private struct TrainExpandableSection<Content: View>: View {
                         Text(title.uppercased())
                             .font(MorpheTheme.microLabel(12))
                             .tracking(1.6)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .lineLimit(1)
                             .layoutPriority(1)
 
@@ -1579,7 +1579,7 @@ private struct ActiveWorkoutTrackerCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Active Workout")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("\(workout.name) • Exercise \(exerciseIndex + 1) of \(totalExercises)")
                             .foregroundStyle(MorpheTheme.textSecondary)
                     }
@@ -1591,7 +1591,7 @@ private struct ActiveWorkoutTrackerCard: View {
                     HStack(alignment: .center, spacing: 10) {
                         Text(exercise.name)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
 
                         Spacer(minLength: 0)
 
@@ -1650,7 +1650,7 @@ private struct ActiveWorkoutTrackerCard: View {
 
                                 Text("\(reps) reps · \(weightUnit.format(weightsLogged.indices.contains(index) ? weightsLogged[index] : 0))")
                                     .font(.caption)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
 
                                 if warmupsLogged.indices.contains(index), warmupsLogged[index] {
                                     Text("W")
@@ -1681,7 +1681,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                         .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                                 .accessibilityLabel("Edit set \(index + 1)")
 
                                 Button {
@@ -1715,7 +1715,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                 .foregroundStyle(MorpheTheme.textMuted)
                             Text(nextExercise.name)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text("\(nextExercise.sets) • \(nextExercise.reps)")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -1885,7 +1885,7 @@ private struct SetConsoleRow: View {
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.center)
                     .font(.system(.title3, design: .monospaced).weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .focused($fieldFocused)
                     .onAppear { fieldFocused = true }
@@ -1940,7 +1940,7 @@ private struct SetConsoleRow: View {
     private var valueText: some View {
         Text(value)
             .font(.system(.title3, design: .monospaced).weight(.bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(MorpheTheme.textPrimary)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
             .frame(maxWidth: .infinity)
@@ -2014,7 +2014,7 @@ private struct ConsoleStepButton: View {
     var body: some View {
         Text(title)
             .font(.system(.subheadline, design: .monospaced).weight(.bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(MorpheTheme.textPrimary)
             .frame(minWidth: 40, minHeight: 40)
             .background(
                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
@@ -2072,7 +2072,7 @@ private struct FocusedWorkoutQueueCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Session Queue")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
                     HStack(spacing: 10) {
@@ -2084,7 +2084,7 @@ private struct FocusedWorkoutQueueCard: View {
                             HStack(spacing: 6) {
                                 Text(exercise.name)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 if supersetPartners[exercise.id] != nil {
                                     Text("SS")
                                         .font(MorpheTheme.microLabel(9))
@@ -2281,7 +2281,7 @@ private struct AddExerciseToSessionSheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(exercise.name)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                     Text("\(exercise.muscleGroup.rawValue) · \(exercise.equipment)")
                                         .font(.caption)
                                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -2308,7 +2308,7 @@ private struct AddExerciseToSessionSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                 }
             }
         }
@@ -2334,7 +2334,7 @@ private struct LiveWorkoutSupportToolsCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Support Tools")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Use these only when you need help. The active set stays above; swaps, pain-safe changes, and Morphe guidance stay here.")
                     .font(.subheadline)
@@ -2702,7 +2702,7 @@ private struct DiscoverCatalogSection: View {
                 .foregroundStyle(MorpheTheme.textMuted)
             TextField("Search workouts, coaches, posts", text: $searchQuery)
                 .textFieldStyle(.plain)
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
                 .autocorrectionDisabled()
             if !searchQuery.isEmpty {
                 Button {
@@ -2774,7 +2774,7 @@ private struct DiscoverCatalogSection: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(person.name)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text(person.detail)
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -2794,7 +2794,7 @@ private struct DiscoverCatalogSection: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(post.title)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                                 .lineLimit(1)
                             Text("\(post.author) · \(post.timeAgo)")
                                 .font(.caption)
@@ -2818,7 +2818,7 @@ private struct DiscoverCatalogSection: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Connect")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Train with people — show your Morphe code or scan a coach's.")
                     .font(.subheadline)
@@ -2872,7 +2872,7 @@ private struct DiscoverCatalogSection: View {
                             .foregroundStyle(MorpheTheme.accent)
                         Text("The workout library couldn't load")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("Restart the app to reload it — your saved workouts and daily plan still work from Train.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -2893,7 +2893,7 @@ private struct DiscoverCatalogSection: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("No workouts match these filters")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("The combination is too narrow — loosen one, or start fresh.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -3001,7 +3001,7 @@ private struct DiscoverCatalogSection: View {
 
                 Text(template.name)
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .multilineTextAlignment(.leading)
                     .lineLimit(2, reservesSpace: true)
 
@@ -3142,7 +3142,7 @@ private struct DiscoverCatalogSection: View {
                     Text((Self.shortCategoryNames[category] ?? category).uppercased())
                         .font(MorpheTheme.microLabel(10))
                         .tracking(1.0)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                     Text(String(format: "%03d", count))
@@ -3301,7 +3301,7 @@ private struct DiscoverProgramCard: View {
                         HStack(alignment: .top, spacing: 6) {
                             Text(template.name)
                                 .font(.subheadline.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                                 .lineLimit(2)
                                 .multilineTextAlignment(.leading)
                             if onOpen != nil {
@@ -3354,7 +3354,7 @@ private struct DiscoverWorkoutDetailSheet: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(template.name)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
 
                         // Category / goal / duration / difficulty pills.
                         FlowingPillRow(pills: pillTexts)
@@ -3370,7 +3370,7 @@ private struct DiscoverWorkoutDetailSheet: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Exercises (\(template.exercises.count))")
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
 
                             ForEach(Array(template.exercises.enumerated()), id: \.element.id) { index, exercise in
                                 HStack(alignment: .top, spacing: 10) {
@@ -3380,7 +3380,7 @@ private struct DiscoverWorkoutDetailSheet: View {
                                         HStack(alignment: .top) {
                                             Text("\(index + 1). \(exercise.name)")
                                                 .font(.subheadline.weight(.semibold))
-                                                .foregroundStyle(.white)
+                                                .foregroundStyle(MorpheTheme.textPrimary)
                                             Spacer()
                                             Text("\(exercise.sets) × \(exercise.reps)")
                                                 .font(.system(.subheadline, design: .monospaced).weight(.semibold))
@@ -3441,7 +3441,7 @@ private struct DiscoverWorkoutDetailSheet: View {
             .background(PremiumBackground())
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }.foregroundStyle(.white)
+                    Button("Done") { dismiss() }.foregroundStyle(MorpheTheme.textPrimary)
                 }
             }
             .task {
@@ -3543,7 +3543,7 @@ private struct TrySomethingNewCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Want to try something new?")
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Today's workout is done. A second session, a stretch, or an easy recovery block all count extra.")
                     .font(.subheadline)
@@ -3562,7 +3562,7 @@ private struct TrySomethingNewCard: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(rec.template.name)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                     .lineLimit(1)
                                 Text("\(rec.template.durationMinutes) min")
                                     .font(.caption)
@@ -3610,12 +3610,12 @@ private struct TodaysWorkoutCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Today's Workout")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(workout.name)
                         .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text("\(workout.durationMinutes) min • \(workout.goal)")
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -3657,7 +3657,7 @@ private struct TodaysWorkoutCard: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Morphe suggests: \(suggestion.workoutName)")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Text(suggestion.reasonTitle)
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -3705,10 +3705,10 @@ struct TrainTogetherSheet: View {
             .background(PremiumBackground())
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Train Together").font(.headline).foregroundStyle(.white)
+                    Text("Train Together").font(.headline).foregroundStyle(MorpheTheme.textPrimary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }.foregroundStyle(.white)
+                    Button("Done") { dismiss() }.foregroundStyle(MorpheTheme.textPrimary)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -3720,7 +3720,7 @@ struct TrainTogetherSheet: View {
             VStack(alignment: .leading, spacing: 12) {
                 Label("Host a session", systemImage: "person.2.fill")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text("Train \(store.currentWorkout.name) with a buddy. They scan your code (or type it) and the exact same workout starts on their phone — everyone logs their own sets.")
                     .font(.subheadline)
@@ -3742,12 +3742,12 @@ struct TrainTogetherSheet: View {
                 if hostMode == .group {
                     Toggle("Set a class time", isOn: $hasClassTime)
                         .font(.subheadline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                         .tint(MorpheTheme.accent)
                     if hasClassTime {
                         DatePicker("Class starts", selection: $classTime, displayedComponents: [.hourAndMinute])
                             .font(.subheadline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .tint(MorpheTheme.accent)
                     }
                 }
@@ -3785,7 +3785,7 @@ struct TrainTogetherSheet: View {
             VStack(alignment: .leading, spacing: 12) {
                 Label("Join a session", systemImage: "qrcode.viewfinder")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 QRScannerView { payload in
                     guard let code = MorpheAppStore.partyCode(fromScanned: payload) else { return }
@@ -3820,7 +3820,7 @@ struct TrainTogetherSheet: View {
                 if let party = store.activeParty {
                     Text(party.workoutName)
                         .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
 
                     if let payload = store.partyQRPayload,
                        let image = QRCodeRenderer.image(for: payload) {
@@ -3864,7 +3864,7 @@ struct TrainTogetherSheet: View {
                                     .foregroundStyle(MorpheTheme.accent)
                                 Text(member.name)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Spacer()
                                 Text(memberStatus(member, party: party))
                                     .font(.caption)
@@ -3943,7 +3943,7 @@ struct PartySessionStrip: View {
                                     .frame(width: 18, alignment: .leading)
                                 Text(member.name)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Spacer()
                                 Text(member.isFinished ? "Finished" : "\(member.totalSetsDone) sets")
                                     .font(.caption)
@@ -3959,7 +3959,7 @@ struct PartySessionStrip: View {
                             HStack(spacing: 8) {
                                 Text(buddy.name)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Spacer()
                                 Text(buddyStatus(buddy))
                                     .font(.caption)
@@ -4022,7 +4022,7 @@ private struct PartyRecapCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Trained with")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(buddies) { buddy in
                     HStack(spacing: 10) {
@@ -4031,7 +4031,7 @@ private struct PartyRecapCard: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(buddy.name)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text(buddy.summary.isEmpty ? "Still training — totals land when they log." : buddy.summary)
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -4054,7 +4054,7 @@ private struct TrainUtilityCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Workout Layout")
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text("Switch between a detailed card view and a faster compact list.")
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
@@ -4090,7 +4090,7 @@ private struct PartnerSessionCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Partner Session")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text("\(partner.name) • \(mode.rawValue)")
                             .foregroundStyle(MorpheTheme.accentAlt)
                     }
@@ -4129,11 +4129,11 @@ private struct WorkoutRestControlBar: View {
             HStack {
                 Text("Rest Timer")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Spacer()
                 Text(timeString)
                     .font(.system(.title, design: .monospaced).weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
             }
 
             HStack(spacing: 8) {
@@ -4526,14 +4526,14 @@ private struct CircuitModeView: View {
                 Text(title.uppercased())
                     .scaledFont(size: 17, weight: .heavy, design: .monospaced)
                     .tracking(2)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Spacer()
                 Button {
                     dismiss()
                 } label: {
                     Image(systemName: "xmark")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                         .frame(width: 34, height: 34)
                         .background(
                             RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
@@ -4636,7 +4636,7 @@ private struct CircuitModeView: View {
                         .foregroundStyle(segmentColor)
                     Text(timeString(remaining))
                         .scaledFont(size: 58, weight: .heavy, design: .monospaced)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                         .contentTransition(.numericText(countsDown: true))
                         .animation(.linear(duration: 0.3), value: remaining)
                     if isPaused {
@@ -4654,7 +4654,7 @@ private struct CircuitModeView: View {
             VStack(spacing: 8) {
                 Text(displayStationName)
                     .font(.largeTitle.weight(.heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.6)
@@ -4859,7 +4859,7 @@ private struct CircuitModeView: View {
                                 HStack(spacing: 10) {
                                     Text(line.name)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.8)
                                     Spacer()
@@ -4924,7 +4924,7 @@ private struct AddSwitchWorkoutCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Need to adjust today?")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 LazyVGrid(
                     columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
@@ -4954,7 +4954,7 @@ private struct PainFlaggingCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Pain / Injury Flag")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Menu(painArea) {
                     ForEach(painAreas, id: \.self) { area in
@@ -4963,10 +4963,10 @@ private struct PainFlaggingCard: View {
                         }
                     }
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(MorpheTheme.textPrimary)
 
                 Stepper("Severity: \(painSeverity) / 10", value: $painSeverity, in: 1...10)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 TextField("Did it happen during a specific exercise or drill?", text: $triggerExercise)
                     .textFieldStyle(MorpheFieldStyle())
@@ -5028,7 +5028,7 @@ private struct SetRepLoggingSheet: View {
                 HStack {
                     Text("Log your set")
                         .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Picker("Unit", selection: $store.weightUnit) {
                         ForEach(WeightUnit.allCases) { unit in
@@ -5084,7 +5084,7 @@ private struct SetRepLoggingSheet: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textSecondary)
                     Stepper("\(reps) reps", value: $reps, in: 1...50)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     HStack(spacing: 8) {
                         ForEach([4, 6, 8, 10, 12, 15], id: \.self) { preset in
                             Button("\(preset)") {
@@ -5116,7 +5116,7 @@ private struct SetRepLoggingSheet: View {
                                         .textFieldStyle(MorpheFieldStyle())
                                 }
                                 Stepper("\(entry.reps)", value: $entry.reps, in: 1...50)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                     .fixedSize()
                                 Button {
                                     subEntries.removeAll { $0.id == entry.id }
@@ -5285,14 +5285,14 @@ private struct WorkoutHistoryCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Workout History")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 ForEach(entries) { entry in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text(entry.title)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Spacer()
                             Text("\(entry.durationMinutes) min")
                                 .font(.caption)
@@ -5376,7 +5376,7 @@ private struct SavedWorkoutsLibraryCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Saved Workouts")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text(FeatureFlags.multiUserEnabled
                     ? "Save coach and athlete workouts from around Morphe, then run them solo, with a buddy, or turn them into your own copy."
@@ -5389,7 +5389,7 @@ private struct SavedWorkoutsLibraryCard: View {
                         HStack {
                             Text("Pinned Quick Start")
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Spacer()
                             Text("\(pinnedItems.count)/3 pinned")
                                 .font(.caption)
@@ -5403,7 +5403,7 @@ private struct SavedWorkoutsLibraryCard: View {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(item.workoutName)
                                             .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(MorpheTheme.textPrimary)
                                             .lineLimit(2)
                                         Text(item.sourceName)
                                             .font(.caption)
@@ -5543,7 +5543,7 @@ private struct SavedWorkoutsLibraryCard: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(template.name)
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                     .lineLimit(2)
                                 Text("Built by you • \(template.exercises.count) exercises")
                                     .font(.caption)
@@ -5584,7 +5584,7 @@ private struct SavedWorkoutsLibraryCard: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(item.workoutName)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
                                         .lineLimit(2)
                                     Text("\(item.sourceContext) • \(item.sourceName)")
                                         .font(.caption)
@@ -5857,7 +5857,7 @@ private struct ShortcutWorkoutSection: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -5870,7 +5870,7 @@ private struct ShortcutWorkoutSection: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(item.workoutName)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .lineLimit(2)
                         Text(item.sourceName)
                             .font(.caption)
@@ -5977,7 +5977,7 @@ private struct ExercisePlanCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(exercise.name)
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Text(exercise.muscleGroup.rawValue)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.accentAlt)
@@ -6020,7 +6020,7 @@ private struct ExerciseCompactRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(exercise.name)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text("\(exercise.sets) • \(exercise.reps)")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -6061,7 +6061,7 @@ private struct ExerciseSwapFlowSheet: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Swap \(exercise.name)")
                                 .font(.title3.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.textPrimary)
                             Text("Why do you want to swap this?")
                                 .foregroundStyle(MorpheTheme.textSecondary)
 
@@ -6081,7 +6081,7 @@ private struct ExerciseSwapFlowSheet: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Pick Your Swap")
                                     .font(.headline)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
 
                                 Text(reasonDescription(for: selectedReason))
                                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -6111,7 +6111,7 @@ private struct ExerciseSwapFlowSheet: View {
                                         HStack(spacing: 10) {
                                             Text(choice.name)
                                                 .font(.subheadline.weight(.semibold))
-                                                .foregroundStyle(.white)
+                                                .foregroundStyle(MorpheTheme.textPrimary)
                                             Spacer(minLength: 0)
                                             Image(systemName: "arrow.left.arrow.right")
                                                 .font(.caption.weight(.bold))
@@ -6141,7 +6141,7 @@ private struct ExerciseSwapFlowSheet: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                 }
             }
         }
@@ -6269,7 +6269,7 @@ struct WorkoutBuilderSheet: View {
                     HStack {
                         Text("Exercises (\(items.count))")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                         Spacer()
                         Button {
                             showExercisePicker = true
@@ -6294,7 +6294,7 @@ struct WorkoutBuilderSheet: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(item.exercise.name)
                                             .font(.subheadline.weight(.bold))
-                                            .foregroundStyle(.white)
+                                            .foregroundStyle(MorpheTheme.textPrimary)
                                         Text(item.exercise.muscleGroup.rawValue)
                                             .font(.caption)
                                             .foregroundStyle(MorpheTheme.textMuted)
@@ -6309,9 +6309,9 @@ struct WorkoutBuilderSheet: View {
                                     .accessibilityLabel("Remove \(item.exercise.name)")
                                 }
                                 Stepper("Sets: \(item.sets)", value: $item.sets, in: 1...10)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                                 Stepper("Reps: \(item.reps)", value: $item.reps, in: 1...50)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
                             }
                         }
                     }
@@ -6393,7 +6393,7 @@ private struct ExercisePickerSheet: View {
                             .foregroundStyle(MorpheTheme.textMuted)
                         TextField("Search exercises", text: $query)
                             .textFieldStyle(.plain)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.textPrimary)
                             .autocorrectionDisabled()
                         if !query.isEmpty {
                             Button {
@@ -6519,7 +6519,7 @@ private struct ExercisePickerSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(exercise.name)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.textPrimary)
                     Text(exercise.equipment)
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
