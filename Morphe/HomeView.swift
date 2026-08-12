@@ -826,7 +826,7 @@ private struct TodayNextMoveCard: View {
 
                 if showAssistRow {
                     Divider()
-                        .overlay(Color.white.opacity(0.08))
+                        .overlay(MorpheTheme.strokeSubtle)
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Morphe can help right here")
@@ -886,7 +886,7 @@ private struct WorkoutPlanByCoachMiniCard: View {
                     .foregroundStyle(MorpheTheme.textSecondary)
 
                 if !goalLine.isEmpty {
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
                     HStack(spacing: 6) {
                         Image(systemName: "target")
                             .font(.caption.weight(.semibold))
@@ -964,7 +964,7 @@ private struct DailyCheckInPlannerCard: View {
                 .buttonStyle(PrimaryCTAButtonStyle(accent: isComplete ? MorpheTheme.accentAlt : MorpheTheme.accent))
 
                 Divider()
-                    .overlay(Color.white.opacity(0.08))
+                    .overlay(MorpheTheme.strokeSubtle)
 
                 Text("How confident are you that you can complete this today?")
                     .font(.headline)

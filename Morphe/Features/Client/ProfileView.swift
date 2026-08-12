@@ -207,7 +207,7 @@ struct ProfileView: View {
                     }
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Goals")
@@ -223,7 +223,7 @@ struct ProfileView: View {
                     }
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Training styles")
@@ -239,7 +239,7 @@ struct ProfileView: View {
                     }
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Equipment")
@@ -255,7 +255,7 @@ struct ProfileView: View {
                     }
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Body")
@@ -574,7 +574,7 @@ struct ProfileView: View {
     /// Honest copy throughout — a human reviews; nothing is auto-granted.
     @ViewBuilder
     private var verificationSection: some View {
-        Divider().overlay(Color.white.opacity(0.08))
+        Divider().overlay(MorpheTheme.strokeSubtle)
 
         if store.isVerifiedUser {
             HStack(spacing: 8) {
@@ -716,7 +716,7 @@ struct ProfileView: View {
                     }
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 if isEditingUsername {
                     VStack(alignment: .leading, spacing: 8) {
@@ -757,7 +757,7 @@ struct ProfileView: View {
                     }
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 HStack {
                     Text("Appearance")
@@ -771,7 +771,7 @@ struct ProfileView: View {
                     .frame(width: 140)
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 HStack {
                     Text("Weight unit")
@@ -786,7 +786,7 @@ struct ProfileView: View {
                     .frame(width: 110)
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 // Accent color — picked once in onboarding, now editable
                 // anytime. Gold is the brand default; the others personalize
@@ -813,7 +813,7 @@ struct ProfileView: View {
                     }
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 // Referral loop, recruiter side: the server-backed count of
                 // athletes who joined through this user's invite. The empty
@@ -845,7 +845,7 @@ struct ProfileView: View {
                 .task { await store.refreshReferralCount() }
 
                 if !isCoach {
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     // Live-session preferences — both persisted per profile.
                     preferenceToggleRow(
@@ -854,7 +854,7 @@ struct ProfileView: View {
                         isOn: $store.autoRestTimerEnabled
                     )
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     preferenceToggleRow(
                         title: "Effort scale: RIR",
@@ -862,7 +862,7 @@ struct ProfileView: View {
                         isOn: $store.effortScaleRIR
                     )
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     preferenceToggleRow(
                         title: "Auto-share workouts",
@@ -870,7 +870,7 @@ struct ProfileView: View {
                         isOn: $store.autoShareWorkoutsEnabled
                     )
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     // Network identity: what rides YOUR posts. Subtractive
                     // only — off shares less, never invents more.
@@ -880,7 +880,7 @@ struct ProfileView: View {
                         isOn: $store.postStreakByline
                     )
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     preferenceToggleRow(
                         title: "Accent on posts",
@@ -888,7 +888,7 @@ struct ProfileView: View {
                         isOn: $store.postAccentIdentity
                     )
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     // The audit found five reminder kinds and no off switch.
                     // One master toggle — off cancels everything pending.
@@ -898,7 +898,7 @@ struct ProfileView: View {
                         isOn: $store.remindersEnabled
                     )
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     // The board publishes your real name — the opt-in lives
                     // with the other visibility controls, not just buried in
@@ -915,7 +915,7 @@ struct ProfileView: View {
                     // A coach's invite code used to work ONLY during
                     // onboarding — existing athletes had nowhere to type it.
                     if store.linkedCoachUid.isEmpty {
-                        Divider().overlay(Color.white.opacity(0.08))
+                        Divider().overlay(MorpheTheme.strokeSubtle)
 
                         if isEnteringCoachCode {
                             HStack(spacing: 8) {
@@ -945,7 +945,7 @@ struct ProfileView: View {
                         }
                     }
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     // Enabling walks through the system Health prompt; the
                     // store refuses the flip when access isn't granted.
@@ -958,7 +958,7 @@ struct ProfileView: View {
                         )
                     )
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     // Read-only and honest about its limits: Apple never
                     // reveals whether a sleep READ was granted, so this just
@@ -975,7 +975,7 @@ struct ProfileView: View {
                     // Only renders once a coach link exists (claimed invite
                     // or an existing coach thread) — no dead toggle.
                     if !store.linkedCoachUid.isEmpty {
-                        Divider().overlay(Color.white.opacity(0.08))
+                        Divider().overlay(MorpheTheme.strokeSubtle)
 
                         preferenceToggleRow(
                             title: "Share with coach",
@@ -987,7 +987,7 @@ struct ProfileView: View {
                         )
                     }
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 3) {
@@ -1014,7 +1014,7 @@ struct ProfileView: View {
                     // upload was fire-and-forget). Only rendered when a real
                     // signed-in backup target exists.
                     if store.cloudBackupActive {
-                        Divider().overlay(Color.white.opacity(0.08))
+                        Divider().overlay(MorpheTheme.strokeSubtle)
 
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 3) {
@@ -1060,7 +1060,7 @@ struct ProfileView: View {
                     // exist; while the storefront flag is off nothing here
                     // renders and everything stays free.
                     if PremiumGate.storefrontEnabled {
-                        Divider().overlay(Color.white.opacity(0.08))
+                        Divider().overlay(MorpheTheme.strokeSubtle)
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Morphe Pro")
@@ -1082,7 +1082,7 @@ struct ProfileView: View {
                     // Blocked accounts — only renders when there's someone
                     // to manage; blocking happens from posts/comments.
                     if !store.blockedAccounts.isEmpty {
-                        Divider().overlay(Color.white.opacity(0.08))
+                        Divider().overlay(MorpheTheme.strokeSubtle)
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Blocked accounts")
@@ -1105,7 +1105,7 @@ struct ProfileView: View {
                         }
                     }
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     // Weekly target — drives the consistency denominator on
                     // Progress; was user-set in onboarding then locked forever.
@@ -1151,7 +1151,7 @@ struct ProfileView: View {
                             .foregroundStyle(MorpheTheme.textMuted)
                     }
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     // Injuries are safety data — collected in onboarding and
                     // previously never editable again.
@@ -1188,7 +1188,7 @@ struct ProfileView: View {
 
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 // About: the terms the user agreed to, the privacy policy,
                 // a human to email, and which build they're on — table
@@ -1220,7 +1220,7 @@ struct ProfileView: View {
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
 
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 if FeatureFlags.accountsEnabled {
                     Button("Sign Out") {

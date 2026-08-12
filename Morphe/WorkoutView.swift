@@ -3405,7 +3405,7 @@ private struct DiscoverWorkoutDetailSheet: View {
                                     }
                                 }
                                 if index < template.exercises.count - 1 {
-                                    Divider().overlay(Color.white.opacity(0.08))
+                                    Divider().overlay(MorpheTheme.strokeSubtle)
                                 }
                             }
                         }
@@ -3647,7 +3647,7 @@ private struct TodaysWorkoutCard: View {
                 .accessibilityLabel(partyStatus == nil ? "Train together with a buddy" : "Show your session code")
 
                 if let suggestion {
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .top, spacing: 8) {
@@ -3854,7 +3854,7 @@ struct TrainTogetherSheet: View {
                             .foregroundStyle(MorpheTheme.accentAlt)
                     }
 
-                    Divider().overlay(Color.white.opacity(0.08))
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(party.participants) { member in

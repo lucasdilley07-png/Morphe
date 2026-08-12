@@ -13,11 +13,11 @@ enum MorpheTheme {
     static var isLight = false
 
     static var ink: Color {
-        isLight ? Color(red: 0.965, green: 0.957, blue: 0.937)             // warm paper
+        isLight ? Color.white                                              // clean white field
                 : Color(red: 0.020, green: 0.020, blue: 0.024)             // flat near-black
     }
     static var inkAlt: Color {
-        isLight ? Color(red: 0.937, green: 0.929, blue: 0.906)
+        isLight ? Color(red: 0.965, green: 0.965, blue: 0.97)
                 : Color(red: 0.043, green: 0.043, blue: 0.047)
     }
     static var panel: Color {
@@ -33,13 +33,15 @@ enum MorpheTheme {
         isLight ? Color.black.opacity(0.13) : Color.white.opacity(0.13)
     }
     static var textPrimary: Color {
-        isLight ? Color(red: 0.10, green: 0.095, blue: 0.075) : Color.white
+        // Light: BLACK, not charcoal — white text flips fully.
+        isLight ? Color(red: 0.04, green: 0.04, blue: 0.045) : Color.white
     }
     static var textSecondary: Color {
-        isLight ? Color.black.opacity(0.60) : Color.white.opacity(0.66)
+        // Light: dark grey — clearly readable, clearly secondary.
+        isLight ? Color.black.opacity(0.72) : Color.white.opacity(0.66)
     }
     static var textMuted: Color {
-        isLight ? Color.black.opacity(0.45) : Color.white.opacity(0.56)
+        isLight ? Color.black.opacity(0.55) : Color.white.opacity(0.56)
     }
     static var stroke: Color {
         isLight ? Color.black.opacity(0.12) : Color.white.opacity(0.10)

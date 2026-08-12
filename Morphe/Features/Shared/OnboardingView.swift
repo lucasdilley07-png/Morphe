@@ -930,7 +930,7 @@ private struct GoalSelectionStep: View {
                 }
 
                 Divider()
-                    .overlay(Color.white.opacity(0.08))
+                    .overlay(MorpheTheme.strokeSubtle)
 
                 // Zero visible writing by default: taps carry the whole
                 // step, and the free-text milestones live behind one
