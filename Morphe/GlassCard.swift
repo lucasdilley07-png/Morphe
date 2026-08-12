@@ -45,7 +45,7 @@ struct CoachLayout<Content: View>: View {
 // corner ticks the cards and posters use.
 struct HUDCornerTicks: View {
     var arm: CGFloat = 9
-    var color: Color = Color.white.opacity(0.22)
+    var color: Color = MorpheTheme.stroke
 
     var body: some View {
         GeometryReader { proxy in
@@ -76,7 +76,7 @@ private struct PerformancePanelBackground: View {
             .fill(MorpheTheme.panel)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(MorpheTheme.panelStrong, lineWidth: 1)
             )
             .overlay(HUDCornerTicks())
     }
@@ -199,7 +199,7 @@ struct ProgressBarView: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(Color.white.opacity(0.08))
+                    .fill(MorpheTheme.panelStrong)
 
                 Rectangle()
                     .fill(color)
@@ -384,7 +384,7 @@ struct MorpheAvatarView: View {
                 .fill(MorpheTheme.panelStrong)
                 .overlay(
                     RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                        .stroke(MorpheTheme.stroke, lineWidth: 1)
                 )
 
             if let photoData, let photo = UIImage(data: photoData) {
@@ -579,7 +579,7 @@ struct ScoreRing: View {
         // Thin instrument ring: flat color, square cap, mono numerals.
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.08), lineWidth: 4)
+                .stroke(MorpheTheme.panelStrong, lineWidth: 4)
 
             Circle()
                 .trim(from: 0, to: Double(score) / 100.0)
@@ -1299,7 +1299,7 @@ struct RoleSwitcher: View {
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
                     }
-                    .foregroundStyle(selectedRole == role ? .black : .white)
+                    .foregroundStyle(selectedRole == role ? .black : MorpheTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(
@@ -1358,7 +1358,7 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                             .fill(selected == item ? MorpheTheme.accent : .clear)
                             .frame(width: 4, height: 4)
                     }
-                    .foregroundStyle(selected == item ? MorpheTheme.accent : Color.white.opacity(0.70))
+                    .foregroundStyle(selected == item ? MorpheTheme.accent : MorpheTheme.textSecondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 7)
                     .contentShape(Rectangle())
@@ -1378,7 +1378,7 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
         )
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(Color.white.opacity(0.10))
+                .fill(MorpheTheme.stroke)
                 .frame(height: 1)
         }
     }
@@ -1500,16 +1500,16 @@ struct FilterChipStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(isSelected ? .black : .white)
+            .foregroundStyle(isSelected ? .black : MorpheTheme.textPrimary)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                    .fill(isSelected ? selectedColor : (configuration.isPressed ? MorpheTheme.panelStrong : Color.white.opacity(0.04)))
+                    .fill(isSelected ? selectedColor : (configuration.isPressed ? MorpheTheme.panelStrong : MorpheTheme.panel))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.10), lineWidth: 1)
+                    .stroke(isSelected ? Color.clear : MorpheTheme.stroke, lineWidth: 1)
             )
             // Selection was color-only — invisible to VoiceOver and weak for
             // color-blind users. Every chip in the app gets the trait from here.
@@ -1528,10 +1528,10 @@ struct MorpheFieldStyle: TextFieldStyle {
             .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(MorpheTheme.panel)
                     .overlay(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                            .stroke(MorpheTheme.stroke, lineWidth: 1)
                     )
             )
             .foregroundStyle(MorpheTheme.textPrimary)
@@ -1689,7 +1689,7 @@ struct ManifestoCard: View {
                 }
 
                 Rectangle()
-                    .fill(Color.white.opacity(0.14))
+                    .fill(MorpheTheme.stroke)
                     .frame(height: 1)
 
                 // Brand yellow on purpose — the motto doesn't follow the
@@ -1743,7 +1743,7 @@ private struct ShareCardFrame<Content: View>: View {
 
     var body: some View {
         ZStack {
-            MorpheTheme.ink
+            Color.black
 
             VStack(alignment: .leading, spacing: 0) {
                 // Header: wordmark + date.
@@ -1756,7 +1756,7 @@ private struct ShareCardFrame<Content: View>: View {
                     Text(dateLabel.uppercased())
                         .font(.system(size: 11, design: .monospaced).weight(.semibold))
                         .tracking(1.6)
-                        .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
+                        .foregroundStyle(Color.white.opacity(0.55))
                 }
 
                 Spacer()
@@ -1775,7 +1775,7 @@ private struct ShareCardFrame<Content: View>: View {
                         Text(username.uppercased())
                             .font(.system(size: 12, design: .monospaced).weight(.semibold))
                             .tracking(1.6)
-                            .foregroundStyle(MorpheTheme.textPrimary.opacity(0.7))
+                            .foregroundStyle(Color.white.opacity(0.7))
                     }
                     Spacer()
                     // The motto rides every card — the brand line travels
@@ -1804,7 +1804,7 @@ private struct ShareCardKicker: View {
         Text(text)
             .font(.system(size: 12, design: .monospaced).weight(.semibold))
             .tracking(2.4)
-            .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
+            .foregroundStyle(Color.white.opacity(0.55))
     }
 }
 

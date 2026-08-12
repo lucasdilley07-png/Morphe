@@ -111,7 +111,7 @@ struct CommunityView: View {
                     Text(label)
                         .font(MorpheTheme.microLabel(12))
                         .tracking(1.6)
-                        .foregroundStyle(isActive ? .white : MorpheTheme.textMuted)
+                        .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
                     if showsBadge {
                         Circle()
                             .fill(MorpheTheme.brandYellow)
@@ -1827,7 +1827,7 @@ private struct TrainedTodayRow: View {
                             initial: String(entry.name.prefix(1)).uppercased(),
                             name: entry.id == myUid ? "You" : entry.name,
                             ringState: entry.hasUnseen ? .unseen : .seen,
-                            accent: accentId.isEmpty ? .white : MorpheTheme.accentColor(forPaletteId: accentId),
+                            accent: accentId.isEmpty ? MorpheTheme.textPrimary : MorpheTheme.accentColor(forPaletteId: accentId),
                             duoStreak: duo
                         ) {
                             onOpen(entry)
@@ -1972,7 +1972,7 @@ private struct StorySessionViewer: View {
                         .font(MorpheTheme.microLabel(11))
                         .tracking(1.4)
                         .foregroundStyle(post.authorAccent.isEmpty
-                            ? .white
+                            ? MorpheTheme.textPrimary
                             : MorpheTheme.accentColor(forPaletteId: post.authorAccent))
                     if entry.verified {
                         Image(systemName: "checkmark.seal.fill")
@@ -2027,7 +2027,7 @@ private struct StorySessionViewer: View {
                         } label: {
                             Image(systemName: reaction.symbol)
                                 .font(.subheadline.weight(.bold))
-                                .foregroundStyle(isMine ? MorpheTheme.brandYellow : .white)
+                                .foregroundStyle(isMine ? MorpheTheme.brandYellow : MorpheTheme.textPrimary)
                                 .frame(width: 44, height: 44)
                                 .background(
                                     RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
@@ -2267,7 +2267,7 @@ struct ImmersiveFeedViewer: View {
                         Image(systemName: option.symbol)
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(store.myReactionTypes[post.id] == option.type
-                                ? MorpheTheme.accent : .white)
+                                ? MorpheTheme.accent : MorpheTheme.textPrimary)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
@@ -2556,7 +2556,7 @@ private struct FeedAuthorView: View {
                                 Text(String(authorName.prefix(1)).uppercased())
                                     .font(.title2.weight(.bold))
                                     .foregroundStyle(accentId.isEmpty
-                                        ? .white
+                                        ? MorpheTheme.textPrimary
                                         : MorpheTheme.accentColor(forPaletteId: accentId))
                             )
                         VStack(alignment: .leading, spacing: 4) {
@@ -2680,7 +2680,7 @@ private struct FeedPostCard: View {
                                     Text(String(post.authorName.prefix(1)).uppercased())
                                         .font(.headline)
                                         .foregroundStyle(post.authorAccent.isEmpty
-                                            ? .white
+                                            ? MorpheTheme.textPrimary
                                             : MorpheTheme.accentColor(forPaletteId: post.authorAccent))
                                 )
 
@@ -3150,7 +3150,7 @@ private extension View {
     func feedActionChrome(isActive: Bool, activeColor: Color) -> some View {
         self
             .font(.caption.weight(.semibold))
-            .foregroundStyle(isActive ? activeColor : .white)
+            .foregroundStyle(isActive ? activeColor : MorpheTheme.textPrimary)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
@@ -3174,7 +3174,7 @@ private struct FeedActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.caption.weight(.semibold))
-            .foregroundStyle(isActive ? activeColor : .white)
+            .foregroundStyle(isActive ? activeColor : MorpheTheme.textPrimary)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
@@ -3830,7 +3830,7 @@ struct LiveThreadRow: View {
 
                 Text(thread.lastMessage.isEmpty ? "No messages yet" : thread.lastMessage)
                     .font(isUnread ? .caption.weight(.semibold) : .caption)
-                    .foregroundStyle(isUnread ? .white : MorpheTheme.textSecondary)
+                    .foregroundStyle(isUnread ? MorpheTheme.textPrimary : MorpheTheme.textSecondary)
                     .lineLimit(2)
             }
         }

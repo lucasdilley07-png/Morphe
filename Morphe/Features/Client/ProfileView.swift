@@ -354,7 +354,7 @@ struct ProfileView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(MorpheTheme.textMuted)
             Text(value.isEmpty ? "Not set" : value)
-                .foregroundStyle(value.isEmpty ? MorpheTheme.textMuted : .white)
+                .foregroundStyle(value.isEmpty ? MorpheTheme.textMuted : MorpheTheme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -827,7 +827,7 @@ struct ProfileView: View {
                             ? "\(store.referralCount) athlete\(store.referralCount == 1 ? "" : "s") joined through you."
                             : "Nobody has joined through you yet — share your invite to change that.")
                             .font(.subheadline)
-                            .foregroundStyle(store.referralCount > 0 ? .white : MorpheTheme.textSecondary)
+                            .foregroundStyle(store.referralCount > 0 ? MorpheTheme.textPrimary : MorpheTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                         ShareLink(item: store.networkInviteMessage) {
@@ -1323,7 +1323,7 @@ struct ProfileView: View {
                     .opacity(isUnlocked ? 1 : 0.35)
                 if isSelected {
                     Circle()
-                        .stroke(.white, lineWidth: 2)
+                        .stroke(MorpheTheme.textPrimary, lineWidth: 2)
                         .frame(width: 36, height: 36)
                     Image(systemName: "checkmark")
                         .scaledFont(size: 12, weight: .bold)

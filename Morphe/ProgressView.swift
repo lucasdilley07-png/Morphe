@@ -615,7 +615,7 @@ private struct TrainedDaysCard: View {
                                 )
                             Text(day.label)
                                 .font(.caption2)
-                                .foregroundStyle(day.trained ? .white : MorpheTheme.textMuted)
+                                .foregroundStyle(day.trained ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -2267,7 +2267,7 @@ private struct WeeklyBoardCard: View {
 
             Text(isMe ? "\(entry.name) (you)" : entry.name)
                 .font(.caption.weight(isMe ? .bold : .semibold))
-                .foregroundStyle(isMe ? MorpheTheme.accent : .white)
+                .foregroundStyle(isMe ? MorpheTheme.accent : MorpheTheme.textPrimary)
                 .lineLimit(1)
 
             if entry.verified {
@@ -2489,7 +2489,7 @@ private struct CreateChallengeSheet: View {
                     ForEach(ChallengeMetric.allCases) { option in
                         Button(option.label) { metric = option }
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(metric == option ? .black : .white)
+                            .foregroundStyle(metric == option ? .black : MorpheTheme.textPrimary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                             .background(
@@ -2508,7 +2508,7 @@ private struct CreateChallengeSheet: View {
                     ForEach(durationOptions, id: \.self) { option in
                         Button("\(option) days") { days = option }
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(days == option ? .black : .white)
+                            .foregroundStyle(days == option ? .black : MorpheTheme.textPrimary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                             .background(

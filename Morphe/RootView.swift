@@ -591,7 +591,7 @@ private struct HeaderCircleButton: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                        .stroke(MorpheTheme.stroke, lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)

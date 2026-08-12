@@ -29,7 +29,7 @@ struct MorpheApp: App {
                 // bodies just because a static changed. New identity on the
                 // appearance flip rebuilds the whole tree, so every view
                 // re-reads the light/dark tokens. One-time cost per flip.
-                .id(store.appearanceIsLight)
+                .id("\(store.appearanceIsLight)-\(store.profileShowcase.accentPalette.rawValue)-\(store.profileShowcase.customAccentHex)")
                 .environment(store)
                 .preferredColorScheme(store.selectedAppearance)
                 .onChange(of: scenePhase) { _, phase in

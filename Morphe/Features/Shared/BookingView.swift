@@ -206,7 +206,7 @@ private struct BookingPackageCard: View {
                         VStack(alignment: .trailing, spacing: 2) {
                             Text(package.price)
                                 .font(.title3.weight(.bold))
-                                .foregroundStyle(isSelected ? MorpheTheme.accent : .white)
+                                .foregroundStyle(isSelected ? MorpheTheme.accent : MorpheTheme.textPrimary)
                             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                                 .foregroundStyle(isSelected ? MorpheTheme.accent : MorpheTheme.textMuted)
                         }
@@ -242,7 +242,7 @@ private struct BookingSlotChip: View {
                 Text(slot.time)
                     .font(.caption2)
             }
-            .foregroundStyle(isSelected ? .black : .white)
+            .foregroundStyle(isSelected ? .black : MorpheTheme.textPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(

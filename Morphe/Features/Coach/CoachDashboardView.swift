@@ -4455,7 +4455,7 @@ struct CoachHonestAnalyticsCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(analytics.quietCount)")
                             .font(.headline)
-                            .foregroundStyle(analytics.quietCount > 0 ? MorpheTheme.warning : .white)
+                            .foregroundStyle(analytics.quietCount > 0 ? MorpheTheme.warning : MorpheTheme.textPrimary)
                         Text("Quiet 7+ days")
                             .font(.caption2)
                             .foregroundStyle(MorpheTheme.textMuted)
@@ -4463,7 +4463,7 @@ struct CoachHonestAnalyticsCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(analytics.awaitingReply)")
                             .font(.headline)
-                            .foregroundStyle(analytics.awaitingReply > 0 ? MorpheTheme.brandYellow : .white)
+                            .foregroundStyle(analytics.awaitingReply > 0 ? MorpheTheme.brandYellow : MorpheTheme.textPrimary)
                         Text("Awaiting reply")
                             .font(.caption2)
                             .foregroundStyle(MorpheTheme.textMuted)

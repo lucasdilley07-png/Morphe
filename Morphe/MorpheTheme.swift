@@ -296,7 +296,7 @@ enum MorpheTheme {
         case .swimming:
             return lavender
         default:
-            return .white
+            return MorpheTheme.textPrimary
         }
     }
 }
@@ -521,7 +521,7 @@ struct SecondaryCTAButtonStyle: ButtonStyle {
             // Never hyphenate a button label — shrink to fit.
             .lineLimit(1)
             .minimumScaleFactor(0.55)
-            .foregroundStyle(configuration.isPressed ? MorpheTheme.textSecondary : .white)
+            .foregroundStyle(configuration.isPressed ? MorpheTheme.textSecondary : MorpheTheme.textPrimary)
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
@@ -531,7 +531,7 @@ struct SecondaryCTAButtonStyle: ButtonStyle {
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                    .stroke(MorpheTheme.stroke, lineWidth: 1)
             )
             .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
     }
@@ -572,6 +572,6 @@ private struct PerformanceGridOverlay: View {
                 )
             }
         }
-        .blendMode(.screen)
+        .blendMode(MorpheTheme.isLight ? .multiply : .screen)
     }
 }

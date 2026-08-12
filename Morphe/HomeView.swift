@@ -1287,7 +1287,7 @@ private struct PartnerWorkoutCard: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(partner.name)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(selectedPartner?.id == partner.id ? .black : .white)
+                                        .foregroundStyle(selectedPartner?.id == partner.id ? .black : MorpheTheme.textPrimary)
                                     Text(partner.sport.shortTitle)
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(selectedPartner?.id == partner.id ? .black.opacity(0.75) : MorpheTheme.textSecondary)
@@ -1379,7 +1379,7 @@ private struct FirstWeekCard: View {
                             .foregroundStyle(step.done ? MorpheTheme.accent : MorpheTheme.textMuted)
                         Text(step.title)
                             .font(.subheadline)
-                            .foregroundStyle(step.done ? MorpheTheme.textMuted : .white)
+                            .foregroundStyle(step.done ? MorpheTheme.textMuted : MorpheTheme.textPrimary)
                             .strikethrough(step.done, color: MorpheTheme.textMuted)
                         Spacer(minLength: 0)
                     }

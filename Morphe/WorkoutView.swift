@@ -80,7 +80,7 @@ struct WorkoutView: View {
                 Text(label)
                     .font(MorpheTheme.microLabel(12))
                     .tracking(1.6)
-                    .foregroundStyle(isActive ? .white : MorpheTheme.textMuted)
+                    .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
                 Rectangle()
                     .fill(isActive ? MorpheTheme.accent : .clear)
                     .frame(width: 26, height: 3)
@@ -2126,7 +2126,7 @@ private struct FocusedWorkoutQueueCard: View {
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .foregroundStyle(supersetPartners[exercise.id] != nil ? MorpheTheme.accentAlt : .white)
+                            .foregroundStyle(supersetPartners[exercise.id] != nil ? MorpheTheme.accentAlt : MorpheTheme.textPrimary)
                             .accessibilityLabel(supersetPartners[exercise.id] != nil
                                 ? "Unlink \(exercise.name) from its superset"
                                 : "Link \(exercise.name) with the next exercise as a superset")
@@ -2144,7 +2144,7 @@ private struct FocusedWorkoutQueueCard: View {
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .foregroundStyle(index == 0 ? MorpheTheme.textMuted : .white)
+                            .foregroundStyle(index == 0 ? MorpheTheme.textMuted : MorpheTheme.textPrimary)
                             .disabled(index == 0)
                             .accessibilityLabel("Move \(exercise.name) earlier")
 
@@ -2159,7 +2159,7 @@ private struct FocusedWorkoutQueueCard: View {
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .foregroundStyle(index == exercises.count - 1 ? MorpheTheme.textMuted : .white)
+                            .foregroundStyle(index == exercises.count - 1 ? MorpheTheme.textMuted : MorpheTheme.textPrimary)
                             .disabled(index == exercises.count - 1)
                             .accessibilityLabel("Move \(exercise.name) later")
                         }
@@ -3111,7 +3111,7 @@ private struct DiscoverCatalogSection: View {
                     .scaledFont(size: 8, weight: .bold)
             }
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(isSelected ? .black : .white)
+            .foregroundStyle(isSelected ? .black : MorpheTheme.textPrimary)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(
@@ -4463,7 +4463,7 @@ private struct CircuitModeView: View {
                                         .foregroundStyle(station.isEnabled ? MorpheTheme.accent : MorpheTheme.textMuted)
                                     Text(station.name)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(station.isEnabled ? .white : MorpheTheme.textMuted)
+                                        .foregroundStyle(station.isEnabled ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.8)
                                     Spacer()
