@@ -25,6 +25,11 @@ struct MorpheApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                // Theme tokens are statics — SwiftUI won't re-run leaf
+                // bodies just because a static changed. New identity on the
+                // appearance flip rebuilds the whole tree, so every view
+                // re-reads the light/dark tokens. One-time cost per flip.
+                .id(store.appearanceIsLight)
                 .environment(store)
                 .preferredColorScheme(store.selectedAppearance)
                 .onChange(of: scenePhase) { _, phase in
