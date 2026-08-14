@@ -83,6 +83,13 @@ struct ScannedConnection: Identifiable, Hashable, Codable {
 /// (coach tools, networking, chat, payments) are built but hidden until the
 /// v2 backend exists. Flip this to `true` to re-enable them everywhere.
 enum FeatureFlags {
+    /// The social feed layer (posts, stories, camera, grid, immersive
+    /// viewer). Dark-flagged for launch (product audit 2026-08-11): at 300
+    /// scattered users with no push, a feed has no loop — Network ships as
+    /// CHATS | BOARD | CALENDAR instead. All feed code stays warm behind
+    /// this flag for the relight.
+    static let socialFeedEnabled = false
+
     static let multiUserEnabled = false
     /// Gates the new account/sign-in flow. Now backed by Firebase Auth — the app
     /// requires sign-in (or account creation) before onboarding, and each account
@@ -136,6 +143,8 @@ enum ClientTab: String, CaseIterable, MorpheTabItem {
 enum ClientCommunitySection: String, CaseIterable, Identifiable {
     case forYou = "For You"
     case contact = "Contact"
+    case board = "Board"
+    case calendar = "Calendar"
 
     var id: String { rawValue }
 }

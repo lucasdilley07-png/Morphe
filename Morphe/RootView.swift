@@ -1213,7 +1213,7 @@ private struct NetworkProfilePreviewSheet: View {
         if profile.role == .coach {
             store.openCommunity(.contact)
         } else {
-            store.openCommunity(.forYou)
+            store.openCommunity(FeatureFlags.socialFeedEnabled ? .forYou : .contact)
         }
     }
 }
@@ -1577,7 +1577,7 @@ private struct UniversalSearchSheet: View {
                         if store.selectedRole == .coach {
                             store.selectedCoachTab = .network
                         } else {
-                            store.openCommunity(.forYou)
+                            store.openCommunity(FeatureFlags.socialFeedEnabled ? .forYou : .contact)
                         }
                         store.notify("Opened \(post.author)'s post.")
                         store.closeUniversalSearch()

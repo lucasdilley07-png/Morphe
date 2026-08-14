@@ -174,7 +174,7 @@ final class MorpheAppStore {
     var challengesFetchState: FetchState = .idle
     // A tab named "Learn" opens to learning, not to a scoreboard.
     var selectedHubFeature: ClientHubFeature? = .learn
-    var selectedCommunitySection: ClientCommunitySection = .forYou
+    var selectedCommunitySection: ClientCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
     var selectedCoachBuildSection: CoachBuildSection = .builder
     var quickCaptureNotes: [String] = []
 
@@ -4552,7 +4552,7 @@ final class MorpheAppStore {
         selectedRole = role
         if role == .client {
             selectedClientTab = .today
-            selectedCommunitySection = .forYou
+            selectedCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
         } else {
             selectedCoachTab = .dashboard
         }
@@ -4622,7 +4622,7 @@ final class MorpheAppStore {
         }
         selectedClientTab = .today
         selectedCoachTab = .dashboard
-        selectedCommunitySection = .forYou
+        selectedCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
         selectedSportMode = primarySport
         // Gender is copied only when the user actually answered the step —
         // never the draft's silent default.
@@ -6766,7 +6766,7 @@ final class MorpheAppStore {
     func sharePostWorkoutHighlight() {
         didShareCurrentWorkoutHighlight = true
         shareCommunityPost(postWorkoutHighlightText(), as: .client)
-        openCommunity(.forYou)
+        openCommunity(FeatureFlags.socialFeedEnabled ? .forYou : .contact)
         showToast("Workout highlight shared.")
     }
 

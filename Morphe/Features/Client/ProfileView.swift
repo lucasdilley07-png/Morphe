@@ -864,6 +864,7 @@ struct ProfileView: View {
 
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
+                    if FeatureFlags.socialFeedEnabled {
                     preferenceToggleRow(
                         title: "Auto-share workouts",
                         caption: "Posts an honest recap to the feed when you log a session. Each session shows a toggle to keep it private.",
@@ -887,6 +888,7 @@ struct ProfileView: View {
                         caption: "Your accent color tints your name and story bubble for others. Off posts in the default gold.",
                         isOn: $store.postAccentIdentity
                     )
+                    }
 
                     Divider().overlay(MorpheTheme.strokeSubtle)
 

@@ -5,6 +5,7 @@ struct CommunityView: View {
     @State private var selectedStory: CommunityStoryPreview?
     @State private var showNetworkExtras = false
     @State private var showFormCamera = false
+    @State private var showCalendarEditor = false
     /// Tab landing clears the floating header icons.
     var topPadding: CGFloat = MorpheTheme.Spacing.pageTopStacked
 
@@ -26,13 +27,20 @@ struct CommunityView: View {
                 contactScreen
                     .tag(ClientCommunitySection.contact)
 
-                // The stack hosts the feed's author push (swipe-back). The
-                // system bar stays hidden — the HUD has its own chrome.
-                NavigationStack {
-                    forYouScreen
-                        .toolbar(.hidden, for: .navigationBar)
+                if FeatureFlags.socialFeedEnabled {
+                    // The stack hosts the feed's author push (swipe-back). The
+                    // system bar stays hidden — the HUD has its own chrome.
+                    NavigationStack {
+                        forYouScreen
+                            .toolbar(.hidden, for: .navigationBar)
+                    }
+                    .tag(ClientCommunitySection.forYou)
+                } else {
+                    boardScreen
+                        .tag(ClientCommunitySection.board)
+                    calendarScreen
+                        .tag(ClientCommunitySection.calendar)
                 }
-                .tag(ClientCommunitySection.forYou)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
@@ -75,10 +83,17 @@ struct CommunityView: View {
     private var networkHeader: some View {
         HStack(alignment: .bottom, spacing: 22) {
             sectionTab("CHATS", .contact, showsBadge: store.unreadThreadCount > 0)
-            sectionTab("FOR YOU", .forYou)
+            if FeatureFlags.socialFeedEnabled {
+                sectionTab("FOR YOU", .forYou)
+            } else {
+                // Launch shape (product audit): people, standings, schedule.
+                sectionTab("BOARD", .board)
+                sectionTab("CALENDAR", .calendar)
+            }
 
             Spacer()
 
+            if FeatureFlags.socialFeedEnabled {
             Button {
                 showFormCamera = true
             } label: {
@@ -92,6 +107,7 @@ struct CommunityView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Camera — shoot a photo or clip")
+            }
         }
         .padding(.horizontal, 20)
         .padding(.top, topPadding)
@@ -182,6 +198,64 @@ struct CommunityView: View {
             await store.refreshFeed(force: true)
             await store.refreshLeaderboard(force: true)
             await store.refreshChallenges(force: true)
+        }
+    }
+
+    /// BOARD pane: the weekly leaderboard, same honest card Progress
+    /// hosts — opt-in, real names, real logged scores only.
+    private var boardScreen: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                WeeklyBoardCard()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+            .padding(.bottom, 120)
+        }
+        .refreshable { await store.refreshLeaderboard(force: true) }
+    }
+
+    /// CALENDAR pane: the personal schedule — upcoming appointments plus
+    /// the same editor every other schedule door uses.
+    private var calendarScreen: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("Schedule")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Button("Add") { showCalendarEditor = true }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.accent)
+                        .frame(minHeight: 44)
+                }
+
+                if store.upcomingAppointments.isEmpty {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Nothing scheduled")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Text("Add a session, a coach call, or anything worth showing up for — reminders ride along automatically.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                    }
+                } else {
+                    ForEach(store.upcomingAppointments) { appointment in
+                        AppointmentRowView(appointment: appointment)
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+            .padding(.bottom, 120)
+        }
+        .refreshable { await store.refreshAppointments() }
+        .sheet(isPresented: $showCalendarEditor) {
+            AppointmentEditorSheet(nameSuggestions: store.appointmentPeopleChoices.map(\.name))
+                .environment(store)
         }
     }
 

@@ -2138,7 +2138,7 @@ private let verifiedSealBlue = Color(red: 0.25, green: 0.56, blue: 0.96)
 /// Opt-in global weekly leaderboard. Scores are total sets logged this ISO
 /// week, posted by each user's own device from their own logs — the card only
 /// ever renders what was actually fetched from Firestore.
-private struct WeeklyBoardCard: View {
+struct WeeklyBoardCard: View {
     @Environment(MorpheAppStore.self) private var store
 
     private var myUid: String? { store.authUser?.id }
