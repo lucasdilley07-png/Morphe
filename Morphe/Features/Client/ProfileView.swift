@@ -20,8 +20,6 @@ struct ProfileView: View {
     @State private var deadlineTargetDraft = ""
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var showVerificationCamera = false
-    @State private var heightDraft = ""
-    @State private var weightDraft = ""
     @State private var showSignOutConfirm = false
     @State private var showUnsavedPrompt = false
     @State private var showDeleteAccountConfirm = false
@@ -38,12 +36,6 @@ struct ProfileView: View {
         store.selectedRole == .coach
     }
 
-    private var bodyMetricsChanged: Bool {
-        // Compare what a save would actually store (trimmed + 20-char cap) —
-        // comparing the raw draft left "Save details" stuck for long input.
-        normalizedMetric(heightDraft) != store.clientProfile.height
-            || normalizedMetric(weightDraft) != store.clientProfile.bodyWeight
-    }
 
     private func normalizedMetric(_ value: String) -> String {
         String(value.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
@@ -80,8 +72,6 @@ struct ProfileView: View {
             MorpheProPaywallSheet()
         }
         .onAppear {
-            heightDraft = store.clientProfile.height
-            weightDraft = store.clientProfile.bodyWeight
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -130,7 +120,6 @@ struct ProfileView: View {
 
     /// Edits sitting in drafts that a dismissal would otherwise drop.
     private var hasUnsavedEdits: Bool {
-        if bodyMetricsChanged { return true }
         if isEditingName {
             let trimmed = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty, trimmed != store.profileShowcase.displayName { return true }
@@ -169,9 +158,6 @@ struct ProfileView: View {
         }
         if isEditingBio { saveBio() }
         if isEditingTargets { saveTargets() }
-        if bodyMetricsChanged {
-            store.updateBodyMetrics(height: heightDraft, weight: weightDraft)
-        }
     }
 
     private func discardAllEdits() {
@@ -180,8 +166,6 @@ struct ProfileView: View {
         isEditingInjuries = false
         isEditingBio = false
         isEditingTargets = false
-        heightDraft = store.clientProfile.height
-        weightDraft = store.clientProfile.bodyWeight
     }
 
     /// Everything about the user's training identity, editable in place —
@@ -255,25 +239,7 @@ struct ProfileView: View {
                     }
                 }
 
-                Divider().overlay(MorpheTheme.strokeSubtle)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Body")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    HStack(spacing: 10) {
-                        // Placeholder speaks the user's own unit — a bare
-                        // number is parsed in that unit too.
-                        TextField(store.weightUnit == .kilograms ? "Weight (77 kg)" : "Weight (170 lb)", text: $weightDraft)
-                            .textFieldStyle(MorpheFieldStyle())
-                    }
-                    if bodyMetricsChanged {
-                        Button("Save details") {
-                            store.updateBodyMetrics(height: heightDraft, weight: weightDraft)
-                        }
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                    }
-                }
             }
         }
     }
@@ -904,6 +870,10 @@ struct ProfileView: View {
 
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
+                    }
+                    // Athlete-only from here: the board and coach-code rows
+                    // have no coach-side surface (post-cut audit P1-9).
+                    if !isCoach {
                     // The board publishes your real name — the opt-in lives
                     // with the other visibility controls, not just buried in
                     // Progress.

@@ -617,7 +617,11 @@ final class WorkoutSessionTests: XCTestCase {
 
         let reloaded = MorpheAppStore()
         XCTAssertFalse(reloaded.autoRestTimerEnabled, "the rest preference survives relaunch")
-        XCTAssertTrue(reloaded.autoShareWorkoutsEnabled, "the share preference survives relaunch")
+        // While the social feed is dark, a persisted auto-share is FORCED
+        // off on load (post-cut audit P0-2): publishing to a surface with
+        // no reader and no visible off-switch is never acceptable.
+        XCTAssertEqual(reloaded.autoShareWorkoutsEnabled, FeatureFlags.socialFeedEnabled,
+                       "the share preference survives relaunch only while the feed exists")
 
         // A per-session opt-out lasts exactly one session.
         startedTwoExerciseSession(reloaded)

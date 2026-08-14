@@ -607,7 +607,7 @@ private struct CoachCodeStep: View {
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(MorpheTheme.panelStrong)
                     )
             }
         }

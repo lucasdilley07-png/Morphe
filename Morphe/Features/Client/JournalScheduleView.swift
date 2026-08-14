@@ -733,7 +733,7 @@ private struct CoachAthleteActionButton: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                    .fill(Color.white.opacity(0.05))
+                    .fill(MorpheTheme.panel)
                     .overlay(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .strokeBorder(tint.opacity(0.24), lineWidth: 1)
@@ -1533,7 +1533,7 @@ struct CoachNotesPanel: View {
                     .scrollContentBackground(.hidden)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(MorpheTheme.panelStrong)
                     )
                     .foregroundStyle(MorpheTheme.textPrimary)
 
@@ -1721,11 +1721,11 @@ struct ClientAppointmentsView: View {
                     Text("Nothing scheduled. Add a session, check-in, or anything you train around.")
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
-                        .listRowBackground(Color.white.opacity(0.05))
+                        .listRowBackground(MorpheTheme.panel)
                 } else {
                     ForEach(store.upcomingAppointments) { appointment in
                         AppointmentRowView(appointment: appointment)
-                            .listRowBackground(Color.white.opacity(0.05))
+                            .listRowBackground(MorpheTheme.panel)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button("Delete", role: .destructive) {
                                     store.deleteAppointment(appointment)

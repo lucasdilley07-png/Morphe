@@ -722,7 +722,7 @@ private struct MorpheAIAgentSheet: View {
                                     .padding(14)
                                     .background(
                                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                            .fill(Color.white.opacity(0.05))
+                                            .fill(MorpheTheme.panel)
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                                     .stroke(MorpheTheme.stroke, lineWidth: 1)
@@ -846,7 +846,7 @@ private struct MorpheAIAgentSheet: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(MorpheTheme.panelStrong)
                     .overlay(
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .stroke(MorpheTheme.stroke, lineWidth: 1)
@@ -1111,7 +1111,7 @@ private struct NetworkProfilePreviewSheet: View {
                                     .padding(.vertical, 6)
                                     .background(
                                         RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                                            .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                                            .stroke(MorpheTheme.stroke, lineWidth: 1)
                                     )
                             }
                         }
@@ -1436,14 +1436,20 @@ private struct UniversalSearchSheet: View {
                                     .font(.subheadline.weight(.semibold).monospaced())
                                     .foregroundStyle(MorpheTheme.textPrimary)
                                 Spacer()
-                                Button(store.isFollowing(hit.uid) ? "Following" : "Follow") {
-                                    store.toggleFollow(uid: hit.uid, name: hit.username)
+                                // Follow only exists where a feed can show
+                                // it (post-cut audit P1-4) — while the feed
+                                // is dark, the door is Message, not a write
+                                // into an invisible graph.
+                                if FeatureFlags.socialFeedEnabled {
+                                    Button(store.isFollowing(hit.uid) ? "Following" : "Follow") {
+                                        store.toggleFollow(uid: hit.uid, name: hit.username)
+                                    }
+                                    .buttonStyle(FilterChipStyle(
+                                        isSelected: store.isFollowing(hit.uid),
+                                        selectedColor: MorpheTheme.accent))
+                                    .accessibilityLabel(store.isFollowing(hit.uid)
+                                        ? "Unfollow \(hit.username)" : "Follow \(hit.username)")
                                 }
-                                .buttonStyle(FilterChipStyle(
-                                    isSelected: store.isFollowing(hit.uid),
-                                    selectedColor: MorpheTheme.accent))
-                                .accessibilityLabel(store.isFollowing(hit.uid)
-                                    ? "Unfollow \(hit.username)" : "Follow \(hit.username)")
                             }
                             .frame(minHeight: 44)
                         }

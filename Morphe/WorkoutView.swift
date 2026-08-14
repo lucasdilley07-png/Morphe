@@ -651,7 +651,7 @@ struct WorkoutView: View {
                     // is globally on AND there's a signed-in account to post
                     // as. Off here means THIS session stays private; the
                     // toggle re-arms every session.
-                    if store.autoShareWorkoutsEnabled, store.authUser != nil {
+                    if FeatureFlags.socialFeedEnabled, store.autoShareWorkoutsEnabled, store.authUser != nil {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Share to feed")
@@ -1676,7 +1676,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                     Image(systemName: "pencil")
                                         .font(.caption)
                                         .frame(width: 28, height: 28)
-                                        .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                                        .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(MorpheTheme.stroke, lineWidth: 1))
                                         .frame(width: 44, height: 44)
                                         .contentShape(Rectangle())
                                 }
@@ -1690,7 +1690,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                     Image(systemName: "trash")
                                         .font(.caption)
                                         .frame(width: 28, height: 28)
-                                        .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                                        .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(MorpheTheme.stroke, lineWidth: 1))
                                         .frame(width: 44, height: 44)
                                         .contentShape(Rectangle())
                                 }
@@ -2018,10 +2018,10 @@ private struct ConsoleStepButton: View {
             .frame(minWidth: 40, minHeight: 40)
             .background(
                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                    .fill(isPressing ? Color.white.opacity(0.12) : Color.clear)
+                    .fill(isPressing ? MorpheTheme.stroke : Color.clear)
                     .overlay(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                            .stroke(MorpheTheme.stroke, lineWidth: 1)
                     )
             )
             .contentShape(Rectangle())
@@ -2121,7 +2121,7 @@ private struct FocusedWorkoutQueueCard: View {
                                 Image(systemName: supersetPartners[exercise.id] != nil ? "link.circle.fill" : "link")
                                     .font(.caption.weight(.bold))
                                     .frame(width: 28, height: 28)
-                                    .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                                    .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(MorpheTheme.stroke, lineWidth: 1))
                                     .frame(width: 44, height: 44)
                                     .contentShape(Rectangle())
                             }
@@ -2139,7 +2139,7 @@ private struct FocusedWorkoutQueueCard: View {
                                 Image(systemName: "chevron.up")
                                     .font(.caption.weight(.bold))
                                     .frame(width: 28, height: 28)
-                                    .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                                    .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(MorpheTheme.stroke, lineWidth: 1))
                                     .frame(width: 44, height: 44)
                                     .contentShape(Rectangle())
                             }
@@ -2154,7 +2154,7 @@ private struct FocusedWorkoutQueueCard: View {
                                 Image(systemName: "chevron.down")
                                     .font(.caption.weight(.bold))
                                     .frame(width: 28, height: 28)
-                                    .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                                    .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(MorpheTheme.stroke, lineWidth: 1))
                                     .frame(width: 44, height: 44)
                                     .contentShape(Rectangle())
                             }
@@ -2721,7 +2721,7 @@ private struct DiscoverCatalogSection: View {
                 .fill(MorpheTheme.panelStrong)
                 .overlay(
                     RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        .stroke(MorpheTheme.stroke, lineWidth: 1)
                 )
         )
     }
@@ -3018,7 +3018,7 @@ private struct DiscoverCatalogSection: View {
                     .fill(MorpheTheme.panelStrong)
                     .overlay(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                            .stroke(MorpheTheme.stroke, lineWidth: 1)
                     )
             )
             .contentShape(Rectangle())
@@ -3116,7 +3116,7 @@ private struct DiscoverCatalogSection: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                    .fill(isSelected ? MorpheTheme.accent : Color.white.opacity(0.04))
+                    .fill(isSelected ? MorpheTheme.accent : MorpheTheme.panel)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
@@ -3160,7 +3160,7 @@ private struct DiscoverCatalogSection: View {
                     .fill(MorpheTheme.panelStrong)
                     .overlay(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                            .stroke(MorpheTheme.stroke, lineWidth: 1)
                     )
             )
         }
@@ -3522,7 +3522,7 @@ private struct FlowingPillRow: View {
                         .background(
                             Capsule()
                                 .fill(MorpheTheme.panelStrong)
-                                .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
+                                .overlay(Capsule().stroke(MorpheTheme.stroke, lineWidth: 1))
                         )
                 }
             }
@@ -3575,7 +3575,7 @@ private struct TrySomethingNewCard: View {
                         .padding(10)
                         .background(
                             RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                .fill(Color.white.opacity(0.04))
+                                .fill(MorpheTheme.panel)
                         )
                         .contentShape(Rectangle())
                     }
@@ -3832,7 +3832,7 @@ struct TrainTogetherSheet: View {
                             .padding(10)
                             .background(
                                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                    .fill(.white)
+                                    .fill(MorpheTheme.textPrimary)
                             )
                     }
 
@@ -4537,7 +4537,7 @@ private struct CircuitModeView: View {
                         .frame(width: 34, height: 34)
                         .background(
                             RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
-                                .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                                .stroke(MorpheTheme.stroke, lineWidth: 1)
                         )
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
@@ -6412,7 +6412,7 @@ private struct ExercisePickerSheet: View {
                             .fill(MorpheTheme.panelStrong)
                             .overlay(
                                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                                    .stroke(MorpheTheme.stroke, lineWidth: 1)
                             )
                     )
 

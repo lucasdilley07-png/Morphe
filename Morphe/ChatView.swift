@@ -1945,7 +1945,7 @@ private struct StoryBubble: View {
     private var ringColor: Color {
         switch ringState {
         case .unseen: return MorpheTheme.brandYellow
-        case .seen: return Color.white.opacity(0.18)
+        case .seen: return MorpheTheme.stroke
         case .empty: return Color.white.opacity(0.30)
         }
     }
@@ -2036,7 +2036,7 @@ private struct StorySessionViewer: View {
                 HStack(spacing: 4) {
                     ForEach(entry.posts.indices, id: \.self) { tick in
                         Rectangle()
-                            .fill(tick <= index ? MorpheTheme.brandYellow : Color.white.opacity(0.18))
+                            .fill(tick <= index ? MorpheTheme.brandYellow : MorpheTheme.stroke)
                             .frame(height: 2)
                     }
                 }
@@ -2105,7 +2105,7 @@ private struct StorySessionViewer: View {
                                 .frame(width: 44, height: 44)
                                 .background(
                                     RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
-                                        .stroke(isMine ? MorpheTheme.brandYellow.opacity(0.6) : Color.white.opacity(0.16), lineWidth: 1)
+                                        .stroke(isMine ? MorpheTheme.brandYellow.opacity(0.6) : MorpheTheme.stroke, lineWidth: 1)
                                 )
                                 .contentShape(Rectangle())
                         }
@@ -2553,7 +2553,7 @@ private struct StoryCardView: View {
             }
 
             Rectangle()
-                .fill(Color.white.opacity(0.18))
+                .fill(MorpheTheme.stroke)
                 .frame(height: 1)
                 .padding(.vertical, 14)
 

@@ -320,7 +320,7 @@ struct RecordStampOverlay: View {
                 }
 
                 Rectangle()
-                    .fill(Color.white.opacity(0.18))
+                    .fill(MorpheTheme.stroke)
                     .frame(width: 180, height: 1)
                     .padding(.vertical, 24)
 
@@ -444,7 +444,7 @@ struct ProfileBannerView: View {
                     VStack(spacing: 7) {
                         ForEach(0..<8, id: \.self) { _ in
                             Capsule(style: .continuous)
-                                .fill(Color.white.opacity(0.06))
+                                .fill(MorpheTheme.panelStrong)
                                 .frame(width: 58, height: 1)
                         }
                     }
@@ -460,7 +460,7 @@ struct ProfileBannerView: View {
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                            .stroke(MorpheTheme.strokeStrong, lineWidth: 1)
                     )
 
                 Text(banner.title)
@@ -1307,7 +1307,7 @@ struct RoleSwitcher: View {
                             .fill(selectedRole == role ? MorpheTheme.accent : MorpheTheme.panelStrong)
                             .overlay(
                                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                    .stroke(selectedRole == role ? Color.white.opacity(0.18) : MorpheTheme.strokeStrong.opacity(0.20), lineWidth: 1)
+                                    .stroke(selectedRole == role ? MorpheTheme.stroke : MorpheTheme.strokeStrong.opacity(0.20), lineWidth: 1)
                             )
                     )
                 }
@@ -1624,7 +1624,7 @@ struct FetchPlaceholderCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(0..<2, id: \.self) { _ in
                     RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
+                        .fill(MorpheTheme.panelStrong)
                         .frame(height: 14)
                 }
                 Text(line.uppercased())
@@ -1767,7 +1767,7 @@ private struct ShareCardFrame<Content: View>: View {
 
                 // Footer: hairline + handle + motto.
                 Rectangle()
-                    .fill(Color.white.opacity(0.18))
+                    .fill(MorpheTheme.stroke)
                     .frame(height: 1)
                     .padding(.bottom, 12)
                 HStack {

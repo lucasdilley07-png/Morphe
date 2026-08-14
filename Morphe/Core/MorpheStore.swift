@@ -2672,7 +2672,7 @@ final class MorpheAppStore {
         case .discover:
             return ["Start my workout", "What training type fits my goal?", "Show my progress", "What can you do?"]
         case .community:
-            return ["Help me reply to my coach", "Draft a progress post", "What should I ask my partner?", "Summarize support messages"]
+            return ["Help me reply to my coach", "Summarize support messages", "Show my progress", "What can you do?"]
         case .hub:
             return ["Open today's quiz", "Explain my Morphe Score trend", "Start my workout", "What can you do?"]
         case .more:
@@ -2793,7 +2793,7 @@ final class MorpheAppStore {
         case .discover:
             return "Discover: browsing \(discoverWorkouts.count) workouts"
         case .community:
-            return selectedCommunitySection == .contact ? "Contact" : "For You"
+            return selectedCommunitySection.rawValue
         case .hub:
             return "Progress"
         case .more:
@@ -3533,7 +3533,9 @@ final class MorpheAppStore {
             return
         }
         autoRestTimerEnabled = snapshot.autoRestTimer
-        autoShareWorkoutsEnabled = snapshot.autoShareWorkouts
+        // Forced off while the feed is dark (P0-2): a persisted true kept
+        // publishing to a surface with no reader and no visible off-switch.
+        autoShareWorkoutsEnabled = FeatureFlags.socialFeedEnabled && snapshot.autoShareWorkouts
         healthSyncEnabled = snapshot.healthSync ?? false
         coachShareEnabled = snapshot.coachShare ?? false
         linkedCoachUid = snapshot.linkedCoachUid ?? ""
@@ -7041,7 +7043,7 @@ final class MorpheAppStore {
         // Workout). Quiet path: a failed publish never blocks the log.
         // Structured stats ride along so the feed renders a real workout
         // card; party buddies are named so a shared session shares SHARED.
-        if autoShareWorkoutsEnabled, shareCompletedSessionToFeed, authUser != nil {
+        if FeatureFlags.socialFeedEnabled, autoShareWorkoutsEnabled, shareCompletedSessionToFeed, authUser != nil {
             let buddyNames = activeParty != nil ? partyBuddies.map(\.name) : []
             let text = completedSessionPostText(exercises: loggedExercises, newPRs: newPRs, buddies: buddyNames)
             let workoutName = currentWorkout.name
@@ -7563,7 +7565,7 @@ final class MorpheAppStore {
     /// auto-open-once flag can't re-fire for later deep links).
     var pendingThreadOpenID: String?
 
-    func openCommunity(_ section: ClientCommunitySection = .forYou) {
+    func openCommunity(_ section: ClientCommunitySection = .contact) {
         // Both Network sections are REAL in v1: For You is the Firestore
         // feed, Contact is the coach-thread inbox (with an honest empty
         // state naming the coach-link unlock). Contact is THE messaging
@@ -8404,10 +8406,10 @@ final class MorpheAppStore {
             return message
         }
         let name = clientProfile.name.isEmpty ? "me" : clientProfile.name
-        var message = "Train with \(name) on Morphe — we can share workouts, track progress, and keep each other consistent."
+        var message = "Train with \(name) on Morphe — log your lifts, keep your streak, and face me on the weekly board."
         let handle = profileShowcase.username
         if !handle.isEmpty {
-            message += " After you install, open morphe://invite/\(handle) and we're connected."
+            message += " After you install, open morphe://invite/\(handle)."
         }
         return message + " 💪"
     }
@@ -9503,6 +9505,10 @@ final class MorpheAppStore {
     /// pull-to-refresh (forced). A nil fetch (offline, signed out, no-op
     /// service) keeps whatever is local.
     func refreshFeed(force: Bool = false) async {
+        // The feed is dark (socialFeedEnabled=false): no reader exists, so
+        // no launch/sign-in fetch should pay FIREBASE for it (post-cut
+        // audit P1-7). Test doubles still run — the logic stays warm.
+        guard FeatureFlags.socialFeedEnabled || !(feedService is FirebaseFeedService) else { return }
         guard let uid = authUser?.id else { return }
         if !force, !feedPosts.isEmpty, let last = lastFeedRefreshAt,
            Date.now.timeIntervalSince(last) < Self.feedStalenessWindow {

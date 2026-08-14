@@ -607,7 +607,7 @@ private struct TrainedDaysCard: View {
                     ForEach(days) { day in
                         VStack(spacing: 6) {
                             RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                                .fill(day.trained ? MorpheTheme.accent : Color.white.opacity(0.05))
+                                .fill(day.trained ? MorpheTheme.accent : MorpheTheme.panel)
                                 .frame(width: 26, height: 26)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
