@@ -2060,6 +2060,23 @@ final class MorpheAppStore {
     var profilePhotoData: Data?
 
     /// Saves the user's bio. Empty text hands the bio back to the generator.
+    /// The coach's own words for their public headline — persisted in the
+    /// profile snapshot; empty = keep the derived one.
+    var customCoachHeadline: String {
+        get { UserDefaults.standard.string(forKey: "morphe.coach.headline.\(clientProfile.id.uuidString)") ?? "" }
+        set {
+            UserDefaults.standard.set(String(newValue.prefix(120)), forKey: "morphe.coach.headline.\(clientProfile.id.uuidString)")
+        }
+    }
+
+    /// Coach headline editor (profile audit: it had NO editor anywhere).
+    func updateCoachHeadline(_ text: String) {
+        let clean = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
+        customCoachHeadline = clean
+        if !clean.isEmpty { coachProfile.headline = clean }
+        showToast(clean.isEmpty ? "Headline reset to the derived one." : "Headline updated.")
+    }
+
     func updateProfileBio(_ text: String) {
         let clean = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(220))
         profileCustomBio = clean
@@ -2823,7 +2840,11 @@ final class MorpheAppStore {
             }
         }
 
+        // Newest first (profile audit): alphabetical put the A-through-B
+        // exercises on top and called them "top" — recency is the honest
+        // default; each row still shows that exercise's best-ever weight.
         return best
+            .sorted { $0.value.date > $1.value.date }
             .map { name, entry in
                 PersonalRecord(
                     title: name,
@@ -2831,7 +2852,6 @@ final class MorpheAppStore {
                     detail: "Top set • \(Self.workoutDateLabel(for: entry.date))"
                 )
             }
-            .sorted { $0.title < $1.title }
     }
 
     /// Updates the user's injury/limitations note post-onboarding — safety
@@ -4591,6 +4611,15 @@ final class MorpheAppStore {
         coachProfile.activeClients = 0
         coachProfile.groups = []
         coachProfile.playbooks = []
+        // Demo training styles must NEVER render for a real coach (profile
+        // audit): the seed hardcoded four styles nobody picked and no
+        // editor existed. Real identity starts empty; sports carry it.
+        coachProfile.selectedTrainingStyles = []
+        // A headline the coach EDITED (stored custom) outranks the derived
+        // one — re-derivation must not eat their words.
+        if !customCoachHeadline.isEmpty {
+            coachProfile.headline = customCoachHeadline
+        }
     }
 
     func completeOnboarding() {
@@ -8363,6 +8392,17 @@ final class MorpheAppStore {
     /// Carries the sender's handle as a referral link: opening
     /// morphe://invite/<username> after install auto-follows the inviter.
     var networkInviteMessage: String {
+        // Role-aware (profile audit): a coach recruiting clients shouldn't
+        // send buddy-training copy.
+        if selectedRole == .coach {
+            let name = coachProfile.name.isEmpty ? "me" : coachProfile.name
+            var message = "I coach on Morphe — join and I'll deliver your training plan straight to your phone. Ask \(name) for your invite code."
+            let handle = coachProfile.username
+            if !handle.isEmpty {
+                message += " After you install, open morphe://invite/\(handle)."
+            }
+            return message
+        }
         let name = clientProfile.name.isEmpty ? "me" : clientProfile.name
         var message = "Train with \(name) on Morphe — we can share workouts, track progress, and keep each other consistent."
         let handle = profileShowcase.username

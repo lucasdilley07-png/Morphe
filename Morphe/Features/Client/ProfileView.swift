@@ -262,8 +262,6 @@ struct ProfileView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textMuted)
                     HStack(spacing: 10) {
-                        TextField("Height (5'10\" or 178 cm)", text: $heightDraft)
-                            .textFieldStyle(MorpheFieldStyle())
                         // Placeholder speaks the user's own unit — a bare
                         // number is parsed in that unit too.
                         TextField(store.weightUnit == .kilograms ? "Weight (77 kg)" : "Weight (170 lb)", text: $weightDraft)
@@ -892,6 +890,10 @@ struct ProfileView: View {
 
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
+                }
+                // Both roles from here (profile audit: coaches lost 14 rows
+                // including data export): reminders, data, backup.
+                if true {
                     // The audit found five reminder kinds and no off switch.
                     // One master toggle — off cancels everything pending.
                     preferenceToggleRow(
@@ -1372,58 +1374,72 @@ struct ProfileView: View {
 /// Athlete profile = strictly training: snapshot, focus, recent work, records.
 private struct AthleteProfileBody: View {
     let store: MorpheAppStore
+    @State private var weightDraft = ""
 
     var body: some View {
-        let summary = store.workoutLogSummary(for: store.clientProfile.id)
         Group {
-            GlassCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Training Snapshot")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    if store.todayExperienceTier >= 1 {
-                        HStack(spacing: 8) {
-                            MetricPill(label: "Morphe Score", value: "\(store.clientProfile.health.score)")
-                            // Schedule-aware streak (protected days count)
-                            // via workoutLogSummary's honest path.
-                            MetricPill(label: "Streak", value: "\(summary.currentStreakDays) days")
-                            MetricPill(label: "This week", value: "\(summary.workoutsThisWeek) of \(max(store.clientProfile.trainingDaysPerWeek, 1))")
-                        }
-                    } else {
-                        Text("Your score, streak, and weekly count appear after your first logged workout.")
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-
+            // WEIGHT leads (profile audit): the app's only weight-entry
+            // point, feeding the Progress chart and nutrition targets — it
+            // was a bare unlabeled field six cards down.
             GlassCard {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Focus")
+                    Text("Weight")
                         .font(.headline)
                         .foregroundStyle(MorpheTheme.textPrimary)
-                    Text(store.clientProfile.goal)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                    WrapStack(spacing: 8) {
-                        ForEach(store.clientProfile.selectedSports) { sport in
-                            SelectionToken(text: sport.shortTitle, color: MorpheTheme.color(for: sport))
-                        }
-                        ForEach(store.clientProfile.selectedTrainingStyles) { style in
-                            SelectionToken(text: style.rawValue, color: MorpheTheme.warning)
-                        }
+                    if let last = store.bodyWeightHistory.last {
+                        Text("\(store.weightUnit.format(store.weightUnit == .kilograms ? last.weightLb * 0.45359237 : last.weightLb)) · logged \(last.date.formatted(.relative(presentation: .named)))")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    } else {
+                        Text("Log it once and the Progress chart + nutrition targets personalize from it.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                    TextField(store.weightUnit == .kilograms ? "e.g. 77" : "e.g. 170", text: $weightDraft)
+                        .textFieldStyle(MorpheFieldStyle())
+                        .keyboardType(.decimalPad)
+                        .submitLabel(.done)
+                        .onSubmit { saveWeight() }
+                    if !weightDraft.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Button("Save Weight") { saveWeight() }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     }
                 }
             }
 
-            AthleteRecentLogsCard(logs: Array(store.currentAthleteWorkoutLogs.prefix(5)))
-
-            if !store.derivedPersonalRecords.isEmpty {
-                // Top 8 — a year of training made this an unbounded list of
-                // every exercise ever touched. Full history lives in Progress.
-                PersonalRecordsListCard(records: Array(store.derivedPersonalRecords.prefix(8)))
+            // Training history lives in Progress — one door, not four
+            // duplicate cards (Snapshot/Focus/Logs/PRs all re-rendered what
+            // Home and Progress already own).
+            Button {
+                store.closeClientProfile()
+                store.openProgress()
+            } label: {
+                HStack {
+                    Text("See your history, records, and charts")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .fill(MorpheTheme.panel)
+                )
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open Progress for history, records, and charts")
         }
+    }
+
+    private func saveWeight() {
+        let clean = weightDraft.trimmingCharacters(in: .whitespaces)
+        guard !clean.isEmpty else { return }
+        store.updateBodyMetrics(height: store.clientProfile.height, weight: clean)
+        weightDraft = ""
     }
 }
 
@@ -1431,31 +1447,50 @@ private struct AthleteProfileBody: View {
 /// (managed clients + live overview — same sources as the dashboard).
 private struct CoachProfileBody: View {
     let store: MorpheAppStore
-    @State private var showBusiness = false
+    @State private var isEditingHeadline = false
+    @State private var headlineDraft = ""
 
     var body: some View {
         Group {
-            // Coaches train too: their own logged sessions and PRs used to
-            // vanish after the finish celebration — same derived cards the
-            // athlete profile shows (coach audit).
-            if !store.currentAthleteWorkoutLogs.isEmpty {
-                AthleteRecentLogsCard(logs: Array(store.currentAthleteWorkoutLogs.prefix(5)))
-            }
-            if !store.derivedPersonalRecords.isEmpty {
-                PersonalRecordsListCard(records: Array(store.derivedPersonalRecords.prefix(8)))
-            }
+            // PUBLIC IDENTITY first (profile audit): what a prospective
+            // client sees when they look this coach up — with the headline
+            // finally editable (it had no editor anywhere).
             GlassCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Coaching Snapshot")
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Your Coach Card")
                         .font(.headline)
                         .foregroundStyle(MorpheTheme.textPrimary)
-                    HStack(spacing: 8) {
-                        MetricPill(label: "Clients", value: "\(store.visibleManagedClients.count)")
-                        MetricPill(label: "Quiet 7+ days", value: "\(store.liveCoachOverview.atRiskClients)")
-                        MetricPill(label: "Specialty", value: store.coachProfile.specialty)
+                    Text(store.coachProfile.specialty)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accent)
+                    if isEditingHeadline {
+                        TextField("Your headline…", text: $headlineDraft, axis: .vertical)
+                            .lineLimit(1...3)
+                            .textFieldStyle(MorpheFieldStyle())
+                        HStack(spacing: 12) {
+                            Button("Save") {
+                                store.updateCoachHeadline(headlineDraft)
+                                isEditingHeadline = false
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.accent)
+                            Button("Cancel") { isEditingHeadline = false }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                        .frame(minHeight: 32)
+                    } else {
+                        Text(store.coachProfile.headline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                        Button("Edit Headline") {
+                            headlineDraft = store.coachProfile.headline
+                            isEditingHeadline = true
+                        }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accent)
+                        .frame(minHeight: 32)
                     }
-                    Text(store.coachProfile.headline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
                 }
             }
 
@@ -1464,69 +1499,25 @@ private struct CoachProfileBody: View {
                     Text("Specialties")
                         .font(.headline)
                         .foregroundStyle(MorpheTheme.textPrimary)
+                    // Sports only — the training-style tokens were demo
+                    // seed data nobody picked (profile audit honesty fix);
+                    // real styles return when a real editor exists.
                     WrapStack(spacing: 8) {
                         ForEach(store.coachProfile.sports) { sport in
                             SelectionToken(text: sport.shortTitle, color: MorpheTheme.color(for: sport))
                         }
-                        ForEach(store.coachProfile.selectedTrainingStyles) { style in
-                            SelectionToken(text: style.rawValue, color: MorpheTheme.warning)
-                        }
                     }
                 }
             }
 
-            GlassCard {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Your Coaching Tools")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("Build programs, track clients, and run outreach from the coach tabs. Add a client from Home and share their invite code — claiming it links their real account to your roster.")
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                }
+            // The coach's OWN training, demoted below the coaching identity
+            // (it led the screen before) — still real, still theirs.
+            if !store.currentAthleteWorkoutLogs.isEmpty {
+                AthleteRecentLogsCard(logs: Array(store.currentAthleteWorkoutLogs.prefix(3)))
             }
-
-            // Un-gated in v1: the business view now leads with REAL
-            // appointments and hides its demo commerce internally behind
-            // the multi-user flag — the schedule must be reachable today.
-            Button {
-                    showBusiness = true
-                } label: {
-                    GlassCard {
-                        HStack(spacing: 12) {
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.accent)
-                                .frame(width: 44, height: 44)
-                                .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).fill(MorpheTheme.panelStrong))
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Schedule")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                                Text("Appointments with your clients — bookings and rates arrive with payments.")
-                                    .font(.caption)
-                                    .foregroundStyle(MorpheTheme.textSecondary)
-                            }
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(MorpheTheme.textMuted)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-                .accessibilityElement(children: .combine)
-        }
-        .sheet(isPresented: $showBusiness) {
-            NavigationStack {
-                CoachBusinessView()
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") { showBusiness = false }
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                        }
-                    }
-            }
+            // Coaching Tools prose card and the Schedule row are gone:
+            // onboarding copy doesn't live in settings, and Schedule already
+            // has its canonical one-tap door on the coach Home.
         }
     }
 }
