@@ -142,6 +142,31 @@ enum MorpheTheme {
     /// user's accent palette — the launch beat must match the app icon.
     static var launchMark: Color { brandYellow }
 
+    /// Accent for TEXT and glyphs on themed surfaces. The palette is tuned
+    /// for the dark HUD; on the light field #FFD600 reads at ~1.4:1, so
+    /// light mode darkens whatever accent is active until it's legible ink.
+    /// Fills (capsule CTAs, chips) keep using `accent` — their contrast
+    /// comes from the dark label on top, not the fill itself.
+    static var accentText: Color {
+        isLight ? darkenedForLightText(accent) : accent
+    }
+
+    /// Brand yellow as TEXT (celebration kicker, PR value): same rule as
+    /// accentText but pinned to the brand pair. Always-dark surfaces
+    /// (share cards, camera) keep the raw `brandYellow` literal.
+    static var brandYellowText: Color {
+        isLight ? Color(red: 0.54, green: 0.42, blue: 0.0) : brandYellow
+    }
+
+    /// HSB darken for light-mode text: cap brightness so any accent hue
+    /// lands near 4.5:1 on the white field; nudge saturation so the color
+    /// stays recognizably itself instead of going muddy.
+    private static func darkenedForLightText(_ color: Color) -> Color {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard UIColor(color).getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return color }
+        return Color(hue: h, saturation: min(1.0, s * 1.1), brightness: min(b, 0.52), opacity: a)
+    }
+
     static var accent: Color {
         currentAccentPalette == .gold ? brandYellow : colors(for: currentAccentPalette).primary
     }

@@ -204,7 +204,7 @@ struct AthleteProfileView: View {
                                 .font(MorpheTheme.microLabel(10))
                                 .tracking(1.4)
                         }
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                         .padding(.vertical, 6)
                     }
                     .buttonStyle(.plain)
@@ -366,7 +366,7 @@ struct AthleteProfileView: View {
                                         x: .value("Day", point.day),
                                         y: .value("Score", point.value)
                                     )
-                                    .foregroundStyle(MorpheTheme.accent)
+                                    .foregroundStyle(MorpheTheme.accentText)
                                 }
                                 .frame(height: 150)
 
@@ -573,8 +573,12 @@ private struct CoachAthleteReadCard: View {
                     Button(recommendation.actionLabel, action: onAction)
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
-                    Button("Praise Publicly", action: onPraise)
-                        .buttonStyle(SecondaryCTAButtonStyle())
+                    // Praise publishes to the public feed — no feed, no door
+                    // (audit 5, P0-1).
+                    if FeatureFlags.socialFeedEnabled {
+                        Button("Praise Publicly", action: onPraise)
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                    }
                 }
             }
         }
@@ -1693,7 +1697,7 @@ struct AppointmentRowView: View {
                         // not just a typed name.
                         Image(systemName: "link")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .accessibilityLabel("Linked profile")
                     }
                 }
@@ -1749,7 +1753,7 @@ struct ClientAppointmentsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Add") { showAddSheet = true }
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .accessibilityLabel("Add appointment")
             }
         }
@@ -1854,7 +1858,7 @@ struct AppointmentEditorSheet: View {
                             if withUid != nil {
                                 Label("Linked to their profile", systemImage: "link")
                                     .font(.caption)
-                                    .foregroundStyle(MorpheTheme.accent)
+                                    .foregroundStyle(MorpheTheme.accentText)
                                     .accessibilityLabel("Appointment linked to \(withName)'s profile")
                             }
 

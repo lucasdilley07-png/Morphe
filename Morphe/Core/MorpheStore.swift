@@ -606,8 +606,21 @@ final class MorpheAppStore {
     /// Global opt-in for auto-posting finished sessions to the real feed.
     /// Off by default — publishing on the user's behalf is never a surprise.
     var autoShareWorkoutsEnabled = false {
-        didSet { persistTrainingPreferences() }
+        didSet {
+            // While the feed is dark the runtime toggle is forced off, so
+            // only a live-feed flip reflects real user intent worth
+            // remembering (audit 5, P2: the next unrelated preference
+            // write was silently erasing the stored opt-in).
+            if FeatureFlags.socialFeedEnabled {
+                storedAutoShareOptIn = autoShareWorkoutsEnabled
+            }
+            persistTrainingPreferences()
+        }
     }
+    /// The user's persisted auto-share opt-in as last loaded or toggled.
+    /// Persisted in place of the (forced-off) runtime value while the feed
+    /// is dark, so the opt-in survives until a future feed relight.
+    private var storedAutoShareOptIn = false
     /// Per-session share opt-out (the toggle above Log Workout). Re-arms to
     /// true every time a session finishes; never persisted.
     var shareCompletedSessionToFeed = true
@@ -2793,7 +2806,14 @@ final class MorpheAppStore {
         case .discover:
             return "Discover: browsing \(discoverWorkouts.count) workouts"
         case .community:
-            return selectedCommunitySection.rawValue
+            // VoiceOver announces what's ON SCREEN (audit 5, P2): the tab
+            // header renders CHATS, not the section's internal rawValue.
+            switch selectedCommunitySection {
+            case .contact: return "Chats"
+            case .forYou: return "For You"
+            case .board: return "Board"
+            case .calendar: return "Calendar"
+            }
         case .hub:
             return "Progress"
         case .more:
@@ -3151,9 +3171,12 @@ final class MorpheAppStore {
     /// Caption that rides along with the share-card image — carries the
     /// referral handle so the picture recruits.
     var shareCardCaption: String {
+        // Matches networkInviteMessage's promise level (audit 5, P2): the
+        // link records the referral — it doesn't "connect" anyone while
+        // the social graph is dark.
         let handle = profileShowcase.username
         guard !handle.isEmpty else { return "Training on Morphe." }
-        return "Training on Morphe — I'm @\(handle). Install it, then open morphe://invite/\(handle) and we're connected."
+        return "Training on Morphe — I'm @\(handle). After you install, open morphe://invite/\(handle)."
     }
 
     /// One PR as story-card facts. `previous` is only known at log time
@@ -3535,6 +3558,8 @@ final class MorpheAppStore {
         autoRestTimerEnabled = snapshot.autoRestTimer
         // Forced off while the feed is dark (P0-2): a persisted true kept
         // publishing to a surface with no reader and no visible off-switch.
+        // The raw opt-in is kept separately so later persists don't erase it.
+        storedAutoShareOptIn = snapshot.autoShareWorkouts
         autoShareWorkoutsEnabled = FeatureFlags.socialFeedEnabled && snapshot.autoShareWorkouts
         healthSyncEnabled = snapshot.healthSync ?? false
         coachShareEnabled = snapshot.coachShare ?? false
@@ -3554,7 +3579,8 @@ final class MorpheAppStore {
         guard !isLoadingTrainingPreferences else { return }
         let snapshot = TrainingPreferencesSnapshot(
             autoRestTimer: autoRestTimerEnabled,
-            autoShareWorkouts: autoShareWorkoutsEnabled,
+            autoShareWorkouts: FeatureFlags.socialFeedEnabled
+                ? autoShareWorkoutsEnabled : storedAutoShareOptIn,
             healthSync: healthSyncEnabled,
             coachShare: coachShareEnabled,
             linkedCoachUid: linkedCoachUid,
@@ -8583,20 +8609,24 @@ final class MorpheAppStore {
         UserDefaults.standard.removeObject(forKey: Self.pendingReferralKey)
         guard let hit = hits.first(where: { $0.username == username }),
               hit.uid != authUser?.id else { return }
-        if !followedUids.contains(hit.uid) {
+        // The follow graph is dark with the feed (audit 5, P1-9): the
+        // visible Follow button was removed for exactly this reason, so
+        // the deep link doesn't get to keep the invisible write. The
+        // referral receipt below still lands either way.
+        if FeatureFlags.socialFeedEnabled, !followedUids.contains(hit.uid) {
             toggleFollow(uid: hit.uid, name: "@\(hit.username)")
-            track("referral_consumed")
-            // The recruiter-visible receipt: written by THIS account into
-            // the recruiter's ledger (rules pin the doc id to this uid).
-            // The recruiter uid is remembered so account deletion can
-            // erase the receipt this device created.
-            if let myUid = authUser?.id {
-                referralService.recordReferral(recruiterUid: hit.uid, referredUid: myUid)
-                var written = UserDefaults.standard.stringArray(forKey: Self.referralWrittenKey(myUid)) ?? []
-                if !written.contains(hit.uid) {
-                    written.append(hit.uid)
-                    UserDefaults.standard.set(written, forKey: Self.referralWrittenKey(myUid))
-                }
+        }
+        track("referral_consumed")
+        // The recruiter-visible receipt: written by THIS account into
+        // the recruiter's ledger (rules pin the doc id to this uid).
+        // The recruiter uid is remembered so account deletion can
+        // erase the receipt this device created.
+        if let myUid = authUser?.id {
+            referralService.recordReferral(recruiterUid: hit.uid, referredUid: myUid)
+            var written = UserDefaults.standard.stringArray(forKey: Self.referralWrittenKey(myUid)) ?? []
+            if !written.contains(hit.uid) {
+                written.append(hit.uid)
+                UserDefaults.standard.set(written, forKey: Self.referralWrittenKey(myUid))
             }
         }
     }
@@ -9499,6 +9529,13 @@ final class MorpheAppStore {
     /// collections (1000-user audit #8).
     private var membershipSetsFetched = false
 
+    /// The dark-feed fetch gate as a pure function — every feed test
+    /// injects a test double (which passes), so this is the only way the
+    /// Firebase leg of the guard gets exercised (audit 5, P2).
+    static func shouldFetchFeed(socialFeedEnabled: Bool, usesFirebaseFeed: Bool) -> Bool {
+        socialFeedEnabled || !usesFirebaseFeed
+    }
+
     /// Pulls the newest posts + their real reaction counts + this account's
     /// bookmarks. Runs on launch/sign-in and tab visits (both soft: within
     /// the staleness window they reuse the loaded page) and from
@@ -9508,7 +9545,10 @@ final class MorpheAppStore {
         // The feed is dark (socialFeedEnabled=false): no reader exists, so
         // no launch/sign-in fetch should pay FIREBASE for it (post-cut
         // audit P1-7). Test doubles still run — the logic stays warm.
-        guard FeatureFlags.socialFeedEnabled || !(feedService is FirebaseFeedService) else { return }
+        guard Self.shouldFetchFeed(
+            socialFeedEnabled: FeatureFlags.socialFeedEnabled,
+            usesFirebaseFeed: feedService is FirebaseFeedService
+        ) else { return }
         guard let uid = authUser?.id else { return }
         if !force, !feedPosts.isEmpty, let last = lastFeedRefreshAt,
            Date.now.timeIntervalSince(last) < Self.feedStalenessWindow {
@@ -11077,6 +11117,15 @@ final class MorpheAppStore {
     }
 
     func shareCoachPraiseDraft(_ draft: CoachPublicPraiseDraft, editedText: String) {
+        // While the feed is dark there is NO surface where public praise
+        // could land — publishing would write a real athlete's name into a
+        // publicly readable doc with zero readers, then toast a lie
+        // (audit 5, P0-1). The doors are flag-hidden too; this is the
+        // backstop.
+        guard FeatureFlags.socialFeedEnabled else {
+            showToast("Public praise is off while the community feed is dark.")
+            return
+        }
         let cleanText = editedText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanText.isEmpty else { return }
 
@@ -11437,11 +11486,6 @@ final class MorpheAppStore {
     func openAddClient() {
         selectedCoachTab = .programs
         requestAddClientSheet = true
-    }
-
-    func quickAddCoachUpdate() {
-        shareCommunityPost("Coach note: this week's focus is cleaner adherence, lighter recovery work when needed, and stronger follow-through on the basics.", as: .coach)
-        selectedCoachTab = .messages
     }
 
     func assignInterventionPlan(_ intervention: CoachIntervention) {
@@ -12554,7 +12598,10 @@ final class MorpheAppStore {
             )
         }
 
-        if latestLogIsRecent {
+        // Public praise only exists while the feed does — with the feed
+        // dark the recommendation falls through to a direct message, the
+        // honest channel that actually reaches the athlete (audit 5, P0-1).
+        if latestLogIsRecent, FeatureFlags.socialFeedEnabled {
             return CoachFollowUpRecommendation(
                 athleteID: athleteID,
                 athleteName: athleteName,

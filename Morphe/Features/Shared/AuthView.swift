@@ -22,7 +22,7 @@ struct AuthView: View {
                         Text("MORPHE")
                             .font(.caption.weight(.bold))
                             .tracking(2)
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         Text(isSignUp ? "Create your account" : "Welcome back")
                             .font(.largeTitle.weight(.bold))
                             .foregroundStyle(MorpheTheme.textPrimary)
@@ -72,7 +72,7 @@ struct AuthView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .font(.footnote.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                                 .accessibilityLabel("Send a password reset email")
                             }
 
@@ -108,7 +108,7 @@ struct AuthView: View {
                     }
                     .accessibilityLabel(isSignUp ? "Already have an account? Sign in" : "New here? Create an account")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .frame(maxWidth: .infinity)
                 }
                 .padding(20)

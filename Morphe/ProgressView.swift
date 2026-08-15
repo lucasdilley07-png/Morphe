@@ -556,7 +556,7 @@ private struct ProgressExpandableSection<Content: View>: View {
 
                         Image(systemName: isExpanded ? "minus" : "plus")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                     }
 
                     if !isExpanded {
@@ -600,7 +600,7 @@ private struct TrainedDaysCard: View {
                     Spacer()
                     Text("\(trainedCount) trained")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
 
                 HStack(spacing: 0) {
@@ -611,7 +611,7 @@ private struct TrainedDaysCard: View {
                                 .frame(width: 26, height: 26)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                                        .stroke(Color.white.opacity(day.trained ? 0 : 0.14), lineWidth: 1)
+                                        .stroke(day.trained ? Color.clear : MorpheTheme.stroke, lineWidth: 1)
                                 )
                             Text(day.label)
                                 .font(.caption2)
@@ -869,7 +869,7 @@ private struct SourceTrendCard: View {
                                 x: .value("Week", point.week),
                                 y: .value("Logs", point.athleteCount)
                             )
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .position(by: .value("Source", "You"))
 
                             BarMark(
@@ -1125,7 +1125,7 @@ private struct StrengthOverTimeCard: View {
                                     .font(.caption2)
                             }
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         }
                         .accessibilityLabel("Choose exercise, currently \(activeExercise)")
                     }
@@ -1156,7 +1156,7 @@ private struct StrengthOverTimeCard: View {
                                 x: .value("Date", point.date),
                                 y: .value("Top set", point.topWeight)
                             )
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .interpolationMethod(.monotone)
 
                             PointMark(
@@ -1176,11 +1176,11 @@ private struct StrengthOverTimeCard: View {
                                 x: .value("Date", latest.date),
                                 y: .value("Top set", latest.topWeight)
                             )
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .annotation(position: .top, alignment: .trailing) {
                                 Text(weightUnit.format(latest.topWeight))
                                     .font(.caption2.weight(.bold))
-                                    .foregroundStyle(MorpheTheme.accent)
+                                    .foregroundStyle(MorpheTheme.accentText)
                             }
                         }
                     }
@@ -1275,7 +1275,7 @@ private struct RPETrendCard: View {
                                 x: .value("Date", point.date),
                                 y: .value("RPE", point.averageRPE)
                             )
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .interpolationMethod(.monotone)
 
                             PointMark(
@@ -1366,7 +1366,7 @@ private struct BodyWeightTrendCard: View {
                                     x: .value("Date", entry.date),
                                     y: .value("Weight", displayWeight(entry.weightLb))
                                 )
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                                 .interpolationMethod(.monotone)
                             }
 
@@ -1388,7 +1388,7 @@ private struct BodyWeightTrendCard: View {
                                 y: .value("Trend", displayWeight(point.weightLb)),
                                 series: .value("Series", "Trend")
                             )
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .lineStyle(StrokeStyle(lineWidth: 2.5))
                             .interpolationMethod(.monotone)
                         }
@@ -1442,7 +1442,7 @@ private struct PRTimelineCard: View {
                         HStack(alignment: .center, spacing: 10) {
                             Image(systemName: "trophy.fill")
                                 .font(.caption)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                                 .frame(width: 24)
 
                             // Tapping the record jumps to this exercise's
@@ -1467,7 +1467,7 @@ private struct PRTimelineCard: View {
 
                             Text(weightUnit.format(record.weight))
                                 .font(.subheadline.weight(.bold))
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
 
                             // Each record is its own story card — the
                             // timeline shows standing records, so the card
@@ -2239,7 +2239,7 @@ struct WeeklyBoardCard: View {
                     HStack(spacing: 8) {
                         Text("You")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         Text("\(mine.score) sets — posted, outside the fetched top 50")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -2410,7 +2410,7 @@ private struct ChallengesCard: View {
                 if let mine {
                     Text("You: \(mine.score)")
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
             }
 
@@ -2541,7 +2541,7 @@ private struct CreateChallengeSheet: View {
 
             Text(challenge.code)
                 .font(.system(.title, design: .monospaced).weight(.bold))
-                .foregroundStyle(MorpheTheme.accent)
+                .foregroundStyle(MorpheTheme.accentText)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(MorpheTheme.panelStrong, in: RoundedRectangle(cornerRadius: MorpheTheme.radius))

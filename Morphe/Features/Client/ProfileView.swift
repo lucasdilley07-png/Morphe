@@ -36,10 +36,10 @@ struct ProfileView: View {
         store.selectedRole == .coach
     }
 
-
-    private func normalizedMetric(_ value: String) -> String {
-        String(value.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
-    }
+    /// Hoisted from AthleteProfileBody (audit 5, P1-5): as child @State the
+    /// unsaved-edit guard couldn't see a typed-but-unsaved weight, so Done
+    /// or a swipe-down silently dropped it.
+    @State private var weightDraft = ""
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -48,7 +48,7 @@ struct ProfileView: View {
                 if isCoach {
                     CoachProfileBody(store: store)
                 } else {
-                    AthleteProfileBody(store: store)
+                    AthleteProfileBody(store: store, weightDraft: $weightDraft)
                     detailsCard
                     targetsCard
                 }
@@ -70,8 +70,6 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showPaywall) {
             MorpheProPaywallSheet()
-        }
-        .onAppear {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -140,6 +138,11 @@ struct ProfileView: View {
         if isEditingTargets, targetsChanged {
             return true
         }
+        // A typed-but-unsaved weight counts too — it feeds the Progress
+        // chart and nutrition targets, so it must never vanish silently.
+        if !weightDraft.trimmingCharacters(in: .whitespaces).isEmpty {
+            return true
+        }
         return false
     }
 
@@ -158,6 +161,11 @@ struct ProfileView: View {
         }
         if isEditingBio { saveBio() }
         if isEditingTargets { saveTargets() }
+        let weight = weightDraft.trimmingCharacters(in: .whitespaces)
+        if !weight.isEmpty {
+            store.updateBodyMetrics(height: store.clientProfile.height, weight: weight)
+            weightDraft = ""
+        }
     }
 
     private func discardAllEdits() {
@@ -166,6 +174,7 @@ struct ProfileView: View {
         isEditingInjuries = false
         isEditingBio = false
         isEditingTargets = false
+        weightDraft = ""
     }
 
     /// Everything about the user's training identity, editable in place —
@@ -285,7 +294,7 @@ struct ProfileView: View {
                         HStack(spacing: 12) {
                             Button("Save") { saveTargets() }
                                 .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                                 .accessibilityLabel("Save targets")
                             Button("Cancel") { isEditingTargets = false }
                                 .buttonStyle(.plain)
@@ -357,7 +366,7 @@ struct ProfileView: View {
                             .foregroundStyle(MorpheTheme.textMuted)
                         Text("\(store.currentLevelNumber)")
                             .scaledFont(size: 34, weight: .bold, design: .monospaced)
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                     }
 
                     Spacer()
@@ -407,7 +416,7 @@ struct ProfileView: View {
                         }
                         Text("@\(isCoach ? store.coachProfile.username : store.profileShowcase.username)")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         Text(isCoach
                             ? "Coach"
                             : "\(store.clientProfile.sportMode.rawValue)\(store.clientProfile.fitnessLevel.isEmpty ? "" : " • \(store.clientProfile.fitnessLevel)")")
@@ -449,7 +458,7 @@ struct ProfileView: View {
                             Circle().fill(MorpheTheme.accent.opacity(0.18))
                             Text(profileInitials)
                                 .font(.title3.weight(.bold))
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                         }
                     }
                 }
@@ -500,7 +509,7 @@ struct ProfileView: View {
                     HStack(spacing: 12) {
                         Button("Save") { saveBio() }
                             .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .accessibilityLabel("Save bio")
                         Button("Cancel") { isEditingBio = false }
                             .buttonStyle(.plain)
@@ -650,7 +659,7 @@ struct ProfileView: View {
                                 saveName()
                             }
                             .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .accessibilityLabel("Save name")
                             Button("Cancel") {
                                 isEditingName = false
@@ -693,7 +702,7 @@ struct ProfileView: View {
                                 saveUsername()
                             }
                             .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .accessibilityLabel("Save username")
                             Button("Cancel") {
                                 isEditingUsername = false
@@ -858,8 +867,7 @@ struct ProfileView: View {
 
                 }
                 // Both roles from here (profile audit: coaches lost 14 rows
-                // including data export): reminders, data, backup.
-                if true {
+                // including data export): reminders, board, data, backup.
                     // The audit found five reminder kinds and no off switch.
                     // One master toggle — off cancels everything pending.
                     preferenceToggleRow(
@@ -870,13 +878,9 @@ struct ProfileView: View {
 
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
-                    }
-                    // Athlete-only from here: the board and coach-code rows
-                    // have no coach-side surface (post-cut audit P1-9).
-                    if !isCoach {
-                    // The board publishes your real name — the opt-in lives
-                    // with the other visibility controls, not just buried in
-                    // Progress.
+                    // The board publishes your real name — and scores post on
+                    // every log in EITHER role, so the off-switch renders for
+                    // both (audit 5, P1-4: a coach could never leave).
                     preferenceToggleRow(
                         title: "Weekly board",
                         caption: "Ranks your logged sessions against other athletes under your name. Leaving removes your row immediately.",
@@ -888,7 +892,8 @@ struct ProfileView: View {
 
                     // A coach's invite code used to work ONLY during
                     // onboarding — existing athletes had nowhere to type it.
-                    if store.linkedCoachUid.isEmpty {
+                    // (Athlete-only: a coach doesn't join a coach.)
+                    if !isCoach, store.linkedCoachUid.isEmpty {
                         Divider().overlay(MorpheTheme.strokeSubtle)
 
                         if isEnteringCoachCode {
@@ -907,7 +912,7 @@ struct ProfileView: View {
                                     }
                                 }
                                 .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                                 Button("Cancel") { isEnteringCoachCode = false }
                                     .buttonStyle(.plain)
                                     .foregroundStyle(MorpheTheme.textMuted)
@@ -932,6 +937,9 @@ struct ProfileView: View {
                         )
                     )
 
+                    // Athlete-only: the check-in prefill and the coach-share
+                    // summary have no coach-side surface.
+                    if !isCoach {
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
                     // Read-only and honest about its limits: Apple never
@@ -959,6 +967,7 @@ struct ProfileView: View {
                                 set: { store.setCoachShare(enabled: $0) }
                             )
                         )
+                    }
                     }
 
                     Divider().overlay(MorpheTheme.strokeSubtle)
@@ -1079,6 +1088,9 @@ struct ProfileView: View {
                         }
                     }
 
+                    // Athlete-only tail: training-day targets and injuries
+                    // configure the athlete's Today/Progress surfaces.
+                    if !isCoach {
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
                     // Weekly target — drives the consistency denominator on
@@ -1140,7 +1152,7 @@ struct ProfileView: View {
                                     isEditingInjuries = false
                                 }
                                 .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                                 .accessibilityLabel("Save injury note")
                                 Button("Cancel") {
                                     isEditingInjuries = false
@@ -1175,18 +1187,18 @@ struct ProfileView: View {
 
                     Button("Terms of Use") { showTermsSheet = true }
                         .buttonStyle(.plain)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                         .frame(minHeight: 32)
                         .sheet(isPresented: $showTermsSheet) {
                             TermsGateView(readOnly: true)
                         }
 
                     Link("Privacy Policy", destination: URL(string: "https://lucasdilley07-png.github.io/Morphe/")!)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                         .frame(minHeight: 32)
 
                     Link("Contact Support", destination: URL(string: "mailto:lucasdilley.07@gmail.com")!)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                         .frame(minHeight: 32)
 
                     Text("Morphe \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"))")
@@ -1334,7 +1346,7 @@ struct ProfileView: View {
             if showEdit {
                 Button("Edit", action: onEdit)
                     .buttonStyle(.plain)
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .accessibilityLabel("Edit \(title.lowercased())")
             }
         }
@@ -1344,7 +1356,8 @@ struct ProfileView: View {
 /// Athlete profile = strictly training: snapshot, focus, recent work, records.
 private struct AthleteProfileBody: View {
     let store: MorpheAppStore
-    @State private var weightDraft = ""
+    /// Owned by ProfileView so its unsaved-edit guard can see it.
+    @Binding var weightDraft: String
 
     var body: some View {
         Group {
@@ -1432,7 +1445,7 @@ private struct CoachProfileBody: View {
                         .foregroundStyle(MorpheTheme.textPrimary)
                     Text(store.coachProfile.specialty)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                     if isEditingHeadline {
                         TextField("Your headline…", text: $headlineDraft, axis: .vertical)
                             .lineLimit(1...3)
@@ -1443,7 +1456,7 @@ private struct CoachProfileBody: View {
                                 isEditingHeadline = false
                             }
                             .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             Button("Cancel") { isEditingHeadline = false }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(MorpheTheme.textMuted)
@@ -1458,7 +1471,7 @@ private struct CoachProfileBody: View {
                         }
                         .buttonStyle(.plain)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                         .frame(minHeight: 32)
                     }
                 }
@@ -1687,7 +1700,7 @@ struct MorpheProPaywallSheet: View {
                 if premium.hasEntitlement {
                     Text("You're Pro. Thanks for backing honest training.")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                 } else if premium.products.isEmpty {
                     Text("Plans are loading…")
                         .font(.caption)
@@ -1727,7 +1740,7 @@ struct MorpheProPaywallSheet: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: symbol)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(MorpheTheme.accent)
+                .foregroundStyle(MorpheTheme.accentText)
                 .frame(width: 24)
             Text(text)
                 .font(.subheadline)

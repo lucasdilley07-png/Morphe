@@ -618,10 +618,12 @@ final class WorkoutSessionTests: XCTestCase {
         let reloaded = MorpheAppStore()
         XCTAssertFalse(reloaded.autoRestTimerEnabled, "the rest preference survives relaunch")
         // While the social feed is dark, a persisted auto-share is FORCED
-        // off on load (post-cut audit P0-2): publishing to a surface with
-        // no reader and no visible off-switch is never acceptable.
-        XCTAssertEqual(reloaded.autoShareWorkoutsEnabled, FeatureFlags.socialFeedEnabled,
-                       "the share preference survives relaunch only while the feed exists")
+        // off on load (post-cut audit P0-2). Asserted as a literal — not
+        // against the flag it's meant to test (audit 5: that passed
+        // vacuously). If socialFeedEnabled ever flips on, this fails and
+        // the round-trip assertion comes back.
+        XCTAssertFalse(reloaded.autoShareWorkoutsEnabled,
+                       "while the feed is dark the persisted opt-in must load forced OFF")
 
         // A per-session opt-out lasts exactly one session.
         startedTwoExerciseSession(reloaded)
@@ -630,6 +632,57 @@ final class WorkoutSessionTests: XCTestCase {
         reloaded.finishTrackedWorkoutSession()
         XCTAssertTrue(reloaded.shareCompletedSessionToFeed,
                       "finishing a session re-arms the share toggle — opting out is never sticky")
+    }
+
+    /// Audit 5, P2: while the feed is dark the runtime toggle is forced
+    /// off, and the next unrelated preference write was persisting that
+    /// forced-off value — silently erasing an opt-in recorded while the
+    /// feed was live. The stored value must survive.
+    func testDarkFeedPersistPreservesStoredAutoShareOptIn() {
+        let store = freshStore()
+        store.autoRestTimerEnabled = false   // force a persist so the blob exists
+
+        let keys = UserDefaults.standard.dictionaryRepresentation().keys
+            .filter { $0.hasPrefix("morphe.trainingprefs.") }
+        XCTAssertFalse(keys.isEmpty, "the training-prefs blob should exist after a persist")
+
+        // Simulate an opt-in recorded while the feed was LIVE, the way a
+        // pre-cut build wrote it: flip the stored flag directly in the blob.
+        for key in keys {
+            guard let data = UserDefaults.standard.data(forKey: key),
+                  var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            else { XCTFail("couldn't read the prefs blob"); continue }
+            json["autoShareWorkouts"] = true
+            guard let updated = try? JSONSerialization.data(withJSONObject: json)
+            else { XCTFail("couldn't rewrite the prefs blob"); continue }
+            UserDefaults.standard.set(updated, forKey: key)
+        }
+
+        // Reload: runtime forced off while the feed is dark…
+        let reloaded = MorpheAppStore()
+        XCTAssertFalse(reloaded.autoShareWorkoutsEnabled)
+
+        // …and an unrelated preference write must NOT erase the stored opt-in.
+        reloaded.autoRestTimerEnabled = true
+        for key in keys {
+            guard let data = UserDefaults.standard.data(forKey: key),
+                  let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            else { XCTFail("prefs blob vanished"); continue }
+            XCTAssertEqual(json["autoShareWorkouts"] as? Bool, true,
+                           "the stored opt-in survives unrelated preference writes while the feed is dark")
+        }
+    }
+
+    /// The dark-feed fetch gate, exercised on BOTH legs (audit 5, P2:
+    /// every feed test injects a double, so the Firebase leg of the guard
+    /// had zero coverage).
+    func testShouldFetchFeedGate() {
+        XCTAssertTrue(MorpheAppStore.shouldFetchFeed(socialFeedEnabled: true, usesFirebaseFeed: true))
+        XCTAssertTrue(MorpheAppStore.shouldFetchFeed(socialFeedEnabled: true, usesFirebaseFeed: false))
+        XCTAssertTrue(MorpheAppStore.shouldFetchFeed(socialFeedEnabled: false, usesFirebaseFeed: false),
+                      "test doubles keep the feed logic warm while the flag is off")
+        XCTAssertFalse(MorpheAppStore.shouldFetchFeed(socialFeedEnabled: false, usesFirebaseFeed: true),
+                       "a dark feed never pays Firebase for a fetch no surface can show")
     }
 
     func testRPEIsCapturedRestoredAndLogged() {

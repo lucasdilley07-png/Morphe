@@ -163,7 +163,7 @@ struct MoreView: View {
                         HStack(spacing: 10) {
                             Image(systemName: "figure.flexibility")
                                 .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                             Text(item)
                                 .foregroundStyle(MorpheTheme.textPrimary)
                             Spacer()
@@ -220,7 +220,7 @@ struct MoreView: View {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "fork.knife")
                                 .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                             Text(tip)
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textSecondary)

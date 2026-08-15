@@ -99,7 +99,7 @@ struct HomeView: View {
                             Text("FROM \(assignment.coachName.isEmpty ? "YOUR COACH" : assignment.coachName.uppercased())")
                                 .font(MorpheTheme.microLabel())
                                 .tracking(1.4)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                             Text(assignment.workout.name)
                                 .font(.title3.weight(.bold))
                                 .foregroundStyle(MorpheTheme.textPrimary)
@@ -370,7 +370,7 @@ struct HomeView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "calendar.badge.clock")
                         .font(.headline)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Schedule")
                             .font(.subheadline.weight(.semibold))
@@ -455,7 +455,7 @@ private struct HomeLinkTile: View {
                     HStack {
                         Image(systemName: systemImage)
                             .font(.headline)
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.bold))
@@ -625,7 +625,7 @@ private struct HomeExpandableSection<Content: View>: View {
 
                         Image(systemName: isExpanded ? "minus" : "plus")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                     }
 
                     if !isExpanded {
@@ -665,7 +665,7 @@ private struct ComebackCard: View {
                 HStack(spacing: 10) {
                     Image(systemName: "arrow.counterclockwise.circle.fill")
                         .font(.title3.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                     Text("Rebuilding starts today.")
                         .font(.title3.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
@@ -710,7 +710,7 @@ private struct TodayDoneCard: View {
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.title3.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                     Text("You're done for today.")
                         .font(.title3.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
@@ -722,7 +722,7 @@ private struct TodayDoneCard: View {
                 if !nextUpLine.isEmpty {
                     Text(nextUpLine)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
 
                 HStack(spacing: 10) {
@@ -890,7 +890,7 @@ private struct WorkoutPlanByCoachMiniCard: View {
                     HStack(spacing: 6) {
                         Image(systemName: "target")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         Text(goalLine)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.textPrimary)
@@ -1095,7 +1095,7 @@ private struct RecoveryCheckInSheet: View {
                                 .foregroundStyle(MorpheTheme.textPrimary)
                             Spacer()
                             Text(String(format: "%.1f hr", sleepHours))
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                         }
                         Slider(value: $sleepHours, in: 0...12, step: 0.5)
                             .tint(MorpheTheme.accent)
@@ -1170,7 +1170,7 @@ private struct RecoveryCheckInSheet: View {
                 Stepper("\(value.wrappedValue)/\(range.upperBound)", value: value, in: range)
                     .labelsHidden()
                 Text("\(value.wrappedValue)/\(range.upperBound)")
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .frame(width: 48, alignment: .trailing)
             }
             if !anchors.isEmpty {

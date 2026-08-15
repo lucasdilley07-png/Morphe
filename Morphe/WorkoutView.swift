@@ -536,7 +536,7 @@ struct WorkoutView: View {
                             Text("FROM YOUR COACH")
                                 .font(MorpheTheme.microLabel())
                                 .tracking(1.4)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
 
                             ForEach(pendingAssignments.prefix(3)) { assignment in
                                 HStack(spacing: 12) {
@@ -1115,7 +1115,7 @@ private struct WorkoutCompleteCard: View {
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.title2)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("All sets logged")
                             .font(.title3.weight(.bold))
@@ -1166,7 +1166,7 @@ private struct SessionRecapCard: View {
                     Spacer()
                     Text("\(totalSets) sets")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
 
                 if items.isEmpty {
@@ -1284,7 +1284,7 @@ private struct ProgramSectionCard: View {
              : "WEEK \(progress.week) OF \(progress.program.weeks) · SESSION \(progress.completedSessions + 1) OF \(progress.program.totalSessions)")
             .font(MorpheTheme.microLabel(10))
             .tracking(1.2)
-            .foregroundStyle(MorpheTheme.accent)
+            .foregroundStyle(MorpheTheme.accentText)
 
         ProgressBarView(
             progress: Double(progress.completedSessions) / Double(max(progress.program.totalSessions, 1)),
@@ -1454,7 +1454,7 @@ private struct TrainExpandableSection<Content: View>: View {
 
                         Image(systemName: isExpanded ? "minus" : "plus")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                     }
 
                     if !isExpanded {
@@ -1606,7 +1606,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                     .font(MorpheTheme.microLabel(9))
                                     .tracking(0.8)
                             }
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .frame(width: 52, height: 48)
                             .background(
                                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
@@ -1630,7 +1630,7 @@ private struct ActiveWorkoutTrackerCard: View {
                     if let progression = store.progressionNote(for: exercise) {
                         Text(progression)
                             .font(MorpheTheme.microLabel(10)).tracking(1.0)
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                     }
                     Text(exercise.formCue)
                         .font(.caption)
@@ -2018,7 +2018,7 @@ private struct ConsoleStepButton: View {
             .frame(minWidth: 40, minHeight: 40)
             .background(
                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                    .fill(isPressing ? MorpheTheme.stroke : Color.clear)
+                    .fill(isPressing ? MorpheTheme.panelInteractive : Color.clear)
                     .overlay(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .stroke(MorpheTheme.stroke, lineWidth: 1)
@@ -2288,7 +2288,7 @@ private struct AddExerciseToSessionSheet: View {
                                 }
                                 Spacer(minLength: 0)
                                 Image(systemName: "plus.circle")
-                                    .foregroundStyle(MorpheTheme.accent)
+                                    .foregroundStyle(MorpheTheme.accentText)
                             }
                             .padding(10)
                             .background(
@@ -2769,7 +2769,7 @@ private struct DiscoverCatalogSection: View {
                     ForEach(people.prefix(10)) { person in
                         HStack(spacing: 10) {
                             Image(systemName: person.isCoach ? "figure.wave" : "figure.run")
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                                 .frame(width: 24)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(person.name)
@@ -2869,7 +2869,7 @@ private struct DiscoverCatalogSection: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.title3)
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         Text("The workout library couldn't load")
                             .font(.headline)
                             .foregroundStyle(MorpheTheme.textPrimary)
@@ -2995,7 +2995,7 @@ private struct DiscoverCatalogSection: View {
                     if let badge {
                         Text(badge)
                             .font(.system(.caption, design: .monospaced).weight(.bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                     }
                 }
 
@@ -3120,7 +3120,7 @@ private struct DiscoverCatalogSection: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                    .stroke(isSelected ? Color.clear : Color.white.opacity(0.10), lineWidth: 1)
+                    .stroke(isSelected ? Color.clear : MorpheTheme.stroke, lineWidth: 1)
             )
         }
         .accessibilityLabel("\(label) filter")
@@ -3135,7 +3135,7 @@ private struct DiscoverCatalogSection: View {
             HStack(spacing: 10) {
                 Image(systemName: Self.categorySymbols[category] ?? "square.grid.2x2")
                     .scaledFont(size: 17, weight: .semibold)
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .frame(width: 26)
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -3199,7 +3199,7 @@ private struct DiscoverCatalogSection: View {
                         .font(MorpheTheme.microLabel(10))
                         .tracking(1.4)
                 }
-                .foregroundStyle(MorpheTheme.accent)
+                .foregroundStyle(MorpheTheme.accentText)
                 .padding(.vertical, 6)
             }
             .buttonStyle(.plain)
@@ -3384,7 +3384,7 @@ private struct DiscoverWorkoutDetailSheet: View {
                                             Spacer()
                                             Text("\(exercise.sets) × \(exercise.reps)")
                                                 .font(.system(.subheadline, design: .monospaced).weight(.semibold))
-                                                .foregroundStyle(MorpheTheme.accent)
+                                                .foregroundStyle(MorpheTheme.accentText)
                                         }
                                         // Prescription line: effort + rest, when
                                         // the catalog carries them.
@@ -3557,7 +3557,7 @@ private struct TrySomethingNewCard: View {
                             Text(rec.category.uppercased())
                                 .font(MorpheTheme.microLabel(10))
                                 .tracking(1.2)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                                 .frame(width: 84, alignment: .leading)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(rec.template.name)
@@ -3570,7 +3570,7 @@ private struct TrySomethingNewCard: View {
                             }
                             Spacer()
                             Image(systemName: "play.circle.fill")
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                         }
                         .padding(10)
                         .background(
@@ -3832,14 +3832,14 @@ struct TrainTogetherSheet: View {
                             .padding(10)
                             .background(
                                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                    .fill(MorpheTheme.textPrimary)
+                                    .fill(Color.white)
                             )
                     }
 
                     Text(party.id)
                         .scaledFont(size: 30, weight: .bold, design: .monospaced)
                         .tracking(6)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
 
                     Text(party.mode == .group
                          ? "Anyone with this code joins your class."
@@ -3861,7 +3861,7 @@ struct TrainTogetherSheet: View {
                             HStack(spacing: 10) {
                                 Image(systemName: member.isHost ? "star.fill" : "figure.run")
                                     .font(.caption)
-                                    .foregroundStyle(MorpheTheme.accent)
+                                    .foregroundStyle(MorpheTheme.accentText)
                                 Text(member.name)
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(MorpheTheme.textPrimary)
@@ -3926,7 +3926,7 @@ struct PartySessionStrip: View {
                     HStack {
                         Label(stripTitle, systemImage: isGroup ? "person.3.fill" : "person.2.fill")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         Spacer()
                         Text("Code \(party.id)")
                             .font(.caption.monospaced())
@@ -4027,7 +4027,7 @@ private struct PartyRecapCard: View {
                 ForEach(buddies) { buddy in
                     HStack(spacing: 10) {
                         Image(systemName: "figure.run")
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(buddy.name)
                                 .font(.subheadline.weight(.semibold))
@@ -4865,7 +4865,7 @@ private struct CircuitModeView: View {
                                     Spacer()
                                     Text("\(line.count) × \(line.workSeconds)s")
                                         .font(.system(.subheadline, design: .monospaced).weight(.bold))
-                                        .foregroundStyle(MorpheTheme.accent)
+                                        .foregroundStyle(MorpheTheme.accentText)
                                 }
                             }
 
@@ -6115,7 +6115,7 @@ private struct ExerciseSwapFlowSheet: View {
                                             Spacer(minLength: 0)
                                             Image(systemName: "arrow.left.arrow.right")
                                                 .font(.caption.weight(.bold))
-                                                .foregroundStyle(MorpheTheme.accent)
+                                                .foregroundStyle(MorpheTheme.accentText)
                                         }
                                         .padding(12)
                                         .background(
@@ -6278,7 +6278,7 @@ struct WorkoutBuilderSheet: View {
                                 .font(.subheadline.weight(.semibold))
                         }
                         .buttonStyle(.plain)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                     }
 
                     if items.isEmpty {
@@ -6499,7 +6499,7 @@ private struct ExercisePickerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(items.isEmpty ? "Done" : "Done (\(items.count))") { dismiss() }
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
             }
         }

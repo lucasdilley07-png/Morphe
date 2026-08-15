@@ -36,7 +36,7 @@ struct TermsGateView: View {
                     Text("TERMS OF USE")
                         .font(MorpheTheme.microLabel())
                         .tracking(1.4)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                         .padding(.top, 24)
 
                     Text("Before you train")
@@ -717,7 +717,7 @@ private struct MorpheAIAgentSheet: View {
                                         Spacer()
                                         Image(systemName: "arrow.up.right")
                                             .font(.caption.weight(.bold))
-                                            .foregroundStyle(MorpheTheme.accent)
+                                            .foregroundStyle(MorpheTheme.accentText)
                                     }
                                     .padding(14)
                                     .background(
@@ -867,7 +867,7 @@ private struct MorpheAIAgentSheet: View {
             MorpheTheme.ink.opacity(0.97)
                 .overlay(alignment: .top) {
                     Rectangle()
-                        .fill(Color.white.opacity(0.08))
+                        .fill(MorpheTheme.stroke)
                         .frame(height: 1)
                 }
                 .ignoresSafeArea(edges: .bottom)
@@ -1204,8 +1204,10 @@ private struct NetworkProfilePreviewSheet: View {
                 store.openClientHub(athlete)
                 store.selectedCoachTab = .programs
             } else {
-                store.selectedCoachTab = .network
-                store.notify("Opened \(profile.name)'s coach network.")
+                // .network silently redirects to .messages in the store's
+                // didSet — route (and say) the truth directly (audit 5, P2).
+                store.selectedCoachTab = .messages
+                store.notify("Opened your coach inbox.")
             }
             return
         }
@@ -1219,10 +1221,12 @@ private struct NetworkProfilePreviewSheet: View {
 }
 
 private enum UniversalSearchCategory: String, CaseIterable, Identifiable {
+    // Posts retired with the social cut (audit 5, P2): the segment
+    // searched a demo array that real accounts clear, and its result rows
+    // routed to surfaces that no longer show posts.
     case accounts = "Accounts"
     case plans = "Plans"
     case library = "Library"
-    case posts = "Posts"
 
     var id: String { rawValue }
 }
@@ -1294,29 +1298,17 @@ private struct UniversalSearchSheet: View {
         return Array(drills.prefix(8))
     }
 
-    private var filteredPosts: [ProgressPost] {
-        let posts = store.communityPosts.filter { post in
-            normalizedQuery.isEmpty ||
-            post.author.lowercased().contains(normalizedQuery) ||
-            post.title.lowercased().contains(normalizedQuery) ||
-            post.detail.lowercased().contains(normalizedQuery) ||
-            post.tags.joined(separator: " ").lowercased().contains(normalizedQuery)
-        }
-
-        return Array(posts.prefix(8))
-    }
-
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Search",
                     subtitle: store.selectedRole == .coach
-                        ? "Athletes, plans, drills, and community posts in one fast search."
-                        : "Accounts, workouts, exercises, and network posts without leaving the flow."
+                        ? "Athletes, plans, and drills in one fast search."
+                        : "Accounts, workouts, and exercises without leaving the flow."
                 )
 
-                TextField("Search accounts, workouts, exercises, posts...", text: $query)
+                TextField("Search accounts, workouts, exercises...", text: $query)
                     .textFieldStyle(MorpheFieldStyle())
                     .focused($searchFocused)
                     .submitLabel(.search)
@@ -1349,8 +1341,6 @@ private struct UniversalSearchSheet: View {
                     plansResults
                 case .library:
                     libraryResults
-                case .posts:
-                    postResults
                 }
             }
             .padding(.horizontal, 20)
@@ -1449,6 +1439,25 @@ private struct UniversalSearchSheet: View {
                                         selectedColor: MorpheTheme.accent))
                                     .accessibilityLabel(store.isFollowing(hit.uid)
                                         ? "Unfollow \(hit.username)" : "Follow \(hit.username)")
+                                } else {
+                                    // …and the Message door has to actually
+                                    // exist (audit 5, P1-3: a found account
+                                    // was a dead end).
+                                    Button("Message") {
+                                        let uid = hit.uid
+                                        let username = hit.username
+                                        store.closeUniversalSearch()
+                                        dismiss()
+                                        Task {
+                                            if await store.startDirectChat(with: uid, name: username) {
+                                                store.openCommunity(.contact)
+                                            }
+                                        }
+                                    }
+                                    .buttonStyle(FilterChipStyle(
+                                        isSelected: false,
+                                        selectedColor: MorpheTheme.accent))
+                                    .accessibilityLabel("Message \(hit.username)")
                                 }
                             }
                             .frame(minHeight: 44)
@@ -1566,33 +1575,6 @@ private struct UniversalSearchSheet: View {
         }
     }
 
-    @ViewBuilder
-    private var postResults: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Network Posts")
-                    .font(.headline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
-
-                ForEach(filteredPosts) { post in
-                    SearchResultRow(
-                        title: post.title,
-                        subtitle: "\(post.author) • \(post.rank)",
-                        detail: post.detail
-                    ) {
-                        if store.selectedRole == .coach {
-                            store.selectedCoachTab = .network
-                        } else {
-                            store.openCommunity(FeatureFlags.socialFeedEnabled ? .forYou : .contact)
-                        }
-                        store.notify("Opened \(post.author)'s post.")
-                        store.closeUniversalSearch()
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
 }
 
 private struct QuickAddSheet: View {
@@ -1764,7 +1746,7 @@ private struct QuickAddGridCard: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Image(systemName: item.systemImage)
                                 .font(.headline)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                             Text(item.title)
                                 .font(.subheadline.weight(.bold))
                                 .foregroundStyle(MorpheTheme.textPrimary)

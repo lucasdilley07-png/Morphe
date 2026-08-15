@@ -278,7 +278,7 @@ struct OnboardingFlowView: View {
                                     Text("PROFILE SETUP")
                                         .font(MorpheTheme.microLabel())
                                         .tracking(1.4)
-                                        .foregroundStyle(MorpheTheme.accent)
+                                        .foregroundStyle(MorpheTheme.accentText)
 
                                     Text(isCoachFlow ? "Create your coach profile" : "Create your profile")
                                         .font(.title2.weight(.bold))
@@ -308,7 +308,7 @@ struct OnboardingFlowView: View {
                                         Label("Account created", systemImage: "checkmark")
                                             .font(MorpheTheme.microLabel(10))
                                             .tracking(1.0)
-                                            .foregroundStyle(MorpheTheme.accent)
+                                            .foregroundStyle(MorpheTheme.accentText)
                                     }
                                 }
                             }
@@ -525,7 +525,7 @@ private struct UsernameStep: View {
                 Text("CLAIM YOUR USERNAME")
                     .font(MorpheTheme.microLabel())
                     .tracking(1.4)
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
 
                 Text("Pick your @name")
                     .font(.title2.weight(.bold))
@@ -561,7 +561,7 @@ private struct UsernameStep: View {
                 if !preview.isEmpty {
                     Text("@\(preview)")
                         .font(.subheadline.weight(.semibold).monospaced())
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
 
                 if isChecking {
@@ -590,7 +590,7 @@ private struct CoachCodeStep: View {
                 Text("OPTIONAL — TRAIN WITH A COACH")
                     .font(MorpheTheme.microLabel())
                     .tracking(1.4)
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
 
                 Text("Did a coach set you up?")
                     .font(.title2.weight(.bold))
@@ -634,7 +634,7 @@ private struct WelcomeLandingStep: View {
                     Text("GETTING STARTED")
                         .font(MorpheTheme.microLabel())
                         .tracking(1.4)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
 
                     Text("Welcome to Morphe")
                         .font(.title.weight(.bold))
@@ -692,7 +692,7 @@ private struct LandingPoint: View {
             Text(String(format: "%02d", index))
                 .font(MorpheTheme.microLabel(11))
                 .tracking(1.2)
-                .foregroundStyle(MorpheTheme.accent)
+                .foregroundStyle(MorpheTheme.accentText)
             Text(text)
                 .foregroundStyle(MorpheTheme.textPrimary)
         }

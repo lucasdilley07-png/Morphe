@@ -139,7 +139,7 @@ struct CoachBookingSheet: View {
                         Spacer()
                         Text(selectedPackage?.price ?? "$0")
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                     }
                 }
             }
@@ -530,7 +530,7 @@ struct CoachBusinessView: View {
                             Spacer()
                             Text(package.price)
                                 .font(.subheadline.weight(.bold))
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                         }
                     }
                 }

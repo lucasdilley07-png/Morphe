@@ -246,7 +246,7 @@ struct CelebrationOverlay: View {
         HStack(spacing: 12) {
             Image(systemName: moment.symbol)
                 .font(.title3.weight(.bold))
-                .foregroundStyle(MorpheTheme.accent)
+                .foregroundStyle(MorpheTheme.accentText)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(moment.title)
@@ -296,7 +296,7 @@ struct RecordStampOverlay: View {
                 Text(moment.kicker)
                     .scaledFont(size: 13, weight: .bold, design: .monospaced)
                     .tracking(3)
-                    .foregroundStyle(MorpheTheme.brandYellow)
+                    .foregroundStyle(MorpheTheme.brandYellowText)
                     .padding(.bottom, 16)
 
                 Text(moment.headline)
@@ -309,7 +309,7 @@ struct RecordStampOverlay: View {
 
                 Text(moment.valueLine.uppercased())
                     .scaledFont(size: 28, weight: .bold, design: .monospaced)
-                    .foregroundStyle(MorpheTheme.brandYellow)
+                    .foregroundStyle(MorpheTheme.brandYellowText)
 
                 if !moment.detailLine.isEmpty {
                     Text(moment.detailLine.uppercased())
@@ -344,7 +344,7 @@ struct RecordStampOverlay: View {
             }
             .padding(36)
 
-            HUDCornerTicks(arm: 22, color: Color.white.opacity(0.35))
+            HUDCornerTicks(arm: 22, color: MorpheTheme.textPrimary.opacity(0.35))
                 .padding(24)
         }
         .onAppear {
@@ -396,7 +396,7 @@ struct MorpheAvatarView: View {
             } else {
                 Image(systemName: avatar.style.systemImage)
                     .font(.system(size: size * 0.4, weight: .semibold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
             }
         }
         .frame(width: size, height: size)
@@ -660,7 +660,7 @@ struct AIInsightCard: View {
 
                 Text(insight.suggestedAction)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
             }
         }
     }
@@ -796,7 +796,7 @@ struct WhyThisMattersCard: View {
                     .foregroundStyle(MorpheTheme.textPrimary)
                 Text(item.title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                 Text(item.detail)
                     .foregroundStyle(MorpheTheme.textSecondary)
             }
@@ -883,7 +883,7 @@ struct StreakProtectionCard: View {
                 if isProtected {
                     Text("Momentum protected.")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                 } else {
                     Text("You missed today's workout, but your streak is still saveable.")
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -972,7 +972,7 @@ struct WorkoutDifficultyFeedbackCard: View {
                 if !response.isEmpty {
                     Text(response)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
             }
         }
@@ -998,7 +998,7 @@ struct FrictionInsightCard: View {
 
                 Text(insight.title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
 
                 Text(insight.summary)
                     .foregroundStyle(MorpheTheme.textPrimary)
@@ -1099,7 +1099,7 @@ struct PhotoProgressAIScanCard: View {
 
                 Text(snapshot.reminder)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                 Text(snapshot.aiPreview)
                     .foregroundStyle(MorpheTheme.textPrimary)
                 Text(snapshot.postureNote)
@@ -1433,7 +1433,7 @@ struct BadgeGridCard: View {
                     ForEach(badges) { badge in
                         VStack(alignment: .leading, spacing: 8) {
                             Image(systemName: badge.icon)
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                             Text(badge.title)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(MorpheTheme.textPrimary)
@@ -1579,7 +1579,7 @@ struct HUDDisclosureStyle: DisclosureGroupStyle {
 
                     Image(systemName: configuration.isExpanded ? "minus" : "plus")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
                 .contentShape(Rectangle())
             }
@@ -1675,7 +1675,7 @@ struct ManifestoCard: View {
                 Text("WHY MORPHE")
                     .font(MorpheTheme.microLabel())
                     .tracking(1.4)
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
 
                 VStack(alignment: .leading, spacing: 12) {
                     ManifestoLine(index: 1, title: "Real scores only",
@@ -1713,7 +1713,7 @@ private struct ManifestoLine: View {
             Text(String(format: "%02d", index))
                 .font(MorpheTheme.microLabel(11))
                 .tracking(1.2)
-                .foregroundStyle(MorpheTheme.accent)
+                .foregroundStyle(MorpheTheme.accentText)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
@@ -1767,7 +1767,7 @@ private struct ShareCardFrame<Content: View>: View {
 
                 // Footer: hairline + handle + motto.
                 Rectangle()
-                    .fill(MorpheTheme.stroke)
+                    .fill(Color.white.opacity(0.18))
                     .frame(height: 1)
                     .padding(.bottom, 12)
                 HStack {

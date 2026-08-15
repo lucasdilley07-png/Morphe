@@ -101,7 +101,7 @@ struct CommunityView: View {
                 // photo" — and now it IS one. Form Check rides inside.
                 Image(systemName: "camera.fill")
                     .font(.headline.weight(.bold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .frame(width: 48, height: 48)
                     .background(Circle().fill(MorpheTheme.panelStrong))
             }
@@ -227,7 +227,7 @@ struct CommunityView: View {
                     Spacer()
                     Button("Add") { showCalendarEditor = true }
                         .buttonStyle(.plain)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                         .frame(minHeight: 44)
                 }
 
@@ -361,7 +361,7 @@ private struct NetworkEmptyActionRow: View {
             HStack(spacing: 14) {
                 Image(systemName: icon)
                     .font(.headline)
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .frame(width: 44, height: 44)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
@@ -1519,7 +1519,7 @@ private struct RealFeedSection: View {
                     HStack(spacing: 8) {
                         Image(systemName: "bell.badge.fill")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         Text("\(store.unseenActivityCount) new reaction\(store.unseenActivityCount == 1 ? "" : "s") on your posts since you last checked")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.textPrimary)
@@ -1552,7 +1552,7 @@ private struct RealFeedSection: View {
                     HStack(spacing: 8) {
                         Image(systemName: "trophy.fill")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         Text(boardChipLine)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.textPrimary)
@@ -1946,7 +1946,7 @@ private struct StoryBubble: View {
         switch ringState {
         case .unseen: return MorpheTheme.brandYellow
         case .seen: return MorpheTheme.stroke
-        case .empty: return Color.white.opacity(0.30)
+        case .empty: return MorpheTheme.textPrimary.opacity(0.30)
         }
     }
 
@@ -2576,7 +2576,7 @@ private struct StoryCardView: View {
                 .fill(MorpheTheme.panel)
                 .overlay(
                     RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                        .stroke(MorpheTheme.stroke, lineWidth: 1)
                 )
         )
         .allowsHitTesting(false)
@@ -3425,7 +3425,7 @@ struct ThreadChatView: View {
                                 .font(MorpheTheme.microLabel(10))
                                 .tracking(1.2)
                         }
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                         .accessibilityLabel("\(chatStreak) day chat streak")
                         // The chip explains itself on tap — no glossary hunt.
                         .onTapGesture {
@@ -3743,7 +3743,7 @@ struct AthleteInboxView: View {
                                 store.openClientProfile()
                             }
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .frame(minHeight: 32)
                         }
                     }

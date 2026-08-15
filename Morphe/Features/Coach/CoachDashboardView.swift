@@ -299,7 +299,7 @@ private struct CoachCommandCenterScreen: View {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: symbol)
                         .font(.headline)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentText)
                         .frame(width: 44, height: 40)
                     if showsBadge {
                         Circle()
@@ -612,7 +612,7 @@ private struct CoachAthletesRosterSection: View {
                         .font(.subheadline.weight(.semibold))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(MorpheTheme.accent)
+                .foregroundStyle(MorpheTheme.accentText)
             }
 
             // Clients this coach manages directly — created before the person
@@ -813,7 +813,7 @@ private struct AddManagedClientSheet: View {
         VStack(spacing: 20) {
             Image(systemName: "person.crop.circle.badge.checkmark")
                 .font(.system(size: 56))
-                .foregroundStyle(MorpheTheme.accent)
+                .foregroundStyle(MorpheTheme.accentText)
 
             Text("\(client.name) is on your roster")
                 .font(.title3.weight(.bold))
@@ -838,7 +838,7 @@ private struct AddManagedClientSheet: View {
                     }
                     .accessibilityLabel("Copy invite code")
                     .buttonStyle(.plain)
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .accessibilityLabel("Copy invite code")
                 }
             }
@@ -928,7 +928,7 @@ private struct ManagedClientDetailSheet: View {
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityLabel("Copy invite code")
-                                .foregroundStyle(MorpheTheme.accent)
+                                .foregroundStyle(MorpheTheme.accentText)
                                 .accessibilityLabel("Copy invite code")
                                 ShareLink(
                                     item: "Join me on Morphe! Download the app and enter invite code \(client.id) during setup (or later in Profile → Coach code) — your training history is already waiting."
@@ -3030,7 +3030,9 @@ private struct CoachMessagesScreen: View {
 
                 StatusBadge(text: thread.isGroupChat ? "Group" : "1:1", color: thread.isGroupChat ? MorpheTheme.warning : MorpheTheme.accent)
 
-                if let athlete {
+                // Praise publishes to the public feed — no feed, no door
+                // (audit 5, P0-1).
+                if let athlete, FeatureFlags.socialFeedEnabled {
                     Button("Praise") {
                         coachPraiseDraft = store.makeCoachPraiseDraft(for: athlete.id)
                     }
@@ -3682,7 +3684,7 @@ private struct CoachTriageFocusSheet: View {
                                 ForEach(rows) { row in
                                     HStack(alignment: .top, spacing: 12) {
                                         Image(systemName: row.symbol)
-                                            .foregroundStyle(MorpheTheme.accent)
+                                            .foregroundStyle(MorpheTheme.accentText)
                                             .frame(width: 24)
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(row.title)
@@ -3886,7 +3888,7 @@ private struct CoachHeroSummaryCard: View {
                     .foregroundStyle(MorpheTheme.textSecondary)
                 Text(overview.weeklySummary)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
             }
         }
     }
@@ -4441,7 +4443,7 @@ struct CoachHonestAnalyticsCard: View {
                 Text("ROSTER HEALTH")
                     .font(MorpheTheme.microLabel())
                     .tracking(1.4)
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
 
                 HStack(spacing: 14) {
                     VStack(alignment: .leading, spacing: 2) {
