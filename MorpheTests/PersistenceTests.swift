@@ -685,6 +685,36 @@ final class WorkoutSessionTests: XCTestCase {
                        "a dark feed never pays Firebase for a fetch no surface can show")
     }
 
+    /// Alive wave: the greeting is personal and the Today prompt is derived
+    /// from real state — it flips to the done-state line the moment a
+    /// session is actually logged, never before.
+    func testConversationalGreetingAndPromptDeriveFromRealState() {
+        let store = freshStore()
+        XCTAssertTrue(store.homeGreeting.contains("Sarah"), "the greeting addresses the user by name")
+        XCTAssertFalse(store.homePrompt.isEmpty)
+        XCTAssertFalse(store.homePrompt.contains("in the books"),
+                       "no done-state language before anything is logged")
+
+        startedTwoExerciseSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+        XCTAssertTrue(store.homePrompt.contains("in the books"),
+                      "a LOGGED session flips the prompt to the done state — finishing alone doesn't")
+    }
+
+    /// Alive wave: guide hints show once, then stay dismissed across
+    /// relaunches for the same profile.
+    func testGuideHintsShowOncePerProfile() {
+        let store = freshStore()
+        XCTAssertFalse(store.hasSeenGuide("home.welcome"))
+        store.markGuideSeen("home.welcome")
+        XCTAssertTrue(store.hasSeenGuide("home.welcome"))
+
+        let reloaded = MorpheAppStore()
+        XCTAssertTrue(reloaded.hasSeenGuide("home.welcome"), "seen state survives relaunch")
+    }
+
     func testRPEIsCapturedRestoredAndLogged() {
         let store = freshStore()
         startedTwoExerciseSession(store)

@@ -937,6 +937,14 @@ final class MorpheAppStore {
             Task { await refreshThreads() }
             // The real For You feed — pull fresh each launch too.
             Task { await refreshFeed() }
+            // Referral receipts are feed-independent (audit 6, P1-3): a
+            // link tapped before sign-in must land even while the feed
+            // fetch is gated off, so the consume can't live inside
+            // refreshFeed behind the dark-feed guard.
+            Task {
+                await consumePendingReferral()
+                await refreshReferralCount()
+            }
         }
 
         // Same-day relaunch: no-op (daily state was just restored). New day —
@@ -3546,6 +3554,7 @@ final class MorpheAppStore {
             // account with no stored prefs must not inherit the previous
             // profile's sleep toggle, first-week date, or archived roster.
             healthSleepEnabled = false
+            storedAutoShareOptIn = false
             firstWeekStart = nil
             archivedClientCodes = []
             effortScaleRIR = false
@@ -8557,7 +8566,7 @@ final class MorpheAppStore {
                 if isRealFeedActive {
                     Task { await consumePendingReferral() }
                 } else {
-                    showToast("Invite from @\(username) saved — it connects when you're signed in.")
+                    showToast("Invite from @\(username) saved — it's recorded when you sign in.")
                 }
             }
             return
@@ -8571,7 +8580,7 @@ final class MorpheAppStore {
             if isRealFeedActive {
                 Task { await consumePendingReferral() }
             } else {
-                showToast("Invite from @\(username) saved — it connects when you're signed in.")
+                showToast("Invite from @\(username) saved — it's recorded when you sign in.")
             }
         case "party":
             // A party QR scanned with the system Camera (the in-app scanner
@@ -9077,6 +9086,76 @@ final class MorpheAppStore {
             Calendar.current.isDateInToday($0.completedAt)
         }
         return loggedToday ? nil : streak
+    }
+
+    // MARK: - Conversational voice (alive wave)
+    //
+    // The app talks TO the user, in second person, about THEIR real state.
+    // Every line below is derived from logged facts — the voice is warm,
+    // the content is never invented (TRAIN HONEST applies to tone too).
+
+    /// First name for greetings: display name's first token, then profile
+    /// name, then a neutral fallback — never an empty "Hi , ".
+    var greetingName: String {
+        let source = !profileShowcase.displayName.isEmpty
+            ? profileShowcase.displayName
+            : (selectedRole == .coach ? coachProfile.name : clientProfile.name)
+        let first = source.split(separator: " ").first.map(String.init) ?? ""
+        return first.isEmpty ? "there" : first
+    }
+
+    /// Time-aware personal greeting — the first line of Today.
+    var homeGreeting: String {
+        let hour = Calendar.current.component(.hour, from: .now)
+        switch hour {
+        case 5..<12: return "Good morning, \(greetingName)!"
+        case 12..<17: return "Hi \(greetingName)!"
+        case 17..<22: return "Good evening, \(greetingName)!"
+        default: return "Late one, \(greetingName)?"
+        }
+    }
+
+    /// The question under the greeting — context-aware, one thought, in
+    /// priority order of what actually matters right now.
+    var homePrompt: String {
+        if isWorkoutLoggedToday {
+            return "Today's session is in the books. Want to stack another, or check your progress?"
+        }
+        if let assignment = dueCoachAssignment {
+            let coach = assignment.coachName.isEmpty ? "Your coach" : assignment.coachName
+            return "\(coach) sent you a session — ready when you are."
+        }
+        if isPlannedRestDay {
+            return "It's your rest day. Recovery is part of the program — or train anyway if you're feeling it."
+        }
+        if let atRisk = streakOnTheLineDays {
+            return "Your \(atRisk)-day streak is on the line — one session today keeps it alive."
+        }
+        return "What workout would you like to start today?"
+    }
+
+    // MARK: - One-time guide hints (alive wave)
+    //
+    // The step-by-step voice: each key surface introduces itself ONCE, in
+    // a dismissible line, then never nags again. Seen-state is per profile.
+
+    /// Bumped when a guide is dismissed so views re-evaluate visibility.
+    private(set) var guideRefresh = 0
+
+    private var guideSeenKey: String {
+        "morphe.guides.seen.\(clientProfile.id.uuidString)"
+    }
+
+    func hasSeenGuide(_ key: String) -> Bool {
+        (UserDefaults.standard.stringArray(forKey: guideSeenKey) ?? []).contains(key)
+    }
+
+    func markGuideSeen(_ key: String) {
+        var seen = UserDefaults.standard.stringArray(forKey: guideSeenKey) ?? []
+        guard !seen.contains(key) else { return }
+        seen.append(key)
+        UserDefaults.standard.set(seen, forKey: guideSeenKey)
+        guideRefresh += 1
     }
 
     /// The 7-day starter checklist, or nil once week one is over. Every
@@ -9619,12 +9698,9 @@ final class MorpheAppStore {
             }
             membershipSetsFetched = true
         }
-        // A referral captured before sign-in connects on the first real
-        // feed load after it.
-        await consumePendingReferral()
-        // And the recruiter side of the same loop: how many joined through
-        // this account's invites (drives the Profile row + Recruiter accent).
-        await refreshReferralCount()
+        // Referral consume/count moved to the launch path (audit 6, P1-3):
+        // this tail sits behind the dark-feed guard, which never opens in
+        // the shipping configuration.
     }
 
     /// Appends the next page below the loaded feed. The cursor advances

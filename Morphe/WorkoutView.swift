@@ -519,8 +519,13 @@ struct WorkoutView: View {
                 SectionTitleView(
                     title: "Train",
                     subtitle: store.hasCompletedWorkoutFlow
-                        ? "Session finished — review what you logged, rate it, and lock it in."
-                        : "Start the session, log sets in the console, then rate it and lock it in."
+                        ? "Great session. Look it over, rate it, and I'll lock it in."
+                        : "Ready when you are — start the session and I'll track every set with you."
+                )
+
+                GuideHint(
+                    key: "train.landing",
+                    text: "Tap Start and log each set with the check — I'll remember your weights for next time. Want something new? Swipe left for Discover."
                 )
 
                 // Form Check lives inside the live session now (under the rest
@@ -1053,7 +1058,7 @@ struct DiscoverScreenView: View {
                         title: "Discover",
                         subtitle: store.discoverWorkouts.isEmpty
                             ? "A new workout library is on the way."
-                            : "\(store.discoverWorkouts.count) workouts — pick a training style."
+                            : "\(store.discoverWorkouts.count) workouts — pick a style and I'll queue it up."
                     )
 
                     DiscoverCatalogSection(

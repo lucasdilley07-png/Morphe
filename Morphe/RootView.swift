@@ -1152,15 +1152,16 @@ private struct NetworkProfilePreviewSheet: View {
                             }
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
-                            Button("Connect") {
-                                if let suggestion = store.networkSuggestions.first(where: { $0.name == profile.name }) {
+                            // Connect only renders when a real suggestion
+                            // backs it — the fallback toasted a connection
+                            // that never happened (audit 6, P2-11).
+                            if let suggestion = store.networkSuggestions.first(where: { $0.name == profile.name }) {
+                                Button("Connect") {
                                     store.connectToNetworkSuggestion(suggestion)
-                                } else {
-                                    store.notify("Connection saved for \(profile.name).")
+                                    dismissProfile()
                                 }
-                                dismissProfile()
+                                .buttonStyle(SecondaryCTAButtonStyle())
                             }
-                            .buttonStyle(SecondaryCTAButtonStyle())
                         }
                     }
                 }
@@ -1454,9 +1455,7 @@ private struct UniversalSearchSheet: View {
                                             }
                                         }
                                     }
-                                    .buttonStyle(FilterChipStyle(
-                                        isSelected: false,
-                                        selectedColor: MorpheTheme.accent))
+                                    .buttonStyle(FilterChipStyle(isSelected: false))
                                     .accessibilityLabel("Message \(hit.username)")
                                 }
                             }

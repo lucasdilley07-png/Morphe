@@ -106,15 +106,16 @@ struct SectionTitleView: View {
     var showsIndexTick: Bool = true
 
     var body: some View {
-        // HUD header: accent index tick, tracked mono title, hairline rule
-        // running to the trailing edge.
-        VStack(alignment: .leading, spacing: 6) {
+        // Alive-wave header: centered, symmetrical — the tracked mono title
+        // flanked by matched hairline rules, subtitle centered beneath.
+        // (The old leading tick + one-sided rule read left-to-right; the
+        // whole app now balances around the center line.)
+        VStack(alignment: .center, spacing: 6) {
             HStack(spacing: 10) {
-                if showsIndexTick {
-                    Rectangle()
-                        .fill(MorpheTheme.accent)
-                        .frame(width: 3, height: 14)
-                }
+                Rectangle()
+                    .fill(MorpheTheme.stroke)
+                    .frame(height: 1)
+                    .frame(maxWidth: .infinity)
 
                 Text(title.uppercased())
                     // microLabel scales with Dynamic Type; the .bold keeps
@@ -134,11 +135,60 @@ struct SectionTitleView: View {
             Text(subtitle)
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(MorpheTheme.textSecondary)
+                .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .padding(.bottom, 6)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// One-time, dismissible guide line — the app introducing a surface in its
+/// own voice. Shows until "Got it", then never again for this profile.
+/// Honest by construction: it explains what IS there, it never invents.
+struct GuideHint: View {
+    @Environment(MorpheAppStore.self) private var store
+    let key: String
+    let text: String
+
+    var body: some View {
+        let _ = store.guideRefresh
+        if !store.hasSeenGuide(key) {
+            VStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkle")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                    Text("MORPHE")
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(1.6)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                Text(text)
+                    .font(.footnote)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                Button("Got it") { store.markGuideSeen(key) }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(minHeight: 32)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel("Dismiss this tip")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panel)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(MorpheTheme.strokeSubtle, lineWidth: 1)
+                    )
+            )
+            .accessibilityElement(children: .combine)
+        }
     }
 }
 
@@ -1827,7 +1877,7 @@ struct ShareCardView: View {
 
                 Text(data.workoutName)
                     .font(.system(size: 40, weight: .black))
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .foregroundStyle(Color.white)
                     .lineLimit(3)
                     .minimumScaleFactor(0.6)
                     .padding(.bottom, 18)
@@ -1848,7 +1898,7 @@ struct ShareCardView: View {
                         Text("NEW PR · \(name.uppercased())")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
-                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .foregroundStyle(Color.white)
                             .lineLimit(1)
                     }
                     .padding(.bottom, 8)
@@ -1862,7 +1912,7 @@ struct ShareCardView: View {
                         Text("\(data.streak)-DAY STREAK")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
-                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .foregroundStyle(Color.white)
                     }
                     .padding(.top, 4)
                 }
@@ -1889,7 +1939,7 @@ struct PRShareCardView: View {
 
                 Text(data.exerciseName)
                     .font(.system(size: 40, weight: .black))
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .foregroundStyle(Color.white)
                     .lineLimit(3)
                     .minimumScaleFactor(0.6)
                     .padding(.bottom, 18)
@@ -1902,7 +1952,7 @@ struct PRShareCardView: View {
                     Text("UP FROM \(data.previousLabel.uppercased())")
                         .font(.system(size: 13, design: .monospaced).weight(.semibold))
                         .tracking(1.2)
-                        .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
+                        .foregroundStyle(Color.white.opacity(0.55))
                         .padding(.top, 10)
                 }
             }
@@ -1932,13 +1982,13 @@ struct StreakShareCardView: View {
                 Text("DAY STREAK")
                     .font(.system(size: 18, design: .monospaced).weight(.bold))
                     .tracking(3)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .foregroundStyle(Color.white)
                     .padding(.bottom, 14)
 
                 Text("EVERY DAY EARNED")
                     .font(.system(size: 12, design: .monospaced).weight(.semibold))
                     .tracking(1.6)
-                    .foregroundStyle(MorpheTheme.textPrimary.opacity(0.55))
+                    .foregroundStyle(Color.white.opacity(0.55))
             }
         }
     }
@@ -1961,13 +2011,13 @@ struct RecapShareCardView: View {
                 Text(data.sessions == 1 ? "SESSION" : "SESSIONS")
                     .font(.system(size: 18, design: .monospaced).weight(.bold))
                     .tracking(3)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .foregroundStyle(Color.white)
                     .padding(.bottom, 16)
 
                 Text("\(data.sets) SETS   ·   \(data.minutes) MIN")
                     .font(.system(size: 15, design: .monospaced).weight(.bold))
                     .tracking(1.2)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .foregroundStyle(Color.white)
 
                 if data.prCount > 0 {
                     HStack(spacing: 8) {
@@ -1977,7 +2027,7 @@ struct RecapShareCardView: View {
                         Text("\(data.prCount) NEW PR\(data.prCount == 1 ? "" : "S")")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
-                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .foregroundStyle(Color.white)
                     }
                     .padding(.top, 12)
                 }
@@ -1990,7 +2040,7 @@ struct RecapShareCardView: View {
                         Text("\(data.streak)-DAY STREAK")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
-                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .foregroundStyle(Color.white)
                     }
                     .padding(.top, 8)
                 }

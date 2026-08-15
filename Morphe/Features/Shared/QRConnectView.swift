@@ -127,7 +127,7 @@ struct QRConnectSheet: View {
                 ForEach(store.scannedConnections) { connection in
                     HStack(spacing: 10) {
                         Image(systemName: connection.role == "coach" ? "figure.wave" : "figure.run")
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentText)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(connection.name)
                                 .font(.subheadline.weight(.semibold))

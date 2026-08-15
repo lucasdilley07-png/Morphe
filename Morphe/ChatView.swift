@@ -2206,7 +2206,7 @@ private struct BoardStoryView: View {
                         HStack(spacing: 12) {
                             Text("#\(index + 1)")
                                 .scaledFont(size: 22, weight: .bold, design: .monospaced)
-                                .foregroundStyle(index == 0 ? MorpheTheme.brandYellow : Color.white.opacity(0.55))
+                                .foregroundStyle(index == 0 ? MorpheTheme.brandYellow : MorpheTheme.textPrimary.opacity(0.55))
                                 .frame(width: 44, alignment: .leading)
                             Text(entry.name)
                                 .scaledFont(size: 22, weight: .black)
@@ -2239,7 +2239,7 @@ private struct BoardStoryView: View {
             }
             .padding(20)
 
-            HUDCornerTicks(arm: 22, color: Color.white.opacity(0.35))
+            HUDCornerTicks(arm: 22, color: MorpheTheme.textPrimary.opacity(0.35))
                 .padding(14)
                 .allowsHitTesting(false)
         }
@@ -3707,6 +3707,13 @@ struct AthleteInboxView: View {
                 searchField
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
+
+                GuideHint(
+                    key: "network.chats",
+                    text: "This is your Network — chats live here, the weekly board and your calendar are one tab over. Search a username to start a conversation."
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
 
                 ForEach(Array(visibleThreads.enumerated()), id: \.element.id) { index, thread in
                     Button {

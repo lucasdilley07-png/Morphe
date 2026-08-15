@@ -28,19 +28,31 @@ struct HomeView: View {
         return "\(goal) - \(store.clientProfile.trainingDaysPerWeek) days a week"
     }
 
-    private var todayWinText: String {
-        if store.minimumWinModeEnabled {
-            return "Keep the habit alive with one small win."
-        }
-
-        // Habit-only copy (audit D5): the hero owns the workout instruction;
-        // this card owns the small wins around it — no more echo.
-        return "Close the day strong — protein, water, and enough sleep to earn tomorrow."
-    }
-
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .center, spacing: 16) {
+                // The app opens by talking to YOU (alive wave): a personal,
+                // time-aware greeting and one context question derived from
+                // real state — coach session due, rest day, streak, or the
+                // plain "what are we training?"
+                VStack(spacing: 6) {
+                    Text(store.homeGreeting)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .multilineTextAlignment(.center)
+                    Text(store.homePrompt)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .combine)
+
+                GuideHint(
+                    key: "home.welcome",
+                    text: "This is Today — your next session, your streak, and your plan all live here. I'll point things out as you go."
+                )
+
                 // Once today's session is logged, the "Today's Workout" card
                 // becomes the "You're done for today" card in place — no
                 // overlay, no page takeover. "Do another session" keeps the
@@ -64,7 +76,7 @@ struct HomeView: View {
                     // session" hero. Training anyway stays one tap away —
                     // the card reframes, it never blocks.
                     GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .center, spacing: 12) {
                             HStack(spacing: 10) {
                                 Image(systemName: "moon.zzz.fill")
                                     .font(.title3.weight(.semibold))
@@ -75,10 +87,12 @@ struct HomeView: View {
                             }
                             Text("Today isn't on your training schedule. Recovery is part of the program — or train anyway if you're feeling it.")
                                 .foregroundStyle(MorpheTheme.textSecondary)
+                                .multilineTextAlignment(.center)
                             Button("Train Anyway") { store.startTodayWorkout() }
                                 .buttonStyle(SecondaryCTAButtonStyle())
                                 .frame(width: 150)
                         }
+                        .frame(maxWidth: .infinity)
                     }
                 } else if store.isWorkoutLoggedToday {
                     TodayDoneCard(
@@ -95,7 +109,7 @@ struct HomeView: View {
                     // the one-tap Start used to launch the generic plan
                     // over the coach's assignment.
                     GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .center, spacing: 12) {
                             Text("FROM \(assignment.coachName.isEmpty ? "YOUR COACH" : assignment.coachName.uppercased())")
                                 .font(MorpheTheme.microLabel())
                                 .tracking(1.4)
@@ -119,7 +133,8 @@ struct HomeView: View {
                             .frame(minHeight: 44)
                             .contentShape(Rectangle())
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
                     }
                 } else {
                     // Loss framing over gain framing — but only for a REAL
@@ -134,8 +149,9 @@ struct HomeView: View {
                             Text("\(atRisk)-day streak on the line — one session tonight keeps it.")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(MorpheTheme.textPrimary)
-                            Spacer(minLength: 0)
+                                .multilineTextAlignment(.center)
                         }
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
                         .background(
@@ -201,17 +217,10 @@ struct HomeView: View {
                             },
                             onExit: { store.deactivateMinimumWinMode() }
                         )
-                    } else {
-                        // Daily wins stay visible from day 0 — small
-                        // checkable tasks give a brand-new user something to
-                        // complete before the metrics exist.
-                        TodayPlanCard(
-                            todayWinText: todayWinText,
-                            personalizationNote: store.taskPlanNote,
-                            tasks: store.todayTasks,
-                            onToggleTask: { store.toggleTask($0) }
-                        )
                     }
+                    // Today's Plan retired (alive wave): the greeting +
+                    // hero already answer "what now?" — the task list was
+                    // a second, competing to-do surface.
 
                     // The check-in otherwise lives inside "If plans change",
                     // which is earned at tier 1 — a brand-new user had no way
@@ -706,7 +715,7 @@ private struct TodayDoneCard: View {
 
     var body: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .center, spacing: 14) {
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.title3.weight(.semibold))
@@ -718,6 +727,7 @@ private struct TodayDoneCard: View {
 
                 Text("You closed the loop on \(workoutName). Nice work — the rest of today is yours.")
                     .foregroundStyle(MorpheTheme.textSecondary)
+                    .multilineTextAlignment(.center)
 
                 if !nextUpLine.isEmpty {
                     Text(nextUpLine)
@@ -780,8 +790,8 @@ private struct TodayNextMoveCard: View {
 
     var body: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(minimumWinModeEnabled ? "Today's fallback is active" : "Today's Workout")
+            VStack(alignment: .center, spacing: 14) {
+                Text(minimumWinModeEnabled ? "Today's fallback is active" : "Here's what I've got for you")
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
 
@@ -799,12 +809,14 @@ private struct TodayNextMoveCard: View {
                             .buttonStyle(SecondaryCTAButtonStyle())
                     }
                 } else {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .center, spacing: 8) {
                         Text(workout.name)
                             .font(.title3.weight(.bold))
                             .foregroundStyle(MorpheTheme.textPrimary)
+                            .multilineTextAlignment(.center)
                         Text("\(workout.durationMinutes) min • \(workout.goal)")
                             .foregroundStyle(MorpheTheme.textSecondary)
+                            .multilineTextAlignment(.center)
                         // Present only when recent ratings/finish times have
                         // actually tilted the plan — silence means holding.
                         if let intensityNote = store.workoutIntensityNote {
@@ -1192,37 +1204,6 @@ private struct RecoveryCheckInSheet: View {
     }
 }
 
-private struct TodayPlanCard: View {
-    let todayWinText: String
-    let personalizationNote: String
-    let tasks: [TaskItem]
-    let onToggleTask: (TaskItem) -> Void
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Today's Plan")
-                    .font(.headline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
-
-                Text(todayWinText)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-
-                ForEach(tasks) { task in
-                    TaskRow(task: task) {
-                        onToggleTask(task)
-                    }
-                }
-
-                // Why THIS mix: the difficulty engine's one-line receipt.
-                Text(personalizationNote)
-                    .font(.footnote)
-                    .foregroundStyle(MorpheTheme.accent.opacity(0.9))
-            }
-        }
-    }
-}
-
 private struct MorpheHubEntryCard: View {
     let openProgress: () -> Void
     let openMore: () -> Void
@@ -1230,7 +1211,7 @@ private struct MorpheHubEntryCard: View {
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Need more than today's plan?")
+                Text("Want the bigger picture?")
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
                 Text("Open Progress for reports and wins, or Learn for lessons, the daily quiz, exercise help, and nutrition basics.")

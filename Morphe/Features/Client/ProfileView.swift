@@ -140,7 +140,9 @@ struct ProfileView: View {
         }
         // A typed-but-unsaved weight counts too — it feeds the Progress
         // chart and nutrition targets, so it must never vanish silently.
-        if !weightDraft.trimmingCharacters(in: .whitespaces).isEmpty {
+        // Only a PARSEABLE value counts: "abc" isn't an edit worth a save
+        // prompt, and saving it would record garbage (audit 6, P2-10).
+        if MorpheAppStore.parsedBodyWeightLb(weightDraft, assumedUnit: store.weightUnit) != nil {
             return true
         }
         return false
@@ -162,7 +164,7 @@ struct ProfileView: View {
         if isEditingBio { saveBio() }
         if isEditingTargets { saveTargets() }
         let weight = weightDraft.trimmingCharacters(in: .whitespaces)
-        if !weight.isEmpty {
+        if MorpheAppStore.parsedBodyWeightLb(weight, assumedUnit: store.weightUnit) != nil {
             store.updateBodyMetrics(height: store.clientProfile.height, weight: weight)
             weightDraft = ""
         }
@@ -817,27 +819,31 @@ struct ProfileView: View {
                 }
                 .task { await store.refreshReferralCount() }
 
-                if !isCoach {
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
+                // Live-session preferences for BOTH roles (audit 6, P1-4):
+                // coaches train in the same console, so the rest timer and
+                // effort scale can't be athlete-only.
+                preferenceToggleRow(
+                    title: "Auto rest timer",
+                    caption: "Starts the rest countdown each time you log a set, using the exercise's own rest length.",
+                    isOn: $store.autoRestTimerEnabled
+                )
+
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
+                preferenceToggleRow(
+                    title: "Effort scale: RIR",
+                    caption: "Show effort as reps in reserve instead of RPE. Your history stays the same — only the display flips.",
+                    isOn: $store.effortScaleRIR
+                )
+
+                // Athlete-only network identity, dark with the feed. The
+                // block carries its own LEADING divider so an empty block
+                // can't leave doubles behind (audit 6, P2-5/P2-6).
+                if !isCoach, FeatureFlags.socialFeedEnabled {
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
-                    // Live-session preferences — both persisted per profile.
-                    preferenceToggleRow(
-                        title: "Auto rest timer",
-                        caption: "Starts the rest countdown each time you log a set, using the exercise's own rest length.",
-                        isOn: $store.autoRestTimerEnabled
-                    )
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    preferenceToggleRow(
-                        title: "Effort scale: RIR",
-                        caption: "Show effort as reps in reserve instead of RPE. Your history stays the same — only the display flips.",
-                        isOn: $store.effortScaleRIR
-                    )
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    if FeatureFlags.socialFeedEnabled {
                     preferenceToggleRow(
                         title: "Auto-share workouts",
                         caption: "Posts an honest recap to the feed when you log a session. Each session shows a toggle to keep it private.",
@@ -861,11 +867,10 @@ struct ProfileView: View {
                         caption: "Your accent color tints your name and story bubble for others. Off posts in the default gold.",
                         isOn: $store.postAccentIdentity
                     )
-                    }
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
                 }
+
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
                 // Both roles from here (profile audit: coaches lost 14 rows
                 // including data export): reminders, board, data, backup.
                     // The audit found five reminder kinds and no off switch.
@@ -1420,7 +1425,12 @@ private struct AthleteProfileBody: View {
 
     private func saveWeight() {
         let clean = weightDraft.trimmingCharacters(in: .whitespaces)
-        guard !clean.isEmpty else { return }
+        // Parse gate (audit 6, P2-10): a value the reading recorder would
+        // silently drop must not be written into the profile either.
+        guard MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) != nil else {
+            store.showToast("Enter a number — like \(store.weightUnit == .kilograms ? "77" : "170").")
+            return
+        }
         store.updateBodyMetrics(height: store.clientProfile.height, weight: clean)
         weightDraft = ""
     }

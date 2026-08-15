@@ -241,7 +241,7 @@ struct ProgressScreenView: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Progress",
-                    subtitle: "Your weekly story and the proof that the work is moving somewhere.",
+                    subtitle: "Here's what your work adds up to — every number here comes from sets you logged.",
                     showsIndexTick: true
                 )
 
