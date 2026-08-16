@@ -203,6 +203,7 @@ struct RootView: View {
                 NetworkProfilePreviewSheet(profile: profile)
                     .environment(store)
             }
+            .sheetToastSurface()
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .background(PremiumBackground())
@@ -216,6 +217,7 @@ struct RootView: View {
                 ProfileView()
                     .environment(store)
             }
+            .sheetToastSurface()
             .background(PremiumBackground())
             .presentationDragIndicator(.visible)
         }
@@ -1306,7 +1308,8 @@ private struct UniversalSearchSheet: View {
                     title: "Search",
                     subtitle: store.selectedRole == .coach
                         ? "Athletes, plans, and drills in one fast search."
-                        : "Accounts, workouts, and exercises without leaving the flow."
+                        : "Accounts, workouts, and exercises without leaving the flow.",
+                    titleSize: 16
                 )
 
                 TextField("Search accounts, workouts, exercises...", text: $query)

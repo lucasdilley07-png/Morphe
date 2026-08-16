@@ -100,10 +100,6 @@ struct GlassCard<Content: View>: View {
 struct SectionTitleView: View {
     let title: String
     let subtitle: String
-    /// Page-level headers directly under the floating profile icon drop the
-    /// leading tick (it read as a stray arrow there); section headers deeper
-    /// in a page keep it.
-    var showsIndexTick: Bool = true
     /// Page-level headers pass 16 to match the Train/Network section tabs;
     /// section headers deeper in a page keep the 14 default.
     var titleSize: CGFloat = 14
@@ -147,6 +143,33 @@ struct SectionTitleView: View {
     }
 }
 
+/// Sheets cover the root toast overlay, so any store toast fired from
+/// sheet-hosted content was invisible (audit 7, P1-3 — the weight guard
+/// was the first fix to depend on one). Sheet hosts apply this so the
+/// same toasts surface inside the sheet too.
+private struct SheetToastSurface: ViewModifier {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .top) {
+            if let toast = store.toastMessage {
+                ToastBanner(text: toast)
+                    .padding(.top, 16)
+                    .transition(reduceMotion
+                        ? .opacity
+                        : .move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: store.toastMessage)
+    }
+}
+
+extension View {
+    /// Apply to a sheet's root so store toasts stay visible over it.
+    func sheetToastSurface() -> some View { modifier(SheetToastSurface()) }
+}
+
 /// The app's speaking voice gets a shine (alive wave): a soft accent
 /// highlight sweeps across the text on a slow loop, so conversational
 /// feedback reads as alive rather than printed. Masked to the content, so
@@ -162,7 +185,9 @@ private struct GlimmerModifier: ViewModifier {
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0.42),
-                        .init(color: MorpheTheme.accent.opacity(0.85), location: 0.5),
+                        // accentText, not raw accent (audit 7, P1-2): the
+                        // sheen has to survive the light field too.
+                        .init(color: MorpheTheme.accentText.opacity(0.85), location: 0.5),
                         .init(color: .clear, location: 0.58)
                     ],
                     startPoint: UnitPoint(x: phase - 0.4, y: 0.5),
@@ -171,6 +196,10 @@ private struct GlimmerModifier: ViewModifier {
                 .mask(content)
                 .allowsHitTesting(false)
                 .onAppear {
+                    // Re-appear keeps old @State, so a bare withAnimation
+                    // would animate 1.6 -> 1.6 and freeze (audit 7, P2-1):
+                    // reset first, then start the loop.
+                    phase = -0.6
                     // Long cycle, short highlight: the sheen crosses the
                     // text once every few seconds instead of strobing.
                     withAnimation(.linear(duration: 3.4).repeatForever(autoreverses: false)) {
@@ -192,6 +221,8 @@ extension View {
 /// Honest by construction: it explains what IS there, it never invents.
 struct GuideHint: View {
     @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
     let key: String
     let text: String
 
@@ -217,7 +248,7 @@ struct GuideHint: View {
                     .buttonStyle(.plain)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(MorpheTheme.accentText)
-                    .frame(minHeight: 32)
+                    .frame(minHeight: 44)
                     .contentShape(Rectangle())
                     .accessibilityLabel("Dismiss this tip")
             }
@@ -231,7 +262,15 @@ struct GuideHint: View {
                             .stroke(MorpheTheme.strokeSubtle, lineWidth: 1)
                     )
             )
-            .accessibilityElement(children: .combine)
+            // Same gentle pop-in as the ask card (Jarvis wave).
+            .scaleEffect(appeared || reduceMotion ? 1 : 0.94)
+            .opacity(appeared || reduceMotion ? 1 : 0)
+            .onAppear {
+                guard !appeared else { return }
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.1)) {
+                    appeared = true
+                }
+            }
         }
     }
 }
@@ -1791,7 +1830,7 @@ struct ManifestoCard: View {
                 Text("TRAIN HONEST")
                     .scaledFont(size: 13, weight: .bold, design: .monospaced)
                     .tracking(2.4)
-                    .foregroundStyle(MorpheTheme.brandYellow)
+                    .foregroundStyle(MorpheTheme.brandYellowText)
             }
         }
     }

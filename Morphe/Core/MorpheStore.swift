@@ -1986,10 +1986,14 @@ final class MorpheAppStore {
             // The saved day already ended — bank its task results for the
             // dial here, because the rollover at the end of init can't (the
             // saved completion titles belong to a list that no longer exists).
+            // Auto-derived tasks only (audit 7, P1-4): the tappable list
+            // left with the Today's Plan card, so counting it in the
+            // denominator dragged the dial down on every real training day.
             recordTaskDay(
                 snapshot.dailyStateDay,
-                completed: snapshot.completedTaskTitlesToday.count,
-                total: max(snapshot.completedTaskTitlesToday.count, 4)
+                completed: snapshot.completedTaskTitlesToday
+                    .filter { Self.autoDerivedTaskTitles.contains($0) }.count,
+                total: Self.autoDerivedTaskTitles.count
             )
         }
         protectedDayKeys = Set(snapshot.protectedDayKeys)
@@ -5658,25 +5662,6 @@ final class MorpheAppStore {
         }
     }
 
-    /// One line under Today's Plan saying where the task mix comes from —
-    /// the dial is invisible otherwise and the list reads as generic.
-    var taskPlanNote: String {
-        // The chosen coaching tone leads; the factual explanation follows.
-        let lead = profileShowcase.coachingTone.planNoteLead
-        let stage = ["a gentle start", "light with one step up", "a steady mix", "a challenging mix", "a demanding mix"][taskDifficultyDial]
-        if let rate = recentTaskCloseRate {
-            let percent = Int((rate * 100).rounded())
-            if rate >= 0.8 {
-                return "\(lead) You've closed \(percent)% of your tasks lately, so today runs \(stage) — nudged up a level."
-            }
-            if rate < 0.35 {
-                return "\(lead) Tasks have been slipping (\(percent)% closed lately), so today stays \(stage) to rebuild the rhythm."
-            }
-            return "\(lead) Today's tasks run \(stage), matched to your \(levelWord) profile and \(percent)% recent close rate."
-        }
-        return "\(lead) Today's tasks run \(stage), matched to your \(levelWord) profile — they grow as you keep closing them."
-    }
-
     private var levelWord: String {
         let level = clientProfile.fitnessLevel.lowercased()
         if level.contains("begin") { return "beginner" }
@@ -5759,6 +5744,15 @@ final class MorpheAppStore {
         return ladder[min(max(index + bias, 0), ladder.count - 1)]
     }
 
+    /// The two tasks the app closes ITSELF from real actions (logWorkout
+    /// marks both). Since the tappable Today's Plan card was retired, these
+    /// are the only tasks a user can still complete — so they're the only
+    /// ones the difficulty dial is allowed to grade (audit 7, P1-4).
+    static let autoDerivedTaskTitles: Set<String> = [
+        "Complete today's workout",
+        "Log your workout within 24 hours"
+    ]
+
     /// Records one finished day of task results (replacing any earlier
     /// record for the same day) and trims the rolling window.
     private func recordTaskDay(_ day: String, completed: Int, total: Int) {
@@ -5812,10 +5806,13 @@ final class MorpheAppStore {
         // Yesterday's results feed the difficulty dial before the board is
         // wiped — the dial only learns from days that actually ended.
         if hasCompletedOnboarding, !previousDay.isEmpty {
+            // Auto-derived tasks only (audit 7, P1-4) — see the restore-path
+            // call above for why the full list no longer counts.
+            let auto = todayTasks.filter { Self.autoDerivedTaskTitles.contains($0.title) }
             recordTaskDay(
                 previousDay,
-                completed: todayTasks.filter(\.isCompleted).count,
-                total: todayTasks.count
+                completed: auto.filter(\.isCompleted).count,
+                total: auto.count
             )
         }
 
@@ -9097,9 +9094,9 @@ final class MorpheAppStore {
     /// First name for greetings: display name's first token, then profile
     /// name, then a neutral fallback — never an empty "Hi , ".
     var greetingName: String {
+        // Client-only surface — Today never renders for the coach role.
         let source = !profileShowcase.displayName.isEmpty
-            ? profileShowcase.displayName
-            : (selectedRole == .coach ? coachProfile.name : clientProfile.name)
+            ? profileShowcase.displayName : clientProfile.name
         let first = source.split(separator: " ").first.map(String.init) ?? ""
         return first.isEmpty ? "there" : first
     }
@@ -9118,6 +9115,12 @@ final class MorpheAppStore {
     /// The question under the greeting — context-aware, one thought, in
     /// priority order of what actually matters right now.
     var homePrompt: String {
+        // Priority mirrors the Today hero chain EXACTLY (audit 7, P1-1):
+        // restDay -> logged -> assignment -> streak — the voice must never
+        // contradict the card rendered underneath it.
+        if isPlannedRestDay {
+            return "It's your rest day. Recovery is part of the program — or train anyway if you're feeling it."
+        }
         if isWorkoutLoggedToday {
             return "Today's session is in the books. Want to stack another, or check your progress?"
         }
@@ -9125,13 +9128,85 @@ final class MorpheAppStore {
             let coach = assignment.coachName.isEmpty ? "Your coach" : assignment.coachName
             return "\(coach) sent you a session — ready when you are."
         }
-        if isPlannedRestDay {
-            return "It's your rest day. Recovery is part of the program — or train anyway if you're feeling it."
-        }
         if let atRisk = streakOnTheLineDays {
             return "Your \(atRisk)-day streak is on the line — one session today keeps it alive."
         }
         return "What workout would you like to start today?"
+    }
+
+    // MARK: - Morphe asks (Jarvis wave)
+    //
+    // The app asks how you're feeling and RESHAPES the day from the answer
+    // — every option maps to a real, existing adjustment, and the spoken
+    // reply only claims what actually happened. One ask per day.
+
+    enum MorpheAskMood: String, CaseIterable, Identifiable {
+        case ready = "Ready to go"
+        case tired = "Tired"
+        case sore = "Sore"
+        case short = "Short on time"
+
+        var id: String { rawValue }
+
+        var symbol: String {
+            switch self {
+            case .ready: return "bolt.fill"
+            case .tired: return "moon.zzz.fill"
+            case .sore: return "bandage.fill"
+            case .short: return "clock.fill"
+            }
+        }
+    }
+
+    /// Bumped on answer so the card re-evaluates.
+    private(set) var morpheAskRefresh = 0
+
+    private static let askDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    private var morpheAskKey: String {
+        "morphe.ask.\(clientProfile.id.uuidString).\(Self.askDayFormatter.string(from: .now))"
+    }
+
+    /// Today's spoken reply, if the user already answered.
+    var morpheAskReplyToday: String? {
+        UserDefaults.standard.string(forKey: morpheAskKey)
+    }
+
+    /// Ask only when an answer can still shape the day: client role, no
+    /// session logged, not a rest day, not already answered.
+    var shouldOfferMorpheAsk: Bool {
+        selectedRole == .client && !isWorkoutLoggedToday
+            && !isPlannedRestDay && morpheAskReplyToday == nil
+    }
+
+    /// Applies the honest adjustment for the mood and returns what the app
+    /// says back. The reply is persisted for the rest of the day.
+    @discardableResult
+    func answerMorpheAsk(_ mood: MorpheAskMood) -> String {
+        let reply: String
+        switch mood {
+        case .ready:
+            // No plan change to claim — the session is already queued.
+            reply = "Love it. Your session's queued — hit Start when you're ready."
+        case .tired:
+            applyWorkoutAdjustment(.recovery)
+            reply = "Got it — I swapped today for lighter recovery work. Showing up tired still counts."
+        case .sore:
+            applyWorkoutAdjustment(.recovery)
+            reply = "Noted — recovery work today. If something specific hurts, add it under Profile → Injuries and I'll respect it."
+        case .short:
+            applyWorkoutAdjustment(.shorter)
+            reply = "No problem — I trimmed today down. A short session beats no session."
+        }
+        UserDefaults.standard.set(reply, forKey: morpheAskKey)
+        morpheAskRefresh += 1
+        Haptics.selection()
+        SoundEffects.play(.ding)
+        return reply
     }
 
     // MARK: - One-time guide hints (alive wave)

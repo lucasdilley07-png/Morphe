@@ -6,6 +6,8 @@ struct HomeView: View {
     @State private var showSupport = false
     @State private var showAppointments = false
     @State private var showEmptyLibraryNotice = false
+    @State private var greetingAppeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var morpheScoreTitle: String {
         switch store.clientProfile.health.score {
@@ -44,15 +46,30 @@ struct HomeView: View {
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .multilineTextAlignment(.center)
+                        .contentTransition(.opacity)
                         .glimmer()
                 }
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
+                // The voice arrives, it doesn't just print (Jarvis wave) —
+                // and the prompt cross-fades when the day's state changes.
+                .opacity(greetingAppeared ? 1 : 0)
+                .offset(y: greetingAppeared ? 0 : 10)
+                .onAppear {
+                    guard !greetingAppeared else { return }
+                    if reduceMotion { greetingAppeared = true } else {
+                        withAnimation(.easeOut(duration: 0.5)) { greetingAppeared = true }
+                    }
+                }
+                .animation(.easeInOut(duration: 0.3), value: store.homePrompt)
 
                 GuideHint(
                     key: "home.welcome",
                     text: "This is Today — your next session, your streak, and your plan all live here. I'll point things out as you go."
                 )
+
+                // Jarvis beat: the app asks, you answer, the day reshapes.
+                MorpheAsksCard()
 
                 // Once today's session is logged, the "Today's Workout" card
                 // becomes the "You're done for today" card in place — no
@@ -450,6 +467,71 @@ struct HomeView: View {
 
 /// Slim half-width link tile — used when Coach and Schedule share one
 /// two-column row at the bottom of Today.
+/// "How are you feeling today?" — the app asks, the user taps an answer,
+/// and the day honestly reshapes (recovery swap, shorter session, or just
+/// a queued start). One ask per day; the spoken reply stays up after.
+private struct MorpheAsksCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
+
+    var body: some View {
+        let _ = store.morpheAskRefresh
+        if store.shouldOfferMorpheAsk || (store.morpheAskReplyToday != nil && !store.isWorkoutLoggedToday) {
+            GlassCard {
+                VStack(spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkle")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                        Text("MORPHE")
+                            .font(MorpheTheme.microLabel(9))
+                            .tracking(1.6)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    .glimmer()
+
+                    if let reply = store.morpheAskReplyToday {
+                        Text(reply)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .multilineTextAlignment(.center)
+                            .transition(.opacity)
+                    } else {
+                        Text("How are you feeling today, \(store.greetingName)?")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .multilineTextAlignment(.center)
+
+                        WrapStack(spacing: 8) {
+                            ForEach(MorpheAppStore.MorpheAskMood.allCases) { mood in
+                                Button {
+                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                                        _ = store.answerMorpheAsk(mood)
+                                    }
+                                } label: {
+                                    Label(mood.rawValue, systemImage: mood.symbol)
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: false))
+                                .accessibilityLabel("I'm \(mood.rawValue.lowercased())")
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .scaleEffect(appeared || reduceMotion ? 1 : 0.92)
+            .opacity(appeared || reduceMotion ? 1 : 0)
+            .onAppear {
+                guard !appeared else { return }
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.15)) {
+                    appeared = true
+                }
+            }
+        }
+    }
+}
+
 private struct HomeLinkTile: View {
     let systemImage: String
     let title: String

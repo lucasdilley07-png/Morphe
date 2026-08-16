@@ -703,6 +703,28 @@ final class WorkoutSessionTests: XCTestCase {
                       "a LOGGED session flips the prompt to the done state — finishing alone doesn't")
     }
 
+    /// Audit 7, P1-1: the prompt's priority must mirror the Today hero
+    /// chain — a planned rest day outranks everything the hero would hide.
+    func testHomePromptRestDayOutranksOtherStates() {
+        let store = freshStore()
+        let today = Calendar.current.component(.weekday, from: .now)
+        store.trainingDays = [today == 1 ? 2 : 1]
+        XCTAssertTrue(store.homePrompt.contains("rest day"),
+                      "on a planned rest day the voice matches the rest-day card underneath")
+    }
+
+    /// Jarvis wave: the ask reshapes the day through REAL adjustments,
+    /// persists its reply, and only asks once per day.
+    func testMorpheAskAnswersHonestlyOncePerDay() {
+        let store = freshStore()
+        XCTAssertTrue(store.shouldOfferMorpheAsk)
+
+        let reply = store.answerMorpheAsk(.short)
+        XCTAssertTrue(reply.contains("trimmed"), "the reply describes the adjustment that actually ran")
+        XCTAssertEqual(store.morpheAskReplyToday, reply, "the spoken reply persists for the day")
+        XCTAssertFalse(store.shouldOfferMorpheAsk, "one ask per day — no nagging")
+    }
+
     /// Alive wave: guide hints show once, then stay dismissed across
     /// relaunches for the same profile.
     func testGuideHintsShowOncePerProfile() {

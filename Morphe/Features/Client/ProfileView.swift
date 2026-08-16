@@ -1388,7 +1388,14 @@ private struct AthleteProfileBody: View {
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
                         .onSubmit { saveWeight() }
-                    if !weightDraft.trimmingCharacters(in: .whitespaces).isEmpty {
+                    // Inline validation (audit 7, P1-3/P2-6): the toast this
+                    // used to fire rendered BEHIND the sheet, and a garbage
+                    // draft was dropped without a word.
+                    if weightDraftInvalid {
+                        Text("Enter a number — like \(store.weightUnit == .kilograms ? "77" : "170").")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.warning)
+                    } else if !weightDraft.trimmingCharacters(in: .whitespaces).isEmpty {
                         Button("Save Weight") { saveWeight() }
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     }
@@ -1423,14 +1430,17 @@ private struct AthleteProfileBody: View {
         }
     }
 
+    private var weightDraftInvalid: Bool {
+        let clean = weightDraft.trimmingCharacters(in: .whitespaces)
+        return !clean.isEmpty
+            && MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) == nil
+    }
+
     private func saveWeight() {
         let clean = weightDraft.trimmingCharacters(in: .whitespaces)
-        // Parse gate (audit 6, P2-10): a value the reading recorder would
-        // silently drop must not be written into the profile either.
-        guard MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) != nil else {
-            store.showToast("Enter a number — like \(store.weightUnit == .kilograms ? "77" : "170").")
-            return
-        }
+        // Parse gate (audit 6, P2-10): the inline caption above the button
+        // does the explaining — this guard just refuses the write.
+        guard MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) != nil else { return }
         store.updateBodyMetrics(height: store.clientProfile.height, weight: clean)
         weightDraft = ""
     }

@@ -522,7 +522,8 @@ struct WorkoutView: View {
                     title: "Train",
                     subtitle: store.hasCompletedWorkoutFlow
                         ? "Great session. Look it over, rate it, and I'll lock it in."
-                        : "Ready when you are — start the session and I'll track every set with you."
+                        : "Ready when you are — start the session and I'll track every set with you.",
+                    titleSize: 16
                 )
 
                 GuideHint(
@@ -1060,7 +1061,8 @@ struct DiscoverScreenView: View {
                         title: "Discover",
                         subtitle: store.discoverWorkouts.isEmpty
                             ? "A new workout library is on the way."
-                            : "\(store.discoverWorkouts.count) workouts — pick a style and I'll queue it up."
+                            : "\(store.discoverWorkouts.count) workouts — pick a style and I'll queue it up.",
+                        titleSize: 16
                     )
 
                     DiscoverCatalogSection(
