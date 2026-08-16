@@ -42,7 +42,8 @@ struct MoreView: View {
             SectionTitleView(
                 title: "Learn",
                 subtitle: "Ask me anything about training, recovery, or eating right — short lessons live here too.",
-                showsIndexTick: true
+                showsIndexTick: true,
+                titleSize: 16
             )
             .padding(.horizontal, 20)
 

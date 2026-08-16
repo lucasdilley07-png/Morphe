@@ -104,6 +104,9 @@ struct SectionTitleView: View {
     /// leading tick (it read as a stray arrow there); section headers deeper
     /// in a page keep it.
     var showsIndexTick: Bool = true
+    /// Page-level headers pass 16 to match the Train/Network section tabs;
+    /// section headers deeper in a page keep the 14 default.
+    var titleSize: CGFloat = 14
 
     var body: some View {
         // Alive-wave header: centered, symmetrical — the tracked mono title
@@ -119,8 +122,8 @@ struct SectionTitleView: View {
 
                 Text(title.uppercased())
                     // microLabel scales with Dynamic Type; the .bold keeps
-                    // the section weight the fixed 14pt version had.
-                    .font(MorpheTheme.microLabel(14).weight(.bold))
+                    // the section weight the fixed-size version had.
+                    .font(MorpheTheme.microLabel(titleSize).weight(.bold))
                     .tracking(2)
                     .foregroundStyle(MorpheTheme.textPrimary)
                     .lineLimit(1)
@@ -144,6 +147,46 @@ struct SectionTitleView: View {
     }
 }
 
+/// The app's speaking voice gets a shine (alive wave): a soft accent
+/// highlight sweeps across the text on a slow loop, so conversational
+/// feedback reads as alive rather than printed. Masked to the content, so
+/// it works on any text or glyph. Honors Reduce Motion by rendering
+/// nothing extra.
+private struct GlimmerModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = -0.6
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if !reduceMotion {
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.42),
+                        .init(color: MorpheTheme.accent.opacity(0.85), location: 0.5),
+                        .init(color: .clear, location: 0.58)
+                    ],
+                    startPoint: UnitPoint(x: phase - 0.4, y: 0.5),
+                    endPoint: UnitPoint(x: phase + 0.4, y: 0.5)
+                )
+                .mask(content)
+                .allowsHitTesting(false)
+                .onAppear {
+                    // Long cycle, short highlight: the sheen crosses the
+                    // text once every few seconds instead of strobing.
+                    withAnimation(.linear(duration: 3.4).repeatForever(autoreverses: false)) {
+                        phase = 1.6
+                    }
+                }
+            }
+        }
+    }
+}
+
+extension View {
+    /// Sweeping accent shine for the app's conversational voice.
+    func glimmer() -> some View { modifier(GlimmerModifier()) }
+}
+
 /// One-time, dismissible guide line — the app introducing a surface in its
 /// own voice. Shows until "Got it", then never again for this profile.
 /// Honest by construction: it explains what IS there, it never invents.
@@ -165,6 +208,7 @@ struct GuideHint: View {
                         .tracking(1.6)
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
+                .glimmer()
                 Text(text)
                     .font(.footnote)
                     .foregroundStyle(MorpheTheme.textSecondary)

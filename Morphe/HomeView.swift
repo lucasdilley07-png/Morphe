@@ -44,6 +44,7 @@ struct HomeView: View {
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .multilineTextAlignment(.center)
+                        .glimmer()
                 }
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
@@ -794,6 +795,7 @@ private struct TodayNextMoveCard: View {
                 Text(minimumWinModeEnabled ? "Today's fallback is active" : "Here's what I've got for you")
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
+                    .glimmer()
 
                 if minimumWinModeEnabled {
                     Text("Momentum is the goal today. Keep the day light, protect the streak, and come back stronger tomorrow.")

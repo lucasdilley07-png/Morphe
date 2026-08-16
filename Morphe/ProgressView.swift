@@ -242,7 +242,8 @@ struct ProgressScreenView: View {
                 SectionTitleView(
                     title: "Progress",
                     subtitle: "Here's what your work adds up to — every number here comes from sets you logged.",
-                    showsIndexTick: true
+                    showsIndexTick: true,
+                    titleSize: 16
                 )
 
                 ProgressHeroStrip(
