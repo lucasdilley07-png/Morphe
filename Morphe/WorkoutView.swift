@@ -59,11 +59,13 @@ struct WorkoutView: View {
     /// SESSION is the plan/console, DISCOVER is the catalog that used to
     /// be its own bottom-bar tab.
     private var trainSectionHeader: some View {
-        HStack(alignment: .bottom, spacing: 22) {
+        // Centered on the page (alive wave symmetry) — the tab pair sits on
+        // the center line, matching Network's header.
+        HStack(alignment: .bottom, spacing: 28) {
             trainSectionTab("SESSION", .session)
             trainSectionTab("DISCOVER", .discover)
-            Spacer()
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 20)
         .padding(.top, MorpheTheme.Spacing.pageTopTrain)
         .padding(.bottom, 2)
@@ -76,16 +78,16 @@ struct WorkoutView: View {
                 store.selectedTrainSection = section
             }
         } label: {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .center, spacing: 5) {
                 Text(label)
-                    .font(MorpheTheme.microLabel(12))
+                    .font(MorpheTheme.microLabel(16))
                     .tracking(1.6)
                     .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
                 Rectangle()
                     .fill(isActive ? MorpheTheme.accent : .clear)
-                    .frame(width: 26, height: 3)
+                    .frame(width: 34, height: 3)
             }
-            .frame(minHeight: 44, alignment: .bottomLeading)
+            .frame(minHeight: 44, alignment: .bottom)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

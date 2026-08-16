@@ -81,7 +81,11 @@ struct CommunityView: View {
     /// Fixed chrome above the swipe panes: two mono section tabs with the
     /// gold page tick, plus the camera door. HUD skin, not borrowed chrome.
     private var networkHeader: some View {
-        HStack(alignment: .bottom, spacing: 22) {
+        // Centered on the page (alive wave symmetry) — the tab group sits
+        // on the center line, matching Train's header. The camera door
+        // rides a trailing overlay so it never pushes the tabs off-center
+        // when the feed relights.
+        HStack(alignment: .bottom, spacing: 28) {
             sectionTab("CHATS", .contact, showsBadge: store.unreadThreadCount > 0)
             if FeatureFlags.socialFeedEnabled {
                 sectionTab("FOR YOU", .forYou)
@@ -90,23 +94,23 @@ struct CommunityView: View {
                 sectionTab("BOARD", .board)
                 sectionTab("CALENDAR", .calendar)
             }
-
-            Spacer()
-
+        }
+        .frame(maxWidth: .infinity)
+        .overlay(alignment: .bottomTrailing) {
             if FeatureFlags.socialFeedEnabled {
-            Button {
-                showFormCamera = true
-            } label: {
-                // A bare camera glyph in a social header reads as "post a
-                // photo" — and now it IS one. Form Check rides inside.
-                Image(systemName: "camera.fill")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(MorpheTheme.accentText)
-                    .frame(width: 48, height: 48)
-                    .background(Circle().fill(MorpheTheme.panelStrong))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Camera — shoot a photo or clip")
+                Button {
+                    showFormCamera = true
+                } label: {
+                    // A bare camera glyph in a social header reads as "post a
+                    // photo" — and now it IS one. Form Check rides inside.
+                    Image(systemName: "camera.fill")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(width: 48, height: 48)
+                        .background(Circle().fill(MorpheTheme.panelStrong))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Camera — shoot a photo or clip")
             }
         }
         .padding(.horizontal, 20)
@@ -122,10 +126,10 @@ struct CommunityView: View {
                 store.selectedCommunitySection = section
             }
         } label: {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .center, spacing: 5) {
                 HStack(spacing: 5) {
                     Text(label)
-                        .font(MorpheTheme.microLabel(12))
+                        .font(MorpheTheme.microLabel(16))
                         .tracking(1.6)
                         .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
                     if showsBadge {
@@ -136,9 +140,9 @@ struct CommunityView: View {
                 }
                 Rectangle()
                     .fill(isActive ? MorpheTheme.accent : .clear)
-                    .frame(width: 26, height: 3)
+                    .frame(width: 34, height: 3)
             }
-            .frame(minHeight: 44, alignment: .bottomLeading)
+            .frame(minHeight: 44, alignment: .bottom)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
