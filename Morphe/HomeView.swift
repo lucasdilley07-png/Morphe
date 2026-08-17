@@ -184,6 +184,14 @@ struct HomeView: View {
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Your \(atRisk) day streak ends tonight without a session")
                     }
+
+                    // Week-one compromise (audit 9, P0-1 + Lucas's call):
+                    // while the first-week checklist exists, the Start
+                    // button must not sit a screen and a half below the
+                    // greeting that asks what they'd like to start.
+                    if store.firstWeekSteps != nil {
+                        nextMoveCard
+                    }
                 }
 
                 // The day-7 bridge: five derived checkmarks that walk a new
@@ -210,23 +218,12 @@ struct HomeView: View {
                 )
 
                 // "Here's what I've got for you" rides UNDER the profile
-                // strip now (Lucas, 2026-08-16) — profile info first, then
-                // the staged session, then the plans tools below.
-                if !store.isPlannedRestDay, !store.isWorkoutLoggedToday, store.dueCoachAssignment == nil {
-                    TodayNextMoveCard(
-                        workout: store.currentWorkout,
-                        minimumWinModeEnabled: store.minimumWinModeEnabled,
-                        // Assist chips demoted to the AI pill (audit D10) —
-                        // same answers, one fewer CTA pair on the hero.
-                        showAssistRow: false,
-                        onStart: { store.startTodayWorkout() },
-                        onActivateMinimumWin: { store.activateMinimumWinMode() },
-                        onSwitch: {
-                            if !store.requestWorkoutSwitch() {
-                                showEmptyLibraryNotice = true
-                            }
-                        }
-                    )
+                // strip once week one is over (Lucas, 2026-08-16) — profile
+                // info first, then the staged session, then the plan tools.
+                if store.firstWeekSteps == nil,
+                   !store.isPlannedRestDay, !store.isWorkoutLoggedToday,
+                   store.dueCoachAssignment == nil {
+                    nextMoveCard
                 }
 
                 if store.todayExperienceTier >= 2, let insight = store.primaryAthletePatternInsight {
@@ -399,6 +396,24 @@ struct HomeView: View {
 
     /// Personal schedule as a full-width card — used when there is no Coach
     /// card to pair with. Real per-account data (Firestore).
+    /// The workout hero — one builder, two positions (week one vs after).
+    private var nextMoveCard: some View {
+        TodayNextMoveCard(
+            workout: store.currentWorkout,
+            minimumWinModeEnabled: store.minimumWinModeEnabled,
+            // Assist chips demoted to the AI pill (audit D10) —
+            // same answers, one fewer CTA pair on the hero.
+            showAssistRow: false,
+            onStart: { store.startTodayWorkout() },
+            onActivateMinimumWin: { store.activateMinimumWinMode() },
+            onSwitch: {
+                if !store.requestWorkoutSwitch() {
+                    showEmptyLibraryNotice = true
+                }
+            }
+        )
+    }
+
     private var scheduleLinkCard: some View {
         Button {
             showAppointments = true
@@ -491,7 +506,8 @@ private struct MorpheAsksCard: View {
         // schedule may have changed since the answer, and "I trimmed today
         // down" above a rest-day hero reads as a contradiction.
         if store.shouldOfferMorpheAsk
-            || (store.morpheAskReplyToday != nil && !store.isWorkoutLoggedToday && !store.isPlannedRestDay) {
+            || (store.morpheAskReplyToday != nil && !store.isWorkoutLoggedToday
+                && !store.isPlannedRestDay && store.dueCoachAssignment == nil) {
             GlassCard {
                 VStack(spacing: 12) {
                     HStack(spacing: 8) {
@@ -945,9 +961,17 @@ private struct TodayNextMoveCard: View {
                     }
 
                     HStack(spacing: 10) {
-                        Button("Start", action: onStart)
-                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                            .accessibilityLabel("Start today's plan")
+                        if store.isWorkoutSessionActive {
+                            // Resume = back to the live console; Start would
+                            // walk into the destructive gate (audit 9, P2).
+                            Button("Resume") { store.showTrainTab() }
+                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                                .accessibilityLabel("Resume your session in progress")
+                        } else {
+                            Button("Start", action: onStart)
+                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                                .accessibilityLabel("Start today's plan")
+                        }
 
                         Button("Switch Workout", action: onSwitch)
                             .buttonStyle(SecondaryCTAButtonStyle())

@@ -1389,7 +1389,15 @@ private struct AthleteProfileBody: View {
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
                         .onSubmit { saveWeight() }
-                        .onChange(of: weightDraft) { _, _ in showWeightWarning = false }
+                        .onChange(of: weightDraft) { _, newValue in
+                            // The decimal pad has no return key, so onSubmit
+                            // never fires (audit 9, P1-5) — validate live,
+                            // but only once the draft is long enough that
+                            // it can't just be mid-typing.
+                            let clean = newValue.trimmingCharacters(in: .whitespaces)
+                            showWeightWarning = clean.count > 2
+                                && MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) == nil
+                        }
                     // Inline validation, on SUBMIT only (audit 8, P2): the
                     // mid-typing version scolded "1" and "17" on the way to
                     // "170". The warning clears the moment typing resumes.

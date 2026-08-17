@@ -198,6 +198,9 @@ extension LocalProfileSnapshot {
         height = str(.height)
         bodyWeight = str(.bodyWeight)
         dailyStateDay = str(.dailyStateDay)
+        // Written since audit 8 but never decoded until audit 9 (P0-3) —
+        // the tolerant decoder pattern silently swallows missing lines.
+        autoTaskTotalToday = ((try? c.decodeIfPresent(Int.self, forKey: .autoTaskTotalToday)) ?? nil)
         completedTaskTitlesToday = arr(.completedTaskTitlesToday)
         protectedDayKeys = arr(.protectedDayKeys)
         planDayIndex = ((try? c.decodeIfPresent(Int.self, forKey: .planDayIndex)) ?? nil) ?? 0

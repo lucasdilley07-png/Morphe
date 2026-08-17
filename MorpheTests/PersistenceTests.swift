@@ -713,6 +713,24 @@ final class WorkoutSessionTests: XCTestCase {
                       "on a planned rest day the voice matches the rest-day card underneath")
     }
 
+    /// Audit 9, P0-3: LocalProfileSnapshot's tolerant hand-written decoder
+    /// silently dropped autoTaskTotalToday once — every field added to the
+    /// struct must survive a round trip, and this is the canary.
+    func testProfileSnapshotRoundTripsAutoTaskTotal() throws {
+        var snapshot = LocalProfileSnapshot()
+        snapshot.autoTaskTotalToday = 2
+        snapshot.dailyStateDay = "2026-08-15"
+        snapshot.completedTaskTitlesToday = ["Complete today's workout"]
+
+        let data = try JSONEncoder().encode(snapshot)
+        let decoded = try JSONDecoder().decode(LocalProfileSnapshot.self, from: data)
+
+        XCTAssertEqual(decoded.autoTaskTotalToday, 2,
+                       "the day's auto-task denominator must survive persistence")
+        XCTAssertEqual(decoded.dailyStateDay, "2026-08-15")
+        XCTAssertEqual(decoded.completedTaskTitlesToday, ["Complete today's workout"])
+    }
+
     /// Jarvis wave: the ask reshapes the day through REAL adjustments,
     /// persists its reply, and only asks once per day.
     func testMorpheAskAnswersHonestlyOncePerDay() {

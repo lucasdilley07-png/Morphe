@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MoreView: View {
     @Environment(MorpheAppStore.self) private var store
+    @State private var openedQuiz: MiniQuiz?
 
     /// The three surfaces this tab actually owns. Scores/Progress duplicated
     /// the Progress tab and Quick Tools duplicated the Train tab + AI FAB, so
@@ -46,19 +47,18 @@ struct MoreView: View {
             )
             .padding(.horizontal, 20)
 
-            // Compact chip row instead of the old 5-tile grid: one line, always
-            // visible, and the selected panel renders directly beneath it.
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Self.tabs) { feature in
-                        Button(chipTitle(for: feature)) {
-                            store.selectedHubFeature = feature
-                        }
-                        .buttonStyle(FilterChipStyle(isSelected: activeFeature == feature))
+            // Centered chip row (Lucas 2026-08-16): three chips balance on
+            // the page's center line, matching the app-wide symmetry.
+            HStack(spacing: 10) {
+                ForEach(Self.tabs) { feature in
+                    Button(chipTitle(for: feature)) {
+                        store.selectedHubFeature = feature
                     }
+                    .buttonStyle(FilterChipStyle(isSelected: activeFeature == feature))
                 }
-                .padding(.horizontal, 20)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
@@ -310,70 +310,45 @@ struct MoreView: View {
 
     private var learningPanel: some View {
         Group {
-            GlassCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Daily Quiz")
-                            .font(.headline)
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                        Spacer()
-                        Text("\(store.completedQuizIDs.count) of \(store.quizzes.count)")
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(MorpheTheme.accentAlt)
-                            .accessibilityLabel("\(store.completedQuizIDs.count) of \(store.quizzes.count) quizzes complete")
-                    }
+            // Discover-style quiz wall (Lucas 2026-08-16): every quiz is a
+            // tall calling card in a two-column grid — today's card is live,
+            // finished ones review, the rest honestly say when they unlock.
+            VStack(spacing: 12) {
+                HStack {
+                    Text("Quizzes")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Text("\(store.completedQuizIDs.count) of \(store.quizzes.count)")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accentAlt)
+                        .accessibilityLabel("\(store.completedQuizIDs.count) of \(store.quizzes.count) quizzes complete")
+                }
 
-                    Text("One new question a day. Answer it right the first time to earn XP.")
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
+                Text("One new question a day — answer it right the first time to earn XP.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
 
-                    if let quiz = dailyQuiz {
-                        let answeredIndex = store.quizSelections[quiz.id]
-                        let isComplete = store.completedQuizIDs.contains(quiz.id)
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(quiz.question)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.textPrimary)
-
-                            ForEach(Array(quiz.options.enumerated()), id: \.offset) { index, option in
-                                Button(option) {
-                                    store.answerQuiz(quiz, with: index)
-                                }
-                                .buttonStyle(
-                                    FilterChipStyle(
-                                        isSelected: answeredIndex == index || (isComplete && index == quiz.correctIndex),
-                                        selectedColor: index == quiz.correctIndex ? MorpheTheme.accent : MorpheTheme.warning
-                                    )
-                                )
-                                .disabled(answeredIndex != nil || isComplete)
-                                .accessibilityLabel(quizOptionLabel(option: option, index: index, quiz: quiz, answeredIndex: answeredIndex))
-                            }
-
-                            if let answeredIndex {
-                                // "Correct/Not quite" in words, not just color.
-                                Text(answeredIndex == quiz.correctIndex
-                                     ? "Correct! \(quiz.explanation)"
-                                     : "Not quite. \(quiz.explanation)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(answeredIndex == quiz.correctIndex ? MorpheTheme.accent : MorpheTheme.textSecondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            } else if isComplete {
-                                Text(store.completedQuizIDs.count == store.quizzes.count
-                                     ? "You've aced every question — fresh material arrives with new lessons."
-                                     : "Already aced — a new question lands tomorrow.")
-                                    .font(.subheadline)
-                                    .foregroundStyle(MorpheTheme.textSecondary)
-                            }
-
-                            if isComplete {
-                                Text("+\(quiz.rewardXP) XP earned")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(MorpheTheme.accentAlt)
-                            }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+                    ForEach(Array(store.quizzes.enumerated()), id: \.element.id) { index, quiz in
+                        QuizCallingCard(
+                            quiz: quiz,
+                            index: index,
+                            state: quizTileState(for: quiz)
+                        ) {
+                            openedQuiz = quiz
                         }
                     }
                 }
+            }
+            .sheet(item: $openedQuiz) { quiz in
+                QuizSheet(quiz: quiz)
+                    .environment(store)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .background(PremiumBackground())
             }
 
             GlassCard {
@@ -438,8 +413,189 @@ struct MoreView: View {
         .disclosureGroupStyle(HUDDisclosureStyle())
     }
 
-    private func quizOptionLabel(option: String, index: Int, quiz: MiniQuiz, answeredIndex: Int?) -> String {
-        guard answeredIndex != nil || store.completedQuizIDs.contains(quiz.id) else { return option }
+    private func quizTileState(for quiz: MiniQuiz) -> QuizTileState {
+        if store.completedQuizIDs.contains(quiz.id) || store.quizSelections[quiz.id] != nil {
+            return .done
+        }
+        return quiz.id == dailyQuiz?.id ? .today : .upcoming
+    }
+}
+
+enum QuizTileState {
+    case today
+    case done
+    case upcoming
+}
+
+/// One quiz as a tall Discover-style calling card: bold gradient plate,
+/// tracked kicker, the question as the poster line, and an honest state
+/// footer. Upcoming cards are visibly locked — the one-a-day cadence is
+/// the product, not a dark pattern.
+private struct QuizCallingCard: View {
+    let quiz: MiniQuiz
+    let index: Int
+    let state: QuizTileState
+    let onOpen: () -> Void
+
+    /// Deliberate poster surfaces (like the share cards): fixed plates
+    /// with per-plate text colors, identical in light and dark mode.
+    private var plate: (fill: LinearGradient, text: Color) {
+        switch index % 4 {
+        case 0:
+            return (LinearGradient(colors: [MorpheTheme.brandYellow, MorpheTheme.brandGold],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing), .black)
+        case 1:
+            return (LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.12),
+                                            Color(red: 0.16, green: 0.15, blue: 0.10)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing), .white)
+        case 2:
+            return (LinearGradient(colors: [Color(red: 0.55, green: 0.38, blue: 0.05),
+                                            Color(red: 0.35, green: 0.24, blue: 0.02)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing), .white)
+        default:
+            return (LinearGradient(colors: [Color(red: 0.20, green: 0.20, blue: 0.24),
+                                            Color(red: 0.10, green: 0.10, blue: 0.12)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing), .white)
+        }
+    }
+
+    private var footer: String {
+        switch state {
+        case .today: return "TODAY · TAP TO PLAY"
+        case .done: return "ACED · +\(quiz.rewardXP) XP"
+        case .upcoming: return "UNLOCKS ON ITS DAY"
+        }
+    }
+
+    var body: some View {
+        Button(action: onOpen) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text(String(format: "QUIZ %02d", index + 1))
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(1.6)
+                    Spacer()
+                    if state == .done {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.caption.weight(.bold))
+                    } else if state == .upcoming {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2.weight(.bold))
+                    }
+                }
+                .opacity(0.75)
+
+                Spacer(minLength: 10)
+
+                Text(quiz.question)
+                    .font(.subheadline.weight(.bold))
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(4)
+                    .minimumScaleFactor(0.85)
+
+                Spacer(minLength: 10)
+
+                Text(footer)
+                    .font(MorpheTheme.microLabel(8))
+                    .tracking(1.2)
+                    .opacity(0.8)
+            }
+            .foregroundStyle(plate.text)
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 150, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(plate.fill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .stroke(state == .today ? MorpheTheme.accent : Color.clear, lineWidth: 2)
+            )
+            // Upcoming cards read locked, not broken.
+            .saturation(state == .upcoming ? 0.35 : 1)
+            .opacity(state == .upcoming ? 0.55 : 1)
+        }
+        .buttonStyle(.plain)
+        .disabled(state == .upcoming)
+        .accessibilityLabel(state == .upcoming
+            ? "Quiz \(index + 1), locked until its day"
+            : "Quiz \(index + 1): \(quiz.question). \(state == .done ? "Completed" : "Today's quiz")")
+    }
+}
+
+/// The tapped card opens here: the existing answer flow (or a review of a
+/// finished one) in a sheet — same store logic, calling-card front door.
+private struct QuizSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let quiz: MiniQuiz
+
+    var body: some View {
+        let answeredIndex = store.quizSelections[quiz.id]
+        let isComplete = store.completedQuizIDs.contains(quiz.id)
+
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 14) {
+                Text("DAILY QUIZ")
+                    .font(MorpheTheme.microLabel(10))
+                    .tracking(1.6)
+                    .foregroundStyle(MorpheTheme.accentText)
+
+                Text(quiz.question)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .multilineTextAlignment(.center)
+
+                VStack(spacing: 8) {
+                    ForEach(Array(quiz.options.enumerated()), id: \.offset) { index, option in
+                        Button(option) {
+                            store.answerQuiz(quiz, with: index)
+                        }
+                        .buttonStyle(
+                            FilterChipStyle(
+                                isSelected: answeredIndex == index || (isComplete && index == quiz.correctIndex),
+                                selectedColor: index == quiz.correctIndex ? MorpheTheme.accent : MorpheTheme.warning
+                            )
+                        )
+                        .disabled(answeredIndex != nil || isComplete)
+                        .accessibilityLabel(quizAccessibilityLabel(option: option, index: index, answeredIndex: answeredIndex, isComplete: isComplete))
+                    }
+                }
+
+                if let answeredIndex {
+                    // "Correct/Not quite" in words, not just color.
+                    Text(answeredIndex == quiz.correctIndex
+                         ? "Correct! \(quiz.explanation)"
+                         : "Not quite. \(quiz.explanation)")
+                        .font(.subheadline)
+                        .foregroundStyle(answeredIndex == quiz.correctIndex ? MorpheTheme.accentText : MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if isComplete {
+                    Text("Already aced — the correct answer is highlighted. \(quiz.explanation)")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if isComplete || answeredIndex != nil {
+                    Text("+\(quiz.rewardXP) XP\(isComplete || answeredIndex == quiz.correctIndex ? " earned" : " next time")")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentAlt)
+                }
+
+                Button("Done") { dismiss() }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .frame(width: 160)
+                    .padding(.top, 4)
+            }
+            .padding(24)
+        }
+    }
+
+    private func quizAccessibilityLabel(option: String, index: Int, answeredIndex: Int?, isComplete: Bool) -> String {
+        guard answeredIndex != nil || isComplete else { return option }
         return index == quiz.correctIndex ? "\(option), correct answer" : option
     }
 }

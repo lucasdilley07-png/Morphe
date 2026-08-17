@@ -1501,11 +1501,15 @@ private struct UniversalSearchSheet: View {
                         if store.selectedRole == .coach {
                             store.selectProgramTemplate(workout)
                             store.selectedCoachTab = .programs
+                            store.closeUniversalSearch()
+                            dismiss()
                         } else {
+                            // Dismiss BEFORE queuing (audit 9, P2): the gate
+                            // dialog is hosted at the root, under this sheet.
+                            store.closeUniversalSearch()
+                            dismiss()
                             store.openWorkoutTemplate(workout)
                         }
-                        store.closeUniversalSearch()
-                        dismiss()
                     }
                 }
 
@@ -1643,7 +1647,12 @@ private struct QuickAddSheet: View {
                                 // offer something new instead of a re-run.
                                 store.showDiscoverTab()
                             } else {
+                                // Dismiss FIRST (audit 9, P2): the session-
+                                // work gate dialog is hosted at the root,
+                                // under this sheet.
+                                dismissQuickAdd()
                                 store.startTodayWorkout()
+                                return
                             }
                             dismissQuickAdd()
                         },
@@ -1899,8 +1908,9 @@ private struct WelcomeTag: View {
     }
 }
 
-/// Hosts the store's session-work gate as a destructive confirmation dialog.
-/// Attached at the root and on any sheet whose actions can hit the gate.
+/// Hosts the store's session-work gate as a confirmation dialog. Attached
+/// ONCE, at the root — sheet-hosted callers dismiss before queuing so the
+/// dialog always presents on the surface that's actually visible.
 private struct SessionWorkGateDialog: ViewModifier {
     @Environment(MorpheAppStore.self) private var store
 
@@ -1919,8 +1929,11 @@ private struct SessionWorkGateDialog: ViewModifier {
             Button(
                 store.isWorkoutSessionActive
                     ? "Discard Session"
-                    : "Discard Recap",
-                role: .destructive
+                    : "Log Recap & Continue",
+                // Only the live-session case destroys anything (audit 9,
+                // P0-2): the recap path COMMITS the finished sets before
+                // the change runs, so it must not read as destructive.
+                role: store.isWorkoutSessionActive ? .destructive : nil
             ) {
                 // Through the store's confirm path, never the raw action
                 // (audit 8, P0-1): a finished-but-unlogged recap gets
@@ -1933,7 +1946,7 @@ private struct SessionWorkGateDialog: ViewModifier {
         } message: { _ in
             Text(store.isWorkoutSessionActive
                 ? "Your workout is in progress — its logged sets will be lost."
-                : "Your finished session hasn't been logged — its sets will be lost.")
+                : "Your finished session gets logged first — then the change runs. Nothing is lost.")
         }
     }
 }

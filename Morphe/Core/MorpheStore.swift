@@ -5812,6 +5812,9 @@ final class MorpheAppStore {
     /// overnight used to keep yesterday's "you're done for today", completed
     /// tasks, and check-in state forever.
     func handleDayRolloverIfNeeded(now: Date = .now) {
+        // Yesterday's non-committing ask reply must not open a new day
+        // (audit 9, P2).
+        morpheAskTransientReply = nil
         let today = Self.dayKey(for: now)
         guard today != lastDailyResetDay else { return }
         let previousDay = lastDailyResetDay
@@ -6048,7 +6051,10 @@ final class MorpheAppStore {
         case .reschedule: templateName = nil
         }
         if let templateName {
-            guard let template = resolveWorkoutTemplate(named: templateName) else {
+            // Exact name only (audit 9, P2): the fuzzy resolver always
+            // returns SOMETHING, so the loud-failure guard could never fire
+            // — and a fallback template would make the ask's reply a lie.
+            guard let template = workoutTemplates.first(where: { $0.name == templateName }) else {
                 showToast("That adjustment isn't available right now.")
                 return false
             }
@@ -9224,6 +9230,10 @@ final class MorpheAppStore {
     /// profile — both removed by prefix on sign-out/delete (audit 8, P2)
     /// so "everything tied to it is gone from this device" stays true.
     private func purgeConversationalDefaults() {
+        morpheAskTransientReply = nil
+        // Entrance animations replay for the next account in this app
+        // session (audit 9, P2).
+        playedIntroKeys.removeAll()
         let prefixes = ["morphe.ask.\(clientProfile.id.uuidString)", guideSeenKey]
         for key in UserDefaults.standard.dictionaryRepresentation().keys
         where prefixes.contains(where: { key.hasPrefix($0) }) {
@@ -9262,8 +9272,10 @@ final class MorpheAppStore {
     /// gets a transient reply and the chips stay.
     @discardableResult
     func answerMorpheAsk(_ mood: MorpheAskMood) -> String {
-        guard !hasUnsavedSessionWork else {
-            let reply = "You've got unfinished session work in Train — log it or clear it first, then ask me again."
+        // Any live session counts here — even zero sets (audit 9, P2):
+        // an adjustment would silently end it with navigation off.
+        guard !hasUnsavedSessionWork, !isWorkoutSessionActive else {
+            let reply = "You're mid-session in Train — finish it or log what you've got, then ask me again."
             morpheAskTransientReply = reply
             morpheAskRefresh += 1
             Haptics.selection()
@@ -11599,11 +11611,7 @@ final class MorpheAppStore {
         // One pass over the logs builds the done-lookup (speed audit S1-6) —
         // the old shape re-scanned history per assignment per body eval.
         let calendar = Calendar.current
-        let logKeys = Set(currentAthleteWorkoutLogs.map {
-            "\($0.workoutTitle)|\(calendar.startOfDay(for: $0.completedAt).timeIntervalSince1970)"
-        })
         let logsByTitle = Dictionary(grouping: currentAthleteWorkoutLogs, by: \.workoutTitle)
-        _ = logKeys
         return coachAssignments.filter { assignment in
             guard assignment.scheduledFor >= cutoff else { return false }
             let dayStart = calendar.startOfDay(for: assignment.scheduledFor)
