@@ -57,9 +57,14 @@ struct HomeView: View {
                 .offset(y: greetingAppeared ? 0 : 10)
                 .onAppear {
                     guard !greetingAppeared else { return }
-                    if reduceMotion { greetingAppeared = true } else {
+                    // One entrance per app session (audit 8, P2): tab taps
+                    // remount this view, replaying @State one-shots.
+                    if reduceMotion || store.introPlayed("home.greeting") {
+                        greetingAppeared = true
+                    } else {
                         withAnimation(.easeOut(duration: 0.5)) { greetingAppeared = true }
                     }
+                    store.markIntroPlayed("home.greeting")
                 }
                 .animation(.easeInOut(duration: 0.3), value: store.homePrompt)
 
@@ -477,7 +482,11 @@ private struct MorpheAsksCard: View {
 
     var body: some View {
         let _ = store.morpheAskRefresh
-        if store.shouldOfferMorpheAsk || (store.morpheAskReplyToday != nil && !store.isWorkoutLoggedToday) {
+        // The persisted reply also hides on a rest day (audit 8, P2): the
+        // schedule may have changed since the answer, and "I trimmed today
+        // down" above a rest-day hero reads as a contradiction.
+        if store.shouldOfferMorpheAsk
+            || (store.morpheAskReplyToday != nil && !store.isWorkoutLoggedToday && !store.isPlannedRestDay) {
             GlassCard {
                 VStack(spacing: 12) {
                     HStack(spacing: 8) {
@@ -503,12 +512,27 @@ private struct MorpheAsksCard: View {
                             .foregroundStyle(MorpheTheme.textPrimary)
                             .multilineTextAlignment(.center)
 
+                        // Non-committing outcome (session work pending,
+                        // template missing): the app explains, the chips
+                        // stay so the user can answer again.
+                        if let transient = store.morpheAskTransientReply {
+                            Text(transient)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.warning)
+                                .multilineTextAlignment(.center)
+                                .transition(.opacity)
+                        }
+
                         WrapStack(spacing: 8) {
                             ForEach(MorpheAppStore.MorpheAskMood.allCases) { mood in
                                 Button {
+                                    var spoken = ""
                                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                        _ = store.answerMorpheAsk(mood)
+                                        spoken = store.answerMorpheAsk(mood)
                                     }
+                                    // VoiceOver hears the reply the sighted
+                                    // user sees swap in (audit 8, P2).
+                                    AccessibilityNotification.Announcement(spoken).post()
                                 } label: {
                                     Label(mood.rawValue, systemImage: mood.symbol)
                                 }
@@ -524,8 +548,13 @@ private struct MorpheAsksCard: View {
             .opacity(appeared || reduceMotion ? 1 : 0)
             .onAppear {
                 guard !appeared else { return }
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.15)) {
+                if store.introPlayed("home.ask") {
                     appeared = true
+                } else {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.15)) {
+                        appeared = true
+                    }
+                    store.markIntroPlayed("home.ask")
                 }
             }
         }

@@ -1103,6 +1103,7 @@ final class MorpheAppStore {
                     lastKnownStreakKey, comebackPendingKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
+        purgeConversationalDefaults()
         loadTrainingPreferences()
         loadCompetitionState()
         reloadPerProfileMirrors()
@@ -1158,6 +1159,7 @@ final class MorpheAppStore {
                     Self.pendingReferralKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
+        purgeConversationalDefaults()
         workoutPersistence.clear()
         profilePersistence.clear()
         // signOut BEFORE clearing logs: the workoutLogs didSet mirrors to
@@ -1924,6 +1926,10 @@ final class MorpheAppStore {
         // (re-offering them unchecked was an infinite XP faucet); a new day
         // starts fresh via handleDayRolloverIfNeeded at the end of init.
         taskCompletionHistory = snapshot.taskHistory
+        // Migration (audit 8, P2): records banked against the old 4-task
+        // list read as "slipping" against the auto-derived denominator —
+        // drop them once; the window refills from honest days.
+        taskCompletionHistory.removeAll { $0.total > Self.autoDerivedTaskTitles.count }
         hasAcceptedTerms = snapshot.hasAcceptedTerms
         nameChangedAtEpoch = snapshot.nameChangedAtEpoch
         usernameChangedAtEpoch = snapshot.usernameChangedAtEpoch
@@ -1993,7 +1999,13 @@ final class MorpheAppStore {
                 snapshot.dailyStateDay,
                 completed: snapshot.completedTaskTitlesToday
                     .filter { Self.autoDerivedTaskTitles.contains($0) }.count,
-                total: Self.autoDerivedTaskTitles.count
+                // The denominator the day ACTUALLY had (audit 8, P1-2):
+                // the fixed count graded cold-launch days at 1/2 while
+                // in-foreground rollovers scored 1/1, freezing the dial.
+                // Old snapshots without the field fall back safely.
+                total: snapshot.autoTaskTotalToday
+                    ?? max(snapshot.completedTaskTitlesToday
+                        .filter { Self.autoDerivedTaskTitles.contains($0) }.count, 1)
             )
         }
         protectedDayKeys = Set(snapshot.protectedDayKeys)
@@ -2227,6 +2239,8 @@ final class MorpheAppStore {
                 usernameChangedAtEpoch: usernameChangedAtEpoch
         )
         snapshot.profileBio = profileCustomBio
+        snapshot.autoTaskTotalToday = todayTasks
+            .filter { Self.autoDerivedTaskTitles.contains($0.title) }.count
         snapshot.mealPrepHabit = clientProfile.mealPrepHabit
         snapshot.mealPrepInterested = clientProfile.mealPrepInterested
         return snapshot
@@ -5998,33 +6012,59 @@ final class MorpheAppStore {
         }
     }
 
-    func applyWorkoutAdjustment(_ option: WorkoutAdjustmentOption) {
+    /// Returns true only when the adjustment ACTUALLY ran — false when it
+    /// merely queued the session-work dialog or the template was missing
+    /// (audit 8, P0-2): callers who speak about the result must check.
+    @discardableResult
+    func applyWorkoutAdjustment(_ option: WorkoutAdjustmentOption,
+                                navigate: Bool = true,
+                                announce: Bool = true) -> Bool {
         // Reschedule leaves the staged workout alone — nothing at risk.
         if option == .reschedule {
-            performWorkoutAdjustment(option)
-        } else {
+            return performWorkoutAdjustment(option, navigate: navigate, announce: announce)
+        }
+        if hasUnsavedSessionWork {
+            // The dialog path keeps the classic behavior (navigate + toast)
+            // because the user explicitly confirms there.
             confirmDiscardingSessionWork("\(option.rawValue)?") { [weak self] in
                 self?.performWorkoutAdjustment(option)
             }
+            return false
         }
+        return performWorkoutAdjustment(option, navigate: navigate, announce: announce)
     }
 
-    private func performWorkoutAdjustment(_ option: WorkoutAdjustmentOption) {
+    @discardableResult
+    private func performWorkoutAdjustment(_ option: WorkoutAdjustmentOption,
+                                          navigate: Bool = true,
+                                          announce: Bool = true) -> Bool {
+        // Resolve the template FIRST (audit 8, P2): a missing template must
+        // fail loudly, not stage adjustment copy for a swap that never ran.
+        let templateName: String?
+        switch option {
+        case .easier, .recovery: templateName = "Low Energy Recovery Day"
+        case .shorter, .home: templateName = "15-Minute Quick Workout"
+        case .gym: templateName = "Beginner Full Body Strength"
+        case .reschedule: templateName = nil
+        }
+        if let templateName {
+            guard let template = resolveWorkoutTemplate(named: templateName) else {
+                showToast("That adjustment isn't available right now.")
+                return false
+            }
+            setCurrentWorkout(template)
+        }
+
         switch option {
         case .easier:
-            setCurrentWorkout(named: "Low Energy Recovery Day")
             currentPlanAdjustment = MorpheDemoContent.planAdjustment(for: [.workoutTooHard])
         case .shorter:
-            setCurrentWorkout(named: "15-Minute Quick Workout")
             currentPlanAdjustment = MorpheDemoContent.planAdjustment(for: [.notEnoughTime])
         case .home:
-            setCurrentWorkout(named: "15-Minute Quick Workout")
             currentPlanAdjustment = MorpheDemoContent.planAdjustment(for: [.noEquipment])
         case .gym:
-            setCurrentWorkout(named: "Beginner Full Body Strength")
             currentPlanAdjustment = MorpheDemoContent.defaultPlanAdjustment
         case .recovery:
-            setCurrentWorkout(named: "Low Energy Recovery Day")
             currentPlanAdjustment = MorpheDemoContent.planAdjustment(for: [.lowRecovery])
         case .reschedule:
             currentPlanAdjustment = PlanAdjustment(
@@ -6035,8 +6075,12 @@ final class MorpheAppStore {
             )
         }
 
-        showTrainTab()
-        showToast(option.rawValue)
+        // The Jarvis ask answers in place (audit 8, P1-1) — it passes
+        // navigate/announce false so Today doesn't teleport to Train with
+        // a cryptic one-word toast on top of the card's own reply.
+        if navigate { showTrainTab() }
+        if announce { showToast(option.rawValue) }
+        return true
     }
 
     // MARK: - Session-work gate
@@ -6073,7 +6117,16 @@ final class MorpheAppStore {
     }
 
     func confirmPendingWorkoutChange() {
-        let change = pendingWorkoutChange
+        guard let change = pendingWorkoutChange else { return }
+        confirmPendingWorkoutChange(change)
+    }
+
+    /// The overload the DIALOG calls (audit 8, P0-1): the isPresented
+    /// binding clears the pending slot as the dialog closes, so the button
+    /// passes its captured-by-value change instead of re-reading the slot.
+    /// Every confirm — UI or test — must route here, never `change.action()`
+    /// directly, or the finished-recap commit below silently disappears.
+    func confirmPendingWorkoutChange(_ change: PendingWorkoutChange) {
         pendingWorkoutChange = nil
         // A FINISHED session's sets are real facts — replacing it must
         // never silently discard them. Commit it first (exactly what "Log
@@ -6083,7 +6136,7 @@ final class MorpheAppStore {
         if hasCompletedWorkoutFlow {
             logWorkout()
         }
-        change?.action()
+        change.action()
     }
 
     func cancelPendingWorkoutChange() {
@@ -9167,6 +9220,17 @@ final class MorpheAppStore {
         return formatter
     }()
 
+    /// Ask replies are keyed per profile per DAY and guide markers per
+    /// profile — both removed by prefix on sign-out/delete (audit 8, P2)
+    /// so "everything tied to it is gone from this device" stays true.
+    private func purgeConversationalDefaults() {
+        let prefixes = ["morphe.ask.\(clientProfile.id.uuidString)", guideSeenKey]
+        for key in UserDefaults.standard.dictionaryRepresentation().keys
+        where prefixes.contains(where: { key.hasPrefix($0) }) {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
     private var morpheAskKey: String {
         "morphe.ask.\(clientProfile.id.uuidString).\(Self.askDayFormatter.string(from: .now))"
     }
@@ -9179,33 +9243,66 @@ final class MorpheAppStore {
     /// Ask only when an answer can still shape the day: client role, no
     /// session logged, not a rest day, not already answered.
     var shouldOfferMorpheAsk: Bool {
+        // No ask while a coach session leads Today (audit 8, P1-3): "tired"
+        // would swap the GENERIC plan while the hero says start the
+        // coach's — a contradiction the user can't see.
         selectedRole == .client && !isWorkoutLoggedToday
-            && !isPlannedRestDay && morpheAskReplyToday == nil
+            && !isPlannedRestDay && dueCoachAssignment == nil
+            && morpheAskReplyToday == nil
     }
 
+    /// A non-committing reply (session work pending, template missing) —
+    /// shown above the chips so the user can answer again; never burns the
+    /// day's ask and never gets persisted as the app's word.
+    private(set) var morpheAskTransientReply: String?
+
     /// Applies the honest adjustment for the mood and returns what the app
-    /// says back. The reply is persisted for the rest of the day.
+    /// says back. The reply persists for the day ONLY when the adjustment
+    /// actually ran (audit 8, P0-2) — a queued dialog or missing template
+    /// gets a transient reply and the chips stay.
     @discardableResult
     func answerMorpheAsk(_ mood: MorpheAskMood) -> String {
+        guard !hasUnsavedSessionWork else {
+            let reply = "You've got unfinished session work in Train — log it or clear it first, then ask me again."
+            morpheAskTransientReply = reply
+            morpheAskRefresh += 1
+            Haptics.selection()
+            return reply
+        }
         let reply: String
         switch mood {
         case .ready:
             // No plan change to claim — the session is already queued.
             reply = "Love it. Your session's queued — hit Start when you're ready."
         case .tired:
-            applyWorkoutAdjustment(.recovery)
+            guard applyWorkoutAdjustment(.recovery, navigate: false, announce: false) else {
+                return morpheAskFellThrough()
+            }
             reply = "Got it — I swapped today for lighter recovery work. Showing up tired still counts."
         case .sore:
-            applyWorkoutAdjustment(.recovery)
+            guard applyWorkoutAdjustment(.recovery, navigate: false, announce: false) else {
+                return morpheAskFellThrough()
+            }
             reply = "Noted — recovery work today. If something specific hurts, add it under Profile → Injuries and I'll respect it."
         case .short:
-            applyWorkoutAdjustment(.shorter)
+            guard applyWorkoutAdjustment(.shorter, navigate: false, announce: false) else {
+                return morpheAskFellThrough()
+            }
             reply = "No problem — I trimmed today down. A short session beats no session."
         }
+        morpheAskTransientReply = nil
         UserDefaults.standard.set(reply, forKey: morpheAskKey)
         morpheAskRefresh += 1
         Haptics.selection()
         SoundEffects.play(.ding)
+        return reply
+    }
+
+    private func morpheAskFellThrough() -> String {
+        let reply = "I couldn't line that up just now — your current plan stands."
+        morpheAskTransientReply = reply
+        morpheAskRefresh += 1
+        Haptics.selection()
         return reply
     }
 
@@ -9216,6 +9313,14 @@ final class MorpheAppStore {
 
     /// Bumped when a guide is dismissed so views re-evaluate visibility.
     private(set) var guideRefresh = 0
+
+    /// Per-app-session intro-animation memory (audit 8, P2): bottom-bar
+    /// taps remount tab roots via the .id reset, so view-local @State
+    /// one-shots replayed on every visit. Not persisted — each launch
+    /// gets exactly one entrance.
+    private var playedIntroKeys: Set<String> = []
+    func introPlayed(_ key: String) -> Bool { playedIntroKeys.contains(key) }
+    func markIntroPlayed(_ key: String) { playedIntroKeys.insert(key) }
 
     private var guideSeenKey: String {
         "morphe.guides.seen.\(clientProfile.id.uuidString)"

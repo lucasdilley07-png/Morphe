@@ -2628,6 +2628,7 @@ private struct DiscoverCatalogSection: View {
             .sheet(isPresented: $showQRConnect) {
                 QRConnectSheet(mode: qrStartMode)
                     .environment(store)
+                    .sheetToastSurface()
             }
             .sheet(item: $detailTemplate) { template in
                 DiscoverWorkoutDetailSheet(template: template, onStart: { onStart(template) })

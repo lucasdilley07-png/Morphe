@@ -2362,6 +2362,7 @@ private struct ChallengesCard: View {
         .sheet(isPresented: $showCreateSheet) {
             CreateChallengeSheet()
                 .environment(store)
+                .sheetToastSurface()
         }
     }
 

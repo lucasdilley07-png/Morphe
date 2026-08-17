@@ -673,6 +673,7 @@ private struct CoachAthletesRosterSection: View {
         }
         .sheet(isPresented: $isAddingClient) {
             AddManagedClientSheet()
+                .sheetToastSurface()
         }
         .sheet(item: $selectedManagedClient) { selection in
             ManagedClientDetailSheet(clientID: selection.id)

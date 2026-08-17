@@ -1363,6 +1363,7 @@ private struct AthleteProfileBody: View {
     let store: MorpheAppStore
     /// Owned by ProfileView so its unsaved-edit guard can see it.
     @Binding var weightDraft: String
+    @State private var showWeightWarning = false
 
     var body: some View {
         Group {
@@ -1388,14 +1389,16 @@ private struct AthleteProfileBody: View {
                         .keyboardType(.decimalPad)
                         .submitLabel(.done)
                         .onSubmit { saveWeight() }
-                    // Inline validation (audit 7, P1-3/P2-6): the toast this
-                    // used to fire rendered BEHIND the sheet, and a garbage
-                    // draft was dropped without a word.
-                    if weightDraftInvalid {
+                        .onChange(of: weightDraft) { _, _ in showWeightWarning = false }
+                    // Inline validation, on SUBMIT only (audit 8, P2): the
+                    // mid-typing version scolded "1" and "17" on the way to
+                    // "170". The warning clears the moment typing resumes.
+                    if showWeightWarning {
                         Text("Enter a number — like \(store.weightUnit == .kilograms ? "77" : "170").")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.warning)
-                    } else if !weightDraft.trimmingCharacters(in: .whitespaces).isEmpty {
+                    }
+                    if MorpheAppStore.parsedBodyWeightLb(weightDraft, assumedUnit: store.weightUnit) != nil {
                         Button("Save Weight") { saveWeight() }
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     }
@@ -1430,17 +1433,16 @@ private struct AthleteProfileBody: View {
         }
     }
 
-    private var weightDraftInvalid: Bool {
-        let clean = weightDraft.trimmingCharacters(in: .whitespaces)
-        return !clean.isEmpty
-            && MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) == nil
-    }
-
     private func saveWeight() {
         let clean = weightDraft.trimmingCharacters(in: .whitespaces)
-        // Parse gate (audit 6, P2-10): the inline caption above the button
-        // does the explaining — this guard just refuses the write.
-        guard MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) != nil else { return }
+        guard !clean.isEmpty else { return }
+        // Parse gate (audit 6, P2-10): the submit-time caption does the
+        // explaining — this guard just refuses the write.
+        guard MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) != nil else {
+            showWeightWarning = true
+            return
+        }
+        showWeightWarning = false
         store.updateBodyMetrics(height: store.clientProfile.height, weight: clean)
         weightDraft = ""
     }

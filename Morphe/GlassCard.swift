@@ -239,7 +239,6 @@ struct GuideHint: View {
                         .tracking(1.6)
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
-                .glimmer()
                 Text(text)
                     .font(.footnote)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -262,13 +261,19 @@ struct GuideHint: View {
                             .stroke(MorpheTheme.strokeSubtle, lineWidth: 1)
                     )
             )
-            // Same gentle pop-in as the ask card (Jarvis wave).
+            // Same gentle pop-in as the ask card (Jarvis wave) — once per
+            // app session, not on every tab-tap remount (audit 8, P2).
             .scaleEffect(appeared || reduceMotion ? 1 : 0.94)
             .opacity(appeared || reduceMotion ? 1 : 0)
             .onAppear {
                 guard !appeared else { return }
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.1)) {
+                if store.introPlayed("guide.\(key)") {
                     appeared = true
+                } else {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.1)) {
+                        appeared = true
+                    }
+                    store.markIntroPlayed("guide.\(key)")
                 }
             }
         }

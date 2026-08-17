@@ -1922,7 +1922,12 @@ private struct SessionWorkGateDialog: ViewModifier {
                     : "Discard Recap",
                 role: .destructive
             ) {
-                change.action()
+                // Through the store's confirm path, never the raw action
+                // (audit 8, P0-1): a finished-but-unlogged recap gets
+                // committed as a log before the change runs. Calling
+                // change.action() directly silently destroyed those sets
+                // while the tests exercised the store method the UI skipped.
+                store.confirmPendingWorkoutChange(change)
             }
             Button("Keep Current", role: .cancel) {}
         } message: { _ in

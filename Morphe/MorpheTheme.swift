@@ -402,7 +402,8 @@ enum Haptics {
 /// Two tiny UI sounds, synthesized in memory — no bundled audio assets.
 /// `star` (a rising four-note sparkle) marks a COMPLETION: task, workout,
 /// quiz. `ding` (one soft bell hit) marks a CONTRIBUTION: saving a workout,
-/// posting, commenting, sharing a win, logging a workout. The `.ambient`
+/// posting, commenting, sharing a win, logging a workout, answering
+/// Morphe's daily ask. The `.ambient`
 /// session mixes with the user's own music and respects the silent switch —
 /// a gym app must never barge into someone's playlist.
 enum SoundEffects {

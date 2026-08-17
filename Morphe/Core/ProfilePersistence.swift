@@ -85,6 +85,10 @@ struct LocalProfileSnapshot: Codable, Equatable {
     // already-earned task XP).
     var dailyStateDay: String = ""
     var completedTaskTitlesToday: [String] = []
+    // How many auto-derived tasks the day's list actually held — the honest
+    // denominator for banking an ended day into the difficulty dial
+    // (audit 8, P1-2). Optional so pre-field blobs decode unchanged.
+    var autoTaskTotalToday: Int? = nil
     // Days protected with a minimum win — they count in the streak.
     var protectedDayKeys: [String] = []
     // Where the user is in their catalog-backed daily-plan rotation.
