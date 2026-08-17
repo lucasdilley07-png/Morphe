@@ -184,21 +184,6 @@ struct HomeView: View {
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Your \(atRisk) day streak ends tonight without a session")
                     }
-
-                    TodayNextMoveCard(
-                        workout: store.currentWorkout,
-                        minimumWinModeEnabled: store.minimumWinModeEnabled,
-                        // Assist chips demoted to the AI pill (audit D10) —
-                        // same answers, one fewer CTA pair on the hero.
-                        showAssistRow: false,
-                        onStart: { store.startTodayWorkout() },
-                        onActivateMinimumWin: { store.activateMinimumWinMode() },
-                        onSwitch: {
-                            if !store.requestWorkoutSwitch() {
-                                showEmptyLibraryNotice = true
-                            }
-                        }
-                    )
                 }
 
                 // The day-7 bridge: five derived checkmarks that walk a new
@@ -223,6 +208,26 @@ struct HomeView: View {
                     showMetrics: store.todayExperienceTier >= 1,
                     hasCheckedIn: store.didCompleteQuickCheckIn
                 )
+
+                // "Here's what I've got for you" rides UNDER the profile
+                // strip now (Lucas, 2026-08-16) — profile info first, then
+                // the staged session, then the plans tools below.
+                if !store.isPlannedRestDay, !store.isWorkoutLoggedToday, store.dueCoachAssignment == nil {
+                    TodayNextMoveCard(
+                        workout: store.currentWorkout,
+                        minimumWinModeEnabled: store.minimumWinModeEnabled,
+                        // Assist chips demoted to the AI pill (audit D10) —
+                        // same answers, one fewer CTA pair on the hero.
+                        showAssistRow: false,
+                        onStart: { store.startTodayWorkout() },
+                        onActivateMinimumWin: { store.activateMinimumWinMode() },
+                        onSwitch: {
+                            if !store.requestWorkoutSwitch() {
+                                showEmptyLibraryNotice = true
+                            }
+                        }
+                    )
+                }
 
                 if store.todayExperienceTier >= 2, let insight = store.primaryAthletePatternInsight {
                     HomePatternInsightCard(insight: insight) {
