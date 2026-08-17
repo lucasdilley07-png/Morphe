@@ -717,7 +717,9 @@ final class WorkoutSessionTests: XCTestCase {
     /// silently dropped autoTaskTotalToday once — every field added to the
     /// struct must survive a round trip, and this is the canary.
     func testProfileSnapshotRoundTripsAutoTaskTotal() throws {
-        var snapshot = LocalProfileSnapshot()
+        // The tolerant decoder IS the no-arg initializer: an empty blob
+        // decodes to all defaults.
+        var snapshot = try JSONDecoder().decode(LocalProfileSnapshot.self, from: Data("{}".utf8))
         snapshot.autoTaskTotalToday = 2
         snapshot.dailyStateDay = "2026-08-15"
         snapshot.completedTaskTitlesToday = ["Complete today's workout"]
