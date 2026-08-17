@@ -48,6 +48,15 @@ struct HomeView: View {
                         .multilineTextAlignment(.center)
                         .contentTransition(.opacity)
                         .glimmer()
+                    // Monday: the recap speaks (moments engine phase 2) —
+                    // same derived numbers as the Progress card.
+                    if let recap = store.mondayRecapLine {
+                        Text(recap)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 2)
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
@@ -76,6 +85,10 @@ struct HomeView: View {
                 // Jarvis beat: the app asks, you answer, the day reshapes.
                 MorpheAsksCard()
 
+                // Training-day evening, nothing logged: one in-app check-in
+                // with honest outs (moments engine phase 2).
+                EveningCheckInCard()
+
                 // Once today's session is logged, the "Today's Workout" card
                 // becomes the "You're done for today" card in place — no
                 // overlay, no page takeover. "Do another session" keeps the
@@ -86,9 +99,13 @@ struct HomeView: View {
                 if let lapsed = store.comebackLapsedStreak, !store.isWorkoutLoggedToday {
                     ComebackCard(
                         lapsedStreak: lapsed,
-                        onMinimumWin: {
+                        onEaseIn: {
                             store.activateMinimumWinMode()
                             store.dismissComebackCard()
+                        },
+                        onFullSend: {
+                            store.dismissComebackCard()
+                            store.startTodayWorkout()
                         },
                         onDismiss: { store.dismissComebackCard() }
                     )
@@ -797,33 +814,149 @@ private struct HomeExpandableSection<Content: View>: View {
 /// The streak's honest ending: names the run that ended, offers the
 /// smallest way back in, and never shows again once answered.
 private struct ComebackCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
     let lapsedStreak: Int
-    let onMinimumWin: () -> Void
+    let onEaseIn: () -> Void
+    let onFullSend: () -> Void
     let onDismiss: () -> Void
 
     var body: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .center, spacing: 12) {
                 HStack(spacing: 10) {
                     Image(systemName: "arrow.counterclockwise.circle.fill")
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(MorpheTheme.accentText)
-                    Text("Rebuilding starts today.")
+                    Text("Good to have you back.")
                         .font(.title3.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                 }
 
-                Text("Your \(lapsedStreak)-day streak ended. That run was real — and the next one starts with one small win, not a perfect week.")
+                Text("Your \(lapsedStreak)-day run was real, and the next one starts today. How do you want to step back in?")
                     .foregroundStyle(MorpheTheme.textSecondary)
+                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 10) {
-                    Button("Minimum Win", action: onMinimumWin)
+                    Button("Ease me in", action: onEaseIn)
                         .frame(maxWidth: .infinity)
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        .accessibilityLabel("Start a minimum win session")
-                    Button("Dismiss", action: onDismiss)
+                        .accessibilityLabel("Ease back in with a minimum win session")
+                    Button("Full send", action: onFullSend)
+                        .frame(maxWidth: .infinity)
                         .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityLabel("Start today's full workout")
+                }
+
+                Button("Not today", action: onDismiss)
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .frame(maxWidth: .infinity)
+        }
+        // Same pop-in as the ask card, once per app session.
+        .scaleEffect(appeared || reduceMotion ? 1 : 0.92)
+        .opacity(appeared || reduceMotion ? 1 : 0)
+        .onAppear {
+            guard !appeared else { return }
+            if store.introPlayed("home.comeback") {
+                appeared = true
+            } else {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.1)) {
+                    appeared = true
+                }
+                store.markIntroPlayed("home.comeback")
+            }
+        }
+    }
+}
+
+/// The evening friend (moments engine phase 2): a training-day evening
+/// with nothing logged gets ONE in-app check-in — short session, minimum
+/// win, or an honest "tomorrow." Never a push notification.
+private struct EveningCheckInCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
+    @State private var transientReply: String?
+
+    private var showsReply: Bool {
+        store.eveningCheckInReplyToday != nil && !store.isWorkoutLoggedToday
+            && !store.isPlannedRestDay
+    }
+
+    var body: some View {
+        let _ = store.morpheAskRefresh
+        if store.shouldOfferEveningCheckIn || showsReply {
+            GlassCard {
+                VStack(spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "moon.stars.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                        Text("MORPHE · EVENING")
+                            .font(MorpheTheme.microLabel(9))
+                            .tracking(1.6)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+
+                    if let reply = store.eveningCheckInReplyToday {
+                        Text(reply)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .multilineTextAlignment(.center)
+                            .transition(.opacity)
+                    } else {
+                        Text(store.eveningCheckInLine)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .multilineTextAlignment(.center)
+
+                        if let transientReply {
+                            Text(transientReply)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.warning)
+                                .multilineTextAlignment(.center)
+                        }
+
+                        WrapStack(spacing: 8) {
+                            ForEach(MorpheAppStore.EveningCheckInChoice.allCases) { choice in
+                                Button {
+                                    var spoken = ""
+                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                                        spoken = store.answerEveningCheckIn(choice)
+                                    }
+                                    // Persist-miss = non-committing outcome;
+                                    // surface it and leave the chips up.
+                                    transientReply = store.eveningCheckInReplyToday == nil ? spoken : nil
+                                    AccessibilityNotification.Announcement(spoken).post()
+                                } label: {
+                                    Label(choice.rawValue, systemImage: choice.symbol)
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: false))
+                                .accessibilityLabel(choice.rawValue)
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .scaleEffect(appeared || reduceMotion ? 1 : 0.92)
+            .opacity(appeared || reduceMotion ? 1 : 0)
+            .onAppear {
+                guard !appeared else { return }
+                if store.introPlayed("home.evening") {
+                    appeared = true
+                } else {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.2)) {
+                        appeared = true
+                    }
+                    store.markIntroPlayed("home.evening")
                 }
             }
         }

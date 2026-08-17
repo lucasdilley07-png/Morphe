@@ -9450,6 +9450,88 @@ final class MorpheAppStore {
         return reply
     }
 
+    // MARK: - Moments engine, phase 2: Monday recap voice + evening check-in
+
+    /// Monday only, and only when last week actually held work: the recap
+    /// speaks under the greeting. Numbers come straight from the same
+    /// derived recap the Progress card renders.
+    var mondayRecapLine: String? {
+        guard selectedRole == .client,
+              Calendar.current.component(.weekday, from: .now) == 2,
+              let recap = weeklyRecapData, recap.sessions > 0 else { return nil }
+        var line = "Last week: \(recap.sessions) session\(recap.sessions == 1 ? "" : "s"), \(recap.sets) sets, \(recap.minutes) minutes."
+        if recap.prCount > 0 {
+            line += " \(recap.prCount) PR\(recap.prCount == 1 ? "" : "s")."
+        }
+        return line + " This week we go again."
+    }
+
+    enum EveningCheckInChoice: String, CaseIterable, Identifiable {
+        case shortSession = "Short session"
+        case minimumWin = "Minimum win"
+        case tomorrow = "Tomorrow, promise"
+
+        var id: String { rawValue }
+
+        var symbol: String {
+            switch self {
+            case .shortSession: return "clock.fill"
+            case .minimumWin: return "checkmark.circle.fill"
+            case .tomorrow: return "moon.stars.fill"
+            }
+        }
+    }
+
+    private var eveningCheckInKey: String {
+        "morphe.ask.\(clientProfile.id.uuidString).evening.\(Self.askDayFormatter.string(from: .now))"
+    }
+
+    var eveningCheckInReplyToday: String? {
+        UserDefaults.standard.string(forKey: eveningCheckInKey)
+    }
+
+    /// A training-day evening with nothing logged — the friend checks in
+    /// once, in-app only (never a push), and stands down after any answer.
+    var shouldOfferEveningCheckIn: Bool {
+        guard selectedRole == .client, !isWorkoutLoggedToday, !isPlannedRestDay,
+              dueCoachAssignment == nil, !isWorkoutSessionActive,
+              !minimumWinModeEnabled, eveningCheckInReplyToday == nil
+        else { return false }
+        return Calendar.current.component(.hour, from: .now) >= 17
+    }
+
+    var eveningCheckInLine: String {
+        if let atRisk = streakOnTheLineDays {
+            return "Evening check-in, \(greetingName): your \(atRisk)-day streak is on the line. A short session keeps it — or rest up and restart tomorrow."
+        }
+        return "Evening check-in, \(greetingName): still time for a short one — or call it and come back fresh tomorrow."
+    }
+
+    /// Every choice maps to a real action; the reply never overclaims and
+    /// an evening only gets one check-in.
+    @discardableResult
+    func answerEveningCheckIn(_ choice: EveningCheckInChoice) -> String {
+        let reply: String
+        switch choice {
+        case .shortSession:
+            guard applyWorkoutAdjustment(.shorter, navigate: false, announce: false) else {
+                Haptics.selection()
+                return "I couldn't line that up just now — your current plan stands."
+            }
+            reply = "Trimmed tonight down — it's staged in Train whenever you're ready."
+        case .minimumWin:
+            activateMinimumWinMode()
+            reply = "Minimum Win is on — small wins still count tonight."
+        case .tomorrow:
+            reply = "Done — tomorrow it is. Rest up; I'll be here."
+        }
+        UserDefaults.standard.set(reply, forKey: eveningCheckInKey)
+        morpheAskRefresh += 1
+        Haptics.selection()
+        SoundEffects.play(.ding)
+        return reply
+    }
+
     // MARK: - One-time guide hints (alive wave)
     //
     // The step-by-step voice: each key surface introduces itself ONCE, in

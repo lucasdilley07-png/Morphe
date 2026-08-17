@@ -760,6 +760,20 @@ final class WorkoutSessionTests: XCTestCase {
                       "yesterday's 'Tired' shapes today's question")
     }
 
+    /// Moments engine phase 2: the evening check-in's choices map to real
+    /// actions, persist their reply, and stand down for the evening.
+    func testEveningCheckInAnswersHonestly() {
+        let store = freshStore()
+
+        let reply = store.answerEveningCheckIn(.minimumWin)
+        XCTAssertTrue(store.minimumWinModeEnabled, "the choice ran the real action")
+        XCTAssertEqual(store.eveningCheckInReplyToday, reply, "the reply persists for the evening")
+
+        let secondReply = store.answerEveningCheckIn(.tomorrow)
+        XCTAssertTrue(secondReply.contains("tomorrow") || secondReply.contains("Rest up"))
+        XCTAssertFalse(store.shouldOfferEveningCheckIn, "one check-in per evening, answered means answered")
+    }
+
     /// Moments engine: milestone pep-talks fire once per milestone, only
     /// from numbers the logs actually earned.
     func testMilestonePepTalkFiresOnceFromRealLogs() {
