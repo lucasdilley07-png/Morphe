@@ -342,6 +342,29 @@ struct WorkoutView: View {
                     )
                 }
 
+                // The session voice (moments engine): short derived lines
+                // — halfway, pace vs your own last time — that fade after a
+                // few seconds. Panel-styled so it reads as Morphe speaking.
+                if let voice = store.sessionVoiceLine {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkle")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                        Text(voice)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(MorpheTheme.panelStrong)
+                    )
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .accessibilityAddTraits(.updatesFrequently)
+                }
+
                 LiveWorkoutConsoleCard(
                     workout: store.currentWorkout,
                     exerciseIndex: store.activeWorkoutExerciseIndex,
@@ -350,7 +373,8 @@ struct WorkoutView: View {
                     exerciseName: store.activeWorkoutExercise?.name ?? store.currentWorkout.name,
                     restDefaultSeconds: store.activeWorkoutExercise?.restSeconds ?? 180,
                     restSeconds: $restSeconds,
-                    restRunning: $restRunning
+                    restRunning: $restRunning,
+                    nextUpLine: store.restNextUpLine
                 )
 
                 // Once everything is logged, WorkoutCompleteCard owns Finish
@@ -1388,6 +1412,9 @@ private struct LiveWorkoutConsoleCard: View {
     var restDefaultSeconds: Int = 180
     @Binding var restSeconds: Int
     @Binding var restRunning: Bool
+    /// The moments-engine rest voice: what's actually next when the
+    /// countdown ends. Empty hides the line.
+    var nextUpLine: String = ""
 
     var body: some View {
         GlassCard {
@@ -1427,6 +1454,18 @@ private struct LiveWorkoutConsoleCard: View {
                     exerciseName: exerciseName,
                     defaultSeconds: restDefaultSeconds
                 )
+
+                // The rest-timer voice (moments engine): while the countdown
+                // runs, Morphe names what's coming so the rest is a breath,
+                // not a lost thread.
+                if restRunning, !nextUpLine.isEmpty {
+                    Text(nextUpLine)
+                        .font(.footnote)
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                        .transition(.opacity)
+                }
             }
         }
     }

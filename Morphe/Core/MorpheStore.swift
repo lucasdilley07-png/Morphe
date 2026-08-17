@@ -6156,6 +6156,7 @@ final class MorpheAppStore {
     }
 
     private func performStartTodayWorkout() {
+        resetSessionVoice()
         isWorkoutSessionActive = true
         hasStartedWorkoutFlow = true
         hasCompletedWorkoutFlow = false
@@ -6481,6 +6482,7 @@ final class MorpheAppStore {
             showToast("\(reps) reps logged for set \(updatedCount) of \(targetSets).")
         }
         publishPartyProgress()
+        maybeSpeakHalfway()
         return true
     }
 
@@ -7234,6 +7236,9 @@ final class MorpheAppStore {
         }
         Haptics.success()
         showToast("Workout logged. Progress updated.")
+        // Milestone pep-talks ride the same beat — but a PR celebration
+        // wins the moment; the milestone waits for a quieter log.
+        celebrateMilestonesAfterLog()
     }
 
     func addQuickMeal(_ meal: QuickMeal) {
@@ -9193,6 +9198,73 @@ final class MorpheAppStore {
         return "What workout would you like to start today?"
     }
 
+    // MARK: - Session voice (moments engine, phase 1)
+    //
+    // The in-session friend: short spoken lines at real moments — halfway
+    // through the planned sets, pace vs your own last time. Derived only;
+    // the line never claims what the timestamps can't prove.
+
+    private(set) var sessionVoiceLine: String?
+    private var sessionVoiceToken = UUID()
+    private var halfwayVoicePlayed = false
+
+    private func speakInSession(_ line: String) {
+        withAnimation(.easeInOut(duration: 0.3)) { sessionVoiceLine = line }
+        let token = UUID()
+        sessionVoiceToken = token
+        Haptics.impact(.light)
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 7_000_000_000)
+            guard let self, self.sessionVoiceToken == token else { return }
+            withAnimation(.easeInOut(duration: 0.3)) { self.sessionVoiceLine = nil }
+        }
+    }
+
+    /// Resets the per-session voice state — called wherever a session
+    /// begins or the staged workout changes.
+    func resetSessionVoice() {
+        halfwayVoicePlayed = false
+        sessionVoiceLine = nil
+    }
+
+    private func maybeSpeakHalfway() {
+        guard !halfwayVoicePlayed, isWorkoutSessionActive else { return }
+        let planned = currentWorkout.exercises.reduce(0) { $0 + targetSetCount(for: $1) }
+        let done = trackedSetTotalCount
+        // Only sessions with enough sets for "halfway" to mean something.
+        guard planned >= 4, done * 2 >= planned, done < planned else { return }
+        halfwayVoicePlayed = true
+        var line = "Halfway there — keep the standard."
+        // Pace claim only when YOUR last run of this workout proves it.
+        if let started = workoutSessionStartedAt,
+           let previous = currentAthleteWorkoutLogs
+               .filter({ $0.workoutTitle == currentWorkout.name && $0.durationMinutes > 0 })
+               .max(by: { $0.completedAt < $1.completedAt }) {
+            let elapsedMinutes = Date.now.timeIntervalSince(started) / 60
+            if elapsedMinutes < Double(previous.durationMinutes) / 2 {
+                line = "Halfway there — you're ahead of last time's pace."
+            }
+        }
+        speakInSession(line)
+    }
+
+    /// The rest-timer's next-up line: what's actually coming when the
+    /// countdown ends.
+    var restNextUpLine: String {
+        guard let exercise = activeWorkoutExercise else { return "" }
+        let done = completedWorkoutSets[exercise.id, default: 0]
+        let target = targetSetCount(for: exercise)
+        if done < target {
+            return "Breathe. Next: \(exercise.name), set \(min(done + 1, target)) of \(target)."
+        }
+        if let next = currentWorkout.exercises.first(where: {
+            completedWorkoutSets[$0.id, default: 0] < targetSetCount(for: $0)
+        }) {
+            return "Breathe. Next: \(next.name)."
+        }
+        return "Breathe. That was the last planned set."
+    }
+
     // MARK: - Morphe asks (Jarvis wave)
     //
     // The app asks how you're feeling and RESHAPES the day from the answer
@@ -9226,6 +9298,40 @@ final class MorpheAppStore {
         return formatter
     }()
 
+    /// Milestone pep-talks (moments engine): each fires exactly once, only
+    /// from numbers the logs actually earned, and never over a PR
+    /// celebration — one big moment at a time.
+    private var milestonesSeenKey: String {
+        "morphe.milestones.seen.\(clientProfile.id.uuidString)"
+    }
+
+    func celebrateMilestonesAfterLog() {
+        guard selectedRole == .client else { return }
+        // A PR keeps the stage; the generic +50 XP beat yields to a
+        // milestone (logWorkout always celebrates SOMETHING, so an
+        // unconditional nil-guard here would never pass).
+        if let current = celebration, current.title != "+50 XP" { return }
+        var seen = Set(UserDefaults.standard.stringArray(forKey: milestonesSeenKey) ?? [])
+        let logs = currentAthleteWorkoutLogs
+        let streak = currentAthleteWorkoutSummary.currentStreakDays
+        let totalSets = logs.reduce(0) { $0 + Self.loggedSetCount(of: $1) }
+
+        var milestone: (id: String, title: String, detail: String, symbol: String)?
+        if streak >= 30, !seen.contains("streak30") {
+            milestone = ("streak30", "THIRTY DAYS", "A month of showing up. This is who you are now.", "flame.fill")
+        } else if streak >= 7, !seen.contains("streak7") {
+            milestone = ("streak7", "SEVEN DAYS STRAIGHT", "A full week of honest work — this is how it compounds.", "flame.fill")
+        } else if logs.count >= 10, !seen.contains("sessions10") {
+            milestone = ("sessions10", "TEN SESSIONS LOGGED", "Ten real sessions on the books. The habit is real now.", "checkmark.seal.fill")
+        } else if totalSets >= 100, !seen.contains("sets100") {
+            milestone = ("sets100", "ONE HUNDRED SETS", "Every one of them logged, every one of them yours.", "trophy.fill")
+        }
+        guard let milestone else { return }
+        seen.insert(milestone.id)
+        UserDefaults.standard.set(Array(seen), forKey: milestonesSeenKey)
+        showCelebration(title: milestone.title, detail: milestone.detail, symbol: milestone.symbol)
+    }
+
     /// Ask replies are keyed per profile per DAY and guide markers per
     /// profile — both removed by prefix on sign-out/delete (audit 8, P2)
     /// so "everything tied to it is gone from this device" stays true.
@@ -9234,7 +9340,8 @@ final class MorpheAppStore {
         // Entrance animations replay for the next account in this app
         // session (audit 9, P2).
         playedIntroKeys.removeAll()
-        let prefixes = ["morphe.ask.\(clientProfile.id.uuidString)", guideSeenKey]
+        let prefixes = ["morphe.ask.\(clientProfile.id.uuidString)", guideSeenKey,
+                        milestonesSeenKey]
         for key in UserDefaults.standard.dictionaryRepresentation().keys
         where prefixes.contains(where: { key.hasPrefix($0) }) {
             UserDefaults.standard.removeObject(forKey: key)
@@ -9248,6 +9355,30 @@ final class MorpheAppStore {
     /// Today's spoken reply, if the user already answered.
     var morpheAskReplyToday: String? {
         UserDefaults.standard.string(forKey: morpheAskKey)
+    }
+
+    private func morpheAskMoodKey(for date: Date) -> String {
+        "morphe.ask.\(clientProfile.id.uuidString).mood.\(Self.askDayFormatter.string(from: date))"
+    }
+
+    /// Yesterday's answered mood, if any — the friend remembers.
+    var yesterdaysAskMood: MorpheAskMood? {
+        guard let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now) else { return nil }
+        return UserDefaults.standard.string(forKey: morpheAskMoodKey(for: yesterday))
+            .flatMap(MorpheAskMood.init(rawValue:))
+    }
+
+    /// The daily ask, memory-aware (moments engine): yesterday's answer
+    /// shapes today's question so it reads like a friend checking back in.
+    var morpheAskQuestion: String {
+        switch yesterdaysAskMood {
+        case .tired, .sore:
+            return "Yesterday was a recovery day — how's the energy today, \(greetingName)?"
+        case .short:
+            return "Yesterday was a quick one — got more room today, \(greetingName)?"
+        case .ready, nil:
+            return "How are you feeling today, \(greetingName)?"
+        }
     }
 
     /// Ask only when an answer can still shape the day: client role, no
@@ -9304,6 +9435,7 @@ final class MorpheAppStore {
         }
         morpheAskTransientReply = nil
         UserDefaults.standard.set(reply, forKey: morpheAskKey)
+        UserDefaults.standard.set(mood.rawValue, forKey: morpheAskMoodKey(for: .now))
         morpheAskRefresh += 1
         Haptics.selection()
         SoundEffects.play(.ding)
@@ -11963,6 +12095,7 @@ final class MorpheAppStore {
     }
 
     private func setCurrentWorkout(_ template: WorkoutTemplate) {
+        resetSessionVoice()
         currentWorkoutID = template.id
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false

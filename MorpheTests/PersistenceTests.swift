@@ -642,21 +642,20 @@ final class WorkoutSessionTests: XCTestCase {
         let store = freshStore()
         store.autoRestTimerEnabled = false   // force a persist so the blob exists
 
-        let keys = UserDefaults.standard.dictionaryRepresentation().keys
-            .filter { $0.hasPrefix("morphe.trainingprefs.") }
-        XCTAssertFalse(keys.isEmpty, "the training-prefs blob should exist after a persist")
+        // THIS store's blob only — a scan over every morphe.trainingprefs.*
+        // key mutated and asserted over stale blobs from earlier runs on
+        // the same simulator, which made the test environment-dependent.
+        let key = "morphe.trainingprefs.\(store.clientProfile.id.uuidString)"
 
         // Simulate an opt-in recorded while the feed was LIVE, the way a
         // pre-cut build wrote it: flip the stored flag directly in the blob.
-        for key in keys {
-            guard let data = UserDefaults.standard.data(forKey: key),
-                  var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-            else { XCTFail("couldn't read the prefs blob"); continue }
-            json["autoShareWorkouts"] = true
-            guard let updated = try? JSONSerialization.data(withJSONObject: json)
-            else { XCTFail("couldn't rewrite the prefs blob"); continue }
-            UserDefaults.standard.set(updated, forKey: key)
-        }
+        guard let data = UserDefaults.standard.data(forKey: key),
+              var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { return XCTFail("couldn't read this store's prefs blob") }
+        json["autoShareWorkouts"] = true
+        guard let updated = try? JSONSerialization.data(withJSONObject: json)
+        else { return XCTFail("couldn't rewrite this store's prefs blob") }
+        UserDefaults.standard.set(updated, forKey: key)
 
         // Reload: runtime forced off while the feed is dark…
         let reloaded = MorpheAppStore()
@@ -664,13 +663,11 @@ final class WorkoutSessionTests: XCTestCase {
 
         // …and an unrelated preference write must NOT erase the stored opt-in.
         reloaded.autoRestTimerEnabled = true
-        for key in keys {
-            guard let data = UserDefaults.standard.data(forKey: key),
-                  let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-            else { XCTFail("prefs blob vanished"); continue }
-            XCTAssertEqual(json["autoShareWorkouts"] as? Bool, true,
-                           "the stored opt-in survives unrelated preference writes while the feed is dark")
-        }
+        guard let after = UserDefaults.standard.data(forKey: key),
+              let afterJSON = (try? JSONSerialization.jsonObject(with: after)) as? [String: Any]
+        else { return XCTFail("prefs blob vanished") }
+        XCTAssertEqual(afterJSON["autoShareWorkouts"] as? Bool, true,
+                       "the stored opt-in survives unrelated preference writes while the feed is dark")
     }
 
     /// The dark-feed fetch gate, exercised on BOTH legs (audit 5, P2:
@@ -743,6 +740,43 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertTrue(reply.contains("trimmed"), "the reply describes the adjustment that actually ran")
         XCTAssertEqual(store.morpheAskReplyToday, reply, "the spoken reply persists for the day")
         XCTAssertFalse(store.shouldOfferMorpheAsk, "one ask per day — no nagging")
+    }
+
+    /// Moments engine: the daily ask remembers yesterday's answer and
+    /// shapes today's question from it — the friend checking back in.
+    func testMorpheAskRemembersYesterdaysAnswer() {
+        let store = freshStore()
+        XCTAssertTrue(store.morpheAskQuestion.contains("How are you feeling"),
+                      "no memory, no claim — the default question stands")
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
+        UserDefaults.standard.set(
+            "Tired",
+            forKey: "morphe.ask.\(store.clientProfile.id.uuidString).mood.\(formatter.string(from: yesterday))"
+        )
+        XCTAssertTrue(store.morpheAskQuestion.contains("recovery"),
+                      "yesterday's 'Tired' shapes today's question")
+    }
+
+    /// Moments engine: milestone pep-talks fire once per milestone, only
+    /// from numbers the logs actually earned.
+    func testMilestonePepTalkFiresOnceFromRealLogs() {
+        let store = freshStore()
+        for _ in 1...10 {
+            startedTwoExerciseSession(store)
+            store.completeTrackedSet(reps: 8, weight: 50)
+            store.finishTrackedWorkoutSession()
+            store.logWorkout()
+        }
+        // The 10th log crosses the sessions10 milestone (same weight every
+        // session, so no PR celebration competes on the later logs).
+        XCTAssertEqual(store.celebration?.title, "TEN SESSIONS LOGGED")
+
+        store.celebration = nil
+        store.celebrateMilestonesAfterLog()
+        XCTAssertNil(store.celebration, "a seen milestone never replays")
     }
 
     /// Alive wave: guide hints show once, then stay dismissed across

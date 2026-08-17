@@ -528,7 +528,7 @@ private struct MorpheAsksCard: View {
                             .multilineTextAlignment(.center)
                             .transition(.opacity)
                     } else {
-                        Text("How are you feeling today, \(store.greetingName)?")
+                        Text(store.morpheAskQuestion)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(MorpheTheme.textPrimary)
                             .multilineTextAlignment(.center)
