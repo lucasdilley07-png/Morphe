@@ -390,6 +390,7 @@ final class MorpheAppStore {
             // OLD unit — clear on switch (post-revamp audit P2-6).
             consoleHistoryCache = [:]
             topWeightCache = [:]
+            bestE1RMCache = [:]
             guard oldValue != weightUnit else { return }
             // Convert already-logged session weights so they keep meaning the
             // same physical load (45 lb -> 20.4 kg). Without this, toggling
@@ -4214,13 +4215,43 @@ final class MorpheAppStore {
     /// session's top. Pure Epley arithmetic on logged numbers; silent when
     /// there's no history or the answer would need a meaningless (>15)
     /// rep count.
-    func prProximityLine(for exercise: WorkoutExercise) -> String? {
-        let history = estimatedOneRMProgression(for: exercise.name)
-        guard let bestE1RM = history.map(\.topWeight).max(), bestE1RM > 0 else { return nil }
+    /// Committed-history best e1RM per exercise name — cached because the
+    /// console re-renders every rest-timer tick (audit 10, P1-4); cleared
+    /// wherever topWeightCache clears.
+    private var bestE1RMCache: [String: Double] = [:]
 
+    func prProximityLine(for exercise: WorkoutExercise) -> String? {
+        let committed: Double
+        if let cached = bestE1RMCache[exercise.name] {
+            committed = cached
+        } else {
+            committed = estimatedOneRMProgression(for: exercise.name).map(\.topWeight).max() ?? 0
+            bestE1RMCache[exercise.name] = committed
+        }
+
+        // THIS session's working sets fold into the bar (audit 10, P1-4):
+        // the line must chase today's best too, not tell the user to beat
+        // a record they broke a minute ago. Warm-ups excluded, same as
+        // the committed history.
+        let liveWeights = trackedSetWeights[exercise.id] ?? []
+        let liveReps = trackedSetReps[exercise.id] ?? []
+        let liveWarmups = trackedSetWarmups[exercise.id] ?? []
+        var liveBest: Double = 0
+        var topWorkingWeight: Double = 0
+        for (index, pair) in zip(liveWeights, liveReps).enumerated() where pair.0 > 0 && pair.1 > 0 {
+            if liveWarmups.indices.contains(index), liveWarmups[index] { continue }
+            liveBest = max(liveBest, pair.0 * (1 + Double(min(pair.1, 15)) / 30))
+            topWorkingWeight = max(topWorkingWeight, pair.0)
+        }
+
+        let bestE1RM = max(committed, liveBest)
+        guard bestE1RM > 0 else { return nil }
+
+        // Top WORKING weight, not the latest set (audit 10, P1-4): a
+        // drop-set or late warm-up must not swing the target.
         let weight: Double
-        if let current = trackedSetWeights[exercise.id]?.last, current > 0 {
-            weight = current
+        if topWorkingWeight > 0 {
+            weight = topWorkingWeight
         } else if let last = lastLoggedTopWeight(forExerciseNamed: exercise.name) {
             weight = normalizedLoggedWeight(last.weight, recordedUnit: last.unit.rawValue)
         } else {
@@ -9247,7 +9278,8 @@ final class MorpheAppStore {
         withAnimation(.easeInOut(duration: 0.3)) { sessionVoiceLine = line }
         let token = UUID()
         sessionVoiceToken = token
-        Haptics.impact(.light)
+        // No haptic here (audit 10, P2-13): completeTrackedSet already
+        // taps on the same touch.
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 7_000_000_000)
             guard let self, self.sessionVoiceToken == token else { return }
@@ -9266,8 +9298,12 @@ final class MorpheAppStore {
         guard !halfwayVoicePlayed, isWorkoutSessionActive else { return }
         let planned = currentWorkout.exercises.reduce(0) { $0 + targetSetCount(for: $1) }
         let done = trackedSetTotalCount
-        // Only sessions with enough sets for "halfway" to mean something.
-        guard planned >= 4, done * 2 >= planned, done < planned else { return }
+        // Only sessions with enough sets for "halfway" to mean something —
+        // and only the set that CROSSES halfway (audit 10, P2-7: a
+        // relaunch mid-session resets the in-memory flag, so late sets
+        // replayed the line without the crossing check).
+        guard planned >= 4, done * 2 >= planned, done < planned,
+              (done - 1) * 2 < planned else { return }
         halfwayVoicePlayed = true
         var line = "Halfway there — keep the standard."
         // Pace claim only when YOUR last run of this workout proves it.
@@ -9342,27 +9378,38 @@ final class MorpheAppStore {
 
     func celebrateMilestonesAfterLog() {
         guard selectedRole == .client else { return }
-        // A PR keeps the stage; the generic +50 XP beat yields to a
-        // milestone (logWorkout always celebrates SOMETHING, so an
-        // unconditional nil-guard here would never pass).
+        // PRs live in recordStamp, NOT celebration (audit 10, P1-2): the
+        // old guard checked the wrong variable, so a PR log let the
+        // milestone fire UNDER the stamp overlay — marked seen, never
+        // seen. A milestone only takes the stage when nothing else holds
+        // it (the generic +50 XP beat yields).
+        guard recordStamp == nil else { return }
         if let current = celebration, current.title != "+50 XP" { return }
         var seen = Set(UserDefaults.standard.stringArray(forKey: milestonesSeenKey) ?? [])
         let logs = currentAthleteWorkoutLogs
         let streak = currentAthleteWorkoutSummary.currentStreakDays
         let totalSets = logs.reduce(0) { $0 + Self.loggedSetCount(of: $1) }
 
-        var milestone: (id: String, title: String, detail: String, symbol: String)?
-        if streak >= 30, !seen.contains("streak30") {
-            milestone = ("streak30", "THIRTY DAYS", "A month of showing up. This is who you are now.", "flame.fill")
-        } else if streak >= 7, !seen.contains("streak7") {
-            milestone = ("streak7", "SEVEN DAYS STRAIGHT", "A full week of honest work — this is how it compounds.", "flame.fill")
-        } else if logs.count >= 10, !seen.contains("sessions10") {
-            milestone = ("sessions10", "TEN SESSIONS LOGGED", "Ten real sessions on the books. The habit is real now.", "checkmark.seal.fill")
-        } else if totalSets >= 100, !seen.contains("sets100") {
-            milestone = ("sets100", "ONE HUNDRED SETS", "Every one of them logged, every one of them yours.", "trophy.fill")
+        // Every threshold currently met, best (highest tier) first.
+        var earned: [(id: String, title: String, detail: String, symbol: String)] = []
+        if streak >= 30 {
+            earned.append(("streak30", "THIRTY DAYS", "A month of showing up. This is who you are now.", "flame.fill"))
         }
-        guard let milestone else { return }
-        seen.insert(milestone.id)
+        if streak >= 7 {
+            earned.append(("streak7", "SEVEN DAYS STRAIGHT", "A full week of honest work — this is how it compounds.", "flame.fill"))
+        }
+        if logs.count >= 10 {
+            earned.append(("sessions10", "TEN SESSIONS LOGGED", "Ten real sessions on the books. The habit is real now.", "checkmark.seal.fill"))
+        }
+        if totalSets >= 100 {
+            earned.append(("sets100", "ONE HUNDRED SETS", "Every one of them logged, every one of them yours.", "trophy.fill"))
+        }
+        let fresh = earned.filter { !seen.contains($0.id) }
+        guard let milestone = fresh.first else { return }
+        // Celebrate the best fresh one; bank the rest SILENTLY so a
+        // restore that vaults past several thresholds can't play them in
+        // descending order over the next sessions (audit 10, P2-6).
+        for item in fresh { seen.insert(item.id) }
         UserDefaults.standard.set(Array(seen), forKey: milestonesSeenKey)
         showCelebration(title: milestone.title, detail: milestone.detail, symbol: milestone.symbol)
     }
@@ -9421,10 +9468,14 @@ final class MorpheAppStore {
     var shouldOfferMorpheAsk: Bool {
         // No ask while a coach session leads Today (audit 8, P1-3): "tired"
         // would swap the GENERIC plan while the hero says start the
-        // coach's — a contradiction the user can't see.
+        // coach's — a contradiction the user can't see. After 17:00 an
+        // unanswered morning ask stands down for the evening check-in —
+        // one voice owns Today at a time (audit 10, P1-5). An ANSWERED
+        // ask keeps the floor all day via its reply card.
         selectedRole == .client && !isWorkoutLoggedToday
             && !isPlannedRestDay && dueCoachAssignment == nil
             && morpheAskReplyToday == nil
+            && Calendar.current.component(.hour, from: .now) < 17
     }
 
     /// A non-committing reply (session work pending, template missing) —
@@ -9528,9 +9579,16 @@ final class MorpheAppStore {
     /// A training-day evening with nothing logged — the friend checks in
     /// once, in-app only (never a push), and stands down after any answer.
     var shouldOfferEveningCheckIn: Bool {
+        // One voice at a time (audit 10, P1-5): the evening card stands
+        // down while the morning ask is unanswered or already answered
+        // today, and while the comeback card holds the floor. And it
+        // carries the ask's unsaved-session gate (P1-3) — a finished-but-
+        // unlogged recap must settle before any adjustment chip renders.
         guard selectedRole == .client, !isWorkoutLoggedToday, !isPlannedRestDay,
               dueCoachAssignment == nil, !isWorkoutSessionActive,
-              !minimumWinModeEnabled, eveningCheckInReplyToday == nil
+              !hasUnsavedSessionWork, !minimumWinModeEnabled,
+              comebackLapsedStreak == nil,
+              morpheAskReplyToday == nil, eveningCheckInReplyToday == nil
         else { return false }
         return Calendar.current.component(.hour, from: .now) >= 17
     }
@@ -9546,6 +9604,15 @@ final class MorpheAppStore {
     /// an evening only gets one check-in.
     @discardableResult
     func answerEveningCheckIn(_ choice: EveningCheckInChoice) -> String {
+        // Answered means answered — no overwrite (audit 10, P2-12).
+        if let existing = eveningCheckInReplyToday { return existing }
+        // Same honesty gate as the daily ask (audit 10, P1-3): a live or
+        // finished-but-unlogged session means an adjustment would only
+        // queue a dialog — never claim it, never burn the evening.
+        guard !hasUnsavedSessionWork, !isWorkoutSessionActive else {
+            Haptics.selection()
+            return "You've got session work in Train to settle first — log it or clear it, then check back in."
+        }
         let reply: String
         switch choice {
         case .shortSession:
@@ -13702,6 +13769,7 @@ final class MorpheAppStore {
     private func refreshWorkoutLogDerivedState(for athleteID: UUID, latestLog: WorkoutLog? = nil) {
         consoleHistoryCache = [:]
         topWeightCache = [:]
+        bestE1RMCache = [:]
         let logs = workoutLogs(for: athleteID)
         refreshCoachClientDerivedWorkoutState(for: athleteID, logs: logs, latestLog: latestLog ?? logs.first)
 

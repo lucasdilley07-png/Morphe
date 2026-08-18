@@ -363,6 +363,8 @@ struct WorkoutView: View {
                     )
                     .transition(.opacity.combined(with: .move(edge: .top)))
                     .accessibilityAddTraits(.updatesFrequently)
+                    // VoiceOver hears the session voice (audit 10, P2-11).
+                    .onAppear { AccessibilityNotification.Announcement(voice).post() }
                 }
 
                 LiveWorkoutConsoleCard(
@@ -1466,6 +1468,8 @@ private struct LiveWorkoutConsoleCard: View {
                         .frame(maxWidth: .infinity)
                         .multilineTextAlignment(.center)
                         .transition(.opacity)
+                        // VoiceOver hears the voice too (audit 10, P2-11).
+                        .onAppear { AccessibilityNotification.Announcement(nextUpLine).post() }
                 }
             }
         }

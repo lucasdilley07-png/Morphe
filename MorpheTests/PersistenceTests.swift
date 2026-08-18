@@ -734,7 +734,10 @@ final class WorkoutSessionTests: XCTestCase {
     /// persists its reply, and only asks once per day.
     func testMorpheAskAnswersHonestlyOncePerDay() {
         let store = freshStore()
-        XCTAssertTrue(store.shouldOfferMorpheAsk)
+        // shouldOfferMorpheAsk is wall-clock-gated after audit 10 (the ask
+        // stands down for the evening voice at 17:00), so the test asserts
+        // the mechanics, not the time-dependent offer.
+        XCTAssertNil(store.morpheAskReplyToday)
 
         let reply = store.answerMorpheAsk(.short)
         XCTAssertTrue(reply.contains("trimmed"), "the reply describes the adjustment that actually ran")
@@ -786,9 +789,12 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertTrue(store.minimumWinModeEnabled, "the choice ran the real action")
         XCTAssertEqual(store.eveningCheckInReplyToday, reply, "the reply persists for the evening")
 
+        // Answered means answered (audit 10, P2-12): a second answer must
+        // return the original reply and change nothing — the old assert on
+        // shouldOfferEveningCheckIn was vacuously false before 17:00.
         let secondReply = store.answerEveningCheckIn(.tomorrow)
-        XCTAssertTrue(secondReply.contains("tomorrow") || secondReply.contains("Rest up"))
-        XCTAssertFalse(store.shouldOfferEveningCheckIn, "one check-in per evening, answered means answered")
+        XCTAssertEqual(secondReply, reply, "no overwrite once the evening is answered")
+        XCTAssertEqual(store.eveningCheckInReplyToday, reply)
     }
 
     /// Moments engine: milestone pep-talks fire once per milestone, only
@@ -800,6 +806,10 @@ final class WorkoutSessionTests: XCTestCase {
             store.completeTrackedSet(reps: 8, weight: 50)
             store.finishTrackedWorkoutSession()
             store.logWorkout()
+            // The first log sets a PR stamp; a real user dismisses it.
+            // Milestones defer while a stamp holds the stage (audit 10,
+            // P1-2), so the test clears it like the user would.
+            store.recordStamp = nil
         }
         // The 10th log crosses the sessions10 milestone (same weight every
         // session, so no PR celebration competes on the later logs).

@@ -1087,8 +1087,7 @@ struct WorkoutHeroCard: View {
 }
 
 struct WorkoutDifficultyFeedbackCard: View {
-    /// Empty hides the personal address (shared surfaces reuse this card).
-    var name: String = ""
+    let name: String
     let selected: WorkoutFeedbackOption?
     let response: String
     let onSelect: (WorkoutFeedbackOption) -> Void
@@ -1111,9 +1110,10 @@ struct WorkoutDifficultyFeedbackCard: View {
                     .foregroundStyle(MorpheTheme.textPrimary)
                     .multilineTextAlignment(.center)
 
-                // The honest consequence: ratings genuinely tilt the plan
-                // (submitWorkoutFeedback stages the adjustment).
-                Text("Your answer tilts tomorrow — too easy nudges the plan up, too hard eases it off.")
+                // The honest consequence, at the speed it actually moves
+                // (audit 10, P2-9): too-easy nudges the NEXT session's
+                // suggestion; too-hard shifts the bias over several days.
+                Text("Your answers shape the next sessions — too easy nudges the plan up; repeated too-hards ease it off.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
                     .multilineTextAlignment(.center)

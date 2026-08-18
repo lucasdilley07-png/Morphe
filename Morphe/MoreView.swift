@@ -414,9 +414,11 @@ struct MoreView: View {
     }
 
     private func quizTileState(for quiz: MiniQuiz) -> QuizTileState {
-        if store.completedQuizIDs.contains(quiz.id) || store.quizSelections[quiz.id] != nil {
-            return .done
-        }
+        // Completion is authoritative (audit 10, P0-1): only a CORRECT
+        // answer earns .done and its XP footer — a wrong answer is
+        // .missed, honestly labeled, no seal, no claimed XP.
+        if store.completedQuizIDs.contains(quiz.id) { return .done }
+        if store.quizSelections[quiz.id] != nil { return .missed }
         return quiz.id == dailyQuiz?.id ? .today : .upcoming
     }
 }
@@ -424,6 +426,7 @@ struct MoreView: View {
 enum QuizTileState {
     case today
     case done
+    case missed
     case upcoming
 }
 
@@ -463,6 +466,7 @@ private struct QuizCallingCard: View {
         switch state {
         case .today: return "TODAY · TAP TO PLAY"
         case .done: return "ACED · +\(quiz.rewardXP) XP"
+        case .missed: return "ANSWERED · NO XP"
         case .upcoming: return "UNLOCKS ON ITS DAY"
         }
     }
@@ -478,6 +482,9 @@ private struct QuizCallingCard: View {
                     if state == .done {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.caption.weight(.bold))
+                    } else if state == .missed {
+                        Image(systemName: "arrow.uturn.left")
+                            .font(.caption2.weight(.bold))
                     } else if state == .upcoming {
                         Image(systemName: "lock.fill")
                             .font(.caption2.weight(.bold))
@@ -509,7 +516,7 @@ private struct QuizCallingCard: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                    .stroke(state == .today ? MorpheTheme.accent : Color.clear, lineWidth: 2)
+                    .stroke(state == .today ? plate.text.opacity(0.9) : Color.clear, lineWidth: 2)
             )
             // Upcoming cards read locked, not broken.
             .saturation(state == .upcoming ? 0.35 : 1)
@@ -517,9 +524,14 @@ private struct QuizCallingCard: View {
         }
         .buttonStyle(.plain)
         .disabled(state == .upcoming)
-        .accessibilityLabel(state == .upcoming
-            ? "Quiz \(index + 1), locked until its day"
-            : "Quiz \(index + 1): \(quiz.question). \(state == .done ? "Completed" : "Today's quiz")")
+        .accessibilityLabel({
+            switch state {
+            case .upcoming: return "Quiz \(index + 1), locked until its day"
+            case .done: return "Quiz \(index + 1): \(quiz.question). Completed"
+            case .missed: return "Quiz \(index + 1): \(quiz.question). Answered, no XP — review the explanation"
+            case .today: return "Quiz \(index + 1): \(quiz.question). Today's quiz"
+            }
+        }())
     }
 }
 

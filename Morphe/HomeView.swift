@@ -104,7 +104,9 @@ struct HomeView: View {
                             store.dismissComebackCard()
                         },
                         onFullSend: {
-                            store.dismissComebackCard()
+                            // The card survives a cancelled session-work
+                            // dialog (audit 10, P2-15) — it retires when a
+                            // log lands, same as always.
                             store.startTodayWorkout()
                         },
                         onDismiss: { store.dismissComebackCard() }
@@ -886,8 +888,11 @@ private struct EveningCheckInCard: View {
     @State private var transientReply: String?
 
     private var showsReply: Bool {
+        // Mirrors the ask card's full condition set (audit 10, P2-8): the
+        // reply must not outlive a coach assignment or a live session.
         store.eveningCheckInReplyToday != nil && !store.isWorkoutLoggedToday
-            && !store.isPlannedRestDay
+            && !store.isPlannedRestDay && store.dueCoachAssignment == nil
+            && !store.isWorkoutSessionActive
     }
 
     var body: some View {
