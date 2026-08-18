@@ -1087,16 +1087,36 @@ struct WorkoutHeroCard: View {
 }
 
 struct WorkoutDifficultyFeedbackCard: View {
+    /// Empty hides the personal address (shared surfaces reuse this card).
+    var name: String = ""
     let selected: WorkoutFeedbackOption?
     let response: String
     let onSelect: (WorkoutFeedbackOption) -> Void
 
     var body: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("How did this session feel?")
+            VStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkle")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                    Text("MORPHE")
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(1.6)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+                Text(name.isEmpty ? "How did that feel?" : "How did that feel, \(name)?")
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
+                    .multilineTextAlignment(.center)
+
+                // The honest consequence: ratings genuinely tilt the plan
+                // (submitWorkoutFeedback stages the adjustment).
+                Text("Your answer tilts tomorrow — too easy nudges the plan up, too hard eases it off.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .multilineTextAlignment(.center)
 
                 WrapStack(spacing: 8) {
                     ForEach(WorkoutFeedbackOption.allCases) { option in
@@ -1111,8 +1131,11 @@ struct WorkoutDifficultyFeedbackCard: View {
                     Text(response)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(MorpheTheme.accentText)
+                        .multilineTextAlignment(.center)
+                        .transition(.opacity)
                 }
             }
+            .frame(maxWidth: .infinity)
         }
     }
 }

@@ -652,6 +652,7 @@ struct WorkoutView: View {
                     }
 
                     WorkoutDifficultyFeedbackCard(
+                        name: store.greetingName,
                         selected: store.selectedWorkoutFeedback,
                         response: store.workoutFeedbackResponse
                     ) { option in
@@ -1679,6 +1680,14 @@ private struct ActiveWorkoutTrackerCard: View {
                         Text(progression)
                             .font(MorpheTheme.microLabel(10)).tracking(1.0)
                             .foregroundStyle(MorpheTheme.accentText)
+                    }
+                    // Moments engine phase 3: how close this exercise is to
+                    // new territory — live sessions only, derived from logs.
+                    if store.isWorkoutSessionActive,
+                       let prLine = store.prProximityLine(for: exercise) {
+                        Text(prLine)
+                            .font(MorpheTheme.microLabel(10)).tracking(1.0)
+                            .foregroundStyle(MorpheTheme.brandYellowText)
                     }
                     Text(exercise.formCue)
                         .font(.caption)

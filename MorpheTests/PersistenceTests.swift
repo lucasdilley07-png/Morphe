@@ -760,6 +760,23 @@ final class WorkoutSessionTests: XCTestCase {
                       "yesterday's 'Tired' shapes today's question")
     }
 
+    /// Moments engine phase 3: the PR-proximity line is pure Epley math on
+    /// logged sets — 100 lb x 8 banks an est. 1RM of 126.7, so 9 reps at
+    /// 100 lb is the smallest count that tops it.
+    func testPRProximityLineDerivesFromLoggedSets() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        let exercise = store.activeWorkoutExercise!
+        store.completeTrackedSet(reps: 8, weight: 100)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+
+        let line = store.prProximityLine(for: exercise)
+        XCTAssertNotNil(line, "one logged weighted session is enough history")
+        XCTAssertTrue(line?.contains("9 reps") == true,
+                      "Epley says 9 reps at the last top weight beats 8: \(line ?? "nil")")
+    }
+
     /// Moments engine phase 2: the evening check-in's choices map to real
     /// actions, persist their reply, and stand down for the evening.
     func testEveningCheckInAnswersHonestly() {

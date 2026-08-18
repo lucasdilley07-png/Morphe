@@ -4208,6 +4208,37 @@ final class MorpheAppStore {
         return points
     }
 
+    /// Moments engine phase 3: how close the current exercise stands to
+    /// new territory. Best previous e1RM vs the most concrete weight
+    /// available — the latest set logged THIS session, else the last real
+    /// session's top. Pure Epley arithmetic on logged numbers; silent when
+    /// there's no history or the answer would need a meaningless (>15)
+    /// rep count.
+    func prProximityLine(for exercise: WorkoutExercise) -> String? {
+        let history = estimatedOneRMProgression(for: exercise.name)
+        guard let bestE1RM = history.map(\.topWeight).max(), bestE1RM > 0 else { return nil }
+
+        let weight: Double
+        if let current = trackedSetWeights[exercise.id]?.last, current > 0 {
+            weight = current
+        } else if let last = lastLoggedTopWeight(forExerciseNamed: exercise.name) {
+            weight = normalizedLoggedWeight(last.weight, recordedUnit: last.unit.rawValue)
+        } else {
+            return nil
+        }
+        guard weight > 0 else { return nil }
+
+        // Smallest rep count whose Epley estimate EXCEEDS the best on file.
+        let needed = Int((30 * (bestE1RM / weight - 1)).rounded(.down)) + 1
+        if needed <= 0 {
+            return "Any clean rep at \(weightUnit.format(weight)) is new territory — your best est. 1RM falls."
+        }
+        guard needed <= 15 else { return nil }
+        return needed == 1
+            ? "One clean rep at \(weightUnit.format(weight)) tops your best est. 1RM."
+            : "\(needed) reps at \(weightUnit.format(weight)) tops your best est. 1RM."
+    }
+
     /// Exercises that have STALLED: 4+ weighted sessions and no new top-set
     /// high in the last 3. Deterministic — a flag, not advice; the UI pairs
     /// it with the standard deload/rep-change playbook.
@@ -6947,6 +6978,10 @@ final class MorpheAppStore {
         selectedWorkoutFeedback = option
         workoutFeedbackResponse = MorpheDemoContent.workoutFeedbackResponse(for: option, tone: profileShowcase.coachingTone)
         recovery.previousSessionFeedback = option
+        // The session-end ask is a moments beat (phase 3): answering feels
+        // like answering, not form-filling.
+        Haptics.selection()
+        SoundEffects.play(.ding)
 
         switch option {
         case .tooEasy:
