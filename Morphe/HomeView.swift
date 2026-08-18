@@ -42,12 +42,16 @@ struct HomeView: View {
                         .font(.title2.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .multilineTextAlignment(.center)
-                    Text(store.homePrompt)
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .contentTransition(.opacity)
-                        .glimmer()
+                    // While the slide-up popup owns the question, the
+                    // header stays greeting-only — one voice, one question.
+                    if !store.shouldShowDayPopup {
+                        Text(store.homePrompt)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .contentTransition(.opacity)
+                            .glimmer()
+                    }
                     // Monday: the recap speaks (moments engine phase 2) —
                     // same derived numbers as the Progress card.
                     if let recap = store.mondayRecapLine {
@@ -391,6 +395,11 @@ struct HomeView: View {
             .padding(.top, MorpheTheme.Spacing.pageTopToday)
             .padding(.bottom, 120)
         }
+        // The Jarvis slide-up: the Morphe character asks what today is,
+        // rising from the bottom edge over the page.
+        .overlay(alignment: .bottom) {
+            MorpheDayPopup()
+        }
         // The network-backed pieces of Today (coach threads, appointments)
         // refresh on pull, like Network already does.
         .refreshable {
@@ -514,21 +523,18 @@ struct HomeView: View {
 /// "How are you feeling today?" — the app asks, the user taps an answer,
 /// and the day honestly reshapes (recovery swap, shorter session, or just
 /// a queued start). One ask per day; the spoken reply stays up after.
+/// The day's spoken reply (the slide-up popup owns the ASKING now):
+/// renders only what Morphe already said about today, and hides whenever
+/// the state it described no longer holds.
 private struct MorpheAsksCard: View {
     @Environment(MorpheAppStore.self) private var store
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var appeared = false
 
     var body: some View {
         let _ = store.morpheAskRefresh
-        // The persisted reply also hides on a rest day (audit 8, P2): the
-        // schedule may have changed since the answer, and "I trimmed today
-        // down" above a rest-day hero reads as a contradiction.
-        if store.shouldOfferMorpheAsk
-            || (store.morpheAskReplyToday != nil && !store.isWorkoutLoggedToday
-                && !store.isPlannedRestDay && store.dueCoachAssignment == nil) {
+        if let reply = store.morpheAskReplyToday, !store.isWorkoutLoggedToday,
+           !store.isPlannedRestDay, store.dueCoachAssignment == nil {
             GlassCard {
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     HStack(spacing: 8) {
                         Image(systemName: "sparkle")
                             .font(.caption.weight(.bold))
@@ -540,62 +546,12 @@ private struct MorpheAsksCard: View {
                     }
                     .glimmer()
 
-                    if let reply = store.morpheAskReplyToday {
-                        Text(reply)
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                            .multilineTextAlignment(.center)
-                            .transition(.opacity)
-                    } else {
-                        Text(store.morpheAskQuestion)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                            .multilineTextAlignment(.center)
-
-                        // Non-committing outcome (session work pending,
-                        // template missing): the app explains, the chips
-                        // stay so the user can answer again.
-                        if let transient = store.morpheAskTransientReply {
-                            Text(transient)
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.warning)
-                                .multilineTextAlignment(.center)
-                                .transition(.opacity)
-                        }
-
-                        WrapStack(spacing: 8) {
-                            ForEach(MorpheAppStore.MorpheAskMood.allCases) { mood in
-                                Button {
-                                    var spoken = ""
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                        spoken = store.answerMorpheAsk(mood)
-                                    }
-                                    // VoiceOver hears the reply the sighted
-                                    // user sees swap in (audit 8, P2).
-                                    AccessibilityNotification.Announcement(spoken).post()
-                                } label: {
-                                    Label(mood.rawValue, systemImage: mood.symbol)
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: false))
-                                .accessibilityLabel("I'm \(mood.rawValue.lowercased())")
-                            }
-                        }
-                    }
+                    Text(reply)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
-            }
-            .scaleEffect(appeared || reduceMotion ? 1 : 0.92)
-            .opacity(appeared || reduceMotion ? 1 : 0)
-            .onAppear {
-                guard !appeared else { return }
-                if store.introPlayed("home.ask") {
-                    appeared = true
-                } else {
-                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.15)) {
-                        appeared = true
-                    }
-                    store.markIntroPlayed("home.ask")
-                }
             }
         }
     }
@@ -875,6 +831,124 @@ private struct ComebackCard: View {
                 store.markIntroPlayed("home.comeback")
             }
         }
+    }
+}
+
+/// The Morphe character: the brand M on the gold plate — the same mark
+/// as the app icon, no invented persona.
+private struct MorpheCharacterBadge: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(LinearGradient(colors: [MorpheTheme.brandYellow, MorpheTheme.brandGold],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+            Text("M")
+                .font(.system(size: 22, design: .monospaced).weight(.black))
+                .foregroundStyle(.black)
+        }
+        .frame(width: 44, height: 44)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The slide-up day popup (Lucas 2026-08-17): Morphe rises from the
+/// bottom, asks what the user wants to do, and offers the three most
+/// common answers for the CURRENT state plus Other (which opens the real
+/// conversation). Swipe down or X parks it for the session.
+private struct MorpheDayPopup: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
+
+    var body: some View {
+        let _ = store.morpheAskRefresh
+        if store.shouldShowDayPopup {
+            VStack(spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    MorpheCharacterBadge()
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(store.homeGreeting)
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text(store.dayPopupQuestion)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            store.dismissDayPopupForSession()
+                        }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss for now")
+                }
+
+                VStack(spacing: 8) {
+                    ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
+                        if index == 0 {
+                            choiceButton(choice)
+                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        } else {
+                            choiceButton(choice)
+                                .buttonStyle(SecondaryCTAButtonStyle())
+                        }
+                    }
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(MorpheTheme.inkAlt)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(MorpheTheme.stroke, lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.25), radius: 18, y: 6)
+            )
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+            .offset(y: appeared || reduceMotion ? 0 : 320)
+            .opacity(appeared || reduceMotion ? 1 : 0)
+            .onAppear {
+                guard !appeared else { return }
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.85).delay(0.4)) {
+                    appeared = true
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 20).onEnded { value in
+                    if value.translation.height > 40 {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            store.dismissDayPopupForSession()
+                        }
+                    }
+                }
+            )
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    private func choiceButton(_ choice: MorpheAppStore.DayPopupChoice) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                store.answerDayPopup(choice.kind)
+            }
+        } label: {
+            Label(choice.label, systemImage: choice.symbol)
+                .frame(maxWidth: .infinity)
+        }
+        .accessibilityLabel(choice.label)
     }
 }
 

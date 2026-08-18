@@ -780,6 +780,22 @@ final class WorkoutSessionTests: XCTestCase {
                       "Epley says 9 reps at the last top weight beats 8: \(line ?? "nil")")
     }
 
+    /// Jarvis slide-up: the popup offers three context-derived choices
+    /// plus Other, and an answer persists the day's reply through the
+    /// same key the one-voice rules read.
+    func testDayPopupChoicesAndAnswerPersist() {
+        let store = freshStore()
+
+        let choices = store.dayPopupChoices
+        XCTAssertEqual(choices.count, 4, "three common answers plus Other")
+        XCTAssertEqual(choices.last?.label, "Other…", "the fourth choice is always Other")
+        XCTAssertEqual(choices.first?.label, "Start my workout")
+
+        store.answerDayPopup(.restUp)
+        XCTAssertNotNil(store.morpheAskReplyToday, "an answered popup speaks for the day")
+        XCTAssertFalse(store.shouldShowDayPopup, "answered means the popup stands down")
+    }
+
     /// Moments engine phase 2: the evening check-in's choices map to real
     /// actions, persist their reply, and stand down for the evening.
     func testEveningCheckInAnswersHonestly() {

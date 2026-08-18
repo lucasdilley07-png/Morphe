@@ -9463,6 +9463,135 @@ final class MorpheAppStore {
         }
     }
 
+    // MARK: - Day popup (Jarvis slide-up)
+    //
+    // The morning ask's new front door: the Morphe character slides up and
+    // asks what the user wants to do — three context-derived common
+    // choices plus Other (which hands off to Morphe AI). Same reply key,
+    // same memory, same one-voice gates as the ask it replaces.
+
+    enum DayPopupChoiceKind {
+        case startCoach
+        case start
+        case lighter
+        case ownPlan
+        case trainAnyway
+        case restUp
+        case progress
+        case other
+    }
+
+    struct DayPopupChoice: Identifiable {
+        let kind: DayPopupChoiceKind
+        let label: String
+        let symbol: String
+        var id: String { label }
+    }
+
+    /// "Other" or the close affordance parks the popup for this app
+    /// session without burning the day — it can re-offer next launch.
+    private(set) var dayPopupSessionDismissed = false
+
+    var shouldShowDayPopup: Bool {
+        guard selectedRole == .client, !isWorkoutLoggedToday,
+              !isWorkoutSessionActive, !hasUnsavedSessionWork,
+              !minimumWinModeEnabled, comebackLapsedStreak == nil,
+              !dayPopupSessionDismissed, morpheAskReplyToday == nil
+        else { return false }
+        // Evenings belong to the evening check-in (one voice at a time).
+        return Calendar.current.component(.hour, from: .now) < 17
+    }
+
+    /// Memory-aware question — the same yesterday lens as the ask.
+    var dayPopupQuestion: String {
+        if isPlannedRestDay {
+            return "It's your rest day — what's the move?"
+        }
+        switch yesterdaysAskMood {
+        case .tired, .sore:
+            return "Yesterday was a recovery day — what's the move today?"
+        case .short:
+            return "Yesterday was a quick one — what's the move today?"
+        case .ready, nil:
+            return "What's the move today?"
+        }
+    }
+
+    /// Three most-common choices for the CURRENT state, plus Other. Every
+    /// choice maps to a real action the reply can honestly describe.
+    var dayPopupChoices: [DayPopupChoice] {
+        var choices: [DayPopupChoice]
+        if isPlannedRestDay {
+            choices = [
+                DayPopupChoice(kind: .restUp, label: "Rest up — recovery counts", symbol: "moon.zzz.fill"),
+                DayPopupChoice(kind: .trainAnyway, label: "Train anyway", symbol: "bolt.fill"),
+                DayPopupChoice(kind: .progress, label: "Check my progress", symbol: "chart.line.uptrend.xyaxis")
+            ]
+        } else if let assignment = dueCoachAssignment {
+            let coach = assignment.coachName.isEmpty ? "your coach" : assignment.coachName
+            choices = [
+                DayPopupChoice(kind: .startCoach, label: "Start \(coach)'s session", symbol: "figure.strengthtraining.traditional"),
+                DayPopupChoice(kind: .ownPlan, label: "Train my own plan", symbol: "bolt.fill"),
+                DayPopupChoice(kind: .progress, label: "Check my progress", symbol: "chart.line.uptrend.xyaxis")
+            ]
+        } else {
+            choices = [
+                DayPopupChoice(kind: .start, label: "Start my workout", symbol: "figure.strengthtraining.traditional"),
+                DayPopupChoice(kind: .lighter, label: "Something lighter today", symbol: "leaf.fill"),
+                DayPopupChoice(kind: .progress, label: "Check my progress", symbol: "chart.line.uptrend.xyaxis")
+            ]
+        }
+        choices.append(DayPopupChoice(kind: .other, label: "Other…", symbol: "ellipsis.bubble.fill"))
+        return choices
+    }
+
+    func answerDayPopup(_ kind: DayPopupChoiceKind) {
+        switch kind {
+        case .startCoach:
+            guard let assignment = dueCoachAssignment else { return }
+            persistDayReply("Coach's session is live — go get it.")
+            startAssignedWorkout(assignment)
+        case .start:
+            persistDayReply("Locked in — your session's live in Train.")
+            startTodayWorkout()
+        case .ownPlan:
+            persistDayReply("Your own plan it is — it's live in Train.")
+            startTodayWorkout()
+        case .lighter:
+            // Full reuse of the ask's honesty gates, reply, and memory.
+            _ = answerMorpheAsk(.tired)
+            return
+        case .trainAnyway:
+            persistDayReply("Rest-day override — make it count.")
+            startTodayWorkout()
+        case .restUp:
+            persistDayReply("Good call. Recovery is training too — see you tomorrow.")
+        case .progress:
+            persistDayReply("Here's what your work adds up to.")
+            openProgress()
+        case .other:
+            // Hands off to the real conversation; the popup parks for the
+            // session and the day stays unburned.
+            dayPopupSessionDismissed = true
+            morpheAskRefresh += 1
+            openAIAgent()
+            return
+        }
+        Haptics.selection()
+        SoundEffects.play(.ding)
+    }
+
+    func dismissDayPopupForSession() {
+        dayPopupSessionDismissed = true
+        morpheAskRefresh += 1
+        Haptics.selection()
+    }
+
+    private func persistDayReply(_ reply: String) {
+        UserDefaults.standard.set(reply, forKey: morpheAskKey)
+        morpheAskRefresh += 1
+    }
+
     /// Ask only when an answer can still shape the day: client role, no
     /// session logged, not a rest day, not already answered.
     var shouldOfferMorpheAsk: Bool {
