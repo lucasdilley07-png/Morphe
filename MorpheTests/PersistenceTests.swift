@@ -739,7 +739,11 @@ final class WorkoutSessionTests: XCTestCase {
         let reply = store.answerMorpheAsk(.short)
         XCTAssertTrue(reply.contains("trimmed"), "the reply describes the adjustment that actually ran")
         XCTAssertEqual(store.morpheAskReplyToday, reply, "the spoken reply persists for the day")
-        XCTAssertFalse(store.shouldShowDayPopup, "one ask per day — the popup stands down")
+        // Every-open era: the popup re-offers by design, but the day's
+        // SPOKEN reply is owned by the first answer.
+        _ = store.answerMorpheAsk(.tired)
+        XCTAssertEqual(store.morpheAskReplyToday, reply,
+                       "a later answer re-applies the action, never rewrites the day's reply")
     }
 
     /// Moments engine: the daily ask remembers yesterday's answer and
@@ -863,7 +867,27 @@ final class WorkoutSessionTests: XCTestCase {
 
         store.answerDayPopup(.restUp)
         XCTAssertNotNil(store.morpheAskReplyToday, "an answered popup speaks for the day")
-        XCTAssertFalse(store.shouldShowDayPopup, "answered means the popup stands down")
+        XCTAssertFalse(store.shouldShowDayPopup, "answered parks the popup for this open")
+
+        // Every open re-offers (Lucas 2026-08-18) — a foreground return
+        // brings it back even after an answer.
+        store.reopenDayPopup()
+        XCTAssertTrue(store.shouldShowDayPopup, "the popup greets every app open")
+    }
+
+    /// Once the day's work is logged, the popup becomes a launcher — and
+    /// its actions never overwrite the day's first spoken reply.
+    func testDayPopupLoggedStateBecomesLauncher() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+
+        let choices = store.dayPopupChoices(evening: false)
+        XCTAssertEqual(choices.first?.label, "Go again")
+        XCTAssertEqual(choices.last?.label, "Other…")
+        XCTAssertTrue(store.dayPopupQuestion(evening: false).contains("in the books"))
     }
 
     /// Moments engine phase 2: the evening check-in's choices map to real

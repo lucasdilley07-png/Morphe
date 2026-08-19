@@ -272,6 +272,12 @@ struct RootView: View {
         } message: {
             Text("Switch rotates between the workouts you've saved. Save some from Discover — or build your own in Train — and they'll show up here.")
         }
+        // The full-screen day takeover — covers the tab bar; every open.
+        .overlay {
+            MorpheDayPopup()
+                .environment(store)
+        }
+        .animation(.easeInOut(duration: 0.3), value: store.shouldShowDayPopup)
         // The once-ever hello (Apple benchmark A6) — topmost, brief, gone.
         .overlay {
             if store.showHelloBeat {
@@ -1346,14 +1352,25 @@ private struct UniversalSearchSheet: View {
                 }
                 .pickerStyle(.segmented)
 
-                switch category {
-                case .accounts:
-                    accountsResults
-                case .plans:
-                    plansResults
-                case .library:
-                    libraryResults
+                // Swipe between the categories (Lucas 2026-08-18) — same
+                // pager grammar as Train and Learn; the picker stays synced
+                // through the shared selection.
+                TabView(selection: $category) {
+                    ScrollView(showsIndicators: false) {
+                        accountsResults.padding(.bottom, 20)
+                    }
+                    .tag(UniversalSearchCategory.accounts)
+                    ScrollView(showsIndicators: false) {
+                        plansResults.padding(.bottom, 20)
+                    }
+                    .tag(UniversalSearchCategory.plans)
+                    ScrollView(showsIndicators: false) {
+                        libraryResults.padding(.bottom, 20)
+                    }
+                    .tag(UniversalSearchCategory.library)
                 }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(minHeight: 420)
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
@@ -1618,6 +1635,12 @@ private struct QuickAddSheet: View {
                             store.selectedCoachTab = .programs
                             dismissQuickAdd()
                         },
+                        QuickAddItem(title: "Join a Board", subtitle: "Face the weekly leaderboard", systemImage: "trophy.fill") {
+                            // The BOARD pane owns the opt-in flow — this is
+                            // the door, not a silent join.
+                            store.openCommunity(.board)
+                            dismissQuickAdd()
+                        },
                         QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {
                             store.openAIAgent()
                             dismissQuickAdd()
@@ -1670,6 +1693,12 @@ private struct QuickAddSheet: View {
                             // openMore selects the library panel — setting the
                             // tab alone landed on whatever panel was last open.
                             store.openMore(.library)
+                            dismissQuickAdd()
+                        },
+                        QuickAddItem(title: "Join a Board", subtitle: "Face the weekly leaderboard", systemImage: "trophy.fill") {
+                            // The BOARD pane owns the opt-in flow — this is
+                            // the door, not a silent join.
+                            store.openCommunity(.board)
                             dismissQuickAdd()
                         },
                         QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {

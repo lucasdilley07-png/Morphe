@@ -38,6 +38,8 @@ struct MorpheApp: App {
                     // whether "today" is still today.
                     if phase == .active {
                         store.handleDayRolloverIfNeeded()
+                        // The day popup greets every open (Lucas 2026-08-18).
+                        store.reopenDayPopup()
                     }
                     // The log backup debounce is 60s — leaving the app
                     // flushes whatever is pending so a swipe-kill can't

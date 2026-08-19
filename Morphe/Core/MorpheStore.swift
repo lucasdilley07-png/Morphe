@@ -9591,6 +9591,8 @@ final class MorpheAppStore {
     enum DayPopupChoiceKind {
         case startCoach
         case start
+        case goAgain
+        case board
         case lighter
         case ownPlan
         case trainAnyway
@@ -9614,17 +9616,22 @@ final class MorpheAppStore {
     private(set) var dayPopupSessionDismissed = false
 
     var shouldShowDayPopup: Bool {
-        // All day (Lucas 2026-08-17: the 17:00 cutoff hid the flagship
-        // interaction) — after 17:00 the popup CARRIES the evening
-        // question instead of yielding to a separate card. Either
-        // answered reply stands the popup down for the day.
-        guard selectedRole == .client, !isWorkoutLoggedToday,
+        // Every app open (Lucas 2026-08-18): answering or dismissing parks
+        // the popup only until the next foreground return — the reply keys
+        // no longer gate it. State guards stay: never over onboarding, a
+        // live/unlogged session, minimum-win mode, or the comeback moment.
+        guard hasCompletedOnboarding, selectedRole == .client,
               !isWorkoutSessionActive, !hasUnsavedSessionWork,
               !minimumWinModeEnabled, comebackLapsedStreak == nil,
-              !dayPopupSessionDismissed, morpheAskReplyToday == nil,
-              eveningCheckInReplyToday == nil
+              !dayPopupSessionDismissed
         else { return false }
         return true
+    }
+
+    /// Called on every foreground return — the popup re-offers itself.
+    func reopenDayPopup() {
+        dayPopupSessionDismissed = false
+        morpheAskRefresh += 1
     }
 
     /// After 17:00 the popup speaks with the evening voice.
@@ -9639,6 +9646,9 @@ final class MorpheAppStore {
 
     /// Clock-independent form for tests (same pattern as the choices).
     func dayPopupQuestion(evening: Bool) -> String {
+        if isWorkoutLoggedToday {
+            return "Today's in the books, \(greetingName) — anything else?"
+        }
         // Question and choices must come from the SAME state (audit 11,
         // P1-3): the evening voice steps aside when a coach session leads.
         if evening, !isPlannedRestDay, dueCoachAssignment == nil {
@@ -9667,6 +9677,17 @@ final class MorpheAppStore {
     /// Clock-independent form for tests.
     func dayPopupChoices(evening: Bool) -> [DayPopupChoice] {
         var choices: [DayPopupChoice]
+        if isWorkoutLoggedToday {
+            // The day's work is done — the popup becomes a launcher, and
+            // none of these overwrite the day's spoken reply.
+            choices = [
+                DayPopupChoice(kind: .goAgain, label: "Go again", symbol: "arrow.clockwise"),
+                DayPopupChoice(kind: .progress, label: "Check my progress", symbol: "chart.line.uptrend.xyaxis"),
+                DayPopupChoice(kind: .board, label: "See the weekly board", symbol: "trophy.fill")
+            ]
+            choices.append(DayPopupChoice(kind: .other, label: "Other…", symbol: "ellipsis.bubble.fill"))
+            return choices
+        }
         if evening, !isPlannedRestDay, dueCoachAssignment == nil {
             // The evening voice: honest outs, same real actions as the
             // old evening card's chips.
@@ -9703,6 +9724,10 @@ final class MorpheAppStore {
     }
 
     func answerDayPopup(_ kind: DayPopupChoiceKind) {
+        // Any answer parks the popup for this app open (Lucas 2026-08-18:
+        // it re-offers on the next foreground return).
+        dayPopupSessionDismissed = true
+        morpheAskRefresh += 1
         switch kind {
         case .startCoach:
             guard let assignment = dueCoachAssignment else { return }
@@ -9723,6 +9748,10 @@ final class MorpheAppStore {
             startTodayWorkout()
         case .restUp:
             persistDayReply("Good call. Recovery is training too — see you tomorrow.")
+        case .goAgain:
+            showTrainTab()
+        case .board:
+            openCommunity(.board)
         case .progress:
             persistDayReply("Here's what your work adds up to.")
             openProgress()
@@ -9736,10 +9765,7 @@ final class MorpheAppStore {
             _ = answerEveningCheckIn(.tomorrow)
             return
         case .other:
-            // Hands off to the real conversation; the popup parks for the
-            // session and the day stays unburned.
-            dayPopupSessionDismissed = true
-            morpheAskRefresh += 1
+            // Hands off to the real conversation.
             openAIAgent()
             return
         }
@@ -9754,6 +9780,9 @@ final class MorpheAppStore {
     }
 
     private func persistDayReply(_ reply: String) {
+        // The FIRST answer of the day owns the spoken reply — every-open
+        // re-offers must not keep rewriting the app's word for the day.
+        guard UserDefaults.standard.string(forKey: morpheAskKey) == nil else { return }
         UserDefaults.standard.set(reply, forKey: morpheAskKey)
         morpheAskRefresh += 1
     }
@@ -9792,7 +9821,10 @@ final class MorpheAppStore {
             }
             reply = "No problem — I trimmed today down. A short session beats no session."
         }
-        UserDefaults.standard.set(reply, forKey: morpheAskKey)
+        // Guarded persist (every-open era): re-answering on a later open
+        // re-APPLIES the action and updates the mood memory, but never
+        // rewrites the day's first spoken reply.
+        persistDayReply(reply)
         UserDefaults.standard.set(mood.rawValue, forKey: morpheAskMoodKey(for: .now))
         morpheAskRefresh += 1
         Haptics.selection()

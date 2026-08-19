@@ -42,16 +42,12 @@ struct HomeView: View {
                         .font(.title2.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .multilineTextAlignment(.center)
-                    // While the slide-up popup owns the question, the
-                    // header stays greeting-only — one voice, one question.
-                    if !store.shouldShowDayPopup {
-                        Text(store.homePrompt)
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .contentTransition(.opacity)
-                            .glimmer()
-                    }
+                    Text(store.homePrompt)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .contentTransition(.opacity)
+                        .glimmer()
                     // Monday: the recap speaks (moments engine phase 2) —
                     // same derived numbers as the Progress card.
                     if let recap = store.mondayRecapLine {
@@ -439,15 +435,7 @@ struct HomeView: View {
             // Starts clearly BELOW the floating profile icon, matching where
             // the Progress/Learn titles sit.
             .padding(.top, MorpheTheme.Spacing.pageTopToday)
-            // The popup floats over the tail of the page — the scroll
-            // clears it so the Coach/Schedule tiles stay reachable
-            // (audit 11, P1-2).
-            .padding(.bottom, store.shouldShowDayPopup ? 340 : 120)
-        }
-        // The Jarvis slide-up: the Morphe character asks what today is,
-        // rising from the bottom edge over the page.
-        .overlay(alignment: .bottom) {
-            MorpheDayPopup()
+            .padding(.bottom, 120)
         }
         // The network-backed pieces of Today (coach threads, appointments)
         // refresh on pull, like Network already does.
@@ -888,7 +876,7 @@ private struct ComebackCard: View {
 
 /// The Morphe character: the brand M on the gold plate — the same mark
 /// as the app icon, no invented persona.
-private struct MorpheCharacterBadge: View {
+struct MorpheCharacterBadge: View {
     var body: some View {
         ZStack {
             Circle()
@@ -903,11 +891,11 @@ private struct MorpheCharacterBadge: View {
     }
 }
 
-/// The slide-up day popup (Lucas 2026-08-17): Morphe rises from the
-/// bottom, asks what the user wants to do, and offers the three most
-/// common answers for the CURRENT state plus Other (which opens the real
-/// conversation). Swipe down or X parks it for the session.
-private struct MorpheDayPopup: View {
+/// The full-screen day takeover (Lucas 2026-08-18): Morphe rises from
+/// the bottom edge covering the whole screen on EVERY app open — the
+/// character, the question for the current state, three common answers
+/// plus Other. Swipe down or X parks it until the next open.
+struct MorpheDayPopup: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
@@ -916,83 +904,80 @@ private struct MorpheDayPopup: View {
     var body: some View {
         let _ = store.morpheAskRefresh
         if store.shouldShowDayPopup {
-            VStack(spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                MorpheTheme.ink.ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    HStack {
+                        Spacer()
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                store.dismissDayPopupForSession()
+                            }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Dismiss until the next open")
+                    }
+
+                    Spacer()
+
                     MorpheCharacterBadge()
+                        .scaleEffect(1.5)
+                        .padding(.bottom, 24)
 
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(store.homeGreeting)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                        Text(store.dayPopupQuestion)
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    Text(store.homeGreeting)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .multilineTextAlignment(.center)
 
-                    Spacer(minLength: 0)
+                    Text(store.dayPopupQuestion)
+                        .font(.title3)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 6)
+                        .padding(.horizontal, 12)
 
-                    Button {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                            store.dismissDayPopupForSession()
-                        }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Dismiss for now")
-                }
+                    Spacer()
 
-                VStack(spacing: 8) {
-                    ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
-                        if index == 0 {
-                            choiceButton(choice)
-                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        } else {
-                            choiceButton(choice)
-                                .buttonStyle(SecondaryCTAButtonStyle())
+                    VStack(spacing: 10) {
+                        ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
+                            if index == 0 {
+                                choiceButton(choice)
+                                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                            } else {
+                                choiceButton(choice)
+                                    .buttonStyle(SecondaryCTAButtonStyle())
+                            }
                         }
                     }
+                    .frame(maxWidth: 420)
+                    .padding(.bottom, 24)
                 }
+                .padding(24)
             }
-            .padding(16)
-            // Accessibility text sizes can outgrow the bottom anchor — the
-            // card scrolls internally instead of clipping (audit 11, P2-19).
-            .frame(maxHeight: 440)
-            .fixedSize(horizontal: false, vertical: true)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(MorpheTheme.inkAlt)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(MorpheTheme.stroke, lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.25), radius: 18, y: 6)
-            )
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
-            .offset(y: (appeared || reduceMotion ? 0 : 320) + max(0, dragOffset))
-            .opacity(appeared || reduceMotion ? 1 : 0)
+            .offset(y: (appeared || reduceMotion ? 0 : 900) + max(0, dragOffset))
             .onAppear {
                 guard !appeared else { return }
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.85).delay(0.4)) {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.85).delay(0.35)) {
                     appeared = true
                 }
             }
-            // Fluid-interfaces compliance (Apple benchmark A4): the card
-            // follows the finger, and a release below the threshold springs
-            // it back — grabbable, reversible, never a dead threshold.
+            // Fluid-interfaces compliance: the takeover follows the finger
+            // and springs back below the dismiss threshold.
             .gesture(
                 DragGesture(minimumDistance: 5)
                     .onChanged { value in
                         dragOffset = max(0, value.translation.height)
                     }
                     .onEnded { value in
-                        if value.translation.height > 80 {
+                        if value.translation.height > 120 {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                 store.dismissDayPopupForSession()
                             }
@@ -1004,8 +989,6 @@ private struct MorpheDayPopup: View {
                     }
             )
             .transition(.move(edge: .bottom).combined(with: .opacity))
-            // VoiceOver lands here first — it's the day's question, not an
-            // afterthought behind the whole page (audit 11, P2-20).
             .accessibilityAddTraits(.isModal)
             .accessibilitySortPriority(1000)
         }
