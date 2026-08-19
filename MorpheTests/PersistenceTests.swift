@@ -734,22 +734,19 @@ final class WorkoutSessionTests: XCTestCase {
     /// persists its reply, and only asks once per day.
     func testMorpheAskAnswersHonestlyOncePerDay() {
         let store = freshStore()
-        // shouldOfferMorpheAsk is wall-clock-gated after audit 10 (the ask
-        // stands down for the evening voice at 17:00), so the test asserts
-        // the mechanics, not the time-dependent offer.
         XCTAssertNil(store.morpheAskReplyToday)
 
         let reply = store.answerMorpheAsk(.short)
         XCTAssertTrue(reply.contains("trimmed"), "the reply describes the adjustment that actually ran")
         XCTAssertEqual(store.morpheAskReplyToday, reply, "the spoken reply persists for the day")
-        XCTAssertFalse(store.shouldOfferMorpheAsk, "one ask per day — no nagging")
+        XCTAssertFalse(store.shouldShowDayPopup, "one ask per day — the popup stands down")
     }
 
     /// Moments engine: the daily ask remembers yesterday's answer and
     /// shapes today's question from it — the friend checking back in.
     func testMorpheAskRemembersYesterdaysAnswer() {
         let store = freshStore()
-        XCTAssertTrue(store.morpheAskQuestion.contains("How are you feeling"),
+        XCTAssertFalse(store.dayPopupQuestion(evening: false).contains("recovery day"),
                       "no memory, no claim — the default question stands")
 
         let formatter = DateFormatter()
@@ -759,7 +756,7 @@ final class WorkoutSessionTests: XCTestCase {
             "Tired",
             forKey: "morphe.ask.\(store.clientProfile.id.uuidString).mood.\(formatter.string(from: yesterday))"
         )
-        XCTAssertTrue(store.morpheAskQuestion.contains("recovery"),
+        XCTAssertTrue(store.dayPopupQuestion(evening: false).contains("recovery day"),
                       "yesterday's 'Tired' shapes today's question")
     }
 
@@ -819,10 +816,14 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertTrue(challenge.line.contains("3 sessions"))
     }
 
-    /// Apple benchmark A6: hello plays once per account lifetime.
-    func testHelloBeatFiresOncePerAccount() {
+    /// Apple benchmark A6 + audit 11 P0-1: a fresh onboarding fires the
+    /// hello and HOLDS the welcome sheet (the overlay's completion raises
+    /// it — raised together, the sheet hid the hello forever).
+    func testHelloBeatFiresOncePerAccountAndDefersWelcome() {
         let store = freshStore()
         XCTAssertTrue(store.showHelloBeat, "a fresh account gets the hello")
+        XCTAssertFalse(store.showWelcomeExperience,
+                       "the welcome sheet waits for the hello to finish")
         store.showHelloBeat = false
 
         let reloaded = MorpheAppStore()
@@ -876,7 +877,7 @@ final class WorkoutSessionTests: XCTestCase {
 
         // Answered means answered (audit 10, P2-12): a second answer must
         // return the original reply and change nothing — the old assert on
-        // shouldOfferEveningCheckIn was vacuously false before 17:00.
+        // (the old shouldOfferEveningCheckIn assert was vacuous pre-17:00.)
         let secondReply = store.answerEveningCheckIn(.tomorrow)
         XCTAssertEqual(secondReply, reply, "no overwrite once the evening is answered")
         XCTAssertEqual(store.eveningCheckInReplyToday, reply)

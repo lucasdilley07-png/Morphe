@@ -1355,7 +1355,9 @@ struct BannerProfile: Hashable {
 }
 
 struct ProfileBadge: Identifiable, Hashable {
-    var id = UUID()
+    /// Stable identity (audit 11, P2-13): a stored UUID regenerated on
+    /// every computed read handed ForEach fresh identities per render.
+    var id: String { title + "|" + detail }
     var title: String
     var detail: String
     var icon: String

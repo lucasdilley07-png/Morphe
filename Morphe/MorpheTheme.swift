@@ -409,7 +409,7 @@ enum Haptics {
     }
 }
 
-/// Two tiny UI sounds, synthesized in memory — no bundled audio assets.
+/// Three tiny UI sounds, synthesized in memory — no bundled audio assets.
 /// `star` (a rising four-note sparkle) marks a COMPLETION: task, workout,
 /// quiz. `ding` (one soft bell hit) marks a CONTRIBUTION: saving a workout,
 /// posting, commenting, sharing a win, logging a workout, answering

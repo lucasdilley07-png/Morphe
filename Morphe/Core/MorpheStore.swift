@@ -4806,14 +4806,11 @@ final class MorpheAppStore {
         // persisted (no other prefs didSet is guaranteed to fire on the solo
         // path). The pre-mint blob is purged: it sits under the FIXED seeded
         // demo id, so a second account on this device would inherit it.
-        // The once-ever hello (Apple benchmark A6): one warm word, once
-        // per account lifetime. AFTER resetToFreshUser, same as
-        // firstWeekStart — earlier and it keys on the seeded demo id.
-        let helloKey = "morphe.hello.\(clientProfile.id.uuidString)"
-        if !UserDefaults.standard.bool(forKey: helloKey) {
-            UserDefaults.standard.set(true, forKey: helloKey)
-            showHelloBeat = true
-        }
+        // The once-ever hello (Apple benchmark A6): once per onboarding —
+        // and every onboarding mints a fresh account id, so that IS once
+        // per account lifetime. (A per-id UserDefaults guard here could
+        // never fire and left an unpurged key; audit 11, P2-9/P2-8.)
+        showHelloBeat = true
         if firstWeekStart == nil {
             firstWeekStart = .now
         }
@@ -4876,7 +4873,13 @@ final class MorpheAppStore {
         // catches accounts that never agreed (pre-toggle restores).
         if onboardingDraft.agreedToTerms {
             hasAcceptedTerms = true
-            showWelcomeExperience = true
+            // The hello beat plays FIRST (audit 11, P0-1): the welcome
+            // sheet presents above every overlay, so raising both at once
+            // hid the hello behind it forever. HelloBeatOverlay's
+            // completion raises the sheet instead.
+            if !showHelloBeat {
+                showWelcomeExperience = true
+            }
         } else {
             welcomeAwaitsTermsAcceptance = true
         }
@@ -5882,9 +5885,6 @@ final class MorpheAppStore {
     /// overnight used to keep yesterday's "you're done for today", completed
     /// tasks, and check-in state forever.
     func handleDayRolloverIfNeeded(now: Date = .now) {
-        // Yesterday's non-committing ask reply must not open a new day
-        // (audit 9, P2).
-        morpheAskTransientReply = nil
         let today = Self.dayKey(for: now)
         guard today != lastDailyResetDay else { return }
         let previousDay = lastDailyResetDay
@@ -7308,7 +7308,11 @@ final class MorpheAppStore {
             // The celebration speaks in the coaching tone the user picked.
             showCelebration(title: "+50 XP", detail: profileShowcase.coachingTone.workoutCompleteDetail, symbol: "sparkles")
         }
-        Haptics.success()
+        // The stamp's PR/program signature owns the haptic when it fires —
+        // a third tap on top read as noise (audit 11, P2-11).
+        if recordStamp == nil {
+            Haptics.success()
+        }
         showToast("Workout logged. Progress updated.")
         // Milestone pep-talks ride the same beat — but a PR celebration
         // wins the moment; the milestone waits for a quieter log.
@@ -8278,9 +8282,6 @@ final class MorpheAppStore {
 
     // MARK: Earned badges (derived from real data, never stored)
 
-    /// The profile badge grid — computed from logs and state on every read,
-    /// so a badge can never exist without the data that backs it. This
-    /// replaced the seeded showcase badges, which were demo content.
     // MARK: - Apple-benchmark moments (docs/UI-AUDIT-APPLE.md)
 
     /// A6: the once-ever hello — set by completeOnboarding exactly once
@@ -8298,6 +8299,23 @@ final class MorpheAppStore {
         formatter.dateFormat = "MMMM"
         return formatter
     }()
+
+    private var monthlyChallengeDismissKey: String {
+        let month = Self.askDayFormatter.string(from: .now).prefix(7)
+        return "morphe.ask.\(clientProfile.id.uuidString).challenge.dismissed.\(month)"
+    }
+
+    /// A completed challenge can be put away for the month (audit 11,
+    /// P2-22) — the in-progress bar stays; only a finished one dismisses.
+    var monthlyChallengeDismissed: Bool {
+        UserDefaults.standard.bool(forKey: monthlyChallengeDismissKey)
+    }
+
+    func dismissMonthlyChallenge() {
+        UserDefaults.standard.set(true, forKey: monthlyChallengeDismissKey)
+        morpheAskRefresh += 1
+        Haptics.selection()
+    }
 
     /// A2: the honest version of Apple's Monthly Challenges — pure
     /// arithmetic on the user's own logs. Last month's session count sets
@@ -8355,6 +8373,9 @@ final class MorpheAppStore {
         return badges
     }
 
+    /// The profile badge grid — computed from logs and state on every read,
+    /// so a badge can never exist without the data that backs it. This
+    /// replaced the seeded showcase badges, which were demo content.
     var earnedBadges: [ProfileBadge] {
         var badges: [ProfileBadge] = []
         let logs = currentAthleteWorkoutLogs
@@ -9468,6 +9489,12 @@ final class MorpheAppStore {
 
     private static let askDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        // Pinned (audit 11, P2-25): an unpinned DateFormatter follows the
+        // locale calendar, which could disagree with dayKey's
+        // Calendar.current scheme under non-Gregorian locales.
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .current
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
@@ -9521,10 +9548,10 @@ final class MorpheAppStore {
     /// profile — both removed by prefix on sign-out/delete (audit 8, P2)
     /// so "everything tied to it is gone from this device" stays true.
     private func purgeConversationalDefaults() {
-        morpheAskTransientReply = nil
         // Entrance animations replay for the next account in this app
-        // session (audit 9, P2).
+        // session (audit 9, P2), and the popup un-parks (audit 11, P2-21).
         playedIntroKeys.removeAll()
+        dayPopupSessionDismissed = false
         let prefixes = ["morphe.ask.\(clientProfile.id.uuidString)", guideSeenKey,
                         milestonesSeenKey, quizAnswerDayKey]
         for key in UserDefaults.standard.dictionaryRepresentation().keys
@@ -9553,18 +9580,6 @@ final class MorpheAppStore {
             .flatMap(MorpheAskMood.init(rawValue:))
     }
 
-    /// The daily ask, memory-aware (moments engine): yesterday's answer
-    /// shapes today's question so it reads like a friend checking back in.
-    var morpheAskQuestion: String {
-        switch yesterdaysAskMood {
-        case .tired, .sore:
-            return "Yesterday was a recovery day — how's the energy today, \(greetingName)?"
-        case .short:
-            return "Yesterday was a quick one — got more room today, \(greetingName)?"
-        case .ready, nil:
-            return "How are you feeling today, \(greetingName)?"
-        }
-    }
 
     // MARK: - Day popup (Jarvis slide-up)
     //
@@ -9619,18 +9634,26 @@ final class MorpheAppStore {
 
     /// Memory-aware question — the same yesterday lens as the ask.
     var dayPopupQuestion: String {
-        if dayPopupIsEvening, !isPlannedRestDay {
+        dayPopupQuestion(evening: dayPopupIsEvening)
+    }
+
+    /// Clock-independent form for tests (same pattern as the choices).
+    func dayPopupQuestion(evening: Bool) -> String {
+        // Question and choices must come from the SAME state (audit 11,
+        // P1-3): the evening voice steps aside when a coach session leads.
+        if evening, !isPlannedRestDay, dueCoachAssignment == nil {
             return eveningCheckInLine
         }
         if isPlannedRestDay {
             return "It's your rest day — what's the move?"
         }
+        // Only the recovery memory is reachable (the popup's "lighter"
+        // answer records .tired) — the other mood variants were dead copy
+        // (audit 11, P2-7).
         switch yesterdaysAskMood {
         case .tired, .sore:
             return "Yesterday was a recovery day — what's the move today?"
-        case .short:
-            return "Yesterday was a quick one — what's the move today?"
-        case .ready, nil:
+        default:
             return "What's the move today?"
         }
     }
@@ -9735,25 +9758,6 @@ final class MorpheAppStore {
         morpheAskRefresh += 1
     }
 
-    /// Ask only when an answer can still shape the day: client role, no
-    /// session logged, not a rest day, not already answered.
-    var shouldOfferMorpheAsk: Bool {
-        // No ask while a coach session leads Today (audit 8, P1-3): "tired"
-        // would swap the GENERIC plan while the hero says start the
-        // coach's — a contradiction the user can't see. After 17:00 an
-        // unanswered morning ask stands down for the evening check-in —
-        // one voice owns Today at a time (audit 10, P1-5). An ANSWERED
-        // ask keeps the floor all day via its reply card.
-        selectedRole == .client && !isWorkoutLoggedToday
-            && !isPlannedRestDay && dueCoachAssignment == nil
-            && morpheAskReplyToday == nil
-            && Calendar.current.component(.hour, from: .now) < 17
-    }
-
-    /// A non-committing reply (session work pending, template missing) —
-    /// shown above the chips so the user can answer again; never burns the
-    /// day's ask and never gets persisted as the app's word.
-    private(set) var morpheAskTransientReply: String?
 
     /// Applies the honest adjustment for the mood and returns what the app
     /// says back. The reply persists for the day ONLY when the adjustment
@@ -9764,11 +9768,8 @@ final class MorpheAppStore {
         // Any live session counts here — even zero sets (audit 9, P2):
         // an adjustment would silently end it with navigation off.
         guard !hasUnsavedSessionWork, !isWorkoutSessionActive else {
-            let reply = "You're mid-session in Train — finish it or log what you've got, then ask me again."
-            morpheAskTransientReply = reply
-            morpheAskRefresh += 1
             Haptics.selection()
-            return reply
+            return "You're mid-session in Train — finish it or log what you've got, then ask me again."
         }
         let reply: String
         switch mood {
@@ -9791,7 +9792,6 @@ final class MorpheAppStore {
             }
             reply = "No problem — I trimmed today down. A short session beats no session."
         }
-        morpheAskTransientReply = nil
         UserDefaults.standard.set(reply, forKey: morpheAskKey)
         UserDefaults.standard.set(mood.rawValue, forKey: morpheAskMoodKey(for: .now))
         morpheAskRefresh += 1
@@ -9801,11 +9801,8 @@ final class MorpheAppStore {
     }
 
     private func morpheAskFellThrough() -> String {
-        let reply = "I couldn't line that up just now — your current plan stands."
-        morpheAskTransientReply = reply
-        morpheAskRefresh += 1
         Haptics.selection()
-        return reply
+        return "I couldn't line that up just now — your current plan stands."
     }
 
     // MARK: - Moments engine, phase 2: Monday recap voice + evening check-in
@@ -9848,22 +9845,6 @@ final class MorpheAppStore {
         UserDefaults.standard.string(forKey: eveningCheckInKey)
     }
 
-    /// A training-day evening with nothing logged — the friend checks in
-    /// once, in-app only (never a push), and stands down after any answer.
-    var shouldOfferEveningCheckIn: Bool {
-        // One voice at a time (audit 10, P1-5): the evening card stands
-        // down while the morning ask is unanswered or already answered
-        // today, and while the comeback card holds the floor. And it
-        // carries the ask's unsaved-session gate (P1-3) — a finished-but-
-        // unlogged recap must settle before any adjustment chip renders.
-        guard selectedRole == .client, !isWorkoutLoggedToday, !isPlannedRestDay,
-              dueCoachAssignment == nil, !isWorkoutSessionActive,
-              !hasUnsavedSessionWork, !minimumWinModeEnabled,
-              comebackLapsedStreak == nil,
-              morpheAskReplyToday == nil, eveningCheckInReplyToday == nil
-        else { return false }
-        return Calendar.current.component(.hour, from: .now) >= 17
-    }
 
     var eveningCheckInLine: String {
         if let atRisk = streakOnTheLineDays {

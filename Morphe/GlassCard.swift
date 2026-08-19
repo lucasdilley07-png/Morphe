@@ -172,6 +172,10 @@ struct HelloBeatOverlay: View {
                 withAnimation(.easeIn(duration: 0.5)) { visible = false }
                 try? await Task.sleep(nanoseconds: 550_000_000)
                 store.showHelloBeat = false
+                // NOW the welcome sheet rises (audit 11, P0-1): raised
+                // together, the sheet presented above this overlay and the
+                // hello played invisibly, once, forever.
+                store.showWelcomeExperience = true
             }
         }
         .accessibilityElement(children: .ignore)
@@ -522,9 +526,16 @@ struct RecordStampOverlay: View {
                 .padding(24)
         }
         .onAppear {
-            // The PR signature pair — used nowhere else (Apple A1).
-            Haptics.personalRecord()
-            SoundEffects.play(.pr)
+            // The PR signature pair fires for RECORDS only (audit 11,
+            // P2-10) — the program-complete stamp keeps the completion cue,
+            // or "one signal, one meaning" would already be broken.
+            if moment.prCard != nil {
+                Haptics.personalRecord()
+                SoundEffects.play(.pr)
+            } else {
+                Haptics.success()
+                SoundEffects.play(.star)
+            }
         }
         .sheet(item: $sharePayload) { payload in
             ImageShareSheet(image: payload.image, caption: payload.caption) { completed in
@@ -1653,6 +1664,7 @@ struct BadgeGridCard: View {
                                                 style: StrokeStyle(lineWidth: 1, dash: badge.earned ? [] : [5, 4]))
                                 )
                         )
+                        .accessibilityElement(children: .ignore)
                         .accessibilityLabel(badge.earned
                             ? "\(badge.title), earned. \(badge.detail)"
                             : "\(badge.title), not earned yet. \(badge.detail)")

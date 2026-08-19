@@ -24,10 +24,6 @@ struct MoreView: View {
     /// ONE quiz per calendar day — the day picks it, completion doesn't skip
     /// ahead. (The old "first uncompleted" rule let a learner chain all 16 in
     /// one sitting, then hit an empty pool with a false "tomorrow" promise.)
-    /// Chronological (Lucas 2026-08-17): the store owns the unlock order —
-    /// quiz 1 first, one attempt a day, correct answers advance the line.
-    private var dailyQuiz: MiniQuiz? { store.todaysQuiz }
-
     private let mobilityLibrary = [
         "90/90 Hip Switch",
         "World's Greatest Stretch",
@@ -70,7 +66,11 @@ struct MoreView: View {
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 16) {
                             panel(for: feature)
-                            ManifestoCard()
+                            // Once per tab, on the last page — not three
+                            // copies (audit 11, P2-16).
+                            if feature == Self.tabs.last {
+                                ManifestoCard()
+                            }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 4)
@@ -80,7 +80,6 @@ struct MoreView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.easeInOut(duration: 0.2), value: activeFeature)
         }
         .padding(.top, MorpheTheme.Spacing.pageTopCompact)
     }
@@ -105,17 +104,6 @@ struct MoreView: View {
         }
     }
 
-    @ViewBuilder
-    private var featureContent: some View {
-        switch activeFeature {
-        case .library:
-            libraryPanel
-        case .nutrition:
-            nutritionPanel
-        default:
-            learningPanel
-        }
-    }
 
     private var libraryPanel: some View {
         Group {
@@ -130,6 +118,10 @@ struct MoreView: View {
                     Text("Browse by muscle group, then open the movement for beginner-friendly form help and safer alternatives.")
                         .foregroundStyle(MorpheTheme.textSecondary)
 
+                    // Platform note (audit 11, P2-17): a drag starting on
+                    // this horizontal row scrolls the chips, not the pager
+                    // — standard nested-scroll behavior; the page tabs
+                    // above remain the guaranteed door.
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(MuscleGroup.allCases) { group in
@@ -580,7 +572,7 @@ private struct QuizSheet: View {
 
         ScrollView(showsIndicators: false) {
             VStack(spacing: 14) {
-                Text("DAILY QUIZ")
+                Text(isComplete || answeredIndex != nil ? "QUIZ REVIEW" : "DAILY QUIZ")
                     .font(MorpheTheme.microLabel(10))
                     .tracking(1.6)
                     .foregroundStyle(MorpheTheme.accentText)

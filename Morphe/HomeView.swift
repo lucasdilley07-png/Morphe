@@ -251,7 +251,7 @@ struct HomeView: View {
 
                 // A2 (Apple benchmark): last month sets this month's bar —
                 // pure arithmetic on real logs, invisible without a base month.
-                if let challenge = store.monthlyChallenge {
+                if let challenge = store.monthlyChallenge, !store.monthlyChallengeDismissed {
                     GlassCard {
                         VStack(spacing: 10) {
                             HStack(spacing: 8) {
@@ -262,6 +262,24 @@ struct HomeView: View {
                                     .font(MorpheTheme.microLabel(9))
                                     .tracking(1.6)
                                     .foregroundStyle(MorpheTheme.textMuted)
+                                // A FINISHED challenge can be put away for
+                                // the month (audit 11, P2-22).
+                                if challenge.done >= challenge.target {
+                                    Spacer(minLength: 0)
+                                    Button {
+                                        withAnimation(.easeInOut(duration: 0.25)) {
+                                            store.dismissMonthlyChallenge()
+                                        }
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.caption2.weight(.bold))
+                                            .foregroundStyle(MorpheTheme.textMuted)
+                                            .frame(width: 32, height: 32)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Dismiss the completed challenge")
+                                }
                             }
                             Text(challenge.line)
                                 .font(.subheadline)
@@ -421,7 +439,10 @@ struct HomeView: View {
             // Starts clearly BELOW the floating profile icon, matching where
             // the Progress/Learn titles sit.
             .padding(.top, MorpheTheme.Spacing.pageTopToday)
-            .padding(.bottom, 120)
+            // The popup floats over the tail of the page — the scroll
+            // clears it so the Coach/Schedule tiles stay reachable
+            // (audit 11, P1-2).
+            .padding(.bottom, store.shouldShowDayPopup ? 340 : 120)
         }
         // The Jarvis slide-up: the Morphe character asks what today is,
         // rising from the bottom edge over the page.
@@ -559,8 +580,11 @@ private struct MorpheAsksCard: View {
 
     var body: some View {
         let _ = store.morpheAskRefresh
+        // No rest-day exclusion (audit 11, P1-4): "Rest up" persists a
+        // rest-day-specific reply, and hiding it made that the one answer
+        // Morphe never spoke back.
         if let reply = store.morpheAskReplyToday, !store.isWorkoutLoggedToday,
-           !store.isPlannedRestDay, store.dueCoachAssignment == nil {
+           store.dueCoachAssignment == nil {
             GlassCard {
                 VStack(spacing: 10) {
                     HStack(spacing: 8) {
@@ -936,6 +960,10 @@ private struct MorpheDayPopup: View {
                 }
             }
             .padding(16)
+            // Accessibility text sizes can outgrow the bottom anchor — the
+            // card scrolls internally instead of clipping (audit 11, P2-19).
+            .frame(maxHeight: 440)
+            .fixedSize(horizontal: false, vertical: true)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(MorpheTheme.inkAlt)
@@ -976,6 +1004,10 @@ private struct MorpheDayPopup: View {
                     }
             )
             .transition(.move(edge: .bottom).combined(with: .opacity))
+            // VoiceOver lands here first — it's the day's question, not an
+            // afterthought behind the whole page (audit 11, P2-20).
+            .accessibilityAddTraits(.isModal)
+            .accessibilitySortPriority(1000)
         }
     }
 
