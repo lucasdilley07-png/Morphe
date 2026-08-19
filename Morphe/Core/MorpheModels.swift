@@ -1359,6 +1359,9 @@ struct ProfileBadge: Identifiable, Hashable {
     var title: String
     var detail: String
     var icon: String
+    /// False = a visible goal (Apple benchmark A3): outline style, unlock
+    /// condition in `detail`, nothing pretends to be won.
+    var earned: Bool = true
 }
 
 struct PersonalRecord: Identifiable, Hashable {

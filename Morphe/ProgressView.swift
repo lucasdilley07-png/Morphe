@@ -386,9 +386,10 @@ struct ProgressScreenView: View {
                 }
                 // Earned badges only — derived from real logs/state, never
                 // the seeded showcase list (that was demo content).
-                if !store.earnedBadges.isEmpty {
-                    BadgeGridCard(badges: store.earnedBadges)
-                }
+                // Earned badges + outlined goals (Apple benchmark A3) —
+                // the card always renders, and every outline names its
+                // real unlock condition.
+                BadgeGridCard(badges: store.badgeShowcase)
                 if !store.recentWins.isEmpty {
                     RecentWinsCard(wins: store.recentWins)
                 }

@@ -249,6 +249,34 @@ struct HomeView: View {
                     nextMoveCard
                 }
 
+                // A2 (Apple benchmark): last month sets this month's bar —
+                // pure arithmetic on real logs, invisible without a base month.
+                if let challenge = store.monthlyChallenge {
+                    GlassCard {
+                        VStack(spacing: 10) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "calendar.badge.checkmark")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(MorpheTheme.accentText)
+                                Text("MONTHLY CHALLENGE")
+                                    .font(MorpheTheme.microLabel(9))
+                                    .tracking(1.6)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            Text(challenge.line)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .multilineTextAlignment(.center)
+                            ProgressBarView(
+                                progress: min(Double(challenge.done) / Double(challenge.target), 1),
+                                color: MorpheTheme.accent
+                            )
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+
                 if store.todayExperienceTier >= 2, let insight = store.primaryAthletePatternInsight {
                     HomePatternInsightCard(insight: insight) {
                         store.openProgress()
@@ -859,6 +887,7 @@ private struct MorpheDayPopup: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         let _ = store.morpheAskRefresh
@@ -918,7 +947,7 @@ private struct MorpheDayPopup: View {
             )
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
-            .offset(y: appeared || reduceMotion ? 0 : 320)
+            .offset(y: (appeared || reduceMotion ? 0 : 320) + max(0, dragOffset))
             .opacity(appeared || reduceMotion ? 1 : 0)
             .onAppear {
                 guard !appeared else { return }
@@ -926,14 +955,25 @@ private struct MorpheDayPopup: View {
                     appeared = true
                 }
             }
+            // Fluid-interfaces compliance (Apple benchmark A4): the card
+            // follows the finger, and a release below the threshold springs
+            // it back — grabbable, reversible, never a dead threshold.
             .gesture(
-                DragGesture(minimumDistance: 20).onEnded { value in
-                    if value.translation.height > 40 {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                            store.dismissDayPopupForSession()
+                DragGesture(minimumDistance: 5)
+                    .onChanged { value in
+                        dragOffset = max(0, value.translation.height)
+                    }
+                    .onEnded { value in
+                        if value.translation.height > 80 {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                store.dismissDayPopupForSession()
+                            }
+                        } else {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                                dragOffset = 0
+                            }
                         }
                     }
-                }
             )
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }

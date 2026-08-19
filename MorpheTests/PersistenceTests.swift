@@ -780,6 +780,70 @@ final class WorkoutSessionTests: XCTestCase {
                       "Epley says 9 reps at the last top weight beats 8: \(line ?? "nil")")
     }
 
+    /// Apple benchmark A2: the monthly challenge derives purely from real
+    /// logs — invisible without a base month, last month + 1 with one.
+    func testMonthlyChallengeDerivesFromRealLogs() {
+        let store = freshStore()
+        XCTAssertNil(store.monthlyChallenge, "no base month, no invented target")
+
+        // Injected directly — the back-date door honestly caps at 14 days,
+        // and a base month is older than that by definition.
+        let calendar = Calendar.current
+        let thisMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: .now))!
+        for offset in 0..<3 {
+            let day = calendar.date(byAdding: .day, value: -(5 + offset * 2), to: thisMonthStart)!
+            store.workoutLogs.append(WorkoutLog(
+                athleteID: store.clientProfile.id,
+                athleteName: store.clientProfile.name,
+                workoutTemplateID: nil,
+                workoutTitle: "Base Month Session",
+                sport: .strength,
+                completedAt: day,
+                durationMinutes: 40,
+                exercises: [LoggedExercise(
+                    name: "Push-Up", sets: "3 sets", reps: "10, 10, 10",
+                    weight: "", note: "",
+                    repsPerSet: [10, 10, 10], weightsPerSet: [0, 0, 0],
+                    rpePerSet: [0, 0, 0], weightUnit: "lb"
+                )],
+                notes: "", source: .athleteManual,
+                enteredByUserID: store.clientProfile.id, enteredByRole: .client,
+                enteredByName: store.clientProfile.name, verificationStatus: .athleteSubmitted
+            ))
+        }
+
+        guard let challenge = store.monthlyChallenge else {
+            return XCTFail("three last-month sessions form a base month")
+        }
+        XCTAssertEqual(challenge.target, 4, "last month's 3 sets this month's bar at 4")
+        XCTAssertTrue(challenge.line.contains("3 sessions"))
+    }
+
+    /// Apple benchmark A6: hello plays once per account lifetime.
+    func testHelloBeatFiresOncePerAccount() {
+        let store = freshStore()
+        XCTAssertTrue(store.showHelloBeat, "a fresh account gets the hello")
+        store.showHelloBeat = false
+
+        let reloaded = MorpheAppStore()
+        XCTAssertFalse(reloaded.showHelloBeat, "relaunch never replays it")
+    }
+
+    /// Apple benchmark A3: unearned badges are visible goals with their
+    /// unlock condition named — never presented as won.
+    func testBadgeShowcaseOutlinesUnearnedGoals() {
+        let store = freshStore()
+        let showcase = store.badgeShowcase
+        XCTAssertTrue(showcase.contains { $0.title == "First Workout" && !$0.earned })
+
+        startedTwoExerciseSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+        XCTAssertTrue(store.badgeShowcase.contains { $0.title == "First Workout" && $0.earned },
+                      "a real log flips the outline to earned")
+    }
+
     /// Jarvis slide-up: the popup offers three context-derived choices
     /// plus Other, and an answer persists the day's reply through the
     /// same key the one-voice rules read.

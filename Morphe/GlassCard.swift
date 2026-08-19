@@ -143,6 +143,42 @@ struct SectionTitleView: View {
     }
 }
 
+/// The once-ever hello (Apple benchmark A6): one warm word, once per
+/// account lifetime — the whole beat is under three seconds and then it
+/// never happens again.
+struct HelloBeatOverlay: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var visible = false
+
+    var body: some View {
+        ZStack {
+            MorpheTheme.ink.ignoresSafeArea()
+            Text("hello, \(store.greetingName)")
+                .font(.system(size: 42, weight: .light, design: .serif))
+                .italic()
+                .foregroundStyle(MorpheTheme.brandYellowText)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+                .padding(.horizontal, 32)
+                .opacity(visible ? 1 : 0)
+                .scaleEffect(visible ? 1 : 0.96)
+        }
+        .onAppear {
+            Haptics.impact(.light)
+            withAnimation(.easeOut(duration: reduceMotion ? 0.1 : 0.9)) { visible = true }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_300_000_000)
+                withAnimation(.easeIn(duration: 0.5)) { visible = false }
+                try? await Task.sleep(nanoseconds: 550_000_000)
+                store.showHelloBeat = false
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Hello, \(store.greetingName)")
+    }
+}
+
 /// Sheets cover the root toast overlay, so any store toast fired from
 /// sheet-hosted content was invisible (audit 7, P1-3 — the weight guard
 /// was the first fix to depend on one). Sheet hosts apply this so the
@@ -486,8 +522,9 @@ struct RecordStampOverlay: View {
                 .padding(24)
         }
         .onAppear {
-            Haptics.impact(.heavy)
-            SoundEffects.play(.star)
+            // The PR signature pair — used nowhere else (Apple A1).
+            Haptics.personalRecord()
+            SoundEffects.play(.pr)
         }
         .sheet(item: $sharePayload) { payload in
             ImageShareSheet(image: payload.image, caption: payload.caption) { completed in
@@ -1594,20 +1631,31 @@ struct BadgeGridCard: View {
                     ForEach(badges) { badge in
                         VStack(alignment: .leading, spacing: 8) {
                             Image(systemName: badge.icon)
-                                .foregroundStyle(MorpheTheme.accentText)
+                                .foregroundStyle(badge.earned ? MorpheTheme.accentText : MorpheTheme.textMuted)
                             Text(badge.title)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .foregroundStyle(badge.earned ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
                             Text(badge.detail)
                                 .font(.caption)
-                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .foregroundStyle(badge.earned ? MorpheTheme.textSecondary : MorpheTheme.textMuted)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                         .background(
+                            // Unearned = the outline goal (Apple A3): the
+                            // badge is visible, its unlock condition named,
+                            // nothing pretends to be won.
                             RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                .fill(MorpheTheme.panelStrong)
+                                .fill(badge.earned ? MorpheTheme.panelStrong : Color.clear)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                        .stroke(badge.earned ? Color.clear : MorpheTheme.stroke,
+                                                style: StrokeStyle(lineWidth: 1, dash: badge.earned ? [] : [5, 4]))
+                                )
                         )
+                        .accessibilityLabel(badge.earned
+                            ? "\(badge.title), earned. \(badge.detail)"
+                            : "\(badge.title), not earned yet. \(badge.detail)")
                     }
                 }
             }

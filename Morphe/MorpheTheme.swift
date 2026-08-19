@@ -397,6 +397,16 @@ enum Haptics {
         generator.prepare()
         generator.selectionChanged()
     }
+
+    /// The PR signature (Apple benchmark A1): heavy strike, then success —
+    /// timed to the pr cue's second chord strike so sound and touch tell
+    /// one story (WWDC19 audio-haptic doctrine). Personal records only.
+    static func personalRecord() {
+        impact(.heavy)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.11) {
+            success()
+        }
+    }
 }
 
 /// Two tiny UI sounds, synthesized in memory — no bundled audio assets.
@@ -410,6 +420,10 @@ enum SoundEffects {
     enum Cue {
         case star
         case ding
+        /// A PERSONAL RECORD and nothing else — one signal, one meaning,
+        /// forever (Apple benchmark P2). A two-strike rising power chord
+        /// with a longer ring than either sibling cue.
+        case pr
     }
 
     private static var players: [Cue: AVAudioPlayer] = [:]
@@ -449,6 +463,12 @@ enum SoundEffects {
             ]
         case .ding:
             notes = [(987.77, 0.0, 0.40)] // B5
+        case .pr:
+            notes = [
+                (783.99, 0.000, 0.45),    // G5
+                (1174.66, 0.110, 0.55),   // D6
+                (1567.98, 0.220, 0.75)    // G6 — the record rings longest
+            ]
         }
 
         let total = notes.map { $0.1 + $0.2 }.max()! + 0.05

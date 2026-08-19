@@ -4806,6 +4806,14 @@ final class MorpheAppStore {
         // persisted (no other prefs didSet is guaranteed to fire on the solo
         // path). The pre-mint blob is purged: it sits under the FIXED seeded
         // demo id, so a second account on this device would inherit it.
+        // The once-ever hello (Apple benchmark A6): one warm word, once
+        // per account lifetime. AFTER resetToFreshUser, same as
+        // firstWeekStart — earlier and it keys on the seeded demo id.
+        let helloKey = "morphe.hello.\(clientProfile.id.uuidString)"
+        if !UserDefaults.standard.bool(forKey: helloKey) {
+            UserDefaults.standard.set(true, forKey: helloKey)
+            showHelloBeat = true
+        }
         if firstWeekStart == nil {
             firstWeekStart = .now
         }
@@ -8273,6 +8281,80 @@ final class MorpheAppStore {
     /// The profile badge grid — computed from logs and state on every read,
     /// so a badge can never exist without the data that backs it. This
     /// replaced the seeded showcase badges, which were demo content.
+    // MARK: - Apple-benchmark moments (docs/UI-AUDIT-APPLE.md)
+
+    /// A6: the once-ever hello — set by completeOnboarding exactly once
+    /// per account lifetime, cleared by the overlay when the beat ends.
+    var showHelloBeat = false
+
+    struct MonthlyChallenge {
+        let target: Int
+        let done: Int
+        let line: String
+    }
+
+    private static let monthNameFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM"
+        return formatter
+    }()
+
+    /// A2: the honest version of Apple's Monthly Challenges — pure
+    /// arithmetic on the user's own logs. Last month's session count sets
+    /// this month's bar (+1). Needs a real base month (2+ sessions) so a
+    /// brand-new user never sees an invented target.
+    var monthlyChallenge: MonthlyChallenge? {
+        guard selectedRole == .client else { return nil }
+        let calendar = Calendar.current
+        guard let thisMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: .now)),
+              let lastMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart)
+        else { return nil }
+        let logs = currentAthleteWorkoutLogs
+        let lastCount = logs.filter { $0.completedAt >= lastMonthStart && $0.completedAt < thisMonthStart }.count
+        guard lastCount >= 2 else { return nil }
+        let target = lastCount + 1
+        let done = logs.filter { $0.completedAt >= thisMonthStart }.count
+        let lastName = Self.monthNameFormatter.string(from: lastMonthStart)
+        let thisName = Self.monthNameFormatter.string(from: thisMonthStart)
+        let line = done >= target
+            ? "\(thisName)'s challenge complete: \(done) sessions — \(lastName)'s \(lastCount) is beaten."
+            : "\(lastName): \(lastCount) sessions. \(thisName)'s challenge: \(target) — you're at \(done)."
+        return MonthlyChallenge(target: target, done: done, line: line)
+    }
+
+    /// A3: every badge, earned or outlined — the unearned ones name their
+    /// real unlock condition (the empty-state rule, applied to trophies).
+    var badgeShowcase: [ProfileBadge] {
+        var badges = earnedBadges
+        let earnedTitles = Set(badges.map(\.title))
+        if !earnedTitles.contains("First Workout") {
+            badges.append(ProfileBadge(
+                title: "First Workout",
+                detail: "Log your first session to earn it.",
+                icon: "figure.walk", earned: false))
+        }
+        if !earnedTitles.contains("First Record") {
+            badges.append(ProfileBadge(
+                title: "First Record",
+                detail: "Set any weighted personal record.",
+                icon: "trophy.fill", earned: false))
+        }
+        let best = bestWorkoutStreak(from: currentAthleteWorkoutLogs)
+        for milestone in [7, 30, 100] where !earnedTitles.contains("\(milestone)-Day Streak") {
+            badges.append(ProfileBadge(
+                title: "\(milestone)-Day Streak",
+                detail: "Best run so far: \(best) day\(best == 1 ? "" : "s"). Reach \(milestone) — planned rest counts.",
+                icon: "flame.fill", earned: false))
+        }
+        if !earnedTitles.contains("Program Complete") {
+            badges.append(ProfileBadge(
+                title: "Program Complete",
+                detail: "Finish any training program, every session logged.",
+                icon: "checkmark.seal.fill", earned: false))
+        }
+        return badges
+    }
+
     var earnedBadges: [ProfileBadge] {
         var badges: [ProfileBadge] = []
         let logs = currentAthleteWorkoutLogs

@@ -272,6 +272,14 @@ struct RootView: View {
         } message: {
             Text("Switch rotates between the workouts you've saved. Save some from Discover — or build your own in Train — and they'll show up here.")
         }
+        // The once-ever hello (Apple benchmark A6) — topmost, brief, gone.
+        .overlay {
+            if store.showHelloBeat {
+                HelloBeatOverlay()
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.4), value: store.showHelloBeat)
         .overlay(alignment: .top) {
             VStack(spacing: 10) {
                 if let toast = store.toastMessage {
