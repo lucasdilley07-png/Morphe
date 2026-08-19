@@ -1707,6 +1707,21 @@ final class MetricsTests: XCTestCase {
         XCTAssertEqual(reloaded.clientProfile.level.currentXP, earnedXP)
     }
 
+    /// Chronological unlock: quiz 1 leads, an answer consumes the day,
+    /// and the next quiz waits for tomorrow.
+    func testQuizzesUnlockChronologically() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+
+        XCTAssertEqual(store.todaysQuiz?.id, store.quizzes.first?.id,
+                       "the line starts at quiz 1")
+
+        store.answerQuiz(store.quizzes[0], with: store.quizzes[0].correctIndex)
+        XCTAssertTrue(store.quizAnsweredToday)
+        XCTAssertNil(store.todaysQuiz, "one attempt a day — the next quiz waits for tomorrow")
+    }
+
     func testQuizNeverReawardsXP() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
@@ -1716,8 +1731,8 @@ final class MetricsTests: XCTestCase {
         store.answerQuiz(quiz, with: quiz.correctIndex)
         let earnedXP = store.clientProfile.level.currentXP
 
-        // The day rotation cycles the pool, so an aced quiz can come around
-        // again — answering it a second time must not pay twice.
+        // Re-answering an aced quiz (however it resurfaces) must not pay
+        // twice.
         store.handleDayRolloverIfNeeded(now: Date(timeIntervalSinceNow: 172_800))
         store.answerQuiz(quiz, with: quiz.correctIndex)
         XCTAssertEqual(store.clientProfile.level.currentXP, earnedXP, "quiz XP is once per quiz, ever")

@@ -7336,6 +7336,26 @@ final class MorpheAppStore {
         activePatternIndex = (activePatternIndex + 1) % max(patternInsights.count, 1)
     }
 
+    private var quizAnswerDayKey: String {
+        "morphe.quiz.lastanswer.\(clientProfile.id.uuidString)"
+    }
+
+    /// One quiz attempt per day — any answer (right or wrong) consumes it.
+    var quizAnsweredToday: Bool {
+        UserDefaults.standard.string(forKey: quizAnswerDayKey)
+            == Self.askDayFormatter.string(from: .now)
+    }
+
+    /// Chronological unlock (Lucas 2026-08-17): quiz 1 leads and each
+    /// CORRECT answer unlocks the next — tomorrow. A missed quiz stays in
+    /// line and comes back for an honest retry; nothing skips ahead.
+    var todaysQuiz: MiniQuiz? {
+        guard !quizAnsweredToday else { return nil }
+        guard let next = quizzes.first(where: { !completedQuizIDs.contains($0.id) }) else { return nil }
+        guard quizSelections[next.id] == nil else { return nil }
+        return next
+    }
+
     func answerQuiz(_ quiz: MiniQuiz, with index: Int) {
         // The first answer is final: the explanation reveals the correct
         // option, so wrong-then-right must not earn XP — and a completed
@@ -7343,6 +7363,7 @@ final class MorpheAppStore {
         // resets next launch for an honest retry.
         guard quizSelections[quiz.id] == nil else { return }
         quizSelections[quiz.id] = index
+        UserDefaults.standard.set(Self.askDayFormatter.string(from: .now), forKey: quizAnswerDayKey)
 
         if index == quiz.correctIndex {
             // XP is awarded once per quiz, ever — answering an already-aced
@@ -9423,7 +9444,7 @@ final class MorpheAppStore {
         // session (audit 9, P2).
         playedIntroKeys.removeAll()
         let prefixes = ["morphe.ask.\(clientProfile.id.uuidString)", guideSeenKey,
-                        milestonesSeenKey]
+                        milestonesSeenKey, quizAnswerDayKey]
         for key in UserDefaults.standard.dictionaryRepresentation().keys
         where prefixes.contains(where: { key.hasPrefix($0) }) {
             UserDefaults.standard.removeObject(forKey: key)

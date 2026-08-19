@@ -24,11 +24,9 @@ struct MoreView: View {
     /// ONE quiz per calendar day — the day picks it, completion doesn't skip
     /// ahead. (The old "first uncompleted" rule let a learner chain all 16 in
     /// one sitting, then hit an empty pool with a false "tomorrow" promise.)
-    private var dailyQuiz: MiniQuiz? {
-        guard !store.quizzes.isEmpty else { return nil }
-        let dayIndex = Calendar.current.ordinality(of: .day, in: .year, for: .now) ?? 0
-        return store.quizzes[dayIndex % store.quizzes.count]
-    }
+    /// Chronological (Lucas 2026-08-17): the store owns the unlock order —
+    /// quiz 1 first, one attempt a day, correct answers advance the line.
+    private var dailyQuiz: MiniQuiz? { store.todaysQuiz }
 
     private let mobilityLibrary = [
         "90/90 Hip Switch",
@@ -419,7 +417,12 @@ struct MoreView: View {
         // .missed, honestly labeled, no seal, no claimed XP.
         if store.completedQuizIDs.contains(quiz.id) { return .done }
         if store.quizSelections[quiz.id] != nil { return .missed }
-        return quiz.id == dailyQuiz?.id ? .today : .upcoming
+        // Chronological line: the first un-aced quiz is today's (or locked
+        // until tomorrow if today's attempt is spent); the rest wait.
+        if quiz.id == store.quizzes.first(where: { !store.completedQuizIDs.contains($0.id) })?.id {
+            return store.quizAnsweredToday ? .lockedTomorrow : .today
+        }
+        return .upcoming
     }
 }
 
@@ -427,6 +430,7 @@ enum QuizTileState {
     case today
     case done
     case missed
+    case lockedTomorrow
     case upcoming
 }
 
@@ -467,7 +471,8 @@ private struct QuizCallingCard: View {
         case .today: return "TODAY · TAP TO PLAY"
         case .done: return "ACED · +\(quiz.rewardXP) XP"
         case .missed: return "ANSWERED · NO XP"
-        case .upcoming: return "UNLOCKS ON ITS DAY"
+        case .lockedTomorrow: return "UNLOCKS TOMORROW"
+        case .upcoming: return "IN LINE · ONE A DAY"
         }
     }
 
@@ -485,7 +490,7 @@ private struct QuizCallingCard: View {
                     } else if state == .missed {
                         Image(systemName: "arrow.uturn.left")
                             .font(.caption2.weight(.bold))
-                    } else if state == .upcoming {
+                    } else if state == .upcoming || state == .lockedTomorrow {
                         Image(systemName: "lock.fill")
                             .font(.caption2.weight(.bold))
                     }
@@ -519,14 +524,15 @@ private struct QuizCallingCard: View {
                     .stroke(state == .today ? plate.text.opacity(0.9) : Color.clear, lineWidth: 2)
             )
             // Upcoming cards read locked, not broken.
-            .saturation(state == .upcoming ? 0.35 : 1)
-            .opacity(state == .upcoming ? 0.55 : 1)
+            .saturation(state == .upcoming || state == .lockedTomorrow ? 0.35 : 1)
+            .opacity(state == .upcoming || state == .lockedTomorrow ? 0.55 : 1)
         }
         .buttonStyle(.plain)
-        .disabled(state == .upcoming)
+        .disabled(state == .upcoming || state == .lockedTomorrow)
         .accessibilityLabel({
             switch state {
-            case .upcoming: return "Quiz \(index + 1), locked until its day"
+            case .upcoming: return "Quiz \(index + 1), in line — one unlocks a day"
+            case .lockedTomorrow: return "Quiz \(index + 1), unlocks tomorrow"
             case .done: return "Quiz \(index + 1): \(quiz.question). Completed"
             case .missed: return "Quiz \(index + 1): \(quiz.question). Answered, no XP — review the explanation"
             case .today: return "Quiz \(index + 1): \(quiz.question). Today's quiz"
