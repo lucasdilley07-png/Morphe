@@ -957,23 +957,17 @@ private struct MorpheDayPopup: View {
 /// win, or an honest "tomorrow." Never a push notification.
 private struct EveningCheckInCard: View {
     @Environment(MorpheAppStore.self) private var store
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var appeared = false
-    @State private var transientReply: String?
 
-    private var showsReply: Bool {
-        // Mirrors the ask card's full condition set (audit 10, P2-8): the
-        // reply must not outlive a coach assignment or a live session.
-        store.eveningCheckInReplyToday != nil && !store.isWorkoutLoggedToday
-            && !store.isPlannedRestDay && store.dueCoachAssignment == nil
-            && !store.isWorkoutSessionActive
-    }
-
+    /// Reply-only since the slide-up popup carries the evening chips
+    /// (Lucas 2026-08-17): shows what Morphe said tonight, and hides when
+    /// the state it described no longer holds.
     var body: some View {
         let _ = store.morpheAskRefresh
-        if store.shouldOfferEveningCheckIn || showsReply {
+        if let reply = store.eveningCheckInReplyToday, !store.isWorkoutLoggedToday,
+           !store.isPlannedRestDay, store.dueCoachAssignment == nil,
+           !store.isWorkoutSessionActive {
             GlassCard {
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     HStack(spacing: 8) {
                         Image(systemName: "moon.stars.fill")
                             .font(.caption.weight(.bold))
@@ -984,59 +978,12 @@ private struct EveningCheckInCard: View {
                             .foregroundStyle(MorpheTheme.textMuted)
                     }
 
-                    if let reply = store.eveningCheckInReplyToday {
-                        Text(reply)
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                            .multilineTextAlignment(.center)
-                            .transition(.opacity)
-                    } else {
-                        Text(store.eveningCheckInLine)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                            .multilineTextAlignment(.center)
-
-                        if let transientReply {
-                            Text(transientReply)
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.warning)
-                                .multilineTextAlignment(.center)
-                        }
-
-                        WrapStack(spacing: 8) {
-                            ForEach(MorpheAppStore.EveningCheckInChoice.allCases) { choice in
-                                Button {
-                                    var spoken = ""
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                        spoken = store.answerEveningCheckIn(choice)
-                                    }
-                                    // Persist-miss = non-committing outcome;
-                                    // surface it and leave the chips up.
-                                    transientReply = store.eveningCheckInReplyToday == nil ? spoken : nil
-                                    AccessibilityNotification.Announcement(spoken).post()
-                                } label: {
-                                    Label(choice.rawValue, systemImage: choice.symbol)
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: false))
-                                .accessibilityLabel(choice.rawValue)
-                            }
-                        }
-                    }
+                    Text(reply)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
-            }
-            .scaleEffect(appeared || reduceMotion ? 1 : 0.92)
-            .opacity(appeared || reduceMotion ? 1 : 0)
-            .onAppear {
-                guard !appeared else { return }
-                if store.introPlayed("home.evening") {
-                    appeared = true
-                } else {
-                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.2)) {
-                        appeared = true
-                    }
-                    store.markIntroPlayed("home.evening")
-                }
             }
         }
     }

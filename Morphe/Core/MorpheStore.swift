@@ -9499,6 +9499,9 @@ final class MorpheAppStore {
         case trainAnyway
         case restUp
         case progress
+        case eveningShort
+        case eveningMinWin
+        case eveningTomorrow
         case other
     }
 
@@ -9514,17 +9517,29 @@ final class MorpheAppStore {
     private(set) var dayPopupSessionDismissed = false
 
     var shouldShowDayPopup: Bool {
+        // All day (Lucas 2026-08-17: the 17:00 cutoff hid the flagship
+        // interaction) — after 17:00 the popup CARRIES the evening
+        // question instead of yielding to a separate card. Either
+        // answered reply stands the popup down for the day.
         guard selectedRole == .client, !isWorkoutLoggedToday,
               !isWorkoutSessionActive, !hasUnsavedSessionWork,
               !minimumWinModeEnabled, comebackLapsedStreak == nil,
-              !dayPopupSessionDismissed, morpheAskReplyToday == nil
+              !dayPopupSessionDismissed, morpheAskReplyToday == nil,
+              eveningCheckInReplyToday == nil
         else { return false }
-        // Evenings belong to the evening check-in (one voice at a time).
-        return Calendar.current.component(.hour, from: .now) < 17
+        return true
+    }
+
+    /// After 17:00 the popup speaks with the evening voice.
+    var dayPopupIsEvening: Bool {
+        Calendar.current.component(.hour, from: .now) >= 17
     }
 
     /// Memory-aware question — the same yesterday lens as the ask.
     var dayPopupQuestion: String {
+        if dayPopupIsEvening, !isPlannedRestDay {
+            return eveningCheckInLine
+        }
         if isPlannedRestDay {
             return "It's your rest day — what's the move?"
         }
@@ -9541,7 +9556,23 @@ final class MorpheAppStore {
     /// Three most-common choices for the CURRENT state, plus Other. Every
     /// choice maps to a real action the reply can honestly describe.
     var dayPopupChoices: [DayPopupChoice] {
+        dayPopupChoices(evening: dayPopupIsEvening)
+    }
+
+    /// Clock-independent form for tests.
+    func dayPopupChoices(evening: Bool) -> [DayPopupChoice] {
         var choices: [DayPopupChoice]
+        if evening, !isPlannedRestDay, dueCoachAssignment == nil {
+            // The evening voice: honest outs, same real actions as the
+            // old evening card's chips.
+            choices = [
+                DayPopupChoice(kind: .eveningShort, label: "Short session tonight", symbol: "clock.fill"),
+                DayPopupChoice(kind: .eveningMinWin, label: "Minimum win", symbol: "checkmark.circle.fill"),
+                DayPopupChoice(kind: .eveningTomorrow, label: "Tomorrow, promise", symbol: "moon.stars.fill")
+            ]
+            choices.append(DayPopupChoice(kind: .other, label: "Other…", symbol: "ellipsis.bubble.fill"))
+            return choices
+        }
         if isPlannedRestDay {
             choices = [
                 DayPopupChoice(kind: .restUp, label: "Rest up — recovery counts", symbol: "moon.zzz.fill"),
@@ -9590,6 +9621,15 @@ final class MorpheAppStore {
         case .progress:
             persistDayReply("Here's what your work adds up to.")
             openProgress()
+        case .eveningShort:
+            _ = answerEveningCheckIn(.shortSession)
+            return
+        case .eveningMinWin:
+            _ = answerEveningCheckIn(.minimumWin)
+            return
+        case .eveningTomorrow:
+            _ = answerEveningCheckIn(.tomorrow)
+            return
         case .other:
             // Hands off to the real conversation; the popup parks for the
             // session and the day stays unburned.

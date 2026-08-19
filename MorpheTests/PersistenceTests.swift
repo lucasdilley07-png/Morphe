@@ -786,10 +786,15 @@ final class WorkoutSessionTests: XCTestCase {
     func testDayPopupChoicesAndAnswerPersist() {
         let store = freshStore()
 
-        let choices = store.dayPopupChoices
+        let choices = store.dayPopupChoices(evening: false)
         XCTAssertEqual(choices.count, 4, "three common answers plus Other")
         XCTAssertEqual(choices.last?.label, "Other…", "the fourth choice is always Other")
         XCTAssertEqual(choices.first?.label, "Start my workout")
+
+        let evening = store.dayPopupChoices(evening: true)
+        XCTAssertEqual(evening.count, 4, "the evening voice keeps the 3+Other shape")
+        XCTAssertEqual(evening.first?.label, "Short session tonight")
+        XCTAssertEqual(evening.last?.label, "Other…")
 
         store.answerDayPopup(.restUp)
         XCTAssertNotNil(store.morpheAskReplyToday, "an answered popup speaks for the day")
