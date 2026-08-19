@@ -50,7 +50,9 @@ struct MoreView: View {
             HStack(spacing: 10) {
                 ForEach(Self.tabs) { feature in
                     Button(chipTitle(for: feature)) {
-                        store.selectedHubFeature = feature
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            store.selectedHubFeature = feature
+                        }
                     }
                     .buttonStyle(FilterChipStyle(isSelected: activeFeature == feature))
                 }
@@ -58,17 +60,41 @@ struct MoreView: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 20)
 
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    featureContent
-                    ManifestoCard()
+            // Swipe between the three panels (Lucas 2026-08-18) — same
+            // pager grammar as Train's SESSION|DISCOVER and Network's panes.
+            TabView(selection: Binding(
+                get: { activeFeature },
+                set: { store.selectedHubFeature = $0 }
+            )) {
+                ForEach(Self.tabs) { feature in
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            panel(for: feature)
+                            ManifestoCard()
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 4)
+                        .padding(.bottom, 120)
+                    }
+                    .tag(feature)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 4)
-                .padding(.bottom, 120)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.easeInOut(duration: 0.2), value: activeFeature)
         }
         .padding(.top, MorpheTheme.Spacing.pageTopCompact)
+    }
+
+    @ViewBuilder
+    private func panel(for feature: ClientHubFeature) -> some View {
+        switch feature {
+        case .library:
+            libraryPanel
+        case .nutrition:
+            nutritionPanel
+        default:
+            learningPanel
+        }
     }
 
     private func chipTitle(for feature: ClientHubFeature) -> String {
