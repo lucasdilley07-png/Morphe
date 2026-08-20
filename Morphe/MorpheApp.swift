@@ -40,11 +40,14 @@ struct MorpheApp: App {
                         store.handleDayRolloverIfNeeded()
                         // The day popup greets every open (Lucas 2026-08-18).
                         store.reopenDayPopup()
+                        // "Hey Morphe" listens only while the app is open.
+                        store.startVoiceIfEnabled()
                     }
                     // The log backup debounce is 60s — leaving the app
                     // flushes whatever is pending so a swipe-kill can't
                     // strand the last set locally.
                     if phase == .background {
+                        store.heyMorphe.stop()
                         store.requestImmediateLogBackup()
                     }
                 }

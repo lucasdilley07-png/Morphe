@@ -272,6 +272,23 @@ struct RootView: View {
         } message: {
             Text("Switch rotates between the workouts you've saved. Save some from Discover — or build your own in Train — and they'll show up here.")
         }
+        // "Hey Morphe" edge glow — the Siri-glow pattern in brand gold,
+        // shown while Morphe is listening to or answering a command.
+        .overlay {
+            if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking {
+                VoiceGlowOverlay()
+                    .transition(.opacity)
+            }
+        }
+        .overlay(alignment: .top) {
+            if let exchange = store.lastVoiceExchange {
+                VoiceExchangeChip(heard: exchange.heard, answer: exchange.answer)
+                    .padding(.top, 64)
+                    .padding(.horizontal, 24)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: store.heyMorphe.state)
         // The full-screen day takeover — covers the tab bar; every open.
         .overlay {
             MorpheDayPopup()
@@ -962,6 +979,225 @@ private struct AIAgentMessageRow: View {
 }
 
 // MARK: - Speech dictation (talk-to-text for the AI composer)
+
+/// "Hey Morphe" (Jarvis wave): hands-free voice while the app is OPEN.
+/// One continuous on-device recognition stream scans for the wake phrase;
+/// hearing it flips to active capture until a ~1.4s pause, then hands the
+/// command to the store's router and speaks the answer back. iOS does not
+/// allow third-party wake words in the background or from the lock screen
+/// — this is foreground-only by platform rule, and the settings copy says
+/// so. Recognition is forced on-device where the hardware supports it.
+@Observable
+final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
+    enum VoiceState {
+        case off
+        case passive
+        case active
+        case speaking
+    }
+
+    private(set) var state: VoiceState = .off
+    private(set) var liveTranscript = ""
+    var onWake: (() -> Void)?
+    var onCommand: ((String) -> Void)?
+
+    private let audioEngine = AVAudioEngine()
+    private var recognizer: SFSpeechRecognizer?
+    private var request: SFSpeechAudioBufferRecognitionRequest?
+    private var task: SFSpeechRecognitionTask?
+    private let synthesizer = AVSpeechSynthesizer()
+    private var commandTimer: Timer?
+    /// Character offset of the wake phrase's end in the live transcript —
+    /// everything after it is the command.
+    private var wakeCutoff = 0
+
+    private static let wakePhrases = ["hey morphe", "hey morph", "hey murph", "hey morphy"]
+
+    override init() {
+        super.init()
+        synthesizer.delegate = self
+    }
+
+    func start() {
+        guard state == .off else { return }
+        SFSpeechRecognizer.requestAuthorization { [weak self] status in
+            DispatchQueue.main.async {
+                guard status == .authorized else { return }
+                AVAudioApplication.requestRecordPermission { granted in
+                    DispatchQueue.main.async {
+                        guard granted, let self, self.state == .off else { return }
+                        self.state = .passive
+                        self.beginListening()
+                    }
+                }
+            }
+        }
+    }
+
+    func stop() {
+        state = .off
+        liveTranscript = ""
+        tearDownRecognition()
+        synthesizer.stopSpeaking(at: .immediate)
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    /// Speaks an answer, then returns to passive listening. The mic is torn
+    /// down while speaking so the engine never transcribes its own voice.
+    func speak(_ text: String) {
+        guard state != .off, !text.isEmpty else { return }
+        state = .speaking
+        tearDownRecognition()
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.rate = 0.5
+        synthesizer.speak(utterance)
+    }
+
+    private func tearDownRecognition() {
+        commandTimer?.invalidate()
+        commandTimer = nil
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        request?.endAudio()
+        task?.cancel()
+        task = nil
+        request = nil
+    }
+
+    private func beginListening() {
+        guard state == .passive else { return }
+        tearDownRecognition()
+        liveTranscript = ""
+        wakeCutoff = 0
+        guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else {
+            scheduleRestart()
+            return
+        }
+        self.recognizer = recognizer
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        if recognizer.supportsOnDeviceRecognition {
+            request.requiresOnDeviceRecognition = true
+        }
+        self.request = request
+
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playAndRecord, mode: .default,
+                                    options: [.duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            let node = audioEngine.inputNode
+            let format = node.outputFormat(forBus: 0)
+            node.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+                request.append(buffer)
+            }
+            audioEngine.prepare()
+            try audioEngine.start()
+        } catch {
+            scheduleRestart()
+            return
+        }
+
+        task = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            DispatchQueue.main.async {
+                self?.handle(result: result, error: error)
+            }
+        }
+    }
+
+    private func handle(result: SFSpeechRecognitionResult?, error: Error?) {
+        guard state == .passive || state == .active else { return }
+        if let result {
+            let text = result.bestTranscription.formattedString
+            let lower = text.lowercased()
+            switch state {
+            case .passive:
+                for phrase in Self.wakePhrases {
+                    if let range = lower.range(of: phrase) {
+                        state = .active
+                        wakeCutoff = lower.distance(from: lower.startIndex, to: range.upperBound)
+                        liveTranscript = Self.commandSlice(of: text, after: wakeCutoff)
+                        onWake?()
+                        armCommandTimer()
+                        break
+                    }
+                }
+            case .active:
+                liveTranscript = Self.commandSlice(of: text, after: wakeCutoff)
+                armCommandTimer()
+            default:
+                break
+            }
+            if result.isFinal {
+                // The recognizer capped the stream (~1 min) — fire what we
+                // have or go back to scanning.
+                state == .active ? fireCommand() : scheduleRestart()
+                return
+            }
+        }
+        if error != nil {
+            state == .active ? fireCommand() : scheduleRestart()
+        }
+    }
+
+    private static func commandSlice(of text: String, after cutoff: Int) -> String {
+        guard text.count > cutoff else { return "" }
+        return String(text.dropFirst(cutoff))
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
+    }
+
+    private func armCommandTimer() {
+        commandTimer?.invalidate()
+        commandTimer = Timer.scheduledTimer(withTimeInterval: 1.4, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async { self?.fireCommand() }
+        }
+    }
+
+    private func fireCommand() {
+        guard state == .active else { return }
+        let command = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        liveTranscript = ""
+        state = .passive
+        if command.isEmpty {
+            // Woke, then silence — back to scanning, no charge.
+            beginListening()
+            return
+        }
+        tearDownRecognition()
+        onCommand?(command)
+    }
+
+    private func scheduleRestart() {
+        guard state == .passive || state == .active else { return }
+        state = .passive
+        tearDownRecognition()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            guard let self, self.state == .passive else { return }
+            self.beginListening()
+        }
+    }
+
+    // MARK: AVSpeechSynthesizerDelegate
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async {
+            guard self.state == .speaking else { return }
+            self.state = .passive
+            self.beginListening()
+        }
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async {
+            guard self.state == .speaking else { return }
+            self.state = .passive
+            self.beginListening()
+        }
+    }
+}
 
 /// Live speech-to-text: streams partial transcriptions into the composer as
 /// the user talks. On-device where the hardware supports it, so gym-floor

@@ -883,6 +883,19 @@ struct ProfileView: View {
 
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
+                    // Foreground-only is an iOS rule, not a choice — the
+                    // caption says so instead of overpromising Siri parity.
+                    preferenceToggleRow(
+                        title: "\u{201C}Hey Morphe\u{201D}",
+                        caption: "Hands-free while the app is open: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud. Speech stays on this iPhone. iOS doesn't allow listening from the background or lock screen.",
+                        isOn: Binding(
+                            get: { store.heyMorpheEnabled },
+                            set: { store.setHeyMorphe(enabled: $0) }
+                        )
+                    )
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
                     // The board publishes your real name — and scores post on
                     // every log in EITHER role, so the off-switch renders for
                     // both (audit 5, P1-4: a coach could never leave).

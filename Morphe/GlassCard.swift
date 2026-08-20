@@ -143,6 +143,68 @@ struct SectionTitleView: View {
     }
 }
 
+/// The "Hey Morphe" edge glow: the Siri-glow pattern in brand gold — a
+/// soft breathing border around the whole screen while Morphe listens or
+/// answers. Chrome, not content; hidden from hit-testing and VoiceOver.
+struct VoiceGlowOverlay: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulsing = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 46, style: .continuous)
+            .strokeBorder(MorpheTheme.brandYellow, lineWidth: 5)
+            .blur(radius: 8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 46, style: .continuous)
+                    .strokeBorder(MorpheTheme.brandYellow.opacity(0.9), lineWidth: 1.5)
+            )
+            .opacity(pulsing || reduceMotion ? 0.95 : 0.45)
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                    pulsing = true
+                }
+            }
+            .accessibilityHidden(true)
+    }
+}
+
+/// What Morphe heard and what it answered — floats briefly at the top,
+/// then clears itself.
+struct VoiceExchangeChip: View {
+    let heard: String
+    let answer: String
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text("\u{201C}\(heard)\u{201D}")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textMuted)
+                .lineLimit(2)
+            Text(answer)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .lineLimit(4)
+        }
+        .multilineTextAlignment(.center)
+        .padding(14)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .stroke(MorpheTheme.stroke, lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Morphe heard: \(heard). Answer: \(answer)")
+    }
+}
+
 /// The once-ever hello (Apple benchmark A6): one warm word, once per
 /// account lifetime — the whole beat is under three seconds and then it
 /// never happens again.

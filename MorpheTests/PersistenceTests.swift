@@ -849,6 +849,28 @@ final class WorkoutSessionTests: XCTestCase {
                       "a real log flips the outline to earned")
     }
 
+    /// "Hey Morphe": voice commands fire the same doors the buttons use,
+    /// confirm honestly, and never restart a live session.
+    func testVoiceCommandsNavigateAndStayHonest() {
+        let store = freshStore()
+
+        let progressReply = store.routeVoiceCommand("show my progress")
+        XCTAssertTrue(progressReply.lowercased().contains("progress"))
+        XCTAssertEqual(store.selectedClientTab, .hub, "voice uses the same door as the button")
+
+        let startReply = store.routeVoiceCommand("start my workout")
+        XCTAssertTrue(startReply.contains("session"))
+
+        startedTwoExerciseSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        let guarded = store.routeVoiceCommand("start my workout")
+        XCTAssertTrue(guarded.contains("already"),
+                      "a live session is never silently restarted by voice")
+
+        let answer = store.routeVoiceCommand("how do I build a streak")
+        XCTAssertFalse(answer.isEmpty, "unknown asks fall through to the Morphe AI brain")
+    }
+
     /// Jarvis slide-up: the popup offers three context-derived choices
     /// plus Other, and an answer persists the day's reply through the
     /// same key the one-voice rules read.

@@ -8282,6 +8282,125 @@ final class MorpheAppStore {
 
     // MARK: Earned badges (derived from real data, never stored)
 
+    // MARK: - "Hey Morphe" voice (Jarvis wave)
+    //
+    // Foreground-only by iOS rule (no third-party background wake words) —
+    // the settings copy says so. Navigation intents map to the same doors
+    // the buttons use; everything else routes to the Morphe AI brain and
+    // the answer is spoken back.
+
+    let heyMorphe = HeyMorpheEngine()
+
+    var heyMorpheEnabled = UserDefaults.standard.bool(forKey: "morphe.heymorphe.enabled")
+
+    var lastVoiceExchange: (heard: String, answer: String)?
+    private var voiceExchangeClearTask: Task<Void, Never>?
+
+    func setHeyMorphe(enabled: Bool) {
+        heyMorpheEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: "morphe.heymorphe.enabled")
+        if enabled {
+            startVoiceIfEnabled()
+        } else {
+            heyMorphe.stop()
+            lastVoiceExchange = nil
+        }
+    }
+
+    func startVoiceIfEnabled() {
+        guard heyMorpheEnabled else { return }
+        heyMorphe.onWake = {
+            Haptics.impact(.light)
+        }
+        heyMorphe.onCommand = { [weak self] command in
+            self?.handleVoiceCommand(command)
+        }
+        heyMorphe.start()
+    }
+
+    func handleVoiceCommand(_ raw: String) {
+        let answer = routeVoiceCommand(raw)
+        lastVoiceExchange = (heard: raw, answer: answer)
+        heyMorphe.speak(answer)
+        voiceExchangeClearTask?.cancel()
+        voiceExchangeClearTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            guard !Task.isCancelled else { return }
+            self?.lastVoiceExchange = nil
+        }
+    }
+
+    /// Voice → action. Navigation intents fire the SAME store doors the
+    /// buttons use and confirm honestly; anything else is answered by the
+    /// existing derived AI reply. Returns the line that gets spoken.
+    func routeVoiceCommand(_ raw: String) -> String {
+        let text = raw.lowercased()
+        func mentions(_ words: String...) -> Bool {
+            words.contains { text.contains($0) }
+        }
+
+        if selectedRole == .client {
+            if mentions("start"), mentions("workout", "session", "training") {
+                if isWorkoutSessionActive || hasUnsavedSessionWork {
+                    showTrainTab()
+                    return "You've already got a session going — it's open in Train."
+                }
+                startTodayWorkout()
+                return "Starting your session — it's live in Train."
+            }
+            if mentions("progress", "stats", "charts", "records", "history") {
+                openProgress()
+                return "Here's your progress."
+            }
+            if mentions("board", "leaderboard") {
+                openCommunity(.board)
+                return "Here's the weekly board."
+            }
+            if mentions("chat", "message", "inbox", "network") {
+                openCommunity(.contact)
+                return "Opening your chats."
+            }
+            if mentions("calendar", "schedule", "appointment") {
+                openCommunity(.calendar)
+                return "Here's your calendar."
+            }
+            if mentions("quiz") {
+                openMore(.learn)
+                return "Today's quiz is on Learn."
+            }
+            if mentions("library", "exercise list", "form help") {
+                openMore(.library)
+                return "Opening the exercise library."
+            }
+            if mentions("nutrition", "macros", "protein", "calories") {
+                openMore(.nutrition)
+                let reply = previewAIAgentReply(for: raw)
+                return reply.isEmpty ? "Here are your nutrition targets." : reply
+            }
+            if mentions("learn", "lesson") {
+                openMore(.learn)
+                return "Opening Learn."
+            }
+            if mentions("train") {
+                showTrainTab()
+                return "Opening Train."
+            }
+            if mentions("profile", "settings") {
+                openClientProfile()
+                return "Opening your profile."
+            }
+            if mentions("today", "home") {
+                selectedClientTab = .today
+                return "Here's Today."
+            }
+        }
+
+        let reply = previewAIAgentReply(for: raw)
+        return reply.isEmpty
+            ? "I didn't catch that — try again, or open Ask Morphe for the full conversation."
+            : reply
+    }
+
     // MARK: - Apple-benchmark moments (docs/UI-AUDIT-APPLE.md)
 
     /// A6: the once-ever hello — set by completeOnboarding exactly once
