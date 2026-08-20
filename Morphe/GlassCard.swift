@@ -1578,18 +1578,24 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                 .accessibilityAddTraits(selected == item ? [.isButton, .isSelected] : .isButton)
             }
         }
-        .padding(.horizontal, 6)
-        // Bottom keeps its ink strip + hairline (per Lucas's on-device
-        // read: dock stays solid; only the TOP is chrome-free icons).
+        .padding(.horizontal, 12)
+        .padding(.vertical, 2)
+        // Floating glass bubble (Lucas 2026-08-19): the dock lifts off the
+        // bottom and sides in a material capsule — the Liquid Glass
+        // floating-capsule pattern from docs/UI-AUDIT-APPLE.md, scoped to
+        // chrome exactly as the benchmark prescribes. Same height as the
+        // full-width strip it replaces.
         .background(
-            MorpheTheme.ink.opacity(0.94)
-                .ignoresSafeArea(edges: .bottom)
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(MorpheTheme.stroke, lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.22), radius: 14, y: 5)
         )
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(MorpheTheme.stroke)
-                .frame(height: 1)
-        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 6)
     }
 }
 
