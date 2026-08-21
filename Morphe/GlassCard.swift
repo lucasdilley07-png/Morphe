@@ -234,10 +234,12 @@ struct HelloBeatOverlay: View {
                 withAnimation(.easeIn(duration: 0.5)) { visible = false }
                 try? await Task.sleep(nanoseconds: 550_000_000)
                 store.showHelloBeat = false
-                // NOW the welcome sheet rises (audit 11, P0-1): raised
-                // together, the sheet presented above this overlay and the
-                // hello played invisibly, once, forever.
-                store.showWelcomeExperience = true
+                // NOW the welcome sheet rises (audit 11, P0-1) — but only
+                // past the terms gate (audit 12, P2-13): an un-agreed
+                // account queues the welcome instead.
+                if store.hasAcceptedTerms {
+                    store.showWelcomeExperience = true
+                }
             }
         }
         .accessibilityElement(children: .ignore)
@@ -1625,11 +1627,14 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                             .font(MorpheTheme.microLabel(8))
                             .tracking(0.8)
                             .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         Circle()
-                            .fill(selected == item ? MorpheTheme.accent : .clear)
+                            .fill(selected == item ? MorpheTheme.accentText : .clear)
                             .frame(width: 4, height: 4)
                     }
-                    .foregroundStyle(selected == item ? MorpheTheme.accent : MorpheTheme.textSecondary)
+                    // accentText, not raw accent (audit 12, P1-5): the
+                    // capsule material resolves near-white in light mode.
+                    .foregroundStyle(selected == item ? MorpheTheme.accentText : MorpheTheme.textSecondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 7)
                     .contentShape(Rectangle())

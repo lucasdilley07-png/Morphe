@@ -1357,13 +1357,16 @@ struct BannerProfile: Hashable {
 struct ProfileBadge: Identifiable, Hashable {
     /// Stable identity (audit 11, P2-13): a stored UUID regenerated on
     /// every computed read handed ForEach fresh identities per render.
-    var id: String { title + "|" + detail }
+    /// idSuffix disambiguates same-title-same-detail twins (audit 12,
+    /// P2-15 — two expired challenges with equal scores).
+    var id: String { title + "|" + detail + "|" + idSuffix }
     var title: String
     var detail: String
     var icon: String
     /// False = a visible goal (Apple benchmark A3): outline style, unlock
     /// condition in `detail`, nothing pretends to be won.
     var earned: Bool = true
+    var idSuffix: String = ""
 }
 
 struct PersonalRecord: Identifiable, Hashable {

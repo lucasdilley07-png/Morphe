@@ -66,8 +66,8 @@ struct CoachDashboardView: View {
                 )
         }
         .safeAreaInset(edge: .bottom) {
-            // Edge-to-edge like the client dock — same design language in
-            // both roles, and the floating AI button's clearance holds.
+            // The same floating glass capsule as the client dock — one
+            // design language in both roles.
             BottomTabNavigation(items: CoachTab.visibleCases, selected: store.selectedCoachTab) { tab in
                 store.selectedCoachTab = tab
                 // Tapping the icon always lands at the top of that tab's

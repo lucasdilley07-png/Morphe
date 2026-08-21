@@ -76,6 +76,8 @@ final class CaptureCameraController: NSObject {
                let mic = AVCaptureDevice.default(for: .audio),
                let micInput = try? AVCaptureDeviceInput(device: mic),
                session.canAddInput(micInput) {
+                // One mic owner at a time (audit 12, P0-3).
+                HeyMorpheEngine.shared.pauseForExternalAudio()
                 session.addInput(micInput)
             }
             if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
@@ -103,6 +105,7 @@ final class CaptureCameraController: NSObject {
         sessionQueue.async { [self] in
             if movieOutput.isRecording { movieOutput.stopRecording() }
             if session.isRunning { session.stopRunning() }
+            HeyMorpheEngine.shared.resumeAfterExternalAudio()
         }
     }
 

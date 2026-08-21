@@ -31,7 +31,11 @@ struct HomeView: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
+        // Registers the conversational refresh tick (audit 12, P1-8): the
+        // monthly-challenge dismiss X bumps it, and this body owns that
+        // card's visibility.
+        let _ = store.morpheAskRefresh
+        return ScrollView(showsIndicators: false) {
             VStack(alignment: .center, spacing: 16) {
                 // The app opens by talking to YOU (alive wave): a personal,
                 // time-aware greeting and one context question derived from
@@ -925,40 +929,47 @@ struct MorpheDayPopup: View {
                         .accessibilityLabel("Dismiss until the next open")
                     }
 
-                    Spacer()
+                    // Scrolls at accessibility sizes (audit 12, P1-6):
+                    // the takeover's own exit buttons must never clip
+                    // off-screen.
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 0) {
+                            MorpheCharacterBadge()
+                                .scaleEffect(1.5)
+                                .padding(.top, 32)
+                                .padding(.bottom, 28)
 
-                    MorpheCharacterBadge()
-                        .scaleEffect(1.5)
-                        .padding(.bottom, 24)
+                            Text(store.homeGreeting)
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .multilineTextAlignment(.center)
 
-                    Text(store.homeGreeting)
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                        .multilineTextAlignment(.center)
+                            Text(store.dayPopupQuestion)
+                                .font(.title3)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 6)
+                                .padding(.horizontal, 12)
 
-                    Text(store.dayPopupQuestion)
-                        .font(.title3)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 6)
-                        .padding(.horizontal, 12)
-
-                    Spacer()
-
-                    VStack(spacing: 10) {
-                        ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
-                            if index == 0 {
-                                choiceButton(choice)
-                                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                            } else {
-                                choiceButton(choice)
-                                    .buttonStyle(SecondaryCTAButtonStyle())
+                            VStack(spacing: 10) {
+                                ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
+                                    if index == 0 {
+                                        choiceButton(choice)
+                                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                                    } else {
+                                        choiceButton(choice)
+                                            .buttonStyle(SecondaryCTAButtonStyle())
+                                    }
+                                }
                             }
+                            .frame(maxWidth: 420)
+                            .padding(.top, 36)
+                            .padding(.bottom, 24)
                         }
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: 420)
-                    .padding(.bottom, 24)
+                    .scrollBounceBehavior(.basedOnSize)
                 }
                 .padding(24)
             }

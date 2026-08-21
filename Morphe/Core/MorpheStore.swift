@@ -7233,6 +7233,10 @@ final class MorpheAppStore {
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false
         hasCompletedWorkoutFlow = false
+        // The takeover must not ambush the post-workout moment the instant
+        // the session guards drop (audit 12, P1-2) — it stays parked until
+        // the next real app open.
+        dayPopupSessionDismissed = true
         // Session-scoped add/reorder dies with the session — the template
         // goes back exactly as the user saved it.
         restoreSessionTemplateBaseline()
@@ -8315,13 +8319,19 @@ final class MorpheAppStore {
         heyMorphe.onCommand = { [weak self] command in
             self?.handleVoiceCommand(command)
         }
+        heyMorphe.onFailure = { [weak self] message in
+            // Honest failure (audit 12, P1-3): the toggle never sits ON
+            // over a dead mic.
+            self?.setHeyMorphe(enabled: false)
+            self?.showToast(message)
+        }
         heyMorphe.start()
     }
 
     func handleVoiceCommand(_ raw: String) {
         let answer = routeVoiceCommand(raw)
         lastVoiceExchange = (heard: raw, answer: answer)
-        heyMorphe.speak(answer)
+        heyMorphe.speak(Self.spokenForm(of: answer))
         voiceExchangeClearTask?.cancel()
         voiceExchangeClearTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 8_000_000_000)
@@ -8330,23 +8340,47 @@ final class MorpheAppStore {
         }
     }
 
-    /// Voice → action. Navigation intents fire the SAME store doors the
-    /// buttons use and confirm honestly; anything else is answered by the
-    /// existing derived AI reply. Returns the line that gets spoken.
-    func routeVoiceCommand(_ raw: String) -> String {
-        let text = raw.lowercased()
-        func mentions(_ words: String...) -> Bool {
-            words.contains { text.contains($0) }
-        }
+    /// UI text reads badly aloud (audit 12, P2-4): strip parentheticals
+    /// and quote marks, and say "pounds or kilos" for lb/kg. The chip
+    /// still shows the original.
+    static func spokenForm(of text: String) -> String {
+        var spoken = text.replacingOccurrences(
+            of: "\\s*\\([^)]*\\)", with: "", options: .regularExpression)
+        spoken = spoken.replacingOccurrences(of: "\"", with: "")
+        spoken = spoken.replacingOccurrences(of: "lb/kg", with: "pounds or kilos")
+        return spoken.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
-        if selectedRole == .client {
-            if mentions("start"), mentions("workout", "session", "training") {
-                if isWorkoutSessionActive || hasUnsavedSessionWork {
-                    showTrainTab()
-                    return "You've already got a session going — it's open in Train."
+    /// Voice → action. The CHAT action layer leads (audit 12, P0-1): it
+    /// carries the questions-get-answers guard, the sheet co-presentation
+    /// pattern, and the real actions (start / log sets / minimum win /
+    /// lb-kg). Voice adds only the doors chat never needed, word-boundary
+    /// matched and question-gated. Returns the line that gets spoken.
+    func routeVoiceCommand(_ raw: String) -> String {
+        if selectedRole == .coach {
+            if let action = coachAssistantActionReply(for: raw) { return action }
+            return previewAIAgentReply(for: raw)
+        }
+        if let action = assistantActionReply(for: raw) { return action }
+
+        let text = raw.lowercased()
+        // Same interrogative guard as the action layer — a question about
+        // the board must not NAVIGATE to the board mid-answer.
+        let questionStarts = [
+            "should", "when", "what", "how", "why", "where", "who",
+            "is ", "are ", "am ", "do ", "does ", "did ", "would", "could",
+            "can ", "explain", "tell me"
+        ]
+        let isQuestion = text.contains("?")
+            || questionStarts.contains { text.hasPrefix($0) }
+
+        if !isQuestion {
+            // Word-boundary matching (audit 12, P2-10): "progressive
+            // overload" must not match "progress".
+            func mentions(_ words: String...) -> Bool {
+                words.contains {
+                    text.range(of: "\\b\($0)\\b", options: .regularExpression) != nil
                 }
-                startTodayWorkout()
-                return "Starting your session — it's live in Train."
             }
             if mentions("progress", "stats", "charts", "records", "history") {
                 openProgress()
@@ -8356,11 +8390,11 @@ final class MorpheAppStore {
                 openCommunity(.board)
                 return "Here's the weekly board."
             }
-            if mentions("chat", "message", "inbox", "network") {
+            if mentions("chat", "chats", "message", "messages", "inbox", "network") {
                 openCommunity(.contact)
                 return "Opening your chats."
             }
-            if mentions("calendar", "schedule", "appointment") {
+            if mentions("calendar", "schedule", "appointment", "appointments") {
                 openCommunity(.calendar)
                 return "Here's your calendar."
             }
@@ -8368,16 +8402,11 @@ final class MorpheAppStore {
                 openMore(.learn)
                 return "Today's quiz is on Learn."
             }
-            if mentions("library", "exercise list", "form help") {
-                openMore(.library)
-                return "Opening the exercise library."
-            }
-            if mentions("nutrition", "macros", "protein", "calories") {
+            if mentions("nutrition", "macros") {
                 openMore(.nutrition)
-                let reply = previewAIAgentReply(for: raw)
-                return reply.isEmpty ? "Here are your nutrition targets." : reply
+                return "Here are your nutrition targets."
             }
-            if mentions("learn", "lesson") {
+            if mentions("learn", "lesson", "lessons") {
                 openMore(.learn)
                 return "Opening Learn."
             }
@@ -8385,20 +8414,13 @@ final class MorpheAppStore {
                 showTrainTab()
                 return "Opening Train."
             }
-            if mentions("profile", "settings") {
-                openClientProfile()
-                return "Opening your profile."
-            }
             if mentions("today", "home") {
                 selectedClientTab = .today
                 return "Here's Today."
             }
         }
 
-        let reply = previewAIAgentReply(for: raw)
-        return reply.isEmpty
-            ? "I didn't catch that — try again, or open Ask Morphe for the full conversation."
-            : reply
+        return previewAIAgentReply(for: raw)
     }
 
     // MARK: - Apple-benchmark moments (docs/UI-AUDIT-APPLE.md)
@@ -8541,7 +8563,8 @@ final class MorpheAppStore {
             badges.append(ProfileBadge(
                 title: "Challenge Run",
                 detail: "\(challenge.title) — \(score) \(challenge.metric == .sets ? "sets" : "sessions") over the full window.",
-                icon: "flag.checkered"))
+                icon: "flag.checkered",
+                idSuffix: "\(challenge.id)"))
         }
 
         if referralCount >= 1 {
@@ -9747,8 +9770,20 @@ final class MorpheAppStore {
         return true
     }
 
-    /// Called on every foreground return — the popup re-offers itself.
+    /// True between a real .background and the next .active — Control
+    /// Center glances and Face ID prompts only pass through .inactive, so
+    /// they must NOT re-arm the takeover (audit 12, P1-1).
+    private var wasBackgrounded = false
+
+    func noteBackgrounded() {
+        wasBackgrounded = true
+    }
+
+    /// Called on .active — the popup re-offers only after a real
+    /// background return, not on every scene-phase flicker.
     func reopenDayPopup() {
+        guard wasBackgrounded else { return }
+        wasBackgrounded = false
         dayPopupSessionDismissed = false
         morpheAskRefresh += 1
     }

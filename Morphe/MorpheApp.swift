@@ -47,6 +47,9 @@ struct MorpheApp: App {
                     // flushes whatever is pending so a swipe-kill can't
                     // strand the last set locally.
                     if phase == .background {
+                        // Real background — the only thing that re-arms the
+                        // day takeover on return (audit 12, P1-1).
+                        store.noteBackgrounded()
                         store.heyMorphe.stop()
                         store.requestImmediateLogBackup()
                     }

@@ -887,7 +887,7 @@ struct ProfileView: View {
                     // caption says so instead of overpromising Siri parity.
                     preferenceToggleRow(
                         title: "\u{201C}Hey Morphe\u{201D}",
-                        caption: "Hands-free while the app is open: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud. Speech stays on this iPhone. iOS doesn't allow listening from the background or lock screen.",
+                        caption: "Hands-free while the app is open: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud. Speech stays on this iPhone. Listening uses extra battery, and iOS doesn't allow it from the background or lock screen.",
                         isOn: Binding(
                             get: { store.heyMorpheEnabled },
                             set: { store.setHeyMorphe(enabled: $0) }

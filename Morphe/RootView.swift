@@ -272,8 +272,15 @@ struct RootView: View {
         } message: {
             Text("Switch rotates between the workouts you've saved. Save some from Discover — or build your own in Train — and they'll show up here.")
         }
-        // "Hey Morphe" edge glow — the Siri-glow pattern in brand gold,
-        // shown while Morphe is listening to or answering a command.
+        // The full-screen day takeover — covers the tab bar; every open.
+        .overlay {
+            MorpheDayPopup()
+                .environment(store)
+        }
+        .animation(.easeInOut(duration: 0.3), value: store.shouldShowDayPopup)
+        // "Hey Morphe" edge glow + exchange chip — ABOVE the takeover
+        // (audit 12, P2-1): voice works during it, so it must be visible
+        // during it.
         .overlay {
             if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking {
                 VoiceGlowOverlay()
@@ -283,18 +290,13 @@ struct RootView: View {
         .overlay(alignment: .top) {
             if let exchange = store.lastVoiceExchange {
                 VoiceExchangeChip(heard: exchange.heard, answer: exchange.answer)
-                    .padding(.top, 64)
+                    .padding(.top, 118)
                     .padding(.horizontal, 24)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: store.heyMorphe.state)
-        // The full-screen day takeover — covers the tab bar; every open.
-        .overlay {
-            MorpheDayPopup()
-                .environment(store)
-        }
-        .animation(.easeInOut(duration: 0.3), value: store.shouldShowDayPopup)
+        .animation(.easeInOut(duration: 0.3), value: store.lastVoiceExchange?.answer)
         // The once-ever hello (Apple benchmark A6) — topmost, brief, gone.
         .overlay {
             if store.showHelloBeat {
@@ -328,8 +330,8 @@ struct RootView: View {
             if isInAppShell {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
-                    // 12pt above the slim icon-only tab bar (~47pt tall).
-                    .padding(.bottom, 59)
+                    // Clears the floating glass capsule (~57pt + 6pt inset).
+                    .padding(.bottom, 74)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
@@ -538,8 +540,8 @@ private struct ClientExperienceShell: View {
                 )
         }
         .safeAreaInset(edge: .bottom) {
-            // Edge-to-edge slim strip — the bar draws its own ink into the
-            // home-indicator area, so no floating padding here.
+            // Floating glass capsule (b866e53) — inset from the bottom and
+            // sides; the root ink shows around it.
             BottomTabNavigation(items: ClientTab.visibleCases, selected: store.selectedClientTab) { tab in
                 store.selectedClientTab = tab
                 // Tapping the icon always lands at the top of that tab's
@@ -635,9 +637,7 @@ private struct HeaderCircleButton: View {
 private struct FloatingAIAgentButton: View {
     @Environment(MorpheAppStore.self) private var store
 
-    private var label: String {
-        store.selectedRole == .coach ? "Morphe AI" : "Morphe AI"
-    }
+    private var label: String { "Morphe AI" }
 
     private var isCompact: Bool {
         // The wide "Morphe AI" pill exists to introduce the feature — after
@@ -996,10 +996,22 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         case speaking
     }
 
+    /// One engine per process — dictation and video capture coordinate
+    /// through this instead of fighting over the shared audio hardware
+    /// (audit 12, P0-3).
+    static let shared = HeyMorpheEngine()
+
     private(set) var state: VoiceState = .off
     private(set) var liveTranscript = ""
     var onWake: (() -> Void)?
     var onCommand: ((String) -> Void)?
+    /// Honest failure surface (audit 12, P1-3): permission denied, no
+    /// on-device recognition, or the restart ceiling hit.
+    var onFailure: ((String) -> Void)?
+
+    private var suspendedByExternalAudio = false
+    private var restartAttempts = 0
+    private var speakingWatchdog: Timer?
 
     private let audioEngine = AVAudioEngine()
     private var recognizer: SFSpeechRecognizer?
@@ -1007,25 +1019,49 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     private var task: SFSpeechRecognitionTask?
     private let synthesizer = AVSpeechSynthesizer()
     private var commandTimer: Timer?
-    /// Character offset of the wake phrase's end in the live transcript —
-    /// everything after it is the command.
-    private var wakeCutoff = 0
-
     private static let wakePhrases = ["hey morphe", "hey morph", "hey murph", "hey morphy"]
 
     override init() {
         super.init()
         synthesizer.delegate = self
+        // Phone calls / Siri / other apps taking the session (audit 12,
+        // P1-4): tear down on interruption, resume when it ends.
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let self,
+                  let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+            switch type {
+            case .began:
+                if self.state != .off { self.tearDownRecognition() }
+            case .ended:
+                if self.state == .passive || self.state == .active {
+                    self.state = .passive
+                    self.beginListening()
+                }
+            @unknown default:
+                break
+            }
+        }
     }
 
     func start() {
         guard state == .off else { return }
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
-                guard status == .authorized else { return }
+                guard status == .authorized else {
+                    self?.onFailure?("Enable Speech Recognition for Morphe in Settings to use Hey Morphe.")
+                    return
+                }
                 AVAudioApplication.requestRecordPermission { granted in
                     DispatchQueue.main.async {
-                        guard granted, let self, self.state == .off else { return }
+                        guard let self, self.state == .off else { return }
+                        guard granted else {
+                            self.onFailure?("Enable the Microphone for Morphe in Settings to use Hey Morphe.")
+                            return
+                        }
+                        self.restartAttempts = 0
                         self.state = .passive
                         self.beginListening()
                     }
@@ -1038,8 +1074,32 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         state = .off
         liveTranscript = ""
         tearDownRecognition()
+        speakingWatchdog?.invalidate()
+        speakingWatchdog = nil
         synthesizer.stopSpeaking(at: .immediate)
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        // Give the session BACK (audit 12, P0-2): the app's sounds are
+        // .ambient — mix with the user's music, respect the silent switch.
+        SoundEffects.externalAudioOwner = false
+        let session = AVAudioSession.sharedInstance()
+        try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        try? session.setCategory(.ambient, options: [.mixWithOthers])
+    }
+
+    /// Dictation and video capture call these so exactly one engine owns
+    /// the mic at a time (audit 12, P0-3).
+    func pauseForExternalAudio() {
+        guard state != .off else { return }
+        suspendedByExternalAudio = true
+        synthesizer.stopSpeaking(at: .immediate)
+        stop()
+    }
+
+    func resumeAfterExternalAudio() {
+        guard suspendedByExternalAudio else { return }
+        suspendedByExternalAudio = false
+        restartAttempts = 0
+        state = .passive
+        beginListening()
     }
 
     /// Speaks an answer, then returns to passive listening. The mic is torn
@@ -1051,6 +1111,20 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = 0.5
         synthesizer.speak(utterance)
+        // Watchdog (audit 12, P2-8): if the utterance never finishes, the
+        // glow must not stay lit and the mic must come back.
+        speakingWatchdog?.invalidate()
+        let ceiling = max(4.0, Double(text.count) / 10.0)
+        let watchdog = Timer(timeInterval: ceiling, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.state == .speaking else { return }
+                self.synthesizer.stopSpeaking(at: .immediate)
+                self.state = .passive
+                self.beginListening()
+            }
+        }
+        speakingWatchdog = watchdog
+        RunLoop.main.add(watchdog, forMode: .common)
     }
 
     private func tearDownRecognition() {
@@ -1070,19 +1144,26 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         guard state == .passive else { return }
         tearDownRecognition()
         liveTranscript = ""
-        wakeCutoff = 0
         guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else {
             scheduleRestart()
+            return
+        }
+        // On-device or OFF (audit 12, P0-4): the settings toggle promises
+        // speech stays on this iPhone — without on-device support we
+        // refuse rather than stream continuous audio to servers.
+        guard recognizer.supportsOnDeviceRecognition else {
+            state = .off
+            SoundEffects.externalAudioOwner = false
+            onFailure?("Hey Morphe needs on-device speech, which isn't available for your language on this iPhone — staying off rather than sending audio to servers.")
             return
         }
         self.recognizer = recognizer
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
-        if recognizer.supportsOnDeviceRecognition {
-            request.requiresOnDeviceRecognition = true
-        }
+        request.requiresOnDeviceRecognition = true
         self.request = request
+        SoundEffects.externalAudioOwner = true
 
         let session = AVAudioSession.sharedInstance()
         do {
@@ -1096,6 +1177,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             }
             audioEngine.prepare()
             try audioEngine.start()
+            restartAttempts = 0
         } catch {
             scheduleRestart()
             return
@@ -1112,21 +1194,21 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         guard state == .passive || state == .active else { return }
         if let result {
             let text = result.bestTranscription.formattedString
-            let lower = text.lowercased()
             switch state {
             case .passive:
-                for phrase in Self.wakePhrases {
-                    if let range = lower.range(of: phrase) {
-                        state = .active
-                        wakeCutoff = lower.distance(from: lower.startIndex, to: range.upperBound)
-                        liveTranscript = Self.commandSlice(of: text, after: wakeCutoff)
-                        onWake?()
-                        armCommandTimer()
-                        break
-                    }
+                if let command = Self.commandAfterWake(in: text) {
+                    state = .active
+                    liveTranscript = command
+                    onWake?()
+                    armCommandTimer()
                 }
             case .active:
-                liveTranscript = Self.commandSlice(of: text, after: wakeCutoff)
+                // Re-locate the wake phrase EVERY partial (audit 12, P1-9):
+                // the recognizer retro-corrects earlier words, so a frozen
+                // character offset drifted and sliced commands mid-word.
+                if let command = Self.commandAfterWake(in: text) {
+                    liveTranscript = command
+                }
                 armCommandTimer()
             default:
                 break
@@ -1143,17 +1225,30 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         }
     }
 
-    private static func commandSlice(of text: String, after cutoff: Int) -> String {
-        guard text.count > cutoff else { return "" }
-        return String(text.dropFirst(cutoff))
-            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
+    /// Finds the wake phrase in the CURRENT hypothesis and returns what
+    /// follows it — nil when no wake phrase is present.
+    private static func commandAfterWake(in text: String) -> String? {
+        let lower = text.lowercased()
+        for phrase in wakePhrases {
+            if let range = lower.range(of: phrase) {
+                let cutoff = lower.distance(from: lower.startIndex, to: range.upperBound)
+                let slice = String(text.dropFirst(cutoff))
+                return slice.trimmingCharacters(
+                    in: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
+            }
+        }
+        return nil
     }
 
     private func armCommandTimer() {
         commandTimer?.invalidate()
-        commandTimer = Timer.scheduledTimer(withTimeInterval: 1.4, repeats: false) { [weak self] _ in
+        // .common mode (audit 12, P2-7): a .default-mode timer pauses
+        // while the user scrolls, so commands never fired mid-scroll.
+        let timer = Timer(timeInterval: 1.4, repeats: false) { [weak self] _ in
             DispatchQueue.main.async { self?.fireCommand() }
         }
+        commandTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     private func fireCommand() {
@@ -1174,7 +1269,18 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         guard state == .passive || state == .active else { return }
         state = .passive
         tearDownRecognition()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+        restartAttempts += 1
+        // Exponential backoff with a ceiling (audit 12, P1-4): a dead
+        // recognizer must not become a permanent 0.6s battery drain.
+        guard restartAttempts <= 6 else {
+            state = .off
+            SoundEffects.externalAudioOwner = false
+            try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+            onFailure?("Hey Morphe paused — speech recognition isn't responding. Flip the toggle to try again.")
+            return
+        }
+        let delay = min(0.6 * pow(2, Double(restartAttempts - 1)), 20)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self, self.state == .passive else { return }
             self.beginListening()
         }
@@ -1217,6 +1323,8 @@ final class DictationEngine: NSObject {
     /// Starts dictation, appending to `baseText`. Each partial result calls
     /// `onText` with the full combined string.
     func start(baseText: String, onText: @escaping (String) -> Void) {
+        // One mic owner at a time (audit 12, P0-3).
+        HeyMorpheEngine.shared.pauseForExternalAudio()
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
                 guard status == .authorized else {
@@ -1297,8 +1405,10 @@ final class DictationEngine: NSObject {
         request = nil
         isRecording = false
         notice = nil
-        // Hand the audio session back to the reward sounds' ambient setup.
+        // Hand the audio session back to the reward sounds' ambient setup,
+        // then let Hey Morphe resume if it was the one we paused.
         try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+        HeyMorpheEngine.shared.resumeAfterExternalAudio()
     }
 }
 

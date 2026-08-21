@@ -849,26 +849,59 @@ final class WorkoutSessionTests: XCTestCase {
                       "a real log flips the outline to earned")
     }
 
-    /// "Hey Morphe": voice commands fire the same doors the buttons use,
-    /// confirm honestly, and never restart a live session.
+    /// "Hey Morphe": voice delegates to the chat action layer, questions
+    /// never fire actions, and word boundaries stop keyword collisions.
     func testVoiceCommandsNavigateAndStayHonest() {
         let store = freshStore()
 
+        // Audit 12, P0-1: a QUESTION containing command words must answer,
+        // never act — the exact defect that once wiped live sessions.
+        let question = store.routeVoiceCommand("when should I start training again")
+        XCTAssertFalse(question.isEmpty)
+        XCTAssertFalse(store.isWorkoutSessionActive, "questions never start a session")
+        XCTAssertFalse(store.hasStartedWorkoutFlow)
+
+        // Audit 12, P2-10: "progressive" must not match "progress".
+        _ = store.routeVoiceCommand("explain progressive overload to me")
+        XCTAssertEqual(store.selectedClientTab, .today, "no collision navigation")
+
         let progressReply = store.routeVoiceCommand("show my progress")
-        XCTAssertTrue(progressReply.lowercased().contains("progress"))
+        XCTAssertFalse(progressReply.isEmpty)
         XCTAssertEqual(store.selectedClientTab, .hub, "voice uses the same door as the button")
 
-        let startReply = store.routeVoiceCommand("start my workout")
-        XCTAssertTrue(startReply.contains("session"))
-
+        // The action layer owns start — with its live-session guard.
         startedTwoExerciseSession(store)
         store.completeTrackedSet(reps: 8, weight: 50)
         let guarded = store.routeVoiceCommand("start my workout")
-        XCTAssertTrue(guarded.contains("already"),
+        XCTAssertTrue(guarded.contains("already") || guarded.contains("mid-session"),
                       "a live session is never silently restarted by voice")
 
         let answer = store.routeVoiceCommand("how do I build a streak")
         XCTAssertFalse(answer.isEmpty, "unknown asks fall through to the Morphe AI brain")
+    }
+
+    /// Audit 12, P1-1/P1-2: the takeover re-arms only after a REAL
+    /// background return, and never ambushes the post-log moment.
+    func testDayPopupReArmGating() {
+        let store = freshStore()
+        store.dismissDayPopupForSession()
+        XCTAssertFalse(store.shouldShowDayPopup)
+
+        // An .active without a preceding .background (Control Center
+        // glance) must NOT re-arm.
+        store.reopenDayPopup()
+        XCTAssertFalse(store.shouldShowDayPopup, "scene flicker never re-arms the takeover")
+
+        store.noteBackgrounded()
+        store.reopenDayPopup()
+        XCTAssertTrue(store.shouldShowDayPopup, "a real background return re-arms it")
+
+        // Logging parks it for the rest of this open.
+        startedTwoExerciseSession(store)
+        store.completeTrackedSet(reps: 8, weight: 50)
+        store.finishTrackedWorkoutSession()
+        store.logWorkout()
+        XCTAssertFalse(store.shouldShowDayPopup, "the post-log moment is never ambushed")
     }
 
     /// Jarvis slide-up: the popup offers three context-derived choices
@@ -891,10 +924,12 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertNotNil(store.morpheAskReplyToday, "an answered popup speaks for the day")
         XCTAssertFalse(store.shouldShowDayPopup, "answered parks the popup for this open")
 
-        // Every open re-offers (Lucas 2026-08-18) — a foreground return
-        // brings it back even after an answer.
+        // Every open re-offers (Lucas 2026-08-18) — a REAL background
+        // return brings it back even after an answer (audit 12, P1-1:
+        // scene flickers alone never re-arm it).
+        store.noteBackgrounded()
         store.reopenDayPopup()
-        XCTAssertTrue(store.shouldShowDayPopup, "the popup greets every app open")
+        XCTAssertTrue(store.shouldShowDayPopup, "the popup greets every real app open")
     }
 
     /// Once the day's work is logged, the popup becomes a launcher — and

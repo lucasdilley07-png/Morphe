@@ -427,12 +427,15 @@ enum SoundEffects {
     }
 
     private static var players: [Cue: AVAudioPlayer] = [:]
-    private static var sessionConfigured = false
+    /// True while Hey Morphe owns the audio session (audit 12, P0-2) —
+    /// cues must not flip the category out from under a live mic tap, and
+    /// once voice releases the session, every play re-asserts .ambient so
+    /// app sounds NEVER duck the user's music or beat the silent switch.
+    static var externalAudioOwner = false
 
     static func play(_ cue: Cue) {
-        if !sessionConfigured {
+        if !externalAudioOwner {
             try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-            sessionConfigured = true
         }
         if players[cue] == nil {
             players[cue] = try? AVAudioPlayer(data: waveData(for: cue))
