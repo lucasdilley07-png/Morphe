@@ -67,14 +67,19 @@ struct CoachDashboardView: View {
         }
         .safeAreaInset(edge: .bottom) {
             // The same floating glass capsule as the client dock — one
-            // design language in both roles.
-            BottomTabNavigation(items: CoachTab.visibleCases, selected: store.selectedCoachTab) { tab in
-                store.selectedCoachTab = tab
-                // Tapping the icon always lands at the top of that tab's
-                // first page.
-                store.popTabToRoot(tab.rawValue)
+            // design language in both roles. Yields to the keyboard
+            // (audit 13, P1) instead of floating on top of it.
+            if !KeyboardWatcher.shared.isVisible {
+                BottomTabNavigation(items: CoachTab.visibleCases, selected: store.selectedCoachTab) { tab in
+                    store.selectedCoachTab = tab
+                    // Tapping the icon always lands at the top of that tab's
+                    // first page.
+                    store.popTabToRoot(tab.rawValue)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: KeyboardWatcher.shared.isVisible)
         .navigationDestination(item: Binding(
             get: { store.selectedCoachClient },
             set: { _ in store.closeClientHub() }

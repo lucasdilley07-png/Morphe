@@ -268,6 +268,11 @@ final class WorkoutBuilderTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        // The hello beat and welcome sheet run their course in the real UI —
+        // tests start past them (audit 13: the day takeover now yields to
+        // both, so leaving them raised would suppress the popup here).
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
         return store
     }
 
@@ -334,6 +339,11 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        // The hello beat and welcome sheet run their course in the real UI —
+        // tests start past them (audit 13: the day takeover now yields to
+        // both, so leaving them raised would suppress the popup here).
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
         return store
     }
 
@@ -824,7 +834,11 @@ final class WorkoutSessionTests: XCTestCase {
     /// hello and HOLDS the welcome sheet (the overlay's completion raises
     /// it — raised together, the sheet hid the hello forever).
     func testHelloBeatFiresOncePerAccountAndDefersWelcome() {
-        let store = freshStore()
+        // Raw post-onboarding state on purpose — freshStore() clears the
+        // hello/welcome (audit 13), and this test IS about that beat.
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
         XCTAssertTrue(store.showHelloBeat, "a fresh account gets the hello")
         XCTAssertFalse(store.showWelcomeExperience,
                        "the welcome sheet waits for the hello to finish")
@@ -861,8 +875,11 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertFalse(store.isWorkoutSessionActive, "questions never start a session")
         XCTAssertFalse(store.hasStartedWorkoutFlow)
 
-        // Audit 12, P2-10: "progressive" must not match "progress".
-        _ = store.routeVoiceCommand("explain progressive overload to me")
+        // Audit 12, P2-10: "progressive" must not match "progress". The
+        // phrase must NOT be question-shaped (audit 13: the old "explain
+        // progressive overload" was swallowed by the question guard before
+        // the word-boundary regex ever ran — the assertion was tautological).
+        _ = store.routeVoiceCommand("progressive overload week two")
         XCTAssertEqual(store.selectedClientTab, .today, "no collision navigation")
 
         let progressReply = store.routeVoiceCommand("show my progress")
@@ -875,6 +892,8 @@ final class WorkoutSessionTests: XCTestCase {
         let guarded = store.routeVoiceCommand("start my workout")
         XCTAssertTrue(guarded.contains("already") || guarded.contains("mid-session"),
                       "a live session is never silently restarted by voice")
+        // Not just the reply (audit 13): the session itself must survive.
+        XCTAssertTrue(store.isWorkoutSessionActive, "the live session survives the guarded command")
 
         let answer = store.routeVoiceCommand("how do I build a streak")
         XCTAssertFalse(answer.isEmpty, "unknown asks fall through to the Morphe AI brain")
@@ -945,6 +964,57 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(choices.first?.label, "Go again")
         XCTAssertEqual(choices.last?.label, "Other…")
         XCTAssertTrue(store.dayPopupQuestion(evening: false).contains("in the books"))
+
+        // The doc-comment claim, actually asserted (audit 13): launcher
+        // actions never overwrite the day's first spoken reply.
+        store.answerDayPopup(.progress)
+        let firstReply = store.morpheAskReplyToday
+        XCTAssertNotNil(firstReply, "the first launcher answer speaks for the day")
+        store.answerDayPopup(.goAgain)
+        store.answerDayPopup(.board)
+        XCTAssertEqual(store.morpheAskReplyToday, firstReply,
+                       "launcher actions never overwrite the day's first spoken reply")
+
+        // And the full chain: log → real background → reopen → the popup
+        // re-offers, still in launcher form.
+        store.noteBackgrounded()
+        store.reopenDayPopup()
+        XCTAssertTrue(store.shouldShowDayPopup, "the launcher re-offers on a real reopen")
+        XCTAssertEqual(store.dayPopupChoices(evening: false).first?.label, "Go again")
+    }
+
+    /// Audit 13: once tonight's check-in is answered, the evening popup
+    /// steps aside to the standard state instead of re-asking a question
+    /// whose chips would all be silent no-ops.
+    func testEveningPopupStepsAsideOnceAnswered() {
+        let store = freshStore()
+        XCTAssertEqual(store.dayPopupChoices(evening: true).first?.label, "Short session tonight")
+
+        _ = store.answerEveningCheckIn(.tomorrow)
+        XCTAssertEqual(store.dayPopupChoices(evening: true).first?.label, "Start my workout",
+                       "an answered evening falls back to the standard chips")
+        XCTAssertFalse(store.dayPopupQuestion(evening: true).contains("Evening check-in"),
+                       "the question and choices stay in the same state")
+    }
+
+    /// Audit 13: closing the comeback card must not let the takeover erupt
+    /// mid-interaction — the dismissal parks it for this open.
+    func testComebackDismissParksTheTakeover() {
+        let store = freshStore()
+        XCTAssertTrue(store.shouldShowDayPopup)
+        store.dismissComebackCard()
+        XCTAssertFalse(store.shouldShowDayPopup,
+                       "dismissing the comeback card never opens the takeover on top of the tap")
+    }
+
+    /// Audit 12, P2-4: the spoken form strips what reads badly aloud while
+    /// the chip keeps the original.
+    func testSpokenFormReadsCleanly() {
+        XCTAssertEqual(MorpheAppStore.spokenForm(of: "Here's your progress (last 30 days)"),
+                       "Here's your progress")
+        XCTAssertEqual(MorpheAppStore.spokenForm(of: "Switch units — lb/kg"),
+                       "Switch units — pounds or kilos")
+        XCTAssertEqual(MorpheAppStore.spokenForm(of: "\"Go again\""), "Go again")
     }
 
     /// Moments engine phase 2: the evening check-in's choices map to real
@@ -2310,6 +2380,11 @@ final class AuditFixRegressionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        // The hello beat and welcome sheet run their course in the real UI —
+        // tests start past them (audit 13: the day takeover now yields to
+        // both, so leaving them raised would suppress the popup here).
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
         return store
     }
 
@@ -2576,6 +2651,11 @@ final class Audit4RegressionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        // The hello beat and welcome sheet run their course in the real UI —
+        // tests start past them (audit 13: the day takeover now yields to
+        // both, so leaving them raised would suppress the popup here).
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
         return store
     }
 
@@ -2715,6 +2795,11 @@ final class CleanupRegressionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        // The hello beat and welcome sheet run their course in the real UI —
+        // tests start past them (audit 13: the day takeover now yields to
+        // both, so leaving them raised would suppress the popup here).
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
         return store
     }
 
@@ -3034,6 +3119,11 @@ final class ProgressionTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        // The hello beat and welcome sheet run their course in the real UI —
+        // tests start past them (audit 13: the day takeover now yields to
+        // both, so leaving them raised would suppress the popup here).
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
         return store
     }
 
@@ -3115,6 +3205,11 @@ final class PersonalizationEngineTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        // The hello beat and welcome sheet run their course in the real UI —
+        // tests start past them (audit 13: the day takeover now yields to
+        // both, so leaving them raised would suppress the popup here).
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
         return store
     }
 
@@ -3807,7 +3902,7 @@ final class IdentityAndTermsTests: XCTestCase {
             if let previous { taken.remove(previous) }
             return .claimed
         }
-        func search(prefix: String, limit: Int) async -> [(username: String, uid: String)] {
+        func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]? {
             taken.filter { $0.hasPrefix(prefix) }.sorted().prefix(limit).map { ($0, "uid-\($0)") }
         }
         func release(_ username: String, for uid: String) async {
@@ -4107,7 +4202,7 @@ final class SocialFeedTests: XCTestCase {
         var entries: [(username: String, uid: String)] = []
         func isAvailable(_ username: String, for uid: String) async -> Bool { true }
         func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult { .claimed }
-        func search(prefix: String, limit: Int) async -> [(username: String, uid: String)] {
+        func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]? {
             entries.filter { $0.username.hasPrefix(prefix) }
         }
         func release(_ username: String, for uid: String) async {}
@@ -4258,6 +4353,11 @@ final class StrengthAnalyticsTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        // The hello beat and welcome sheet run their course in the real UI —
+        // tests start past them (audit 13: the day takeover now yields to
+        // both, so leaving them raised would suppress the popup here).
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
         return store
     }
 
@@ -4660,6 +4760,11 @@ final class DepthSprintTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        // The hello beat and welcome sheet run their course in the real UI —
+        // tests start past them (audit 13: the day takeover now yields to
+        // both, so leaving them raised would suppress the popup here).
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
         return store
     }
 
@@ -4866,6 +4971,11 @@ final class BacklogBatchTests: XCTestCase {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"
         store.completeOnboarding()
+        // The hello beat and welcome sheet run their course in the real UI —
+        // tests start past them (audit 13: the day takeover now yields to
+        // both, so leaving them raised would suppress the popup here).
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
         return store
     }
 

@@ -51,8 +51,9 @@ protocol UsernameDirectoryService: AnyObject {
     /// given and owned by this uid) in the same transaction.
     func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult
     /// Prefix search over the directory for user discovery — (username, uid)
-    /// pairs, name-ordered. Empty on failure or empty prefix.
-    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]
+    /// pairs, name-ordered. Empty for an empty prefix or a genuine no-match;
+    /// nil when the query itself failed (offline), so callers can be honest.
+    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]?
     /// Releases a claim on account deletion so the name frees up. Rules
     /// enforce owner-only; a mismatched uid write is simply denied.
     func release(_ username: String, for uid: String) async
@@ -63,7 +64,8 @@ protocol UsernameDirectoryService: AnyObject {
 final class NoOpUsernameDirectory: UsernameDirectoryService {
     func isAvailable(_ username: String, for uid: String) async -> Bool { true }
     func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult { .claimed }
-    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)] { [] }
+    // NoOp is 'accounts are off', not 'offline' — an empty definitive answer.
+    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]? { [] }
     func release(_ username: String, for uid: String) async {}
 }
 
@@ -80,7 +82,10 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
         return (snap.data()?["uid"] as? String) == uid
     }
 
-    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)] {
+    /// nil = the query FAILED (offline) — distinct from an empty answer
+    /// (audit 13, P2): "no accounts match" was a lie with no network, and
+    /// the referral consumer needs the same distinction to keep retrying.
+    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]? {
         let clean = UsernameRules.normalize(prefix)
         guard !clean.isEmpty else { return [] }
         // Doc-id range scan: the doc id IS the lowercased username, so
@@ -90,7 +95,7 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
             .whereField(FieldPath.documentID(), isLessThan: clean + "\u{f8ff}")
             .limit(to: max(limit, 1))
             .getDocuments()
-        else { return [] }
+        else { return nil }
         return snapshot.documents.compactMap { document in
             guard let uid = document.data()["uid"] as? String else { return nil }
             return (username: document.documentID, uid: uid)

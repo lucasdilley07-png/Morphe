@@ -21,9 +21,11 @@ struct MoreView: View {
             .map { $0 }
     }
 
-    /// ONE quiz per calendar day — the day picks it, completion doesn't skip
-    /// ahead. (The old "first uncompleted" rule let a learner chain all 16 in
-    /// one sitting, then hit an empty pool with a false "tomorrow" promise.)
+    /// Quizzes unlock chronologically (90f7d48): the FIRST uncompleted quiz
+    /// is today's, one attempt per calendar day (`quizAnsweredToday` blocks
+    /// chaining), and after 16 the wall says all-done honestly. (This
+    /// comment previously described the retired day-picks-it scheme — on
+    /// the wrong declaration, claiming the opposite rule. Audit 13, P2.)
     private let mobilityLibrary = [
         "90/90 Hip Switch",
         "World's Greatest Stretch",

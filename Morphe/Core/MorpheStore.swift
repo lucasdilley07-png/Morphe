@@ -968,6 +968,13 @@ final class MorpheAppStore {
         detectStreakLapse()
         publishWidgetSnapshot()
         trackDayActiveIfNeeded()
+        // An unsettled welcome debt (kill during the hello beat, or between
+        // onboarding and terms acceptance — audit 13, P2) resumes here. The
+        // hello itself doesn't replay; the welcome is the durable moment.
+        if hasCompletedOnboarding, hasAcceptedTerms,
+           UserDefaults.standard.bool(forKey: Self.welcomePendingKey) {
+            showWelcomeExperience = true
+        }
 
         Self.mostRecentInstance = self
     }
@@ -1018,6 +1025,14 @@ final class MorpheAppStore {
     }
 
     func signOut() {
+        // The mic goes first (audit 13, P1): sign-out must never leave
+        // Hey Morphe listening behind the auth wall, and the device-global
+        // enable flag must not auto-arm the NEXT account's first open
+        // without consent. setHeyMorphe(false) stops the engine, hands the
+        // audio session back, and clears the persisted toggle.
+        setHeyMorphe(enabled: false)
+        voiceExchangeClearTask?.cancel()
+        voiceExchangeClearTask = nil
         authService.signOut()
         cloudBackup.setUser(nil)
         authUser = nil
@@ -1101,7 +1116,9 @@ final class MorpheAppStore {
                     // (launch audit P2-18). Cosmetic to lose on a device
                     // switch, wrong to share across accounts.
                     threadReadKey, activitySeenKey, storySeenKey,
-                    lastKnownStreakKey, comebackPendingKey] {
+                    lastKnownStreakKey, comebackPendingKey,
+                    // The welcome debt is this account's, not the device's.
+                    Self.welcomePendingKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
         purgeConversationalDefaults()
@@ -1301,6 +1318,11 @@ final class MorpheAppStore {
     /// The welcome celebration queued by onboarding waits behind the terms
     /// gate instead of racing it.
     private var welcomeAwaitsTermsAcceptance = false
+    /// The welcome debt on disk (audit 13, P2): a kill during the ~3s hello
+    /// beat used to lose the once-ever welcome forever — this key survives
+    /// the relaunch. Set at onboarding, cleared when the welcome shows,
+    /// purged at sign-out.
+    static let welcomePendingKey = "morphe.welcome.pending"
 
     /// The terms gate shows for any signed-in, onboarded account that hasn't
     /// accepted yet — including every reopen until they do.
@@ -1311,12 +1333,18 @@ final class MorpheAppStore {
 
     func acceptTerms() {
         hasAcceptedTerms = true
-        if welcomeAwaitsTermsAcceptance {
+        // The persisted debt covers a relaunch between onboarding and this
+        // acceptance — the in-memory flag alone died with the process.
+        if welcomeAwaitsTermsAcceptance
+            || UserDefaults.standard.bool(forKey: Self.welcomePendingKey) {
             welcomeAwaitsTermsAcceptance = false
             showWelcomeExperience = true
         }
         persistLocalProfile()
         Haptics.success()
+        // The gate held voice back (startVoiceIfEnabled refuses while the
+        // wall is up) — an enabled toggle comes live the moment it drops.
+        startVoiceIfEnabled()
     }
 
     /// Declining means no app: sign the account out. The gate returns on the
@@ -3238,8 +3266,13 @@ final class MorpheAppStore {
     /// and fire the "Monday" reminder on Sunday.
     var weeklyRecapData: WeeklyRecapData? {
         let thisWeekStart = LeaderboardWeek.start()
-        return weeklyRecapData(weekStart: thisWeekStart.addingTimeInterval(-7 * 86_400),
-                               weekEnd: thisWeekStart)
+        // Calendar week-arithmetic, not 7×86 400 (audit 13, P2): a DST
+        // transition makes the fixed-seconds week 1h short or long, which
+        // silently drops (or double-counts) the edge-hour logs.
+        let lastWeekStart = Calendar.current.date(
+            byAdding: .weekOfYear, value: -1, to: thisWeekStart)
+            ?? thisWeekStart.addingTimeInterval(-7 * 86_400)
+        return weeklyRecapData(weekStart: lastWeekStart, weekEnd: thisWeekStart)
     }
 
     /// Recap facts for one [weekStart, weekEnd) window — every number is a
@@ -4871,6 +4904,9 @@ final class MorpheAppStore {
         // one tap away) — honoring it here keeps ONE gate instead of
         // making users agree twice ten seconds apart. The wall still
         // catches accounts that never agreed (pre-toggle restores).
+        // The welcome debt lands on disk BEFORE the hello plays (audit 13,
+        // P2): a kill during the beat must not lose the celebration.
+        UserDefaults.standard.set(true, forKey: Self.welcomePendingKey)
         if onboardingDraft.agreedToTerms {
             hasAcceptedTerms = true
             // The hello beat plays FIRST (audit 11, P0-1): the welcome
@@ -5939,6 +5975,15 @@ final class MorpheAppStore {
         // "Logged today", streak, and score are date-derived — recompute them
         // against the new day instead of trusting launch-time values.
         refreshWorkoutLogDerivedState(for: clientProfile.id)
+
+        // Lapse detection rides the same boundary (audit 13, P2): iOS can
+        // keep the app suspended for days, so a streak that died while
+        // suspended must surface on foreground return — cold launch was
+        // the only detector, and a phone that never relaunches never
+        // showed the comeback card or scheduled its reminder.
+        if hasCompletedOnboarding, selectedRole == .client {
+            detectStreakLapse()
+        }
 
         // A new day = a different workout, so day 3 isn't a rerun of day 1.
         advancePlanForNewDayIfOnPlan()
@@ -7582,7 +7627,16 @@ final class MorpheAppStore {
     /// the backend.)
     private func assistantActionReply(for text: String) -> String? {
         let lower = text.lowercased()
-        func has(_ words: String...) -> Bool { words.contains { lower.contains($0) } }
+        // Word-boundary matched (audit 13, closing audit 12 P2-10 for
+        // real): plain contains() sent "progressive overload" to the
+        // Progress tab — the voice layer had the boundary fix, but this
+        // layer runs FIRST for both chat and voice.
+        func has(_ words: String...) -> Bool {
+            words.contains {
+                lower.range(of: "\\b\(NSRegularExpression.escapedPattern(for: $0))\\b",
+                            options: .regularExpression) != nil
+            }
+        }
 
         if has("what can you do", "help me use", "commands") || lower == "help" {
             return "I can start your workout (today's or one by name, like \"start Push Day\"), log sets mid-session (\"log 3x10 at 135\"), turn on Minimum Win mode, open Discover, Progress, Lessons, the exercise library, or your profile, and switch lb/kg. Just ask."
@@ -7638,7 +7692,7 @@ final class MorpheAppStore {
         // "log bench 3x10" names an exercise the parser ignores — logging
         // it against whatever's active would be a silent mis-log. Guide
         // instead of guessing.
-        if has("log", "did", "add"), Self.parseSetCommand(lower) == nil,
+        if has("log", "logged", "did", "add", "added"), Self.parseSetCommand(lower) == nil,
            lower.range(of: #"(?:log|did|add)\s+[a-z][a-z ]+\d{1,2}\s*[x×]\s*\d"#,
                        options: .regularExpression) != nil {
             let active = activeWorkoutExercise?.name ?? "the active exercise"
@@ -7648,7 +7702,7 @@ final class MorpheAppStore {
         // Mid-session set logging: "log 3x10 at 135". Weight omitted falls
         // back to the same suggestion the console uses — a real number from
         // this user's history, never an invention.
-        if has("log", "did", "add"), let parsed = Self.parseSetCommand(lower) {
+        if has("log", "logged", "did", "add", "added"), let parsed = Self.parseSetCommand(lower) {
             guard isWorkoutSessionActive else {
                 return "Nothing's in session yet — say \"start my workout\" first and I'll log sets straight into the console."
             }
@@ -7686,11 +7740,15 @@ final class MorpheAppStore {
 
         // Units switch only on an explicit ask — "I lifted 100 kg today" is a
         // statement, not a settings change.
-        if has("switch", "change", "prefer", "track in", "weights in", "use kg", "use kilo", "use lb", "use pound") {
-            let toKG = has("to kg", "to kilo", "in kg", "in kilo")
-            let toLB = has("to lb", "to pound", "in lb", "in pound")
-            let wantsKG = toKG || (!toLB && has("kilogram", " kg", "kgs"))
-            let wantsLB = toLB || (!toKG && has("pound", " lb", "lbs"))
+        if has("switch", "change", "prefer", "track in", "weights in",
+               "use kg", "use kgs", "use kilo", "use kilos", "use kilogram", "use kilograms",
+               "use lb", "use lbs", "use pound", "use pounds") {
+            let toKG = has("to kg", "to kgs", "to kilo", "to kilos", "to kilogram", "to kilograms",
+                           "in kg", "in kgs", "in kilo", "in kilos", "in kilogram", "in kilograms")
+            let toLB = has("to lb", "to lbs", "to pound", "to pounds",
+                           "in lb", "in lbs", "in pound", "in pounds")
+            let wantsKG = toKG || (!toLB && has("kilogram", "kilograms", "kilo", "kilos", "kg", "kgs"))
+            let wantsLB = toLB || (!toKG && has("pound", "pounds", "lb", "lbs"))
             if wantsKG != wantsLB {
                 weightUnit = wantsKG ? .kilograms : .pounds
                 return "Weights now shown in \(wantsKG ? "kilograms" : "pounds")."
@@ -7706,12 +7764,12 @@ final class MorpheAppStore {
         }
         // Library BEFORE lessons (AI-5): "learn proper form" is a form-guide
         // ask, and "learn" alone used to hijack it into Lessons.
-        if has("library", "exercise", "form guide", "form", "anatomy", "technique") {
+        if has("library", "exercise", "exercises", "form guide", "form", "anatomy", "technique", "techniques") {
             openMore(.library)
             closeAIAgent()
             return "Opened the exercise library — pick a muscle group to browse form guides."
         }
-        if has("lesson", "quiz", "learn") {
+        if has("lesson", "lessons", "quiz", "quizzes", "learn") {
             openMore(.learn)
             closeAIAgent()
             return "Opened Lessons — today's quiz is at the top."
@@ -7721,7 +7779,7 @@ final class MorpheAppStore {
             closeAIAgent()
             return "Opened Discover — pick a training style to browse its workouts."
         }
-        if has("profile", "settings", "injur", "rename", "training days") {
+        if has("profile", "settings", "injury", "injured", "injuries", "rename", "training days") {
             // Two sheets can't co-present: dismiss the chat, then present the
             // profile once the transition has room to run.
             closeAIAgent()
@@ -8293,7 +8351,7 @@ final class MorpheAppStore {
     // the buttons use; everything else routes to the Morphe AI brain and
     // the answer is spoken back.
 
-    let heyMorphe = HeyMorpheEngine()
+    let heyMorphe = HeyMorpheEngine.shared
 
     var heyMorpheEnabled = UserDefaults.standard.bool(forKey: "morphe.heymorphe.enabled")
 
@@ -8312,7 +8370,10 @@ final class MorpheAppStore {
     }
 
     func startVoiceIfEnabled() {
-        guard heyMorpheEnabled else { return }
+        // Only inside the real app shell (audit 13, P1): the scene-phase
+        // restart used to arm the mic on the auth wall and the terms gate.
+        guard heyMorpheEnabled, hasCompletedOnboarding, !needsTermsAcceptance,
+              (!FeatureFlags.accountsEnabled || authUser != nil) else { return }
         heyMorphe.onWake = {
             Haptics.impact(.light)
         }
@@ -8357,6 +8418,15 @@ final class MorpheAppStore {
     /// lb-kg). Voice adds only the doors chat never needed, word-boundary
     /// matched and question-gated. Returns the line that gets spoken.
     func routeVoiceCommand(_ raw: String) -> String {
+        // Voice nav must be VISIBLE nav (audit 13, P1): the doors change
+        // tabs, but a presented sheet (the profile sheet the toggle lives
+        // in, Quick Add, Search) or the day takeover kept covering the
+        // screen while Morphe announced success — the exact failure the
+        // chat doors document with closeAIAgent(). Question-shaped input
+        // navigates nothing, so it dismisses nothing.
+        if !Self.isQuestionShaped(raw.lowercased()) {
+            clearVoiceNavigationObstructions()
+        }
         if selectedRole == .coach {
             if let action = coachAssistantActionReply(for: raw) { return action }
             return previewAIAgentReply(for: raw)
@@ -8366,13 +8436,7 @@ final class MorpheAppStore {
         let text = raw.lowercased()
         // Same interrogative guard as the action layer — a question about
         // the board must not NAVIGATE to the board mid-answer.
-        let questionStarts = [
-            "should", "when", "what", "how", "why", "where", "who",
-            "is ", "are ", "am ", "do ", "does ", "did ", "would", "could",
-            "can ", "explain", "tell me"
-        ]
-        let isQuestion = text.contains("?")
-            || questionStarts.contains { text.hasPrefix($0) }
+        let isQuestion = Self.isQuestionShaped(text)
 
         if !isQuestion {
             // Word-boundary matching (audit 12, P2-10): "progressive
@@ -8421,6 +8485,28 @@ final class MorpheAppStore {
         }
 
         return previewAIAgentReply(for: raw)
+    }
+
+    /// One question detector for the voice layer (audit 12, P0-1 lineage):
+    /// interrogatives get answers, never navigation.
+    private static let voiceQuestionStarts = [
+        "should", "when", "what", "how", "why", "where", "who",
+        "is ", "are ", "am ", "do ", "does ", "did ", "would", "could",
+        "can ", "explain", "tell me"
+    ]
+
+    static func isQuestionShaped(_ lowered: String) -> Bool {
+        lowered.contains("?") || voiceQuestionStarts.contains { lowered.hasPrefix($0) }
+    }
+
+    /// Everything that can cover the shell steps aside before a voice door
+    /// opens (audit 13, P1) — sheets, the AI cover, and the day takeover.
+    private func clearVoiceNavigationObstructions() {
+        showQuickAdd = false
+        showUniversalSearch = false
+        showClientProfile = false
+        if showAIAgent { closeAIAgent() }
+        if shouldShowDayPopup { dismissDayPopupForSession() }
     }
 
     // MARK: - Apple-benchmark moments (docs/UI-AUDIT-APPLE.md)
@@ -8721,6 +8807,14 @@ final class MorpheAppStore {
 
     func dismissWelcomeExperience() {
         showWelcomeExperience = false
+        // The welcome landed — the once-ever debt is settled (audit 13, P2).
+        UserDefaults.standard.removeObject(forKey: Self.welcomePendingKey)
+        // A celebration that arrived during the hello/welcome window
+        // (coach-invite claim) gets its stage now.
+        if let held = pendingCelebration {
+            pendingCelebration = nil
+            showCelebration(title: held.title, detail: held.detail, symbol: held.symbol)
+        }
     }
 
     func toggleProfileGoal(_ goal: FitnessGoalOption) {
@@ -9004,10 +9098,10 @@ final class MorpheAppStore {
         guard isRealFeedActive,
               let username = UserDefaults.standard.string(forKey: Self.pendingReferralKey)
         else { return }
-        let hits = await usernameDirectory.search(prefix: username, limit: 5)
-        // Empty CAN mean offline (the NoOp/failed search returns []) — keep
-        // the invite and retry on the next feed load rather than eating it.
-        guard !hits.isEmpty else { return }
+        // nil = offline (audit 13): keep the invite and retry on the next
+        // feed load. A real answer — even an empty one — is definitive,
+        // exactly as the doc comment above promises.
+        guard let hits = await usernameDirectory.search(prefix: username, limit: 5) else { return }
         UserDefaults.standard.removeObject(forKey: Self.pendingReferralKey)
         guard let hit = hits.first(where: { $0.username == username }),
               hit.uid != authUser?.id else { return }
@@ -9664,11 +9758,15 @@ final class MorpheAppStore {
 
         // Every threshold currently met, best (highest tier) first.
         var earned: [(id: String, title: String, detail: String, symbol: String)] = []
+        // Copy matches the metric (audit 13, P2): currentStreakDays is the
+        // SCHEDULE-AWARE streak — training days without breaking the chain,
+        // gaps allowed by the user's days/week. "Seven days straight" and
+        // "a month" claimed calendar continuity it doesn't measure.
         if streak >= 30 {
-            earned.append(("streak30", "THIRTY DAYS", "A month of showing up. This is who you are now.", "flame.fill"))
+            earned.append(("streak30", "THIRTY-DAY STREAK", "Thirty training days without breaking the chain. This is who you are now.", "flame.fill"))
         }
         if streak >= 7 {
-            earned.append(("streak7", "SEVEN DAYS STRAIGHT", "A full week of honest work — this is how it compounds.", "flame.fill"))
+            earned.append(("streak7", "SEVEN-DAY STREAK", "Seven training days, right on schedule — this is how it compounds.", "flame.fill"))
         }
         if logs.count >= 10 {
             earned.append(("sessions10", "TEN SESSIONS LOGGED", "Ten real sessions on the books. The habit is real now.", "checkmark.seal.fill"))
@@ -9762,7 +9860,14 @@ final class MorpheAppStore {
         // the popup only until the next foreground return — the reply keys
         // no longer gate it. State guards stay: never over onboarding, a
         // live/unlogged session, minimum-win mode, or the comeback moment.
+        // Never over the terms wall either (audit 13, P1 — two agents): a
+        // restored pre-consent account must face the gate, not the takeover.
+        // And never during the hello/welcome beat (audit 13, P2): mounting
+        // under the opaque hello burned the entrance animation and fought
+        // VoiceOver for focus.
         guard hasCompletedOnboarding, selectedRole == .client,
+              !needsTermsAcceptance,
+              !showHelloBeat, !showWelcomeExperience,
               !isWorkoutSessionActive, !hasUnsavedSessionWork,
               !minimumWinModeEnabled, comebackLapsedStreak == nil,
               !dayPopupSessionDismissed
@@ -9805,7 +9910,11 @@ final class MorpheAppStore {
         }
         // Question and choices must come from the SAME state (audit 11,
         // P1-3): the evening voice steps aside when a coach session leads.
-        if evening, !isPlannedRestDay, dueCoachAssignment == nil {
+        // Answered means answered (audit 13, P1): once tonight's check-in
+        // has a reply, re-opens fall through to the standard state instead
+        // of re-asking a question whose chips would all be silent no-ops.
+        if evening, !isPlannedRestDay, dueCoachAssignment == nil,
+           eveningCheckInReplyToday == nil {
             return eveningCheckInLine
         }
         if isPlannedRestDay {
@@ -9842,7 +9951,9 @@ final class MorpheAppStore {
             choices.append(DayPopupChoice(kind: .other, label: "Other…", symbol: "ellipsis.bubble.fill"))
             return choices
         }
-        if evening, !isPlannedRestDay, dueCoachAssignment == nil {
+        // Same answered-steps-aside condition as the question (audit 13, P1).
+        if evening, !isPlannedRestDay, dueCoachAssignment == nil,
+           eveningCheckInReplyToday == nil {
             // The evening voice: honest outs, same real actions as the
             // old evening card's chips.
             choices = [
@@ -9878,6 +9989,9 @@ final class MorpheAppStore {
     }
 
     func answerDayPopup(_ kind: DayPopupChoiceKind) {
+        // A stale coach chip must not burn the popup with no action
+        // (audit 13, P2): bail BEFORE parking so the open keeps its offer.
+        if kind == .startCoach, dueCoachAssignment == nil { return }
         // Any answer parks the popup for this app open (Lucas 2026-08-18:
         // it re-offers on the next foreground return).
         dayPopupSessionDismissed = true
@@ -10898,13 +11012,23 @@ final class MorpheAppStore {
 
     /// Username prefix search (2+ chars). Results exclude this account —
     /// following yourself is noise.
+    /// True when the last directory search FAILED (offline) — the UI shows
+    /// an honest can't-reach line instead of "no accounts match" (audit 13).
+    private(set) var athleteSearchFailed = false
+
     func searchAthletes(query: String) async {
         let clean = UsernameRules.normalize(query)
         guard clean.count >= 2 else {
             athleteSearchResults = []
+            athleteSearchFailed = false
             return
         }
-        let hits = await usernameDirectory.search(prefix: clean, limit: 10)
+        guard let hits = await usernameDirectory.search(prefix: clean, limit: 10) else {
+            athleteSearchResults = []
+            athleteSearchFailed = true
+            return
+        }
+        athleteSearchFailed = false
         athleteSearchResults = hits
             .filter { $0.uid != authUser?.id && !blockedUids.contains($0.uid) }
             .map { AthleteSearchResult(username: $0.username, uid: $0.uid) }
@@ -11685,6 +11809,12 @@ final class MorpheAppStore {
     /// User saw the card and closed it — that's an answer, not a snooze.
     /// The pending state AND the reminder go together.
     func dismissComebackCard() {
+        // Parking first (audit 13, P1): clearing the comeback drops the
+        // last guard holding the day takeover back, so without this the
+        // full-screen popup erupted the instant the X was tapped — the
+        // same ambush the log path already parks against. It re-offers on
+        // the next foreground return, per the every-open rule.
+        dayPopupSessionDismissed = true
         clearComeback()
     }
 
@@ -11735,8 +11865,13 @@ final class MorpheAppStore {
         // would fire this on Sunday morning in a US locale.
         let calendar = Calendar.current
         let thisWeekStart = LeaderboardWeek.start()
-        let nextWeekStart = thisWeekStart.addingTimeInterval(7 * 86_400)
-        guard let recap = weeklyRecapData(weekStart: thisWeekStart, weekEnd: nextWeekStart),
+        // Calendar week-arithmetic (audit 13, P2): with 7×86 400, a fall-
+        // back week put "next Monday" at Sunday 23:00 — and the "Monday"
+        // reminder fired Sunday 09:05, the exact shift the ISO anchor
+        // comment above exists to prevent.
+        guard let nextWeekStart = calendar.date(
+                  byAdding: .weekOfYear, value: 1, to: thisWeekStart),
+              let recap = weeklyRecapData(weekStart: thisWeekStart, weekEnd: nextWeekStart),
               let fireDate = calendar.date(bySettingHour: 9, minute: 5, second: 0, of: nextWeekStart)
         else { return }
 
@@ -13244,7 +13379,16 @@ final class MorpheAppStore {
     /// theater. Returns nil for conversational asks.
     private func coachAssistantActionReply(for text: String) -> String? {
         let lower = text.lowercased()
-        func has(_ words: String...) -> Bool { words.contains { lower.contains($0) } }
+        // Word-boundary matched (audit 13, closing audit 12 P2-10 for
+        // real): plain contains() sent "progressive overload" to the
+        // Progress tab — the voice layer had the boundary fix, but this
+        // layer runs FIRST for both chat and voice.
+        func has(_ words: String...) -> Bool {
+            words.contains {
+                lower.range(of: "\\b\(NSRegularExpression.escapedPattern(for: $0))\\b",
+                            options: .regularExpression) != nil
+            }
+        }
 
         if has("what can you do", "help me use", "commands") || lower == "help" {
             return "I can open any workspace tab (\"open athletes\"), tell you who needs attention today — derived from your athletes' real logs — and answer coaching questions. I don't draft messages yet, and I won't pretend to."
@@ -15547,7 +15691,17 @@ final class MorpheAppStore {
         recordStamp = nil
     }
 
+    /// A celebration fired while the hello/welcome owns the screen — held
+    /// until the welcome dismisses instead of playing and auto-expiring
+    /// invisibly underneath it (audit 13, P2: the coach-invite "Welcome
+    /// aboard" died unseen during onboarding's hello window).
+    private var pendingCelebration: (title: String, detail: String, symbol: String)?
+
     private func showCelebration(title: String, detail: String, symbol: String) {
+        if showHelloBeat || showWelcomeExperience {
+            pendingCelebration = (title, detail, symbol)
+            return
+        }
         celebration = CelebrationMoment(title: title, detail: detail, symbol: symbol)
         Task {
             try? await Task.sleep(for: .seconds(1.5))

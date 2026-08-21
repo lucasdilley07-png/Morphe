@@ -60,6 +60,12 @@ final class CaptureCameraController: NSObject {
     }
 
     private func buildSessionAndStart() {
+        // One mic owner at a time (audit 12, P0-3; audit 13: pause on the
+        // MAIN thread before the capture queue grabs the hardware — the
+        // wake engine mutates @Observable state and the audio session).
+        if mode == .video {
+            HeyMorpheEngine.shared.pauseForExternalAudio()
+        }
         sessionQueue.async { [self] in
             session.beginConfiguration()
             session.sessionPreset = .high
@@ -76,8 +82,6 @@ final class CaptureCameraController: NSObject {
                let mic = AVCaptureDevice.default(for: .audio),
                let micInput = try? AVCaptureDeviceInput(device: mic),
                session.canAddInput(micInput) {
-                // One mic owner at a time (audit 12, P0-3).
-                HeyMorpheEngine.shared.pauseForExternalAudio()
                 session.addInput(micInput)
             }
             if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
@@ -105,7 +109,10 @@ final class CaptureCameraController: NSObject {
         sessionQueue.async { [self] in
             if movieOutput.isRecording { movieOutput.stopRecording() }
             if session.isRunning { session.stopRunning() }
-            HeyMorpheEngine.shared.resumeAfterExternalAudio()
+            // Resume back on the main thread — same rule as the pause.
+            DispatchQueue.main.async {
+                HeyMorpheEngine.shared.resumeAfterExternalAudio()
+            }
         }
     }
 

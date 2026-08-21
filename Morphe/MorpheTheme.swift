@@ -451,26 +451,44 @@ enum SoundEffects {
     private static let sampleRate = 44_100.0
 
     /// Each cue is a sum of decaying sine strikes (fundamental + two soft
-    /// harmonics). The star staggers four notes up a major arpeggio; the
-    /// ding is a single B5 bell hit.
+    /// harmonics). The voice is the Milestone character (Lucas 2026-08-21):
+    /// spectral analysis of the tone shows a C-major chord in second
+    /// inversion — G4 + C5 + E5 — struck with a bright G6 octave sparkle
+    /// and a long warm ring. These are ORIGINAL synthesis in that voice,
+    /// not Apple's audio: the real file lives in a private framework and
+    /// can be neither bundled (copyright) nor path-loaded (App Review).
+    /// All three cues share the one instrument; length and register keep
+    /// their meanings distinct, and the PR still rings longest.
     private static func waveData(for cue: Cue) -> Data {
-        // (frequency Hz, start seconds, ring seconds)
-        let notes: [(Double, Double, Double)]
+        // (frequency Hz, start seconds, ring seconds, decay /s, gain)
+        let notes: [(Double, Double, Double, Double, Double)]
         switch cue {
         case .star:
+            // The chord walked upward — same voice, brighter path.
             notes = [
-                (1046.50, 0.000, 0.30),   // C6
-                (1318.51, 0.065, 0.30),   // E6
-                (1567.98, 0.130, 0.32),   // G6
-                (2093.00, 0.195, 0.38)    // C7
+                (523.25, 0.000, 0.90, 5.0, 1.00),   // C5
+                (659.26, 0.070, 0.90, 5.0, 0.95),   // E5
+                (783.99, 0.140, 0.95, 5.0, 0.90),   // G5
+                (1046.50, 0.210, 1.00, 5.0, 0.85),  // C6
+                (2093.00, 0.210, 0.40, 8.0, 0.30)   // C7 sparkle on the top note
             ]
         case .ding:
-            notes = [(987.77, 0.0, 0.40)] // B5
-        case .pr:
+            // The Milestone chord itself, bloomed over ~80ms, in-app length.
             notes = [
-                (783.99, 0.000, 0.45),    // G5
-                (1174.66, 0.110, 0.55),   // D6
-                (1567.98, 0.220, 0.75)    // G6 — the record rings longest
+                (392.00, 0.000, 1.10, 4.5, 1.00),   // G4
+                (523.25, 0.040, 1.10, 4.5, 0.90),   // C5
+                (659.26, 0.080, 1.10, 4.5, 0.80),   // E5
+                (1567.98, 0.000, 0.50, 8.0, 0.45)   // G6 attack sparkle
+            ]
+        case .pr:
+            // A PERSONAL RECORD and nothing else — the same chord, struck
+            // harder, double sparkle, and the longest ring in the app.
+            notes = [
+                (392.00, 0.000, 1.70, 3.2, 1.00),   // G4
+                (523.25, 0.060, 1.70, 3.2, 0.95),   // C5
+                (659.26, 0.120, 1.80, 3.2, 0.90),   // E5 — the record rings longest
+                (1567.98, 0.000, 0.60, 7.0, 0.50),  // G6 sparkle
+                (2093.00, 0.120, 0.70, 7.0, 0.30)   // C7 answer sparkle
             ]
         }
 
@@ -478,17 +496,17 @@ enum SoundEffects {
         let frameCount = Int(total * sampleRate)
         var samples = [Double](repeating: 0, count: frameCount)
 
-        for (frequency, start, ring) in notes {
+        for (frequency, start, ring, decay, gain) in notes {
             let startFrame = Int(start * sampleRate)
             let ringFrames = Int(ring * sampleRate)
             for i in 0..<ringFrames where startFrame + i < frameCount {
                 let t = Double(i) / sampleRate
                 // 4ms attack so the strike doesn't click; exponential decay.
                 let attack = min(t / 0.004, 1)
-                let envelope = attack * exp(-t * 10)
+                let envelope = attack * exp(-t * decay)
                 let phase = 2 * Double.pi * frequency * t
                 let tone = sin(phase) + 0.35 * sin(2 * phase) + 0.12 * sin(3 * phase)
-                samples[startFrame + i] += tone * envelope * 0.28
+                samples[startFrame + i] += tone * envelope * 0.22 * gain
             }
         }
 

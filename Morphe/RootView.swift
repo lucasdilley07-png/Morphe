@@ -1,6 +1,28 @@
 import SwiftUI
 import Speech
 import AVFoundation
+import UIKit
+
+/// Keyboard visibility for the floating dock (audit 13, P1): the capsule
+/// participates in keyboard avoidance, so without this it floated BETWEEN
+/// the keyboard and the text field — five tappable tabs a thumb-brush away
+/// from every composer. The dock yields while typing, like a system tab bar.
+@Observable
+final class KeyboardWatcher {
+    static let shared = KeyboardWatcher()
+    private(set) var isVisible = false
+    private var tokens: [NSObjectProtocol] = []
+
+    private init() {
+        let center = NotificationCenter.default
+        tokens.append(center.addObserver(
+            forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.isVisible = true })
+        tokens.append(center.addObserver(
+            forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.isVisible = false })
+    }
+}
 
 /// Terms of use + liability waiver. Shown once after onboarding (and on every
 /// reopen until accepted). Agree → remembered forever, locally and in the
@@ -95,6 +117,10 @@ struct TermsGateView: View {
 struct RootView: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Clearance for the floating AI button over the dock. Scales with the
+    /// dock's own micro-labels (audit 13, P2): a fixed 74 overlapped the
+    /// capsule at accessibility text sizes.
+    @ScaledMetric(relativeTo: .caption2) private var aiButtonDockClearance: CGFloat = 74
 
     /// Reduce Motion swaps travel for a quick crossfade — never zero
     /// feedback, never a slide/spring.
@@ -327,11 +353,14 @@ struct RootView: View {
         .overlay(alignment: .bottomTrailing) {
             // Only in the real app shell — never over the sign-in or onboarding
             // screens (a signed-out account still has hasCompletedOnboarding set).
-            if isInAppShell {
+            // And never over the day takeover (audit 13, P2): the popup is the
+            // character's center-stage moment and already has its own AI door.
+            if isInAppShell && !store.shouldShowDayPopup {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
-                    // Clears the floating glass capsule (~57pt + 6pt inset).
-                    .padding(.bottom, 74)
+                    // Clears the floating glass capsule (~57pt + 6pt inset),
+                    // growing with the dock's labels at accessibility sizes.
+                    .padding(.bottom, aiButtonDockClearance)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
@@ -541,14 +570,19 @@ private struct ClientExperienceShell: View {
         }
         .safeAreaInset(edge: .bottom) {
             // Floating glass capsule (b866e53) — inset from the bottom and
-            // sides; the root ink shows around it.
-            BottomTabNavigation(items: ClientTab.visibleCases, selected: store.selectedClientTab) { tab in
-                store.selectedClientTab = tab
-                // Tapping the icon always lands at the top of that tab's
-                // first page.
-                store.popTabToRoot(tab.rawValue)
+            // sides; the root ink shows around it. Yields to the keyboard
+            // (audit 13, P1) instead of floating on top of it.
+            if !KeyboardWatcher.shared.isVisible {
+                BottomTabNavigation(items: ClientTab.visibleCases, selected: store.selectedClientTab) { tab in
+                    store.selectedClientTab = tab
+                    // Tapping the icon always lands at the top of that tab's
+                    // first page.
+                    store.popTabToRoot(tab.rawValue)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: KeyboardWatcher.shared.isVisible)
     }
 }
 
@@ -625,7 +659,10 @@ private struct HeaderCircleButton: View {
                         .fill(MorpheTheme.ink)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    // Same radius as the fill (audit 13, P2): a 16pt stroke
+                    // over an 8pt fill left the hairline floating off the
+                    // corners on every header button.
+                    RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
                         .stroke(MorpheTheme.stroke, lineWidth: 1)
                 )
         }
@@ -1010,8 +1047,17 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     var onFailure: ((String) -> Void)?
 
     private var suspendedByExternalAudio = false
+    /// True from pauseForExternalAudio to resumeAfterExternalAudio even if
+    /// the engine was already off — start() checks it so a scene-phase
+    /// restart can't arm the mic while dictation/capture owns it, and it
+    /// survives stop() (which only clears the self-suspension).
+    private var externalAudioActive = false
     private var restartAttempts = 0
     private var speakingWatchdog: Timer?
+    /// When the current listen pass started — a pass that survived a while
+    /// was healthy, so its eventual end is a routine recycle, not a failure.
+    private var listenStartedAt: Date?
+    private var interruptionObserver: NSObjectProtocol?
 
     private let audioEngine = AVAudioEngine()
     private var recognizer: SFSpeechRecognizer?
@@ -1026,7 +1072,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         synthesizer.delegate = self
         // Phone calls / Siri / other apps taking the session (audit 12,
         // P1-4): tear down on interruption, resume when it ends.
-        NotificationCenter.default.addObserver(
+        interruptionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
         ) { [weak self] note in
             guard let self,
@@ -1036,9 +1082,20 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             case .began:
                 if self.state != .off { self.tearDownRecognition() }
             case .ended:
-                if self.state == .passive || self.state == .active {
-                    self.state = .passive
+                // The system says whether resuming is appropriate — a call
+                // that routed audio elsewhere advises against re-grabbing.
+                let optRaw = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
+                let options = AVAudioSession.InterruptionOptions(rawValue: optRaw ?? 0)
+                guard self.state == .passive || self.state == .active else { break }
+                self.state = .passive
+                if options.contains(.shouldResume) {
                     self.beginListening()
+                } else {
+                    // Yield now, self-heal shortly — never parked forever.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                        guard let self, self.state == .passive, self.task == nil else { return }
+                        self.beginListening()
+                    }
                 }
             @unknown default:
                 break
@@ -1046,8 +1103,17 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         }
     }
 
+    deinit {
+        if let interruptionObserver {
+            NotificationCenter.default.removeObserver(interruptionObserver)
+        }
+    }
+
     func start() {
-        guard state == .off else { return }
+        // While dictation or video capture owns the mic, a scene-phase
+        // .active restart must not re-arm the wake engine underneath it —
+        // resumeAfterExternalAudio is the only door back (audit 13).
+        guard state == .off, !externalAudioActive else { return }
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
                 guard status == .authorized else {
@@ -1072,6 +1138,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
 
     func stop() {
         state = .off
+        // A user-level stop is not a pause: the resume hook must not
+        // restart a mic the user turned off (audit 13).
+        suspendedByExternalAudio = false
         liveTranscript = ""
         tearDownRecognition()
         speakingWatchdog?.invalidate()
@@ -1086,15 +1155,18 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     /// Dictation and video capture call these so exactly one engine owns
-    /// the mic at a time (audit 12, P0-3).
+    /// the mic at a time (audit 12, P0-3). Flag set AFTER stop() — stop
+    /// clears it.
     func pauseForExternalAudio() {
+        externalAudioActive = true
         guard state != .off else { return }
-        suspendedByExternalAudio = true
         synthesizer.stopSpeaking(at: .immediate)
         stop()
+        suspendedByExternalAudio = true
     }
 
     func resumeAfterExternalAudio() {
+        externalAudioActive = false
         guard suspendedByExternalAudio else { return }
         suspendedByExternalAudio = false
         restartAttempts = 0
@@ -1105,9 +1177,22 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// Speaks an answer, then returns to passive listening. The mic is torn
     /// down while speaking so the engine never transcribes its own voice.
     func speak(_ text: String) {
-        guard state != .off, !text.isEmpty else { return }
+        guard state != .off else { return }
+        // Nothing to say must NOT park the engine (audit 13, P2): the
+        // command path already tore recognition down expecting speech to
+        // hand the mic back — go straight back to listening instead.
+        guard !text.isEmpty else {
+            state = .passive
+            beginListening()
+            return
+        }
         state = .speaking
         tearDownRecognition()
+        // Duck only while Morphe is actually talking (audit 13, P1) —
+        // beginListening restores .mixWithOthers when the mic returns.
+        try? AVAudioSession.sharedInstance().setCategory(
+            .playAndRecord, mode: .default,
+            options: [.duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = 0.5
         synthesizer.speak(utterance)
@@ -1130,10 +1215,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     private func tearDownRecognition() {
         commandTimer?.invalidate()
         commandTimer = nil
-        if audioEngine.isRunning {
-            audioEngine.stop()
-            audioEngine.inputNode.removeTap(onBus: 0)
-        }
+        // UNCONDITIONAL removal (audit 13, P0): an interruption stops the
+        // engine before we get here, so gating on isRunning left the tap
+        // installed — and the next installTap on the same bus is a hard
+        // crash. Both calls are safe no-ops when nothing is running.
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
         request?.endAudio()
         task?.cancel()
         task = nil
@@ -1144,7 +1231,19 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         guard state == .passive else { return }
         tearDownRecognition()
         liveTranscript = ""
-        guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else {
+        // No recognizer for this locale at all — that's permanent, not a
+        // glitch; say so instead of six pointless restarts (audit 13).
+        guard let recognizer = SFSpeechRecognizer() else {
+            failPermanently("Hey Morphe isn't available for your language on this iPhone.")
+            return
+        }
+        // The wake phrases are English — a non-English recognizer would
+        // burn mic and battery on a wake that can never match (audit 13).
+        guard recognizer.locale.language.languageCode == .english else {
+            failPermanently("Hey Morphe currently understands English only — staying off so it doesn't listen for a phrase it can't hear.")
+            return
+        }
+        guard recognizer.isAvailable else {
             scheduleRestart()
             return
         }
@@ -1152,9 +1251,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         // speech stays on this iPhone — without on-device support we
         // refuse rather than stream continuous audio to servers.
         guard recognizer.supportsOnDeviceRecognition else {
-            state = .off
-            SoundEffects.externalAudioOwner = false
-            onFailure?("Hey Morphe needs on-device speech, which isn't available for your language on this iPhone — staying off rather than sending audio to servers.")
+            failPermanently("Hey Morphe needs on-device speech, which isn't available for your language on this iPhone — staying off rather than sending audio to servers.")
             return
         }
         self.recognizer = recognizer
@@ -1167,8 +1264,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
 
         let session = AVAudioSession.sharedInstance()
         do {
+            // .mixWithOthers, not .duckOthers (audit 13, P1): merely
+            // WAITING for a wake word must not quiet the user's playlist
+            // for the whole workout. speak() ducks for its own duration.
             try session.setCategory(.playAndRecord, mode: .default,
-                                    options: [.duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+                                    options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothA2DP])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             let node = audioEngine.inputNode
             let format = node.outputFormat(forBus: 0)
@@ -1177,17 +1277,41 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             }
             audioEngine.prepare()
             try audioEngine.start()
-            restartAttempts = 0
+            // NOT the place to reset restartAttempts (audit 13, P1): the
+            // engine starting proves nothing about the recognizer — a
+            // task-level failure loop would reset its own backoff every
+            // pass. scheduleRestart resets it after a demonstrably
+            // healthy listen instead.
+            listenStartedAt = Date()
         } catch {
             scheduleRestart()
             return
         }
 
-        task = recognizer.recognitionTask(with: request) { [weak self] result, error in
+        // Identity-checked callback (audit 13, P2): a cancelled task's
+        // error can arrive after a fresh listener is already up — it must
+        // not tear down its replacement.
+        var startedTask: SFSpeechRecognitionTask?
+        startedTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             DispatchQueue.main.async {
-                self?.handle(result: result, error: error)
+                guard let self, self.task === startedTask else { return }
+                self.handle(result: result, error: error)
             }
         }
+        task = startedTask
+    }
+
+    /// A condition that will not fix itself: state off, session handed
+    /// back, honest line surfaced (audit 13 — the refusal paths used to
+    /// leave the ducked session active).
+    private func failPermanently(_ message: String) {
+        state = .off
+        tearDownRecognition()
+        SoundEffects.externalAudioOwner = false
+        let session = AVAudioSession.sharedInstance()
+        try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        try? session.setCategory(.ambient, options: [.mixWithOthers])
+        onFailure?(message)
     }
 
     private func handle(result: SFSpeechRecognitionResult?, error: Error?) {
@@ -1269,14 +1393,18 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         guard state == .passive || state == .active else { return }
         state = .passive
         tearDownRecognition()
+        // A listen pass that survived 30s was healthy — its end is the
+        // recognizer's routine ~1min stream cap, not a failure loop. Only
+        // rapid-fire failures may climb toward the ceiling (audit 13, P1).
+        if let began = listenStartedAt, Date().timeIntervalSince(began) > 30 {
+            restartAttempts = 0
+        }
+        listenStartedAt = nil
         restartAttempts += 1
         // Exponential backoff with a ceiling (audit 12, P1-4): a dead
         // recognizer must not become a permanent 0.6s battery drain.
         guard restartAttempts <= 6 else {
-            state = .off
-            SoundEffects.externalAudioOwner = false
-            try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-            onFailure?("Hey Morphe paused — speech recognition isn't responding. Flip the toggle to try again.")
+            failPermanently("Hey Morphe paused — speech recognition isn't responding. Flip the toggle to try again.")
             return
         }
         let delay = min(0.6 * pow(2, Double(restartAttempts - 1)), 20)
@@ -1323,8 +1451,6 @@ final class DictationEngine: NSObject {
     /// Starts dictation, appending to `baseText`. Each partial result calls
     /// `onText` with the full combined string.
     func start(baseText: String, onText: @escaping (String) -> Void) {
-        // One mic owner at a time (audit 12, P0-3).
-        HeyMorpheEngine.shared.pauseForExternalAudio()
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
                 guard status == .authorized else {
@@ -1345,13 +1471,21 @@ final class DictationEngine: NSObject {
     }
 
     private func beginRecognition(baseText: String, onText: @escaping (String) -> Void) {
-        stop()
+        tearDown()
 
         guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else {
             notice = "Dictation isn't available right now."
             return
         }
         self.recognizer = recognizer
+        // One mic owner at a time (audit 12, P0-3; rewired audit 13): pause
+        // the wake engine HERE — after the guards, before the session grab —
+        // not in start() (a denied permission left it paused) and never via
+        // stop() (which used to pause-then-resume in the same breath).
+        HeyMorpheEngine.shared.pauseForExternalAudio()
+        // Reward dings must not flip the category under the live tap
+        // (audit 12, P0-2 — was fixed for the wake engine only).
+        SoundEffects.externalAudioOwner = true
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
@@ -1372,8 +1506,10 @@ final class DictationEngine: NSObject {
             audioEngine.prepare()
             try audioEngine.start()
         } catch {
-            notice = "Couldn't start the microphone."
+            // stop() first — its teardown clears notice, so the message
+            // must land after it (this ordering was silently wrong before).
             stop()
+            notice = "Couldn't start the microphone."
             return
         }
 
@@ -1395,20 +1531,29 @@ final class DictationEngine: NSObject {
     }
 
     func stop() {
-        if audioEngine.isRunning {
-            audioEngine.stop()
-            audioEngine.inputNode.removeTap(onBus: 0)
-        }
+        tearDown()
+        // Hand the audio session back to the reward sounds' ambient setup,
+        // then let Hey Morphe resume if it was the one we paused.
+        SoundEffects.externalAudioOwner = false
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+        HeyMorpheEngine.shared.resumeAfterExternalAudio()
+    }
+
+    /// Teardown without the resume side effect — beginRecognition resets
+    /// itself with this so starting dictation can't bounce the wake engine
+    /// (audit 13: stop()'s resume used to fire BEFORE our tap installed).
+    private func tearDown() {
+        // Unconditional for the same reason as the wake engine's teardown
+        // (audit 13, P0): a stale tap on the shared input bus is a crash
+        // at the next installTap.
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
         request?.endAudio()
         task?.cancel()
         task = nil
         request = nil
         isRecording = false
         notice = nil
-        // Hand the audio session back to the reward sounds' ambient setup,
-        // then let Hey Morphe resume if it was the one we paused.
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-        HeyMorpheEngine.shared.resumeAfterExternalAudio()
     }
 }
 
@@ -1662,8 +1807,12 @@ private struct UniversalSearchSheet: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
+        // One scroll owner per page (audit 13, P1): the pager fills the
+        // sheet and each page scrolls itself — the old shape (a 420pt
+        // pager inside an outer ScrollView) gave two competing vertical
+        // scroll regions and buried results under the keyboard on an SE.
+        // Same grammar as the Learn pager.
+        VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Search",
                     subtitle: store.selectedRole == .coach
@@ -1703,25 +1852,23 @@ private struct UniversalSearchSheet: View {
                 // through the shared selection.
                 TabView(selection: $category) {
                     ScrollView(showsIndicators: false) {
-                        accountsResults.padding(.bottom, 20)
+                        accountsResults.padding(.bottom, 40)
                     }
                     .tag(UniversalSearchCategory.accounts)
                     ScrollView(showsIndicators: false) {
-                        plansResults.padding(.bottom, 20)
+                        plansResults.padding(.bottom, 40)
                     }
                     .tag(UniversalSearchCategory.plans)
                     ScrollView(showsIndicators: false) {
-                        libraryResults.padding(.bottom, 20)
+                        libraryResults.padding(.bottom, 40)
                     }
                     .tag(UniversalSearchCategory.library)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .frame(minHeight: 420)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 120)
+                .frame(maxHeight: .infinity)
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Done") {
@@ -1790,6 +1937,21 @@ private struct UniversalSearchSheet: View {
                         Text("Type at least two characters to search @usernames.")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textMuted)
+                    } else if store.athleteSearchFailed {
+                        // Honest offline state (audit 13, P2): "no accounts
+                        // match" was a false claim when the query never
+                        // reached the directory. Same shape as the board's
+                        // failed + Retry.
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Couldn't reach the account directory.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Button("Retry") {
+                                Task { await store.searchAthletes(query: query) }
+                            }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                        }
                     } else if store.athleteSearchResults.isEmpty {
                         Text("No accounts match \"\(normalizedQuery)\" yet.")
                             .font(.caption)
@@ -1981,14 +2143,16 @@ private struct QuickAddSheet: View {
                             store.selectedCoachTab = .programs
                             dismissQuickAdd()
                         },
-                        QuickAddItem(title: "Join a Board", subtitle: "Face the weekly leaderboard", systemImage: "trophy.fill") {
-                            // The BOARD pane owns the opt-in flow — this is
-                            // the door, not a silent join.
-                            store.openCommunity(.board)
-                            dismissQuickAdd()
-                        },
+                        // No "Join a Board" here (audit 13, P1): the weekly
+                        // board is a client surface — openCommunity sets
+                        // client-tab state the coach shell never reads, so
+                        // the tile was a door to nowhere.
                         QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {
-                            store.openAIAgent()
+                            // Two sheets can't co-present (audit 13, P1):
+                            // queue the AI cover exactly like the client
+                            // branch — onDismiss opens it when this sheet
+                            // has actually gone.
+                            store.pendingAIAgentOpen = true
                             dismissQuickAdd()
                         }
                     ])

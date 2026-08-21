@@ -274,7 +274,8 @@ struct HomeView: View {
                                         Image(systemName: "xmark")
                                             .font(.caption2.weight(.bold))
                                             .foregroundStyle(MorpheTheme.textMuted)
-                                            .frame(width: 32, height: 32)
+                                            // 44pt target (audit 13, P2 — was 32).
+                                            .frame(width: 44, height: 44)
                                             .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
@@ -293,6 +294,17 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity)
                     }
                     .accessibilityElement(children: .combine)
+                    // .combine folds the X into one non-button element
+                    // (audit 13, P2) — VoiceOver gets the dismiss back as
+                    // a custom action, under the same finished-only
+                    // condition as the visible X.
+                    .accessibilityActions {
+                        if challenge.done >= challenge.target {
+                            Button("Dismiss the completed challenge") {
+                                store.dismissMonthlyChallenge()
+                            }
+                        }
+                    }
                 }
 
                 if store.todayExperienceTier >= 2, let insight = store.primaryAthletePatternInsight {
