@@ -8381,13 +8381,33 @@ final class MorpheAppStore {
             self?.handleVoiceCommand(command)
         }
         heyMorphe.onFailure = { [weak self] message in
-            // Honest failure (audit 12, P1-3): the toggle never sits ON
-            // over a dead mic.
+            // PERMANENT conditions only (audit 14) — permission denied,
+            // unsupported language. The toggle never sits ON over a mic
+            // that can never work (audit 12, P1-3).
             self?.setHeyMorphe(enabled: false)
             self?.showToast(message)
         }
+        heyMorphe.onTransientPause = { [weak self] message in
+            // Recoverable stall (audit 14): the toggle STAYS on — the old
+            // path disabled the feature on any hiccup, which read as
+            // "Hey Morphe just stopped working". Keep trying quietly:
+            // one pending retry at a time, plus the every-foreground
+            // re-arm that already exists.
+            guard let self else { return }
+            showToast(message)
+            guard !voiceRetryPending else { return }
+            voiceRetryPending = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
+                guard let self else { return }
+                self.voiceRetryPending = false
+                self.startVoiceIfEnabled()
+            }
+        }
         heyMorphe.start()
     }
+
+    /// True while a transient-stall retry is queued — prevents stacking.
+    private var voiceRetryPending = false
 
     func handleVoiceCommand(_ raw: String) {
         let answer = routeVoiceCommand(raw)

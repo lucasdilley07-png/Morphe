@@ -1007,6 +1007,27 @@ final class WorkoutSessionTests: XCTestCase {
                        "dismissing the comeback card never opens the takeover on top of the tap")
     }
 
+    /// Audit 14: the recognizer doesn't know the word "Morphe" — the wake
+    /// matcher must accept its real transcriptions and hand over a clean
+    /// command (the old substring scan matched "hey murph" inside
+    /// "hey murphy" and glued the leftover "y" onto every command).
+    func testWakePhraseSurvivesMisHearings() {
+        XCTAssertEqual(HeyMorpheEngine.commandAfterWake(in: "Hey Murphy show my progress"),
+                       "show my progress")
+        XCTAssertEqual(HeyMorpheEngine.commandAfterWake(in: "Hey Morphe, open train"),
+                       "open train")
+        XCTAssertEqual(HeyMorpheEngine.commandAfterWake(in: "hey morphy start my workout"),
+                       "start my workout")
+        XCTAssertEqual(HeyMorpheEngine.commandAfterWake(in: "Hey morphine what's my streak"),
+                       "what's my streak")
+        XCTAssertEqual(HeyMorpheEngine.commandAfterWake(in: "Hey Morph"), "",
+                       "wake with no command yet is an empty command, not nil")
+        XCTAssertNil(HeyMorpheEngine.commandAfterWake(in: "they morphed the video"),
+                     "no wake inside other words")
+        XCTAssertNil(HeyMorpheEngine.commandAfterWake(in: "the murphy bed folds up"),
+                     "the name needs its hey")
+    }
+
     /// Audit 12, P2-4: the spoken form strips what reads badly aloud while
     /// the chip keeps the original.
     func testSpokenFormReadsCleanly() {

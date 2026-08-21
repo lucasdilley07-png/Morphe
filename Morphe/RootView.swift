@@ -1042,9 +1042,15 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     private(set) var liveTranscript = ""
     var onWake: (() -> Void)?
     var onCommand: ((String) -> Void)?
-    /// Honest failure surface (audit 12, P1-3): permission denied, no
-    /// on-device recognition, or the restart ceiling hit.
+    /// Honest failure surface (audit 12, P1-3) — PERMANENT conditions only:
+    /// permission denied, unsupported language, no on-device recognition.
+    /// The owner should flip the feature off.
     var onFailure: ((String) -> Void)?
+    /// A recoverable stall (audit 14): the restart ceiling hit, but nothing
+    /// about the device changed. The owner should keep the toggle ON and
+    /// re-arm later — the old path disabled the feature on any hiccup,
+    /// which is exactly "it stopped working and I don't know why".
+    var onTransientPause: ((String) -> Void)?
 
     private var suspendedByExternalAudio = false
     /// True from pauseForExternalAudio to resumeAfterExternalAudio even if
@@ -1065,7 +1071,23 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     private var task: SFSpeechRecognitionTask?
     private let synthesizer = AVSpeechSynthesizer()
     private var commandTimer: Timer?
-    private static let wakePhrases = ["hey morphe", "hey morph", "hey murph", "hey morphy"]
+    /// The recognizer has never heard of "Morphe" and transcribes what it
+    /// knows — "Hey Murphy" above all (audit 14). Two defenses: the request
+    /// carries contextualStrings biasing it toward the real name, and the
+    /// wake regex accepts every mis-hearing observed or plausible. Longer
+    /// alternatives listed first so "murphy" wins over "murph" and the
+    /// command never inherits a stray trailing syllable.
+    private static let wakePattern = try! NSRegularExpression(
+        pattern: "\\bhey[,!.]?\\s+(morpheus|morphee|morphie|morphine|morphy|morphe|morph|murphy|murph|more\\s+fee|morfe)\\b[,!.]?",
+        options: [.caseInsensitive])
+
+    /// Vocabulary bias for the recognition request: the wake name plus the
+    /// doors it opens, so both halves of "hey Morphe, open the leaderboard"
+    /// transcribe the way the router expects.
+    private static let contextualVocabulary = [
+        "Morphe", "hey Morphe", "minimum win", "leaderboard", "weekly board",
+        "start my workout", "log", "sets", "reps", "streak", "lessons"
+    ]
 
     override init() {
         super.init()
@@ -1259,6 +1281,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.requiresOnDeviceRecognition = true
+        // "Morphe" is not in the recognizer's vocabulary — without this
+        // bias it transcribes "Hey Murphy" and the wake never fires for
+        // the name actually said (audit 14).
+        request.contextualStrings = Self.contextualVocabulary
         self.request = request
         SoundEffects.externalAudioOwner = true
 
@@ -1305,13 +1331,24 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// back, honest line surfaced (audit 13 — the refusal paths used to
     /// leave the ducked session active).
     private func failPermanently(_ message: String) {
+        standDown()
+        onFailure?(message)
+    }
+
+    /// Same teardown, recoverable signal (audit 14): the engine goes quiet
+    /// but the feature stays enabled — start() can re-arm it later.
+    private func pauseTransiently(_ message: String) {
+        standDown()
+        onTransientPause?(message)
+    }
+
+    private func standDown() {
         state = .off
         tearDownRecognition()
         SoundEffects.externalAudioOwner = false
         let session = AVAudioSession.sharedInstance()
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
         try? session.setCategory(.ambient, options: [.mixWithOthers])
-        onFailure?(message)
     }
 
     private func handle(result: SFSpeechRecognitionResult?, error: Error?) {
@@ -1324,16 +1361,22 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
                     state = .active
                     liveTranscript = command
                     onWake?()
-                    armCommandTimer()
+                    // A longer first window (audit 14): the user just said
+                    // the name — give them a breath before the command.
+                    armCommandTimer(after: command.isEmpty ? 2.5 : 1.4)
                 }
             case .active:
                 // Re-locate the wake phrase EVERY partial (audit 12, P1-9):
                 // the recognizer retro-corrects earlier words, so a frozen
                 // character offset drifted and sliced commands mid-word.
-                if let command = Self.commandAfterWake(in: text) {
+                // Re-arm ONLY when the transcript actually changed (audit
+                // 14): gym noise emits a partial stream that re-armed the
+                // timer forever, and the command never fired.
+                if let command = Self.commandAfterWake(in: text),
+                   command != liveTranscript {
                     liveTranscript = command
+                    armCommandTimer(after: 1.4)
                 }
-                armCommandTimer()
             default:
                 break
             }
@@ -1350,25 +1393,23 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     /// Finds the wake phrase in the CURRENT hypothesis and returns what
-    /// follows it — nil when no wake phrase is present.
-    private static func commandAfterWake(in text: String) -> String? {
-        let lower = text.lowercased()
-        for phrase in wakePhrases {
-            if let range = lower.range(of: phrase) {
-                let cutoff = lower.distance(from: lower.startIndex, to: range.upperBound)
-                let slice = String(text.dropFirst(cutoff))
-                return slice.trimmingCharacters(
-                    in: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
-            }
-        }
-        return nil
+    /// follows it — nil when no wake phrase is present. Internal so the
+    /// mis-hearing table is test-covered (audit 14: the old substring scan
+    /// matched "hey murph" inside "hey murphy" and prefixed every command
+    /// with the leftover "y").
+    static func commandAfterWake(in text: String) -> String? {
+        let range = NSRange(text.startIndex..., in: text)
+        guard let match = wakePattern.firstMatch(in: text, range: range),
+              let matchRange = Range(match.range, in: text) else { return nil }
+        return String(text[matchRange.upperBound...]).trimmingCharacters(
+            in: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
     }
 
-    private func armCommandTimer() {
+    private func armCommandTimer(after interval: TimeInterval) {
         commandTimer?.invalidate()
         // .common mode (audit 12, P2-7): a .default-mode timer pauses
         // while the user scrolls, so commands never fired mid-scroll.
-        let timer = Timer(timeInterval: 1.4, repeats: false) { [weak self] _ in
+        let timer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
             DispatchQueue.main.async { self?.fireCommand() }
         }
         commandTimer = timer
@@ -1404,7 +1445,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         // Exponential backoff with a ceiling (audit 12, P1-4): a dead
         // recognizer must not become a permanent 0.6s battery drain.
         guard restartAttempts <= 6 else {
-            failPermanently("Hey Morphe paused — speech recognition isn't responding. Flip the toggle to try again.")
+            // Recoverable (audit 14): nothing about the device changed, so
+            // this must NOT flip the toggle off — that made one bad minute
+            // kill the feature until the user found the switch again.
+            pauseTransiently("Hey Morphe hit a snag — it'll keep trying.")
             return
         }
         let delay = min(0.6 * pow(2, Double(restartAttempts - 1)), 20)
