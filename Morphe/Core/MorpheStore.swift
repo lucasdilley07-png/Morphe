@@ -389,6 +389,7 @@ final class MorpheAppStore {
             // The console's memoized "LAST:" lines are formatted in the
             // OLD unit — clear on switch (post-revamp audit P2-6).
             consoleHistoryCache = [:]
+            lastSessionSetCache = [:]
             topWeightCache = [:]
             bestE1RMCache = [:]
             guard oldValue != weightUnit else { return }
@@ -6516,19 +6517,44 @@ final class MorpheAppStore {
         return nil
     }
 
-    /// Last session's numbers for set N of this exercise — the one-tap
-    /// repeat chip logs exactly these (frictionless-train wave). Falls back
-    /// to last session's FINAL set when they logged fewer sets than today.
-    /// Weight comes back normalized to the current display unit; 0 = BW.
-    func lastSessionSet(forExerciseNamed name: String, setIndex: Int) -> (reps: Int, weight: Double)? {
+    /// Memoized like `lastSessionLine` (audit 14, P2: this sits in the
+    /// same stepper-hold hot path that motivated `consoleHistoryCache`).
+    private var lastSessionSetCache: [String: LastSessionSet?] = [:]
+
+    struct LastSessionSet: Equatable {
+        let reps: Int
+        let weight: Double
+    }
+
+    /// Last session's WORK set N for this exercise — the one-tap repeat
+    /// chip logs exactly these (frictionless-train wave). Warm-ups are
+    /// skipped (audit 14, P2: replaying one as a work set counted toward
+    /// PRs, which warm-ups never do). Falls back to last session's final
+    /// work set when they logged fewer than today. Weight normalized to
+    /// the current display unit; 0 = BW.
+    func lastSessionSet(forExerciseNamed name: String, setIndex: Int) -> LastSessionSet? {
+        let key = "\(name)#\(setIndex)"
+        if let cached = lastSessionSetCache[key] { return cached }
+        let result = computeLastSessionSet(forExerciseNamed: name, setIndex: setIndex)
+        lastSessionSetCache[key] = result
+        return result
+    }
+
+    private func computeLastSessionSet(forExerciseNamed name: String, setIndex: Int) -> LastSessionSet? {
         for log in currentAthleteWorkoutLogs {   // newest first
             guard let exercise = log.exercises.first(where: { $0.name == name }),
                   let reps = exercise.repsPerSet, !reps.isEmpty else { continue }
-            let index = min(max(setIndex, 0), reps.count - 1)
+            let warmups = exercise.warmupPerSet ?? []
+            let workIndices = reps.indices.filter {
+                !(warmups.indices.contains($0) && warmups[$0])
+            }
+            // An all-warm-up appearance isn't a reference — look further back.
+            guard !workIndices.isEmpty else { continue }
+            let index = workIndices[min(max(setIndex, 0), workIndices.count - 1)]
             let weights = exercise.weightsPerSet ?? []
             let raw = weights.indices.contains(index) ? weights[index] : (weights.last ?? 0)
             let weight = raw > 0 ? normalizedLoggedWeight(raw, recordedUnit: exercise.weightUnit) : 0
-            return (reps[index], weight)
+            return LastSessionSet(reps: reps[index], weight: weight)
         }
         return nil
     }
@@ -7620,6 +7646,10 @@ final class MorpheAppStore {
         var muscleGroups: [MuscleGroup]
         var minutes: Int
         var equipment: String?
+        /// "no barbell" / "without machines" — gear to filter OUT
+        /// (audit 14, P1: bare contains() built barbell-ONLY from
+        /// "no barbell", the exact inverse of an injury-driven ask).
+        var excludedEquipment: String?
         var name: String
     }
 
@@ -7634,9 +7664,14 @@ final class MorpheAppStore {
             for group in found where !groups.contains(group) { groups.append(group) }
             if label == nil { label = name }
         }
+        func mentions(_ pattern: String) -> Bool {
+            text.range(of: pattern, options: .regularExpression) != nil
+        }
         if text.contains("push") { claim([.chest, .shoulders, .arms], "Push") }
         if text.contains("pull") { claim([.back, .arms], "Pull") }
-        if text.range(of: "\\bleg", options: .regularExpression) != nil || text.contains("lower body") {
+        // Word-boundaried (audit 14): bare stems matched "legendary",
+        // "warmup" ("arm"), and "absolutely" ("abs").
+        if mentions("\\blegs?\\b") || text.contains("lower body") {
             claim([.legs], "Legs")
         }
         if text.contains("upper") { claim([.chest, .back, .shoulders, .arms], "Upper Body") }
@@ -7644,12 +7679,12 @@ final class MorpheAppStore {
             claim([.chest, .back, .legs, .shoulders, .core], "Full Body")
         }
         if text.contains("chest") { claim([.chest], "Chest") }
-        if text.range(of: "\\bback\\b", options: .regularExpression) != nil { claim([.back], "Back") }
+        if mentions("\\bback\\b") { claim([.back], "Back") }
         if text.contains("shoulder") { claim([.shoulders], "Shoulders") }
-        if text.contains("arm") || text.contains("bicep") || text.contains("tricep") {
+        if mentions("\\barms?\\b|\\bbiceps?\\b|\\btriceps?\\b") {
             claim([.arms], "Arms")
         }
-        if text.contains("core") || text.contains("abs") { claim([.core], "Core") }
+        if mentions("\\bcore\\b|\\babs\\b") { claim([.core], "Core") }
         if text.contains("cardio") || text.contains("conditioning") || text.contains("hiit") {
             claim([.conditioning], "Conditioning")
         }
@@ -7660,13 +7695,30 @@ final class MorpheAppStore {
             let digits = String(text[range]).components(
                 separatedBy: CharacterSet.decimalDigits.inverted).filter { !$0.isEmpty }.first
             if let digits, let parsed = Int(digits) { minutes = min(max(parsed, 10), 90) }
+        } else if let range = text.range(of: "(\\d{1,2})\\s*(?:-|\\s)?(?:hour|hr)", options: .regularExpression) {
+            // "1 hour push day" silently defaulted to 45 (audit 14, P2).
+            let digits = String(text[range]).components(
+                separatedBy: CharacterSet.decimalDigits.inverted).filter { !$0.isEmpty }.first
+            if let digits, let parsed = Int(digits) { minutes = min(max(parsed * 60, 10), 90) }
+        } else if text.contains("half hour") || text.contains("half an hour") {
+            minutes = 30
+        } else if mentions("\\ban hour\\b") {
+            minutes = 60
         }
 
+        // Negation scan runs FIRST: "no barbell" excludes; a bare mention
+        // includes. One of each is kept — multi-gear asks keep the first.
         var equipment: String?
-        for keyword in ["dumbbell", "barbell", "kettlebell", "cable", "machine", "band"]
-        where text.contains(keyword) {
-            equipment = keyword
-            break
+        var excluded: String?
+        for keyword in ["dumbbell", "barbell", "kettlebell", "cable", "machine", "band"] {
+            guard text.contains(keyword) else { continue }
+            let negated = mentions(
+                "(?:no|without|skip|don'?t\\s+have|can'?t\\s+use|cannot\\s+use)\\s+(?:the\\s+|a\\s+|any\\s+)?\(keyword)")
+            if negated {
+                if excluded == nil { excluded = keyword }
+            } else if equipment == nil {
+                equipment = keyword
+            }
         }
         if equipment == nil,
            text.contains("bodyweight") || text.contains("no equipment") || text.contains("at home") {
@@ -7674,7 +7726,8 @@ final class MorpheAppStore {
         }
 
         return WorkoutBuildRequest(
-            muscleGroups: groups, minutes: minutes, equipment: equipment, name: "\(label) Day")
+            muscleGroups: groups, minutes: minutes, equipment: equipment,
+            excludedEquipment: excluded, name: "\(label) Day")
     }
 
     /// Assembles a real template from the exercise library — round-robin
@@ -7683,8 +7736,10 @@ final class MorpheAppStore {
     /// combination is too narrow to build honestly.
     func buildWorkout(from request: WorkoutBuildRequest) -> WorkoutTemplate? {
         func equipmentMatches(_ exercise: ExerciseReference) -> Bool {
-            guard let wanted = request.equipment else { return true }
             let gear = exercise.equipment.lowercased()
+            // "no barbell" filters OUT (audit 14, P1 — negation was inverted).
+            if let banned = request.excludedEquipment, gear.contains(banned) { return false }
+            guard let wanted = request.equipment else { return true }
             if wanted == "bodyweight" {
                 return gear.contains("bodyweight") || gear.contains("none") || gear.isEmpty
             }
@@ -7712,6 +7767,24 @@ final class MorpheAppStore {
             poolIndex += 1
         }
         guard picks.count >= 2 else { return nil }
+
+        // "Build me a push day" every morning must not mint Push Day 14
+        // (audit 14, P2): an existing custom template with these exact
+        // exercises is restaged, not duplicated.
+        let pickIDs = picks.map(\.id)
+        if let existing = workoutTemplates.first(where: { template in
+            customWorkoutIDs.contains(template.id)
+                && template.name.hasPrefix(request.name)
+                && template.exercises.map(\.exerciseLibraryID) == pickIDs
+        }) {
+            if hasUnsavedSessionWork {
+                showToast("\(existing.name) is already in Your workouts.")
+            } else {
+                setCurrentWorkout(existing)
+                showToast("\(existing.name) is ready in your Current plan.")
+            }
+            return existing
+        }
 
         let items = picks.map { exercise in
             CustomWorkoutItem(
@@ -7742,6 +7815,25 @@ final class MorpheAppStore {
     nonisolated static func parseLiveSetUtterance(_ raw: String) -> LiveSetUtterance? {
         var text = raw.lowercased()
         guard !text.isEmpty else { return nil }
+        // The recognizer writes "warm up"/"warm-up" as often as "warmup" —
+        // normalize BEFORE the delta scan or its "up" gets consumed as a
+        // +N weight move and the set logs wrong (audit 14, P0).
+        text = text.replacingOccurrences(
+            of: "warm[\\s-]+up", with: "warmup", options: .regularExpression)
+        // Compound spoken weights ("one thirty five") can't be composed
+        // reliably from words — refuse rather than log weight 1 (audit 14,
+        // P1). Digits are what the recognizer produces when it's sure.
+        if text.range(
+            of: "\\b(?:thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)\\b",
+            options: .regularExpression) != nil {
+            return nil
+        }
+        // Multi-set phrasing belongs to the chat command ("log 3x10") —
+        // a push-to-talk utterance is ONE set; refuse rather than log
+        // "3 sets of 10" as 3 reps (audit 14).
+        if text.range(of: "\\bsets\\b|\\bset of\\b", options: .regularExpression) != nil {
+            return nil
+        }
         // Small spoken numbers arrive as words often enough to matter.
         let numberWords = [
             "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
@@ -7814,6 +7906,11 @@ final class MorpheAppStore {
             }
         }
 
+        // Sanity bands (audit 14, P2): the at/for paths had none — "0 at
+        // 135" logged zero reps and a mis-heard "1355" polluted PR history.
+        if let reps = result.reps, !(1...50).contains(reps) { return nil }
+        if let weight = result.weight, weight > 995 { return nil }
+
         // Something actionable must have been said.
         guard result.reps != nil || result.weight != nil || result.weightDelta != nil else { return nil }
         return result
@@ -7852,6 +7949,14 @@ final class MorpheAppStore {
     /// the backend.)
     private func assistantActionReply(for text: String) -> String? {
         let lower = text.lowercased()
+        // Build verbs out-rank every other door (audit 14, P1): "build me
+        // an easy day" flipped Minimum Win, and "make a workout and start
+        // it" started the OLD plan — both wrong actions confidently taken.
+        let asksToBuild = ["make", "build", "create", "design"].contains {
+            lower.range(of: "\\b\($0)\\b", options: .regularExpression) != nil
+        } && ["workout", "session", "routine", "day", "plan"].contains {
+            lower.range(of: "\\b\($0)\\b", options: .regularExpression) != nil
+        }
         // Word-boundary matched (audit 13, closing audit 12 P2-10 for
         // real): plain contains() sent "progressive overload" to the
         // Progress tab — the voice layer had the boundary fix, but this
@@ -7864,7 +7969,7 @@ final class MorpheAppStore {
         }
 
         if has("what can you do", "help me use", "commands") || lower == "help" {
-            return "I can start your workout (today's or one by name, like \"start Push Day\"), log sets mid-session (\"log 3x10 at 135\"), turn on Minimum Win mode, open Discover, Progress, Lessons, the exercise library, or your profile, and switch lb/kg. Just ask."
+            return "I can start your workout (today's or one by name, like \"start Push Day\"), build one from a sentence (\"build me a 30-minute push day, dumbbells only\"), log sets mid-session (\"log 3x10 at 135\" — or tap the mic in a live session and just say \"10 at 135\"), turn on Minimum Win mode, open Discover, Progress, Lessons, the exercise library, or your profile, and switch lb/kg. Just ask."
         }
 
         // Questions get answers, not actions. "Should I stop training when my
@@ -7880,7 +7985,8 @@ final class MorpheAppStore {
         }
 
         // Start first: "stop procrastinating and start my workout" is a start.
-        if has("start", "begin", "let's train", "lets train") && has("workout", "session", "training", "today's plan", "todays plan") {
+        // — unless they're asking to BUILD one (audit 14, P1-4).
+        if !asksToBuild, has("start", "begin", "let's train", "lets train") && has("workout", "session", "training", "today's plan", "todays plan") {
             guard !isWorkoutSessionActive else {
                 showTrainTab()
                 closeAIAgent()
@@ -7957,7 +8063,8 @@ final class MorpheAppStore {
 
         // Minimum Win needs training context: bare "tired" used to flip the
         // mode on messages like "I'm tired of chicken — meal ideas?".
-        if has("minimum win", "smaller win", "easier day", "easy day", "low energy", "shrink today")
+        if !asksToBuild,
+           has("minimum win", "smaller win", "easier day", "easy day", "low energy", "shrink today")
             || (has("tired", "exhausted", "drained", "no energy") && has("workout", "train", "session", "today", "win")) {
             activateMinimumWinMode()
             return "Minimum Win mode is on — one small win still counts today."
@@ -7984,19 +8091,33 @@ final class MorpheAppStore {
         // 30-minute push day, dumbbells only" — one sentence in, a staged
         // template out. Works identically from chat and Hey Morphe because
         // this layer IS the voice router's first stop.
-        if has("make", "build", "create", "design") && has("workout", "session", "routine", "day", "plan") {
+        if asksToBuild {
             guard let request = Self.parseWorkoutBuildRequest(lower) else {
                 return "Tell me the focus and I'll build it — like \"build me a 30-minute push day, dumbbells only\". I know push, pull, legs, upper, full body, chest, back, shoulders, arms, core, and conditioning."
             }
             let stagesNow = !hasUnsavedSessionWork
             guard let built = buildWorkout(from: request) else {
-                return "I couldn't fill \(request.name.lowercased()) with \(request.equipment ?? "that") gear from the library — try a different focus or drop the equipment limit."
+                if let gear = request.equipment ?? request.excludedEquipment {
+                    let constraint = request.excludedEquipment != nil ? "without \(gear)" : "\(gear)-only"
+                    return "I couldn't fill \(request.name.lowercased()) \(constraint) from the library — try a different focus or drop the equipment limit."
+                }
+                return "I couldn't fill \(request.name.lowercased()) from the library — try a different focus."
             }
             let count = built.exercises.count
+            // Echo what was understood (audit 14, P2: silently-dropped
+            // constraints were invisible until mid-workout).
+            var understood = ""
+            if let gear = request.equipment { understood = ", \(gear) only" }
+            if let banned = request.excludedEquipment { understood += ", no \(banned)" }
+            // Honest shortfall (audit 14, P2): "you asked for 45, the
+            // library filled 16" beats discovering it at the gym.
+            let shortfall = count * 8 + 8 < request.minutes
+                ? " That's all the library holds for this combo — you asked for \(request.minutes)."
+                : ""
             if stagesNow {
-                return "Built \(built.name) — \(count) exercises, about \(count * 8) minutes. It's staged as your current plan; say \"start my workout\" when you're ready."
+                return "Built \(built.name)\(understood) — \(count) exercises, about \(count * 8) minutes.\(shortfall) It's staged as your current plan; say \"start my workout\" when you're ready."
             }
-            return "Built \(built.name) — \(count) exercises. It's saved in Your workouts; you've got an unlogged session to settle in Train first."
+            return "Built \(built.name)\(understood) — \(count) exercises.\(shortfall) It's saved in Your workouts; you've got an unlogged session to settle in Train first."
         }
 
         // Navigation closes the chat sheet — moving tabs behind a presented
@@ -8634,12 +8755,15 @@ final class MorpheAppStore {
         heyMorphe.onTransientPause = { [weak self] message in
             // Recoverable stall (audit 14): the toggle STAYS on — the old
             // path disabled the feature on any hiccup, which read as
-            // "Hey Morphe just stopped working". Keep trying quietly:
-            // one pending retry at a time, plus the every-foreground
-            // re-arm that already exists.
+            // "Hey Morphe just stopped working". Keep trying quietly, but
+            // with a per-foreground budget (audit 14, P1): an unbounded
+            // retry loop meant a broken recognizer toasted every ~58s all
+            // session while thrashing the audio session. One toast, three
+            // cycles, then quiet until the next foreground re-arm.
             guard let self else { return }
-            showToast(message)
-            guard !voiceRetryPending else { return }
+            voiceTransientCycles += 1
+            if voiceTransientCycles == 1 { showToast(message) }
+            guard voiceTransientCycles < 3, !voiceRetryPending else { return }
             voiceRetryPending = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
                 guard let self else { return }
@@ -8647,11 +8771,25 @@ final class MorpheAppStore {
                 self.startVoiceIfEnabled()
             }
         }
+        // A retry (or foreground re-arm) that lands while dictation or the
+        // camera holds the mic is consumed by start()'s guard — this hook
+        // re-attempts the moment the mic comes back (audit 14, P2).
+        heyMorphe.onExternalAudioEnded = { [weak self] in
+            self?.startVoiceIfEnabled()
+        }
         heyMorphe.start()
     }
 
     /// True while a transient-stall retry is queued — prevents stacking.
     private var voiceRetryPending = false
+    /// Transient-stall cycles this foreground session — caps the retry loop.
+    private var voiceTransientCycles = 0
+
+    /// Called on every scene-phase .active: a fresh foreground gets a fresh
+    /// transient-retry budget (audit 14, P1).
+    func resetVoiceRetryBudget() {
+        voiceTransientCycles = 0
+    }
 
     func handleVoiceCommand(_ raw: String) {
         let answer = routeVoiceCommand(raw)
@@ -8689,7 +8827,13 @@ final class MorpheAppStore {
         // chat doors document with closeAIAgent(). Question-shaped input
         // navigates nothing, so it dismisses nothing.
         if !Self.isQuestionShaped(raw.lowercased()) {
-            clearVoiceNavigationObstructions()
+            // A build command navigates nowhere — dismissing the chat
+            // cover would only cost the open conversation (audit 14, P2).
+            let lower = raw.lowercased()
+            let isBuild = ["make", "build", "create", "design"].contains {
+                lower.range(of: "\\b\($0)\\b", options: .regularExpression) != nil
+            }
+            clearVoiceNavigationObstructions(preservingConversation: isBuild)
         }
         if selectedRole == .coach {
             if let action = coachAssistantActionReply(for: raw) { return action }
@@ -8765,11 +8909,11 @@ final class MorpheAppStore {
 
     /// Everything that can cover the shell steps aside before a voice door
     /// opens (audit 13, P1) — sheets, the AI cover, and the day takeover.
-    private func clearVoiceNavigationObstructions() {
+    private func clearVoiceNavigationObstructions(preservingConversation: Bool = false) {
         showQuickAdd = false
         showUniversalSearch = false
         showClientProfile = false
-        if showAIAgent { closeAIAgent() }
+        if !preservingConversation, showAIAgent { closeAIAgent() }
         if shouldShowDayPopup { dismissDayPopupForSession() }
     }
 
@@ -14615,6 +14759,7 @@ final class MorpheAppStore {
 
     private func refreshWorkoutLogDerivedState(for athleteID: UUID, latestLog: WorkoutLog? = nil) {
         consoleHistoryCache = [:]
+        lastSessionSetCache = [:]
         topWeightCache = [:]
         bestE1RMCache = [:]
         let logs = workoutLogs(for: athleteID)

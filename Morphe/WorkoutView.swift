@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct WorkoutView: View {
     @Environment(MorpheAppStore.self) private var store
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var workoutPendingDelete: WorkoutTemplate?
     @State private var restSeconds = 180
@@ -11,7 +12,7 @@ struct WorkoutView: View {
     @State private var swapTarget: WorkoutExercise?
     @State private var isShowingPainFlow = false
     /// Payload for the set logger sheet: nil editIndex = log a new/extra set.
-    private struct RepLoggerContext: Identifiable {
+    private struct RepLoggerContext: Identifiable, Equatable {
         let id = UUID()
         var editIndex: Int?
     }
@@ -345,8 +346,11 @@ struct WorkoutView: View {
                     // Push-to-talk set logging (frictionless-train wave):
                     // tap, say "10 at 135", done — the wake word is for
                     // navigation, this is for the 20 logs per session.
+                    // The exercise resolves at FIRE time inside
+                    // logSpokenSet (audit 14, P1: a captured exercise went
+                    // stale when the session auto-advanced mid-listen).
                     VoiceSetLogBar(controller: voiceSetLogger) { utterance in
-                        logSpokenSet(utterance, exercise: activeExercise)
+                        logSpokenSet(utterance)
                     }
                 }
 
@@ -486,6 +490,10 @@ struct WorkoutView: View {
             .padding(.bottom, 120)
         }
         .onChange(of: store.activeWorkoutExerciseIndex) { _, _ in
+            // A listen in flight belongs to the exercise it started on —
+            // advance (tap or auto) cancels it rather than logging spoken
+            // numbers onto the wrong movement (audit 14, P1).
+            voiceSetLogger.cancel()
             // Carry the working weight forward: this session's own last set,
             // else the cross-session progression suggestion (last logged
             // weight, bumped when last time felt easy).
@@ -494,6 +502,24 @@ struct WorkoutView: View {
                     ?? store.suggestedWorkingWeight(for: exercise)
                     ?? pendingWeight
             }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Backgrounding kills the mic but not the controller's state —
+            // without this the bar showed a zombie "Listening…" and a
+            // suspended stability timer could log a stale set minutes
+            // later on return (audit 14, P2).
+            if phase != .active { voiceSetLogger.cancel() }
+        }
+        .onChange(of: repLoggerContext) { _, context in
+            // A sheet over the session must not leave an invisible hot mic
+            // whose fire double-logs alongside the sheet (audit 14, P2).
+            if context != nil { voiceSetLogger.cancel() }
+        }
+        .onChange(of: showFormCheck) { _, shown in
+            if shown { voiceSetLogger.cancel() }
+        }
+        .onChange(of: showCircuitMode) { _, shown in
+            if shown { voiceSetLogger.cancel() }
         }
         .onAppear {
             // A mid-session relaunch restores the session but not this view
@@ -511,7 +537,11 @@ struct WorkoutView: View {
     /// values win, relative moves shift the current weight, and anything
     /// unsaid comes from what the console already shows — so "same" or a
     /// bare "10" is a complete sentence (frictionless-train wave).
-    private func logSpokenSet(_ utterance: MorpheAppStore.LiveSetUtterance, exercise: WorkoutExercise) {
+    private func logSpokenSet(_ utterance: MorpheAppStore.LiveSetUtterance) {
+        // Fire-time resolution (audit 14, P1): the store's CURRENT exercise
+        // is the one completeTrackedSet targets — reps suggestion, rest
+        // length, and weight baseline must come from the same one.
+        guard let exercise = store.activeWorkoutExercise else { return }
         let reps = utterance.reps ?? suggestedRepCount(for: exercise)
         var weight = pendingWeight
         if let explicit = utterance.weight {
@@ -1982,11 +2012,16 @@ private struct QueueRowDropDelegate: DropDelegate {
 final class VoiceSetLogController {
     private(set) var isListening = false
     private(set) var transcript = ""
-    var notice: String? { dictation.notice }
+    /// Held past cancel (audit 14, P2): dictation.stop() clears the
+    /// engine's notice, which used to erase the permission help the user
+    /// most needed to read.
+    private var heldNotice: String?
+    var notice: String? { heldNotice ?? dictation.notice }
 
     private let dictation = DictationEngine()
     private var stabilityTimer: Timer?
     private var timeoutTimer: Timer?
+    private var permissionTimer: Timer?
     private var pending: MorpheAppStore.LiveSetUtterance?
     private var onSet: ((MorpheAppStore.LiveSetUtterance) -> Void)?
 
@@ -2001,8 +2036,10 @@ final class VoiceSetLogController {
     func cancel() {
         stabilityTimer?.invalidate()
         timeoutTimer?.invalidate()
+        permissionTimer?.invalidate()
         stabilityTimer = nil
         timeoutTimer = nil
+        permissionTimer = nil
         pending = nil
         onSet = nil
         isListening = false
@@ -2012,6 +2049,7 @@ final class VoiceSetLogController {
 
     private func begin(onSet: @escaping (MorpheAppStore.LiveSetUtterance) -> Void) {
         self.onSet = onSet
+        heldNotice = nil
         transcript = ""
         pending = nil
         isListening = true
@@ -2021,9 +2059,27 @@ final class VoiceSetLogController {
             self.transcript = spoken
             if let parsed = MorpheAppStore.parseLiveSetUtterance(spoken) {
                 self.pending = parsed
-                self.armStability()
+                self.armStability(for: parsed)
             }
         }
+        // Permission denied means the engine never records: without this
+        // watch the bar showed a fake "Listening…" for the full 12s while
+        // suppressing the Settings help (audit 14, P2).
+        permissionTimer?.invalidate()
+        let permission = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.isListening else { return }
+                if self.dictation.isRecording {
+                    self.permissionTimer?.invalidate()
+                    self.permissionTimer = nil
+                } else if let denied = self.dictation.notice, denied.contains("Settings") {
+                    self.heldNotice = denied
+                    self.cancel()
+                }
+            }
+        }
+        permissionTimer = permission
+        RunLoop.main.add(permission, forMode: .common)
         // A listen that parses nothing must not run forever on a gym floor.
         timeoutTimer?.invalidate()
         let timeout = Timer(timeInterval: 12, repeats: false) { [weak self] _ in
@@ -2034,18 +2090,23 @@ final class VoiceSetLogController {
     }
 
     /// 0.9s of unchanged parse = the user is done talking. Every new
-    /// partial that changes the parse re-arms it.
-    private func armStability() {
+    /// partial that changes the parse re-arms it. The timer carries the
+    /// parse it was armed FOR (audit 14, P2): an already-queued fire must
+    /// not deliver a newer half-spoken parse with zero seconds of
+    /// stability — "10 at 13" while the user is still saying "…135".
+    private func armStability(for parsed: MorpheAppStore.LiveSetUtterance) {
         stabilityTimer?.invalidate()
         let timer = Timer(timeInterval: 0.9, repeats: false) { [weak self] _ in
-            DispatchQueue.main.async { self?.fire() }
+            DispatchQueue.main.async { self?.fire(armedFor: parsed) }
         }
         stabilityTimer = timer
         RunLoop.main.add(timer, forMode: .common)
     }
 
-    private func fire() {
+    private func fire(armedFor: MorpheAppStore.LiveSetUtterance) {
         guard isListening, let utterance = pending else { return }
+        // A newer parse re-armed a fresh timer — let that one fire instead.
+        guard utterance == armedFor else { return }
         let deliver = onSet
         cancel()
         Haptics.success()

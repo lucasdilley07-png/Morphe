@@ -1077,8 +1077,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// wake regex accepts every mis-hearing observed or plausible. Longer
     /// alternatives listed first so "murphy" wins over "murph" and the
     /// command never inherits a stray trailing syllable.
+    /// The optional possessive eats the recognizer's retro-corrected
+    /// "Hey Murphy's what's…" form (audit 14, P2: the bare \b left a stray
+    /// "s " prefix that defeated the question detector downstream).
     private static let wakePattern = try! NSRegularExpression(
-        pattern: "\\bhey[,!.]?\\s+(morpheus|morphee|morphie|morphine|morphy|morphe|morph|murphy|murph|more\\s+fee|morfe)\\b[,!.]?",
+        pattern: "\\bhey[,!.]?\\s+(morpheus|morphee|morphie|morphine|morphy|morphe|morph|murphy|murph|more\\s+fee|morfe)(?:'s|\u{2019}s)?\\b[,!.]?",
         options: [.caseInsensitive])
 
     /// Vocabulary bias for the recognition request: the wake name plus the
@@ -1187,9 +1190,21 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         suspendedByExternalAudio = true
     }
 
+    /// Fires whenever external audio hands the mic back and the engine has
+    /// nothing to resume itself (audit 14, P2): a transient retry that
+    /// landed DURING dictation was consumed by the `externalAudioActive`
+    /// guard, leaving the toggle on over a dead mic until the next
+    /// foreground. The store hooks this to re-attempt start().
+    var onExternalAudioEnded: (() -> Void)?
+
     func resumeAfterExternalAudio() {
         externalAudioActive = false
-        guard suspendedByExternalAudio else { return }
+        guard suspendedByExternalAudio else {
+            // Not ours to resume — but a retry may have burned while the
+            // mic was borrowed. Let the owner re-arm if it wants to.
+            if state == .off { onExternalAudioEnded?() }
+            return
+        }
         suspendedByExternalAudio = false
         restartAttempts = 0
         state = .passive
@@ -1372,10 +1387,22 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
                 // Re-arm ONLY when the transcript actually changed (audit
                 // 14): gym noise emits a partial stream that re-armed the
                 // timer forever, and the command never fired.
-                if let command = Self.commandAfterWake(in: text),
-                   command != liveTranscript {
-                    liveTranscript = command
-                    armCommandTimer(after: 1.4)
+                if let command = Self.commandAfterWake(in: text) {
+                    if command != liveTranscript {
+                        liveTranscript = command
+                        // A retraction back to the bare wake re-earns the
+                        // breath window (audit 14, P3).
+                        armCommandTimer(after: command.isEmpty ? 2.5 : 1.4)
+                    }
+                } else {
+                    // The recognizer retro-corrected the wake phrase AWAY —
+                    // it heard the gym TV, not the user. Without this the
+                    // armed timer fired the stale fragment as a phantom
+                    // command (audit 14, P2).
+                    commandTimer?.invalidate()
+                    commandTimer = nil
+                    liveTranscript = ""
+                    state = .passive
                 }
             default:
                 break
@@ -1401,8 +1428,14 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         let range = NSRange(text.startIndex..., in: text)
         guard let match = wakePattern.firstMatch(in: text, range: range),
               let matchRange = Range(match.range, in: text) else { return nil }
-        return String(text[matchRange.upperBound...]).trimmingCharacters(
+        var command = String(text[matchRange.upperBound...]).trimmingCharacters(
             in: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
+        // "Hey Morphe hey Morphe open train" — an echoing gym or a stutter
+        // repeats the wake; strip every leading repeat (audit 14, P3).
+        while let stripped = Self.commandAfterWake(in: command) {
+            command = stripped
+        }
+        return command
     }
 
     private func armCommandTimer(after interval: TimeInterval) {
@@ -1494,7 +1527,15 @@ final class DictationEngine: NSObject {
 
     /// Starts dictation, appending to `baseText`. Each partial result calls
     /// `onText` with the full combined string.
+    /// Bumped by stop(): the permission chain can't be cancelled at the
+    /// system level, so a late callback must find its session superseded
+    /// rather than start a hot mic under an idle UI (audit 14, P1 — rapid
+    /// mic double-tap, or a timeout while the permission dialog was up).
+    private var startToken = 0
+
     func start(baseText: String, onText: @escaping (String) -> Void) {
+        startToken += 1
+        let token = startToken
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
                 guard status == .authorized else {
@@ -1507,7 +1548,8 @@ final class DictationEngine: NSObject {
                             self?.notice = "Enable the Microphone for Morphe in Settings to dictate."
                             return
                         }
-                        self?.beginRecognition(baseText: baseText, onText: onText)
+                        guard let self, token == self.startToken else { return }
+                        self.beginRecognition(baseText: baseText, onText: onText)
                     }
                 }
             }
@@ -1575,6 +1617,8 @@ final class DictationEngine: NSObject {
     }
 
     func stop() {
+        // Supersede any permission chain still in flight (audit 14, P1).
+        startToken += 1
         tearDown()
         // Hand the audio session back to the reward sounds' ambient setup,
         // then let Hey Morphe resume if it was the one we paused.

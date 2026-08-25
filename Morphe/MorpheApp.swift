@@ -41,6 +41,9 @@ struct MorpheApp: App {
                         // The day popup greets every open (Lucas 2026-08-18).
                         store.reopenDayPopup()
                         // "Hey Morphe" listens only while the app is open.
+                        // Fresh foreground = fresh transient-retry budget
+                        // (audit 14, P1).
+                        store.resetVoiceRetryBudget()
                         store.startVoiceIfEnabled()
                     }
                     // The log backup debounce is 60s — leaving the app

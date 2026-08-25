@@ -1026,6 +1026,14 @@ final class WorkoutSessionTests: XCTestCase {
                      "no wake inside other words")
         XCTAssertNil(HeyMorpheEngine.commandAfterWake(in: "the murphy bed folds up"),
                      "the name needs its hey")
+
+        // Audit 14: the recognizer retro-corrects "Hey Morphe, what's…"
+        // into a possessive — the 's must vanish, not become a stray "s ".
+        XCTAssertEqual(HeyMorpheEngine.commandAfterWake(in: "Hey Murphy's what's my streak"),
+                       "what's my streak")
+        // And an echoing gym repeating the wake must not leave it in the command.
+        XCTAssertEqual(HeyMorpheEngine.commandAfterWake(in: "hey Morphe hey Morphe open train"),
+                       "open train")
     }
 
     /// Frictionless-train wave: one spoken set parses in every phrasing the
@@ -1064,6 +1072,25 @@ final class WorkoutSessionTests: XCTestCase {
                      "a bare big number is ambiguous — never 135 reps")
         XCTAssertNil(MorpheAppStore.parseLiveSetUtterance("let's go"),
                      "no numbers, no log")
+
+        // Audit 14, P0: the recognizer writes "warm up"/"warm-up" more
+        // often than "warmup" — the two-token forms must parse identically,
+        // not feed "up 8" to the delta scanner.
+        for phrasing in ["warm up 8 at 95", "warm-up 8 at 95"] {
+            let parsed = MorpheAppStore.parseLiveSetUtterance(phrasing)
+            XCTAssertEqual(parsed?.reps, 8, "\(phrasing) reps")
+            XCTAssertEqual(parsed?.weight, 95, "\(phrasing) weight")
+            XCTAssertEqual(parsed?.isWarmup, true, "\(phrasing) warmup flag")
+            XCTAssertNil(parsed?.weightDelta, "\(phrasing) must not become a +8 delta")
+        }
+
+        // Audit 14: refusal beats a wrong log.
+        XCTAssertNil(MorpheAppStore.parseLiveSetUtterance("0 at 135"), "zero reps refused")
+        XCTAssertNil(MorpheAppStore.parseLiveSetUtterance("8 at 9999"), "absurd weight refused")
+        XCTAssertNil(MorpheAppStore.parseLiveSetUtterance("ten reps at one thirty five"),
+                     "compound word-weights refuse rather than log weight 1")
+        XCTAssertNil(MorpheAppStore.parseLiveSetUtterance("3 sets of 10"),
+                     "multi-set phrasing belongs to chat, never logs 3 reps")
     }
 
     /// Frictionless-train wave: "build me a push day" stages a real template
@@ -1083,6 +1110,56 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(request?.muscleGroups, [.legs])
         XCTAssertEqual(request?.minutes, 20)
         XCTAssertEqual(request?.equipment, "bodyweight")
+    }
+
+    /// Audit 14 P1s: the door/parser stack must not confidently take the
+    /// wrong action on plausible sentences.
+    func testSpokenBuilderUnderstandsNegationPrecedenceAndBoundaries() {
+        // "no barbell" EXCLUDES barbell — the inverted match built
+        // barbell-only from an injury-driven ask.
+        let negated = MorpheAppStore.parseWorkoutBuildRequest("build me a push day, no barbell")
+        XCTAssertNil(negated?.equipment)
+        XCTAssertEqual(negated?.excludedEquipment, "barbell")
+
+        // "warmup" must not inject Arms into a leg day.
+        let warm = MorpheAppStore.parseWorkoutBuildRequest("build me a 30-minute leg day with a warmup")
+        XCTAssertEqual(warm?.muscleGroups, [.legs])
+
+        // Hour phrasing parses instead of silently defaulting to 45.
+        XCTAssertEqual(MorpheAppStore.parseWorkoutBuildRequest("1 hour push day")?.minutes, 60)
+        XCTAssertEqual(MorpheAppStore.parseWorkoutBuildRequest("half hour leg session")?.minutes, 30)
+
+        // Build verbs out-rank the Minimum Win door…
+        let store = freshStore()
+        let easyReply = store.routeVoiceCommand("build me an easy leg day")
+        XCTAssertTrue(easyReply.contains("Built"), "unexpected: \(easyReply)")
+        XCTAssertFalse(store.minimumWinModeEnabled,
+                       "asking to BUILD an easy day is not a Minimum Win flip")
+
+        // …and the Start door: "make a workout and start it" must not
+        // start the OLD plan while discarding the build.
+        let store2 = freshStore()
+        let combined = store2.routeVoiceCommand("make me a new push workout and start it")
+        XCTAssertTrue(combined.contains("Built"), "unexpected: \(combined)")
+        XCTAssertEqual(store2.currentWorkout.name, "Push Day")
+        XCTAssertFalse(store2.isWorkoutSessionActive,
+                       "building stages the plan; starting stays the user's word")
+    }
+
+    /// Audit 14, P2: the repeat chip must never replay a warm-up as a work
+    /// set — warm-ups never count toward PRs.
+    func testRepeatChipSkipsLastSessionWarmups() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        guard let exercise = store.activeWorkoutExercise else { return XCTFail("no active exercise") }
+        _ = store.completeTrackedSet(reps: 10, weight: 95, isWarmup: true)
+        _ = store.completeTrackedSet(reps: 8, weight: 135)
+        _ = store.finishTrackedWorkoutSession()
+        store.logWorkout()
+
+        let reference = store.lastSessionSet(forExerciseNamed: exercise.name, setIndex: 0)
+        XCTAssertEqual(reference?.weight, 135, "set 1 reference is the first WORK set, not the 95 lb warm-up")
+        XCTAssertEqual(reference?.reps, 8)
     }
 
     /// An unknown focus gets the vocabulary back, not a guessed workout.
