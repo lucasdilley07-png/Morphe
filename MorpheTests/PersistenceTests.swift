@@ -1028,6 +1028,72 @@ final class WorkoutSessionTests: XCTestCase {
                      "the name needs its hey")
     }
 
+    /// Frictionless-train wave: one spoken set parses in every phrasing the
+    /// gym floor produces — and ambiguity stays unparsed rather than
+    /// becoming a wrong log.
+    func testSpokenSetUtteranceParsing() {
+        let plain = MorpheAppStore.parseLiveSetUtterance("10 at 135")
+        XCTAssertEqual(plain?.reps, 10)
+        XCTAssertEqual(plain?.weight, 135)
+
+        let gymOrder = MorpheAppStore.parseLiveSetUtterance("135 for 8")
+        XCTAssertEqual(gymOrder?.reps, 8)
+        XCTAssertEqual(gymOrder?.weight, 135)
+
+        let words = MorpheAppStore.parseLiveSetUtterance("ten reps")
+        XCTAssertEqual(words?.reps, 10)
+        XCTAssertNil(words?.weight)
+
+        let same = MorpheAppStore.parseLiveSetUtterance("same weight")
+        XCTAssertEqual(same?.weightDelta, 0)
+        XCTAssertNil(same?.reps)
+
+        let add = MorpheAppStore.parseLiveSetUtterance("add five")
+        XCTAssertEqual(add?.weightDelta, 5)
+        XCTAssertNil(add?.reps, "the delta's own number is not a rep count")
+
+        let drop = MorpheAppStore.parseLiveSetUtterance("drop 10")
+        XCTAssertEqual(drop?.weightDelta, -10)
+
+        let warmup = MorpheAppStore.parseLiveSetUtterance("warmup 8 at 95")
+        XCTAssertEqual(warmup?.isWarmup, true)
+        XCTAssertEqual(warmup?.reps, 8)
+        XCTAssertEqual(warmup?.weight, 95)
+
+        XCTAssertNil(MorpheAppStore.parseLiveSetUtterance("135"),
+                     "a bare big number is ambiguous — never 135 reps")
+        XCTAssertNil(MorpheAppStore.parseLiveSetUtterance("let's go"),
+                     "no numbers, no log")
+    }
+
+    /// Frictionless-train wave: "build me a push day" stages a real template
+    /// assembled from the library, scoped to the asked-for muscle groups.
+    func testSpokenWorkoutBuilderStagesARealTemplate() {
+        let store = freshStore()
+        let reply = store.routeVoiceCommand("build me a 30 minute push day")
+        XCTAssertTrue(reply.contains("Built"), "the reply names what it did: \(reply)")
+        XCTAssertEqual(store.currentWorkout.name, "Push Day")
+        XCTAssertEqual(store.currentWorkout.exercises.count, 3, "30 minutes ≈ 3 exercises")
+        XCTAssertTrue(store.currentWorkout.exercises.allSatisfy {
+            [.chest, .shoulders, .arms].contains($0.muscleGroup)
+        }, "a push day holds only push muscles")
+
+        // The parser understood the constraint vocabulary too.
+        let request = MorpheAppStore.parseWorkoutBuildRequest("make me a 20 min legs session, bodyweight only")
+        XCTAssertEqual(request?.muscleGroups, [.legs])
+        XCTAssertEqual(request?.minutes, 20)
+        XCTAssertEqual(request?.equipment, "bodyweight")
+    }
+
+    /// An unknown focus gets the vocabulary back, not a guessed workout.
+    func testSpokenBuilderUnknownFocusGuidesInsteadOfGuessing() {
+        let store = freshStore()
+        let before = store.workoutTemplates.count
+        let reply = store.routeVoiceCommand("build me a workout")
+        XCTAssertTrue(reply.contains("Tell me the focus"), "unexpected reply: \(reply)")
+        XCTAssertEqual(store.workoutTemplates.count, before, "nothing was built on a guess")
+    }
+
     /// Audit 12, P2-4: the spoken form strips what reads badly aloud while
     /// the chip keeps the original.
     func testSpokenFormReadsCleanly() {

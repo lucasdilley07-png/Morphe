@@ -22,6 +22,7 @@ struct WorkoutView: View {
     @State private var pendingRepCount = 10
     @State private var pendingWeight: Double = 0
     @State private var pendingRPE: Int?
+    @State private var voiceSetLogger = VoiceSetLogController()
     @State private var showDiscardConfirm = false
     @State private var showLibrary = false
     @State private var showExerciseList = false
@@ -340,6 +341,13 @@ struct WorkoutView: View {
                         onOpenFormCheck: { showFormCheck = true },
                         canGoPrevious: store.activeWorkoutExerciseIndex > 0
                     )
+
+                    // Push-to-talk set logging (frictionless-train wave):
+                    // tap, say "10 at 135", done — the wake word is for
+                    // navigation, this is for the 20 logs per session.
+                    VoiceSetLogBar(controller: voiceSetLogger) { utterance in
+                        logSpokenSet(utterance, exercise: activeExercise)
+                    }
                 }
 
                 // The session voice (moments engine): short derived lines
@@ -496,6 +504,31 @@ struct WorkoutView: View {
                     ?? store.suggestedWorkingWeight(for: exercise)
                     ?? 0
             }
+        }
+    }
+
+    /// A spoken set resolves against the console's live numbers: explicit
+    /// values win, relative moves shift the current weight, and anything
+    /// unsaid comes from what the console already shows — so "same" or a
+    /// bare "10" is a complete sentence (frictionless-train wave).
+    private func logSpokenSet(_ utterance: MorpheAppStore.LiveSetUtterance, exercise: WorkoutExercise) {
+        let reps = utterance.reps ?? suggestedRepCount(for: exercise)
+        var weight = pendingWeight
+        if let explicit = utterance.weight {
+            weight = explicit
+        } else if let delta = utterance.weightDelta {
+            weight = max(0, pendingWeight + delta)
+        }
+        pendingWeight = weight
+        if store.completeTrackedSet(reps: reps, weight: weight, rpe: pendingRPE, isWarmup: utterance.isWarmup) {
+            pendingRPE = nil
+            let weightText = weight > 0 ? store.weightUnit.format(weight) : "bodyweight"
+            store.showToast("Logged \(reps) reps at \(weightText).")
+            if !store.hopToSupersetPartnerIfNeeded(after: exercise) {
+                autoStartRest(after: exercise)
+            }
+        } else {
+            store.showToast("Couldn't log that set — the exercise may be complete. Use More to add an extra set.")
         }
     }
 
@@ -1798,6 +1831,38 @@ private struct ActiveWorkoutTrackerCard: View {
                 // steps meant 18 taps to get from the bar to a working set.)
                 if !isExerciseComplete {
                     VStack(spacing: 10) {
+                        // One-tap repeat (frictionless-train wave): last
+                        // session's set N, logged exactly, no editor. The
+                        // steppers below stay the path for changing things —
+                        // this is the path for not having to.
+                        if let last = store.lastSessionSet(forExerciseNamed: exercise.name, setIndex: completedSets) {
+                            Button {
+                                weight = last.weight
+                                repsToLog = min(max(last.reps, 1), 50)
+                                onQuickLogSet(last.reps, false)
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "arrow.counterclockwise")
+                                        .font(.caption.weight(.bold))
+                                    Text("Same as last time — \(last.reps) reps at \(last.weight > 0 ? weightUnit.format(last.weight) : "BW")")
+                                        .font(.footnote.weight(.semibold))
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.subheadline)
+                                }
+                                .foregroundStyle(MorpheTheme.accentText)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 11)
+                                .background(
+                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                        .stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1)
+                                )
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Log set \(completedSets + 1) same as last session: \(last.reps) reps at \(last.weight > 0 ? weightUnit.format(last.weight) : "bodyweight")")
+                        }
+
                         SetConsoleRow(
                             label: "Reps",
                             value: "\(repsToLog)",
@@ -1906,6 +1971,143 @@ private struct QueueRowDropDelegate: DropDelegate {
         draggingID = nil
         Haptics.impact(.light)
         return true
+    }
+}
+
+/// Push-to-talk set logging (frictionless-train wave): one tap arms the
+/// dictation engine, the utterance parses on every partial, and a beat of
+/// stable transcript fires the set. The wake word stays out of it — this
+/// is a deliberate button press, so there's nothing to mis-hear.
+@Observable
+final class VoiceSetLogController {
+    private(set) var isListening = false
+    private(set) var transcript = ""
+    var notice: String? { dictation.notice }
+
+    private let dictation = DictationEngine()
+    private var stabilityTimer: Timer?
+    private var timeoutTimer: Timer?
+    private var pending: MorpheAppStore.LiveSetUtterance?
+    private var onSet: ((MorpheAppStore.LiveSetUtterance) -> Void)?
+
+    func toggle(onSet: @escaping (MorpheAppStore.LiveSetUtterance) -> Void) {
+        if isListening {
+            cancel()
+        } else {
+            begin(onSet: onSet)
+        }
+    }
+
+    func cancel() {
+        stabilityTimer?.invalidate()
+        timeoutTimer?.invalidate()
+        stabilityTimer = nil
+        timeoutTimer = nil
+        pending = nil
+        onSet = nil
+        isListening = false
+        transcript = ""
+        dictation.stop()
+    }
+
+    private func begin(onSet: @escaping (MorpheAppStore.LiveSetUtterance) -> Void) {
+        self.onSet = onSet
+        transcript = ""
+        pending = nil
+        isListening = true
+        Haptics.selection()
+        dictation.start(baseText: "") { [weak self] spoken in
+            guard let self, self.isListening else { return }
+            self.transcript = spoken
+            if let parsed = MorpheAppStore.parseLiveSetUtterance(spoken) {
+                self.pending = parsed
+                self.armStability()
+            }
+        }
+        // A listen that parses nothing must not run forever on a gym floor.
+        timeoutTimer?.invalidate()
+        let timeout = Timer(timeInterval: 12, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async { self?.cancel() }
+        }
+        timeoutTimer = timeout
+        RunLoop.main.add(timeout, forMode: .common)
+    }
+
+    /// 0.9s of unchanged parse = the user is done talking. Every new
+    /// partial that changes the parse re-arms it.
+    private func armStability() {
+        stabilityTimer?.invalidate()
+        let timer = Timer(timeInterval: 0.9, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async { self?.fire() }
+        }
+        stabilityTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func fire() {
+        guard isListening, let utterance = pending else { return }
+        let deliver = onSet
+        cancel()
+        Haptics.success()
+        deliver?(utterance)
+    }
+}
+
+/// The one-tap voice door on the live session screen.
+private struct VoiceSetLogBar: View {
+    let controller: VoiceSetLogController
+    let onSet: (MorpheAppStore.LiveSetUtterance) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                controller.toggle(onSet: onSet)
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: controller.isListening ? "waveform" : "mic.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(controller.isListening ? MorpheTheme.brandYellowText : MorpheTheme.accentText)
+                        .symbolEffect(.variableColor.iterative, isActive: controller.isListening)
+                    Text(controller.isListening
+                         ? (controller.transcript.isEmpty ? "Listening — say \"10 at 135\"…" : controller.transcript)
+                         : "Say your set — \"10 at 135\"")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    if controller.isListening {
+                        Text("CANCEL")
+                            .font(MorpheTheme.microLabel(9))
+                            .tracking(1.0)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .fill(MorpheTheme.panelStrong)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .stroke(controller.isListening ? MorpheTheme.accent.opacity(0.7) : MorpheTheme.stroke,
+                                        lineWidth: 1)
+                        )
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(controller.isListening
+                                ? "Listening for your set. Tap to cancel."
+                                : "Log a set by voice")
+
+            // Permission help from the dictation engine, verbatim.
+            if let notice = controller.notice, !controller.isListening {
+                Text(notice)
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+        }
+        .onDisappear { controller.cancel() }
     }
 }
 
@@ -3072,6 +3274,8 @@ private struct DiscoverCatalogSection: View {
                     .tracking(0.8)
                     .foregroundStyle(MorpheTheme.textMuted)
                     .lineLimit(1)
+                    // Reserves the corner the play button floats in.
+                    .padding(.trailing, 30)
             }
             .padding(12)
             .frame(width: 190, alignment: .leading)
@@ -3087,6 +3291,24 @@ private struct DiscoverCatalogSection: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Preview \(template.name), \(template.durationMinutes) minutes\(badge.map { ", completed \($0)" } ?? "")")
+        // Plug-and-play (frictionless-train wave): the shelf card starts
+        // the session in ONE tap — the preview stays a tap on the card
+        // body. Sibling overlay, not a nested button, so both fire.
+        .overlay(alignment: .bottomTrailing) {
+            Button {
+                onStart(template)
+            } label: {
+                Image(systemName: "play.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(width: 44, height: 44, alignment: .bottomTrailing)
+                    .padding(.trailing, 10)
+                    .padding(.bottom, 8)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Start \(template.name) now")
+        }
     }
 
     // MARK: - Combined filter row

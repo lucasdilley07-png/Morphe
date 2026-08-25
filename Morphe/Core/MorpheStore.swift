@@ -6516,6 +6516,23 @@ final class MorpheAppStore {
         return nil
     }
 
+    /// Last session's numbers for set N of this exercise — the one-tap
+    /// repeat chip logs exactly these (frictionless-train wave). Falls back
+    /// to last session's FINAL set when they logged fewer sets than today.
+    /// Weight comes back normalized to the current display unit; 0 = BW.
+    func lastSessionSet(forExerciseNamed name: String, setIndex: Int) -> (reps: Int, weight: Double)? {
+        for log in currentAthleteWorkoutLogs {   // newest first
+            guard let exercise = log.exercises.first(where: { $0.name == name }),
+                  let reps = exercise.repsPerSet, !reps.isEmpty else { continue }
+            let index = min(max(setIndex, 0), reps.count - 1)
+            let weights = exercise.weightsPerSet ?? []
+            let raw = weights.indices.contains(index) ? weights[index] : (weights.last ?? 0)
+            let weight = raw > 0 ? normalizedLoggedWeight(raw, recordedUnit: exercise.weightUnit) : 0
+            return (reps[index], weight)
+        }
+        return nil
+    }
+
     /// True once every exercise in the live session has hit its target sets.
     var isTrackedWorkoutComplete: Bool {
         let exercises = currentWorkout.exercises
@@ -7594,6 +7611,214 @@ final class MorpheAppStore {
 
     /// "log 3x10 at 135" / "did 5x5 @ 225" → (sets, reps, weight). The
     /// weight clause is optional. Pure + static for tests.
+    // MARK: - Spoken workout builder (frictionless-train wave)
+
+    /// "Make me a 30-minute push day, dumbbells only" as structured intent.
+    /// No LLM behind this — the vocabulary IS the contract, so the reply
+    /// can honestly say what it understood.
+    struct WorkoutBuildRequest: Equatable {
+        var muscleGroups: [MuscleGroup]
+        var minutes: Int
+        var equipment: String?
+        var name: String
+    }
+
+    /// Nil when no recognizable focus is named — the caller answers with
+    /// the vocabulary instead of guessing a workout the user didn't ask for.
+    nonisolated static func parseWorkoutBuildRequest(_ raw: String) -> WorkoutBuildRequest? {
+        let text = raw.lowercased()
+
+        var groups: [MuscleGroup] = []
+        var label: String?
+        func claim(_ found: [MuscleGroup], _ name: String) {
+            for group in found where !groups.contains(group) { groups.append(group) }
+            if label == nil { label = name }
+        }
+        if text.contains("push") { claim([.chest, .shoulders, .arms], "Push") }
+        if text.contains("pull") { claim([.back, .arms], "Pull") }
+        if text.range(of: "\\bleg", options: .regularExpression) != nil || text.contains("lower body") {
+            claim([.legs], "Legs")
+        }
+        if text.contains("upper") { claim([.chest, .back, .shoulders, .arms], "Upper Body") }
+        if text.contains("full body") || text.contains("total body") {
+            claim([.chest, .back, .legs, .shoulders, .core], "Full Body")
+        }
+        if text.contains("chest") { claim([.chest], "Chest") }
+        if text.range(of: "\\bback\\b", options: .regularExpression) != nil { claim([.back], "Back") }
+        if text.contains("shoulder") { claim([.shoulders], "Shoulders") }
+        if text.contains("arm") || text.contains("bicep") || text.contains("tricep") {
+            claim([.arms], "Arms")
+        }
+        if text.contains("core") || text.contains("abs") { claim([.core], "Core") }
+        if text.contains("cardio") || text.contains("conditioning") || text.contains("hiit") {
+            claim([.conditioning], "Conditioning")
+        }
+        guard !groups.isEmpty, let label else { return nil }
+
+        var minutes = 45
+        if let range = text.range(of: "(\\d{1,3})\\s*(?:-|\\s)?min", options: .regularExpression) {
+            let digits = String(text[range]).components(
+                separatedBy: CharacterSet.decimalDigits.inverted).filter { !$0.isEmpty }.first
+            if let digits, let parsed = Int(digits) { minutes = min(max(parsed, 10), 90) }
+        }
+
+        var equipment: String?
+        for keyword in ["dumbbell", "barbell", "kettlebell", "cable", "machine", "band"]
+        where text.contains(keyword) {
+            equipment = keyword
+            break
+        }
+        if equipment == nil,
+           text.contains("bodyweight") || text.contains("no equipment") || text.contains("at home") {
+            equipment = "bodyweight"
+        }
+
+        return WorkoutBuildRequest(
+            muscleGroups: groups, minutes: minutes, equipment: equipment, name: "\(label) Day")
+    }
+
+    /// Assembles a real template from the exercise library — round-robin
+    /// across the asked-for groups so a push day isn't five chest moves —
+    /// and stages it exactly the way the manual builder does. Nil when the
+    /// combination is too narrow to build honestly.
+    func buildWorkout(from request: WorkoutBuildRequest) -> WorkoutTemplate? {
+        func equipmentMatches(_ exercise: ExerciseReference) -> Bool {
+            guard let wanted = request.equipment else { return true }
+            let gear = exercise.equipment.lowercased()
+            if wanted == "bodyweight" {
+                return gear.contains("bodyweight") || gear.contains("none") || gear.isEmpty
+            }
+            return gear.contains(wanted)
+        }
+
+        // ~8 minutes per exercise including rest — the same arithmetic the
+        // manual builder's duration estimate uses.
+        let targetCount = min(max(request.minutes / 8, 3), 8)
+        var pools = request.muscleGroups.map { group in
+            allExercises.filter { $0.muscleGroup == group && equipmentMatches($0) }
+        }.filter { !$0.isEmpty }
+
+        var picks: [ExerciseReference] = []
+        var poolIndex = 0
+        while picks.count < targetCount, !pools.isEmpty {
+            if let next = pools[poolIndex % pools.count].first(where: { candidate in
+                !picks.contains(where: { $0.id == candidate.id })
+            }) {
+                picks.append(next)
+            } else {
+                pools.remove(at: poolIndex % pools.count)
+                continue
+            }
+            poolIndex += 1
+        }
+        guard picks.count >= 2 else { return nil }
+
+        let items = picks.map { exercise in
+            CustomWorkoutItem(
+                exercise: exercise,
+                sets: 3,
+                reps: exercise.muscleGroup == .conditioning ? 15 : 10)
+        }
+        createCustomWorkout(name: request.name, sport: selectedSportMode, items: items)
+        return workoutTemplates.first
+    }
+
+    /// What one spoken set sounds like mid-session (frictionless-train
+    /// wave). The recognizer gives digits for numbers, so digit forms lead;
+    /// small number words cover the rest. All these parse:
+    ///   "10 at 135" / "10 reps at 135" / "135 for 10" / "ten reps"
+    ///   "same" / "same weight" (rep count from the console)
+    ///   "add five" / "up 5" / "drop ten" / "down 10"  (relative weight)
+    ///   "warmup 8 at 95"  (any phrasing containing "warm")
+    /// Weight resolution against the console's current numbers happens at
+    /// the call site — the parser only reports what was SAID.
+    struct LiveSetUtterance: Equatable {
+        var reps: Int?
+        var weight: Double?
+        var weightDelta: Double?
+        var isWarmup = false
+    }
+
+    nonisolated static func parseLiveSetUtterance(_ raw: String) -> LiveSetUtterance? {
+        var text = raw.lowercased()
+        guard !text.isEmpty else { return nil }
+        // Small spoken numbers arrive as words often enough to matter.
+        let numberWords = [
+            "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+            "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10",
+            "eleven": "11", "twelve": "12", "thirteen": "13", "fourteen": "14",
+            "fifteen": "15", "sixteen": "16", "seventeen": "17",
+            "eighteen": "18", "nineteen": "19", "twenty": "20"
+        ]
+        for (word, digits) in numberWords {
+            text = text.replacingOccurrences(
+                of: "\\b\(word)\\b", with: digits, options: .regularExpression)
+        }
+
+        var result = LiveSetUtterance()
+        result.isWarmup = text.contains("warm")
+
+        // Relative weight moves reference the console's current weight.
+        // The matched phrase is CONSUMED so its number can't be re-read as
+        // a rep count ("add five" is +5 weight, not 5 reps).
+        func consumeNumber(after pattern: String) -> Double? {
+            guard let range = text.range(
+                of: "\(pattern)\\s*(\\d{1,4}(?:\\.\\d+)?)", options: .regularExpression)
+            else { return nil }
+            let match = String(text[range])
+            text.removeSubrange(range)
+            return Double(match.components(separatedBy: CharacterSet(charactersIn: "0123456789.").inverted)
+                .filter { !$0.isEmpty }.last ?? "")
+        }
+
+        if let delta = consumeNumber(after: "\\b(?:add|up|plus)\\b") {
+            result.weightDelta = delta
+        } else if let delta = consumeNumber(after: "\\b(?:drop|down|minus|take off)\\b") {
+            result.weightDelta = -delta
+        } else if text.range(of: "\\bsame\\b", options: .regularExpression) != nil {
+            result.weightDelta = 0
+        }
+
+        // "REPS at WEIGHT" leads; "WEIGHT for REPS" is the gym-order variant.
+        if let range = text.range(
+            of: "(\\d{1,2})\\s*(?:reps?)?\\s*(?:at|@)\\s*(\\d{1,4}(?:\\.\\d+)?)",
+            options: .regularExpression) {
+            let numbers = String(text[range])
+                .components(separatedBy: CharacterSet(charactersIn: "0123456789.").inverted)
+                .filter { !$0.isEmpty }
+            if numbers.count >= 2 {
+                result.reps = Int(numbers[0])
+                result.weight = Double(numbers[1])
+            }
+        } else if let range = text.range(
+            of: "(\\d{1,4}(?:\\.\\d+)?)\\s*for\\s*(\\d{1,2})",
+            options: .regularExpression) {
+            let numbers = String(text[range])
+                .components(separatedBy: CharacterSet(charactersIn: "0123456789.").inverted)
+                .filter { !$0.isEmpty }
+            if numbers.count >= 2 {
+                result.weight = Double(numbers[0])
+                result.reps = Int(numbers[1])
+            }
+        } else {
+            // A bare number is a rep count ("10", "10 reps") — but only a
+            // plausible one; "135" alone is ambiguous and stays unparsed
+            // rather than logging 135 reps. (Delta phrases were consumed
+            // above, so their numbers can't land here.)
+            if let range = text.range(of: "\\b(\\d{1,2})\\b(?:\\s*reps?)?", options: .regularExpression) {
+                let digits = String(text[range]).components(
+                    separatedBy: CharacterSet.decimalDigits.inverted).filter { !$0.isEmpty }.first
+                if let digits, let reps = Int(digits), reps >= 1, reps <= 50 {
+                    result.reps = reps
+                }
+            }
+        }
+
+        // Something actionable must have been said.
+        guard result.reps != nil || result.weight != nil || result.weightDelta != nil else { return nil }
+        return result
+    }
+
     static func parseSetCommand(_ text: String) -> (sets: Int, reps: Int, weight: Double?)? {
         let pattern = #"(?:log|did|add)\s+(\d{1,2})\s*[x×]\s*(\d{1,3})(?:\s*(?:at|@)\s*(\d{1,4}(?:\.\d+)?))?"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
@@ -7753,6 +7978,25 @@ final class MorpheAppStore {
                 weightUnit = wantsKG ? .kilograms : .pounds
                 return "Weights now shown in \(wantsKG ? "kilograms" : "pounds")."
             }
+        }
+
+        // The spoken builder (frictionless-train wave): "make me a
+        // 30-minute push day, dumbbells only" — one sentence in, a staged
+        // template out. Works identically from chat and Hey Morphe because
+        // this layer IS the voice router's first stop.
+        if has("make", "build", "create", "design") && has("workout", "session", "routine", "day", "plan") {
+            guard let request = Self.parseWorkoutBuildRequest(lower) else {
+                return "Tell me the focus and I'll build it — like \"build me a 30-minute push day, dumbbells only\". I know push, pull, legs, upper, full body, chest, back, shoulders, arms, core, and conditioning."
+            }
+            let stagesNow = !hasUnsavedSessionWork
+            guard let built = buildWorkout(from: request) else {
+                return "I couldn't fill \(request.name.lowercased()) with \(request.equipment ?? "that") gear from the library — try a different focus or drop the equipment limit."
+            }
+            let count = built.exercises.count
+            if stagesNow {
+                return "Built \(built.name) — \(count) exercises, about \(count * 8) minutes. It's staged as your current plan; say \"start my workout\" when you're ready."
+            }
+            return "Built \(built.name) — \(count) exercises. It's saved in Your workouts; you've got an unlogged session to settle in Train first."
         }
 
         // Navigation closes the chat sheet — moving tabs behind a presented
