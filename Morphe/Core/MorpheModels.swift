@@ -112,9 +112,11 @@ enum ClientTab: String, CaseIterable, MorpheTabItem {
     /// react, save, repost). The other multi-user surfaces (coach networking,
     /// demo inbox, payments) stay individually gated on `multiUserEnabled`.
     static var visibleCases: [ClientTab] {
-        // Discover folded into Train (5-tab bar) — the case survives for
-        // compatibility but never renders as a tab or a page.
-        [.today, .train, .community, .hub, .more]
+        // Lucas 2026-08-26: Discover is a first-class tab again and
+        // Progress left the bar — it now presents from the profile's
+        // "history, records, and charts" row (and every old door). The
+        // .hub case survives for compatibility but never renders as a tab.
+        [.today, .train, .discover, .community, .more]
     }
 
     var title: String {

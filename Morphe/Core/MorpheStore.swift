@@ -1243,17 +1243,12 @@ final class MorpheAppStore {
     }
 
     /// Lands on the Discover surface for the CURRENT role.
-    enum TrainSection { case session, discover }
-    /// Discover is a SEGMENT of Train now (5-tab fold) — this is the
-    /// selection every old "open Discover" door routes through.
-    var selectedTrainSection: TrainSection = .session
-
     func showDiscoverTab() {
         if selectedRole == .coach {
             selectedCoachTab = .discover
         } else {
-            selectedClientTab = .train
-            selectedTrainSection = .discover
+            // Discover is its own tab again (Lucas 2026-08-26).
+            selectedClientTab = .discover
         }
         Haptics.impact(.light)
     }
@@ -8177,8 +8172,21 @@ final class MorpheAppStore {
         showClientProfile = false
     }
 
+    /// Progress left the tab bar (Lucas 2026-08-26): it presents as a full
+    /// sheet — from the profile's "history, records, and charts" row and
+    /// every old door (voice, chat, day popup, Home cards).
+    var showProgressSheet = false
+    /// Two sheets can't co-present: a progress open from INSIDE the profile
+    /// sheet queues here and the profile's onDismiss raises it.
+    var pendingProgressOpen = false
+
     func openProgress() {
-        selectedClientTab = .hub
+        if showClientProfile {
+            pendingProgressOpen = true
+            showClientProfile = false
+        } else {
+            showProgressSheet = true
+        }
         Haptics.impact(.light)
     }
 
@@ -8913,6 +8921,7 @@ final class MorpheAppStore {
         showQuickAdd = false
         showUniversalSearch = false
         showClientProfile = false
+        showProgressSheet = false
         if !preservingConversation, showAIAgent { closeAIAgent() }
         if shouldShowDayPopup { dismissDayPopupForSession() }
     }

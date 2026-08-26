@@ -40,6 +40,8 @@ struct ProfileView: View {
     /// unsaved-edit guard couldn't see a typed-but-unsaved weight, so Done
     /// or a swipe-down silently dropped it.
     @State private var weightDraft = ""
+    /// Instagram-style settings search: filters the grouped sections.
+    @State private var settingsQuery = ""
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -52,7 +54,7 @@ struct ProfileView: View {
                     detailsCard
                     targetsCard
                 }
-                settingsCard
+                settingsSections
                 if !isCoach {
                     levelCard
                 }
@@ -642,14 +644,73 @@ struct ProfileView: View {
         }
     }
 
-    private var settingsCard: some View {
-        @Bindable var store = store
-        return GlassCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Settings")
-                    .font(.headline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+    // MARK: - Settings and activity (Instagram-style grouping, Lucas 2026-08-26)
+    //
+    // The old single "Settings" card held ~20 concerns in one scroll. Now:
+    // a search field, then small-caps grouped sections — same rows, same
+    // logic, organized the way people already know from Instagram.
 
+    private var settingsSearchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textMuted)
+            TextField("Search settings", text: $settingsQuery)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+            if !settingsQuery.isEmpty {
+                Button {
+                    settingsQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear settings search")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panelStrong)
+                .overlay(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .stroke(MorpheTheme.stroke, lineWidth: 1)
+                )
+        )
+    }
+
+    /// One grouped section: small-caps header + rows, hidden when the
+    /// search query matches neither its title nor its keywords.
+    @ViewBuilder
+    private func settingsSection<Content: View>(
+        _ title: String, keywords: String, @ViewBuilder content: () -> Content
+    ) -> some View {
+        let query = settingsQuery.trimmingCharacters(in: .whitespaces)
+        if query.isEmpty || "\(title) \(keywords)".localizedCaseInsensitiveContains(query) {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(title.uppercased())
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.6)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    content()
+                }
+            }
+        }
+    }
+
+    private var settingsSections: some View {
+        @Bindable var store = store
+        return VStack(alignment: .leading, spacing: 16) {
+            settingsSearchField
+
+            settingsSection("Your account", keywords: "name username handle referrals invite share") {
                 if isEditingName {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
@@ -690,6 +751,7 @@ struct ProfileView: View {
                             .foregroundStyle(MorpheTheme.textMuted)
                     }
                 }
+
 
                 Divider().overlay(MorpheTheme.strokeSubtle)
 
@@ -732,61 +794,6 @@ struct ProfileView: View {
                     }
                 }
 
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
-                HStack {
-                    Text("Appearance")
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Spacer()
-                    Picker("Appearance", selection: $store.appearanceIsLight) {
-                        Text("Dark").tag(false)
-                        Text("Light").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 140)
-                }
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
-                HStack {
-                    Text("Weight unit")
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Spacer()
-                    Picker("Weight unit", selection: $store.weightUnit) {
-                        ForEach(WeightUnit.allCases) { unit in
-                            Text(unit.label).tag(unit)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 110)
-                }
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
-                // Accent color — picked once in onboarding, now editable
-                // anytime. Gold is the brand default; the others personalize
-                // the whole app's accent pair.
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Accent")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    // Wrapped: nine 44pt targets don't fit one row on a
-                    // 393pt device — crushed dots overlapped their rings.
-                    WrapStack(spacing: 8) {
-                        ForEach(AccentPalette.allCases) { palette in
-                            accentDot(for: palette)
-                        }
-                    }
-                    // The Custom dot's editor: any color at all. Applies
-                    // live and persists with the profile (cloud included).
-                    if store.profileShowcase.accentPalette == .custom {
-                        ColorPicker(selection: customAccentBinding, supportsOpacity: false) {
-                            Text("Pick your color")
-                                .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                        }
-                    }
-                }
 
                 Divider().overlay(MorpheTheme.strokeSubtle)
 
@@ -819,7 +826,93 @@ struct ProfileView: View {
                 }
                 .task { await store.refreshReferralCount() }
 
-                Divider().overlay(MorpheTheme.strokeSubtle)
+            }
+
+            settingsSection("How you train", keywords: "training days week injuries limits rest timer effort rpe rir weight unit kg lb pounds kilograms") {
+                if !isCoach {
+                    // Weekly target — drives the consistency denominator on
+                    // Progress; was user-set in onboarding then locked forever.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Training days per week")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        WrapStack(spacing: 8) {
+                            ForEach(1...7, id: \.self) { count in
+                                Button("\(count)") {
+                                    store.updateTrainingDaysPerWeek(count)
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.trainingDaysPerWeek == count, selectedColor: MorpheTheme.accent))
+                                .accessibilityLabel("\(count) days per week")
+                            }
+                        }
+                    }
+
+                    // WHICH days (rest-day model): pick them and Today shows
+                    // an honest rest card on off days + the daily reminder
+                    // skips them. None picked = every day is a training day.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Training days")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        HStack(spacing: 6) {
+                            ForEach(Array(zip(1...7, ["S", "M", "T", "W", "T", "F", "S"])), id: \.0) { weekday, label in
+                                Button(label) {
+                                    if store.trainingDays.contains(weekday) {
+                                        store.trainingDays.remove(weekday)
+                                    } else {
+                                        store.trainingDays.insert(weekday)
+                                    }
+                                }
+                                .buttonStyle(FilterChipStyle(isSelected: store.trainingDays.contains(weekday), selectedColor: MorpheTheme.accent))
+                                .accessibilityLabel("\(Calendar.current.weekdaySymbols[weekday - 1])\(store.trainingDays.contains(weekday) ? ", training day" : "")")
+                            }
+                        }
+                        Text(store.trainingDays.isEmpty
+                            ? "No days picked — every day shows your workout."
+                            : "Off days show a rest card and skip the reminder.")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    // Injuries are safety data — collected in onboarding and
+                    // previously never editable again.
+                    if isEditingInjuries {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("Injuries or limits Morphe should respect", text: $injuriesDraft, axis: .vertical)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .lineLimit(2...4)
+                            HStack(spacing: 12) {
+                                Button("Save") {
+                                    store.updateInjuryNote(injuriesDraft)
+                                    isEditingInjuries = false
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.accentText)
+                                .accessibilityLabel("Save injury note")
+                                Button("Cancel") {
+                                    isEditingInjuries = false
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .accessibilityLabel("Cancel injury note edit")
+                            }
+                        }
+                    } else {
+                        settingsRow(
+                            "Injuries & limits",
+                            value: store.clientProfile.limitations.isEmpty ? "None noted" : store.clientProfile.limitations
+                        ) {
+                            injuriesDraft = store.clientProfile.limitations
+                            isEditingInjuries = true
+                        }
+                    }
+
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+                }
 
                 // Live-session preferences for BOTH roles (audit 6, P1-4):
                 // coaches train in the same console, so the rest timer and
@@ -830,6 +923,7 @@ struct ProfileView: View {
                     isOn: $store.autoRestTimerEnabled
                 )
 
+
                 Divider().overlay(MorpheTheme.strokeSubtle)
 
                 preferenceToggleRow(
@@ -837,6 +931,63 @@ struct ProfileView: View {
                     caption: "Show effort as reps in reserve instead of RPE. Your history stays the same — only the display flips.",
                     isOn: $store.effortScaleRIR
                 )
+
+
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
+                HStack {
+                    Text("Weight unit")
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Picker("Weight unit", selection: $store.weightUnit) {
+                        ForEach(WeightUnit.allCases) { unit in
+                            Text(unit.label).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 110)
+                }
+
+            }
+
+            settingsSection("Voice", keywords: "hey morphe voice speech microphone hands free wake") {
+                    // Foreground-only is an iOS rule, not a choice — the
+                    // caption says so instead of overpromising Siri parity.
+                    preferenceToggleRow(
+                        title: "\u{201C}Hey Morphe\u{201D}",
+                        caption: "Hands-free while the app is open: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud. Speech stays on this iPhone. Listening uses extra battery, and iOS doesn't allow it from the background or lock screen.",
+                        isOn: Binding(
+                            get: { store.heyMorpheEnabled },
+                            set: { store.setHeyMorphe(enabled: $0) }
+                        )
+                    )
+
+            }
+
+            settingsSection("Notifications", keywords: "reminders nudge streak recap board updates") {
+                    // The audit found five reminder kinds and no off switch.
+                    // One master toggle — off cancels everything pending.
+                    preferenceToggleRow(
+                        title: "Reminders",
+                        caption: "The 5pm session nudge, streak-risk heads-up, weekly recap, and board updates. Off silences all of them.",
+                        isOn: $store.remindersEnabled
+                    )
+
+            }
+
+            settingsSection("Who can see you", keywords: "weekly board leaderboard privacy feed posts share coach blocked accounts unblock") {
+                    // The board publishes your real name — and scores post on
+                    // every log in EITHER role, so the off-switch renders for
+                    // both (audit 5, P1-4: a coach could never leave).
+                    preferenceToggleRow(
+                        title: "Weekly board",
+                        caption: "Ranks your logged sessions against other athletes under your name. Leaving removes your row immediately.",
+                        isOn: Binding(
+                            get: { store.leaderboardOptIn },
+                            set: { $0 ? store.joinWeeklyBoard() : store.leaveWeeklyBoard() }
+                        )
+                    )
+
 
                 // Athlete-only network identity, dark with the feed. The
                 // block carries its own LEADING divider so an empty block
@@ -869,92 +1020,8 @@ struct ProfileView: View {
                     )
                 }
 
-                Divider().overlay(MorpheTheme.strokeSubtle)
 
-                // Both roles from here (profile audit: coaches lost 14 rows
-                // including data export): reminders, board, data, backup.
-                    // The audit found five reminder kinds and no off switch.
-                    // One master toggle — off cancels everything pending.
-                    preferenceToggleRow(
-                        title: "Reminders",
-                        caption: "The 5pm session nudge, streak-risk heads-up, weekly recap, and board updates. Off silences all of them.",
-                        isOn: $store.remindersEnabled
-                    )
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    // Foreground-only is an iOS rule, not a choice — the
-                    // caption says so instead of overpromising Siri parity.
-                    preferenceToggleRow(
-                        title: "\u{201C}Hey Morphe\u{201D}",
-                        caption: "Hands-free while the app is open: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud. Speech stays on this iPhone. Listening uses extra battery, and iOS doesn't allow it from the background or lock screen.",
-                        isOn: Binding(
-                            get: { store.heyMorpheEnabled },
-                            set: { store.setHeyMorphe(enabled: $0) }
-                        )
-                    )
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    // The board publishes your real name — and scores post on
-                    // every log in EITHER role, so the off-switch renders for
-                    // both (audit 5, P1-4: a coach could never leave).
-                    preferenceToggleRow(
-                        title: "Weekly board",
-                        caption: "Ranks your logged sessions against other athletes under your name. Leaving removes your row immediately.",
-                        isOn: Binding(
-                            get: { store.leaderboardOptIn },
-                            set: { $0 ? store.joinWeeklyBoard() : store.leaveWeeklyBoard() }
-                        )
-                    )
-
-                    // A coach's invite code used to work ONLY during
-                    // onboarding — existing athletes had nowhere to type it.
-                    // (Athlete-only: a coach doesn't join a coach.)
-                    if !isCoach, store.linkedCoachUid.isEmpty {
-                        Divider().overlay(MorpheTheme.strokeSubtle)
-
-                        if isEnteringCoachCode {
-                            HStack(spacing: 8) {
-                                TextField("Coach code (e.g. 7KQ4TX)", text: $coachCodeDraft)
-                                    .textFieldStyle(MorpheFieldStyle())
-                                    .textInputAutocapitalization(.characters)
-                                    .autocorrectionDisabled()
-                                Button("Join") {
-                                    let code = coachCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    guard !code.isEmpty else { return }
-                                    Task {
-                                        await store.claimCoachInvite(code: code)
-                                        coachCodeDraft = ""
-                                        isEnteringCoachCode = false
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.accentText)
-                                Button("Cancel") { isEnteringCoachCode = false }
-                                    .buttonStyle(.plain)
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                            }
-                        } else {
-                            settingsRow("Coach code", value: "Have one? Join your coach") {
-                                isEnteringCoachCode = true
-                            }
-                        }
-                    }
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    // Enabling walks through the system Health prompt; the
-                    // store refuses the flip when access isn't granted.
-                    preferenceToggleRow(
-                        title: "Sync to Health",
-                        caption: "Saves each logged workout to Apple Health so it counts toward your Activity rings.",
-                        isOn: Binding(
-                            get: { store.healthSyncEnabled },
-                            set: { newValue in Task { await store.setHealthSync(enabled: newValue) } }
-                        )
-                    )
-
+                if !isCoach {
                     // Athlete-only: the check-in prefill and the coach-share
                     // summary have no coach-side surface.
                     if !isCoach {
@@ -988,8 +1055,130 @@ struct ProfileView: View {
                     }
                     }
 
-                    Divider().overlay(MorpheTheme.strokeSubtle)
+                }
+                    // Blocked accounts — only renders when there's someone
+                    // to manage; blocking happens from posts/comments.
+                    if !store.blockedAccounts.isEmpty {
+                        Divider().overlay(MorpheTheme.strokeSubtle)
 
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Blocked accounts")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            ForEach(store.blockedAccounts.sorted(by: { $0.value < $1.value }), id: \.key) { uid, name in
+                                HStack(spacing: 10) {
+                                    Text(name)
+                                        .font(.subheadline)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                        .lineLimit(1)
+                                    Spacer(minLength: 0)
+                                    Button("Unblock") {
+                                        store.unblockAccount(uid: uid)
+                                    }
+                                    .buttonStyle(FilterChipStyle(isSelected: false))
+                                    .accessibilityLabel("Unblock \(name)")
+                                }
+                            }
+                        }
+                    }
+
+            }
+
+            if !isCoach, store.linkedCoachUid.isEmpty {
+                settingsSection("Your coach", keywords: "coach code join invite link") {
+                    // A coach's invite code used to work ONLY during
+                    // onboarding — existing athletes had nowhere to type it.
+                    // (Athlete-only: a coach doesn't join a coach.)
+                    if !isCoach, store.linkedCoachUid.isEmpty {
+                        if isEnteringCoachCode {
+                            HStack(spacing: 8) {
+                                TextField("Coach code (e.g. 7KQ4TX)", text: $coachCodeDraft)
+                                    .textFieldStyle(MorpheFieldStyle())
+                                    .textInputAutocapitalization(.characters)
+                                    .autocorrectionDisabled()
+                                Button("Join") {
+                                    let code = coachCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    guard !code.isEmpty else { return }
+                                    Task {
+                                        await store.claimCoachInvite(code: code)
+                                        coachCodeDraft = ""
+                                        isEnteringCoachCode = false
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.accentText)
+                                Button("Cancel") { isEnteringCoachCode = false }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                        } else {
+                            settingsRow("Coach code", value: "Have one? Join your coach") {
+                                isEnteringCoachCode = true
+                            }
+                        }
+                    }
+
+                }
+            }
+
+            settingsSection("Health", keywords: "apple health activity rings sleep sync workouts") {
+                    // Enabling walks through the system Health prompt; the
+                    // store refuses the flip when access isn't granted.
+                    preferenceToggleRow(
+                        title: "Sync to Health",
+                        caption: "Saves each logged workout to Apple Health so it counts toward your Activity rings.",
+                        isOn: Binding(
+                            get: { store.healthSyncEnabled },
+                            set: { newValue in Task { await store.setHealthSync(enabled: newValue) } }
+                        )
+                    )
+
+            }
+
+            settingsSection("Your app", keywords: "appearance dark light mode theme accent color") {
+                HStack {
+                    Text("Appearance")
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Picker("Appearance", selection: $store.appearanceIsLight) {
+                        Text("Dark").tag(false)
+                        Text("Light").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 140)
+                }
+
+
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
+                // Accent color — picked once in onboarding, now editable
+                // anytime. Gold is the brand default; the others personalize
+                // the whole app's accent pair.
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Accent")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    // Wrapped: nine 44pt targets don't fit one row on a
+                    // 393pt device — crushed dots overlapped their rings.
+                    WrapStack(spacing: 8) {
+                        ForEach(AccentPalette.allCases) { palette in
+                            accentDot(for: palette)
+                        }
+                    }
+                    // The Custom dot's editor: any color at all. Applies
+                    // live and persists with the profile (cloud included).
+                    if store.profileShowcase.accentPalette == .custom {
+                        ColorPicker(selection: customAccentBinding, supportsOpacity: false) {
+                            Text("Pick your color")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                        }
+                    }
+                }
+
+            }
+
+            settingsSection("Your data", keywords: "export json download backup cloud morphe pro subscription plans") {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Your data")
@@ -1010,6 +1199,7 @@ struct ProfileView: View {
                         .frame(width: 120)
                         .accessibilityLabel("Export your data as JSON")
                     }
+
 
                     // Backup health — failures used to be invisible (the
                     // upload was fire-and-forget). Only rendered when a real
@@ -1057,6 +1247,7 @@ struct ProfileView: View {
                         }
                     }
 
+
                     // Morphe Pro — DORMANT until App Store Connect products
                     // exist; while the storefront flag is off nothing here
                     // renders and everything stays free.
@@ -1080,129 +1271,13 @@ struct ProfileView: View {
                         }
                     }
 
-                    // Blocked accounts — only renders when there's someone
-                    // to manage; blocking happens from posts/comments.
-                    if !store.blockedAccounts.isEmpty {
-                        Divider().overlay(MorpheTheme.strokeSubtle)
+            }
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Blocked accounts")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.textMuted)
-                            ForEach(store.blockedAccounts.sorted(by: { $0.value < $1.value }), id: \.key) { uid, name in
-                                HStack(spacing: 10) {
-                                    Text(name)
-                                        .font(.subheadline)
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                        .lineLimit(1)
-                                    Spacer(minLength: 0)
-                                    Button("Unblock") {
-                                        store.unblockAccount(uid: uid)
-                                    }
-                                    .buttonStyle(FilterChipStyle(isSelected: false))
-                                    .accessibilityLabel("Unblock \(name)")
-                                }
-                            }
-                        }
-                    }
-
-                    // Athlete-only tail: training-day targets and injuries
-                    // configure the athlete's Today/Progress surfaces.
-                    if !isCoach {
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    // Weekly target — drives the consistency denominator on
-                    // Progress; was user-set in onboarding then locked forever.
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Training days per week")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        WrapStack(spacing: 8) {
-                            ForEach(1...7, id: \.self) { count in
-                                Button("\(count)") {
-                                    store.updateTrainingDaysPerWeek(count)
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.trainingDaysPerWeek == count, selectedColor: MorpheTheme.accent))
-                                .accessibilityLabel("\(count) days per week")
-                            }
-                        }
-                    }
-
-                    // WHICH days (rest-day model): pick them and Today shows
-                    // an honest rest card on off days + the daily reminder
-                    // skips them. None picked = every day is a training day.
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Training days")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        HStack(spacing: 6) {
-                            ForEach(Array(zip(1...7, ["S", "M", "T", "W", "T", "F", "S"])), id: \.0) { weekday, label in
-                                Button(label) {
-                                    if store.trainingDays.contains(weekday) {
-                                        store.trainingDays.remove(weekday)
-                                    } else {
-                                        store.trainingDays.insert(weekday)
-                                    }
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: store.trainingDays.contains(weekday), selectedColor: MorpheTheme.accent))
-                                .accessibilityLabel("\(Calendar.current.weekdaySymbols[weekday - 1])\(store.trainingDays.contains(weekday) ? ", training day" : "")")
-                            }
-                        }
-                        Text(store.trainingDays.isEmpty
-                            ? "No days picked — every day shows your workout."
-                            : "Off days show a rest card and skip the reminder.")
-                            .font(.caption2)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                    }
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    // Injuries are safety data — collected in onboarding and
-                    // previously never editable again.
-                    if isEditingInjuries {
-                        VStack(alignment: .leading, spacing: 8) {
-                            TextField("Injuries or limits Morphe should respect", text: $injuriesDraft, axis: .vertical)
-                                .textFieldStyle(MorpheFieldStyle())
-                                .lineLimit(2...4)
-                            HStack(spacing: 12) {
-                                Button("Save") {
-                                    store.updateInjuryNote(injuriesDraft)
-                                    isEditingInjuries = false
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.accentText)
-                                .accessibilityLabel("Save injury note")
-                                Button("Cancel") {
-                                    isEditingInjuries = false
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.textMuted)
-                                .accessibilityLabel("Cancel injury note edit")
-                            }
-                        }
-                    } else {
-                        settingsRow(
-                            "Injuries & limits",
-                            value: store.clientProfile.limitations.isEmpty ? "None noted" : store.clientProfile.limitations
-                        ) {
-                            injuriesDraft = store.clientProfile.limitations
-                            isEditingInjuries = true
-                        }
-                    }
-
-                }
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
+            settingsSection("More info and support", keywords: "about terms privacy policy contact support email version") {
                 // About: the terms the user agreed to, the privacy policy,
                 // a human to email, and which build they're on — table
                 // stakes the audit found missing entirely.
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("ABOUT")
-                        .font(MorpheTheme.microLabel(10))
-                        .tracking(1.6)
-                        .foregroundStyle(MorpheTheme.textMuted)
-
                     Button("Terms of Use") { showTermsSheet = true }
                         .buttonStyle(.plain)
                         .foregroundStyle(MorpheTheme.accentText)
@@ -1224,9 +1299,10 @@ struct ProfileView: View {
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
 
-                Divider().overlay(MorpheTheme.strokeSubtle)
+            }
 
-                if FeatureFlags.accountsEnabled {
+            if FeatureFlags.accountsEnabled {
+                settingsSection("Login", keywords: "sign out log out delete account remove") {
                     Button("Sign Out") {
                         showSignOutConfirm = true
                     }

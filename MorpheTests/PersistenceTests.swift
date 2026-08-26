@@ -884,7 +884,8 @@ final class WorkoutSessionTests: XCTestCase {
 
         let progressReply = store.routeVoiceCommand("show my progress")
         XCTAssertFalse(progressReply.isEmpty)
-        XCTAssertEqual(store.selectedClientTab, .hub, "voice uses the same door as the button")
+        XCTAssertTrue(store.showProgressSheet,
+                      "voice uses the same door as the profile row — Progress presents as a sheet now")
 
         // The action layer owns start — with its live-session guard.
         startedTwoExerciseSession(store)
@@ -1616,7 +1617,8 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.weightUnit, .kilograms, "'switch to kg' changes the setting")
 
         store.sendAIAgentPrompt("Show my progress")
-        XCTAssertEqual(store.selectedClientTab, .hub, "'show my progress' navigates there")
+        XCTAssertTrue(store.showProgressSheet,
+                      "'show my progress' presents the Progress sheet (it left the tab bar)")
 
         // Every command produced a confirmation reply from Morphe AI.
         let aiReplies = store.athleteAIAgentConversation.filter { $0.senderName == "Morphe AI" }
@@ -2507,9 +2509,8 @@ final class MetricsTests: XCTestCase {
         store.completeOnboarding()
 
         store.sendAIAgentPrompt("open discover")
-        // Discover is a Train segment now (5-tab fold).
-        XCTAssertEqual(store.selectedClientTab, .train, "'open discover' lands on Train…")
-        XCTAssertEqual(store.selectedTrainSection, .discover, "…with the Discover segment selected")
+        // Discover is its own tab again (Lucas 2026-08-26).
+        XCTAssertEqual(store.selectedClientTab, .discover, "'open discover' lands on the Discover tab")
     }
 
     func testAssistantStartWinsOverStopPhrasing() {

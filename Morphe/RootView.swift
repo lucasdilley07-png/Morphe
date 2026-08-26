@@ -236,12 +236,35 @@ struct RootView: View {
         }
         .sheet(isPresented: $store.showClientProfile, onDismiss: {
             store.closeClientProfile()
+            // "See your history, records, and charts" queued a progress
+            // open — two sheets can't co-present, so it raises here.
+            if store.pendingProgressOpen {
+                store.pendingProgressOpen = false
+                store.showProgressSheet = true
+            }
         }) {
             NavigationStack {
                 // ProfileView owns its Done button: it has to check for
                 // unsaved edits (drafts live in its @State) before closing.
                 ProfileView()
                     .environment(store)
+            }
+            .sheetToastSurface()
+            .background(PremiumBackground())
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $store.showProgressSheet) {
+            NavigationStack {
+                // ProgressScreenView owns its scroll — same view the old
+                // tab hosted, now a sheet.
+                ProgressScreenView()
+                    .environment(store)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { store.showProgressSheet = false }
+                                .foregroundStyle(MorpheTheme.accentText)
+                        }
+                    }
             }
             .sheetToastSurface()
             .background(PremiumBackground())
@@ -538,10 +561,12 @@ private struct ClientExperienceShell: View {
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.community)
 
-            ProgressScreenView()
-                .id(store.tabResetKey("hub"))
+            // Discover is a first-class tab again; Progress presents as a
+            // sheet from the profile row and the old doors (Lucas 2026-08-26).
+            DiscoverScreenView()
+                .id(store.tabResetKey("discover"))
                 .toolbar(.hidden, for: .tabBar)
-                .tag(ClientTab.hub)
+                .tag(ClientTab.discover)
 
             MoreView()
                 .id(store.tabResetKey("more"))

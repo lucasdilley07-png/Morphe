@@ -60,78 +60,15 @@ struct WorkoutView: View {
     /// The Train shell tabs (same grammar as Network's CHATS/FOR YOU):
     /// SESSION is the plan/console, DISCOVER is the catalog that used to
     /// be its own bottom-bar tab.
-    private var trainSectionHeader: some View {
-        // Centered on the page (alive wave symmetry) — the tab pair sits on
-        // the center line, matching Network's header.
-        HStack(alignment: .bottom, spacing: 28) {
-            trainSectionTab("SESSION", .session)
-            trainSectionTab("DISCOVER", .discover)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 20)
-        .padding(.top, MorpheTheme.Spacing.pageTopTrain)
-        .padding(.bottom, 2)
-    }
-
-    private func trainSectionTab(_ label: String, _ section: MorpheAppStore.TrainSection) -> some View {
-        let isActive = store.selectedTrainSection == section
-        return Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                store.selectedTrainSection = section
-            }
-        } label: {
-            VStack(alignment: .center, spacing: 5) {
-                Text(label)
-                    .font(MorpheTheme.microLabel(16))
-                    .tracking(1.6)
-                    .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
-                Rectangle()
-                    .fill(isActive ? MorpheTheme.accent : .clear)
-                    .frame(width: 34, height: 3)
-            }
-            .frame(minHeight: 44, alignment: .bottom)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label.capitalized)
-        .accessibilityAddTraits(isActive ? .isSelected : [])
-    }
-
     var body: some View {
         @Bindable var store = store
         return Group {
-            // Discover lives INSIDE Train now (5-tab fold): the catalog is
-            // a segment of the training surface, not a sibling tab. An
-            // explicit Discover selection wins even mid-session — the live
-            // session is one segment tap away, never lost.
-            if store.selectedTrainSection == .session, store.isWorkoutSessionActive {
+            // Discover is its own tab again (Lucas 2026-08-26) — Train is
+            // purely the training surface: live console or planning.
+            if store.isWorkoutSessionActive {
                 activeWorkoutMode
             } else {
-                VStack(spacing: 0) {
-                    trainSectionHeader
-                    // Swipe shell (same gesture grammar as Network's
-                    // CHATS ↔ FOR YOU): one horizontal drag between the
-                    // session and the catalog, selection still the SAME
-                    // store var every segment tap and deep link sets.
-                    TabView(selection: $store.selectedTrainSection) {
-                        Group {
-                            if store.isWorkoutSessionActive {
-                                // Only visible mid-drag: the moment the
-                                // swipe lands on SESSION, the outer branch
-                                // swaps in the live session console.
-                                Color.clear
-                            } else {
-                                workoutPlanningMode
-                            }
-                        }
-                        .tag(MorpheAppStore.TrainSection.session)
-
-                        DiscoverScreenView()
-                            .id(store.tabResetKey("discover"))
-                            .tag(MorpheAppStore.TrainSection.discover)
-                    }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                }
+                workoutPlanningMode
             }
         }
         // Each presentation lives on its own background view. SwiftUI
