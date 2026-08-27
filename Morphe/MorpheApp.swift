@@ -37,6 +37,8 @@ struct MorpheApp: App {
                     // the switcher — every return to the foreground re-checks
                     // whether "today" is still today.
                     if phase == .active {
+                        // The wrist logger's session link (market audit 2026-08).
+                        WatchBridge.shared.activate(store: store)
                         store.handleDayRolloverIfNeeded()
                         // The day popup greets every open (Lucas 2026-08-18).
                         store.reopenDayPopup()

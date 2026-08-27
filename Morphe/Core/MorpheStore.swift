@@ -6301,6 +6301,8 @@ final class MorpheAppStore {
     /// tracker. Every "Start" action funnels through here, so starting a workout
     /// always begins the session instead of only staging the plan in Train.
     func beginLiveWorkout(_ template: WorkoutTemplate) {
+        // The wrist mirrors every session mutation (market audit 2026-08).
+        defer { WatchBridge.shared.publish() }
         confirmDiscardingSessionWork("Start \(template.name)?") { [weak self] in
             self?.currentWorkoutID = template.id
             self?.performStartTodayWorkout()
@@ -6593,6 +6595,8 @@ final class MorpheAppStore {
     /// behavior (the auto rest timer) on a real set, not a rejected tap.
     @discardableResult
     func completeTrackedSet(reps: Int, weight: Double? = nil, rpe: Int? = nil, allowExtra: Bool = false, label: String = "", isWarmup: Bool = false) -> Bool {
+        // The wrist mirrors every session mutation (market audit 2026-08).
+        defer { WatchBridge.shared.publish() }
         guard let exercise = activeWorkoutExercise else { return false }
         let targetSets = targetSetCount(for: exercise)
         let currentCount = completedWorkoutSets[exercise.id, default: 0]
@@ -6670,6 +6674,8 @@ final class MorpheAppStore {
 
     /// Removes one logged set and re-syncs the completed count.
     func removeTrackedSet(exerciseID: String, setIndex: Int) {
+        // The wrist mirrors every session mutation (market audit 2026-08).
+        defer { WatchBridge.shared.publish() }
         guard var repsLogged = trackedSetReps[exerciseID], repsLogged.indices.contains(setIndex) else { return }
         repsLogged.remove(at: setIndex)
         trackedSetReps[exerciseID] = repsLogged
@@ -6716,6 +6722,8 @@ final class MorpheAppStore {
     }
 
     func goToNextTrackedExercise() {
+        // The wrist mirrors every session mutation (market audit 2026-08).
+        defer { WatchBridge.shared.publish() }
         guard !currentWorkout.exercises.isEmpty else { return }
         activeWorkoutExerciseIndex = min(activeWorkoutExerciseIndex + 1, currentWorkout.exercises.count - 1)
         Haptics.impact(.light)
@@ -6880,6 +6888,8 @@ final class MorpheAppStore {
     }
 
     func goToPreviousTrackedExercise() {
+        // The wrist mirrors every session mutation (market audit 2026-08).
+        defer { WatchBridge.shared.publish() }
         guard !currentWorkout.exercises.isEmpty else { return }
         activeWorkoutExerciseIndex = max(activeWorkoutExerciseIndex - 1, 0)
         Haptics.impact(.light)
@@ -6887,6 +6897,8 @@ final class MorpheAppStore {
 
     @discardableResult
     func finishTrackedWorkoutSession() -> Bool {
+        // The wrist mirrors every session mutation (market audit 2026-08).
+        defer { WatchBridge.shared.publish() }
         guard hasStartedWorkoutFlow else {
             showTrainTab()
             showToast("Start the session in Train before finishing it.")

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1546E0A939C5DD515CE7CB66 /* MorpheWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86713EF51E1FA463ECE9FCE6 /* MorpheWatchApp.swift */; };
 		1B20F6002C40000100100001 /* MorpheApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100011 /* MorpheApp.swift */; };
 		1B20F6002C40000100100002 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100012 /* RootView.swift */; };
 		1B20F6002C40000100100003 /* MorpheTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100013 /* MorpheTheme.swift */; };
@@ -30,8 +31,7 @@
 		1B20F6002C4000010010004B /* Accounts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100066 /* Accounts.swift */; };
 		1B20F6002C4000010010004C /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100067 /* AuthView.swift */; };
 		1B20F6002C4000010010004D /* BookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100068 /* BookingView.swift */; };
-		1B20F6002C4000010010004E /* Resources/MorpheCatalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100069 /* Resources/MorpheCatalog.json */; };
-		1B20F6002C400FD100100001 /* Resources/FormDiagrams in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400FD100100002 /* Resources/FormDiagrams */; };
+		1B20F6002C4000010010004E /* MorpheCatalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100069 /* MorpheCatalog.json */; };
 		1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010006A /* WorkoutCatalog.swift */; };
 		1B20F6002C400001001000AA /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000A9 /* PersistenceTests.swift */; };
 		1B20F6002C400001001000D0 /* FormCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000D1 /* FormCheckView.swift */; };
@@ -48,7 +48,13 @@
 		1B20F6002C4000010020000E /* RestTimerAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010020000C /* RestTimerAttributes.swift */; };
 		1B20F6002C40000100200010 /* RestTimerActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010020000F /* RestTimerActivityController.swift */; };
 		1B20F6002C40000100200013 /* MorpheWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100200002 /* MorpheWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		1B20F6002C400FD100100001 /* FormDiagrams in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400FD100100002 /* FormDiagrams */; };
+		345B672A4CACE84B2FCD1538 /* WatchRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC2A529EBD5AB5A04D2376E /* WatchRootView.swift */; };
+		40D7617462A6B2AF16080A2D /* WatchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DAFF49BAA06EBFA73A6D259 /* WatchBridge.swift */; };
+		97E571F4F035CE9A16D734F0 /* MorpheWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = B8A1FA44C0D60F4FD64CCA3F /* MorpheWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		9B6A806AD28ABBA4519CABF5 /* WatchSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E715EB063BB124D5D82A39A8 /* WatchSessionModel.swift */; };
 		A0F9E0963000DCBC00DAC2F6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A0F9E0953000DCBC00DAC2F6 /* GoogleService-Info.plist */; };
+		A0FD5ED22F21A6ED243CBF08 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9343DBA5ABE97A91B0601BEE /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,6 +72,13 @@
 			remoteGlobalIDString = 1B20F6002C40000100200001;
 			remoteInfo = MorpheWidgets;
 		};
+		3BA015ADE0687293B648E695 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1B20F6002C40000100100028 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A6B12644981DF0AFC43E38F7;
+			remoteInfo = MorpheWatch;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -80,9 +93,21 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		550D3799F5045BE70B80C48C /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				97E571F4F035CE9A16D734F0 /* MorpheWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0DAFF49BAA06EBFA73A6D259 /* WatchBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchBridge.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100010 /* Morphe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Morphe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B20F6002C40000100100011 /* MorpheApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheApp.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100012 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -107,8 +132,7 @@
 		1B20F6002C40000100100066 /* Accounts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Accounts.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100067 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100068 /* BookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingView.swift; sourceTree = "<group>"; };
-		1B20F6002C40000100100069 /* Resources/MorpheCatalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/MorpheCatalog.json; sourceTree = "<group>"; };
-		1B20F6002C400FD100100002 /* Resources/FormDiagrams */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Resources/FormDiagrams; sourceTree = "<group>"; };
+		1B20F6002C40000100100069 /* MorpheCatalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/MorpheCatalog.json; sourceTree = "<group>"; };
 		1B20F6002C4000010010006A /* WorkoutCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCatalog.swift; sourceTree = "<group>"; };
 		1B20F6002C400001001000A1 /* MorpheTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MorpheTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B20F6002C400001001000A9 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
@@ -124,7 +148,13 @@
 		1B20F6002C4000010020000C /* RestTimerAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerAttributes.swift; sourceTree = "<group>"; };
 		1B20F6002C4000010020000F /* RestTimerActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerActivityController.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100200011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1B20F6002C400FD100100002 /* FormDiagrams */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Resources/FormDiagrams; sourceTree = "<group>"; };
+		5EC2A529EBD5AB5A04D2376E /* WatchRootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchRootView.swift; sourceTree = "<group>"; };
+		86713EF51E1FA463ECE9FCE6 /* MorpheWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MorpheWatchApp.swift; sourceTree = "<group>"; };
+		9343DBA5ABE97A91B0601BEE /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		A0F9E0953000DCBC00DAC2F6 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		B8A1FA44C0D60F4FD64CCA3F /* MorpheWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MorpheWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E715EB063BB124D5D82A39A8 /* WatchSessionModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -151,6 +181,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D5F7C16DF861529A0BC854E9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0FD5ED22F21A6ED243CBF08 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -162,6 +200,8 @@
 				1B20F6002C40000100200009 /* MorpheWidgets */,
 				1B20F6002C40000100100023 /* Products */,
 				A0F9E0953000DCBC00DAC2F6 /* GoogleService-Info.plist */,
+				3118F958EEC4874FE8127EBC /* Frameworks */,
+				B836BE8F7F76B764BF174107 /* MorpheWatch */,
 			);
 			sourceTree = "<group>";
 		};
@@ -181,8 +221,8 @@
 				1B20F6002C40000100100018 /* ChatView.swift */,
 				1B20F6002C40000100100019 /* Assets.xcassets */,
 				1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */,
-				1B20F6002C40000100100069 /* Resources/MorpheCatalog.json */,
-				1B20F6002C400FD100100002 /* Resources/FormDiagrams */,
+				1B20F6002C40000100100069 /* MorpheCatalog.json */,
+				1B20F6002C400FD100100002 /* FormDiagrams */,
 			);
 			path = Morphe;
 			sourceTree = "<group>";
@@ -193,6 +233,7 @@
 				1B20F6002C40000100100010 /* Morphe.app */,
 				1B20F6002C400001001000A1 /* MorpheTests.xctest */,
 				1B20F6002C40000100200002 /* MorpheWidgets.appex */,
+				B8A1FA44C0D60F4FD64CCA3F /* MorpheWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -213,6 +254,7 @@
 				1B20F6002C4000010020000C /* RestTimerAttributes.swift */,
 				1B20F6002C4000010020000F /* RestTimerActivityController.swift */,
 				1B20F6002C4000010010006A /* WorkoutCatalog.swift */,
+				0DAFF49BAA06EBFA73A6D259 /* WatchBridge.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -274,6 +316,33 @@
 			path = MorpheWidgets;
 			sourceTree = "<group>";
 		};
+		3118F958EEC4874FE8127EBC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				8F311609892E0A7D13C93B21 /* watchOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		8F311609892E0A7D13C93B21 /* watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				9343DBA5ABE97A91B0601BEE /* Foundation.framework */,
+			);
+			name = watchOS;
+			sourceTree = "<group>";
+		};
+		B836BE8F7F76B764BF174107 /* MorpheWatch */ = {
+			isa = PBXGroup;
+			children = (
+				86713EF51E1FA463ECE9FCE6 /* MorpheWatchApp.swift */,
+				E715EB063BB124D5D82A39A8 /* WatchSessionModel.swift */,
+				5EC2A529EBD5AB5A04D2376E /* WatchRootView.swift */,
+			);
+			name = MorpheWatch;
+			path = MorpheWatch;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -285,11 +354,13 @@
 				1B20F6002C40000100100020 /* Frameworks */,
 				1B20F6002C40000100100027 /* Resources */,
 				1B20F6002C40000100200012 /* Embed Foundation Extensions */,
+				550D3799F5045BE70B80C48C /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				1B20F6002C40000100200014 /* PBXTargetDependency */,
+				34C87C81CF3EDB61EB883C5D /* PBXTargetDependency */,
 			);
 			name = Morphe;
 			packageProductDependencies = (
@@ -334,6 +405,23 @@
 			productReference = 1B20F6002C40000100200002 /* MorpheWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		A6B12644981DF0AFC43E38F7 /* MorpheWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CE4853CE5C0D617560480F1E /* Build configuration list for PBXNativeTarget "MorpheWatch" */;
+			buildPhases = (
+				A4FF2C1C8251A4496CBF57DC /* Sources */,
+				D5F7C16DF861529A0BC854E9 /* Frameworks */,
+				E7503E429064D7C4F4D1168E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MorpheWatch;
+			productName = MorpheWatch;
+			productReference = B8A1FA44C0D60F4FD64CCA3F /* MorpheWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -372,6 +460,7 @@
 				1B20F6002C40000100100024 /* Morphe */,
 				1B20F6002C400001001000A0 /* MorpheTests */,
 				1B20F6002C40000100200001 /* MorpheWidgets */,
+				A6B12644981DF0AFC43E38F7 /* MorpheWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -384,12 +473,19 @@
 				1B20F6002C40000100100009 /* Assets.xcassets in Resources */,
 				A0F9E0963000DCBC00DAC2F6 /* GoogleService-Info.plist in Resources */,
 				1B20F6002C4000010010004A /* PrivacyInfo.xcprivacy in Resources */,
-				1B20F6002C4000010010004E /* Resources/MorpheCatalog.json in Resources */,
-				1B20F6002C400FD100100001 /* Resources/FormDiagrams in Resources */,
+				1B20F6002C4000010010004E /* MorpheCatalog.json in Resources */,
+				1B20F6002C400FD100100001 /* FormDiagrams in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		1B20F6002C40000100200005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E7503E429064D7C4F4D1168E /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -434,6 +530,7 @@
 				1B20F6002C4000010020000D /* RestTimerAttributes.swift in Sources */,
 				1B20F6002C40000100200010 /* RestTimerActivityController.swift in Sources */,
 				1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */,
+				40D7617462A6B2AF16080A2D /* WatchBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -454,6 +551,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A4FF2C1C8251A4496CBF57DC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1546E0A939C5DD515CE7CB66 /* MorpheWatchApp.swift in Sources */,
+				9B6A806AD28ABBA4519CABF5 /* WatchSessionModel.swift in Sources */,
+				345B672A4CACE84B2FCD1538 /* WatchRootView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -466,6 +573,12 @@
 			isa = PBXTargetDependency;
 			target = 1B20F6002C40000100200001 /* MorpheWidgets */;
 			targetProxy = 1B20F6002C40000100200015 /* PBXContainerItemProxy */;
+		};
+		34C87C81CF3EDB61EB883C5D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = MorpheWatch;
+			target = A6B12644981DF0AFC43E38F7 /* MorpheWatch */;
+			targetProxy = 3BA015ADE0687293B648E695 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -602,11 +715,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Morphe/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device), to scan Morphe connect codes, and to shoot photos or clips you choose to share. Nothing is uploaded unless you tap Post.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "With Sleep from Health on, Morphe reads last night's sleep to pre-fill your morning check-in. Nothing else is read, and nothing you decline changes the app.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves each finished workout to Apple Health so it counts toward your Activity rings.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device), to scan Morphe connect codes, and to shoot photos or clips you choose to share. Nothing is uploaded unless you tap Post.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Morphe saves the clips you record to your photo library only when you tap Save.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone to record audio for clips you capture in video mode, to dictate messages to Morphe AI, and — when you turn on Hey Morphe — to listen for the wake phrase while the app is open. Audio is processed for transcription only.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Morphe saves the clips you record to your photo library only when you tap Save.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Morphe converts your speech to text so you can talk to Morphe AI instead of typing, and — with Hey Morphe on — scans for the wake phrase while the app is open, on this device only.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -642,11 +755,11 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Morphe/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device), to scan Morphe connect codes, and to shoot photos or clips you choose to share. Nothing is uploaded unless you tap Post.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "With Sleep from Health on, Morphe reads last night's sleep to pre-fill your morning check-in. Nothing else is read, and nothing you decline changes the app.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves each finished workout to Apple Health so it counts toward your Activity rings.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Morphe uses the camera for Form Check (to see your movement and count reps, processed on your device), to scan Morphe connect codes, and to shoot photos or clips you choose to share. Nothing is uploaded unless you tap Post.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Morphe saves the clips you record to your photo library only when you tap Save.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Morphe uses the microphone to record audio for clips you capture in video mode, to dictate messages to Morphe AI, and — when you turn on Hey Morphe — to listen for the wake phrase while the app is open. Audio is processed for transcription only.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Morphe saves the clips you record to your photo library only when you tap Save.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Morphe converts your speech to text so you can talk to Morphe AI instead of typing, and — with Hey Morphe on — scans for the wake phrase while the app is open, on this device only.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -758,6 +871,55 @@
 			};
 			name = Release;
 		};
+		7434F59865D6B10514BB82FA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8P47H3XRN3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Morphe;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.morpheapp.Morphe;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.morpheapp.Morphe.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		B48C7DA50A0096B062A4F347 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8P47H3XRN3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Morphe;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.morpheapp.Morphe;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.morpheapp.Morphe.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -793,6 +955,15 @@
 			buildConfigurations = (
 				1B20F6002C40000100200007 /* Debug */,
 				1B20F6002C40000100200008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CE4853CE5C0D617560480F1E /* Build configuration list for PBXNativeTarget "MorpheWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B48C7DA50A0096B062A4F347 /* Release */,
+				7434F59865D6B10514BB82FA /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
