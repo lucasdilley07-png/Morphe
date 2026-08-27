@@ -440,6 +440,19 @@ struct WorkoutView: View {
                     ?? pendingWeight
             }
         }
+        .onChange(of: store.voiceRestRequestToken) { _, _ in
+            // Voice asked for rest (Lucas 2026-08-27): the timer is view
+            // state, so the store signals and the view drives — same
+            // pattern as every logging surface feeding one console.
+            restSeconds = store.voiceRestSeconds
+            restRunning = true
+        }
+        .onChange(of: store.voiceRestStopToken) { _, _ in
+            restRunning = false
+        }
+        .onChange(of: store.voiceFormCheckToken) { _, _ in
+            showFormCheck = true
+        }
         .onChange(of: scenePhase) { _, phase in
             // Backgrounding kills the mic but not the controller's state —
             // without this the bar showed a zombie "Listening…" and a
@@ -2056,6 +2069,7 @@ final class VoiceSetLogController {
 
 /// The one-tap voice door on the live session screen.
 private struct VoiceSetLogBar: View {
+    @Environment(MorpheAppStore.self) private var store
     let controller: VoiceSetLogController
     let onSet: (MorpheAppStore.LiveSetUtterance) -> Void
 
@@ -2071,7 +2085,9 @@ private struct VoiceSetLogBar: View {
                         .symbolEffect(.variableColor.iterative, isActive: controller.isListening)
                     Text(controller.isListening
                          ? (controller.transcript.isEmpty ? "Listening — say \"10 at 135\"…" : controller.transcript)
-                         : "Say your set — \"10 at 135\"")
+                         : (store.heyMorphe.state == .passive
+                            ? "Hands free: \"Hey Morphe, 10 at 135\" — or tap"
+                            : "Say your set — \"10 at 135\""))
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .lineLimit(1)

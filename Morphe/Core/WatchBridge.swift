@@ -139,12 +139,13 @@ extension MorpheAppStore {
     }
 
     /// Mirrors the phone parsers: first integer anywhere in the string.
-    private static func watchSetCount(_ sets: String) -> Int {
+    /// Internal: the session voice layer shares them (Lucas 2026-08-27).
+    static func watchSetCount(_ sets: String) -> Int {
         Int(sets.components(separatedBy: CharacterSet.decimalDigits.inverted)
             .first { !$0.isEmpty } ?? "") ?? 1
     }
 
-    private static func watchRepCount(_ reps: String) -> Int {
+    static func watchRepCount(_ reps: String) -> Int {
         Int(reps.components(separatedBy: CharacterSet.decimalDigits.inverted)
             .first { !$0.isEmpty } ?? "10") ?? 10
     }

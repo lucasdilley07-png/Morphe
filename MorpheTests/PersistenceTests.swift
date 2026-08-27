@@ -1196,6 +1196,81 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.workoutTemplates.count, before, "nothing was built on a guess")
     }
 
+    /// Session voice layer (Lucas 2026-08-27): the whole live console
+    /// answers to "Hey Morphe" — sets, rest, navigation, undo, extra sets,
+    /// finish, and honest status answers — through the same store doors.
+    func testSessionVoiceCommandsRunTheConsole() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        guard let first = store.activeWorkoutExercise else { return XCTFail("no exercise") }
+
+        // Bare spoken set logs against the active exercise.
+        let logged = store.routeVoiceCommand("10 at 135")
+        XCTAssertTrue(logged.contains("Logged 10"), "unexpected: \(logged)")
+        XCTAssertEqual(store.trackedSetReps[first.id, default: []].last, 10)
+        XCTAssertEqual(store.trackedSetWeights[first.id, default: []].last, 135)
+
+        // Voice rest request signals the view's timer.
+        let restToken = store.voiceRestRequestToken
+        XCTAssertGreaterThan(restToken, 0, "auto-rest fired with the logged set")
+        _ = store.routeVoiceCommand("skip rest")
+        XCTAssertEqual(store.voiceRestStopToken, 1)
+
+        // Undo removes exactly the last set.
+        let undo = store.routeVoiceCommand("delete last set")
+        XCTAssertTrue(undo.contains("Deleted"), "unexpected: \(undo)")
+        XCTAssertTrue(store.trackedSetReps[first.id, default: []].isEmpty)
+
+        // Status question answers honestly and navigates nothing.
+        let status = store.routeVoiceCommand("how many sets left")
+        XCTAssertTrue(status.contains("left"), "unexpected: \(status)")
+        XCTAssertEqual(store.activeWorkoutExercise?.id, first.id)
+
+        // Navigation by voice.
+        let advance = store.routeVoiceCommand("next exercise")
+        XCTAssertTrue(advance.contains("On to"), "unexpected: \(advance)")
+        XCTAssertNotEqual(store.activeWorkoutExercise?.id, first.id)
+        _ = store.routeVoiceCommand("previous exercise")
+        XCTAssertEqual(store.activeWorkoutExercise?.id, first.id)
+
+        // Form Check by voice signals the view.
+        _ = store.routeVoiceCommand("form check")
+        XCTAssertEqual(store.voiceFormCheckToken, 1)
+
+        // Finishing early is refused honestly, with the remaining count.
+        let finish = store.routeVoiceCommand("finish my workout")
+        XCTAssertTrue(finish.contains("left"), "unexpected: \(finish)")
+        XCTAssertTrue(store.isWorkoutSessionActive, "an incomplete session never ends by voice")
+
+        // Multi-set chat phrasing still takes the CHAT door, not a 3-rep set.
+        let multi = store.routeVoiceCommand("log 3x10 at 95")
+        XCTAssertFalse(multi.isEmpty)
+        XCTAssertNotEqual(store.trackedSetReps[first.id, default: []].count, 1,
+                          "'log 3x10' must never parse as a single 3-rep set")
+    }
+
+    /// "Same as last time" by voice replays last session's work set — and
+    /// "extra set" logs past the target with the honesty label intact.
+    func testSessionVoiceRepeatAndExtraSet() {
+        let store = freshStore()
+        startedTwoExerciseSession(store)
+        guard let exercise = store.activeWorkoutExercise else { return XCTFail("no exercise") }
+        _ = store.completeTrackedSet(reps: 8, weight: 135)
+        _ = store.finishTrackedWorkoutSession()
+        store.logWorkout()
+
+        startedTwoExerciseSession(store)
+        let repeatReply = store.routeVoiceCommand("same as last time")
+        XCTAssertTrue(repeatReply.contains("Logged 8"), "unexpected: \(repeatReply)")
+        XCTAssertEqual(store.trackedSetWeights[exercise.id, default: []].last, 135)
+
+        let noHistory = store.routeVoiceCommand("delete last set")
+        XCTAssertTrue(noHistory.contains("Deleted"))
+
+        let extra = store.routeVoiceCommand("extra set 12 at 100")
+        XCTAssertTrue(extra.contains("Logged 12"), "unexpected: \(extra)")
+    }
+
     /// Audit 12, P2-4: the spoken form strips what reads badly aloud while
     /// the chip keeps the original.
     func testSpokenFormReadsCleanly() {

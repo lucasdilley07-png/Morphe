@@ -1126,7 +1126,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// transcribe the way the router expects.
     private static let contextualVocabulary = [
         "Morphe", "hey Morphe", "minimum win", "leaderboard", "weekly board",
-        "start my workout", "log", "sets", "reps", "streak", "lessons"
+        "start my workout", "log", "sets", "reps", "streak", "lessons",
+        // Session vocabulary (Lucas 2026-08-27): the whole live console
+        // answers to voice, so its command words get the same bias.
+        "same as last time", "extra set", "skip rest", "start rest",
+        "form check", "delete last set", "warmup", "finish workout",
+        "next exercise", "previous exercise"
     ]
 
     override init() {

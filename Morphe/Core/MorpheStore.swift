@@ -8891,6 +8891,10 @@ final class MorpheAppStore {
             if let action = coachAssistantActionReply(for: raw) { return action }
             return previewAIAgentReply(for: raw)
         }
+        // Mid-session, the session doors lead (Lucas 2026-08-27): the whole
+        // console is voice-commandable — sets, rest, navigation, undo,
+        // finish, Form Check, and honest status answers.
+        if let session = sessionVoiceReply(for: raw) { return session }
         if let action = assistantActionReply(for: raw) { return action }
 
         let text = raw.lowercased()
@@ -8946,6 +8950,178 @@ final class MorpheAppStore {
         }
 
         return previewAIAgentReply(for: raw)
+    }
+
+    // MARK: - Session voice layer (Lucas 2026-08-27)
+    //
+    // Everything in the active workout session is commandable through
+    // "Hey Morphe". The rest timer and Form Check live in WorkoutView's
+    // @State, so voice drives them through published request tokens the
+    // view observes — the store never grows UI state, the view never
+    // grows command parsing.
+
+    /// Bumped when voice asks for a rest countdown; the view reads
+    /// `voiceRestSeconds` and starts its timer.
+    private(set) var voiceRestRequestToken = 0
+    private(set) var voiceRestSeconds = 180
+    /// Bumped when voice asks to stop/skip the running rest.
+    private(set) var voiceRestStopToken = 0
+    /// Bumped when voice asks for Form Check on the active exercise.
+    private(set) var voiceFormCheckToken = 0
+
+    func requestVoiceRest(seconds: Int) {
+        voiceRestSeconds = seconds
+        voiceRestRequestToken += 1
+    }
+
+    /// Session-scoped voice doors — tried FIRST while a session is live.
+    /// Returns nil to fall through to the shared chat action layer (so
+    /// "log 3x10 at 135", units, questions, and navigation keep their
+    /// existing behavior).
+    func sessionVoiceReply(for raw: String) -> String? {
+        guard isWorkoutSessionActive, selectedRole == .client,
+              let exercise = activeWorkoutExercise else { return nil }
+        let text = raw.lowercased()
+
+        func mentions(_ pattern: String) -> Bool {
+            text.range(of: pattern, options: .regularExpression) != nil
+        }
+
+        // Question-shaped session asks get honest session ANSWERS.
+        if Self.isQuestionShaped(text) {
+            if mentions("sets? left|more sets?|many more|much left") {
+                let done = completedWorkoutSets[exercise.id, default: 0]
+                let target = Self.watchSetCount(exercise.sets)
+                let remainingHere = max(0, target - done)
+                let remainingTotal = currentWorkout.exercises.reduce(0) { sum, item in
+                    sum + max(0, Self.watchSetCount(item.sets) - completedWorkoutSets[item.id, default: 0])
+                }
+                return "\(remainingHere) left on \(exercise.name), \(remainingTotal) in the whole session."
+            }
+            if mentions("what('| i)?s next|next exercise") {
+                let index = activeWorkoutExerciseIndex
+                if index + 1 < currentWorkout.exercises.count {
+                    return "Next up: \(currentWorkout.exercises[index + 1].name)."
+                }
+                return "\(exercise.name) is the last one — bring it home."
+            }
+            if mentions("last time|last session") {
+                return lastSessionLine(forExerciseNamed: exercise.name)
+                    ?? "No history for \(exercise.name) yet — today writes the first line."
+            }
+            return nil
+        }
+
+        // Multi-set phrasing belongs to the chat door ("log 3x10 at 135").
+        if Self.parseSetCommand(text) != nil { return nil }
+
+        // Explicit session commands, most specific first.
+        if mentions("\\bskip rest\\b|\\bstop rest\\b|\\bend rest\\b") {
+            voiceRestStopToken += 1
+            return "Rest skipped — back to work."
+        }
+        if mentions("\\bstart rest\\b|\\brest timer\\b") || text == "rest" {
+            requestVoiceRest(seconds: exercise.restSeconds ?? 180)
+            return "Resting \((exercise.restSeconds ?? 180) / 60 > 0 ? "\((exercise.restSeconds ?? 180) / 60) minutes" : "\(exercise.restSeconds ?? 180) seconds")."
+        }
+        if mentions("\\bform check\\b|\\bcheck my form\\b|\\bwatch my form\\b") {
+            voiceFormCheckToken += 1
+            return "Opening Form Check — frame yourself in the shot."
+        }
+        if mentions("\\bnext\\b|\\bskip this\\b|\\bdone here\\b") {
+            goToNextTrackedExercise()
+            if let now = activeWorkoutExercise {
+                return now.id == exercise.id
+                    ? "\(exercise.name) is the last exercise."
+                    : "On to \(now.name)."
+            }
+            return "Moving on."
+        }
+        if mentions("\\bprevious\\b|\\bgo back\\b|\\blast exercise\\b") {
+            guard activeWorkoutExerciseIndex > 0 else {
+                return "\(exercise.name) is the first exercise."
+            }
+            goToPreviousTrackedExercise()
+            return "Back to \(activeWorkoutExercise?.name ?? "the previous exercise")."
+        }
+        if mentions("\\bsame as last (time|session)\\b|\\brepeat last\\b") {
+            guard let last = lastSessionSet(
+                forExerciseNamed: exercise.name,
+                setIndex: completedWorkoutSets[exercise.id, default: 0]) else {
+                return "No history for \(exercise.name) yet — tell me the numbers, like \"10 at 135\"."
+            }
+            return voiceLogSet(reps: last.reps, weight: last.weight, isWarmup: false, allowExtra: false, on: exercise)
+        }
+        if mentions("\\bdelete last set\\b|\\bundo (that|last set)\\b|\\bscratch that\\b") {
+            let count = trackedSetReps[exercise.id, default: []].count
+            guard count > 0 else { return "Nothing logged on \(exercise.name) yet." }
+            removeTrackedSet(exerciseID: exercise.id, setIndex: count - 1)
+            return "Deleted the last set on \(exercise.name)."
+        }
+        if mentions("\\bfinish( my)? workout\\b|\\bwrap (it )?up\\b|\\bend (the )?workout\\b") {
+            if isTrackedWorkoutComplete {
+                return finishTrackedWorkoutSession()
+                    ? "Session finished — the recap's waiting in Train."
+                    : "Couldn't close it out — finish from Train."
+            }
+            let remaining = currentWorkout.exercises.reduce(0) { sum, item in
+                sum + max(0, Self.watchSetCount(item.sets) - completedWorkoutSets[item.id, default: 0])
+            }
+            return "You've got \(remaining) set\(remaining == 1 ? "" : "s") left — finish them, or wrap early from Train where the recap can show what's missing."
+        }
+        if let range = text.range(of: "\\bextra set\\b", options: .regularExpression) {
+            let remainder = String(text[range.upperBound...])
+            guard let parsed = Self.parseLiveSetUtterance(remainder) else {
+                return "Tell me the extra set's numbers — like \"extra set 10 at 135\"."
+            }
+            return voiceLogParsedSet(parsed, allowExtra: true, on: exercise)
+        }
+
+        // A bare spoken set: "10 at 135", "same weight", "add five",
+        // "warmup 8 at 95" — the mic bar's grammar, now wake-word reachable.
+        if let parsed = Self.parseLiveSetUtterance(text) {
+            return voiceLogParsedSet(parsed, allowExtra: false, on: exercise)
+        }
+        return nil
+    }
+
+    /// Resolves a parsed utterance against the session baseline exactly
+    /// like the mic bar does: explicit numbers win, deltas shift the
+    /// current working weight, anything unsaid comes from history.
+    private func voiceLogParsedSet(_ utterance: LiveSetUtterance,
+                                   allowExtra: Bool,
+                                   on exercise: WorkoutExercise) -> String {
+        let baseline = trackedSetWeights[exercise.id]?.last
+            ?? lastSessionWeight(for: exercise.id)
+            ?? suggestedWorkingWeight(for: exercise)
+            ?? 0
+        var weight = baseline
+        if let explicit = utterance.weight {
+            weight = explicit
+        } else if let delta = utterance.weightDelta {
+            weight = max(0, baseline + delta)
+        }
+        let reps = utterance.reps ?? Self.watchRepCount(exercise.reps)
+        return voiceLogSet(reps: reps, weight: weight,
+                           isWarmup: utterance.isWarmup,
+                           allowExtra: allowExtra, on: exercise)
+    }
+
+    private func voiceLogSet(reps: Int, weight: Double, isWarmup: Bool,
+                             allowExtra: Bool, on exercise: WorkoutExercise) -> String {
+        guard completeTrackedSet(reps: reps, weight: weight,
+                                 allowExtra: allowExtra, isWarmup: isWarmup) else {
+            return "\(exercise.name) is already complete — say \"extra set\" with the numbers to add one anyway."
+        }
+        let weightText = weight > 0 ? weightUnit.format(weight) : "bodyweight"
+        // Same post-log behavior as every other logging surface: superset
+        // halves hop with no rest; otherwise the view's timer starts via
+        // the voice token (when the setting allows).
+        if !hopToSupersetPartnerIfNeeded(after: exercise), autoRestTimerEnabled,
+           !isTrackedWorkoutComplete {
+            requestVoiceRest(seconds: exercise.restSeconds ?? 180)
+        }
+        return "Logged \(reps) at \(weightText)\(isWarmup ? ", warm-up" : "")."
     }
 
     /// One question detector for the voice layer (audit 12, P0-1 lineage):
