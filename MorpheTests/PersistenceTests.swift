@@ -998,6 +998,30 @@ final class WorkoutSessionTests: XCTestCase {
                        "the question and choices stay in the same state")
     }
 
+    /// Audit 15: openProgress queues behind covering surfaces instead of
+    /// racing their dismissal — and consumption raises exactly once.
+    func testOpenProgressQueuesBehindCoveringSurfaces() {
+        let store = freshStore()
+        store.openProgress()
+        XCTAssertTrue(store.showProgressSheet, "nothing covering — direct present")
+        store.showProgressSheet = false
+
+        store.openClientProfile()
+        store.openProgress()
+        XCTAssertFalse(store.showProgressSheet, "profile up — queued, not raced")
+        XCTAssertFalse(store.showClientProfile, "the covering sheet was told to close")
+        XCTAssertTrue(store.pendingProgressOpen)
+
+        store.consumePendingProgressOpen()
+        XCTAssertTrue(store.showProgressSheet, "onDismiss consumption raises the sheet")
+        XCTAssertFalse(store.pendingProgressOpen, "consumed exactly once")
+
+        // Voice nav away from an open Progress sheet dismisses it — the
+        // tab doors own that now (the obstruction sweep no longer does).
+        _ = store.routeVoiceCommand("open train")
+        XCTAssertFalse(store.showProgressSheet, "tab nav dismisses the sheet")
+    }
+
     /// Audit 13: closing the comeback card must not let the takeover erupt
     /// mid-interaction — the dismissal parks it for this open.
     func testComebackDismissParksTheTakeover() {

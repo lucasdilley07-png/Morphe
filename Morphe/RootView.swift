@@ -238,10 +238,7 @@ struct RootView: View {
             store.closeClientProfile()
             // "See your history, records, and charts" queued a progress
             // open — two sheets can't co-present, so it raises here.
-            if store.pendingProgressOpen {
-                store.pendingProgressOpen = false
-                store.showProgressSheet = true
-            }
+            store.consumePendingProgressOpen()
         }) {
             NavigationStack {
                 // ProfileView owns its Done button: it has to check for
@@ -270,7 +267,9 @@ struct RootView: View {
             .background(PremiumBackground())
             .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $store.showUniversalSearch) {
+        .sheet(isPresented: $store.showUniversalSearch, onDismiss: {
+            store.consumePendingProgressOpen()
+        }) {
             NavigationStack {
                 UniversalSearchSheet()
                     .environment(store)
@@ -286,6 +285,7 @@ struct RootView: View {
                 store.pendingAIAgentOpen = false
                 store.openAIAgent()
             }
+            store.consumePendingProgressOpen()
         }) {
             NavigationStack {
                 QuickAddSheet()
@@ -297,7 +297,11 @@ struct RootView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
-        .fullScreenCover(isPresented: $store.showAIAgent) {
+        .fullScreenCover(isPresented: $store.showAIAgent, onDismiss: {
+            // A chat/voice "show my progress" closed this cover with the
+            // sheet queued (audit 15, P1).
+            store.consumePendingProgressOpen()
+        }) {
             NavigationStack {
                 MorpheAIAgentSheet()
                     .environment(store)

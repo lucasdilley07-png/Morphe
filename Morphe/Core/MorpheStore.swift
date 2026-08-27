@@ -1197,6 +1197,9 @@ final class MorpheAppStore {
     /// has its own Train tab — writing only the athlete tab there would
     /// navigate somewhere the coach can't see.
     func showTrainTab() {
+        // Tab nav away from an open Progress sheet dismisses it (audit 15
+        // — the obstruction sweep no longer touches it).
+        showProgressSheet = false
         if selectedRole == .coach {
             selectedCoachTab = .train
         } else {
@@ -1244,6 +1247,7 @@ final class MorpheAppStore {
 
     /// Lands on the Discover surface for the CURRENT role.
     func showDiscoverTab() {
+        showProgressSheet = false
         if selectedRole == .coach {
             selectedCoachTab = .discover
         } else {
@@ -8181,13 +8185,33 @@ final class MorpheAppStore {
     var pendingProgressOpen = false
 
     func openProgress() {
+        // Sheet-over-dismissing-presentation races (audit 15, P1): every
+        // covering surface queues instead of racing — its onDismiss raises
+        // the Progress sheet exactly when the transition has room.
         if showClientProfile {
             pendingProgressOpen = true
             showClientProfile = false
+        } else if showAIAgent {
+            pendingProgressOpen = true
+            closeAIAgent()
+        } else if showQuickAdd {
+            pendingProgressOpen = true
+            showQuickAdd = false
+        } else if showUniversalSearch {
+            pendingProgressOpen = true
+            showUniversalSearch = false
         } else {
             showProgressSheet = true
         }
         Haptics.impact(.light)
+    }
+
+    /// Shared onDismiss consumption for every surface that can queue a
+    /// progress open (audit 15).
+    func consumePendingProgressOpen() {
+        guard pendingProgressOpen else { return }
+        pendingProgressOpen = false
+        showProgressSheet = true
     }
 
     /// Consumed by the inbox: a deep link that wants a SPECIFIC thread
@@ -8196,6 +8220,7 @@ final class MorpheAppStore {
     var pendingThreadOpenID: String?
 
     func openCommunity(_ section: ClientCommunitySection = .contact) {
+        showProgressSheet = false
         // Both Network sections are REAL in v1: For You is the Firestore
         // feed, Contact is the coach-thread inbox (with an honest empty
         // state naming the coach-link unlock). Contact is THE messaging
@@ -8535,6 +8560,7 @@ final class MorpheAppStore {
     }
 
     func openMore(_ feature: ClientHubFeature? = nil) {
+        showProgressSheet = false
         let utilityFeature = feature.flatMap { $0 == .progress ? nil : $0 } ?? (selectedHubFeature == .progress ? nil : selectedHubFeature) ?? .scores
         selectedHubFeature = utilityFeature
         selectedClientTab = .more
@@ -8829,11 +8855,13 @@ final class MorpheAppStore {
     /// matched and question-gated. Returns the line that gets spoken.
     func routeVoiceCommand(_ raw: String) -> String {
         // Voice nav must be VISIBLE nav (audit 13, P1): the doors change
-        // tabs, but a presented sheet (the profile sheet the toggle lives
-        // in, Quick Add, Search) or the day takeover kept covering the
-        // screen while Morphe announced success — the exact failure the
-        // chat doors document with closeAIAgent(). Question-shaped input
-        // navigates nothing, so it dismisses nothing.
+        // tabs, but a presented sheet or the day takeover kept covering the
+        // screen while Morphe announced success. The doors run FIRST
+        // (audit 15): openProgress queues its presentation against
+        // whatever covers the screen, so the sweep must not pre-empt the
+        // queueing — it runs after, and never touches the Progress sheet
+        // (the tab doors dismiss that one themselves).
+        let reply = routeVoiceCommandDoors(raw)
         if !Self.isQuestionShaped(raw.lowercased()) {
             // A build command navigates nowhere — dismissing the chat
             // cover would only cost the open conversation (audit 14, P2).
@@ -8843,6 +8871,10 @@ final class MorpheAppStore {
             }
             clearVoiceNavigationObstructions(preservingConversation: isBuild)
         }
+        return reply
+    }
+
+    private func routeVoiceCommandDoors(_ raw: String) -> String {
         if selectedRole == .coach {
             if let action = coachAssistantActionReply(for: raw) { return action }
             return previewAIAgentReply(for: raw)
@@ -8895,6 +8927,7 @@ final class MorpheAppStore {
                 return "Opening Train."
             }
             if mentions("today", "home") {
+                showProgressSheet = false
                 selectedClientTab = .today
                 return "Here's Today."
             }
@@ -8921,7 +8954,6 @@ final class MorpheAppStore {
         showQuickAdd = false
         showUniversalSearch = false
         showClientProfile = false
-        showProgressSheet = false
         if !preservingConversation, showAIAgent { closeAIAgent() }
         if shouldShowDayPopup { dismissDayPopupForSession() }
     }
@@ -12292,7 +12324,7 @@ final class MorpheAppStore {
               let fireDate = calendar.date(bySettingHour: 9, minute: 5, second: 0, of: nextWeekStart)
         else { return }
 
-        let body = "\(recap.sessions) session\(recap.sessions == 1 ? "" : "s"), \(recap.sets) sets logged — your recap card is in Progress."
+        let body = "\(recap.sessions) session\(recap.sessions == 1 ? "" : "s"), \(recap.sets) sets logged — your recap card is in Progress, under your profile."
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .authorized
                 || settings.authorizationStatus == .provisional else { return }

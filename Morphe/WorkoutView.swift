@@ -1099,7 +1099,10 @@ struct DiscoverScreenView: View {
                     )
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 6)
+                // First-class tab now (audit 15, P2): 6pt was the pager-era
+                // spacing under Train's segment header; 60 matches Today/
+                // Train/Network/Learn and clears the floating icon row.
+                .padding(.top, MorpheTheme.Spacing.pageTopStacked)
                 .padding(.bottom, 120)
             }
             .toolbar(.hidden, for: .navigationBar)

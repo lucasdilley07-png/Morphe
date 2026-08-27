@@ -22,6 +22,9 @@ struct ProfileView: View {
     @State private var showVerificationCamera = false
     @State private var showSignOutConfirm = false
     @State private var showUnsavedPrompt = false
+    /// True while the unsaved-changes ask was raised BY the Progress row —
+    /// save/discard then continues into Progress instead of just closing.
+    @State private var progressAfterResolve = false
     @State private var showDeleteAccountConfirm = false
     @State private var isDeletingAccount = false
     /// The generated export file, presented in the system share sheet.
@@ -50,7 +53,11 @@ struct ProfileView: View {
                 if isCoach {
                     CoachProfileBody(store: store)
                 } else {
-                    AthleteProfileBody(store: store, weightDraft: $weightDraft)
+                    AthleteProfileBody(
+                        store: store,
+                        weightDraft: $weightDraft,
+                        onOpenProgress: { requestOpenProgress() }
+                    )
                     detailsCard
                     targetsCard
                 }
@@ -106,15 +113,41 @@ struct ProfileView: View {
         ) {
             Button("Save Changes") {
                 saveAllEdits()
-                store.closeClientProfile()
+                resolveClose()
             }
             Button("Discard Changes", role: .destructive) {
                 discardAllEdits()
-                store.closeClientProfile()
+                resolveClose()
             }
-            Button("Keep Editing", role: .cancel) {}
+            Button("Keep Editing", role: .cancel) {
+                progressAfterResolve = false
+            }
         } message: {
             Text("You edited your profile but didn't save.")
+        }
+    }
+
+    /// The Progress row goes through the SAME unsaved-edit guard as Done
+    /// (audit 15, P1) — and through openProgress()'s queued-open, so the
+    /// sheet swap is the documented pendingProgressOpen path, not a
+    /// same-transaction race.
+    private func requestOpenProgress() {
+        if hasUnsavedEdits {
+            progressAfterResolve = true
+            showUnsavedPrompt = true
+        } else {
+            store.openProgress()
+        }
+    }
+
+    /// Shared exit for the unsaved-changes dialog: continue to Progress
+    /// when that's what triggered the ask, plain close otherwise.
+    private func resolveClose() {
+        if progressAfterResolve {
+            progressAfterResolve = false
+            store.openProgress()
+        } else {
+            store.closeClientProfile()
         }
     }
 
@@ -685,14 +718,49 @@ struct ProfileView: View {
         )
     }
 
+    /// Token-AND matching (audit 15, P2): every word of the query must
+    /// appear somewhere in "title + keywords", so "dark mode" and "delete
+    /// my account" match the way a person expects.
+    private func settingsSectionMatches(title: String, keywords: String) -> Bool {
+        let tokens = settingsQuery.split(separator: " ").map(String.init)
+        guard !tokens.isEmpty else { return true }
+        let haystack = "\(title) \(keywords)"
+        return tokens.allSatisfy { haystack.localizedCaseInsensitiveContains($0) }
+    }
+
+    /// True when the current query hides every section — drives the
+    /// honest empty state (audit 15, P2: a miss left a lone search field).
+    private var settingsSearchIsDry: Bool {
+        let sections: [(String, String)] = [
+            ("Your account", "name username handle referrals invite share"),
+            ("How you train", Self.howYouTrainKeywords),
+            ("Voice", "hey morphe voice speech microphone hands free wake"),
+            ("Notifications", "reminders nudge streak recap board updates"),
+            ("Who can see you", Self.whoCanSeeYouKeywords),
+            ("Your coach", "coach code join invite link"),
+            ("Health", "apple health activity rings sleep sync workouts prefill check-in"),
+            ("Your app", "appearance dark light mode theme accent color"),
+            ("Your data", "export json download backup cloud morphe pro subscription plans"),
+            ("More info and support", "about terms privacy policy contact support email version"),
+            ("Login", "sign out log out delete account remove")
+        ]
+        return !sections.contains { settingsSectionMatches(title: $0.0, keywords: $0.1) }
+    }
+
+    /// Shared keyword strings (audit 15, P2: "auto" couldn't find "Auto
+    /// rest timer"; the feed-identity rows were unfindable by their names).
+    private static let howYouTrainKeywords =
+        "training days week injuries limits auto rest timer effort rpe rir weight unit kg lb pounds kilograms"
+    private static let whoCanSeeYouKeywords =
+        "weekly board leaderboard privacy feed posts streak byline accent share coach blocked accounts unblock"
+
     /// One grouped section: small-caps header + rows, hidden when the
     /// search query matches neither its title nor its keywords.
     @ViewBuilder
     private func settingsSection<Content: View>(
         _ title: String, keywords: String, @ViewBuilder content: () -> Content
     ) -> some View {
-        let query = settingsQuery.trimmingCharacters(in: .whitespaces)
-        if query.isEmpty || "\(title) \(keywords)".localizedCaseInsensitiveContains(query) {
+        if settingsSectionMatches(title: title, keywords: keywords) {
             GlassCard {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(title.uppercased())
@@ -709,6 +777,15 @@ struct ProfileView: View {
         @Bindable var store = store
         return VStack(alignment: .leading, spacing: 16) {
             settingsSearchField
+
+
+            if settingsSearchIsDry {
+                Text("No settings match \u{201C}\(settingsQuery)\u{201D} — try another word, like \u{201C}reminders\u{201D} or \u{201C}backup\u{201D}.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
+            }
 
             settingsSection("Your account", keywords: "name username handle referrals invite share") {
                 if isEditingName {
@@ -824,11 +901,10 @@ struct ProfileView: View {
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
-                .task { await store.refreshReferralCount() }
 
             }
 
-            settingsSection("How you train", keywords: "training days week injuries limits rest timer effort rpe rir weight unit kg lb pounds kilograms") {
+            settingsSection("How you train", keywords: Self.howYouTrainKeywords) {
                 if !isCoach {
                     // Weekly target — drives the consistency denominator on
                     // Progress; was user-set in onboarding then locked forever.
@@ -975,7 +1051,7 @@ struct ProfileView: View {
 
             }
 
-            settingsSection("Who can see you", keywords: "weekly board leaderboard privacy feed posts share coach blocked accounts unblock") {
+            settingsSection("Who can see you", keywords: Self.whoCanSeeYouKeywords) {
                     // The board publishes your real name — and scores post on
                     // every log in EITHER role, so the off-switch renders for
                     // both (audit 5, P1-4: a coach could never leave).
@@ -1021,40 +1097,23 @@ struct ProfileView: View {
                 }
 
 
-                if !isCoach {
-                    // Athlete-only: the check-in prefill and the coach-share
-                    // summary have no coach-side surface.
-                    if !isCoach {
+                // Athlete-only: the coach-share summary has no coach-side
+                // surface. (Sleep-from-Health moved to the HEALTH section —
+                // audit 15, P1: searching "sleep" filtered it out while a
+                // Health card without it looked like the complete answer.)
+                // Only renders once a coach link exists (claimed invite
+                // or an existing coach thread) — no dead toggle.
+                if !isCoach, !store.linkedCoachUid.isEmpty {
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
-                    // Read-only and honest about its limits: Apple never
-                    // reveals whether a sleep READ was granted, so this just
-                    // pre-fills when data comes back and stays quiet when not.
                     preferenceToggleRow(
-                        title: "Sleep from Health",
-                        caption: "Pre-fills the check-in's sleep slider from last night's Apple Health sleep. You can always adjust it.",
+                        title: "Share with coach",
+                        caption: "\(store.linkedCoachName.isEmpty ? "Your coach" : store.linkedCoachName) sees a live summary — streak, weekly volume, recent sessions, PRs, readiness. Turning it off deletes it instantly.",
                         isOn: Binding(
-                            get: { store.healthSleepEnabled },
-                            set: { newValue in Task { await store.setHealthSleepPrefill(enabled: newValue) } }
+                            get: { store.coachShareEnabled },
+                            set: { store.setCoachShare(enabled: $0) }
                         )
                     )
-
-                    // Only renders once a coach link exists (claimed invite
-                    // or an existing coach thread) — no dead toggle.
-                    if !store.linkedCoachUid.isEmpty {
-                        Divider().overlay(MorpheTheme.strokeSubtle)
-
-                        preferenceToggleRow(
-                            title: "Share with coach",
-                            caption: "\(store.linkedCoachName.isEmpty ? "Your coach" : store.linkedCoachName) sees a live summary — streak, weekly volume, recent sessions, PRs, readiness. Turning it off deletes it instantly.",
-                            isOn: Binding(
-                                get: { store.coachShareEnabled },
-                                set: { store.setCoachShare(enabled: $0) }
-                            )
-                        )
-                    }
-                    }
-
                 }
                     // Blocked accounts — only renders when there's someone
                     // to manage; blocking happens from posts/comments.
@@ -1088,8 +1147,10 @@ struct ProfileView: View {
                 settingsSection("Your coach", keywords: "coach code join invite link") {
                     // A coach's invite code used to work ONLY during
                     // onboarding — existing athletes had nowhere to type it.
-                    // (Athlete-only: a coach doesn't join a coach.)
-                    if !isCoach, store.linkedCoachUid.isEmpty {
+                    // (Athlete-only: a coach doesn't join a coach — the
+                    // section's own gate above enforces it; audit 15
+                    // collapsed the redundant inner copy of the condition.)
+                    Group {
                         if isEnteringCoachCode {
                             HStack(spacing: 8) {
                                 TextField("Coach code (e.g. 7KQ4TX)", text: $coachCodeDraft)
@@ -1121,7 +1182,7 @@ struct ProfileView: View {
                 }
             }
 
-            settingsSection("Health", keywords: "apple health activity rings sleep sync workouts") {
+            settingsSection("Health", keywords: "apple health activity rings sleep sync workouts prefill check-in") {
                     // Enabling walks through the system Health prompt; the
                     // store refuses the flip when access isn't granted.
                     preferenceToggleRow(
@@ -1133,6 +1194,24 @@ struct ProfileView: View {
                         )
                     )
 
+                    // Athlete-only; moved here from "Who can see you"
+                    // (audit 15, P1: it's a Health feature and the search
+                    // has to find it under "sleep"/"health").
+                    // Read-only and honest about its limits: Apple never
+                    // reveals whether a sleep READ was granted, so this just
+                    // pre-fills when data comes back and stays quiet when not.
+                    if !isCoach {
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+
+                        preferenceToggleRow(
+                            title: "Sleep from Health",
+                            caption: "Pre-fills the check-in's sleep slider from last night's Apple Health sleep. You can always adjust it.",
+                            isOn: Binding(
+                                get: { store.healthSleepEnabled },
+                                set: { newValue in Task { await store.setHealthSleepPrefill(enabled: newValue) } }
+                            )
+                        )
+                    }
             }
 
             settingsSection("Your app", keywords: "appearance dark light mode theme accent color") {
@@ -1344,6 +1423,10 @@ struct ProfileView: View {
                 }
             }
         }
+        // Referral count refresh rides the stable container (audit 15, P2:
+        // on the filterable section it re-fired a Firestore read every
+        // time a search keystroke toggled the section in).
+        .task { await store.refreshReferralCount() }
     }
 
     private func saveName() {
@@ -1452,6 +1535,10 @@ private struct AthleteProfileBody: View {
     let store: MorpheAppStore
     /// Owned by ProfileView so its unsaved-edit guard can see it.
     @Binding var weightDraft: String
+    /// Progress opens through ProfileView's unsaved-edit guard (audit 15,
+    /// P1: the row's direct close silently dropped typed drafts — the
+    /// exact bug the weightDraft hoist fixed for Done and swipe-down).
+    let onOpenProgress: () -> Void
     @State private var showWeightWarning = false
 
     var body: some View {
@@ -1506,8 +1593,7 @@ private struct AthleteProfileBody: View {
             // duplicate cards (Snapshot/Focus/Logs/PRs all re-rendered what
             // Home and Progress already own).
             Button {
-                store.closeClientProfile()
-                store.openProgress()
+                onOpenProgress()
             } label: {
                 HStack {
                     Text("See your history, records, and charts")

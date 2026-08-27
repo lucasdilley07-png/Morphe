@@ -893,7 +893,7 @@ private struct AthleteContactEmptyState: View {
 
                 Text(isSearching
                      ? "Nobody in your contacts matches that search."
-                     : "Connect with your coach or a training partner from Train’s Discover segment — show or scan a Morphe code under Connect.")
+                     : "Connect with your coach or a training partner from the Discover tab — show or scan a Morphe code under Connect.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1735,7 +1735,10 @@ private struct RealFeedSection: View {
             StorySessionViewer(entry: entry)
                 .environment(store)
         })
-        .background(EmptyView().fullScreenCover(isPresented: $showBoardStory) {
+        .background(EmptyView().fullScreenCover(isPresented: $showBoardStory, onDismiss: {
+            // The story's "Open Progress" queues; raise it here (audit 15).
+            store.consumePendingProgressOpen()
+        }) {
             BoardStoryView()
                 .environment(store)
         })
@@ -2228,8 +2231,11 @@ private struct BoardStoryView: View {
                 Spacer()
 
                 Button("Open Progress") {
+                    // Queue, then dismiss: the cover's onDismiss raises the
+                    // Progress sheet once the transition has room (audit 15,
+                    // P1 — present-during-dismissal was a race).
+                    store.pendingProgressOpen = true
                     dismiss()
-                    store.openProgress()
                 }
                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandYellow))
 

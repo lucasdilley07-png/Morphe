@@ -59,7 +59,7 @@ struct MoreView: View {
             .padding(.horizontal, 20)
 
             // Swipe between the three panels (Lucas 2026-08-18) — same
-            // pager grammar as Train's SESSION|DISCOVER and Network's panes.
+            // pager grammar as Network's panes.
             TabView(selection: Binding(
                 get: { activeFeature },
                 set: { store.selectedHubFeature = $0 }

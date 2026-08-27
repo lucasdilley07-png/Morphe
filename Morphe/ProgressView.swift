@@ -265,8 +265,11 @@ struct ProgressScreenView: View {
                 progressPanel
             }
             .padding(.horizontal, 20)
-            .padding(.top, MorpheTheme.Spacing.pageTopCompact)
-            .padding(.bottom, 120)
+            // Sheet-hosted now (audit 15, P2): the 60pt icon-row clearance
+            // and 120pt dock clearance were tab-era — the sheet has a Done
+            // toolbar above and no dock below.
+            .padding(.top, 8)
+            .padding(.bottom, 40)
         }
         // Board + challenges are the fetched pieces of this page. Pull is
         // the explicit ask — it always hits the network.
