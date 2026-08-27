@@ -1093,6 +1093,14 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// was healthy, so its eventual end is a routine recycle, not a failure.
     private var listenStartedAt: Date?
     private var interruptionObserver: NSObjectProtocol?
+    /// Audio courtesy (Lucas 2026-08-27): opening the app must NEVER pause
+    /// another app's music — bringing a record session up from cold forces
+    /// a route renegotiation that stops other audio, mixWithOthers or not.
+    /// True while the engine is deliberately parked behind someone else's
+    /// audio; the silence-secondary-audio hint re-arms it the moment the
+    /// other audio ends.
+    private var waitingForQuiet = false
+    private var quietHintObserver: NSObjectProtocol?
 
     private let audioEngine = AVAudioEngine()
     private var recognizer: SFSpeechRecognizer?
@@ -1124,6 +1132,19 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     override init() {
         super.init()
         synthesizer.delegate = self
+        // Re-arm the parked engine the moment the other app's audio ends
+        // (Lucas 2026-08-27: the mic never comes up over someone's music).
+        quietHintObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.silenceSecondaryAudioHintNotification,
+            object: nil, queue: .main
+        ) { [weak self] note in
+            guard let self,
+                  let raw = note.userInfo?[AVAudioSessionSilenceSecondaryAudioHintTypeKey] as? UInt,
+                  AVAudioSession.SilenceSecondaryAudioHintType(rawValue: raw) == .end,
+                  self.waitingForQuiet else { return }
+            self.waitingForQuiet = false
+            self.start()
+        }
         // Phone calls / Siri / other apps taking the session (audit 12,
         // P1-4): tear down on interruption, resume when it ends.
         interruptionObserver = NotificationCenter.default.addObserver(
@@ -1141,6 +1162,14 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
                 let optRaw = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
                 let options = AVAudioSession.InterruptionOptions(rawValue: optRaw ?? 0)
                 guard self.state == .passive || self.state == .active else { break }
+                // The interrupter may still be playing (a music app took
+                // the session for good) — re-grabbing would pause it again
+                // (Lucas 2026-08-27). Park; the quiet hint re-arms.
+                if AVAudioSession.sharedInstance().isOtherAudioPlaying {
+                    self.state = .off
+                    self.waitingForQuiet = true
+                    break
+                }
                 self.state = .passive
                 if options.contains(.shouldResume) {
                     self.beginListening()
@@ -1161,6 +1190,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         if let interruptionObserver {
             NotificationCenter.default.removeObserver(interruptionObserver)
         }
+        if let quietHintObserver {
+            NotificationCenter.default.removeObserver(quietHintObserver)
+        }
     }
 
     func start() {
@@ -1168,6 +1200,15 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         // .active restart must not re-arm the wake engine underneath it —
         // resumeAfterExternalAudio is the only door back (audit 13).
         guard state == .off, !externalAudioActive else { return }
+        // Audio courtesy (Lucas 2026-08-27): if another app is playing,
+        // stay down — arming a record session from cold pauses their
+        // audio. The quiet-hint observer re-arms when it ends, and every
+        // foreground return retries through here too.
+        if AVAudioSession.sharedInstance().isOtherAudioPlaying {
+            waitingForQuiet = true
+            return
+        }
+        waitingForQuiet = false
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
                 guard status == .authorized else {
@@ -1193,8 +1234,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     func stop() {
         state = .off
         // A user-level stop is not a pause: the resume hook must not
-        // restart a mic the user turned off (audit 13).
+        // restart a mic the user turned off (audit 13) — and a parked
+        // engine must not ghost-arm when the music ends.
         suspendedByExternalAudio = false
+        waitingForQuiet = false
         liveTranscript = ""
         tearDownRecognition()
         speakingWatchdog?.invalidate()
@@ -1235,6 +1278,13 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             return
         }
         suspendedByExternalAudio = false
+        // Music that started during dictation/capture wins the session —
+        // park instead of re-grabbing over it (Lucas 2026-08-27).
+        if AVAudioSession.sharedInstance().isOtherAudioPlaying {
+            state = .off
+            waitingForQuiet = true
+            return
+        }
         restartAttempts = 0
         state = .passive
         beginListening()
