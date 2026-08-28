@@ -341,7 +341,14 @@ struct RootView: View {
             }
         }
         .overlay(alignment: .top) {
-            if let exchange = store.lastVoiceExchange {
+            // Live transcript leads while capturing (rebuild 2026-08);
+            // the heard/answer chip takes over once the command fires.
+            if store.heyMorphe.state == .active, !store.heyMorphe.liveTranscript.isEmpty {
+                VoiceTranscriptPill(text: store.heyMorphe.liveTranscript)
+                    .padding(.top, 118)
+                    .padding(.horizontal, 24)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            } else if let exchange = store.lastVoiceExchange {
                 VoiceExchangeChip(heard: exchange.heard, answer: exchange.answer)
                     .padding(.top, 118)
                     .padding(.horizontal, 24)
@@ -349,6 +356,7 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: store.heyMorphe.state)
+        .animation(.easeInOut(duration: 0.25), value: store.heyMorphe.liveTranscript)
         .animation(.easeInOut(duration: 0.3), value: store.lastVoiceExchange?.answer)
         // The once-ever hello (Apple benchmark A6) — topmost, brief, gone.
         .overlay {
@@ -1070,7 +1078,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     private(set) var state: VoiceState = .off
     private(set) var liveTranscript = ""
     var onWake: (() -> Void)?
-    var onCommand: ((String) -> Void)?
+    /// (command, isFollowUp). A follow-up command was spoken in the short
+    /// window after Morphe answered — no wake phrase required, and the
+    /// store routes it doors-only (rebuild 2026-08).
+    var onCommand: ((String, Bool) -> Void)?
     /// Honest failure surface (audit 12, P1-3) — PERMANENT conditions only:
     /// permission denied, unsupported language, no on-device recognition.
     /// The owner should flip the feature off.
@@ -1080,6 +1091,16 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// re-arm later — the old path disabled the feature on any hiccup,
     /// which is exactly "it stopped working and I don't know why".
     var onTransientPause: ((String) -> Void)?
+
+    /// Open until this instant, a command may be spoken WITHOUT the wake
+    /// phrase (the Siri back-to-back pattern): set when Morphe finishes
+    /// speaking, ~6s wide, date-bounded so stale state can't linger.
+    private var followUpDeadline: Date?
+    /// True while the current active capture came from the follow-up
+    /// window rather than a wake phrase — the transcript has no wake to
+    /// strip, and the command fires with isFollowUp so the store stays
+    /// silent on non-door chatter.
+    private var activeIsFollowUp = false
 
     private var suspendedByExternalAudio = false
     /// True from pauseForExternalAudio to resumeAfterExternalAudio even if
@@ -1509,11 +1530,30 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             case .passive:
                 if let command = Self.commandAfterWake(in: text) {
                     state = .active
+                    activeIsFollowUp = false
                     liveTranscript = command
                     onWake?()
                     // A longer first window (audit 14): the user just said
                     // the name — give them a breath before the command.
                     armCommandTimer(after: command.isEmpty ? 2.5 : 1.4)
+                } else if let deadline = followUpDeadline, Date() < deadline,
+                          !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    // Follow-up window (rebuild 2026-08): the breath after
+                    // Morphe speaks accepts a bare command — "next
+                    // exercise" right after an answer, no re-wake. The
+                    // store routes these doors-only, so ambient chatter
+                    // costs nothing.
+                    state = .active
+                    activeIsFollowUp = true
+                    liveTranscript = text
+                    armCommandTimer(after: 1.4)
+                }
+            case .active where activeIsFollowUp:
+                // No wake phrase to re-locate — the whole fresh stream IS
+                // the candidate command.
+                if text != liveTranscript {
+                    liveTranscript = text
+                    armCommandTimer(after: 1.4)
                 }
             case .active:
                 // Re-locate the wake phrase EVERY partial (audit 12, P1-9):
@@ -1587,15 +1627,28 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     private func fireCommand() {
         guard state == .active else { return }
         let command = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let wasFollowUp = activeIsFollowUp
+        activeIsFollowUp = false
         liveTranscript = ""
         state = .passive
-        if command.isEmpty {
-            // Woke, then silence — back to scanning, no charge.
+        if command.isEmpty || Self.isCancelPhrase(command) {
+            // Woke then silence, or an explicit retraction ("never mind")
+            // — back to scanning, no charge, no spoken reply (a misfire
+            // must cost nothing: rebuild 2026-08).
             beginListening()
             return
         }
         tearDownRecognition()
-        onCommand?(command)
+        onCommand?(command, wasFollowUp)
+    }
+
+    /// "Hey Morphe… never mind." A retraction collapses the capture
+    /// silently instead of routing a phantom command.
+    static func isCancelPhrase(_ text: String) -> Bool {
+        let cleaned = text.lowercased()
+            .trimmingCharacters(in: .punctuationCharacters.union(.whitespaces))
+        return ["never mind", "nevermind", "cancel", "cancel that",
+                "forget it", "nothing", "no thanks", "stop"].contains(cleaned)
     }
 
     private func scheduleRestart() {
@@ -1631,6 +1684,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         DispatchQueue.main.async {
             guard self.state == .speaking else { return }
+            // The answer just landed — hold the door open for a follow-up
+            // command with no re-wake (rebuild 2026-08).
+            self.followUpDeadline = Date().addingTimeInterval(6)
             self.state = .passive
             self.beginListening()
         }

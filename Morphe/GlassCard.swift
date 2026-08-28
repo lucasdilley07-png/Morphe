@@ -171,6 +171,37 @@ struct VoiceGlowOverlay: View {
     }
 }
 
+/// Live transcription while Morphe captures a command (rebuild 2026-08):
+/// both Siri and ChatGPT show the words as they land — seeing "10 at 135"
+/// appear is the trust signal that the mic heard THOSE numbers.
+struct VoiceTranscriptPill: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "waveform")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.brandYellowText)
+                .symbolEffect(.variableColor.iterative, options: .repeating)
+            Text(text)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .overlay(Capsule().stroke(MorpheTheme.stroke, lineWidth: 1))
+                .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Morphe is hearing: \(text)")
+    }
+}
+
 /// What Morphe heard and what it answered — floats briefly at the top,
 /// then clears itself.
 struct VoiceExchangeChip: View {

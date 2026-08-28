@@ -424,6 +424,10 @@ enum SoundEffects {
         /// forever (Apple benchmark P2). A two-strike rising power chord
         /// with a longer ring than either sibling cue.
         case pr
+        /// "Hey Morphe" heard — the shortest, quietest cue in the family:
+        /// two quick notes so the wake is audible eyes-free without
+        /// stepping on the user's music (rebuild 2026-08).
+        case wake
     }
 
     private static var players: [Cue: AVAudioPlayer] = [:]
@@ -489,6 +493,13 @@ enum SoundEffects {
                 (659.26, 0.120, 1.80, 3.2, 0.90),   // E5 — the record rings longest
                 (1567.98, 0.000, 0.60, 7.0, 0.50),  // G6 sparkle
                 (2093.00, 0.120, 0.70, 7.0, 0.30)   // C7 answer sparkle
+            ]
+        case .wake:
+            // Two quick notes, quiet and short — a listening cue, not a
+            // celebration. Same instrument, lowest gain in the family.
+            notes = [
+                (783.99, 0.000, 0.28, 9.0, 0.55),   // G5
+                (1046.50, 0.090, 0.34, 9.0, 0.50)   // C6
             ]
         }
 

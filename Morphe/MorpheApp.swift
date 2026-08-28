@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import FirebaseCore
 
@@ -32,6 +33,11 @@ struct MorpheApp: App {
                 .id("\(store.appearanceIsLight)-\(store.profileShowcase.accentPalette.rawValue)-\(store.profileShowcase.customAccentHex)")
                 .environment(store)
                 .preferredColorScheme(store.selectedAppearance)
+                .onReceive(NotificationCenter.default.publisher(for: .morpheIntentArrived)) { _ in
+                    // Intent fired while the app was already frontmost —
+                    // no scene-phase change to piggyback on.
+                    store.consumePendingIntentActions()
+                }
                 .onChange(of: scenePhase) { _, phase in
                     // A calendar day can pass while the app sits suspended in
                     // the switcher — every return to the foreground re-checks
@@ -47,6 +53,9 @@ struct MorpheApp: App {
                         // (audit 14, P1).
                         store.resetVoiceRetryBudget()
                         store.startVoiceIfEnabled()
+                        // Siri / Shortcuts / Action Button (rebuild wave):
+                        // "Start my workout in Morphe" left a flag.
+                        store.consumePendingIntentActions()
                     }
                     // The log backup debounce is 60s — leaving the app
                     // flushes whatever is pending so a swipe-kill can't

@@ -735,6 +735,7 @@ struct ProfileView: View {
             ("Your account", "name username handle referrals invite share"),
             ("How you train", Self.howYouTrainKeywords),
             ("Voice", "hey morphe voice speech microphone hands free wake"),
+            ("Morphe Intelligence", "claude ai brain api key anthropic intelligence smart answers"),
             ("Notifications", "reminders nudge streak recap board updates"),
             ("Who can see you", Self.whoCanSeeYouKeywords),
             ("Your coach", "coach code join invite link"),
@@ -1038,6 +1039,10 @@ struct ProfileView: View {
                         )
                     )
 
+            }
+
+            settingsSection("Morphe Intelligence", keywords: "claude ai brain api key anthropic intelligence smart answers") {
+                    IntelligenceKeyEditor()
             }
 
             settingsSection("Notifications", keywords: "reminders nudge streak recap board updates") {
@@ -1951,6 +1956,76 @@ struct MorpheProPaywallSheet: View {
                 .font(.subheadline)
                 .foregroundStyle(MorpheTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+
+// MARK: - Morphe Intelligence key editor (rebuild wave, Lucas 2026-08-27)
+//
+// The Claude brain is opt-in behind the user's OWN Anthropic API key: the
+// copy is honest about cost, the key lives in the Keychain, and removing
+// it returns the app to the built-in instant replies with zero residue.
+private struct IntelligenceKeyEditor: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var draftKey = ""
+    @State private var showSaveError = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Claude answers")
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text(store.intelligenceEnabled
+                     ? "On \u{2014} questions no built-in answer covers go to Claude on your own Anthropic API key. Calls bill to your key. Everything else stays instant and on-device."
+                     : "Paste your own Anthropic API key and open questions get real Claude answers \u{2014} in chat and out loud through \u{201C}Hey Morphe\u{201D}. Calls bill to your key. Without a key, Morphe\u{2019}s built-in replies run: free, instant, offline.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            if store.intelligenceEnabled {
+                Button(role: .destructive) {
+                    store.clearIntelligenceKey()
+                    draftKey = ""
+                    Haptics.impact(.light)
+                } label: {
+                    Text("Remove key")
+                        .font(.subheadline.weight(.semibold))
+                }
+            } else {
+                SecureField("sk-ant-\u{2026}", text: $draftKey)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(MorpheTheme.ink.opacity(0.35))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(MorpheTheme.stroke, lineWidth: 1)
+                            )
+                    )
+                Button {
+                    if store.setIntelligenceKey(draftKey) {
+                        draftKey = ""
+                        showSaveError = false
+                        Haptics.success()
+                    } else {
+                        showSaveError = true
+                        Haptics.error()
+                    }
+                } label: {
+                    Text("Save key")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.brandYellowText)
+                }
+                .disabled(draftKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                if showSaveError {
+                    Text("That key couldn\u{2019}t be saved \u{2014} check it and try again.")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
         }
     }
 }

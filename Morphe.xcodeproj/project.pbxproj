@@ -51,11 +51,13 @@
 		1B20F6002C400FD100100001 /* FormDiagrams in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400FD100100002 /* FormDiagrams */; };
 		345B672A4CACE84B2FCD1538 /* WatchRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC2A529EBD5AB5A04D2376E /* WatchRootView.swift */; };
 		40D7617462A6B2AF16080A2D /* WatchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DAFF49BAA06EBFA73A6D259 /* WatchBridge.swift */; };
+		41716D0AFF789B8C624B18E0 /* MorpheIntelligence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE54A0074706C31195400F3 /* MorpheIntelligence.swift */; };
 		613282519FC6DDED39645145 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0A470887FDFDBE57818F4437 /* Assets.xcassets */; };
 		97E571F4F035CE9A16D734F0 /* MorpheWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = B8A1FA44C0D60F4FD64CCA3F /* MorpheWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9B6A806AD28ABBA4519CABF5 /* WatchSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E715EB063BB124D5D82A39A8 /* WatchSessionModel.swift */; };
 		A0F9E0963000DCBC00DAC2F6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A0F9E0953000DCBC00DAC2F6 /* GoogleService-Info.plist */; };
 		A0FD5ED22F21A6ED243CBF08 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9343DBA5ABE97A91B0601BEE /* Foundation.framework */; };
+		AC9DBAF6D3C7F7126A017C7F /* MorpheAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA6B9CF04B05F800FEA80B0 /* MorpheAppIntents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -153,7 +155,9 @@
 		1B20F6002C400FD100100002 /* FormDiagrams */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Resources/FormDiagrams; sourceTree = "<group>"; };
 		5EC2A529EBD5AB5A04D2376E /* WatchRootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchRootView.swift; sourceTree = "<group>"; };
 		86713EF51E1FA463ECE9FCE6 /* MorpheWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MorpheWatchApp.swift; sourceTree = "<group>"; };
+		8FA6B9CF04B05F800FEA80B0 /* MorpheAppIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MorpheAppIntents.swift; sourceTree = "<group>"; };
 		9343DBA5ABE97A91B0601BEE /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		9FE54A0074706C31195400F3 /* MorpheIntelligence.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MorpheIntelligence.swift; sourceTree = "<group>"; };
 		A0F9E0953000DCBC00DAC2F6 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		B8A1FA44C0D60F4FD64CCA3F /* MorpheWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MorpheWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E715EB063BB124D5D82A39A8 /* WatchSessionModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionModel.swift; sourceTree = "<group>"; };
@@ -225,6 +229,7 @@
 				1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */,
 				1B20F6002C40000100100069 /* MorpheCatalog.json */,
 				1B20F6002C400FD100100002 /* FormDiagrams */,
+				8FA6B9CF04B05F800FEA80B0 /* MorpheAppIntents.swift */,
 			);
 			path = Morphe;
 			sourceTree = "<group>";
@@ -257,6 +262,7 @@
 				1B20F6002C4000010020000F /* RestTimerActivityController.swift */,
 				1B20F6002C4000010010006A /* WorkoutCatalog.swift */,
 				0DAFF49BAA06EBFA73A6D259 /* WatchBridge.swift */,
+				9FE54A0074706C31195400F3 /* MorpheIntelligence.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -535,6 +541,8 @@
 				1B20F6002C40000100200010 /* RestTimerActivityController.swift in Sources */,
 				1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */,
 				40D7617462A6B2AF16080A2D /* WatchBridge.swift in Sources */,
+				41716D0AFF789B8C624B18E0 /* MorpheIntelligence.swift in Sources */,
+				AC9DBAF6D3C7F7126A017C7F /* MorpheAppIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -7645,6 +7645,10 @@ final class MorpheAppStore {
             // real who-needs-attention answer — parity with the athlete
             // side instead of advertising actions that did nothing.
             let actionReply = coachAssistantActionReply(for: cleanText)
+            if actionReply == nil, intelligenceEnabled {
+                requestIntelligenceChatReply(forCoach: true)
+                return false
+            }
             let reply = actionReply ?? coachAgentReply(to: cleanText)
             coachAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now"))
             return actionReply != nil
@@ -7654,6 +7658,10 @@ final class MorpheAppStore {
             // (start a workout, open a screen, change a setting), do it and
             // confirm — otherwise fall back to the coaching reply.
             let actionReply = assistantActionReply(for: cleanText)
+            if actionReply == nil, intelligenceEnabled {
+                requestIntelligenceChatReply(forCoach: false)
+                return false
+            }
             let reply = actionReply ?? athleteAgentReply(to: cleanText)
             athleteAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now"))
             return actionReply != nil
@@ -8190,6 +8198,129 @@ final class MorpheAppStore {
         }
 
         return nil
+    }
+
+    // MARK: - Morphe Intelligence (rebuild wave, Lucas 2026-08-27)
+    //
+    // The optional Claude brain. Doors and rules stay primary — this
+    // layer answers only conversational asks that no door claimed, and
+    // only when a key is present. Voice and chat share ONE conversation
+    // per role, so an answer spoken on the gym floor is still there in
+    // the chat thread afterward.
+
+    /// Published mirror of the Keychain state so Settings and the router
+    /// observe changes without hitting the Keychain per command.
+    var intelligenceEnabled = MorpheIntelligence.isEnabled
+
+    @discardableResult
+    func setIntelligenceKey(_ key: String) -> Bool {
+        let saved = MorpheIntelligence.setAPIKey(key)
+        intelligenceEnabled = MorpheIntelligence.isEnabled
+        return saved
+    }
+
+    func clearIntelligenceKey() {
+        MorpheIntelligence.clearAPIKey()
+        intelligenceEnabled = false
+    }
+
+    /// Everything Claude needs to answer like Morphe: identity, honesty
+    /// rules, and the live training context. Spoken replies get a hard
+    /// brevity contract — the answer is read aloud on a gym floor.
+    func intelligenceSystemPrompt(spoken: Bool) -> String {
+        var lines: [String] = []
+        lines.append("You are Morphe, an honest personal training coach inside the Morphe iOS app. Brand: TRAIN HONEST — never inflate, never flatter, never invent logged numbers. If you don't know a number, say so.")
+        lines.append("The user is \(clientProfile.name.isEmpty ? "the athlete" : clientProfile.name). Weight unit: \(weightUnit == .kilograms ? "kilograms" : "pounds").")
+        if isWorkoutSessionActive {
+            var session = "They are mid-workout right now: \(currentWorkout.name)."
+            if let exercise = activeWorkoutExercise {
+                let done = completedWorkoutSets[exercise.id, default: 0]
+                session += " Current exercise: \(exercise.name), \(done) of \(Self.watchSetCount(exercise.sets)) sets done."
+            }
+            lines.append(session)
+        } else {
+            lines.append("Today's planned workout: \(currentWorkout.name).")
+        }
+        lines.append("Plain text only — no markdown, no lists, no headings.")
+        if spoken {
+            lines.append("This reply is spoken aloud through the phone speaker: at most two short sentences, no trailing questions, no filler.")
+        } else {
+            lines.append("Keep replies short and direct — a few sentences unless the question truly needs more.")
+        }
+        return lines.joined(separator: " ")
+    }
+
+    private func intelligenceTurns(from conversation: [ThreadMessage]) -> [MorpheIntelligence.Turn] {
+        conversation.suffix(16)
+            .filter { $0.text != "\u{2026}" }
+            .map { MorpheIntelligence.Turn(isUser: $0.sender == .user, text: $0.text) }
+    }
+
+    /// Chat path: the user message is already appended; drop a thinking
+    /// placeholder into the thread and replace it in place when Claude
+    /// answers (or fails, honestly).
+    private func requestIntelligenceChatReply(forCoach coach: Bool) {
+        guard let key = MorpheIntelligence.apiKey else { return }
+        let placeholder = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "\u{2026}", timestamp: "Now")
+        if coach { coachAIAgentConversation.append(placeholder) }
+        else { athleteAIAgentConversation.append(placeholder) }
+        let system = intelligenceSystemPrompt(spoken: false)
+        let turns = intelligenceTurns(from: coach ? coachAIAgentConversation : athleteAIAgentConversation)
+        Task { [weak self] in
+            let answer = await MorpheIntelligence.safeReply(system: system, turns: turns, apiKey: key)
+            guard let self else { return }
+            if coach {
+                if let i = self.coachAIAgentConversation.firstIndex(where: { $0.id == placeholder.id }) {
+                    self.coachAIAgentConversation[i].text = answer
+                }
+            } else {
+                if let i = self.athleteAIAgentConversation.firstIndex(where: { $0.id == placeholder.id }) {
+                    self.athleteAIAgentConversation[i].text = answer
+                }
+            }
+        }
+    }
+
+    /// Voice path: the exchange chip shows "Thinking" immediately (the
+    /// instant-acknowledgment lesson from the ChatGPT audit), and the
+    /// answer is spoken the moment it lands. The exchange also writes
+    /// into the chat thread so it survives the chip's 8s fade.
+    private func requestIntelligenceVoiceReply(for raw: String) {
+        guard let key = MorpheIntelligence.apiKey else {
+            presentVoiceExchange(heard: raw, answer: previewAIAgentReply(for: raw))
+            return
+        }
+        let coach = selectedRole == .coach
+        let userMessage = ThreadMessage(
+            sender: .user,
+            senderName: coach ? coachProfile.name : clientProfile.name,
+            text: raw, timestamp: "Now")
+        if coach { coachAIAgentConversation.append(userMessage) }
+        else { athleteAIAgentConversation.append(userMessage) }
+        lastVoiceExchange = (heard: raw, answer: "Thinking\u{2026}")
+        voiceExchangeClearTask?.cancel()
+        let system = intelligenceSystemPrompt(spoken: true)
+        let turns = intelligenceTurns(from: coach ? coachAIAgentConversation : athleteAIAgentConversation)
+        Task { [weak self] in
+            let answer = await MorpheIntelligence.safeReply(system: system, turns: turns, apiKey: key)
+            guard let self else { return }
+            let aiMessage = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: answer, timestamp: "Now")
+            if coach { self.coachAIAgentConversation.append(aiMessage) }
+            else { self.athleteAIAgentConversation.append(aiMessage) }
+            self.presentVoiceExchange(heard: raw, answer: answer)
+        }
+    }
+
+    // MARK: - App Intents (rebuild wave)
+
+    /// "Start my workout in Morphe" — Siri/Shortcuts/Action Button set a
+    /// flag; the app consumes it on foreground (cold launch included).
+    func consumePendingIntentActions() {
+        guard UserDefaults.standard.bool(forKey: "morphe.intent.startWorkout") else { return }
+        UserDefaults.standard.set(false, forKey: "morphe.intent.startWorkout")
+        guard hasCompletedOnboarding, !needsTermsAcceptance else { return }
+        showTrainTab()
+        if !isWorkoutSessionActive { startTodayWorkout() }
     }
 
     func previewAIAgentReply(for text: String) -> String {
@@ -8805,10 +8936,14 @@ final class MorpheAppStore {
         guard heyMorpheEnabled, hasCompletedOnboarding, !needsTermsAcceptance,
               (!FeatureFlags.accountsEnabled || authUser != nil) else { return }
         heyMorphe.onWake = {
+            // The gym is eyes-free (Siri audit): every wake gets a felt
+            // AND heard confirmation — haptic plus a soft two-note cue in
+            // the same Milestone voice as the rest of the app.
             Haptics.impact(.light)
+            SoundEffects.play(.wake)
         }
-        heyMorphe.onCommand = { [weak self] command in
-            self?.handleVoiceCommand(command)
+        heyMorphe.onCommand = { [weak self] command, isFollowUp in
+            self?.handleVoiceCommand(command, isFollowUp: isFollowUp)
         }
         heyMorphe.onFailure = { [weak self] message in
             // PERMANENT conditions only (audit 14) — permission denied,
@@ -8857,8 +8992,35 @@ final class MorpheAppStore {
     }
 
     func handleVoiceCommand(_ raw: String) {
-        let answer = routeVoiceCommand(raw)
-        lastVoiceExchange = (heard: raw, answer: answer)
+        handleVoiceCommand(raw, isFollowUp: false)
+    }
+
+    /// The live command path (rebuild 2026-08): doors first, always. A
+    /// follow-up-window command (spoken without re-waking, in the breath
+    /// after Morphe answers) is doors-ONLY — ambient gym chatter must
+    /// never earn an AI reply or a spoken answer. When no door matches a
+    /// real waked command, the Claude brain answers if Lucas has plugged
+    /// a key in Settings; otherwise the built-in coaching reply runs,
+    /// exactly as before.
+    func handleVoiceCommand(_ raw: String, isFollowUp: Bool) {
+        let doorReply = routeVoiceCommandDoors(raw)
+        if doorReply == nil, isFollowUp {
+            // Silence — and speak("") hands the mic straight back.
+            heyMorphe.speak("")
+            return
+        }
+        voiceNavigationSweep(for: raw)
+        if let doorReply {
+            presentVoiceExchange(heard: raw, answer: doorReply)
+        } else if intelligenceEnabled {
+            requestIntelligenceVoiceReply(for: raw)
+        } else {
+            presentVoiceExchange(heard: raw, answer: previewAIAgentReply(for: raw))
+        }
+    }
+
+    private func presentVoiceExchange(heard: String, answer: String) {
+        lastVoiceExchange = (heard: heard, answer: answer)
         heyMorphe.speak(Self.spokenForm(of: answer))
         voiceExchangeClearTask?.cancel()
         voiceExchangeClearTask = Task { [weak self] in
@@ -8897,23 +9059,28 @@ final class MorpheAppStore {
         // whatever covers the screen, so the sweep must not pre-empt the
         // queueing — it runs after, and never touches the Progress sheet
         // (the tab doors dismiss that one themselves).
-        let reply = routeVoiceCommandDoors(raw)
-        if !Self.isQuestionShaped(raw.lowercased()) {
-            // A build command navigates nowhere — dismissing the chat
-            // cover would only cost the open conversation (audit 14, P2).
-            let lower = raw.lowercased()
-            let isBuild = ["make", "build", "create", "design"].contains {
-                lower.range(of: "\\b\($0)\\b", options: .regularExpression) != nil
-            }
-            clearVoiceNavigationObstructions(preservingConversation: isBuild)
-        }
+        let reply = routeVoiceCommandDoors(raw) ?? previewAIAgentReply(for: raw)
+        voiceNavigationSweep(for: raw)
         return reply
     }
 
-    private func routeVoiceCommandDoors(_ raw: String) -> String {
+    private func voiceNavigationSweep(for raw: String) {
+        guard !Self.isQuestionShaped(raw.lowercased()) else { return }
+        // A build command navigates nowhere — dismissing the chat
+        // cover would only cost the open conversation (audit 14, P2).
+        let lower = raw.lowercased()
+        let isBuild = ["make", "build", "create", "design"].contains {
+            lower.range(of: "\\b\($0)\\b", options: .regularExpression) != nil
+        }
+        clearVoiceNavigationObstructions(preservingConversation: isBuild)
+    }
+
+    /// Nil when no door matched — the caller decides which brain answers
+    /// (Claude with a key, the built-in replies without one).
+    private func routeVoiceCommandDoors(_ raw: String) -> String? {
         if selectedRole == .coach {
             if let action = coachAssistantActionReply(for: raw) { return action }
-            return previewAIAgentReply(for: raw)
+            return nil
         }
         // Mid-session, the session doors lead (Lucas 2026-08-27): the whole
         // console is voice-commandable — sets, rest, navigation, undo,
@@ -8973,7 +9140,7 @@ final class MorpheAppStore {
             }
         }
 
-        return previewAIAgentReply(for: raw)
+        return nil
     }
 
     // MARK: - Session voice layer (Lucas 2026-08-27)

@@ -1061,6 +1061,62 @@ final class WorkoutSessionTests: XCTestCase {
                        "open train")
     }
 
+    /// Rebuild wave (2026-08): "Hey Morphe… never mind" collapses the
+    /// capture silently — a retraction must never route as a command.
+    func testCancelPhrasesCollapseSilently() {
+        XCTAssertTrue(HeyMorpheEngine.isCancelPhrase("never mind"))
+        XCTAssertTrue(HeyMorpheEngine.isCancelPhrase("Nevermind."))
+        XCTAssertTrue(HeyMorpheEngine.isCancelPhrase("cancel that"))
+        XCTAssertTrue(HeyMorpheEngine.isCancelPhrase("forget it"))
+        XCTAssertFalse(HeyMorpheEngine.isCancelPhrase("cancel my workout"),
+                       "a cancel VERB with an object is a real command")
+        XCTAssertFalse(HeyMorpheEngine.isCancelPhrase("log 10 at 135"))
+    }
+
+    /// Rebuild wave: the follow-up window (commands spoken without a
+    /// re-wake right after Morphe answers) is doors-only. Ambient chatter
+    /// gets no exchange, no spoken answer, no AI charge — while a real
+    /// door command works exactly like a waked one.
+    func testFollowUpCommandsAreDoorsOnly() {
+        let store = freshStore()
+        store.handleVoiceCommand("so anyway she said the thing was crazy", isFollowUp: true)
+        XCTAssertNil(store.lastVoiceExchange,
+                     "non-door chatter in the follow-up window must stay silent")
+
+        store.handleVoiceCommand("open train", isFollowUp: true)
+        XCTAssertEqual(store.lastVoiceExchange?.answer, "Opening Train.")
+        XCTAssertEqual(store.selectedClientTab, .train)
+    }
+
+    /// Rebuild wave: without an API key the router's fallback is the
+    /// built-in reply — identical behavior to before the Claude layer
+    /// existed, and the same line the chip and speaker get.
+    func testNoKeyFallbackStaysBuiltIn() {
+        let store = freshStore()
+        XCTAssertFalse(store.intelligenceEnabled,
+                       "a fresh install has no Anthropic key")
+        let answer = store.routeVoiceCommand("what should I eat before lifting")
+        XCTAssertFalse(answer.isEmpty, "the built-in brain always answers")
+        store.handleVoiceCommand("what should I eat before lifting", isFollowUp: false)
+        XCTAssertNotNil(store.lastVoiceExchange,
+                        "a waked non-door question still gets an exchange")
+    }
+
+    /// Rebuild wave: "Start my workout in Morphe" (Siri/Action Button)
+    /// leaves a flag; consuming it starts the session through the same
+    /// guarded door as every other entry point.
+    func testAppIntentFlagStartsWorkout() {
+        UserDefaults.standard.set(true, forKey: "morphe.intent.startWorkout")
+        let store = freshStore()
+        store.consumePendingIntentActions()
+        XCTAssertTrue(store.isWorkoutSessionActive,
+                      "the intent flag starts today's workout")
+        XCTAssertEqual(store.selectedClientTab, .train)
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: "morphe.intent.startWorkout"),
+                       "the flag is consumed, never replayed")
+        store.cancelTrackedWorkoutSession()
+    }
+
     /// Frictionless-train wave: one spoken set parses in every phrasing the
     /// gym floor produces — and ambiguity stays unparsed rather than
     /// becoming a wrong log.
