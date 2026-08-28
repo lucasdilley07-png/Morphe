@@ -23,6 +23,9 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
     @Published var canPrev = false
     @Published var isReachable = false
     @Published var sending = false
+    /// Phone-side explanation for a refused command (audit 16: a failure
+    /// buzz with no reason looked broken).
+    @Published var notice: String?
 
     /// Non-nil while resting; the view derives the ring from it.
     @Published var restEndDate: Date?
@@ -48,11 +51,14 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
     // MARK: Commands (all round-trip through the phone store)
 
     func logSet() {
+        // Capture BEFORE the reply applies (audit 16, P2): the snapshot in
+        // the reply may already carry the NEXT exercise's rest length.
+        let restLength = restSeconds
         send(["cmd": "logSet", "reps": reps, "weight": weight]) { [weak self] reply in
             guard let self else { return }
             if reply["logged"] as? Bool == true {
                 WKInterfaceDevice.current().play(.success)
-                self.beginRest()
+                self.beginRest(seconds: restLength)
             } else {
                 WKInterfaceDevice.current().play(.failure)
             }
@@ -69,9 +75,9 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
         restEndDate = nil
     }
 
-    private func beginRest() {
-        guard restSeconds > 0 else { return }
-        restEndDate = Date().addingTimeInterval(TimeInterval(restSeconds))
+    private func beginRest(seconds: Int) {
+        guard seconds > 0 else { return }
+        restEndDate = Date().addingTimeInterval(TimeInterval(seconds))
         restTimer?.invalidate()
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
@@ -110,6 +116,7 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
             guard seq >= lastSequence else { return }
             lastSequence = seq
         }
+        let previousExercise = exerciseName
         if let value = snapshot["sessionActive"] as? Bool { sessionActive = value }
         if let value = snapshot["workoutName"] as? String { workoutName = value }
         if let value = snapshot["workoutComplete"] as? Bool { workoutComplete = value }
@@ -118,12 +125,18 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
         if let value = snapshot["totalExercises"] as? Int { totalExercises = value }
         if let value = snapshot["setsDone"] as? Int { setsDone = value }
         if let value = snapshot["setsTarget"] as? Int { setsTarget = value }
-        if let value = snapshot["suggestedReps"] as? Int { reps = value }
-        if let value = snapshot["weight"] as? Double { weight = value }
+        // Reps/weight prefill only re-seeds when the EXERCISE changed —
+        // an incidental phone-side publish must not snap a mid-adjust
+        // stepper back (audit 16, P2).
+        if exerciseName != previousExercise {
+            if let value = snapshot["suggestedReps"] as? Int { reps = value }
+            if let value = snapshot["weight"] as? Double { weight = value }
+        }
         if let value = snapshot["unit"] as? String { unit = value }
         if let value = snapshot["restSeconds"] as? Int { restSeconds = value }
         if let value = snapshot["canPrev"] as? Bool { canPrev = value }
         lastLine = snapshot["lastLine"] as? String
+        notice = snapshot["notice"] as? String
     }
 
     // MARK: WCSessionDelegate

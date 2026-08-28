@@ -440,12 +440,32 @@ struct WorkoutView: View {
                     ?? pendingWeight
             }
         }
+        .onAppear {
+            // Catch-up half of the voice-token pattern (audit 16, P0): a
+            // rest/weight signal that fired while this view was unmounted
+            // lands here — same shape as pendingLibraryReveal.
+            if let seconds = store.consumePendingVoiceRest() {
+                restSeconds = seconds
+                restRunning = true
+            }
+            if let logged = store.consumeVoiceLoggedWeight() {
+                pendingWeight = logged
+            }
+        }
         .onChange(of: store.voiceRestRequestToken) { _, _ in
             // Voice asked for rest (Lucas 2026-08-27): the timer is view
             // state, so the store signals and the view drives — same
             // pattern as every logging surface feeding one console.
+            _ = store.consumePendingVoiceRest()
             restSeconds = store.voiceRestSeconds
             restRunning = true
+        }
+        .onChange(of: store.voiceLoggedWeightToken) { _, _ in
+            // The stepper shows what voice just logged (audit 16, P1:
+            // stale pendingWeight rode into the next tapped quick-log).
+            if let logged = store.consumeVoiceLoggedWeight() {
+                pendingWeight = logged
+            }
         }
         .onChange(of: store.voiceRestStopToken) { _, _ in
             restRunning = false
@@ -1818,7 +1838,9 @@ private struct ActiveWorkoutTrackerCard: View {
                         // session's set N, logged exactly, no editor. The
                         // steppers below stay the path for changing things —
                         // this is the path for not having to.
-                        if let last = store.lastSessionSet(forExerciseNamed: exercise.name, setIndex: completedSets) {
+                        if let last = store.lastSessionSet(
+                            forExerciseNamed: exercise.name,
+                            setIndex: store.workSetsDone(for: exercise.id)) {
                             Button {
                                 weight = last.weight
                                 repsToLog = min(max(last.reps, 1), 50)

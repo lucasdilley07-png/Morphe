@@ -1242,11 +1242,37 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertTrue(finish.contains("left"), "unexpected: \(finish)")
         XCTAssertTrue(store.isWorkoutSessionActive, "an incomplete session never ends by voice")
 
-        // Multi-set chat phrasing still takes the CHAT door, not a 3-rep set.
+        // Multi-set chat phrasing still takes the CHAT door — three real
+        // sets, with the fixture's 2-set target filled and the third
+        // spilling to the next exercise via auto-advance.
         let multi = store.routeVoiceCommand("log 3x10 at 95")
         XCTAssertFalse(multi.isEmpty)
-        XCTAssertNotEqual(store.trackedSetReps[first.id, default: []].count, 1,
-                          "'log 3x10' must never parse as a single 3-rep set")
+        XCTAssertEqual(store.trackedSetReps[first.id, default: []].count, 2,
+                       "the door fills the exercise's 2-set target: \(multi)")
+        XCTAssertEqual(store.trackedSetTotalCount, 3,
+                       "three sets landed in total (third on the next exercise)")
+        XCTAssertTrue(store.trackedSetReps[first.id, default: []].allSatisfy { $0 == 10 })
+
+        // Bare "3x10 at 95" (no prefix) refuses rather than logging ONE set
+        // with a silently dropped multiplier (audit 16, P1).
+        let before = store.trackedSetTotalCount
+        _ = store.routeVoiceCommand("3x10 at 95")
+        XCTAssertEqual(store.trackedSetTotalCount, before,
+                       "bare 3x10 must never mis-log")
+
+        // Ambient sentences with a stray number never log phantom sets
+        // (audit 16, P1: 'rest for 2 minutes' logged a 2-rep set).
+        let restReply = store.routeVoiceCommand("rest for 2 minutes")
+        XCTAssertTrue(restReply.contains("Resting 2 minutes"), "unexpected: \(restReply)")
+        XCTAssertEqual(store.trackedSetTotalCount, before)
+        _ = store.routeVoiceCommand("give me 3 minutes")
+        XCTAssertEqual(store.trackedSetTotalCount, before,
+                       "'give me 3 minutes' is not a set")
+
+        // Rest phrasing is honest for non-round lengths (audit 16, P2).
+        XCTAssertEqual(MorpheAppStore.restPhrase(90), "90 seconds")
+        XCTAssertEqual(MorpheAppStore.restPhrase(60), "1 minute")
+        XCTAssertEqual(MorpheAppStore.restPhrase(180), "3 minutes")
     }
 
     /// "Same as last time" by voice replays last session's work set — and
@@ -1254,19 +1280,29 @@ final class WorkoutSessionTests: XCTestCase {
     func testSessionVoiceRepeatAndExtraSet() {
         let store = freshStore()
         startedTwoExerciseSession(store)
-        guard let exercise = store.activeWorkoutExercise else { return XCTFail("no exercise") }
         _ = store.completeTrackedSet(reps: 8, weight: 135)
         _ = store.finishTrackedWorkoutSession()
         store.logWorkout()
 
         startedTwoExerciseSession(store)
+        guard let sessionExercise = store.currentWorkout.exercises.first else {
+            return XCTFail("no exercise")
+        }
+        // A warm-up today must not skew which work set "last time" means
+        // (audit 16, P1: counting warm-ups skipped a set) — and undo works
+        // on it.
+        _ = store.completeTrackedSet(reps: 5, weight: 45, isWarmup: true)
+        let deleted = store.routeVoiceCommand("delete last set")
+        XCTAssertTrue(deleted.contains("Deleted"), "unexpected: \(deleted)")
+        _ = store.completeTrackedSet(reps: 5, weight: 45, isWarmup: true)
+
         let repeatReply = store.routeVoiceCommand("same as last time")
         XCTAssertTrue(repeatReply.contains("Logged 8"), "unexpected: \(repeatReply)")
-        XCTAssertEqual(store.trackedSetWeights[exercise.id, default: []].last, 135)
+        XCTAssertEqual(store.trackedSetWeights[sessionExercise.id, default: []].last, 135,
+                       "the replay is last session's work set, not today's warm-up")
 
-        let noHistory = store.routeVoiceCommand("delete last set")
-        XCTAssertTrue(noHistory.contains("Deleted"))
-
+        // Warm-up + work filled the 2-set target and auto-advanced —
+        // the extra set lands on the now-active exercise.
         let extra = store.routeVoiceCommand("extra set 12 at 100")
         XCTAssertTrue(extra.contains("Logged 12"), "unexpected: \(extra)")
     }

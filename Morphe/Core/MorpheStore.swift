@@ -977,6 +977,15 @@ final class MorpheAppStore {
             showWelcomeExperience = true
         }
 
+        // WatchConnectivity activates at LAUNCH, not first-foreground
+        // (audit 16, P0): when the wrist pings a killed phone app, iOS
+        // launches it in the background and scenePhase never goes .active.
+        // Skipped in the test host — 300+ store constructions would churn
+        // the real WCSession delegate.
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+            WatchBridge.shared.activate(store: self)
+        }
+
         Self.mostRecentInstance = self
     }
 
@@ -6659,6 +6668,7 @@ final class MorpheAppStore {
 
     /// Rewrites one already-logged set (fat-finger fix without losing the session).
     func updateTrackedSet(exerciseID: String, setIndex: Int, reps: Int, weight: Double, rpe: Int? = nil) {
+        defer { WatchBridge.shared.publish() }
         guard var repsLogged = trackedSetReps[exerciseID], repsLogged.indices.contains(setIndex),
               var weightsLogged = trackedSetWeights[exerciseID], weightsLogged.indices.contains(setIndex) else { return }
         repsLogged[setIndex] = reps
@@ -6701,6 +6711,7 @@ final class MorpheAppStore {
 
     /// Abandons the live session without logging anything.
     func cancelTrackedWorkoutSession() {
+        defer { WatchBridge.shared.publish() }
         restoreSessionTemplateBaseline()
         isWorkoutSessionActive = false
         hasStartedWorkoutFlow = false
@@ -6859,6 +6870,9 @@ final class MorpheAppStore {
     /// hopped — the caller suppresses the rest timer between halves,
     /// because rest belongs after the PAIR, not inside it.
     func hopToSupersetPartnerIfNeeded(after exercise: WorkoutExercise) -> Bool {
+        // The hop moves the active exercise AFTER completeTrackedSet's own
+        // publish — the wrist must see the post-hop truth (audit 16, P1).
+        defer { WatchBridge.shared.publish() }
         guard let partnerID = supersetPartners[exercise.id],
               let partnerIndex = currentWorkout.exercises.firstIndex(where: { $0.id == partnerID })
         else { return false }
@@ -7843,6 +7857,11 @@ final class MorpheAppStore {
         // a push-to-talk utterance is ONE set; refuse rather than log
         // "3 sets of 10" as 3 reps (audit 14).
         if text.range(of: "\\bsets\\b|\\bset of\\b", options: .regularExpression) != nil {
+            return nil
+        }
+        // "3x10" is multi-set shaped — refusing beats logging one set and
+        // silently dropping the multiplier (audit 16, P1).
+        if text.range(of: "\\d\\s*[x×]\\s*\\d", options: .regularExpression) != nil {
             return nil
         }
         // Small spoken numbers arrive as words often enough to matter.
@@ -8857,6 +8876,11 @@ final class MorpheAppStore {
             of: "\\s*\\([^)]*\\)", with: "", options: .regularExpression)
         spoken = spoken.replacingOccurrences(of: "\"", with: "")
         spoken = spoken.replacingOccurrences(of: "lb/kg", with: "pounds or kilos")
+        // Bare units read badly aloud (audit 16, P2).
+        spoken = spoken.replacingOccurrences(
+            of: "\\b(\\d+(?:\\.\\d+)?) lb\\b", with: "$1 pounds", options: .regularExpression)
+        spoken = spoken.replacingOccurrences(
+            of: "\\b(\\d+(?:\\.\\d+)?) kg\\b", with: "$1 kilos", options: .regularExpression)
         return spoken.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -8968,10 +8992,41 @@ final class MorpheAppStore {
     private(set) var voiceRestStopToken = 0
     /// Bumped when voice asks for Form Check on the active exercise.
     private(set) var voiceFormCheckToken = 0
+    /// The weight voice just logged — the console stepper syncs to it
+    /// (token + value so the view can consume on change OR on appear).
+    private(set) var voiceLoggedWeightToken = 0
+    private(set) var pendingVoiceLoggedWeight: Double?
+
+    /// Work sets logged this session (warm-ups excluded) — the index the
+    /// repeat chip and "same as last time" hand to lastSessionSet, which
+    /// indexes WORK sets (audit 16, P1: counting warm-ups skipped a set).
+    func workSetsDone(for exerciseID: String) -> Int {
+        trackedSetWarmups[exerciseID, default: []].filter { !$0 }.count
+    }
 
     func requestVoiceRest(seconds: Int) {
+        // Rest lives in the Train console — voice nav must be VISIBLE nav
+        // (audit 13 rule; audit 16 P0: the token fired at an unmounted
+        // view and the spoken claim was a lie). The view also consumes
+        // pending state on appear, covering the mount race.
+        showTrainTab()
         voiceRestSeconds = seconds
         voiceRestRequestToken += 1
+        pendingVoiceRestSeconds = seconds
+    }
+
+    /// Consumed by WorkoutView.onAppear — the catch-up half of the token
+    /// pattern (same shape as pendingLibraryReveal).
+    private(set) var pendingVoiceRestSeconds: Int?
+
+    func consumePendingVoiceRest() -> Int? {
+        defer { pendingVoiceRestSeconds = nil }
+        return pendingVoiceRestSeconds
+    }
+
+    func consumeVoiceLoggedWeight() -> Double? {
+        defer { pendingVoiceLoggedWeight = nil }
+        return pendingVoiceLoggedWeight
     }
 
     /// Session-scoped voice doors — tried FIRST while a session is live.
@@ -8989,7 +9044,7 @@ final class MorpheAppStore {
 
         // Question-shaped session asks get honest session ANSWERS.
         if Self.isQuestionShaped(text) {
-            if mentions("sets? left|more sets?|many more|much left") {
+            if mentions("sets? left|more sets?\\b|how many sets|sets? remain") {
                 let done = completedWorkoutSets[exercise.id, default: 0]
                 let target = Self.watchSetCount(exercise.sets)
                 let remainingHere = max(0, target - done)
@@ -9016,19 +9071,24 @@ final class MorpheAppStore {
         if Self.parseSetCommand(text) != nil { return nil }
 
         // Explicit session commands, most specific first.
-        if mentions("\\bskip rest\\b|\\bstop rest\\b|\\bend rest\\b") {
+        if mentions("\\bskip (the |this )?rest\\b|\\bstop (the )?rest\\b|\\bend (the )?rest\\b") {
             voiceRestStopToken += 1
-            return "Rest skipped — back to work."
+            return "Rest cleared — back to work."
         }
         if mentions("\\bstart rest\\b|\\brest timer\\b") || text == "rest" {
-            requestVoiceRest(seconds: exercise.restSeconds ?? 180)
-            return "Resting \((exercise.restSeconds ?? 180) / 60 > 0 ? "\((exercise.restSeconds ?? 180) / 60) minutes" : "\(exercise.restSeconds ?? 180) seconds")."
+            let seconds = exercise.restSeconds ?? 180
+            guard seconds > 0 else {
+                return "\(exercise.name) has no programmed rest — say \"rest for 2 minutes\" for a custom one."
+            }
+            requestVoiceRest(seconds: seconds)
+            return "Resting \(Self.restPhrase(seconds))."
         }
         if mentions("\\bform check\\b|\\bcheck my form\\b|\\bwatch my form\\b") {
+            showTrainTab()
             voiceFormCheckToken += 1
             return "Opening Form Check — frame yourself in the shot."
         }
-        if mentions("\\bnext\\b|\\bskip this\\b|\\bdone here\\b") {
+        if text == "next" || mentions("\\bnext exercise\\b|\\bskip this exercise\\b|\\bdone here\\b") {
             goToNextTrackedExercise()
             if let now = activeWorkoutExercise {
                 return now.id == exercise.id
@@ -9037,7 +9097,7 @@ final class MorpheAppStore {
             }
             return "Moving on."
         }
-        if mentions("\\bprevious\\b|\\bgo back\\b|\\blast exercise\\b") {
+        if text == "previous" || text == "back" || mentions("\\bprevious exercise\\b|\\bgo back\\b") {
             guard activeWorkoutExerciseIndex > 0 else {
                 return "\(exercise.name) is the first exercise."
             }
@@ -9047,7 +9107,7 @@ final class MorpheAppStore {
         if mentions("\\bsame as last (time|session)\\b|\\brepeat last\\b") {
             guard let last = lastSessionSet(
                 forExerciseNamed: exercise.name,
-                setIndex: completedWorkoutSets[exercise.id, default: 0]) else {
+                setIndex: workSetsDone(for: exercise.id)) else {
                 return "No history for \(exercise.name) yet — tell me the numbers, like \"10 at 135\"."
             }
             return voiceLogSet(reps: last.reps, weight: last.weight, isWarmup: false, allowExtra: false, on: exercise)
@@ -9058,8 +9118,11 @@ final class MorpheAppStore {
             removeTrackedSet(exerciseID: exercise.id, setIndex: count - 1)
             return "Deleted the last set on \(exercise.name)."
         }
-        if mentions("\\bfinish( my)? workout\\b|\\bwrap (it )?up\\b|\\bend (the )?workout\\b") {
+        if mentions("\\bfinish( my)? workout\\b|\\bwrap (it |the workout )?up\\b|\\bend (the )?workout\\b") {
             if isTrackedWorkoutComplete {
+                // A running rest must not survive into the next session
+                // (audit 16, P2).
+                voiceRestStopToken += 1
                 return finishTrackedWorkoutSession()
                     ? "Session finished — the recap's waiting in Train."
                     : "Couldn't close it out — finish from Train."
@@ -9077,12 +9140,45 @@ final class MorpheAppStore {
             return voiceLogParsedSet(parsed, allowExtra: true, on: exercise)
         }
 
+        // Spoken rest lengths beat the phantom-set trap: "rest for 2
+        // minutes" must start a 2-minute rest, never log a 2-rep set
+        // (audit 16, P1).
+        if mentions("\\brest\\b"), mentions("minute|second") {
+            let digits = text.components(separatedBy: CharacterSet.decimalDigits.inverted)
+                .first { !$0.isEmpty }
+            if let digits, let value = Int(digits), value > 0, value <= 600 {
+                let seconds = mentions("minute") ? value * 60 : value
+                requestVoiceRest(seconds: seconds)
+                return "Resting \(Self.restPhrase(seconds))."
+            }
+        }
+
         // A bare spoken set: "10 at 135", "same weight", "add five",
-        // "warmup 8 at 95" — the mic bar's grammar, now wake-word reachable.
+        // "warmup 8 at 95" — the mic bar's grammar, wake-word reachable
+        // ONLY when the utterance is set-shaped (audit 16, P1: with the
+        // wake word, any ambient sentence containing a small number used
+        // to log a phantom set; the deliberate mic-bar tap keeps the
+        // looser grammar).
         if let parsed = Self.parseLiveSetUtterance(text) {
+            let setShaped = parsed.weight != nil
+                || parsed.weightDelta != nil
+                || parsed.isWarmup
+                || text.split(separator: " ").count <= 2
+                || mentions("\\brep")
+            guard setShaped else { return nil }
             return voiceLogParsedSet(parsed, allowExtra: false, on: exercise)
         }
         return nil
+    }
+
+    /// Honest spoken rest lengths (audit 16, P2: "Resting 1 minutes" for
+    /// a 90-second rest claimed the wrong duration with wrong grammar).
+    nonisolated static func restPhrase(_ seconds: Int) -> String {
+        if seconds % 60 == 0, seconds >= 60 {
+            let minutes = seconds / 60
+            return "\(minutes) minute\(minutes == 1 ? "" : "s")"
+        }
+        return "\(seconds) seconds"
     }
 
     /// Resolves a parsed utterance against the session baseline exactly
@@ -9091,8 +9187,9 @@ final class MorpheAppStore {
     private func voiceLogParsedSet(_ utterance: LiveSetUtterance,
                                    allowExtra: Bool,
                                    on exercise: WorkoutExercise) -> String {
+        // lastSessionWeight IS trackedSetWeights.last under a misleading
+        // name (audit 16) — one term, then the history-based suggestion.
         let baseline = trackedSetWeights[exercise.id]?.last
-            ?? lastSessionWeight(for: exercise.id)
             ?? suggestedWorkingWeight(for: exercise)
             ?? 0
         var weight = baseline
@@ -9114,14 +9211,28 @@ final class MorpheAppStore {
             return "\(exercise.name) is already complete — say \"extra set\" with the numbers to add one anyway."
         }
         let weightText = weight > 0 ? weightUnit.format(weight) : "bodyweight"
+        // The console's stepper must show what voice just logged
+        // (audit 16, P1: the stale pendingWeight silently rode into the
+        // next tapped quick-log).
+        pendingVoiceLoggedWeight = weight
+        voiceLoggedWeightToken += 1
         // Same post-log behavior as every other logging surface: superset
         // halves hop with no rest; otherwise the view's timer starts via
         // the voice token (when the setting allows).
-        if !hopToSupersetPartnerIfNeeded(after: exercise), autoRestTimerEnabled,
-           !isTrackedWorkoutComplete {
-            requestVoiceRest(seconds: exercise.restSeconds ?? 180)
+        var suffix = ""
+        if hopToSupersetPartnerIfNeeded(after: exercise) {
+            // The hop is invisible to a voice user (audit 16, P2) — say it.
+            if let partner = activeWorkoutExercise, partner.id != exercise.id {
+                suffix = " Superset — now on \(partner.name)."
+            }
+        } else if autoRestTimerEnabled, !isTrackedWorkoutComplete,
+                  let rest = exercise.restSeconds, rest > 0 {
+            requestVoiceRest(seconds: rest)
+        } else if autoRestTimerEnabled, !isTrackedWorkoutComplete,
+                  exercise.restSeconds == nil {
+            requestVoiceRest(seconds: 180)
         }
-        return "Logged \(reps) at \(weightText)\(isWarmup ? ", warm-up" : "")."
+        return "Logged \(reps) at \(weightText)\(isWarmup ? ", warm-up" : "").\(suffix)"
     }
 
     /// One question detector for the voice layer (audit 12, P0-1 lineage):
@@ -13490,6 +13601,7 @@ final class MorpheAppStore {
     }
 
     private func setCurrentWorkout(_ template: WorkoutTemplate) {
+        defer { WatchBridge.shared.publish() }
         resetSessionVoice()
         currentWorkoutID = template.id
         isWorkoutSessionActive = false

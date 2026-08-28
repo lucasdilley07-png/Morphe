@@ -1101,6 +1101,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// other audio ends.
     private var waitingForQuiet = false
     private var quietHintObserver: NSObjectProtocol?
+    /// The quiet HINT only delivers to apps with an ACTIVE session — a
+    /// parked engine's is inactive, so the observer alone is decorative
+    /// (audit 16, P1). This cheap poll is the real re-arm: a property
+    /// read every 5s, zero courtesy risk, killed on stop()/arm.
+    private var quietPollTimer: Timer?
 
     private let audioEngine = AVAudioEngine()
     private var recognizer: SFSpeechRecognizer?
@@ -1171,8 +1176,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
                 // the session for good) — re-grabbing would pause it again
                 // (Lucas 2026-08-27). Park; the quiet hint re-arms.
                 if AVAudioSession.sharedInstance().isOtherAudioPlaying {
-                    self.state = .off
-                    self.waitingForQuiet = true
+                    self.parkForOtherAudio(handback: true)
                     break
                 }
                 self.state = .passive
@@ -1200,6 +1204,45 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         }
     }
 
+    /// Parks the engine behind someone else's audio WITH the full session
+    /// handback (audit 16, P1: the bare park left the sound-effects owner
+    /// flag set and a record category behind — the next reward ding could
+    /// re-pause the very music the park was protecting).
+    private func parkForOtherAudio(handback: Bool) {
+        tearDownRecognition()
+        liveTranscript = ""
+        state = .off
+        if handback {
+            SoundEffects.externalAudioOwner = false
+            let session = AVAudioSession.sharedInstance()
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            try? session.setCategory(.ambient, options: [.mixWithOthers])
+        }
+        waitingForQuiet = true
+        startQuietPoll()
+    }
+
+    private func startQuietPoll() {
+        quietPollTimer?.invalidate()
+        let timer = Timer(timeInterval: 5, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.waitingForQuiet else {
+                    self?.quietPollTimer?.invalidate()
+                    self?.quietPollTimer = nil
+                    return
+                }
+                if !AVAudioSession.sharedInstance().isOtherAudioPlaying {
+                    self.waitingForQuiet = false
+                    self.quietPollTimer?.invalidate()
+                    self.quietPollTimer = nil
+                    self.start()
+                }
+            }
+        }
+        quietPollTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
     func start() {
         // While dictation or video capture owns the mic, a scene-phase
         // .active restart must not re-arm the wake engine underneath it —
@@ -1210,10 +1253,14 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         // audio. The quiet-hint observer re-arms when it ends, and every
         // foreground return retries through here too.
         if AVAudioSession.sharedInstance().isOtherAudioPlaying {
+            // No handback needed — nothing was armed yet.
             waitingForQuiet = true
+            startQuietPoll()
             return
         }
         waitingForQuiet = false
+        quietPollTimer?.invalidate()
+        quietPollTimer = nil
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
                 guard status == .authorized else {
@@ -1243,6 +1290,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         // engine must not ghost-arm when the music ends.
         suspendedByExternalAudio = false
         waitingForQuiet = false
+        quietPollTimer?.invalidate()
+        quietPollTimer = nil
         liveTranscript = ""
         tearDownRecognition()
         speakingWatchdog?.invalidate()
@@ -1284,10 +1333,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         }
         suspendedByExternalAudio = false
         // Music that started during dictation/capture wins the session —
-        // park instead of re-grabbing over it (Lucas 2026-08-27).
+        // park instead of re-grabbing over it (Lucas 2026-08-27). Handback
+        // included (audit 16, P2: dictation left the session active, and
+        // the duckOthers contract un-ducks only on DEACTIVATION — without
+        // this the borrowed-mic flow left the music quiet).
         if AVAudioSession.sharedInstance().isOtherAudioPlaying {
-            state = .off
-            waitingForQuiet = true
+            parkForOtherAudio(handback: true)
             return
         }
         restartAttempts = 0
@@ -1707,6 +1758,10 @@ final class DictationEngine: NSObject {
         // Hand the audio session back to the reward sounds' ambient setup,
         // then let Hey Morphe resume if it was the one we paused.
         SoundEffects.externalAudioOwner = false
+        // Deactivate BEFORE the category reset (audit 16, P2): duckOthers
+        // un-ducks the other app's audio on deactivation, not on category
+        // change — without this a mid-music borrow left the music quiet.
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
         HeyMorpheEngine.shared.resumeAfterExternalAudio()
     }

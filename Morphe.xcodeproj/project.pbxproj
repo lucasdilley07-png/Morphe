@@ -51,6 +51,7 @@
 		1B20F6002C400FD100100001 /* FormDiagrams in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400FD100100002 /* FormDiagrams */; };
 		345B672A4CACE84B2FCD1538 /* WatchRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC2A529EBD5AB5A04D2376E /* WatchRootView.swift */; };
 		40D7617462A6B2AF16080A2D /* WatchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DAFF49BAA06EBFA73A6D259 /* WatchBridge.swift */; };
+		613282519FC6DDED39645145 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0A470887FDFDBE57818F4437 /* Assets.xcassets */; };
 		97E571F4F035CE9A16D734F0 /* MorpheWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = B8A1FA44C0D60F4FD64CCA3F /* MorpheWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9B6A806AD28ABBA4519CABF5 /* WatchSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E715EB063BB124D5D82A39A8 /* WatchSessionModel.swift */; };
 		A0F9E0963000DCBC00DAC2F6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A0F9E0953000DCBC00DAC2F6 /* GoogleService-Info.plist */; };
@@ -107,6 +108,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0A470887FDFDBE57818F4437 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0DAFF49BAA06EBFA73A6D259 /* WatchBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchBridge.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100010 /* Morphe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Morphe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B20F6002C40000100100011 /* MorpheApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheApp.swift; sourceTree = "<group>"; };
@@ -338,6 +340,7 @@
 				86713EF51E1FA463ECE9FCE6 /* MorpheWatchApp.swift */,
 				E715EB063BB124D5D82A39A8 /* WatchSessionModel.swift */,
 				5EC2A529EBD5AB5A04D2376E /* WatchRootView.swift */,
+				0A470887FDFDBE57818F4437 /* Assets.xcassets */,
 			);
 			name = MorpheWatch;
 			path = MorpheWatch;
@@ -489,6 +492,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				613282519FC6DDED39645145 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

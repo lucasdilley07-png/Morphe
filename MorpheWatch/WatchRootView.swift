@@ -27,6 +27,12 @@ struct WatchRootView: View {
                 .font(.headline)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
+            if let notice = model.notice {
+                Text(notice)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+            }
             if model.isReachable {
                 Button {
                     model.startWorkout()
@@ -121,6 +127,12 @@ struct WatchRootView: View {
                     }
                     .buttonStyle(.borderless)
 
+                    if let notice = model.notice {
+                        Text(notice)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.orange)
+                            .multilineTextAlignment(.center)
+                    }
                     if !model.isReachable {
                         Text("iPhone unreachable — logging paused.")
                             .font(.system(size: 10))
@@ -139,7 +151,7 @@ struct WatchRootView: View {
         HStack(spacing: 6) {
             Button(action: down) { Image(systemName: "minus") }
                 .buttonStyle(.bordered)
-                .controlSize(.mini)
+                .controlSize(.small)
             VStack(spacing: 0) {
                 Text(label)
                     .font(.system(size: 8, weight: .semibold))
@@ -153,7 +165,7 @@ struct WatchRootView: View {
             .frame(maxWidth: .infinity)
             Button(action: up) { Image(systemName: "plus") }
                 .buttonStyle(.bordered)
-                .controlSize(.mini)
+                .controlSize(.small)
         }
     }
 

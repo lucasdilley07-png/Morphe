@@ -15,7 +15,11 @@ final class WatchBridge: NSObject, WCSessionDelegate {
 
     private weak var store: MorpheAppStore?
     /// Monotonic sequence so the watch can discard out-of-order snapshots.
-    private var sequence = 0
+    /// PERSISTED (audit 16, P0): an in-memory counter reset to 0 on every
+    /// phone relaunch, so the watch — whose high-water mark survives —
+    /// silently discarded every snapshot while still executing commands:
+    /// a frozen display over a live logger, fabricating duplicate sets.
+    private var sequence = UserDefaults.standard.integer(forKey: "morphe.watch.seq")
 
     func activate(store: MorpheAppStore) {
         guard WCSession.isSupported() else { return }
@@ -29,9 +33,11 @@ final class WatchBridge: NSObject, WCSessionDelegate {
     func publish() {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
-        guard session.activationState == .activated else { return }
+        guard session.activationState == .activated,
+              session.isPaired, session.isWatchAppInstalled else { return }
         guard let store else { return }
         sequence += 1
+        UserDefaults.standard.set(sequence, forKey: "morphe.watch.seq")
         var snapshot = MainActor.assumeIsolated { store.watchSnapshot() }
         snapshot["seq"] = sequence
         // applicationContext keeps only the latest — exactly right for
@@ -64,6 +70,7 @@ final class WatchBridge: NSObject, WCSessionDelegate {
             }
             var reply = MainActor.assumeIsolated { store.handleWatchCommand(message) }
             self.sequence += 1
+            UserDefaults.standard.set(self.sequence, forKey: "morphe.watch.seq")
             reply["seq"] = self.sequence
             replyHandler(reply)
         }
@@ -118,9 +125,11 @@ extension MorpheAppStore {
                     if let exercise { _ = hopToSupersetPartnerIfNeeded(after: exercise) }
                 } else {
                     reply["logged"] = false
+                    reply["notice"] = "\(exercise?.name ?? "Exercise") is complete — extra sets log from the phone."
                 }
             } else {
                 reply["logged"] = false
+                reply["notice"] = "Those numbers are out of range."
             }
             reply.merge(watchSnapshot()) { a, _ in a }
             return reply
@@ -132,7 +141,14 @@ extension MorpheAppStore {
             return watchSnapshot()
         case "start":
             if !isWorkoutSessionActive { startTodayWorkout() }
-            return watchSnapshot()
+            var reply = watchSnapshot()
+            if !isWorkoutSessionActive {
+                // startTodayWorkout parked a confirm dialog on the phone
+                // (unlogged session) — the wrist must say so, not shrug
+                // (audit 16, P1).
+                reply["notice"] = "Confirm on your iPhone — you have an unlogged session there."
+            }
+            return reply
         default:
             return watchSnapshot()
         }
