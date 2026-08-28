@@ -42,8 +42,8 @@ sixteen audit cycles of hardened code stayed; the findings landed on top.
   Settings → Morphe Intelligence). Raw Messages API, `claude-opus-5`,
   low effort for fast spoken replies, refusals surfaced honestly. No key
   → the built-in instant replies run unchanged, offline and free.
-- **One conversation per role**: voice answers write into the chat
-  thread, so a gym-floor exchange survives the chip's 8s fade.
+- **One conversation per role**: Claude voice answers write into the
+  chat thread, so a gym-floor exchange survives the chip's 8s fade.
 - **Voice feel**: wake chime + haptic, live transcript pill, 6s
   follow-up window (doors-only), silent voice cancel.
 - **App Intents**: "Start my workout in Morphe" via Siri / Shortcuts /

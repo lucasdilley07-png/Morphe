@@ -1061,13 +1061,15 @@ final class WorkoutSessionTests: XCTestCase {
                        "open train")
     }
 
-    /// Rebuild wave (2026-08): "Hey Morphe… never mind" collapses the
-    /// capture silently — a retraction must never route as a command.
-    func testCancelPhrasesCollapseSilently() {
+    /// Rebuild wave (2026-08): the retraction classifier — the engine
+    /// drops these before onCommand ever fires.
+    func testCancelPhraseClassifier() {
         XCTAssertTrue(HeyMorpheEngine.isCancelPhrase("never mind"))
         XCTAssertTrue(HeyMorpheEngine.isCancelPhrase("Nevermind."))
         XCTAssertTrue(HeyMorpheEngine.isCancelPhrase("cancel that"))
         XCTAssertTrue(HeyMorpheEngine.isCancelPhrase("forget it"))
+        XCTAssertFalse(HeyMorpheEngine.isCancelPhrase("stop"),
+                       "bare stop is a real ask mid-rest, not a retraction (audit 17)")
         XCTAssertFalse(HeyMorpheEngine.isCancelPhrase("cancel my workout"),
                        "a cancel VERB with an object is a real command")
         XCTAssertFalse(HeyMorpheEngine.isCancelPhrase("log 10 at 135"))
@@ -1108,12 +1110,60 @@ final class WorkoutSessionTests: XCTestCase {
     func testAppIntentFlagStartsWorkout() {
         UserDefaults.standard.set(true, forKey: "morphe.intent.startWorkout")
         let store = freshStore()
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+        store.acceptTerms()
         store.consumePendingIntentActions()
         XCTAssertTrue(store.isWorkoutSessionActive,
                       "the intent flag starts today's workout")
         XCTAssertEqual(store.selectedClientTab, .train)
         XCTAssertFalse(UserDefaults.standard.bool(forKey: "morphe.intent.startWorkout"),
                        "the flag is consumed, never replayed")
+        store.cancelTrackedWorkoutSession()
+    }
+
+    /// Audit 17, P1: a signed-out Siri ask must not start a live session
+    /// underneath the auth wall — the flag is consumed, nothing runs.
+    func testAppIntentRespectsAuthWall() {
+        UserDefaults.standard.set(true, forKey: "morphe.intent.startWorkout")
+        let store = freshStore()
+        store.authUser = nil
+        store.consumePendingIntentActions()
+        XCTAssertFalse(store.isWorkoutSessionActive,
+                       "no session behind the auth wall")
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: "morphe.intent.startWorkout"),
+                       "the flag is still consumed, never replayed later")
+    }
+
+    /// Audit 17, P1: the follow-up window (no wake word) must never open a
+    /// mutating door — a training partner's "same as last time" in the 6s
+    /// after Morphe speaks must not log a set. With the wake word, the
+    /// same words stay fully functional.
+    func testFollowUpNeverMutatesSessionData() {
+        let store = freshStore()
+        let exercise = store.allExercises.first!
+        store.createCustomWorkout(
+            name: "Denylist Test",
+            sport: .strength,
+            items: [CustomWorkoutItem(exercise: exercise, sets: 3, reps: 8)]
+        )
+        store.startTodayWorkout()
+        XCTAssertTrue(store.isWorkoutSessionActive)
+        let active = store.activeWorkoutExercise!
+
+        store.handleVoiceCommand("log 10 at 135", isFollowUp: true)
+        store.handleVoiceCommand("same as last time", isFollowUp: true)
+        store.handleVoiceCommand("delete last set", isFollowUp: true)
+        store.handleVoiceCommand("finish my workout", isFollowUp: true)
+        XCTAssertEqual(store.completedWorkoutSets[active.id, default: 0], 0,
+                       "no wake word, no logged sets")
+        XCTAssertTrue(store.isWorkoutSessionActive,
+                      "no wake word, no finished session")
+        XCTAssertNil(store.lastVoiceExchange,
+                     "mutations collapse silently in the follow-up window")
+
+        store.handleVoiceCommand("log 10 at 135", isFollowUp: false)
+        XCTAssertEqual(store.completedWorkoutSets[active.id, default: 0], 1,
+                       "the wake word keeps full power")
         store.cancelTrackedWorkoutSession()
     }
 

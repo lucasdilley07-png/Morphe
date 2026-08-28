@@ -1995,18 +1995,14 @@ private struct IntelligenceKeyEditor: View {
                 SecureField("sk-ant-\u{2026}", text: $draftKey)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(MorpheTheme.ink.opacity(0.35))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(MorpheTheme.stroke, lineWidth: 1)
-                            )
-                    )
+                    .textFieldStyle(MorpheFieldStyle())
+                    .onChange(of: draftKey) { _, _ in showSaveError = false }
                 Button {
-                    if store.setIntelligenceKey(draftKey) {
+                    // Cheap shape check (audit 17, P2): a pasted URL or
+                    // OpenAI key "saving" fine and failing on the first
+                    // billed call is the dishonest path.
+                    let trimmed = draftKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmed.hasPrefix("sk-ant-"), store.setIntelligenceKey(trimmed) {
                         draftKey = ""
                         showSaveError = false
                         Haptics.success()
@@ -2021,7 +2017,7 @@ private struct IntelligenceKeyEditor: View {
                 }
                 .disabled(draftKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 if showSaveError {
-                    Text("That key couldn\u{2019}t be saved \u{2014} check it and try again.")
+                    Text("Anthropic keys start with sk-ant- \u{2014} check what you pasted and try again.")
                         .font(.caption)
                         .foregroundStyle(.red)
                 }

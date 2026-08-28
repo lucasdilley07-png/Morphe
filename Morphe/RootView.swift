@@ -1101,6 +1101,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// strip, and the command fires with isFollowUp so the store stays
     /// silent on non-door chatter.
     private var activeIsFollowUp = false
+    /// When the current follow-up capture began — the ceiling that keeps
+    /// continuous background speech from holding the capture (and the
+    /// transcript pill) hostage until the recognizer's stream cap
+    /// (audit 17, P1).
+    private var followUpCaptureStart: Date?
 
     private var suspendedByExternalAudio = false
     /// True from pauseForExternalAudio to resumeAfterExternalAudio even if
@@ -1187,6 +1192,14 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             switch type {
             case .began:
                 if self.state != .off { self.tearDownRecognition() }
+                // A call mid-capture froze the glow and the new transcript
+                // pill on screen for the whole interruption (audit 17,
+                // P2) — demote to passive so the chrome clears.
+                if self.state == .active {
+                    self.state = .passive
+                    self.activeIsFollowUp = false
+                    self.liveTranscript = ""
+                }
             case .ended:
                 // The system says whether resuming is appropriate — a call
                 // that routed audio elsewhere advises against re-grabbing.
@@ -1314,6 +1327,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         quietPollTimer?.invalidate()
         quietPollTimer = nil
         liveTranscript = ""
+        // The follow-up window must not survive a stop (audit 17, P2):
+        // backgrounding inside the 6s and returning would honor a stale
+        // window in a context where no answer was just given.
+        followUpDeadline = nil
+        activeIsFollowUp = false
+        followUpCaptureStart = nil
         tearDownRecognition()
         speakingWatchdog?.invalidate()
         speakingWatchdog = nil
@@ -1515,6 +1534,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
 
     private func standDown() {
         state = .off
+        followUpDeadline = nil
+        activeIsFollowUp = false
+        followUpCaptureStart = nil
         tearDownRecognition()
         SoundEffects.externalAudioOwner = false
         let session = AVAudioSession.sharedInstance()
@@ -1545,13 +1567,36 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
                     // costs nothing.
                     state = .active
                     activeIsFollowUp = true
+                    followUpCaptureStart = Date()
                     liveTranscript = text
                     armCommandTimer(after: 1.4)
                 }
             case .active where activeIsFollowUp:
-                // No wake phrase to re-locate — the whole fresh stream IS
-                // the candidate command.
-                if text != liveTranscript {
+                // A re-wake inside the window must WIN (audit 17, P1):
+                // partials arrive word-by-word, so "hey" enters follow-up
+                // capture before the full phrase can possibly match —
+                // promote to a normal wake the moment it does, chime and
+                // all, or the user says the name and gets played dead.
+                if let command = Self.commandAfterWake(in: text) {
+                    activeIsFollowUp = false
+                    followUpCaptureStart = nil
+                    liveTranscript = command
+                    onWake?()
+                    armCommandTimer(after: command.isEmpty ? 2.5 : 1.4)
+                } else if let began = followUpCaptureStart,
+                          Date().timeIntervalSince(began) > 8
+                            || text.split(separator: " ").count > 12 {
+                    // Ceiling (audit 17, P1): continuous background speech
+                    // re-arms the settle timer forever — the wake path got
+                    // this fix in audit 14; the follow-up path needs its
+                    // own. Collapse silently and go back to scanning.
+                    commandTimer?.invalidate()
+                    commandTimer = nil
+                    liveTranscript = ""
+                    activeIsFollowUp = false
+                    followUpCaptureStart = nil
+                    state = .passive
+                } else if text != liveTranscript {
                     liveTranscript = text
                     armCommandTimer(after: 1.4)
                 }
@@ -1647,8 +1692,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     static func isCancelPhrase(_ text: String) -> Bool {
         let cleaned = text.lowercased()
             .trimmingCharacters(in: .punctuationCharacters.union(.whitespaces))
+        // No bare "stop" (audit 17, P2): mid-rest, "Hey Morphe, stop" is
+        // a real ask — swallowing it silently left the timer running.
         return ["never mind", "nevermind", "cancel", "cancel that",
-                "forget it", "nothing", "no thanks", "stop"].contains(cleaned)
+                "forget it", "nothing", "no thanks"].contains(cleaned)
     }
 
     private func scheduleRestart() {

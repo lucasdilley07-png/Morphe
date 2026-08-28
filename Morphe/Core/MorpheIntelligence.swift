@@ -39,7 +39,11 @@ enum MorpheIntelligence {
         let key = (status == errSecSuccess)
             ? (item as? Data).flatMap { String(data: $0, encoding: .utf8) }
             : nil
-        cachedKey = .some(key)
+        // Only cache the negative on a definitive miss (audit 17, P3):
+        // a transient Keychain error must not read as "no key" all launch.
+        if status == errSecSuccess || status == errSecItemNotFound {
+            cachedKey = .some(key)
+        }
         return key
     }
 
@@ -87,6 +91,8 @@ enum MorpheIntelligence {
         case network
         case declined
         case malformed
+        case badRequest
+        case ranLong
 
         var errorDescription: String? {
             switch self {
@@ -96,15 +102,18 @@ enum MorpheIntelligence {
             case .network: return "I couldn't reach Claude — check your connection."
             case .declined: return "Claude declined to answer that one."
             case .malformed: return "Claude sent something I couldn't read."
+            case .badRequest: return "Something went wrong on my end — try rephrasing that."
+            case .ranLong: return "That one ran long — try asking it more simply."
             }
         }
     }
 
     /// Error-absorbing wrapper for the store: every failure becomes an
     /// honest, speakable line instead of a thrown error.
-    static func safeReply(system: String, turns: [Turn], apiKey: String) async -> String {
+    static func safeReply(system: String, turns: [Turn], apiKey: String,
+                          timeout: TimeInterval = 30) async -> String {
         do {
-            return try await reply(system: system, turns: turns, apiKey: apiKey)
+            return try await reply(system: system, turns: turns, apiKey: apiKey, timeout: timeout)
         } catch {
             return (error as? IntelligenceError)?.errorDescription
                 ?? "I hit a snag reaching Claude \u{2014} try again in a moment."
@@ -116,10 +125,11 @@ enum MorpheIntelligence {
     /// One non-streaming Messages API request. Replies are deliberately
     /// short (voice-first: the system prompt caps spoken length), so a
     /// single response body beats streaming complexity here.
-    static func reply(system: String, turns: [Turn], apiKey: String) async throws -> String {
+    static func reply(system: String, turns: [Turn], apiKey: String,
+                      timeout: TimeInterval = 30) async throws -> String {
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
         request.httpMethod = "POST"
-        request.timeoutInterval = 30
+        request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
@@ -133,9 +143,14 @@ enum MorpheIntelligence {
         }
         guard messages.first?["role"] as? String == "user" else { throw IntelligenceError.malformed }
 
+        // max_tokens caps thinking + visible text TOGETHER on this model
+        // (audit 17, P1): 700 let adaptive thinking eat the whole budget
+        // and the truncated reply surfaced as a false "couldn't read"
+        // error. The brevity contract lives in the system prompt, not the
+        // token cap.
         let body: [String: Any] = [
             "model": "claude-opus-5",
-            "max_tokens": 700,
+            "max_tokens": 4000,
             "system": system,
             "output_config": ["effort": "low"],
             "messages": messages
@@ -155,7 +170,7 @@ enum MorpheIntelligence {
         case 401, 403: throw IntelligenceError.badKey
         case 429: throw IntelligenceError.rateLimited
         case 500...: throw IntelligenceError.overloaded
-        default: throw IntelligenceError.malformed
+        default: throw IntelligenceError.badRequest
         }
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
@@ -174,6 +189,11 @@ enum MorpheIntelligence {
             .compactMap { $0["text"] as? String }
             .joined(separator: "\n")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        if json["stop_reason"] as? String == "max_tokens", text.isEmpty {
+            // The whole budget went to thinking — an honest "ran long"
+            // beats blaming the response format (audit 17, P1).
+            throw IntelligenceError.ranLong
+        }
         guard !text.isEmpty else { throw IntelligenceError.malformed }
         return text
     }

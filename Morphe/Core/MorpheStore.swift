@@ -1080,6 +1080,8 @@ final class MorpheAppStore {
         // them. Back to the seeded greeting, same as a fresh chat.
         athleteAIAgentConversation = [athleteAIAgentConversation.first].compactMap { $0 }
         coachAIAgentConversation = [coachAIAgentConversation.first].compactMap { $0 }
+        // …including a Claude reply still in flight (audit 17, P1).
+        intelligenceEpoch += 1
         // The rest of the fetched social/coach state follows the same
         // "another account must never see it" rule.
         myReactionTypes = [:]
@@ -8210,7 +8212,12 @@ final class MorpheAppStore {
 
     /// Published mirror of the Keychain state so Settings and the router
     /// observe changes without hitting the Keychain per command.
-    var intelligenceEnabled = MorpheIntelligence.isEnabled
+    var intelligenceEnabled = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+        && MorpheIntelligence.isEnabled
+    /// Bumped whenever conversations reset (sign-out, new chat) — an
+    /// in-flight Claude reply from a previous epoch is dropped instead of
+    /// leaking the old account's context into the new one (audit 17, P1).
+    private var intelligenceEpoch = 0
 
     @discardableResult
     func setIntelligenceKey(_ key: String) -> Bool {
@@ -8227,19 +8234,25 @@ final class MorpheAppStore {
     /// Everything Claude needs to answer like Morphe: identity, honesty
     /// rules, and the live training context. Spoken replies get a hard
     /// brevity contract — the answer is read aloud on a gym floor.
-    func intelligenceSystemPrompt(spoken: Bool) -> String {
+    func intelligenceSystemPrompt(spoken: Bool, forCoach: Bool) -> String {
         var lines: [String] = []
-        lines.append("You are Morphe, an honest personal training coach inside the Morphe iOS app. Brand: TRAIN HONEST — never inflate, never flatter, never invent logged numbers. If you don't know a number, say so.")
-        lines.append("The user is \(clientProfile.name.isEmpty ? "the athlete" : clientProfile.name). Weight unit: \(weightUnit == .kilograms ? "kilograms" : "pounds").")
-        if isWorkoutSessionActive {
-            var session = "They are mid-workout right now: \(currentWorkout.name)."
-            if let exercise = activeWorkoutExercise {
-                let done = completedWorkoutSets[exercise.id, default: 0]
-                session += " Current exercise: \(exercise.name), \(done) of \(Self.watchSetCount(exercise.sets)) sets done."
-            }
-            lines.append(session)
+        lines.append("You are Morphe, an honest personal training assistant inside the Morphe iOS app. Brand: TRAIN HONEST — never inflate, never flatter, never invent logged numbers. If you don't know a number, say so.")
+        if forCoach {
+            // The coach is a COACH (audit 17, P1): the athlete persona
+            // here had Claude addressing a trainer as their own client.
+            lines.append("The user is \(coachProfile.name.isEmpty ? "a coach" : coachProfile.name), a fitness coach managing their clients in Morphe. Answer as a peer assistant for coaching and programming questions.")
         } else {
-            lines.append("Today's planned workout: \(currentWorkout.name).")
+            lines.append("The user is \(clientProfile.name.isEmpty ? "the athlete" : clientProfile.name). Weight unit: \(weightUnit == .kilograms ? "kilograms" : "pounds").")
+            if isWorkoutSessionActive {
+                var session = "They are mid-workout right now: \(currentWorkout.name)."
+                if let exercise = activeWorkoutExercise {
+                    let done = completedWorkoutSets[exercise.id, default: 0]
+                    session += " Current exercise: \(exercise.name), \(done) of \(Self.watchSetCount(exercise.sets)) sets done."
+                }
+                lines.append(session)
+            } else {
+                lines.append("Today's planned workout: \(currentWorkout.name).")
+            }
         }
         lines.append("Plain text only — no markdown, no lists, no headings.")
         if spoken {
@@ -8260,11 +8273,23 @@ final class MorpheAppStore {
     /// placeholder into the thread and replace it in place when Claude
     /// answers (or fails, honestly).
     private func requestIntelligenceChatReply(forCoach coach: Bool) {
-        guard let key = MorpheIntelligence.apiKey else { return }
+        guard let key = MorpheIntelligence.apiKey else {
+            // Keychain drift left the flag on with no key — answer with
+            // the built-in brain instead of a dead-ended message
+            // (audit 17, P3).
+            intelligenceEnabled = false
+            guard let prompt = (coach ? coachAIAgentConversation : athleteAIAgentConversation)
+                .last(where: { $0.sender == .user })?.text else { return }
+            let reply = coach ? coachAgentReply(to: prompt) : athleteAgentReply(to: prompt)
+            let message = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now")
+            if coach { coachAIAgentConversation.append(message) }
+            else { athleteAIAgentConversation.append(message) }
+            return
+        }
         let placeholder = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "\u{2026}", timestamp: "Now")
         if coach { coachAIAgentConversation.append(placeholder) }
         else { athleteAIAgentConversation.append(placeholder) }
-        let system = intelligenceSystemPrompt(spoken: false)
+        let system = intelligenceSystemPrompt(spoken: false, forCoach: coach)
         let turns = intelligenceTurns(from: coach ? coachAIAgentConversation : athleteAIAgentConversation)
         Task { [weak self] in
             let answer = await MorpheIntelligence.safeReply(system: system, turns: turns, apiKey: key)
@@ -8299,11 +8324,16 @@ final class MorpheAppStore {
         else { athleteAIAgentConversation.append(userMessage) }
         lastVoiceExchange = (heard: raw, answer: "Thinking\u{2026}")
         voiceExchangeClearTask?.cancel()
-        let system = intelligenceSystemPrompt(spoken: true)
+        let system = intelligenceSystemPrompt(spoken: true, forCoach: coach)
         let turns = intelligenceTurns(from: coach ? coachAIAgentConversation : athleteAIAgentConversation)
+        let epoch = intelligenceEpoch
         Task { [weak self] in
-            let answer = await MorpheIntelligence.safeReply(system: system, turns: turns, apiKey: key)
-            guard let self else { return }
+            // Voice waits eyes-free with the mic down — a 12s cap keeps a
+            // stalled network from deadening the wake word for 30s
+            // (audit 17, P2). Chat keeps the longer window.
+            let answer = await MorpheIntelligence.safeReply(
+                system: system, turns: turns, apiKey: key, timeout: 12)
+            guard let self, self.intelligenceEpoch == epoch else { return }
             let aiMessage = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: answer, timestamp: "Now")
             if coach { self.coachAIAgentConversation.append(aiMessage) }
             else { self.athleteAIAgentConversation.append(aiMessage) }
@@ -8317,10 +8347,18 @@ final class MorpheAppStore {
     /// flag; the app consumes it on foreground (cold launch included).
     func consumePendingIntentActions() {
         guard UserDefaults.standard.bool(forKey: "morphe.intent.startWorkout") else { return }
+        // Consumed even when gated (deliberate): a workout silently
+        // starting minutes after onboarding would be worse than dropping
+        // the ask.
         UserDefaults.standard.set(false, forKey: "morphe.intent.startWorkout")
-        guard hasCompletedOnboarding, !needsTermsAcceptance else { return }
+        // Same shell gate as the voice engine (audit 17, P1): a signed-out
+        // Siri ask must not start a live session under the auth wall.
+        guard hasCompletedOnboarding, !needsTermsAcceptance,
+              (!FeatureFlags.accountsEnabled || authUser != nil) else { return }
         showTrainTab()
-        if !isWorkoutSessionActive { startTodayWorkout() }
+        // Coach mode shows the coach workspace — starting an invisible
+        // athlete session underneath it would be dishonest (audit 17, P2).
+        if selectedRole == .client, !isWorkoutSessionActive { startTodayWorkout() }
     }
 
     func previewAIAgentReply(for text: String) -> String {
@@ -9003,9 +9041,22 @@ final class MorpheAppStore {
     /// a key in Settings; otherwise the built-in coaching reply runs,
     /// exactly as before.
     func handleVoiceCommand(_ raw: String, isFollowUp: Bool) {
+        if isFollowUp, Self.isMutatingVoiceCommand(raw) {
+            // Mutations require the wake word (audit 17, P1): the
+            // follow-up window with the full door set reopened the exact
+            // ambient-speech hole audit 16 closed — a training partner's
+            // "just do the same as last time" must never log a set. The
+            // check runs BEFORE the doors because doors have side effects.
+            lastVoiceExchange = nil
+            heyMorphe.speak("")
+            return
+        }
         let doorReply = routeVoiceCommandDoors(raw)
         if doorReply == nil, isFollowUp {
-            // Silence — and speak("") hands the mic straight back.
+            // Silence — clear any lingering chip so the old exchange
+            // doesn't flash back (audit 17, P2), and speak("") hands the
+            // mic straight back.
+            lastVoiceExchange = nil
             heyMorphe.speak("")
             return
         }
@@ -9141,6 +9192,22 @@ final class MorpheAppStore {
         }
 
         return nil
+    }
+
+    /// The doors a follow-up (no wake word) may NOT open: anything that
+    /// writes or ends session data. Navigation, rest control, and honest
+    /// questions stay allowed — logging, undoing, and finishing require
+    /// the wake word (audit 17, P1).
+    nonisolated static func isMutatingVoiceCommand(_ raw: String) -> Bool {
+        let text = raw.lowercased()
+        if parseLiveSetUtterance(raw) != nil { return true }
+        let patterns = [
+            "same as last time", "extra set", "delete last set",
+            "\\bundo\\b", "scratch that", "\\bfinish\\b", "\\blog\\b"
+        ]
+        return patterns.contains {
+            text.range(of: $0, options: .regularExpression) != nil
+        }
     }
 
     // MARK: - Session voice layer (Lucas 2026-08-27)
@@ -14282,6 +14349,9 @@ final class MorpheAppStore {
     /// New chat (AI sheet toolbar): back to the seeded greeting. The old
     /// transcript isn't history worth keeping — it's a rule-based session.
     func resetAIAgentConversation() {
+        // Drop any Claude reply still in flight (audit 17, P1) — a "new
+        // chat" must not receive the old chat's answer.
+        intelligenceEpoch += 1
         if selectedRole == .coach {
             coachAIAgentConversation = [coachAIAgentConversation.first].compactMap { $0 }
         } else {
