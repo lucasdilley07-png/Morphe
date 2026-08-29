@@ -790,27 +790,16 @@ struct WorkoutView: View {
                     )
                 }
 
-                // Structured programs: the weeks × sessions arc, below the
-                // day's session. Post-finish it stays out of the way — the
-                // recap owns that moment.
-                if !store.hasCompletedWorkoutFlow {
+                // A RUNNING program's arc stays here — it's your plan
+                // in flight. Browsing Morphe's programs moved to Discover
+                // with the rest of the catalog (Lucas 2026-08-28), and My
+                // Library takes this slot: your own workouts outrank the
+                // storefront on Train.
+                if !store.hasCompletedWorkoutFlow, store.programProgress != nil {
                     ProgramSectionCard()
                 }
 
-                // Post-finish, the review flow owns the screen (audit D3):
-                // the library/adjust/form disclosures come back the moment
-                // the session is logged or discarded. Nothing is deleted.
                 if !store.hasCompletedWorkoutFlow {
-                if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
-                    PartnerSessionCard(
-                        partner: partner,
-                        mode: store.selectedPartnerWorkoutMode,
-                        plan: plan
-                    ) {
-                        store.sendPartnerReadyCheck()
-                    }
-                }
-
                 TrainExpandableSection(
                     title: "My Library",
                     subtitle: "Build your own workouts and keep favorites and saved sessions in one place.",
@@ -886,6 +875,21 @@ struct WorkoutView: View {
                     }
                 }
                 .id("myLibrary")
+                }
+
+                // Post-finish, the review flow owns the screen (audit D3):
+                // the library/adjust/form disclosures come back the moment
+                // the session is logged or discarded. Nothing is deleted.
+                if !store.hasCompletedWorkoutFlow {
+                if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
+                    PartnerSessionCard(
+                        partner: partner,
+                        mode: store.selectedPartnerWorkoutMode,
+                        plan: plan
+                    ) {
+                        store.sendPartnerReadyCheck()
+                    }
+                }
 
                 TrainExpandableSection(
                     title: "Exercise list",
@@ -1109,6 +1113,7 @@ struct WorkoutView: View {
 /// workout here drops straight into the live tracker on Train.
 struct DiscoverScreenView: View {
     @Environment(MorpheAppStore.self) private var store
+    @State private var showPrograms = false
 
     var body: some View {
         // The stack exists for the category drill-in: a real push with
@@ -1130,6 +1135,18 @@ struct DiscoverScreenView: View {
                             store.startCatalogWorkout(template)
                         }
                     )
+
+                    // Morphe's programs live with the rest of the catalog
+                    // now (Lucas 2026-08-28) — collapsed by default so the
+                    // workout grid keeps the spotlight. The card shows your
+                    // active program's arc here too if one is running.
+                    TrainExpandableSection(
+                        title: "Programs",
+                        subtitle: "Multi-week plans — sessions in order, progression built in, one deload before the end.",
+                        isExpanded: $showPrograms
+                    ) {
+                        ProgramSectionCard()
+                    }
                 }
                 .padding(.horizontal, 20)
                 // First-class tab now (audit 15, P2): 6pt was the pager-era

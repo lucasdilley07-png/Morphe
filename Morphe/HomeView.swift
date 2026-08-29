@@ -336,6 +336,43 @@ struct HomeView: View {
                     }
                 }
 
+                // Schedule (and Coach when linked) leads the planning
+                // half of Today (Lucas 2026-08-28): what's booked outranks
+                // the what-if tools below.
+                // REAL coach messaging: only exists once a coach link is real
+                // (the athlete claimed an invite and a thread exists). An
+                // athlete without a coach never sees a Coach card at all.
+                // When Coach and Schedule are BOTH present they share one
+                // slim two-column row so Today doesn't end in a stack of
+                // look-alike link-cards.
+                if store.liveThreads.isEmpty {
+                    scheduleLinkCard
+                } else {
+                    HStack(alignment: .top, spacing: 12) {
+                        HomeLinkTile(
+                            systemImage: "bubble.left.and.bubble.right.fill",
+                            title: "Coach",
+                            detail: coachTileDetail,
+                            detailIsMuted: coachTileDetailIsMuted,
+                            accessibilityLabel: "Coach messages"
+                        ) {
+                            // Deep-link into the one messaging surface —
+                            // Network → Contact auto-opens a lone thread.
+                            store.openCommunity(.contact)
+                        }
+
+                        HomeLinkTile(
+                            systemImage: "calendar.badge.clock",
+                            title: "Schedule",
+                            detail: scheduleTileDetail,
+                            detailIsMuted: store.upcomingAppointments.isEmpty,
+                            accessibilityLabel: "Schedule"
+                        ) {
+                            showAppointments = true
+                        }
+                    }
+                }
+
                 if store.todayExperienceTier >= 1 || store.minimumWinModeEnabled {
                 HomeExpandableSection(
                     title: "If plans change",
@@ -413,39 +450,6 @@ struct HomeView: View {
                 }
                 }
 
-                // REAL coach messaging: only exists once a coach link is real
-                // (the athlete claimed an invite and a thread exists). An
-                // athlete without a coach never sees a Coach card at all.
-                // When Coach and Schedule are BOTH present they share one
-                // slim two-column row so Today doesn't end in a stack of
-                // look-alike link-cards.
-                if store.liveThreads.isEmpty {
-                    scheduleLinkCard
-                } else {
-                    HStack(alignment: .top, spacing: 12) {
-                        HomeLinkTile(
-                            systemImage: "bubble.left.and.bubble.right.fill",
-                            title: "Coach",
-                            detail: coachTileDetail,
-                            detailIsMuted: coachTileDetailIsMuted,
-                            accessibilityLabel: "Coach messages"
-                        ) {
-                            // Deep-link into the one messaging surface —
-                            // Network → Contact auto-opens a lone thread.
-                            store.openCommunity(.contact)
-                        }
-
-                        HomeLinkTile(
-                            systemImage: "calendar.badge.clock",
-                            title: "Schedule",
-                            detail: scheduleTileDetail,
-                            detailIsMuted: store.upcomingAppointments.isEmpty,
-                            accessibilityLabel: "Schedule"
-                        ) {
-                            showAppointments = true
-                        }
-                    }
-                }
             }
             .padding(.horizontal, 20)
             // Starts clearly BELOW the floating profile icon, matching where
