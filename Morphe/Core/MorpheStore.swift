@@ -298,8 +298,109 @@ final class MorpheAppStore {
         Task { await flushLogBackupNow() }
     }
 
+    // MARK: - Post-workout debrief (Lucas 2026-08-28)
+    //
+    // The pop-up right after a session finishes: intensity, a 0-10 score,
+    // and what to change next time. Answers persist locally, push to the
+    // user's backend profile, and feed the insight engine — the user's
+    // own verdicts beat canned tips.
+
+    private static let debriefsKey = "morphe.workout.debriefs"
+    private static let debriefSyncPendingKey = "morphe.workout.debriefs.pending"
+
+    private(set) var workoutDebriefs: [WorkoutDebrief] = {
+        guard let data = UserDefaults.standard.data(forKey: MorpheAppStore.debriefsKey),
+              let decoded = try? JSONDecoder().decode([WorkoutDebrief].self, from: data) else { return [] }
+        return decoded
+    }()
+
+    /// Raised by finishTrackedWorkoutSession; the Train page presents the
+    /// debrief sheet while true.
+    var showWorkoutDebrief = false
+    /// The session the pop-up is about — captured at finish so a plan
+    /// switch during the recap can't relabel the answers.
+    private(set) var debriefContext: (templateID: UUID?, title: String)?
+
+    func submitWorkoutDebrief(intensity: WorkoutIntensity, rating: Int, changeRequest: String) {
+        let debrief = WorkoutDebrief(
+            completedAt: .now,
+            workoutTemplateID: debriefContext?.templateID,
+            workoutTitle: debriefContext?.title ?? currentWorkout.name,
+            intensity: intensity,
+            rating: min(max(rating, 0), 10),
+            changeRequest: changeRequest.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        workoutDebriefs.append(debrief)
+        if workoutDebriefs.count > 200 { workoutDebriefs.removeFirst(workoutDebriefs.count - 200) }
+        persistWorkoutDebriefs()
+        showWorkoutDebrief = false
+        debriefContext = nil
+        Haptics.success()
+        showToast("Noted — this shapes tomorrow's suggestions.")
+        pushDebrief(debrief)
+    }
+
+    func skipWorkoutDebrief() {
+        showWorkoutDebrief = false
+        debriefContext = nil
+    }
+
+    private func persistWorkoutDebriefs() {
+        if let data = try? JSONEncoder().encode(workoutDebriefs) {
+            UserDefaults.standard.set(data, forKey: Self.debriefsKey)
+        }
+    }
+
+    /// Debrief ids whose backend push hasn't landed yet — retried on the
+    /// log-backup cadence so a gym dead zone can't lose an answer.
+    private var pendingDebriefSyncIDs: Set<String> =
+        Set(UserDefaults.standard.stringArray(forKey: MorpheAppStore.debriefSyncPendingKey) ?? [])
+
+    private func persistPendingDebriefSyncIDs() {
+        UserDefaults.standard.set(Array(pendingDebriefSyncIDs), forKey: Self.debriefSyncPendingKey)
+    }
+
+    private func pushDebrief(_ debrief: WorkoutDebrief) {
+        guard let uid = authUser?.id else { return }
+        pendingDebriefSyncIDs.insert(debrief.id.uuidString)
+        persistPendingDebriefSyncIDs()
+        Task { [weak self] in
+            let ok = await self?.debriefService.push(uid: uid, debrief: debrief) ?? false
+            guard let self, ok else { return }
+            self.pendingDebriefSyncIDs.remove(debrief.id.uuidString)
+            self.persistPendingDebriefSyncIDs()
+        }
+    }
+
+    /// Re-pushes any debrief whose backend write failed. Runs with the
+    /// log-backup flush (backgrounding, Back Up Now).
+    func flushPendingDebriefs() async {
+        guard let uid = authUser?.id, !pendingDebriefSyncIDs.isEmpty else { return }
+        for debrief in workoutDebriefs where pendingDebriefSyncIDs.contains(debrief.id.uuidString) {
+            if await debriefService.push(uid: uid, debrief: debrief) {
+                pendingDebriefSyncIDs.remove(debrief.id.uuidString)
+            }
+        }
+        persistPendingDebriefSyncIDs()
+    }
+
+    /// The freshest debrief young enough to shape today (≤ 4 days).
+    var latestRecentDebrief: WorkoutDebrief? {
+        guard let last = workoutDebriefs.last else { return nil }
+        return last.completedAt > Calendar.current.date(byAdding: .day, value: -4, to: .now)! ? last : nil
+    }
+
+    /// Mean 0-10 score the user has given this template. Nil until rated.
+    func averageDebriefRating(forTemplate templateID: UUID?) -> Double? {
+        guard let templateID else { return nil }
+        let ratings = workoutDebriefs.filter { $0.workoutTemplateID == templateID }.map(\.rating)
+        guard !ratings.isEmpty else { return nil }
+        return Double(ratings.reduce(0, +)) / Double(ratings.count)
+    }
+
     func flushLogBackupNow() async {
         guard hasCompletedOnboarding else { return }
+        await flushPendingDebriefs()
         let logs = workoutLogs
         if let data = try? JSONEncoder().encode(logs) {
             logBackupNearLimit = data.count > 800_000
@@ -462,6 +563,7 @@ final class MorpheAppStore {
     /// Cloud backup for profile + logs. Real app injects `FirebaseCloudBackup`;
     /// the no-op default keeps the store offline-only for tests/previews.
     private let cloudBackup: CloudBackingUp
+    private var debriefService: DebriefSyncing = NoOpDebriefService()
     /// Train Together sessions. Real app injects `FirebasePartyService`; the
     /// no-op default keeps tests/previews off the network.
     private let partyService: WorkoutPartying
@@ -720,7 +822,8 @@ final class MorpheAppStore {
          messagingService: MessagingSyncing? = nil,
          feedService: FeedSyncing? = nil,
          telemetryService: TelemetrySyncing? = nil,
-         referralService: ReferralSyncing? = nil) {
+         referralService: ReferralSyncing? = nil,
+         debriefService: DebriefSyncing? = nil) {
         // Tests build a second store to simulate a relaunch — land the live
         // store's pending coalesced writes before this instance reads the files.
         Self.mostRecentInstance?.flushPendingPersists()
@@ -757,6 +860,11 @@ final class MorpheAppStore {
             ?? (partyService is FirebasePartyService
                 ? FirebaseTelemetryService()
                 : NoOpTelemetryService())
+        // And for post-workout debriefs (users/{uid}/debriefs).
+        self.debriefService = debriefService
+            ?? (partyService is FirebasePartyService
+                ? FirebaseDebriefService()
+                : NoOpDebriefService())
         // And for referral receipts (the recruiter-visible join ledger).
         self.referralService = referralService
             ?? (partyService is FirebasePartyService
@@ -6938,7 +7046,10 @@ final class MorpheAppStore {
         publishPartyProgress()
         Haptics.success()
         SoundEffects.play(.star)
-        showToast("Session finished. Add feedback before logging it.")
+        // The debrief pop-up (Lucas 2026-08-28): three questions while the
+        // session is still fresh, before the recap scroll.
+        debriefContext = (currentWorkout.id, currentWorkout.name)
+        showWorkoutDebrief = true
         return true
     }
 
@@ -8710,7 +8821,8 @@ final class MorpheAppStore {
             completionCount: insight.completionCount,
             lastCompletedAt: insight.lastCompletedAt,
             lastSource: insight.lastSource,
-            hasBuddyCompletion: insight.buddyCompletionCount > 0
+            hasBuddyCompletion: insight.buddyCompletionCount > 0,
+            averageDebriefRating: averageDebriefRating(forTemplate: item.workoutTemplateID)
         )
     }
 
@@ -12377,6 +12489,31 @@ final class MorpheAppStore {
     /// The Today-flavored insight: the actual planned session + the real
     /// check-in when one exists; the rotating generic tip only before data.
     var derivedTodayInsight: AIInsight {
+        // No check-in yet, but a fresh debrief exists — the user's own
+        // scored verdict beats the canned fallback (Lucas 2026-08-28).
+        if !didCompleteQuickCheckIn, let debrief = latestRecentDebrief {
+            var lines = ["You scored \(debrief.workoutTitle) \(debrief.rating)/10 at \(debrief.intensity.label.lowercased()) intensity."]
+            if debrief.rating >= 8 {
+                lines.append("Keep the recipe — that session earned its spot.")
+            } else if debrief.rating <= 4 {
+                lines.append("That one missed — change the plan or the load today, not the habit.")
+            }
+            if debrief.intensity == .allOut {
+                lines.append("Yesterday was all-out; leave a rep in the tank today.")
+            }
+            if !debrief.changeRequest.isEmpty {
+                lines.append("You asked for: \u{201C}\(debrief.changeRequest)\u{201D} — build it in from My Library.")
+            }
+            return AIInsight(
+                title: "From your last session",
+                summary: lines.joined(separator: " "),
+                risk: debrief.rating <= 4 || debrief.intensity == .allOut ? .medium : .low,
+                recommendation: debrief.changeRequest.isEmpty
+                    ? "Your debrief shapes today's suggestion."
+                    : "Your requested change is one tap away in Train.",
+                suggestedAction: "Start today's workout"
+            )
+        }
         guard didCompleteQuickCheckIn else { return clientProfile.aiTodayInsight }
         return AIInsight(
             title: "Today, from your check-in",

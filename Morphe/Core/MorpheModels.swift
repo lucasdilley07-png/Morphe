@@ -918,6 +918,46 @@ struct SavedWorkoutLibraryInsight: Hashable {
     var lastCompletedAt: Date?
     var lastSource: WorkoutLogSource?
     var hasBuddyCompletion: Bool
+    /// Mean of this workout's post-session debrief scores (nil = never
+    /// debriefed) — the user's own 0-10 verdicts, shown in the library.
+    var averageDebriefRating: Double? = nil
+}
+
+// MARK: - Post-workout debrief (Lucas 2026-08-28)
+//
+// Three questions in a pop-up the moment a session finishes: intensity,
+// a 0-10 score, and what to change next time. Saved locally and to the
+// user's backend profile (users/{uid}/debriefs) so the insight engine
+// personalizes from the user's OWN verdicts instead of canned tips.
+
+enum WorkoutIntensity: String, Codable, CaseIterable, Identifiable {
+    case light
+    case steady
+    case hard
+    case allOut
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .light: return "Light"
+        case .steady: return "Steady"
+        case .hard: return "Hard"
+        case .allOut: return "All-out"
+        }
+    }
+}
+
+struct WorkoutDebrief: Identifiable, Codable, Hashable {
+    var id = UUID()
+    var completedAt: Date
+    var workoutTemplateID: UUID?
+    var workoutTitle: String
+    var intensity: WorkoutIntensity
+    /// The user's score for the session, 0...10.
+    var rating: Int
+    /// "Change or add anything?" — empty string means nothing asked.
+    var changeRequest: String
 }
 
 struct GoodForTodayWorkoutRecommendation: Hashable {

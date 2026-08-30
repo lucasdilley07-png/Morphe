@@ -135,6 +135,44 @@ final class FirebaseVerificationService: VerificationSyncing {
     }
 }
 
+// MARK: - Post-workout debriefs (Lucas 2026-08-28)
+//
+// One small doc per debrief under the user's own profile:
+//   users/{uid}/debriefs/{debriefID}
+// Write-only from the client; the store retries failed pushes on the
+// same cadence as the log backup.
+
+protocol DebriefSyncing {
+    func push(uid: String, debrief: WorkoutDebrief) async -> Bool
+}
+
+final class NoOpDebriefService: DebriefSyncing {
+    func push(uid: String, debrief: WorkoutDebrief) async -> Bool { false }
+}
+
+final class FirebaseDebriefService: DebriefSyncing {
+    private var db: Firestore { Firestore.firestore() }
+
+    func push(uid: String, debrief: WorkoutDebrief) async -> Bool {
+        do {
+            try await db.collection("users").document(uid)
+                .collection("debriefs").document(debrief.id.uuidString)
+                .setData([
+                    "workoutTitle": debrief.workoutTitle,
+                    "workoutTemplateID": debrief.workoutTemplateID?.uuidString ?? "",
+                    "intensity": debrief.intensity.rawValue,
+                    "rating": debrief.rating,
+                    "changeRequest": debrief.changeRequest,
+                    "completedAt": Timestamp(date: debrief.completedAt),
+                    "updatedAt": FieldValue.serverTimestamp()
+                ])
+            return true
+        } catch {
+            return false
+        }
+    }
+}
+
 // MARK: - Coach-managed client handoff
 //
 // A coach creates a client profile before that person has a Morphe account,

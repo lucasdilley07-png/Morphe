@@ -139,6 +139,17 @@ struct WorkoutView: View {
             }
         )
         .background(
+            // The post-workout debrief pop-up (Lucas 2026-08-28) — rises
+            // the moment the session finishes, before the recap scroll.
+            EmptyView().sheet(isPresented: $store.showWorkoutDebrief, onDismiss: {
+                store.skipWorkoutDebrief()
+            }) {
+                WorkoutDebriefSheet()
+                    .environment(store)
+                    .presentationDetents([.medium, .large])
+            }
+        )
+        .background(
             EmptyView().sheet(isPresented: $showAddExercise) {
                 AddExerciseToSessionSheet()
                     .environment(store)
@@ -1220,6 +1231,114 @@ private struct WorkoutCompleteCard: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The three-question debrief pop-up (Lucas 2026-08-28): intensity, a
+/// 0-10 score, and what to change next time — answered while the session
+/// is still fresh. Saving persists locally, pushes to the user's backend
+/// profile, and feeds tomorrow's suggestions; skipping costs nothing.
+private struct WorkoutDebriefSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var intensity: WorkoutIntensity?
+    @State private var rating: Double = 7
+    @State private var changeText = ""
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("How was it?")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text("Thirty seconds now, a sharper plan tomorrow \u{2014} your answers shape what Morphe suggests.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Intensity")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        HStack(spacing: 8) {
+                            ForEach(WorkoutIntensity.allCases) { option in
+                                Button {
+                                    intensity = option
+                                    Haptics.selection()
+                                } label: {
+                                    Text(option.label)
+                                        .font(.caption.weight(.semibold))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .fill(intensity == option
+                                                      ? MorpheTheme.brandYellow
+                                                      : MorpheTheme.panelStrong.opacity(0.6))
+                                        )
+                                        .foregroundStyle(intensity == option ? .black : MorpheTheme.textPrimary)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("\(option.label) intensity")
+                                .accessibilityAddTraits(intensity == option ? .isSelected : [])
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Score the session")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Spacer()
+                            Text("\(Int(rating))/10")
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(MorpheTheme.accentText)
+                                .contentTransition(.numericText())
+                        }
+                        Slider(value: $rating, in: 0...10, step: 1)
+                            .tint(MorpheTheme.accent)
+                            .onChange(of: rating) { _, _ in Haptics.selection() }
+                            .accessibilityLabel("Session score")
+                            .accessibilityValue("\(Int(rating)) out of 10")
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Change or add anything next time?")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        TextField("Optional \u{2014} \u{201C}more back work\u{201D}, \u{201C}shorter rests\u{201D}\u{2026}", text: $changeText, axis: .vertical)
+                            .textFieldStyle(MorpheFieldStyle())
+                            .lineLimit(2...4)
+                    }
+
+                    Button {
+                        store.submitWorkoutDebrief(
+                            intensity: intensity ?? .steady,
+                            rating: Int(rating),
+                            changeRequest: changeText
+                        )
+                    } label: {
+                        Text("Save")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(intensity == nil)
+                    .accessibilityLabel("Save debrief")
+
+                    Button("Skip") {
+                        store.skipWorkoutDebrief()
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(20)
+            }
+            .background(MorpheTheme.ink.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
+        }
     }
 }
 
@@ -6168,6 +6287,11 @@ private struct SavedWorkoutsLibraryCard: View {
             badges.append(.init(title: completionTitle, color: MorpheTheme.accent))
         }
 
+        if let rating = insight.averageDebriefRating {
+            // The user's own post-session scores for this workout.
+            badges.append(.init(title: String(format: "Rated %.1f/10", rating), color: MorpheTheme.accentText))
+        }
+
         if insight.hasBuddyCompletion {
             badges.append(.init(title: "Buddy favorite", color: MorpheTheme.warning))
         }
@@ -6268,6 +6392,11 @@ private struct ShortcutWorkoutSection: View {
                 ? "\(insight.completionCount)x finished"
                 : "Completed"
             badges.append(.init(title: completionTitle, color: MorpheTheme.accent))
+        }
+
+        if let rating = insight.averageDebriefRating {
+            // The user's own post-session scores for this workout.
+            badges.append(.init(title: String(format: "Rated %.1f/10", rating), color: MorpheTheme.accentText))
         }
 
         if insight.hasBuddyCompletion {

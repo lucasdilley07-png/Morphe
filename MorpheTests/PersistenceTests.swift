@@ -1167,6 +1167,68 @@ final class WorkoutSessionTests: XCTestCase {
         store.cancelTrackedWorkoutSession()
     }
 
+    /// Debrief wave (Lucas 2026-08-28): the pop-up rises at finish, a
+    /// saved answer persists + feeds personalization, and a skip costs
+    /// nothing. Defaults are scrubbed so no other test inherits a verdict.
+    func testWorkoutDebriefFlowSavesAndPersonalizes() {
+        defer {
+            UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs")
+            UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs.pending")
+        }
+        UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs")
+        let store = freshStore()
+        let exercise = store.allExercises.first!
+        store.createCustomWorkout(
+            name: "Debrief Day",
+            sport: .strength,
+            items: [CustomWorkoutItem(exercise: exercise, sets: 1, reps: 5)]
+        )
+        store.startTodayWorkout()
+        _ = store.completeTrackedSet(reps: 5, weight: 100)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        XCTAssertTrue(store.showWorkoutDebrief, "the pop-up rises the moment the session finishes")
+
+        let templateID = store.currentWorkout.id
+        store.submitWorkoutDebrief(intensity: .allOut, rating: 3, changeRequest: "  more back work  ")
+        XCTAssertFalse(store.showWorkoutDebrief)
+        XCTAssertEqual(store.workoutDebriefs.last?.rating, 3)
+        XCTAssertEqual(store.workoutDebriefs.last?.workoutTitle, "Debrief Day")
+        XCTAssertEqual(store.workoutDebriefs.last?.changeRequest, "more back work",
+                       "the change request is trimmed, not stored raw")
+
+        // Personalization: with no check-in, the insight speaks the
+        // user's own verdict instead of the canned fallback.
+        let insight = store.derivedTodayInsight
+        XCTAssertEqual(insight.title, "From your last session")
+        XCTAssertTrue(insight.summary.contains("3/10"))
+        XCTAssertTrue(insight.summary.contains("more back work"))
+
+        XCTAssertEqual(store.averageDebriefRating(forTemplate: templateID), 3.0)
+
+        // And it survives a relaunch.
+        let relaunched = MorpheAppStore()
+        XCTAssertEqual(relaunched.workoutDebriefs.last?.rating, 3)
+    }
+
+    func testWorkoutDebriefSkipSavesNothing() {
+        defer { UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs") }
+        UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs")
+        let store = freshStore()
+        let exercise = store.allExercises.first!
+        store.createCustomWorkout(
+            name: "Skip Day",
+            sport: .strength,
+            items: [CustomWorkoutItem(exercise: exercise, sets: 1, reps: 5)]
+        )
+        store.startTodayWorkout()
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        store.skipWorkoutDebrief()
+        XCTAssertFalse(store.showWorkoutDebrief)
+        XCTAssertTrue(store.workoutDebriefs.isEmpty, "a skip records nothing")
+        XCTAssertEqual(store.derivedTodayInsight.title, store.clientProfile.aiTodayInsight.title,
+                       "no debrief, no fabricated insight")
+    }
+
     /// Frictionless-train wave: one spoken set parses in every phrasing the
     /// gym floor produces — and ambiguity stays unparsed rather than
     /// becoming a wrong log.
