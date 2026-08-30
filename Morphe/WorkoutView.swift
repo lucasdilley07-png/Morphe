@@ -119,6 +119,14 @@ struct WorkoutView: View {
                 .presentationDetents([.height(620)])
             }
         )
+        .onAppear {
+            // A debrief queued while another surface covered the screen
+            // raises the moment Train is presentable (audit 18, P1).
+            store.consumePendingDebriefOpen()
+        }
+        .onChange(of: store.selectedClientTab) { _, tab in
+            if tab == .train { store.consumePendingDebriefOpen() }
+        }
         .onChange(of: store.weightUnit) { oldUnit, newUnit in
             // Keep the inline stepper value meaning the same physical load
             // when the unit flips (the store converts the logged sets).
@@ -1156,7 +1164,7 @@ struct DiscoverScreenView: View {
                         subtitle: "Multi-week plans — sessions in order, progression built in, one deload before the end.",
                         isExpanded: $showPrograms
                     ) {
-                        ProgramSectionCard()
+                        ProgramSectionCard(showsLibraryHeader: false)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -1167,7 +1175,19 @@ struct DiscoverScreenView: View {
                 .padding(.bottom, 120)
             }
             .toolbar(.hidden, for: .navigationBar)
+            .onAppear { consumeProgramsReveal() }
+            .onChange(of: store.pendingDiscoverProgramsReveal) { _, _ in
+                consumeProgramsReveal()
+            }
         }
+    }
+
+    /// "Choose Next" on Train sends the user here with a one-shot asking
+    /// the Programs section to be open on arrival (audit 18, P1).
+    private func consumeProgramsReveal() {
+        guard store.pendingDiscoverProgramsReveal else { return }
+        store.pendingDiscoverProgramsReveal = false
+        showPrograms = true
     }
 }
 
@@ -1297,9 +1317,13 @@ private struct WorkoutDebriefSheet: View {
                                 .foregroundStyle(MorpheTheme.accentText)
                                 .contentTransition(.numericText())
                         }
-                        Slider(value: $rating, in: 0...10, step: 1)
+                        Slider(value: $rating, in: 0...10, step: 1) { editing in
+                            // One tick when the drag settles — per-step
+                            // haptics made a 0-to-10 drag buzz ten times
+                            // (audit 18, P2).
+                            if !editing { Haptics.selection() }
+                        }
                             .tint(MorpheTheme.accent)
-                            .onChange(of: rating) { _, _ in Haptics.selection() }
                             .accessibilityLabel("Session score")
                             .accessibilityValue("\(Int(rating)) out of 10")
                     }
@@ -1313,9 +1337,18 @@ private struct WorkoutDebriefSheet: View {
                             .lineLimit(2...4)
                     }
 
+                }
+                .padding(20)
+            }
+            // CTAs pinned below the scroll (audit 18, P2): on the medium
+            // detent the keyboard pushed Save off-screen at the exact
+            // moment the user finished typing.
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 8) {
                     Button {
+                        guard let intensity else { return }
                         store.submitWorkoutDebrief(
-                            intensity: intensity ?? .steady,
+                            intensity: intensity,
                             rating: Int(rating),
                             changeRequest: changeText
                         )
@@ -1326,6 +1359,15 @@ private struct WorkoutDebriefSheet: View {
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     .disabled(intensity == nil)
                     .accessibilityLabel("Save debrief")
+                    .accessibilityHint(intensity == nil ? "Pick an intensity first" : "")
+
+                    if intensity == nil {
+                        // Say WHY Save is off instead of a mystery-dead
+                        // button (audit 18, P2).
+                        Text("Pick an intensity to save.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
 
                     Button("Skip") {
                         store.skipWorkoutDebrief()
@@ -1334,7 +1376,10 @@ private struct WorkoutDebriefSheet: View {
                     .foregroundStyle(MorpheTheme.textMuted)
                     .frame(maxWidth: .infinity)
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
+                .background(MorpheTheme.ink.opacity(0.98))
             }
             .background(MorpheTheme.ink.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
@@ -1457,6 +1502,10 @@ private struct PostWorkoutSmartActionCard: View {
 private struct ProgramSectionCard: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var showLeaveConfirm = false
+    /// Discover hosts this card under a section that already carries the
+    /// title and one-liner — repeating them read as a stutter
+    /// (audit 18, P2).
+    var showsLibraryHeader = true
 
     var body: some View {
         GlassCard {
@@ -1501,10 +1550,14 @@ private struct ProgramSectionCard: View {
 
         if progress.isComplete {
             Button("Choose Next") {
+                // The browse list lives on Discover now — leaving the
+                // program here used to make this card vanish with nowhere
+                // to go (audit 18, P1).
                 store.leaveProgram()
+                store.revealDiscoverPrograms()
             }
             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-            .accessibilityLabel("Finish this program and browse the library")
+            .accessibilityLabel("Finish this program and browse programs in Discover")
         } else {
             Text("Up next: \(progress.nextSessionName)")
                 .font(.subheadline.weight(.semibold))
@@ -1538,12 +1591,14 @@ private struct ProgramSectionCard: View {
 
     @ViewBuilder
     private var programLibraryBody: some View {
-        Text("Morphe's Programs")
-            .font(.headline)
-            .foregroundStyle(MorpheTheme.textPrimary)
-        Text("A plan measured in weeks, not days — sessions in order, progression built in, one deload before the end.")
-            .font(.caption)
-            .foregroundStyle(MorpheTheme.textSecondary)
+        if showsLibraryHeader {
+            Text("Morphe's Programs")
+                .font(.headline)
+                .foregroundStyle(MorpheTheme.textPrimary)
+            Text("A plan measured in weeks, not days — sessions in order, progression built in, one deload before the end.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+        }
 
         ForEach(MorpheAppStore.trainingPrograms) { program in
             VStack(alignment: .leading, spacing: 6) {
@@ -6288,8 +6343,9 @@ private struct SavedWorkoutsLibraryCard: View {
         }
 
         if let rating = insight.averageDebriefRating {
-            // The user's own post-session scores for this workout.
-            badges.append(.init(title: String(format: "Rated %.1f/10", rating), color: MorpheTheme.accentText))
+            // The user's own post-session scores. .formatted respects the
+            // locale's decimal separator (audit 18, P2).
+            badges.append(.init(title: "Rated \(rating.formatted(.number.precision(.fractionLength(1))))/10", color: MorpheTheme.accentText))
         }
 
         if insight.hasBuddyCompletion {
@@ -6395,8 +6451,9 @@ private struct ShortcutWorkoutSection: View {
         }
 
         if let rating = insight.averageDebriefRating {
-            // The user's own post-session scores for this workout.
-            badges.append(.init(title: String(format: "Rated %.1f/10", rating), color: MorpheTheme.accentText))
+            // The user's own post-session scores. .formatted respects the
+            // locale's decimal separator (audit 18, P2).
+            badges.append(.init(title: "Rated \(rating.formatted(.number.precision(.fractionLength(1))))/10", color: MorpheTheme.accentText))
         }
 
         if insight.hasBuddyCompletion {

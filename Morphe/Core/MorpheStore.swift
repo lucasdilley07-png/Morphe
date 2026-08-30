@@ -317,6 +317,11 @@ final class MorpheAppStore {
     /// Raised by finishTrackedWorkoutSession; the Train page presents the
     /// debrief sheet while true.
     var showWorkoutDebrief = false
+    /// The sheet host lives on the Train page — raising the flag under a
+    /// cover or on another tab drops the presentation and leaves it stuck
+    /// true, popping at a random later moment (audit 18, P1). Queue like
+    /// Progress does and raise when the surface is actually presentable.
+    var pendingDebriefOpen = false
     /// The session the pop-up is about — captured at finish so a plan
     /// switch during the recap can't relabel the answers.
     private(set) var debriefContext: (templateID: UUID?, title: String)?
@@ -328,10 +333,20 @@ final class MorpheAppStore {
             workoutTitle: debriefContext?.title ?? currentWorkout.name,
             intensity: intensity,
             rating: min(max(rating, 0), 10),
-            changeRequest: changeRequest.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Clamped to the same 300-char bound the backend rules enforce
+            // (audit 18, P2) — an essay would be rejected server-side.
+            changeRequest: String(changeRequest.trimmingCharacters(in: .whitespacesAndNewlines).prefix(300))
         )
         workoutDebriefs.append(debrief)
-        if workoutDebriefs.count > 200 { workoutDebriefs.removeFirst(workoutDebriefs.count - 200) }
+        if workoutDebriefs.count > 200 {
+            // Trimmed debriefs can never be re-pushed — their pending
+            // flags must go too, or the flush spins forever on ids with
+            // no matching debrief (audit 18, P1).
+            let trimmed = workoutDebriefs.prefix(workoutDebriefs.count - 200).map { $0.id.uuidString }
+            workoutDebriefs.removeFirst(workoutDebriefs.count - 200)
+            pendingDebriefSyncIDs.subtract(trimmed)
+            persistPendingDebriefSyncIDs()
+        }
         persistWorkoutDebriefs()
         showWorkoutDebrief = false
         debriefContext = nil
@@ -340,9 +355,32 @@ final class MorpheAppStore {
         pushDebrief(debrief)
     }
 
+    /// Test seam: debriefContext is private(set) so production callers
+    /// can't relabel a session — tests still need to stage one.
+    func debriefContextForTesting(title: String) {
+        debriefContext = (nil, title)
+    }
+
     func skipWorkoutDebrief() {
         showWorkoutDebrief = false
+        pendingDebriefOpen = false
         debriefContext = nil
+    }
+
+    /// Present now when Train is the visible, uncovered surface; queue
+    /// otherwise (audit 18, P1). Consumed by the covers' onDismiss and by
+    /// the Train page on appear/tab-selection.
+    private func raiseWorkoutDebrief() {
+        pendingDebriefOpen = true
+        consumePendingDebriefOpen()
+    }
+
+    func consumePendingDebriefOpen() {
+        guard pendingDebriefOpen else { return }
+        guard selectedClientTab == .train, !showAIAgent, !showClientProfile,
+              !showQuickAdd, !showUniversalSearch, !showProgressSheet else { return }
+        pendingDebriefOpen = false
+        showWorkoutDebrief = true
     }
 
     private func persistWorkoutDebriefs() {
@@ -361,9 +399,12 @@ final class MorpheAppStore {
     }
 
     private func pushDebrief(_ debrief: WorkoutDebrief) {
-        guard let uid = authUser?.id else { return }
+        // Queue FIRST (audit 18, P1): a signed-out submit must still sync
+        // after the next sign-in — the uid guard used to run before the
+        // insert, so those debriefs never entered the retry set at all.
         pendingDebriefSyncIDs.insert(debrief.id.uuidString)
         persistPendingDebriefSyncIDs()
+        guard let uid = authUser?.id else { return }
         Task { [weak self] in
             let ok = await self?.debriefService.push(uid: uid, debrief: debrief) ?? false
             guard let self, ok else { return }
@@ -381,12 +422,17 @@ final class MorpheAppStore {
                 pendingDebriefSyncIDs.remove(debrief.id.uuidString)
             }
         }
+        // Orphan hygiene (audit 18, P1): an id with no surviving debrief
+        // can never clear itself.
+        pendingDebriefSyncIDs.formIntersection(Set(workoutDebriefs.map { $0.id.uuidString }))
         persistPendingDebriefSyncIDs()
     }
 
     /// The freshest debrief young enough to shape today (≤ 4 days).
     var latestRecentDebrief: WorkoutDebrief? {
-        guard let last = workoutDebriefs.last else { return nil }
+        // max(by:), not .last — append order stops being chronological the
+        // moment any restore/merge path lands (audit 18, P2).
+        guard let last = workoutDebriefs.max(by: { $0.completedAt < $1.completedAt }) else { return nil }
         return last.completedAt > Calendar.current.date(byAdding: .day, value: -4, to: .now)! ? last : nil
     }
 
@@ -1241,10 +1287,25 @@ final class MorpheAppStore {
                     Self.welcomePendingKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
+        // Debriefs are per-account verdicts (audit 18, P0): the next
+        // account must not inherit this one's insight or library badges —
+        // and the retry flush must never push this account's pending
+        // debriefs under the next account's uid.
+        wipeLocalDebriefs()
         purgeConversationalDefaults()
         loadTrainingPreferences()
         loadCompetitionState()
         reloadPerProfileMirrors()
+    }
+
+    private func wipeLocalDebriefs() {
+        workoutDebriefs = []
+        pendingDebriefSyncIDs = []
+        debriefContext = nil
+        showWorkoutDebrief = false
+        pendingDebriefOpen = false
+        UserDefaults.standard.removeObject(forKey: Self.debriefsKey)
+        UserDefaults.standard.removeObject(forKey: Self.debriefSyncPendingKey)
     }
 
     /// Permanently deletes the account (App Store 5.1.1(v)): cloud backup
@@ -1272,6 +1333,10 @@ final class MorpheAppStore {
         // erases this event too — the policy outranks the metric.)
         track("account_deleted")
         await telemetryService.eraseAll(uid: uid)
+        // Debrief docs carry the user's own free text — deleting the root
+        // doc does NOT cascade to subcollections (audit 18, P1); erase
+        // them explicitly while the auth session is still valid.
+        await debriefService.eraseAll(uid: uid)
         // Referral receipts this account wrote into recruiters' ledgers —
         // erased with the account, same promise as telemetry.
         await referralService.eraseReceipts(
@@ -1297,6 +1362,7 @@ final class MorpheAppStore {
                     Self.pendingReferralKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
+        wipeLocalDebriefs()
         purgeConversationalDefaults()
         workoutPersistence.clear()
         profilePersistence.clear()
@@ -3239,6 +3305,16 @@ final class MorpheAppStore {
         track("program_started")
         showToast("\(program.name) started — \(program.weeks) weeks, session 1 is staged.")
         startNextProgramSession()
+    }
+
+    /// One-shot: Discover expands its Programs section on next appear.
+    /// "Choose Next" on a finished program used to flip this card to the
+    /// browse list in place — the list lives on Discover now (audit 18, P1).
+    var pendingDiscoverProgramsReveal = false
+
+    func revealDiscoverPrograms() {
+        pendingDiscoverProgramsReveal = true
+        showDiscoverTab()
     }
 
     func leaveProgram() {
@@ -6839,6 +6915,12 @@ final class MorpheAppStore {
         sessionUserNote = ""
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
+        // A discarded session must not leave a queued debrief that pops
+        // later asking about a workout the user thinks is gone
+        // (audit 18, P1).
+        showWorkoutDebrief = false
+        pendingDebriefOpen = false
+        debriefContext = nil
         showToast("Workout discarded.")
     }
 
@@ -7049,7 +7131,7 @@ final class MorpheAppStore {
         // The debrief pop-up (Lucas 2026-08-28): three questions while the
         // session is still fresh, before the recap scroll.
         debriefContext = (currentWorkout.id, currentWorkout.name)
-        showWorkoutDebrief = true
+        raiseWorkoutDebrief()
         return true
     }
 
@@ -9469,8 +9551,12 @@ final class MorpheAppStore {
                 // A running rest must not survive into the next session
                 // (audit 16, P2).
                 voiceRestStopToken += 1
+                // Navigate BEFORE finishing (audit 18, P1): the debrief
+                // sheet's host lives on the Train page — finishing from
+                // another tab dropped the presentation entirely.
+                showTrainTab()
                 return finishTrackedWorkoutSession()
-                    ? "Session finished — the recap's waiting in Train."
+                    ? "Session finished — quick debrief, then the recap."
                     : "Couldn't close it out — finish from Train."
             }
             let remaining = currentWorkout.exercises.reduce(0) { sum, item in
@@ -12499,7 +12585,10 @@ final class MorpheAppStore {
                 lines.append("That one missed — change the plan or the load today, not the habit.")
             }
             if debrief.intensity == .allOut {
-                lines.append("Yesterday was all-out; leave a rep in the tank today.")
+                let days = Calendar.current.dateComponents([.day], from: debrief.completedAt, to: .now).day ?? 0
+                lines.append(days <= 1
+                    ? "Yesterday was all-out; leave a rep in the tank today."
+                    : "That session was all-out; make sure you've actually recovered.")
             }
             if !debrief.changeRequest.isEmpty {
                 lines.append("You asked for: \u{201C}\(debrief.changeRequest)\u{201D} — build it in from My Library.")

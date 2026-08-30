@@ -144,31 +144,49 @@ final class FirebaseVerificationService: VerificationSyncing {
 
 protocol DebriefSyncing {
     func push(uid: String, debrief: WorkoutDebrief) async -> Bool
+    /// Account deletion: deleting the users/{uid} root doc does NOT
+    /// cascade to subcollections — the debrief docs (user free text)
+    /// must be erased explicitly (audit 18, P1).
+    func eraseAll(uid: String) async
 }
 
 final class NoOpDebriefService: DebriefSyncing {
     func push(uid: String, debrief: WorkoutDebrief) async -> Bool { false }
+    func eraseAll(uid: String) async {}
 }
 
 final class FirebaseDebriefService: DebriefSyncing {
     private var db: Firestore { Firestore.firestore() }
 
     func push(uid: String, debrief: WorkoutDebrief) async -> Bool {
+        var data: [String: Any] = [
+            "workoutTitle": debrief.workoutTitle,
+            "intensity": debrief.intensity.rawValue,
+            "rating": debrief.rating,
+            "changeRequest": debrief.changeRequest,
+            "completedAt": Timestamp(date: debrief.completedAt),
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        // Omitted when absent — an "" sentinel is un-queryable and
+        // off-pattern for this codebase (audit 18, P2).
+        if let templateID = debrief.workoutTemplateID {
+            data["workoutTemplateID"] = templateID.uuidString
+        }
         do {
             try await db.collection("users").document(uid)
                 .collection("debriefs").document(debrief.id.uuidString)
-                .setData([
-                    "workoutTitle": debrief.workoutTitle,
-                    "workoutTemplateID": debrief.workoutTemplateID?.uuidString ?? "",
-                    "intensity": debrief.intensity.rawValue,
-                    "rating": debrief.rating,
-                    "changeRequest": debrief.changeRequest,
-                    "completedAt": Timestamp(date: debrief.completedAt),
-                    "updatedAt": FieldValue.serverTimestamp()
-                ])
+                .setData(data)
             return true
         } catch {
             return false
+        }
+    }
+
+    func eraseAll(uid: String) async {
+        guard let snapshot = try? await db.collection("users").document(uid)
+            .collection("debriefs").getDocuments() else { return }
+        for document in snapshot.documents {
+            try? await document.reference.delete()
         }
     }
 }

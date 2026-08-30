@@ -1229,6 +1229,70 @@ final class WorkoutSessionTests: XCTestCase {
                        "no debrief, no fabricated insight")
     }
 
+    /// Audit 18, P0: debriefs are per-account — sign-out wipes them so the
+    /// next account can't inherit the insight, the badges, or the pending
+    /// backend pushes.
+    func testSignOutClearsDebriefs() {
+        defer {
+            UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs")
+            UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs.pending")
+        }
+        let store = freshStore()
+        store.debriefContextForTesting(title: "Leak Test")
+        store.submitWorkoutDebrief(intensity: .hard, rating: 9, changeRequest: "")
+        XCTAssertFalse(store.workoutDebriefs.isEmpty)
+        XCTAssertNotNil(UserDefaults.standard.data(forKey: "morphe.workout.debriefs"))
+
+        store.signOut()
+        XCTAssertTrue(store.workoutDebriefs.isEmpty, "the next account must not read them")
+        XCTAssertNil(UserDefaults.standard.data(forKey: "morphe.workout.debriefs"))
+        XCTAssertNil(UserDefaults.standard.stringArray(forKey: "morphe.workout.debriefs.pending"))
+        XCTAssertEqual(store.derivedTodayInsight.title, store.clientProfile.aiTodayInsight.title)
+    }
+
+    /// Audit 18, P1: a failed backend push stays queued and clears on a
+    /// later successful flush — and ids whose debriefs were capped away
+    /// are pruned instead of spinning forever.
+    func testDebriefPendingQueueRetriesAndPrunes() async {
+        defer {
+            UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs")
+            UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs.pending")
+        }
+        UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs")
+        UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs.pending")
+        let mock = MockDebriefService()
+        let store = MorpheAppStore(debriefService: mock)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+
+        store.debriefContextForTesting(title: "Retry Test")
+        store.submitWorkoutDebrief(intensity: .steady, rating: 6, changeRequest: "")
+        await Task.yield()
+        XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "morphe.workout.debriefs.pending")?.count, 1,
+                       "a failed push stays queued")
+
+        mock.succeed = true
+        await store.flushPendingDebriefs()
+        XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "morphe.workout.debriefs.pending")?.count ?? 0, 0,
+                       "the retry lands and clears the queue")
+        XCTAssertEqual(mock.pushedIDs.count, 2, "one failed attempt, one successful retry")
+
+        // Orphan pruning at the cap: 205 unsynced debriefs → 200 kept,
+        // and the pending set holds no ids without a matching debrief.
+        mock.succeed = false
+        for i in 0..<205 {
+            store.debriefContextForTesting(title: "Bulk \(i)")
+            store.submitWorkoutDebrief(intensity: .light, rating: 5, changeRequest: "")
+        }
+        XCTAssertEqual(store.workoutDebriefs.count, 200)
+        let pending = Set(UserDefaults.standard.stringArray(forKey: "morphe.workout.debriefs.pending") ?? [])
+        let existing = Set(store.workoutDebriefs.map { $0.id.uuidString })
+        XCTAssertTrue(pending.isSubset(of: existing), "no orphaned pending ids")
+    }
+
     /// Frictionless-train wave: one spoken set parses in every phrasing the
     /// gym floor produces — and ambiguity stays unparsed rather than
     /// becoming a wrong log.
@@ -6961,4 +7025,18 @@ final class AuditSeamTests: XCTestCase {
         let ok = await store.startDirectChat(with: "bad-uid", name: "bad")
         XCTAssertFalse(ok, "no new chats with blocked accounts")
     }
+}
+
+
+/// Audit-18 test double: scripted backend for the debrief sync layer.
+final class MockDebriefService: DebriefSyncing {
+    var succeed = false
+    private(set) var pushedIDs: [String] = []
+
+    func push(uid: String, debrief: WorkoutDebrief) async -> Bool {
+        pushedIDs.append(debrief.id.uuidString)
+        return succeed
+    }
+
+    func eraseAll(uid: String) async {}
 }
