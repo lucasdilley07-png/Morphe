@@ -73,12 +73,23 @@ service cloud.firestore {
       // the same shape bounds the client enforces.
       match /debriefs/{debriefId} {
         allow read:   if isOwner(uid);
+        // Full-shape validation (audit 19, P2): typed fields, bounded
+        // sizes, and no extra keys — the referrals block's hasOnly
+        // pattern applied here.
         allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(
+               ['workoutTitle', 'workoutTemplateID', 'intensity',
+                'rating', 'changeRequest', 'completedAt', 'updatedAt'])
+          && request.resource.data.workoutTitle is string
+          && request.resource.data.workoutTitle.size() <= 200
+          && request.resource.data.intensity is string
+          && request.resource.data.intensity.size() <= 20
           && request.resource.data.rating is int
           && request.resource.data.rating >= 0
           && request.resource.data.rating <= 10
           && request.resource.data.changeRequest is string
-          && request.resource.data.changeRequest.size() <= 300;
+          && request.resource.data.changeRequest.size() <= 300
+          && request.resource.data.completedAt is timestamp;
         allow delete: if isOwner(uid);
       }
 

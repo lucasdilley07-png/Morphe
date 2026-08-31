@@ -355,11 +355,17 @@ final class MorpheAppStore {
         pushDebrief(debrief)
     }
 
+    #if DEBUG
     /// Test seam: debriefContext is private(set) so production callers
     /// can't relabel a session — tests still need to stage one.
     func debriefContextForTesting(title: String) {
         debriefContext = (nil, title)
     }
+
+    func pendingDebriefOpenForTesting() {
+        pendingDebriefOpen = true
+    }
+    #endif
 
     func skipWorkoutDebrief() {
         showWorkoutDebrief = false
@@ -375,10 +381,25 @@ final class MorpheAppStore {
         consumePendingDebriefOpen()
     }
 
+    /// Mirrors WorkoutView's local sheet stack (builder, Train Together,
+    /// rep logger, swap, add-exercise, edit, Form Check) — the store can't
+    /// see @State, so the view reports it (audit 19, P1: raising the
+    /// debrief while a sibling sheet is up drops the presentation).
+    var trainLocalSheetPresented = false
+
     func consumePendingDebriefOpen() {
         guard pendingDebriefOpen else { return }
-        guard selectedClientTab == .train, !showAIAgent, !showClientProfile,
-              !showQuickAdd, !showUniversalSearch, !showProgressSheet else { return }
+        // Coaches train on the SAME WorkoutView under CoachTab.train
+        // (audit 19, P0: the client-tab-only guard locked the entire
+        // coach role out of the debrief).
+        let onTrainSurface = selectedRole == .coach
+            ? selectedCoachTab == .train
+            : selectedClientTab == .train
+        guard onTrainSurface, !showAIAgent, !showClientProfile,
+              !showQuickAdd, !showUniversalSearch, !showProgressSheet,
+              !trainLocalSheetPresented,
+              selectedExercise == nil, selectedNetworkProfile == nil,
+              pendingPartnerSessionPost == nil else { return }
         pendingDebriefOpen = false
         showWorkoutDebrief = true
     }
@@ -395,7 +416,14 @@ final class MorpheAppStore {
         Set(UserDefaults.standard.stringArray(forKey: MorpheAppStore.debriefSyncPendingKey) ?? [])
 
     private func persistPendingDebriefSyncIDs() {
-        UserDefaults.standard.set(Array(pendingDebriefSyncIDs), forKey: Self.debriefSyncPendingKey)
+        if pendingDebriefSyncIDs.isEmpty {
+            // Removing (not writing []) keeps the sign-out wipe invariant
+            // even when a straggler push task lands after the wipe
+            // (audit 19, P2).
+            UserDefaults.standard.removeObject(forKey: Self.debriefSyncPendingKey)
+        } else {
+            UserDefaults.standard.set(Array(pendingDebriefSyncIDs), forKey: Self.debriefSyncPendingKey)
+        }
     }
 
     private func pushDebrief(_ debrief: WorkoutDebrief) {
@@ -1335,8 +1363,13 @@ final class MorpheAppStore {
         await telemetryService.eraseAll(uid: uid)
         // Debrief docs carry the user's own free text — deleting the root
         // doc does NOT cascade to subcollections (audit 18, P1); erase
-        // them explicitly while the auth session is still valid.
-        await debriefService.eraseAll(uid: uid)
+        // them explicitly while the auth session is still valid. A failed
+        // erase ABORTS (audit 19, P1): once the auth user is gone the
+        // owner-only rules make the leftovers permanently undeletable.
+        guard await debriefService.eraseAll(uid: uid) else {
+            showToast("Couldn't erase your debrief history — check your connection and try again.")
+            return false
+        }
         // Referral receipts this account wrote into recruiters' ledgers —
         // erased with the account, same promise as telemetry.
         await referralService.eraseReceipts(
@@ -6916,11 +6949,14 @@ final class MorpheAppStore {
         workoutFeedbackResponse = ""
         selectedWorkoutFeedback = nil
         // A discarded session must not leave a queued debrief that pops
-        // later asking about a workout the user thinks is gone
-        // (audit 18, P1).
+        // later asking about a workout the user thinks is gone (audit 18,
+        // P1) — but discarding session B must not kill a still-queued
+        // debrief about session A (audit 19, P2).
         showWorkoutDebrief = false
-        pendingDebriefOpen = false
-        debriefContext = nil
+        if debriefContext?.templateID == currentWorkout.id || debriefContext == nil {
+            pendingDebriefOpen = false
+            debriefContext = nil
+        }
         showToast("Workout discarded.")
     }
 
@@ -9551,11 +9587,16 @@ final class MorpheAppStore {
                 // A running rest must not survive into the next session
                 // (audit 16, P2).
                 voiceRestStopToken += 1
-                // Navigate BEFORE finishing (audit 18, P1): the debrief
-                // sheet's host lives on the Train page — finishing from
-                // another tab dropped the presentation entirely.
+                // Finish FIRST so the debrief queues, THEN navigate
+                // (audit 19, P1): showTrainTab() dismisses the Progress
+                // sheet synchronously, and raising in the same run-loop
+                // turn as that dismissal dropped the sheet. Queued, the
+                // present rides the animation-complete hooks — the tab
+                // change, or the dismissing cover's onDismiss.
+                let finished = finishTrackedWorkoutSession()
                 showTrainTab()
-                return finishTrackedWorkoutSession()
+                consumePendingDebriefOpen()
+                return finished
                     ? "Session finished — quick debrief, then the recap."
                     : "Couldn't close it out — finish from Train."
             }
@@ -12585,10 +12626,16 @@ final class MorpheAppStore {
                 lines.append("That one missed — change the plan or the load today, not the habit.")
             }
             if debrief.intensity == .allOut {
-                let days = Calendar.current.dateComponents([.day], from: debrief.completedAt, to: .now).day ?? 0
-                lines.append(days <= 1
-                    ? "Yesterday was all-out; leave a rep in the tank today."
-                    : "That session was all-out; make sure you've actually recovered.")
+                // Calendar days, not elapsed 24h blocks (audit 19, P2):
+                // a Friday-night session read Sunday must not say
+                // "yesterday".
+                if Calendar.current.isDateInToday(debrief.completedAt) {
+                    lines.append("Today's session was all-out — recover before you go again.")
+                } else if Calendar.current.isDateInYesterday(debrief.completedAt) {
+                    lines.append("Yesterday was all-out; leave a rep in the tank today.")
+                } else {
+                    lines.append("That session was all-out; make sure you've actually recovered.")
+                }
             }
             if !debrief.changeRequest.isEmpty {
                 lines.append("You asked for: \u{201C}\(debrief.changeRequest)\u{201D} — build it in from My Library.")

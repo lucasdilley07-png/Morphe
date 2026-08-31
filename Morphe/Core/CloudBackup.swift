@@ -146,13 +146,17 @@ protocol DebriefSyncing {
     func push(uid: String, debrief: WorkoutDebrief) async -> Bool
     /// Account deletion: deleting the users/{uid} root doc does NOT
     /// cascade to subcollections — the debrief docs (user free text)
-    /// must be erased explicitly (audit 18, P1).
-    func eraseAll(uid: String) async
+    /// must be erased explicitly (audit 18, P1). False = the erase did
+    /// not fully land; the caller must NOT proceed to auth deletion
+    /// (audit 19, P1: owner-only rules make survivors undeletable once
+    /// the owner's auth is gone).
+    func eraseAll(uid: String) async -> Bool
 }
 
 final class NoOpDebriefService: DebriefSyncing {
     func push(uid: String, debrief: WorkoutDebrief) async -> Bool { false }
-    func eraseAll(uid: String) async {}
+    /// No backend, nothing to erase — deletion must not be blocked.
+    func eraseAll(uid: String) async -> Bool { true }
 }
 
 final class FirebaseDebriefService: DebriefSyncing {
@@ -182,11 +186,23 @@ final class FirebaseDebriefService: DebriefSyncing {
         }
     }
 
-    func eraseAll(uid: String) async {
-        guard let snapshot = try? await db.collection("users").document(uid)
-            .collection("debriefs").getDocuments() else { return }
-        for document in snapshot.documents {
-            try? await document.reference.delete()
+    func eraseAll(uid: String) async -> Bool {
+        // Batched pages, same shape as telemetry's eraseAll — unbounded
+        // getDocuments loads the whole collection into memory, and the
+        // cloud copy is never pruned by the local 200 cap (audit 19, P1).
+        let collection = db.collection("users").document(uid).collection("debriefs")
+        while true {
+            guard let snapshot = try? await collection.limit(to: 200).getDocuments() else {
+                return false
+            }
+            if snapshot.documents.isEmpty { return true }
+            let batch = db.batch()
+            snapshot.documents.forEach { batch.deleteDocument($0.reference) }
+            do {
+                try await batch.commit()
+            } catch {
+                return false
+            }
         }
     }
 }

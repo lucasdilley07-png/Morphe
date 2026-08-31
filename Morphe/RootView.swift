@@ -208,11 +208,14 @@ struct RootView: View {
             }
         }
         .preferredColorScheme(store.selectedAppearance)
-        .sheet(item: $store.selectedExercise) { exercise in
+        .sheet(item: $store.selectedExercise, onDismiss: {
+            store.consumePendingDebriefOpen()
+        }) { exercise in
             ExerciseDetailView(exercise: exercise)
         }
         .sheet(item: $store.pendingPartnerSessionPost, onDismiss: {
             store.dismissPendingPartnerSessionPost()
+            store.consumePendingDebriefOpen()
         }) { draft in
             NavigationStack {
                 PartnerSessionPostSheet(draft: draft)
@@ -224,6 +227,7 @@ struct RootView: View {
         }
         .sheet(item: $store.selectedNetworkProfile, onDismiss: {
             store.closeNetworkProfile()
+            store.consumePendingDebriefOpen()
         }) { profile in
             NavigationStack {
                 NetworkProfilePreviewSheet(profile: profile)
@@ -251,7 +255,12 @@ struct RootView: View {
             .background(PremiumBackground())
             .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $store.showProgressSheet) {
+        .sheet(isPresented: $store.showProgressSheet, onDismiss: {
+            // The Progress sheet blocks the debrief consume guard — its
+            // dismissal must be a consume site too, or a co-queued
+            // debrief starves behind it forever (audit 19, P1).
+            store.consumePendingDebriefOpen()
+        }) {
             NavigationStack {
                 // ProgressScreenView owns its scroll — same view the old
                 // tab hosted, now a sheet.

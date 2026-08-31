@@ -4,6 +4,15 @@ import UniformTypeIdentifiers
 
 struct WorkoutView: View {
     @Environment(MorpheAppStore.self) private var store
+
+    /// True while any of this page's own sheets/covers is presented —
+    /// reported to the store so the debrief raise can queue instead of
+    /// fighting a sibling presentation (audit 19, P1).
+    private var anyLocalSheetUp: Bool {
+        swapTarget != nil || repLoggerContext != nil || showBuilder
+            || showTrainTogether || showAddExercise || editingWorkout != nil
+            || showFormCheck
+    }
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var workoutPendingDelete: WorkoutTemplate?
@@ -122,10 +131,22 @@ struct WorkoutView: View {
         .onAppear {
             // A debrief queued while another surface covered the screen
             // raises the moment Train is presentable (audit 18, P1).
+            store.trainLocalSheetPresented = anyLocalSheetUp
             store.consumePendingDebriefOpen()
         }
         .onChange(of: store.selectedClientTab) { _, tab in
             if tab == .train { store.consumePendingDebriefOpen() }
+        }
+        // Coaches train on the SAME page under the coach tab bar
+        // (audit 19, P0).
+        .onChange(of: store.selectedCoachTab) { _, tab in
+            if tab == .train { store.consumePendingDebriefOpen() }
+        }
+        // The store can't see this view's @State sheet stack — report it,
+        // and treat every local dismissal as a consume site (audit 19, P1).
+        .onChange(of: anyLocalSheetUp) { _, up in
+            store.trainLocalSheetPresented = up
+            if !up { store.consumePendingDebriefOpen() }
         }
         .onChange(of: store.weightUnit) { oldUnit, newUnit in
             // Keep the inline stepper value meaning the same physical load
@@ -1379,7 +1400,12 @@ private struct WorkoutDebriefSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
                 .padding(.bottom, 6)
-                .background(MorpheTheme.ink.opacity(0.98))
+                .background(MorpheTheme.ink.opacity(0.98).ignoresSafeArea(edges: .bottom))
+                .overlay(alignment: .top) {
+                    // Visible boundary in light mode (audit 19, P2):
+                    // white-on-white had no edge.
+                    Divider().overlay(MorpheTheme.stroke)
+                }
             }
             .background(MorpheTheme.ink.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
