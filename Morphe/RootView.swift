@@ -1151,6 +1151,23 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private let synthesizer = AVSpeechSynthesizer()
+    /// The best installed en-GB male voice wins (premium > enhanced >
+    /// compact — "Daniel" ships on every iPhone; an enhanced or premium
+    /// download upgrades Morphe automatically). Falls back to the
+    /// system's default British voice, then the device default.
+    private static let morpheVoice: AVSpeechSynthesisVoice? = {
+        let rank: (AVSpeechSynthesisVoiceQuality) -> Int = {
+            switch $0 {
+            case .premium: return 2
+            case .enhanced: return 1
+            default: return 0
+            }
+        }
+        let britishMales = AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language == "en-GB" && $0.gender == .male }
+        return britishMales.max(by: { rank($0.quality) < rank($1.quality) })
+            ?? AVSpeechSynthesisVoice(language: "en-GB")
+    }()
     private var commandTimer: Timer?
     /// The recognizer has never heard of "Morphe" and transcribes what it
     /// knows — "Hey Murphy" above all (audit 14). Two defenses: the request
@@ -1420,6 +1437,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             options: [.duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = 0.5
+        // The Morphe register (Lucas 2026-08-28): a measured British
+        // male — the Jarvis voice. Slightly lowered pitch keeps it in
+        // the chest without sounding processed.
+        utterance.voice = Self.morpheVoice
+        utterance.pitchMultiplier = 0.92
         synthesizer.speak(utterance)
         // Watchdog (audit 12, P2-8): if the utterance never finishes, the
         // glow must not stay lit and the mic must come back.
