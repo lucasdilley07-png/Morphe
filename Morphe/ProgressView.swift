@@ -1013,22 +1013,22 @@ private struct ProgressHeroStrip: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
                 if showMetrics {
-                    HStack(spacing: 8) {
-                        // The headline number finally explains itself — it
-                        // was presented with zero definition (audit finding).
+                    HStack(alignment: .center, spacing: 16) {
+                        // The Morphe Score is the number this whole page
+                        // answers — it must DOMINATE, not sit as a third
+                        // look-alike pill (hierarchy audit 2026-09). The
+                        // ScoreRing primitive (title2 mono in a ring) is
+                        // the app's own focal treatment, already used by
+                        // the Health/Recovery cards; This Week and Streak
+                        // stay subordinate pills beside it. The ring reads
+                        // as distinct from the inert pills, so it also
+                        // resolves the affordance audit's "looks identical
+                        // to its neighbors" note — kept tappable with the
+                        // same explainer.
                         Button {
                             showScoreExplainer = true
                         } label: {
-                            // The one tappable readout among three
-                            // look-alike pills wears an info glyph so the
-                            // affordance is visible, not just VoiceOver-only
-                            // (affordance audit 2026-09).
-                            HStack(spacing: 4) {
-                                MetricPill(label: "Morphe Score", value: "\(score)")
-                                Image(systemName: "info.circle")
-                                    .font(.caption2)
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                            }
+                            ScoreRing(score: score, color: MorpheTheme.accent)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Morphe Score \(score) — tap to learn what drives it")
@@ -1037,8 +1037,11 @@ private struct ProgressHeroStrip: View {
                         } message: {
                             Text("A 10–100 consistency read: it grows with the sessions you log this week and your day streak (capped at a week's worth) — nothing else feeds it. Peak ≥90 · Strong 75+ · Momentum 60+ · Building 40+ · Rebuilding below that.")
                         }
-                        MetricPill(label: "This Week", value: "\(consistency)/\(max(consistencyTarget, 1))")
-                        MetricPill(label: "Streak", value: "\(streak) days")
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            MetricPill(label: "This Week", value: "\(consistency)/\(max(consistencyTarget, 1))")
+                            MetricPill(label: "Streak", value: "\(streak) days")
+                        }
 
                         Spacer(minLength: 0)
 
@@ -1065,8 +1068,11 @@ private struct ProgressHeroStrip: View {
                 }
 
                 Text(latestWin)
-                    .font(.headline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                    // Demoted from .headline (hierarchy audit 2026-09): a
+                    // supporting sentence must not be the largest text in a
+                    // hero the score now leads.
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
 
                 if !showMetrics {
                     Text("Your Morphe Score, weekly count, and streak appear here with your first log.")

@@ -1313,7 +1313,7 @@ private struct WorkoutDebriefSheet: View {
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 10)
                                         .background(
-                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                                                 .fill(intensity == option
                                                       ? MorpheTheme.brandYellow
                                                       : MorpheTheme.panelStrong.opacity(0.6))
@@ -2458,7 +2458,11 @@ private struct SetConsoleRow: View {
 
     private var valueText: some View {
         Text(value)
-            .font(.system(.title3, design: .monospaced).weight(.bold))
+            // The reps/weight you're dialing is THE task mid-session, so
+            // it anchors the screen — .title2 mono, a step above the
+            // exercise name (.title3) and every static label
+            // (hierarchy audit 2026-09; matches the rest clock's weight).
+            .font(.system(.title2, design: .monospaced).weight(.bold))
             .foregroundStyle(MorpheTheme.textPrimary)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
@@ -3782,7 +3786,11 @@ private struct DiscoverCatalogSection: View {
     private func sectionHeader(title: String, count: Int) -> some View {
         HStack(spacing: 10) {
             Rectangle()
-                .fill(MorpheTheme.accent)
+                // Neutral tick (hierarchy audit 2026-09): a gold tick on
+                // every one of 6+ section headers spent the accent budget
+                // so no single gold focal survived — the Start buttons
+                // keep the gold.
+                .fill(MorpheTheme.stroke)
                 .frame(width: 3, height: 14)
 
             Text(title.uppercased())

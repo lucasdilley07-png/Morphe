@@ -43,7 +43,11 @@ struct HomeView: View {
                 // plain "what are we training?"
                 VStack(spacing: 6) {
                     Text(store.homeGreeting)
-                        .font(.title2.weight(.bold))
+                        // Demoted from .title2 (hierarchy audit 2026-09):
+                        // the greeting is chrome — and the full-screen day
+                        // popup already delivers it. The day's WORKOUT is
+                        // the primary, so it must out-weigh the hello.
+                        .font(.title3.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .multilineTextAlignment(.center)
                     Text(store.homePrompt)
@@ -1186,7 +1190,10 @@ private struct TodayNextMoveCard: View {
                 } else {
                     VStack(alignment: .center, spacing: 8) {
                         Text(workout.name)
-                            .font(.title3.weight(.bold))
+                            // Promoted to .title2 (hierarchy audit 2026-09):
+                            // the day's session is Today's focal point and
+                            // must be the largest element on the screen.
+                            .font(.title2.weight(.bold))
                             .foregroundStyle(MorpheTheme.textPrimary)
                             .multilineTextAlignment(.center)
                         Text("\(workout.durationMinutes) min • \(workout.goal)")
