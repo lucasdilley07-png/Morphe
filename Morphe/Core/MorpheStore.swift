@@ -1166,6 +1166,7 @@ final class MorpheAppStore {
         // the real WCSession delegate.
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
             WatchBridge.shared.activate(store: self)
+            installLockScreenSessionBridge()
         }
 
         Self.mostRecentInstance = self
@@ -9466,6 +9467,90 @@ final class MorpheAppStore {
     /// indexes WORK sets (audit 16, P1: counting warm-ups skipped a set).
     func workSetsDone(for exerciseID: String) -> Int {
         trackedSetWarmups[exerciseID, default: []].filter { !$0 }.count
+    }
+
+    // MARK: - Lock-screen session card (Lucas 2026-08-30)
+    //
+    // The Live Activity's buttons run in this process and act through
+    // these doors — the SAME doors the phone UI, watch, and voice use.
+    // Installed at init so a cold background launch (the system starting
+    // the app just to run a lock-screen intent) is already wired.
+
+    func installLockScreenSessionBridge() {
+        MorpheSessionIntentBridge.logSet = { [weak self] in self?.lockScreenLogSet() }
+        MorpheSessionIntentBridge.startRest = { [weak self] in self?.lockScreenStartRest() }
+        MorpheSessionIntentBridge.addRestTime = { [weak self] in self?.lockScreenAddRest() }
+        MorpheSessionIntentBridge.skipRest = { [weak self] in self?.lockScreenSkipRest() }
+        MorpheSessionIntentBridge.armVoice = { [weak self] in
+            self?.pendingDirectVoiceCapture = true
+        }
+    }
+
+    /// One-tap set from the lock screen: the suggested reps at the
+    /// suggested weight — the watch's exact recipe, same guards.
+    func lockScreenLogSet() {
+        guard isWorkoutSessionActive, let exercise = activeWorkoutExercise else { return }
+        let reps = Self.watchRepCount(exercise.reps)
+        let weight = lastSessionWeight(for: exercise.id)
+            ?? suggestedWorkingWeight(for: exercise)
+            ?? 0
+        if completeTrackedSet(reps: reps, weight: weight) {
+            _ = hopToSupersetPartnerIfNeeded(after: exercise)
+        }
+    }
+
+    func lockScreenStartRest() {
+        guard isWorkoutSessionActive, let exercise = activeWorkoutExercise else { return }
+        let seconds = exercise.restSeconds ?? 180
+        // The in-app bar catches up through the voice-rest tokens on
+        // foreground; the card's countdown starts immediately.
+        requestVoiceRest(seconds: seconds)
+        WorkoutSessionActivityController.restStarted(
+            store: self, endDate: Date().addingTimeInterval(TimeInterval(seconds)))
+    }
+
+    func lockScreenAddRest() {
+        let base = RestTimerSharedState.readEndDate() ?? Date()
+        let newEnd = max(base, Date()).addingTimeInterval(15)
+        WorkoutSessionActivityController.restUpdated(store: self, endDate: newEnd)
+    }
+
+    func lockScreenSkipRest() {
+        WorkoutSessionActivityController.restEnded(store: self)
+        voiceRestStopToken += 1
+    }
+
+    /// Set by the lock-screen mic intent; consumed on scene-active. iOS
+    /// forbids wake words on the lock screen — this is the honest
+    /// equivalent: the app opens already capturing.
+    var pendingDirectVoiceCapture = false
+
+    func consumePendingDirectVoiceCapture() {
+        guard pendingDirectVoiceCapture else { return }
+        guard heyMorpheEnabled else {
+            pendingDirectVoiceCapture = false
+            showToast("Turn on \u{201C}Hey Morphe\u{201D} in Settings to talk from the Lock Screen.")
+            return
+        }
+        showTrainTab()
+        attemptDirectVoiceCapture(retries: 6)
+    }
+
+    private func attemptDirectVoiceCapture(retries: Int) {
+        guard pendingDirectVoiceCapture else { return }
+        if heyMorphe.enterActiveCapture() {
+            pendingDirectVoiceCapture = false
+            return
+        }
+        guard retries > 0 else {
+            pendingDirectVoiceCapture = false
+            return
+        }
+        // The engine arms asynchronously after foreground — give it a few
+        // beats before giving up quietly.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            self?.attemptDirectVoiceCapture(retries: retries - 1)
+        }
     }
 
     func requestVoiceRest(seconds: Int) {

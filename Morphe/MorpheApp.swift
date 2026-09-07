@@ -56,6 +56,8 @@ struct MorpheApp: App {
                         // Siri / Shortcuts / Action Button (rebuild wave):
                         // "Start my workout in Morphe" left a flag.
                         store.consumePendingIntentActions()
+                        // Lock-screen mic: the app opened to listen.
+                        store.consumePendingDirectVoiceCapture()
                     }
                     // The log backup debounce is 60s — leaving the app
                     // flushes whatever is pending so a swipe-kill can't

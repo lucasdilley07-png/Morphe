@@ -6,7 +6,7 @@ import WidgetKit
 struct MorpheWidgetsBundle: WidgetBundle {
     var body: some Widget {
         MorpheTodayWidget()
-        RestTimerLiveActivity()
+        WorkoutSessionLiveActivity()
     }
 }
 
@@ -164,111 +164,167 @@ private struct MorpheTodayWidgetView: View {
 }
 
 /// Lock screen + Dynamic Island UI for the in-workout rest timer.
-struct RestTimerLiveActivity: Widget {
-    // MORPHE signature yellow + near-black ink (mirrors MorpheTheme, which
-    // isn't compiled into the extension).
-    private static let gold = Color(red: 1.0, green: 0.84, blue: 0.0)
-    private static let ink = Color(red: 0.02, green: 0.02, blue: 0.024)
+// MARK: - Workout session Live Activity (Lucas 2026-08-30)
+//
+// The whole session on the lock screen: exercise + set progress always,
+// Log Set / Rest / mic while working, the countdown (+15s / Skip) while
+// resting. Buttons run LiveActivityIntents in the APP's process through
+// the store's own doors; the mic opens the app straight into capture
+// (iOS forbids third-party wake words on the lock screen).
 
+private let morpheGold = Color(red: 1.0, green: 0.84, blue: 0.0)
+
+struct WorkoutSessionLiveActivity: Widget {
     var body: some WidgetConfiguration {
-        ActivityConfiguration(for: RestTimerAttributes.self) { context in
-            // Lock screen banner — with the two controls a gym app's lock
-            // screen actually wants: more rest, or back to the bar NOW.
-            VStack(spacing: 12) {
-                HStack(spacing: 14) {
-                    Image(systemName: "timer")
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(Self.gold)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("REST")
-                            .font(.caption2.weight(.bold))
-                            .tracking(1.4)
-                            .foregroundStyle(.secondary)
-                        Text(context.attributes.exerciseName)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                    }
-
-                    Spacer()
-
-                    Text(timerInterval: context.state.startDate...context.state.endDate, countsDown: true)
-                        .font(.system(.title, design: .monospaced).weight(.bold))
-                        .foregroundStyle(Self.gold)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 96)
-                }
-
-                HStack(spacing: 10) {
-                    Button(intent: AddRestTimeIntent()) {
-                        Text("+15s")
-                            .font(.system(.subheadline, design: .monospaced).weight(.bold))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .tint(Self.gold)
-                    .buttonStyle(.bordered)
-
-                    Button(intent: SkipRestIntent()) {
-                        Text("SKIP")
-                            .font(.system(.subheadline, design: .monospaced).weight(.bold))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .tint(.white.opacity(0.7))
-                    .buttonStyle(.bordered)
-                }
-            }
-            .padding(16)
-            .activityBackgroundTint(Self.ink.opacity(0.92))
-            .activitySystemActionForegroundColor(Self.gold)
+        ActivityConfiguration(for: WorkoutSessionAttributes.self) { context in
+            SessionLockScreenCard(context: context)
+                .activityBackgroundTint(Color.black.opacity(0.85))
+                .activitySystemActionForegroundColor(morpheGold)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label("Rest", systemImage: "timer")
-                        .font(.headline)
-                        .foregroundStyle(Self.gold)
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    Text(timerInterval: context.state.startDate...context.state.endDate, countsDown: true)
-                        .monospacedDigit()
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(Self.gold)
-                        .frame(maxWidth: 80)
-                        .multilineTextAlignment(.trailing)
-                }
-                DynamicIslandExpandedRegion(.bottom) {
-                    HStack(spacing: 10) {
-                        Text(context.attributes.exerciseName)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(context.state.exerciseName)
+                            .font(.subheadline.weight(.bold))
                             .lineLimit(1)
-                        Spacer()
-                        Button(intent: AddRestTimeIntent()) {
-                            Text("+15s")
-                                .font(.system(.caption, design: .monospaced).weight(.bold))
-                        }
-                        .tint(Self.gold)
-                        .buttonStyle(.bordered)
-                        Button(intent: SkipRestIntent()) {
-                            Text("SKIP")
-                                .font(.system(.caption, design: .monospaced).weight(.bold))
-                        }
-                        .tint(.white.opacity(0.7))
-                        .buttonStyle(.bordered)
+                        Text("SET \(min(context.state.setsDone + 1, context.state.setsTarget)) OF \(context.state.setsTarget)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
                     }
                 }
+                DynamicIslandExpandedRegion(.trailing) {
+                    if let end = context.state.restEndDate {
+                        Text(timerInterval: Date()...max(end, Date()), countsDown: true)
+                            .font(.title3.weight(.bold)).monospacedDigit()
+                            .foregroundStyle(morpheGold)
+                            .frame(width: 64)
+                    } else {
+                        Image(systemName: "dumbbell.fill")
+                            .foregroundStyle(morpheGold)
+                    }
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    SessionButtonsRow(context: context)
+                }
             } compactLeading: {
-                Image(systemName: "timer")
-                    .foregroundStyle(Self.gold)
+                Image(systemName: "dumbbell.fill").foregroundStyle(morpheGold)
             } compactTrailing: {
-                Text(timerInterval: context.state.startDate...context.state.endDate, countsDown: true)
-                    .monospacedDigit()
-                    .foregroundStyle(Self.gold)
-                    .frame(maxWidth: 48)
+                if let end = context.state.restEndDate {
+                    Text(timerInterval: Date()...max(end, Date()), countsDown: true)
+                        .monospacedDigit()
+                        .foregroundStyle(morpheGold)
+                        .frame(width: 44)
+                } else {
+                    Text("\(context.state.setsDone)/\(context.state.setsTarget)")
+                        .foregroundStyle(morpheGold)
+                }
             } minimal: {
-                Image(systemName: "timer")
-                    .foregroundStyle(Self.gold)
+                Image(systemName: "dumbbell.fill").foregroundStyle(morpheGold)
             }
         }
     }
 }
+
+private struct SessionLockScreenCard: View {
+    let context: ActivityViewContext<WorkoutSessionAttributes>
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(context.attributes.workoutName.uppercased())
+                        .font(.caption2.weight(.semibold))
+                        .tracking(1.1)
+                        .foregroundStyle(.secondary)
+                    Text(context.state.exerciseName)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if context.state.restEndDate == nil {
+                    Text(context.state.workoutComplete
+                         ? "DONE"
+                         : "SET \(min(context.state.setsDone + 1, context.state.setsTarget)) OF \(context.state.setsTarget)")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(morpheGold)
+                }
+            }
+
+            if let end = context.state.restEndDate {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("RESTING")
+                            .font(.caption2.weight(.semibold))
+                            .tracking(1.1)
+                            .foregroundStyle(.secondary)
+                        Text(timerInterval: Date()...max(end, Date()), countsDown: true)
+                            .font(.system(size: 34, weight: .bold)).monospacedDigit()
+                            .foregroundStyle(morpheGold)
+                    }
+                    Spacer(minLength: 0)
+                    Button(intent: AddRestTimeIntent()) {
+                        Text("+15s").font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered).tint(morpheGold)
+                    Button(intent: SkipRestIntent()) {
+                        Text("Skip").font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered).tint(.secondary)
+                }
+            } else {
+                SessionButtonsRow(context: context)
+            }
+        }
+        .padding(14)
+    }
+}
+
+/// Log the suggested set / start the rest / talk — shared by the lock
+/// screen and the expanded island.
+private struct SessionButtonsRow: View {
+    let context: ActivityViewContext<WorkoutSessionAttributes>
+
+    private var logLabel: String {
+        let weight = context.state.suggestedWeight
+        guard weight > 0 else { return "Log \(context.state.suggestedReps) reps" }
+        let rounded = weight.truncatingRemainder(dividingBy: 1) == 0
+            ? String(Int(weight)) : String(format: "%.1f", weight)
+        return "Log \(context.state.suggestedReps) \u{00D7} \(rounded) \(context.state.unit)"
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if context.state.workoutComplete {
+                Text("Every set logged \u{2014} finish in the app.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Button(intent: LogSetIntent()) {
+                    Text(logLabel)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(morpheGold)
+                .foregroundStyle(.black)
+
+                Button(intent: StartRestIntent()) {
+                    Text("Rest").font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .tint(morpheGold)
+            }
+            Spacer(minLength: 0)
+            Button(intent: SessionMicIntent()) {
+                Image(systemName: "mic.fill")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            .tint(morpheGold)
+            .accessibilityLabel("Talk to Morphe")
+        }
+    }
+}
+

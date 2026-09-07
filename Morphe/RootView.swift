@@ -1119,6 +1119,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// transcript pill) hostage until the recognizer's stream cap
     /// (audit 17, P1).
     private var followUpCaptureStart: Date?
+    /// True while the current capture came from the lock-screen mic
+    /// (Lucas 2026-08-30): whole-stream capture like a follow-up, but
+    /// with FULL routing — the user explicitly asked to talk.
+    private var directCaptureSession = false
 
     private var suspendedByExternalAudio = false
     /// True from pauseForExternalAudio to resumeAfterExternalAudio even if
@@ -1362,6 +1366,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         // window in a context where no answer was just given.
         followUpDeadline = nil
         activeIsFollowUp = false
+        directCaptureSession = false
         followUpCaptureStart = nil
         tearDownRecognition()
         speakingWatchdog?.invalidate()
@@ -1571,6 +1576,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         state = .off
         followUpDeadline = nil
         activeIsFollowUp = false
+        directCaptureSession = false
         followUpCaptureStart = nil
         tearDownRecognition()
         SoundEffects.externalAudioOwner = false
@@ -1704,10 +1710,26 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         RunLoop.main.add(timer, forMode: .common)
     }
 
+    /// Lock-screen mic entry: listening is armed, jump straight to
+    /// active capture — no wake phrase, chime and all. Returns false when
+    /// the engine isn't ready yet (caller retries).
+    func enterActiveCapture() -> Bool {
+        guard state == .passive else { return false }
+        state = .active
+        activeIsFollowUp = true       // whole-stream capture machinery…
+        directCaptureSession = true   // …with full routing on fire
+        followUpCaptureStart = Date()
+        liveTranscript = ""
+        onWake?()
+        armCommandTimer(after: 2.5)
+        return true
+    }
+
     private func fireCommand() {
         guard state == .active else { return }
         let command = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
-        let wasFollowUp = activeIsFollowUp
+        let wasFollowUp = activeIsFollowUp && !directCaptureSession
+        directCaptureSession = false
         activeIsFollowUp = false
         liveTranscript = ""
         state = .passive

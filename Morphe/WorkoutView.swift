@@ -4653,6 +4653,7 @@ private struct PartnerSessionCard: View {
 }
 
 private struct WorkoutRestControlBar: View {
+    @Environment(MorpheAppStore.self) private var store
     @Binding var seconds: Int
     @Binding var isRunning: Bool
     var exerciseName: String = "Next set"
@@ -4684,7 +4685,7 @@ private struct WorkoutRestControlBar: View {
                         if isRunning {
                             countdownEndDate = Date().addingTimeInterval(TimeInterval(preset))
                             RestTimerSharedState.write(endDate: countdownEndDate)
-                            RestTimerActivityController.update(secondsRemaining: preset)
+                            WorkoutSessionActivityController.restUpdated(store: store, endDate: countdownEndDate!)
                         }
                     }
                     .buttonStyle(FilterChipStyle(isSelected: seconds == preset))
@@ -4734,7 +4735,7 @@ private struct WorkoutRestControlBar: View {
             guard isRunning, newValue != oldValue - 1 else { return }
             countdownEndDate = Date().addingTimeInterval(TimeInterval(newValue))
             RestTimerSharedState.write(endDate: countdownEndDate)
-            RestTimerActivityController.update(secondsRemaining: newValue)
+            WorkoutSessionActivityController.restUpdated(store: store, endDate: countdownEndDate!)
         }
         .onAppear {
             if isRunning {
@@ -4795,8 +4796,8 @@ private struct WorkoutRestControlBar: View {
         // write unconditionally or it would stop itself for users with
         // activities off. (Inspection find 2026-07-29.)
         RestTimerSharedState.write(endDate: countdownEndDate)
-        // Mirror the countdown to the lock screen / Dynamic Island.
-        RestTimerActivityController.start(exerciseName: exerciseName, secondsRemaining: seconds)
+        // Mirror the countdown onto the lock-screen session card.
+        WorkoutSessionActivityController.restStarted(store: store, endDate: countdownEndDate!)
         countdownTask = Task {
             while !Task.isCancelled && seconds > 0 {
                 try? await Task.sleep(for: .seconds(1))
@@ -4815,7 +4816,7 @@ private struct WorkoutRestControlBar: View {
         countdownTask = nil
         countdownEndDate = nil
         RestTimerSharedState.write(endDate: nil)
-        RestTimerActivityController.end()
+        WorkoutSessionActivityController.restEnded(store: store)
     }
 }
 

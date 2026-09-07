@@ -31,6 +31,14 @@ final class WatchBridge: NSObject, WCSessionDelegate {
 
     /// Called by the store (main actor) after session mutations.
     func publish() {
+        // The lock-screen session card rides the same choke point as the
+        // wrist (Lucas 2026-08-30) — every mutation that reaches the
+        // watch reaches the Live Activity, watch paired or not.
+        if let store {
+            MainActor.assumeIsolated {
+                WorkoutSessionActivityController.sync(from: store)
+            }
+        }
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         guard session.activationState == .activated,
