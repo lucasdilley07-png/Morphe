@@ -5900,6 +5900,12 @@ final class PremiumStore {
     /// can gate independently of consumer Pro when the storefront flips on.
     private(set) var hasCoachEntitlement = false
     private(set) var isBusy = false
+    /// Product-load lifecycle so the paywall can distinguish "still
+    /// loading" from "loaded but empty" from "StoreKit failed" — the last
+    /// used to read as a forever "Plans are loading…" (deferred-states
+    /// pass 2026-09).
+    enum LoadState: Equatable { case idle, loading, loaded, failed }
+    private(set) var loadState: LoadState = .idle
 
     /// The single gate the app reads. Everything is free while the
     /// storefront is dormant.
@@ -5909,8 +5915,15 @@ final class PremiumStore {
 
     func load() async {
         guard PremiumGate.storefrontEnabled else { return }
-        products = ((try? await Product.products(for: PremiumGate.allProductIDs)) ?? [])
-            .sorted { $0.price < $1.price }
+        if loadState != .loaded { loadState = .loading }
+        if let fetched = try? await Product.products(for: PremiumGate.allProductIDs) {
+            products = fetched.sorted { $0.price < $1.price }
+            loadState = .loaded
+        } else {
+            // StoreKit round-trip failed (offline / sandbox) — surface a
+            // retry instead of an eternal loading line.
+            loadState = .failed
+        }
         await refreshEntitlement()
     }
 

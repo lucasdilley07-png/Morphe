@@ -34,6 +34,9 @@ struct ProfileView: View {
     }
     @State private var exportFile: ExportFile?
     @State private var showPaywall = false
+    /// Coach-code claim in flight — blocks double-submit and keeps the
+    /// editor open on failure (deferred-states pass 2026-09).
+    @State private var isJoiningCoach = false
 
     private var isCoach: Bool {
         store.selectedRole == .coach
@@ -1162,18 +1165,34 @@ struct ProfileView: View {
                                     .textFieldStyle(MorpheFieldStyle())
                                     .textInputAutocapitalization(.characters)
                                     .autocorrectionDisabled()
-                                Button("Join") {
+                                Button {
                                     let code = coachCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines)
                                     guard !code.isEmpty else { return }
+                                    isJoiningCoach = true
                                     Task {
-                                        await store.claimCoachInvite(code: code)
-                                        coachCodeDraft = ""
-                                        isEnteringCoachCode = false
+                                        let ok = await store.claimCoachInvite(code: code)
+                                        isJoiningCoach = false
+                                        // Only clear the code and close on
+                                        // success — a failed claim must not
+                                        // make the user re-type a 6-char code
+                                        // (deferred-states pass 2026-09).
+                                        if ok {
+                                            coachCodeDraft = ""
+                                            isEnteringCoachCode = false
+                                        }
+                                    }
+                                } label: {
+                                    if isJoiningCoach {
+                                        ProgressView()
+                                    } else {
+                                        Text("Join")
                                     }
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(MorpheTheme.accentText)
+                                .disabled(isJoiningCoach || coachCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                                 Button("Cancel") { isEnteringCoachCode = false }
+                                    .disabled(isJoiningCoach)
                                     .buttonStyle(.plain)
                                     .foregroundStyle(MorpheTheme.textMuted)
                             }
@@ -1914,10 +1933,14 @@ struct MorpheProPaywallSheet: View {
                     Text("You're Pro. Thanks for backing honest training.")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(MorpheTheme.accentText)
+                } else if premium.products.isEmpty, premium.loadState == .failed {
+                    // StoreKit failed — a retry, not a forever "loading…"
+                    // (deferred-states pass 2026-09).
+                    FetchRetryCard(message: "Plans couldn't load — check your connection.") {
+                        Task { await premium.load() }
+                    }
                 } else if premium.products.isEmpty {
-                    Text("Plans are loading…")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
+                    FetchPlaceholderCard(line: "Loading plans…")
                 } else {
                     ForEach(premium.products, id: \.id) { product in
                         Button {
@@ -1937,11 +1960,18 @@ struct MorpheProPaywallSheet: View {
                     }
                 }
 
-                Button("Restore Purchases") {
+                Button {
                     Task { await premium.restore() }
+                } label: {
+                    if premium.isBusy {
+                        ProgressView()
+                    } else {
+                        Text("Restore Purchases")
+                    }
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
                 .frame(maxWidth: .infinity)
+                .disabled(premium.isBusy)
             }
             .padding(20)
         }

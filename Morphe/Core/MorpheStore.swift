@@ -172,6 +172,10 @@ final class MorpheAppStore {
     var feedFetchState: FetchState = .idle
     var leaderboardFetchState: FetchState = .idle
     var challengesFetchState: FetchState = .idle
+    /// Inbox tri-state (deferred-states pass 2026-09): the inbox used to
+    /// claim "No conversations yet" during the very first fetch and forever
+    /// after a failed one — loading and failure now render honestly.
+    var threadsFetchState: FetchState = .idle
     // A tab named "Learn" opens to learning, not to a scoreboard.
     var selectedHubFeature: ClientHubFeature? = .learn
     var selectedCommunitySection: ClientCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
@@ -10821,8 +10825,9 @@ final class MorpheAppStore {
     /// imports its history into THIS account, re-keyed to the new identity.
     /// Coach attribution on each log is preserved (`enteredByName`), so the
     /// history stays honest about who recorded it.
-    func claimCoachInvite(code: String) async {
-        guard let uid = authUser?.id else { return }
+    @discardableResult
+    func claimCoachInvite(code: String) async -> Bool {
+        guard let uid = authUser?.id else { return false }
         let result = await managedClientService.claim(
             code: code,
             athleteUid: uid,
@@ -10830,7 +10835,10 @@ final class MorpheAppStore {
         )
         switch result {
         case .failure(let error):
-            showToast(error.message)
+            // Felt failure, and the caller keeps the editor open with the
+            // typed code intact (deferred-states pass 2026-09).
+            showToast(error.message, isError: true)
+            return false
         case .success(let claimed):
             // Remember WHO the coach is — the coachShare consent toggle and
             // the summary's named reader both key off this link.
@@ -10859,6 +10867,7 @@ final class MorpheAppStore {
                     : "You're connected to \(claimed.coachName)'s roster.",
                 symbol: "person.2.fill"
             )
+            return true
         }
     }
 
@@ -11720,13 +11729,18 @@ final class MorpheAppStore {
     /// Soft by default (staleness-gated); force from sign-in and the
     /// moments that just CHANGED the inbox (new chat started).
     func refreshThreads(force: Bool = false) async {
-        guard let uid = authUser?.id else { return }
+        guard let uid = authUser?.id else {
+            threadsFetchState = .loaded
+            return
+        }
         if !force, !liveThreads.isEmpty, let last = lastThreadsRefreshAt,
            Date.now.timeIntervalSince(last) < Self.threadsStalenessWindow {
             return
         }
+        if threadsFetchState != .loaded { threadsFetchState = .loading }
         if let fetched = await messagingService.fetchThreads(for: uid) {
             lastThreadsRefreshAt = .now
+            threadsFetchState = .loaded
             // Blocking reaches MESSAGING too (launch audit P0-2): a blocked
             // account's thread never renders, in either direction.
             liveThreads = fetched.filter { thread in
@@ -11741,6 +11755,13 @@ final class MorpheAppStore {
                 linkedCoachUid = coachThread.coachUid
                 linkedCoachName = coachThread.coachName
             }
+        } else if liveThreads.isEmpty {
+            // Fetch failed with nothing cached — show a retry, never a
+            // false "no conversations" (feedback audit P1-4). A failed
+            // refresh WITH cached threads keeps the cache and stays silent.
+            threadsFetchState = .failed
+        } else {
+            threadsFetchState = .loaded
         }
     }
 

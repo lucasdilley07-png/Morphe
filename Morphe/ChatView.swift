@@ -3773,6 +3773,18 @@ struct AthleteInboxView: View {
 
                 if cleanQuery.count >= 2 {
                     directoryResults
+                } else if store.liveThreads.isEmpty,
+                          store.threadsFetchState == .loading || store.threadsFetchState == .idle {
+                    // Loading — never claim "no conversations" before the
+                    // fetch answers (deferred-states pass 2026-09).
+                    FetchPlaceholderCard(line: "Loading your chats…")
+                        .padding(.horizontal, 16)
+                } else if store.liveThreads.isEmpty, store.threadsFetchState == .failed {
+                    // Failed with nothing cached — a retry, not a dead-end.
+                    FetchRetryCard(message: "Your chats couldn't load — check your connection.") {
+                        Task { await store.refreshThreads(force: true) }
+                    }
+                    .padding(.horizontal, 16)
                 } else if store.liveThreads.isEmpty {
                     // The pane's only empty state now lives WITH the search
                     // that cures it.
