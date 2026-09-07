@@ -993,10 +993,15 @@ struct MorpheDayPopup: View {
                 }
                 .padding(24)
             }
-            .offset(y: (appeared || reduceMotion ? 0 : 900) + max(0, dragOffset))
+            // Overlay entrance, not a slide-up (Lucas 2026-09): it fades
+            // in place with a whisper of scale. dragOffset is retained so
+            // drag-to-dismiss still follows the finger.
+            .offset(y: max(0, dragOffset))
+            .opacity(appeared || reduceMotion ? 1 : 0)
+            .scaleEffect(appeared || reduceMotion ? 1 : 0.98)
             .onAppear {
                 guard !appeared else { return }
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.85).delay(0.35)) {
+                withAnimation(.easeOut(duration: reduceMotion ? 0.1 : 0.3).delay(0.35)) {
                     appeared = true
                 }
             }
@@ -1019,7 +1024,7 @@ struct MorpheDayPopup: View {
                         }
                     }
             )
-            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .transition(.opacity)
             .accessibilityAddTraits(.isModal)
             .accessibilitySortPriority(1000)
         }
