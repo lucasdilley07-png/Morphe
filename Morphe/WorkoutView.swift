@@ -3352,7 +3352,7 @@ private struct DiscoverCatalogSection: View {
                         Label("My Code", systemImage: "qrcode")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .buttonStyle(SecondaryCTAButtonStyle())
 
                     Button {
                         qrStartMode = .scan
@@ -3377,8 +3377,9 @@ private struct DiscoverCatalogSection: View {
         let byCategory = Dictionary(grouping: filteredWorkouts, by: \.categoryTag)
 
         return VStack(alignment: .leading, spacing: 20) {
-            connectCard
-
+            // Search leads the catalog's own page — the one obvious next
+            // step here is find/start a workout, not social pairing
+            // (affordance audit 2026-09). Connect moved to the bottom.
             searchBar
 
             // Empty here means the bundled catalog failed to load — the v2
@@ -3452,6 +3453,9 @@ private struct DiscoverCatalogSection: View {
                     }
                 }
             }
+
+            // Social pairing sits below the workouts it used to outrank.
+            connectCard
             }
         }
     }
@@ -3827,7 +3831,11 @@ private struct DiscoverProgramCard: View {
                         Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(isSaved ? MorpheTheme.accent : MorpheTheme.textSecondary)
-                            .frame(width: 32, height: 24)
+                            // 44x44 to meet the app's own tap-target rule
+                            // (affordance audit 2026-09: was 32x24, a miss
+                            // in a scrolling list of cards).
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(isSaved ? "\(template.name) saved" : "Save \(template.name) to My Library")
@@ -4674,7 +4682,10 @@ private struct WorkoutRestControlBar: View {
                 Spacer()
                 Text(timeString)
                     .font(.system(.title, design: .monospaced).weight(.bold))
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                    // Running vs paused was signified only by the button
+                    // word — tint the live clock so the state reads at a
+                    // glance (affordance audit 2026-09).
+                    .foregroundStyle(isRunning ? MorpheTheme.accentText : MorpheTheme.textPrimary)
             }
 
             HStack(spacing: 8) {
@@ -6080,7 +6091,7 @@ private struct SavedWorkoutsLibraryCard: View {
 
                 if showsBuiltWorkouts {
                     ForEach(visibleBuiltWorkouts) { template in
-                        HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 10) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(template.name)
                                     .font(.subheadline.weight(.semibold))
@@ -6091,22 +6102,31 @@ private struct SavedWorkoutsLibraryCard: View {
                                     .foregroundStyle(MorpheTheme.textSecondary)
                             }
 
-                            Spacer(minLength: 0)
-
-                            Menu {
+                            // Start is THE action on a built workout too
+                            // (affordance audit 2026-09): it used to hide
+                            // behind the ellipsis while sibling saved rows
+                            // showed it — a workout you built yourself had
+                            // no visible way to run.
+                            HStack(spacing: 8) {
                                 Button("Start") { onStartBuilt(template) }
-                                Button("Train Today") { onQueueBuilt(template) }
-                                Button("Edit") { onEditBuilt(template) }
-                                folderSubmenu(templateID: template.id)
-                                Button("Delete", role: .destructive) { onDeleteBuilt(template) }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                                    .frame(width: 44, height: 44)
-                                    .contentShape(Rectangle())
+                                    .buttonStyle(SecondaryCTAButtonStyle())
+
+                                Spacer()
+
+                                Menu {
+                                    Button("Train Today") { onQueueBuilt(template) }
+                                    Button("Edit") { onEditBuilt(template) }
+                                    folderSubmenu(templateID: template.id)
+                                    Button("Delete", role: .destructive) { onDeleteBuilt(template) }
+                                } label: {
+                                    Image(systemName: "ellipsis")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .accessibilityLabel("More actions for \(template.name)")
                             }
-                            .accessibilityLabel("Actions for \(template.name)")
                         }
                         .padding(.vertical, 2)
 

@@ -3428,19 +3428,27 @@ struct ThreadChatView: View {
                     // A streak needs at least two days to be a streak; day
                     // one stays quiet instead of celebrating a single hello.
                     if chatStreak >= 2 {
-                        HStack(spacing: 4) {
-                            Image(systemName: "flame.fill")
-                                .font(.caption2.weight(.bold))
-                            Text("STREAK \(chatStreak)")
-                                .font(MorpheTheme.microLabel(10))
-                                .tracking(1.2)
-                        }
-                        .foregroundStyle(MorpheTheme.accentText)
-                        .accessibilityLabel("\(chatStreak) day chat streak")
-                        // The chip explains itself on tap — no glossary hunt.
-                        .onTapGesture {
+                        // A Button, not an onTapGesture (affordance audit
+                        // 2026-09): the tap explainer used to be invisible
+                        // to VoiceOver — no button trait, no reachable
+                        // action — and looked identical to the inert streak
+                        // chips elsewhere. The info glyph signifies it acts.
+                        Button {
                             streakExplainerVisible = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "flame.fill")
+                                    .font(.caption2.weight(.bold))
+                                Text("STREAK \(chatStreak)")
+                                    .font(MorpheTheme.microLabel(10))
+                                    .tracking(1.2)
+                                Image(systemName: "info.circle")
+                                    .font(.caption2)
+                            }
+                            .foregroundStyle(MorpheTheme.accentText)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(chatStreak) day chat streak — tap to learn how it works")
                         .alert("Chat Streak", isPresented: $streakExplainerVisible) {
                             Button("Got It", role: .cancel) {}
                         } message: {

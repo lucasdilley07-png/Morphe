@@ -1178,7 +1178,7 @@ struct ProfileView: View {
                                     .foregroundStyle(MorpheTheme.textMuted)
                             }
                         } else {
-                            settingsRow("Coach code", value: "Have one? Join your coach") {
+                            settingsRow("Coach code", value: "Have one? Join your coach", actionLabel: "Join") {
                                 isEnteringCoachCode = true
                             }
                         }
@@ -1514,7 +1514,7 @@ struct ProfileView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    private func settingsRow(_ title: String, value: String, showEdit: Bool = true, onEdit: @escaping () -> Void) -> some View {
+    private func settingsRow(_ title: String, value: String, showEdit: Bool = true, actionLabel: String = "Edit", onEdit: @escaping () -> Void) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -1526,10 +1526,13 @@ struct ProfileView: View {
             }
             Spacer()
             if showEdit {
-                Button("Edit", action: onEdit)
+                // The action word IS the signifier — it must name the real
+                // action, never a default "Edit" for a code you haven't set
+                // (affordance audit 2026-09).
+                Button(actionLabel, action: onEdit)
                     .buttonStyle(.plain)
                     .foregroundStyle(MorpheTheme.accentText)
-                    .accessibilityLabel("Edit \(title.lowercased())")
+                    .accessibilityLabel("\(actionLabel) \(title.lowercased())")
             }
         }
     }
@@ -1974,8 +1977,15 @@ private struct IntelligenceKeyEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Claude answers")
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                HStack(spacing: 8) {
+                    Text("Claude answers")
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    // State a paragraph of prose used to carry, now
+                    // readable at a glance (affordance audit 2026-09).
+                    StatusBadge(
+                        text: store.intelligenceEnabled ? "On" : "Off",
+                        color: store.intelligenceEnabled ? MorpheTheme.accent : MorpheTheme.textMuted)
+                }
                 Text(store.intelligenceEnabled
                      ? "On \u{2014} questions no built-in answer covers go to Claude on your own Anthropic API key. Calls bill to your key. Everything else stays instant and on-device."
                      : "Paste your own Anthropic API key and open questions get real Claude answers \u{2014} in chat and out loud through \u{201C}Hey Morphe\u{201D}. Calls bill to your key. Without a key, Morphe\u{2019}s built-in replies run: free, instant, offline.")
@@ -1989,8 +1999,9 @@ private struct IntelligenceKeyEditor: View {
                     Haptics.impact(.light)
                 } label: {
                     Text("Remove key")
-                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(SecondaryCTAButtonStyle())
             } else {
                 SecureField("sk-ant-\u{2026}", text: $draftKey)
                     .textInputAutocapitalization(.never)
@@ -2012,9 +2023,9 @@ private struct IntelligenceKeyEditor: View {
                     }
                 } label: {
                     Text("Save key")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.brandYellowText)
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(SecondaryCTAButtonStyle())
                 .disabled(draftKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 if showSaveError {
                     Text("Anthropic keys start with sk-ant- \u{2014} check what you pasted and try again.")

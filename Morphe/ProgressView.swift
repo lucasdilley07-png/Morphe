@@ -1019,7 +1019,16 @@ private struct ProgressHeroStrip: View {
                         Button {
                             showScoreExplainer = true
                         } label: {
-                            MetricPill(label: "Morphe Score", value: "\(score)")
+                            // The one tappable readout among three
+                            // look-alike pills wears an info glyph so the
+                            // affordance is visible, not just VoiceOver-only
+                            // (affordance audit 2026-09).
+                            HStack(spacing: 4) {
+                                MetricPill(label: "Morphe Score", value: "\(score)")
+                                Image(systemName: "info.circle")
+                                    .font(.caption2)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Morphe Score \(score) — tap to learn what drives it")
