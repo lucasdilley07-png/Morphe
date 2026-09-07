@@ -1413,6 +1413,9 @@ private let feedVerifiedSealBlue = Color(red: 0.25, green: 0.56, blue: 0.96)
 private struct RealFeedSection: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var draft = ""
+    /// Blocks double-submit and shows a spinner while the post is in flight
+    /// (feedback P1 2026-09).
+    @State private var isPosting = false
     @State private var filter: FeedFilter = .ranked
     @State private var repostTarget: FeedPost?
     /// The post whose author view is pushed (a real push, swipe-back works).
@@ -1796,12 +1799,26 @@ private struct RealFeedSection: View {
 
                         Spacer()
 
-                        Button("Post") {
+                        Button {
                             let text = cleanDraft
                             draft = ""
-                            Task { await store.publishPost(text: text) }
+                            isPosting = true
+                            Task {
+                                let ok = await store.publishPost(text: text)
+                                isPosting = false
+                                // A dead connection must give the words back
+                                // (feedback P1 2026-09), never eat them.
+                                if !ok { draft = text }
+                            }
+                        } label: {
+                            if isPosting {
+                                ProgressView().tint(.black)
+                            } else {
+                                Text("Post")
+                            }
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .disabled(isPosting)
                         // Same send control as the chat composer (ThreadChatView):
                         // 84x44 primary CTA next to a MorpheFieldStyle field.
                         .frame(width: 96)
@@ -2976,11 +2993,14 @@ private struct FeedPostCard: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: myReactionSymbol)
+                                .contentTransition(.symbolEffect(.replace))
+                                .symbolEffect(.bounce, value: hasReacted)
                             Text("React")
                         }
                         .feedActionChrome(isActive: hasReacted, activeColor: MorpheTheme.accent)
                         .frame(maxWidth: .infinity)
                     } primaryAction: {
+                        Haptics.selection()
                         store.toggleReaction(post)
                     }
                     .accessibilityLabel(hasReacted ? "Remove reaction" : "React")
@@ -3016,6 +3036,8 @@ private struct FeedPostCard: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                                .contentTransition(.symbolEffect(.replace))
+                                .symbolEffect(.bounce, value: isSaved)
                             Text(isSaved ? "Saved" : "Save")
                         }
                         .frame(maxWidth: .infinity)

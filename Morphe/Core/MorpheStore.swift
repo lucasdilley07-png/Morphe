@@ -7540,11 +7540,14 @@ final class MorpheAppStore {
         // part of the weekly totals — mirror them up (opt-in gated inside).
         publishCompetitionScores()
 
-        if todayExperienceTier > tierBefore {
-            showToast(todayExperienceTier == 1
-                ? "Today unlocked new cards — your metrics and adjustment tools are live."
-                : "Today unlocked pattern insights — keep logging.")
-        }
+        // Composed into the final log toast below (feedback P1 2026-09):
+        // firing it here was silently overwritten in the same synchronous
+        // beat by "Workout logged."
+        let tierUnlockLine: String? = todayExperienceTier > tierBefore
+            ? (todayExperienceTier == 1
+                ? " Today unlocked your metrics and adjustment tools."
+                : " Today unlocked pattern insights.")
+            : nil
 
         // A logged session that IS the program's next session advances the
         // program (count-based, so a missed week just resumes).
@@ -7662,7 +7665,7 @@ final class MorpheAppStore {
         if recordStamp == nil {
             Haptics.success()
         }
-        showToast("Workout logged. Progress updated.")
+        showToast("Workout logged. Progress updated.\(tierUnlockLine ?? "")")
         // Milestone pep-talks ride the same beat — but a PR celebration
         // wins the moment; the milestone waits for a quieter log.
         celebrateMilestonesAfterLog()
@@ -8869,7 +8872,7 @@ final class MorpheAppStore {
 
         let pinnedCount = savedWorkouts.filter(\.isPinned).count
         guard pinnedCount < 3 else {
-            showToast("Pin up to 3 workouts at a time.")
+            showToast("Pin up to 3 workouts at a time.", isError: true)
             return
         }
 
@@ -11087,6 +11090,11 @@ final class MorpheAppStore {
         // descending order over the next sessions (audit 10, P2-6).
         for item in fresh { seen.insert(item.id) }
         UserDefaults.standard.set(Array(seen), forKey: milestonesSeenKey)
+        // A streak/sessions/sets milestone is a COMPLETION — the star +
+        // success it exists for, not a silent banner (feedback doctrine
+        // rule 3, 2026-09).
+        SoundEffects.play(.star)
+        Haptics.success()
         showCelebration(title: milestone.title, detail: milestone.detail, symbol: milestone.symbol)
     }
 
@@ -11850,7 +11858,7 @@ final class MorpheAppStore {
         guard await messagingService.send(threadId: threadId, senderUid: uid,
                                           text: String(clean.prefix(2000))) else {
             pendingOutgoingMessages.removeAll { $0.id == pending.id }
-            showToast("Message didn't send — check your connection.")
+            showToast("Message didn't send — check your connection.", isError: true)
             return
         }
         if let index = liveThreads.firstIndex(where: { $0.id == threadId }) {
@@ -12464,13 +12472,17 @@ final class MorpheAppStore {
     }
 
     /// Composer path: publish a win (optionally tagged with a workout name).
-    func publishPost(text: String, workoutName: String = "") async {
+    @discardableResult
+    func publishPost(text: String, workoutName: String = "") async -> Bool {
         guard await publishToRealFeed(text: text, workoutName: workoutName) else {
-            showToast("Post didn't publish — check your connection.")
-            return
+            // Failure is felt, and the composer restores the draft
+            // (feedback P1 2026-09) — the typed post must never vanish.
+            showToast("Post didn't publish — check your connection.", isError: true)
+            return false
         }
         SoundEffects.play(.ding)
         showCelebration(title: "Post shared", detail: "Your win is live on the feed.", symbol: "bubble.left.and.exclamationmark.bubble.right.fill")
+        return true
     }
 
     /// Capture-camera path: a photo post. The JPEG is already sized by the
@@ -12488,7 +12500,7 @@ final class MorpheAppStore {
             SoundEffects.play(.ding)
             showCelebration(title: "Posted", detail: "Your photo is live on the feed.", symbol: "camera.fill")
         } else {
-            showToast("Post didn't publish — check your connection.")
+            showToast("Post didn't publish — check your connection.", isError: true)
         }
         return published
     }
@@ -12819,7 +12831,7 @@ final class MorpheAppStore {
         guard await publishToRealFeed(text: text, repostOfId: originalId,
                                       repostOfAuthor: originalAuthor,
                                       imageB64: post.imageB64) else {
-            showToast("Repost didn't publish — check your connection.")
+            showToast("Repost didn't publish — check your connection.", isError: true)
             return
         }
         SoundEffects.play(.ding)
@@ -17058,7 +17070,10 @@ final class MorpheAppStore {
 
     // Internal (was private): views surface their own failure states too —
     // an export that silently no-ops is worse than a view-initiated toast.
-    func showToast(_ message: String) {
+    func showToast(_ message: String, isError: Bool = false) {
+        // Rule 1 of the feedback doctrine (2026-09): every refusal/failure
+        // toast is FELT, not just read — a "no" must not feel like a "yes".
+        if isError { Haptics.error() }
         toastMessage = message
         Task {
             try? await Task.sleep(for: .seconds(2))

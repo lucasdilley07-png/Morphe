@@ -436,6 +436,10 @@ struct MetricPill: View {
                     .foregroundStyle(MorpheTheme.textPrimary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
+                    // Counts roll instead of snapping (feedback pass 2026-09)
+                    // — one edit ticks every MetricPill: set count, score,
+                    // readiness, energy, this-week.
+                    .contentTransition(.numericText())
             }
         }
         .padding(.vertical, 4)
@@ -509,19 +513,32 @@ struct ToastBanner: View {
     }
 }
 
+/// The Morphe overlay: the app's persona SPEAKING to the user — greeting,
+/// guidance, milestone, encouragement (Lucas 2026-09). Every
+/// `showCelebration` routes here, so this one surface carries Morphe's
+/// voice consistently. The gold "MORPHE" kicker marks it as the assistant
+/// talking, distinct from a plain mechanical toast; the mark animates in
+/// (reduceMotion-aware). Two-tier doctrine: Morphe speaks through this;
+/// terse mechanical confirmations stay as quiet toasts.
 struct CelebrationOverlay: View {
     let moment: CelebrationMoment
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var marked = false
 
     var body: some View {
-        // Floats over scroll content like the toast, so it gets the same
-        // treatment: solid ink fill + gold hairline. The translucent surface
-        // tint read as see-through here.
+        // Floats over scroll content like the toast: solid ink fill + gold
+        // hairline (a translucent surface tint read as see-through here).
         HStack(spacing: 12) {
             Image(systemName: moment.symbol)
                 .font(.title3.weight(.bold))
                 .foregroundStyle(MorpheTheme.accentText)
+                .symbolEffect(.bounce, value: marked)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("MORPHE")
+                    .font(MorpheTheme.microLabel(9))
+                    .tracking(2)
+                    .foregroundStyle(MorpheTheme.accentText)
                 Text(moment.title)
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
@@ -542,6 +559,9 @@ struct CelebrationOverlay: View {
             RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                 .stroke(MorpheTheme.accent.opacity(0.45), lineWidth: 1)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Morphe: \(moment.title). \(moment.detail)")
+        .onAppear { if !reduceMotion { marked.toggle() } }
     }
 }
 
@@ -866,11 +886,15 @@ struct ScoreRing: View {
                 .trim(from: 0, to: Double(score) / 100.0)
                 .stroke(color, style: StrokeStyle(lineWidth: 4, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
+                // The ring sweeps to the new score instead of jump-cutting
+                // (feedback pass 2026-09).
+                .animation(.easeOut(duration: 0.6), value: score)
 
             VStack(spacing: 2) {
                 Text("\(score)")
                     .font(.system(.title2, design: .monospaced).weight(.bold))
                     .foregroundStyle(MorpheTheme.textPrimary)
+                    .contentTransition(.numericText())
                 Text("SCORE")
                     .font(MorpheTheme.microLabel(9))
                     .tracking(1.4)

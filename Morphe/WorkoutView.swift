@@ -2019,6 +2019,11 @@ private struct ActiveWorkoutTrackerCard: View {
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(MorpheTheme.panelStrong.opacity(0.6))
                     )
+                    // A logged set slides in instead of snapping — the most
+                    // frequent completion moment in the app (feedback pass
+                    // 2026-09). SwiftUI degrades this to a soft fade under
+                    // Reduce Motion automatically.
+                    .animation(.easeOut(duration: 0.25), value: repsLogged.count)
                 }
 
                 if let nextExercise {
@@ -4694,6 +4699,7 @@ private struct WorkoutRestControlBar: View {
                     // word — tint the live clock so the state reads at a
                     // glance (affordance audit 2026-09).
                     .foregroundStyle(isRunning ? MorpheTheme.accentText : MorpheTheme.textPrimary)
+                    .contentTransition(.numericText(countsDown: true))
             }
 
             HStack(spacing: 8) {
@@ -4826,6 +4832,9 @@ private struct WorkoutRestControlBar: View {
             if !Task.isCancelled && seconds == 0 {
                 isRunning = false
                 Haptics.success()
+                // Rest's end is the moment you're waiting for — heard, not
+                // just felt (Skip already dings; feedback pass 2026-09).
+                SoundEffects.play(.ding)
             }
         }
     }

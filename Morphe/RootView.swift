@@ -1038,14 +1038,28 @@ private struct AIAgentMessageRow: View {
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
 
-                Text(message.text)
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                Group {
+                    if !isUser && message.text == "\u{2026}" {
+                        // Morphe is thinking — the placeholder breathes
+                        // instead of sitting as dead dots (feedback pass
+                        // 2026-09); reduceMotion falls back to static.
+                        Image(systemName: "ellipsis")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .symbolEffect(.variableColor.iterative, options: .repeating)
+                    } else {
+                        Text(message.text)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .contentTransition(.opacity)
+                    }
+                }
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                             .fill(isUser ? MorpheTheme.accentAlt.opacity(0.28) : MorpheTheme.panelStrong)
                     )
+                    .animation(.easeOut(duration: 0.2), value: message.text)
                     .contextMenu {
                         Button {
                             UIPasteboard.general.string = message.text
