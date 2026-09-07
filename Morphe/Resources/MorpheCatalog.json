@@ -4332,6 +4332,325 @@
       ]
     },
     {
+      "id": "163c1557-e22e-5e60-aef8-709d6a05d42a",
+      "name": "Quick Feet — Agility Ladder Intervals",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "HIIT & Conditioning",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Foot-speed conditioning: fast ladder patterns and lateral shuffles run as short max-effort intervals keep the heart rate high while sharpening quickness, with skater jumps adding a lateral-power finisher. A low-impact way to burn while training athletic feet. Progress by trimming rest 5 seconds at a time before adding a round.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "agility-ladder-quick-feet",
+          "sets": 6,
+          "durationSeconds": 20,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "durationSeconds": 20,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 4,
+          "durationSeconds": 20,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "9f96ef6b-895e-508f-9645-69b0208e58b7",
+      "name": "Slam & Sprint — Med-Ball Metcon",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "HIIT & Conditioning",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "goal": "Weight Loss",
+      "notes": "A total-body metcon built on med-ball slams and wall-ball shots — explosive, full-body reps that spike the heart rate while burpees and climbers keep the density brutal. High output, big calorie burn, minimal skill barrier. Progress by adding reps to the ball work before shortening the 40-second rests.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "medicine-ball-slam",
+          "sets": 5,
+          "reps": 12,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "wall-ball-shot",
+          "sets": 5,
+          "reps": 12,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 4,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "1141b67b-b59c-54e1-baeb-71e942c90b5d",
+      "name": "Sled & Sprint — Push Intervals",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "HIIT & Conditioning",
+      "goalTag": "weightLoss",
+      "level": "Advanced",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "goal": "Weight Loss",
+      "notes": "Alternating heavy sled pushes and free sprints — both max-effort, both low-skill, both huge calorie burners that build a repeat-power engine with almost no eccentric soreness. Bear crawls finish the shoulders and core. Progress by adding sled load while holding sprint speed, then trimming rest.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "sled-push",
+          "sets": 6,
+          "durationSeconds": 15,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "durationSeconds": 15,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "5d7efae2-7990-5c6b-ab58-33fd8048ed3e",
+      "name": "Shuttle Burner — Change-of-Direction Cardio",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "HIIT & Conditioning",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 28,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Change-of-direction conditioning: pro-agility and T-drill shuttles run as repeats keep you decelerating and re-accelerating — the most metabolically expensive movement there is — while carioca and shuffles keep the hips moving between efforts. Progress by lowering shuttle times, then adding a rep.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "pro-agility-shuttle",
+          "sets": 6,
+          "reps": 1,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "t-drill",
+          "sets": 4,
+          "reps": 1,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "carioca",
+          "sets": 4,
+          "durationSeconds": 20,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "durationSeconds": 20,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3e37a812-34c7-565b-8d4f-9b5907d9a3bb",
+      "name": "Loaded Carries — Grip & Gut Circuit",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "HIIT & Conditioning",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "goal": "Weight Loss",
+      "notes": "A carry-driven circuit: farmer, suitcase, and overhead carries torch the grip, trunk, and legs under load while swings keep the heart rate up between walks. Loaded carries deliver a huge conditioning stimulus with almost no technical risk. Suitcase carries are per side. Progress by adding load or time only when posture stays tall.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "farmer-carry",
+          "sets": 4,
+          "durationSeconds": 40,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "suitcase-carry",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "overhead-carry",
+          "sets": 3,
+          "durationSeconds": 25,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "edca8c4d-d50c-5e21-b450-98a21d888e82",
+      "name": "Ground & Pound — Wrestler's Floor Circuit",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "HIIT & Conditioning",
+      "goalTag": "weightLoss",
+      "level": "Advanced",
+      "durationMinutes": 28,
+      "equipmentProfile": "Full Gym",
+      "goal": "Weight Loss",
+      "notes": "A floor-based grind of crawls, sprawls, and slams that keeps you low, moving, and gassed — the closest bodyweight conditioning gets to a scramble. Low-impact on the joints, savage on the engine. Progress by adding a round before shortening the rests.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "crab-walk",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-bear-crawl",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprawl",
+          "sets": 4,
+          "reps": 8,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "medicine-ball-slam",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        }
+      ]
+    },
+    {
       "id": "7c6554bd-5b42-546b-ba67-e67c221830f4",
       "name": "Power Intervals A — Jump & Swing",
       "focus": "Full Body",
@@ -4677,6 +4996,67 @@
           "libraryID": "mountain-climber",
           "sets": 3,
           "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "647f8586-3e1a-5acc-8ec6-e9dcdd6f405a",
+      "name": "Plyo Power — Reactive Jump Circuit",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "HIIT & Conditioning",
+      "goalTag": "leanOut",
+      "level": "Advanced",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "A moderate-volume plyometric circuit for athletes who want to keep their bounce while leaning out: box and broad jumps, tuck jumps, and pogos trained with real rest so power stays high and reps stay crisp. This is not a burnout — treat every jump as maximal. Progress by height and distance, and stop any set the moment landings get sloppy.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "box-jump",
+          "sets": 4,
+          "reps": 4,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "tuck-jump",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "split-squat-jump",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pogo-hop",
+          "sets": 3,
+          "durationSeconds": 15,
           "restSeconds": 45,
           "intensity": {
             "type": "bodyweight"
@@ -8009,6 +8389,385 @@
       ]
     },
     {
+      "id": "8b4b3877-e15f-50ab-83e5-f1bb156211bb",
+      "name": "Speed Endurance — Long Sprint Repeats",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Advanced",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Track pack speed-endurance day — the ability to hold top speed through the back half of a 200 or 400, built with longer max-effort repeats on generous but incomplete rest. The high output torches calories while training the exact fatigue you race through. Progress by trimming rest from 150 to 120 seconds before adding a repeat.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "durationSeconds": 30,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "carioca",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "a7867ce0-e525-5777-9109-e96f3fb5a23b",
+      "name": "Gassers — Football Conditioning",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "goal": "Weight Loss",
+      "notes": "Football pack conditioning day — a game is repeated all-out bursts on a play clock, so short sprints and sled pushes on tight rest rebuild that repeat-effort engine while lateral shuffles and bear crawls keep you moving under fatigue. High density drives the fat-loss goal. Progress by holding sprint quality as you trim rest from 45 to 35 seconds.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 10,
+          "durationSeconds": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "sled-push",
+          "sets": 4,
+          "durationSeconds": 15,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "b67fe570-a149-5ab5-84e5-3f7d4ebf4ded",
+      "name": "Dig & Dive — Court Conditioning",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Volleyball pack conditioning day — defense is a series of short shuffles, split-step reads, and dives to the floor, so this circuit strings exactly those together at high density to build the repeat-scramble engine while burning through the fat-loss zone. Keep the sprawls and dives controlled. Progress by trimming rest 5 seconds at a time before adding a round.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 5,
+          "durationSeconds": 20,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "split-step-hop",
+          "sets": 4,
+          "durationSeconds": 15,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprawl",
+          "sets": 4,
+          "reps": 8,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "875936e7-67a4-579e-9780-7276d51872bd",
+      "name": "Grappling Engine — Scramble Conditioning",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Advanced",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "goal": "Weight Loss",
+      "notes": "Wrestling pack conditioning day — a match is repeated all-out scrambles, so sprawls, bear crawls, and hip escapes rehearse mat movement while slams and swings keep the output relentless, building the gas tank that wins the third period. High density drives fat loss and match fitness at once. Progress by adding a round before cutting the 45-second rests.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprawl",
+          "sets": 5,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hip-escape",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "medicine-ball-slam",
+          "sets": 4,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ee0e3bf6-eec7-5625-966a-4086bfe77e01",
+      "name": "Cut & Condition — Steady Grappler's Circuit",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "goal": "Weight Loss",
+      "notes": "Wrestling pack conditioning day — the steady-state fat-loss session for making weight without wrecking recovery: rope, swings, sprawls, and crawls kept at a sustainable hard pace rather than all-out, so you burn without digging a hole before competition. Progress by holding the same circuit at a lower heart rate, then adding a round.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 3,
+          "durationSeconds": 120,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          }
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "sprawl",
+          "sets": 4,
+          "reps": 8,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3052c31e-f036-5b2b-8fbf-d66500988df1",
+      "name": "Match Sharpener — In-Season Intervals",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "weightLoss",
+      "level": "Moderate",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Weight Loss",
+      "notes": "Soccer pack in-season day — a short, sharp session for the days between matches that tops up the repeat-sprint engine without leaving legs heavy for kickoff. Keep it brief and fast: quality sprints and crisp footwork, then stop. Progress by holding sprint speed on the same short rest; if a match is within 48 hours, cut the sprint sets in half.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 5,
+          "durationSeconds": 15,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "split-step-hop",
+          "sets": 3,
+          "durationSeconds": 15,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
       "id": "c9a652bb-238c-5ee2-ab74-3f2016c454cc",
       "name": "Knockout Power — Boxer's Strength Day",
       "focus": "Full Body",
@@ -8445,6 +9204,1038 @@
       ]
     },
     {
+      "id": "172c75e2-6438-5da8-8d13-4faddcc0895b",
+      "name": "Acceleration Development — First 20 Meters",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Track pack acceleration day — the first 20 meters win most races, so wall drills groove the forward-lean shin angle before short max-intent sprints and heavy sled pushes overload the drive phase. Broad jumps train the same horizontal force. Keep every sprint fully recovered so quality never drops. Progress by adding sled load only when your first three steps stay powerful.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "a-skip",
+          "sets": 2,
+          "durationSeconds": 20,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "wall-acceleration-drill",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "durationSeconds": 6,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "sled-push",
+          "sets": 4,
+          "durationSeconds": 12,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 3,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "acf14bc3-bb22-570e-87e7-e2ed71c15e35",
+      "name": "Top-End Speed — Flying Sprints",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Strength Building",
+      "notes": "Track pack max-velocity day — top speed is trained fresh, never tired: a thorough drill warm-up feeds into flying sprints with a rolling run-in and near-full recovery, so you hit true top-end mechanics. Bounds carry that elastic quality into the ground. If your form breaks down, the session is over — speed work rewards quality, not accumulation. Progress by adding one fly only when times hold.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "a-skip",
+          "sets": 2,
+          "durationSeconds": 20,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "butt-kick",
+          "sets": 2,
+          "durationSeconds": 20,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 20,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "flying-sprint",
+          "sets": 6,
+          "reps": 1,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "alternating-bound",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "f68f51cb-0e4f-551a-8ec4-2dc2c4d7427c",
+      "name": "Sprinter's Power — Clean & Squat",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Track pack strength day — sprint force is built with the fastest lifts in the gym, so power cleans train rate of force development before heavy trap-bar pulls and squats add the raw horsepower, and Nordics armor the hamstrings that snap the leg through. Move every clean rep with violent intent. Progress by adding 2.5 kg to the squat and pull when bar speed stays crisp.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 10,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hang-power-clean",
+          "sets": 5,
+          "reps": 3,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          }
+        },
+        {
+          "libraryID": "trap-bar-deadlift",
+          "sets": 4,
+          "reps": 4,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          }
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 3,
+          "reps": 4,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 82
+          }
+        },
+        {
+          "libraryID": "nordic-hamstring-curl",
+          "sets": 3,
+          "reps": 5,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "7338a865-0f51-59dc-9f1c-5ba6ce8fd507",
+      "name": "Rotational Power — Baseball Hitting Day",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Baseball pack strength day — bat speed and throwing velocity are rotational-power problems, so med-ball rotational throws and scoop tosses train hip-to-hand sequencing at full intent before trap-bar pulls build the base and woodchops finish the trunk. Reset fully between throws so each one is maximal. Progress by throwing a heavier ball, never a slower one, and adding load to the pull.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "medicine-ball-rotational-throw",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "medicine-ball-scoop-toss",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "trap-bar-deadlift",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          }
+        },
+        {
+          "libraryID": "landmine-rotation",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "cable-woodchop",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "27cd529e-a643-5d3e-8725-6e18b9ce4f30",
+      "name": "Pitcher's Power — Lower Half & Drive Leg",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Baseball pack strength day for pitchers — velocity is built from the ground up, so scoop tosses train explosive hip drive while trap-bar pulls and single-leg RDLs strengthen the back-leg push that starts the delivery, and Pallof presses stabilize the trunk you rotate over. Single-leg reps are per side. Progress the pull 2.5 kg at a time and keep the throws violent, never grindy.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-lunge",
+          "sets": 2,
+          "reps": 8,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "trap-bar-deadlift",
+          "sets": 4,
+          "reps": 4,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          }
+        },
+        {
+          "libraryID": "medicine-ball-scoop-toss",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "pallof-press",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "8884d3fe-3c19-51c6-8b06-e52ece360e2f",
+      "name": "Clubhead Speed — Golf Power Day",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Golf pack strength day — clubhead speed comes from the ground and the hips, so rotational and scoop throws train the explosive turn while trap-bar pulls and goblet squats build the lower-body base a fast swing pushes off, and woodchops sequence the trunk. Reset fully between throws. Progress by throwing a heavier ball and adding load to the pull, keeping every swing-speed rep maximal.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "medicine-ball-rotational-throw",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "medicine-ball-scoop-toss",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "trap-bar-deadlift",
+          "sets": 3,
+          "reps": 5,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          }
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "cable-woodchop",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "368583dc-169f-56a5-a02f-d797be980e93",
+      "name": "Explosive Power — Trench Strength Day",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Football pack strength day — winning the line is about explosive force off the snap, so box jumps prime the nervous system before power cleans, heavy squats, and push presses build the total-body drive that moves a man backward. Every clean and press rep is maximal intent. Progress by adding 2.5 kg when bar speed holds; drop the load the day it slows.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "box-jump",
+          "sets": 3,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hang-power-clean",
+          "sets": 5,
+          "reps": 3,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          }
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 5,
+          "reps": 3,
+          "restSeconds": 210,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 85
+          }
+        },
+        {
+          "libraryID": "push-press",
+          "sets": 4,
+          "reps": 4,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          }
+        },
+        {
+          "libraryID": "sled-push",
+          "sets": 4,
+          "durationSeconds": 12,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ba28ba24-19aa-5d71-ad4f-50efc8427438",
+      "name": "Contact Prep — Neck, Carries & Sled",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Football pack strength day — a body that absorbs and delivers contact needs a strong neck, hard-to-move trunk, and a posterior chain built for pushing, so neck isometrics, loaded carries, backward sled drags, and sandbag work armor exactly those links. Carries and drags are timed; keep the trunk braced. Progress by adding time or load only when posture stays tall throughout.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "neck-isometric-hold",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "trap-bar-deadlift",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          }
+        },
+        {
+          "libraryID": "front-rack-carry",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "backward-sled-drag",
+          "sets": 4,
+          "durationSeconds": 20,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "sandbag-to-shoulder",
+          "sets": 3,
+          "reps": 5,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "271fc291-4894-5103-842d-73defbb16eeb",
+      "name": "Vertical Jump — Volleyball Power Day",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Volleyball pack strength day — the block and spike live above the net, so approach jumps rehearse the exact plant-and-launch before heavy squats build the strength vertical is made of and RDLs load the hips, with seated box jumps training pure starting power. Keep jumps low-rep and explosive. Progress the squat 2.5 kg at a time and raise jump targets only when landings stay controlled.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "pogo-hop",
+          "sets": 3,
+          "durationSeconds": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "approach-jump",
+          "sets": 5,
+          "reps": 3,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 4,
+          "reps": 4,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 82
+          }
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          }
+        },
+        {
+          "libraryID": "seated-box-jump",
+          "sets": 3,
+          "reps": 4,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "9cd9dbdb-bee3-55ce-9f72-9717c4d09bd6",
+      "name": "Mat Strength — Grappler's Pull & Carry",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Wrestling pack strength day — grappling strength is grip, pull, and the ability to move a resisting body, so trap-bar pulls and weighted pull-ups build the yank, front-rack carries and get-ups build braced full-body control, and neck isometrics protect the most exposed joint on the mat. Get-up reps are per side. Progress by loading the pull-up once strict sets come easy.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 10,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "trap-bar-deadlift",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          }
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "front-rack-carry",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "kettlebell-turkish-get-up",
+          "sets": 3,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "neck-isometric-hold",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "59d76dc0-8931-5031-b53d-183cdd7816f2",
+      "name": "In-Season Legs — Maintenance Power",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Basketball pack in-season day — during the season you maintain strength on minimal volume so legs stay fresh for games: one heavy but low-set squat, a light hinge, calves, and a Copenhagen hold for groin health. This preserves the off-season gains without adding fatigue. Progress by keeping the same weights moving crisply; if legs feel heavy, cut a set, never add one.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "box-jump",
+          "sets": 3,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 3,
+          "reps": 3,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 82
+          }
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 2,
+          "reps": 5,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          }
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "copenhagen-plank",
+          "sets": 2,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "6528c0f0-4070-5e39-a6cb-2e2dc8f3f2f2",
+      "name": "Stay on the Pitch — Hamstring & Groin Prehab",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Soccer pack prehab day — hamstring and groin strains are the sport's most common injuries, so this builds exactly the tissues that prevent them: Nordics for eccentric hamstring strength, Copenhagen planks for the adductors, and single-leg work for the balance a cut demands. Single-leg reps are per side. Progress by lowering slower in the Nordic and adding time to the Copenhagen before anything else.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "nordic-hamstring-curl",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "copenhagen-plank",
+          "sets": 3,
+          "durationSeconds": 25,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "lateral-lunge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          }
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "4f1007b5-ffe2-5bf8-b5a8-8d10db85deca",
+      "name": "Off-Season Power — Tennis Strength Base",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Tennis pack off-season day — the pre-season block that builds the strength and power a match season spends: power cleans and heavy squats lay the base, rotational throws convert it toward the racquet, and lateral lunges plus Pallof presses armor the movement and trunk. Move the power lifts fast. Progress 2.5 kg at a time on the barbell work while keeping throws maximal.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hang-power-clean",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          }
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          }
+        },
+        {
+          "libraryID": "medicine-ball-rotational-throw",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "lateral-lunge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          }
+        },
+        {
+          "libraryID": "pallof-press",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "e382806d-b335-5520-a17b-e7a2727cfa18",
+      "name": "Start & Turn Power — Swimmer's Dryland Power",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "Swimming pack strength day — the start and every wall turn are explosive leg pushes, so box jumps train that launch before trap-bar pulls build the posterior chain, while pullovers and pulldowns strengthen the lat-driven catch and band pulls keep the shoulders healthy. Keep jumps explosive and low-rep. Progress the pull 2.5 kg at a time and the jumps by height.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "pogo-hop",
+          "sets": 3,
+          "durationSeconds": 10,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "box-jump",
+          "sets": 4,
+          "reps": 4,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "trap-bar-deadlift",
+          "sets": 4,
+          "reps": 5,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          }
+        },
+        {
+          "libraryID": "dumbbell-pullover",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "lat-pulldown",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          }
+        },
+        {
+          "libraryID": "band-pull-apart",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          }
+        }
+      ]
+    },
+    {
+      "id": "abc408e6-3208-5879-a00a-f6ab3045e01e",
+      "name": "Power Primer — Clean, Push-Press & Jump",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "strengthBuilding",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "goal": "Strength Building",
+      "notes": "All-athlete power day — a general explosive-strength session for any field or court athlete: hang power cleans and push presses train total-body rate of force, box jumps express it, and trap-bar pulls build the base under it. Everything is low-rep and maximal intent, never grinding. Progress by adding 2.5 kg only when the bar still moves fast; the day it slows, that is the ceiling for today.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 10,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hang-power-clean",
+          "sets": 5,
+          "reps": 3,
+          "restSeconds": 180,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          }
+        },
+        {
+          "libraryID": "push-press",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          }
+        },
+        {
+          "libraryID": "box-jump",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "trap-bar-deadlift",
+          "sets": 3,
+          "reps": 4,
+          "restSeconds": 150,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          }
+        }
+      ]
+    },
+    {
       "id": "5b3e6afc-f419-5146-86ba-fef8ce965ae0",
       "name": "Change of Direction — Footwork Skill Day",
       "focus": "Conditioning",
@@ -8752,6 +10543,786 @@
       ]
     },
     {
+      "id": "f6b2b180-e144-5725-a812-a704ae17f725",
+      "name": "Sprinter's Plyos — Bounds & Depth Jumps",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Advanced",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Track pack plyo day — reactive strength turns leg power into ground speed. Pogo hops prime ankle stiffness, then depth jumps train the fast rebound that a sprint stride demands, all at low reps with full rest so every contact is maximal. This is nervous-system work, not conditioning — never chase a burn here. Progress the depth-jump box height only when landings stay silent and instant.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "pogo-hop",
+          "sets": 3,
+          "durationSeconds": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "depth-jump",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "alternating-bound",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 3,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "tuck-jump",
+          "sets": 3,
+          "reps": 5,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "4e5e8e83-371d-5251-82eb-4fa9eb5ad47c",
+      "name": "Horizontal Power — Jumps-Event Bounds",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Advanced",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Track pack jumps day for long and triple jumpers — approach jumps rehearse the penultimate-step conversion of speed into lift, then broad jumps and alternating bounds build the horizontal power the runway demands, finishing with pogos for takeoff stiffness. Low reps, full rest, maximal intent on every contact. Progress by measuring distance and chasing more of it, never more reps.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "approach-jump",
+          "sets": 5,
+          "reps": 3,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "alternating-bound",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pogo-hop",
+          "sets": 3,
+          "durationSeconds": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "1ee7bb59-3323-5477-a471-398cc42a37e4",
+      "name": "Bat Speed — Rotational Circuit",
+      "focus": "Core",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "goal": "Lean Out",
+      "notes": "Baseball pack skill day — a moderate-volume circuit that keeps the rotational engine sharp without heavy loading, stacking throws, chops, and anti-rotation work the way a swing loads and fires. Short rests support leaning out while trunk quality stays high. Progress by throwing harder and holding cleaner positions, then shaving 10 seconds off the rests.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "medicine-ball-rotational-throw",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "cable-woodchop",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "landmine-rotation",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "pallof-press",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "russian-twist",
+          "sets": 3,
+          "reps": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-lunge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          }
+        }
+      ]
+    },
+    {
+      "id": "57219e2b-5231-5e61-88cf-b7ac8ccf6f1d",
+      "name": "Base-Running Speed — Acceleration & Turns",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Baseball pack skill day — base running is short bursts and hard direction changes, so wall drills and short sprints build first-step quickness while the pro-agility shuttle rehearses rounding a bag and re-accelerating. Movement stays crisp, not gassed. Progress by cutting sharper around the turn and adding one sprint before shortening rest.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "a-skip",
+          "sets": 2,
+          "durationSeconds": 20,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "wall-acceleration-drill",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "durationSeconds": 10,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "pro-agility-shuttle",
+          "sets": 4,
+          "reps": 1,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 3,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "15c8414e-e193-5a8e-a13d-b3bdf1dd1ac0",
+      "name": "Change of Direction — Skill-Position Agility",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Advanced",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Football pack skill day — receivers and backs live in the cut, so ladder work primes the feet before pro-agility and T-drills rehearse planting and re-accelerating at match speed, done fresh so mechanics stay clean. Moderate volume supports the lean-out goal without frying the legs. Progress by lowering your shuttle times, not by piling on reps.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "agility-ladder-quick-feet",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pro-agility-shuttle",
+          "sets": 5,
+          "reps": 1,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "t-drill",
+          "sets": 4,
+          "reps": 1,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "5b2cf46d-1c0c-5749-a524-547645b5b69d",
+      "name": "Hops & Shoulders — Volleyball Skill Day",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "goal": "Lean Out",
+      "notes": "Volleyball pack skill day — jumping and hitting hammer the shoulder, so this pairs moderate reactive jumps with overhead throws that mimic the spike and the band and face-pull work that keeps the cuff healthy through a season of swings. Lateral shuffles keep the defensive base sharp. Progress the jumps by height and the shoulder work by clean reps, never by grinding.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "approach-jump",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "tuck-jump",
+          "sets": 3,
+          "reps": 5,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "medicine-ball-overhead-throw",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "band-pull-apart",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          }
+        },
+        {
+          "libraryID": "face-pull",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          }
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "e530b6aa-39aa-50c5-ae73-e6f020c6c4a8",
+      "name": "Takedown Power — Level-Change Circuit",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Advanced",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "goal": "Lean Out",
+      "notes": "Wrestling pack skill day — a shot is an explosive level change and drive, so sprawls and scoop tosses train the down-and-up power while sandbag-to-shoulder rehearses lifting and finishing a body, all at moderate volume so movement stays crisp. Bear crawls and hollow holds bank the positional core. Progress by throwing and lifting more explosively, not by adding grinding reps.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "sprawl",
+          "sets": 4,
+          "reps": 8,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "medicine-ball-scoop-toss",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "sandbag-to-shoulder",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          }
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "43431240-b5ac-58db-894d-c81f945283ab",
+      "name": "Reactive Bounce — Basketball Plyo Ladder",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Advanced",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Basketball pack skill day — a pure reactive-jump session: pogos build ankle stiffness, depth jumps train the instant second-jump rebound under the rim, and approach jumps rehearse the layup and putback launch, all low-rep with full rest so every contact is explosive. This sharpens bounce, it does not gas you. Progress the depth-jump height only when landings are silent and immediate.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "pogo-hop",
+          "sets": 3,
+          "durationSeconds": 12,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "depth-jump",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "approach-jump",
+          "sets": 4,
+          "reps": 3,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "split-squat-jump",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "61c72422-f46a-5527-ae89-c8c21dec41b4",
+      "name": "First Step — Soccer Acceleration & Agility",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Advanced",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Soccer pack skill day — beating a defender is a first-step and cut problem, so drills and wall accelerations groove the drive angle before short sprints and the pro-agility shuttle rehearse exploding and changing direction, done fresh for quality. Moderate volume supports leaning out. Progress by sharpening the cut and dropping shuttle times, not by adding reps.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "a-skip",
+          "sets": 2,
+          "durationSeconds": 20,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 2,
+          "durationSeconds": 20,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "wall-acceleration-drill",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "durationSeconds": 10,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "pro-agility-shuttle",
+          "sets": 4,
+          "reps": 1,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "carioca",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "19eefbbc-fc7c-5e6e-a499-b48332eb147f",
+      "name": "In-Season Footwork — Tennis Movement Sharpener",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Tennis pack in-season day — a low-load movement session that keeps footwork crisp between matches without heavy legs: split steps, shuttles, and carioca rehearse the recover-and-reset pattern of a rally, kept short and sharp. Progress by moving cleaner and reacting faster; skip this the day before a match and just play.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "a-skip",
+          "sets": 2,
+          "durationSeconds": 20,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "split-step-hop",
+          "sets": 4,
+          "durationSeconds": 15,
+          "restSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pro-agility-shuttle",
+          "sets": 4,
+          "reps": 1,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "maxEffort"
+          }
+        },
+        {
+          "libraryID": "carioca",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-lunge",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          }
+        }
+      ]
+    },
+    {
+      "id": "f8ac11d7-08f4-5aae-be88-c50259746cea",
+      "name": "Kick & Core — Swimmer's Dryland Core",
+      "focus": "Core",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "Swimming pack skill day — a streamlined body holds a rigid line while the legs drive, so flutter kicks and the swim hold train the exact posterior-line endurance a kick set demands, and hollow and side planks build the anti-extension and anti-lateral-flexion stiffness that keeps the streamline tight. Progress by adding time to the holds before adding rounds.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "flutter-kick",
+          "sets": 4,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "superman-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "swimming-exercise",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "side-plank",
+          "sets": 3,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "238e351e-7612-54b2-8a3e-02dee4b62616",
+      "name": "Land Softer — Landing & Knee Prehab",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "leanOut",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Lean Out",
+      "notes": "All-athlete prehab day — most non-contact knee injuries happen on a bad landing or cut, so this trains the controls that prevent them: lateral step-downs and single-leg RDLs for knee-and-hip alignment, Copenhagen and Nordic work for the groin and hamstrings, and pogos to teach a stiff, quiet landing. Single-leg reps are per side. Progress by slowing the eccentric work and keeping every landing silent.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "ninety-ninety-hip-switch",
+          "sets": 2,
+          "reps": 8,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "lateral-step-down",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "single-leg-rdl",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 75,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          }
+        },
+        {
+          "libraryID": "copenhagen-plank",
+          "sets": 3,
+          "durationSeconds": 20,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "nordic-hamstring-curl",
+          "sets": 3,
+          "reps": 5,
+          "restSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "pogo-hop",
+          "sets": 3,
+          "durationSeconds": 12,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
       "id": "94212944-83b3-58d7-a0d4-7b6db277f3eb",
       "name": "Sharp & Loose — Boxer's Technique Reset",
       "focus": "Recovery",
@@ -8977,6 +11548,229 @@
           "sets": 2,
           "durationSeconds": 45,
           "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 0,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "b3a3549c-f641-543f-94ac-6f8baeb2c913",
+      "name": "Arm Care — Thrower's Shoulder Prep",
+      "focus": "Recovery",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "recovery",
+      "level": "Recovery",
+      "durationMinutes": 25,
+      "equipmentProfile": "Full Gym",
+      "goal": "Recovery",
+      "notes": "Baseball pack recovery day — the maintenance work that keeps a throwing shoulder healthy across a season: light band pulls and rows build the rotator-cuff and scapular endurance that decelerating a throw demands, wall slides restore overhead motion, and stretches unwind the back of the shoulder. Keep everything easy, under RPE 4. Progress by adding reps at the same light load, never by loading heavier.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "arm-swing-circles",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "band-pull-apart",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "rpe",
+            "value": 4
+          }
+        },
+        {
+          "libraryID": "band-row",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "rpe",
+            "value": 4
+          }
+        },
+        {
+          "libraryID": "wall-slide",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "face-pull",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "rpe",
+            "value": 4
+          }
+        },
+        {
+          "libraryID": "cross-body-shoulder-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "f7a1f7a2-b456-53f6-a115-7d0012dfa0ea",
+      "name": "Swing Mobility — Golfer's Reset",
+      "focus": "Recovery",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "recovery",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "goal": "Recovery",
+      "notes": "Golf pack recovery day — a rotational sport needs its rotation kept free: cat-cows and spine twists restore thoracic turn, the 90/90 switch and hip-flexor stretch open the hips your backswing and follow-through depend on, and thread-the-needle unwinds the trunk. Stay gentle, well under RPE 4. Progress by turning a little further into each position over weeks, never by forcing an end range.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "spine-twist",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "ninety-ninety-hip-switch",
+          "sets": 2,
+          "reps": 8,
+          "restSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "restSeconds": 0,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bc5ba52e-f3b7-5f61-9ad7-e03292d43c61",
+      "name": "Neck & Spine — Grappler's Prehab",
+      "focus": "Recovery",
+      "trainingType": "Sport-specific training",
+      "category": "Sport Performance",
+      "goalTag": "recovery",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Full Gym",
+      "goal": "Recovery",
+      "notes": "Wrestling pack recovery day — the joints a grappler abuses most get maintenance here: gentle neck isometrics keep the cervical spine resilient, band pulls restore the upper back, and bird-dogs and dead-bugs rebuild the braced core that survives scrambles. Keep everything easy, under RPE 4. Progress by holding positions a little longer, never by adding load.",
+      "collection": null,
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "restSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "neck-isometric-hold",
+          "sets": 3,
+          "durationSeconds": 15,
+          "restSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "band-pull-apart",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "rpe",
+            "value": 4
+          }
+        },
+        {
+          "libraryID": "bird-dog",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          }
+        },
+        {
+          "libraryID": "dead-bug",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 30,
           "intensity": {
             "type": "bodyweight"
           }

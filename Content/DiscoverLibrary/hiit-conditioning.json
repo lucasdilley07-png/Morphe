@@ -17,42 +17,54 @@
           "libraryID": "jumping-jack",
           "sets": 1,
           "durationSeconds": 120,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "burpee",
           "sets": 8,
           "durationSeconds": 20,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 10
         },
         {
           "libraryID": "jump-squat",
           "sets": 8,
           "durationSeconds": 20,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 10
         },
         {
           "libraryID": "mountain-climber",
           "sets": 8,
           "durationSeconds": 20,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 10
         },
         {
           "libraryID": "high-knees",
           "sets": 8,
           "durationSeconds": 20,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 10
         },
         {
           "libraryID": "standing-hamstring-stretch",
           "sets": 1,
           "durationSeconds": 60,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 0
         }
       ]
@@ -72,42 +84,54 @@
           "libraryID": "high-knees",
           "sets": 1,
           "durationSeconds": 60,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "burpee",
           "sets": 4,
           "durationSeconds": 30,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "skater-jump",
           "sets": 4,
           "durationSeconds": 30,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "mountain-climber",
           "sets": 4,
           "durationSeconds": 30,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "jump-squat",
           "sets": 4,
           "durationSeconds": 30,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "plank",
           "sets": 2,
           "durationSeconds": 45,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         }
       ]
@@ -127,49 +151,63 @@
           "libraryID": "jumping-jack",
           "sets": 1,
           "durationSeconds": 90,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         },
         {
           "libraryID": "burpee",
           "sets": 3,
           "reps": 12,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         },
         {
           "libraryID": "jump-squat",
           "sets": 3,
           "reps": 15,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         },
         {
           "libraryID": "push-up",
           "sets": 3,
           "reps": 15,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         },
         {
           "libraryID": "russian-twist",
           "sets": 3,
           "reps": 20,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         },
         {
           "libraryID": "bear-crawl",
           "sets": 3,
           "durationSeconds": 30,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         },
         {
           "libraryID": "high-knees",
           "sets": 3,
           "durationSeconds": 30,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 60
         }
       ]
@@ -189,28 +227,38 @@
           "libraryID": "rowing-machine",
           "sets": 1,
           "durationSeconds": 300,
-          "intensity": { "type": "heartRateZone", "value": 2 },
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "rowing-machine",
           "sets": 6,
           "durationSeconds": 60,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "stationary-bike",
           "sets": 6,
           "durationSeconds": 60,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "treadmill-walk",
           "sets": 1,
           "durationSeconds": 300,
-          "intensity": { "type": "heartRateZone", "value": 1 },
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
           "restSeconds": 0
         }
       ]
@@ -230,49 +278,63 @@
           "libraryID": "arm-swing-circles",
           "sets": 1,
           "durationSeconds": 30,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 15
         },
         {
           "libraryID": "jumping-jack",
           "sets": 1,
           "durationSeconds": 60,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         },
         {
           "libraryID": "jump-rope",
           "sets": 2,
           "durationSeconds": 20,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 20
         },
         {
           "libraryID": "jump-rope",
           "sets": 2,
           "durationSeconds": 40,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "jump-rope",
           "sets": 2,
           "durationSeconds": 60,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 45
         },
         {
           "libraryID": "shadow-boxing",
           "sets": 3,
           "durationSeconds": 60,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "plank",
           "sets": 2,
           "durationSeconds": 45,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         }
       ]
@@ -292,49 +354,364 @@
           "libraryID": "cat-cow",
           "sets": 1,
           "durationSeconds": 60,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 15
         },
         {
           "libraryID": "step-up",
           "sets": 3,
           "durationSeconds": 30,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "incline-push-up",
           "sets": 3,
           "reps": 10,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "lateral-shuffle",
           "sets": 3,
           "durationSeconds": 30,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "glute-bridge",
           "sets": 3,
           "reps": 12,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         },
         {
           "libraryID": "bear-crawl",
           "sets": 3,
           "durationSeconds": 20,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "dead-bug",
           "sets": 3,
           "reps": 10,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-agility-ladder-blast",
+      "name": "Quick Feet — Agility Ladder Intervals",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "level": "Moderate",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Foot-speed conditioning: fast ladder patterns and lateral shuffles run as short max-effort intervals keep the heart rate high while sharpening quickness, with skater jumps adding a lateral-power finisher. A low-impact way to burn while training athletic feet. Progress by trimming rest 5 seconds at a time before adding a round.",
+      "exercises": [
+        {
+          "libraryID": "agility-ladder-quick-feet",
+          "sets": 6,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 4,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "skater-jump",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-med-ball-metcon",
+      "name": "Slam & Sprint — Med-Ball Metcon",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "A total-body metcon built on med-ball slams and wall-ball shots — explosive, full-body reps that spike the heart rate while burpees and climbers keep the density brutal. High output, big calorie burn, minimal skill barrier. Progress by adding reps to the ball work before shortening the 40-second rests.",
+      "exercises": [
+        {
+          "libraryID": "medicine-ball-slam",
+          "sets": 5,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "wall-ball-shot",
+          "sets": 5,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-sled-sprint-intervals",
+      "name": "Sled & Sprint — Push Intervals",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "level": "Advanced",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "Alternating heavy sled pushes and free sprints — both max-effort, both low-skill, both huge calorie burners that build a repeat-power engine with almost no eccentric soreness. Bear crawls finish the shoulders and core. Progress by adding sled load while holding sprint speed, then trimming rest.",
+      "exercises": [
+        {
+          "libraryID": "sled-push",
+          "sets": 6,
+          "durationSeconds": 15,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "sprint-interval",
+          "sets": 6,
+          "durationSeconds": 15,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-shuttle-conditioning",
+      "name": "Shuttle Burner — Change-of-Direction Cardio",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Sport-specific training",
+      "level": "Moderate",
+      "durationMinutes": 28,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Change-of-direction conditioning: pro-agility and T-drill shuttles run as repeats keep you decelerating and re-accelerating — the most metabolically expensive movement there is — while carioca and shuffles keep the hips moving between efforts. Progress by lowering shuttle times, then adding a rep.",
+      "exercises": [
+        {
+          "libraryID": "pro-agility-shuttle",
+          "sets": 6,
+          "reps": 1,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "t-drill",
+          "sets": 4,
+          "reps": 1,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "carioca",
+          "sets": 4,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "lateral-shuffle",
+          "sets": 4,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 40
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-carry-conditioning",
+      "name": "Loaded Carries — Grip & Gut Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "A carry-driven circuit: farmer, suitcase, and overhead carries torch the grip, trunk, and legs under load while swings keep the heart rate up between walks. Loaded carries deliver a huge conditioning stimulus with almost no technical risk. Suitcase carries are per side. Progress by adding load or time only when posture stays tall.",
+      "exercises": [
+        {
+          "libraryID": "farmer-carry",
+          "sets": 4,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "suitcase-carry",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "overhead-carry",
+          "sets": 3,
+          "durationSeconds": 25,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 20,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-wl-wrestler-grind",
+      "name": "Ground & Pound — Wrestler's Floor Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Sport-specific training",
+      "level": "Advanced",
+      "durationMinutes": 28,
+      "equipmentProfile": "Full Gym",
+      "notes": "A floor-based grind of crawls, sprawls, and slams that keeps you low, moving, and gassed — the closest bodyweight conditioning gets to a scramble. Low-impact on the joints, savage on the engine. Progress by adding a round before shortening the rests.",
+      "exercises": [
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "crab-walk",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "lateral-bear-crawl",
+          "sets": 3,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "sprawl",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "medicine-ball-slam",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
           "restSeconds": 45
         }
       ]
@@ -354,42 +731,56 @@
           "libraryID": "jumping-jack",
           "sets": 1,
           "durationSeconds": 90,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "bodyweight-squat",
           "sets": 1,
           "reps": 12,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "box-jump",
           "sets": 5,
           "reps": 5,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 150
         },
         {
           "libraryID": "broad-jump",
           "sets": 4,
           "reps": 3,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 150
         },
         {
           "libraryID": "kettlebell-swing",
           "sets": 5,
           "reps": 8,
-          "intensity": { "type": "rpe", "value": 8 },
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
           "restSeconds": 120
         },
         {
           "libraryID": "farmer-carry",
           "sets": 3,
           "durationSeconds": 40,
-          "intensity": { "type": "rpe", "value": 7 },
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
           "restSeconds": 120
         }
       ]
@@ -409,35 +800,46 @@
           "libraryID": "jumping-jack",
           "sets": 1,
           "durationSeconds": 90,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "high-knees",
           "sets": 2,
           "durationSeconds": 30,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "sprint-interval",
           "sets": 8,
           "durationSeconds": 15,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 180
         },
         {
           "libraryID": "jump-squat",
           "sets": 4,
           "reps": 5,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 120
         },
         {
           "libraryID": "kettlebell-swing",
           "sets": 4,
           "reps": 10,
-          "intensity": { "type": "rpe", "value": 8 },
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
           "restSeconds": 120
         }
       ]
@@ -457,42 +859,57 @@
           "libraryID": "rowing-machine",
           "sets": 1,
           "durationSeconds": 180,
-          "intensity": { "type": "heartRateZone", "value": 2 },
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "goblet-squat",
           "sets": 4,
           "reps": 12,
-          "intensity": { "type": "rpe", "value": 8 },
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "push-up",
           "sets": 4,
           "reps": 15,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "rowing-machine",
           "sets": 4,
           "durationSeconds": 60,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "kettlebell-swing",
           "sets": 4,
           "reps": 15,
-          "intensity": { "type": "rpe", "value": 7 },
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "sit-up",
           "sets": 4,
           "reps": 15,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         }
       ]
@@ -512,35 +929,47 @@
           "libraryID": "jumping-jack",
           "sets": 1,
           "durationSeconds": 90,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         },
         {
           "libraryID": "goblet-squat",
           "sets": 5,
           "reps": 10,
-          "intensity": { "type": "rpe", "value": 7 },
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "burpee",
           "sets": 5,
           "reps": 8,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "kettlebell-swing",
           "sets": 5,
           "reps": 12,
-          "intensity": { "type": "rpe", "value": 7 },
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "rowing-machine",
           "sets": 5,
           "durationSeconds": 40,
-          "intensity": { "type": "maxEffort" },
+          "intensity": {
+            "type": "maxEffort"
+          },
           "restSeconds": 20
         }
       ]
@@ -560,49 +989,125 @@
           "libraryID": "arm-swing-circles",
           "sets": 1,
           "durationSeconds": 30,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 30
         },
         {
           "libraryID": "goblet-squat",
           "sets": 3,
           "reps": 12,
-          "intensity": { "type": "rpe", "value": 8 },
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "dumbbell-row",
           "sets": 3,
           "reps": 12,
-          "intensity": { "type": "rpe", "value": 8 },
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "reverse-lunge",
           "sets": 3,
           "reps": 10,
-          "intensity": { "type": "rpe", "value": 7 },
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "push-up",
           "sets": 3,
           "reps": 15,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "farmer-carry",
           "sets": 3,
           "durationSeconds": 40,
-          "intensity": { "type": "rpe", "value": 7 },
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
           "restSeconds": 75
         },
         {
           "libraryID": "mountain-climber",
           "sets": 3,
           "durationSeconds": 30,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "hiit-lo-plyo-power-circuit",
+      "name": "Plyo Power — Reactive Jump Circuit",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Sport-specific training",
+      "level": "Advanced",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A moderate-volume plyometric circuit for athletes who want to keep their bounce while leaning out: box and broad jumps, tuck jumps, and pogos trained with real rest so power stays high and reps stay crisp. This is not a burnout — treat every jump as maximal. Progress by height and distance, and stop any set the moment landings get sloppy.",
+      "exercises": [
+        {
+          "libraryID": "box-jump",
+          "sets": 4,
+          "reps": 4,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "broad-jump",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "tuck-jump",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "split-squat-jump",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "pogo-hop",
+          "sets": 3,
+          "durationSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 45
         }
       ]
@@ -622,42 +1127,56 @@
           "libraryID": "stationary-bike",
           "sets": 1,
           "durationSeconds": 1200,
-          "intensity": { "type": "heartRateZone", "value": 2 },
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "treadmill-walk",
           "sets": 1,
           "durationSeconds": 300,
-          "intensity": { "type": "heartRateZone", "value": 1 },
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
           "restSeconds": 60
         },
         {
           "libraryID": "worlds-greatest-stretch",
           "sets": 2,
           "durationSeconds": 40,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 15
         },
         {
           "libraryID": "hip-flexor-stretch",
           "sets": 2,
           "durationSeconds": 40,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 15
         },
         {
           "libraryID": "cat-cow",
           "sets": 2,
           "durationSeconds": 45,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 15
         },
         {
           "libraryID": "childs-pose",
           "sets": 1,
           "durationSeconds": 60,
-          "intensity": { "type": "bodyweight" },
+          "intensity": {
+            "type": "bodyweight"
+          },
           "restSeconds": 0
         }
       ]

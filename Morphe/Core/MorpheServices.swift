@@ -2883,6 +2883,1066 @@ enum MorpheDemoContent {
             beginnerModification: "Shorten the stance and bend the front knee less until the hold feels stable.",
             alternatives: ["Reverse Lunge", "Wall Sit"],
             whyThisMatters: "Builds isometric leg strength and hip endurance in a deep stance most training never visits."
+        ),
+        ExerciseReference(
+            id: "a-skip",
+            name: "A-Skip",
+            muscleGroup: .conditioning,
+            movementPattern: "Sprint drill",
+            musclesWorked: "Hip flexors, calves, and glutes",
+            equipment: "Open space",
+            difficulty: .beginner,
+            videoPlaceholder: "A-skip sprint drill demo placeholder",
+            instructions: [
+                "Skip forward, driving one knee up to hip height.",
+                "Snap the foot back down under your hips.",
+                "Keep a quick rhythm and pump the opposite arm."
+            ],
+            formCue: "Knee up, foot down — like stomping a spring.",
+            commonMistakes: "Reaching the foot out in front instead of striking under the hips.",
+            beginnerModification: "March the pattern slowly without the skip.",
+            alternatives: ["High Knees", "Butt Kick"],
+            whyThisMatters: "The classic sprint-mechanics drill — it teaches the knee drive and ground strike fast running is built on."
+        ),
+        ExerciseReference(
+            id: "butt-kick",
+            name: "Butt Kick",
+            muscleGroup: .conditioning,
+            movementPattern: "Sprint drill",
+            musclesWorked: "Hamstrings and calves",
+            equipment: "Open space",
+            difficulty: .beginner,
+            videoPlaceholder: "Butt kick running drill demo placeholder",
+            instructions: [
+                "Jog in place or forward with a tall posture.",
+                "Snap each heel up toward your glutes.",
+                "Keep the knees pointing down and the steps quick."
+            ],
+            formCue: "Heel to glute, knee stays under the hip.",
+            commonMistakes: "Leaning forward and letting the knees drift out in front.",
+            beginnerModification: "Walk the pattern, lifting one heel at a time.",
+            alternatives: ["High Knees", "A-Skip"],
+            whyThisMatters: "Trains the fast heel recovery that keeps your stride quick instead of reachy."
+        ),
+        ExerciseReference(
+            id: "flying-sprint",
+            name: "Flying Sprint",
+            muscleGroup: .conditioning,
+            movementPattern: "Sprint",
+            musclesWorked: "Whole body",
+            equipment: "Open space, 40-60 meters",
+            difficulty: .advanced,
+            videoPlaceholder: "Flying sprint build-up demo placeholder",
+            instructions: [
+                "Build speed gradually over 20-30 meters.",
+                "Hit near-top speed for a short 10-20 meter zone.",
+                "Coast down slowly — never stop hard."
+            ],
+            formCue: "Stay tall and relaxed at top speed — no straining.",
+            commonMistakes: "Sprinting cold, or tensing the face and shoulders in the fast zone.",
+            beginnerModification: "Cap the fast zone at about 80% effort strides.",
+            alternatives: ["Sprint Intervals", "Hill Sprint"],
+            whyThisMatters: "Top-end speed only improves when you actually touch it — this drill gets you there with a safe build-up."
+        ),
+        ExerciseReference(
+            id: "hill-sprint",
+            name: "Hill Sprint",
+            muscleGroup: .conditioning,
+            movementPattern: "Sprint",
+            musclesWorked: "Glutes, hamstrings, and calves",
+            equipment: "A moderate hill",
+            difficulty: .moderate,
+            videoPlaceholder: "Hill sprint demo placeholder",
+            instructions: [
+                "Warm up, then sprint up the hill for 8-15 seconds.",
+                "Drive the knees and pump the arms hard.",
+                "Walk back down as your full recovery."
+            ],
+            formCue: "Lean into the hill from the ankles, not the waist.",
+            commonMistakes: "Overstriding, and jogging the downhill instead of recovering.",
+            beginnerModification: "Fast uphill march or stride on a gentler slope.",
+            alternatives: ["Sprint Intervals", "Sled Push"],
+            whyThisMatters: "The hill forces good sprint posture and cuts impact — the safest way to sprint hard."
+        ),
+        ExerciseReference(
+            id: "carioca",
+            name: "Carioca",
+            muscleGroup: .conditioning,
+            movementPattern: "Lateral movement",
+            musclesWorked: "Hips, adductors, and calves",
+            equipment: "Open space",
+            difficulty: .beginner,
+            videoPlaceholder: "Carioca crossover-step demo placeholder",
+            instructions: [
+                "Move sideways, crossing the trail foot in front, then behind.",
+                "Let the hips rotate while the shoulders stay square.",
+                "Stay light on the balls of your feet."
+            ],
+            formCue: "Hips swivel, eyes forward.",
+            commonMistakes: "Turning the whole torso instead of letting the hips do the twisting.",
+            beginnerModification: "Walk the crossover pattern slowly before adding speed.",
+            alternatives: ["Lateral Shuffle", "High Knees"],
+            whyThisMatters: "Opens the hips and builds the lateral footwork every field and court sport uses."
+        ),
+        ExerciseReference(
+            id: "wall-acceleration-drill",
+            name: "Wall Acceleration Drill",
+            muscleGroup: .conditioning,
+            movementPattern: "Sprint drill",
+            musclesWorked: "Hip flexors, glutes, and core",
+            equipment: "A wall",
+            difficulty: .beginner,
+            videoPlaceholder: "Wall drill acceleration posture demo placeholder",
+            instructions: [
+                "Lean into a wall at about 45 degrees, hands on it, body in one line.",
+                "Drive one knee up while the other leg pushes the floor away.",
+                "Exchange legs in quick single or double switches."
+            ],
+            formCue: "Hold the lean — the body stays one straight line.",
+            commonMistakes: "Breaking at the hips so the lean turns into a bend.",
+            beginnerModification: "Hold the lean with one knee up, no switching.",
+            alternatives: ["A-Skip", "High Knees"],
+            whyThisMatters: "Teaches the forward-lean drive phase of sprinting with zero impact."
+        ),
+        ExerciseReference(
+            id: "depth-jump",
+            name: "Depth Jump",
+            muscleGroup: .legs,
+            movementPattern: "Jump",
+            musclesWorked: "Glutes, quads, and calves",
+            equipment: "Low plyo box (12-24 inches)",
+            difficulty: .advanced,
+            videoPlaceholder: "Depth jump rebound demo placeholder",
+            instructions: [
+                "Step (don't jump) off a low box.",
+                "Land on both feet and rebound upward instantly.",
+                "Stick the second landing softly, then walk back."
+            ],
+            formCue: "Minimum ground time — the floor is hot.",
+            commonMistakes: "Using a box that's too high and sinking into a slow, deep landing.",
+            beginnerModification: "Step off and just stick the landing with no rebound.",
+            alternatives: ["Box Jump", "Broad Jump"],
+            whyThisMatters: "The most direct reactive-strength drill there is — but only after you've earned it with regular jumps."
+        ),
+        ExerciseReference(
+            id: "tuck-jump",
+            name: "Tuck Jump",
+            muscleGroup: .legs,
+            movementPattern: "Jump",
+            musclesWorked: "Quads, hip flexors, and calves",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "Tuck jump demo placeholder",
+            instructions: [
+                "Jump straight up and pull both knees toward your chest.",
+                "Extend the legs before you land.",
+                "Land softly and reset before the next rep."
+            ],
+            formCue: "Knees to chest, not chest to knees.",
+            commonMistakes: "Folding the torso down to meet the knees, and rushing sloppy reps.",
+            beginnerModification: "Do a plain jump squat with a small knee lift.",
+            alternatives: ["Jump Squat", "Box Jump"],
+            whyThisMatters: "Quick hip flexion in the air builds the explosive knee drive sprinting and jumping share."
+        ),
+        ExerciseReference(
+            id: "alternating-bound",
+            name: "Alternating Bound",
+            muscleGroup: .legs,
+            movementPattern: "Jump",
+            musclesWorked: "Glutes, hamstrings, and calves",
+            equipment: "Open space",
+            difficulty: .advanced,
+            videoPlaceholder: "Alternating bound demo placeholder",
+            instructions: [
+                "Push off one leg and leap forward onto the other.",
+                "Drive the free knee up and forward each leap.",
+                "Land with control and flow straight into the next bound."
+            ],
+            formCue: "Long, floating strides — cover ground, don't just hop.",
+            commonMistakes: "Short choppy strides and landing on a stiff, straight leg.",
+            beginnerModification: "Do exaggerated skipping strides at an easy effort.",
+            alternatives: ["Broad Jump", "Skater Jump"],
+            whyThisMatters: "Bounding is single-leg power in a running shape — the bridge between the weight room and sprint speed."
+        ),
+        ExerciseReference(
+            id: "pogo-hop",
+            name: "Pogo Hop",
+            muscleGroup: .legs,
+            movementPattern: "Jump",
+            musclesWorked: "Calves, ankles, and feet",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "Pogo hop stiffness drill demo placeholder",
+            instructions: [
+                "Stand tall and hop in place off both feet.",
+                "Keep the knees nearly straight — bounce from the ankles.",
+                "Stay quick and springy off the floor."
+            ],
+            formCue: "Stiff ankles, quiet knees — be a pogo stick.",
+            commonMistakes: "Bending the knees and turning it into a small squat jump.",
+            beginnerModification: "Do small heel raises with a light bounce.",
+            alternatives: ["Jump Rope", "Jumping Jack"],
+            whyThisMatters: "Trains ankle stiffness — the spring that makes running and jumping cheap instead of costly."
+        ),
+        ExerciseReference(
+            id: "split-squat-jump",
+            name: "Split Squat Jump",
+            muscleGroup: .legs,
+            movementPattern: "Jump",
+            musclesWorked: "Quads, glutes, and calves",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "Split squat jump scissor demo placeholder",
+            instructions: [
+                "Start in a lunge stance and jump straight up.",
+                "Switch legs in the air.",
+                "Land softly in the opposite lunge and repeat."
+            ],
+            formCue: "Land like a ninja — front knee tracks over the foot.",
+            commonMistakes: "Shallow landings and letting the front knee cave inward.",
+            beginnerModification: "Do fast bodyweight reverse lunges instead of jumping.",
+            alternatives: ["Jump Squat", "Walking Lunge"],
+            whyThisMatters: "Single-leg explosiveness in a lunge shape — closer to sprinting and cutting than any two-leg jump."
+        ),
+        ExerciseReference(
+            id: "seated-box-jump",
+            name: "Seated Box Jump",
+            muscleGroup: .legs,
+            movementPattern: "Jump",
+            musclesWorked: "Glutes, quads, and calves",
+            equipment: "Bench and plyo box",
+            difficulty: .moderate,
+            videoPlaceholder: "Seated box jump demo placeholder",
+            instructions: [
+                "Sit on a bench facing a box, feet planted.",
+                "Explode up off the seat with no rock or swing.",
+                "Land softly on the box, stand tall, then step down."
+            ],
+            formCue: "Dead stop to full jump — no cheating momentum.",
+            commonMistakes: "Rocking backward to build a swing before the jump.",
+            beginnerModification: "Jump straight up from the seat with no box.",
+            alternatives: ["Box Jump", "Jump Squat"],
+            whyThisMatters: "Removing the countermovement isolates pure starting power — the first step in any sprint or drive."
+        ),
+        ExerciseReference(
+            id: "approach-jump",
+            name: "Approach Jump",
+            muscleGroup: .legs,
+            movementPattern: "Jump",
+            musclesWorked: "Glutes, quads, and calves",
+            equipment: "Open space",
+            difficulty: .moderate,
+            videoPlaceholder: "Volleyball approach jump demo placeholder",
+            instructions: [
+                "Take a 3-step approach: slow, faster, then a quick plant.",
+                "Plant both feet, swing the arms back, and jump straight up.",
+                "Reach both hands high and land softly on both feet."
+            ],
+            formCue: "The last two steps are the quickest — plant and explode.",
+            commonMistakes: "Drifting forward through the jump instead of converting speed upward.",
+            beginnerModification: "Practice the step rhythm and arm swing without leaving the ground.",
+            alternatives: ["Box Jump", "Broad Jump"],
+            whyThisMatters: "The exact jump volleyball and basketball are played on — converting a run-up into vertical height."
+        ),
+        ExerciseReference(
+            id: "pro-agility-shuttle",
+            name: "Pro Agility Shuttle",
+            muscleGroup: .conditioning,
+            movementPattern: "Change of direction",
+            musclesWorked: "Glutes, quads, and adductors",
+            equipment: "3 cones, 5 yards apart",
+            difficulty: .moderate,
+            videoPlaceholder: "5-10-5 pro agility shuttle demo placeholder",
+            instructions: [
+                "Straddle the middle cone in a low stance.",
+                "Sprint 5 yards to one side and touch the line.",
+                "Sprint 10 yards to the far cone, touch, and sprint back through the middle."
+            ],
+            formCue: "Cut off the outside foot and stay low through every turn.",
+            commonMistakes: "Standing up tall into the cuts and rounding the turns.",
+            beginnerModification: "Jog the pattern at half speed until the footwork is clean.",
+            alternatives: ["Lateral Shuffle", "T-Drill"],
+            whyThisMatters: "The 5-10-5 is the standard change-of-direction test — training it builds the cuts it measures."
+        ),
+        ExerciseReference(
+            id: "t-drill",
+            name: "T-Drill",
+            muscleGroup: .conditioning,
+            movementPattern: "Change of direction",
+            musclesWorked: "Glutes, quads, and adductors",
+            equipment: "4 cones in a T shape",
+            difficulty: .moderate,
+            videoPlaceholder: "T-drill cone agility demo placeholder",
+            instructions: [
+                "Sprint forward to the top of the T.",
+                "Shuffle left, then all the way right, then back to the middle.",
+                "Backpedal to the start under control."
+            ],
+            formCue: "Chest up on the backpedal, hips low on the shuffles.",
+            commonMistakes: "Crossing the feet on the shuffles and leaning back too far on the backpedal.",
+            beginnerModification: "Walk the pattern first, then jog it before going full speed.",
+            alternatives: ["Pro Agility Shuttle", "Lateral Shuffle"],
+            whyThisMatters: "One drill covers all four movement directions a defender actually uses."
+        ),
+        ExerciseReference(
+            id: "agility-ladder-quick-feet",
+            name: "Agility Ladder Quick Feet",
+            muscleGroup: .conditioning,
+            movementPattern: "Footwork",
+            musclesWorked: "Calves, ankles, and hip flexors",
+            equipment: "Agility ladder or chalk lines",
+            difficulty: .beginner,
+            videoPlaceholder: "Agility ladder two-in-each-box demo placeholder",
+            instructions: [
+                "Run through the ladder placing both feet in every box.",
+                "Stay on the balls of your feet with short, fast steps.",
+                "Keep your eyes up, not on your feet."
+            ],
+            formCue: "Fast feet, quiet feet.",
+            commonMistakes: "Watching your feet and letting the steps get long and slow.",
+            beginnerModification: "Walk the pattern, then build speed run by run.",
+            alternatives: ["High Knees", "Lateral Shuffle"],
+            whyThisMatters: "Foot speed and rhythm work that doubles as a warm-up for any court or field session."
+        ),
+        ExerciseReference(
+            id: "medicine-ball-slam",
+            name: "Medicine Ball Slam",
+            muscleGroup: .core,
+            movementPattern: "Overhead slam",
+            musclesWorked: "Lats, core, and shoulders",
+            equipment: "Non-bouncing medicine ball",
+            difficulty: .beginner,
+            videoPlaceholder: "Medicine ball slam demo placeholder",
+            instructions: [
+                "Reach the ball overhead, rising tall onto your toes.",
+                "Slam it into the floor with your whole body, hinging as you throw.",
+                "Pick it up with a flat back and repeat."
+            ],
+            formCue: "Throw it through the floor, not just at it.",
+            commonMistakes: "Using only the arms and rounding the back on the pickup.",
+            beginnerModification: "Use a light ball and slam at half effort.",
+            alternatives: ["Kettlebell Swing", "Medicine Ball Rotational Throw"],
+            whyThisMatters: "One of the few safe ways to train all-out full-body aggression — every rep is a max effort you can repeat."
+        ),
+        ExerciseReference(
+            id: "medicine-ball-chest-pass",
+            name: "Medicine Ball Chest Pass",
+            muscleGroup: .chest,
+            movementPattern: "Push",
+            musclesWorked: "Chest, shoulders, and triceps",
+            equipment: "Medicine ball, solid wall",
+            difficulty: .beginner,
+            videoPlaceholder: "Medicine ball chest pass demo placeholder",
+            instructions: [
+                "Stand an arm's length plus a step from a wall, ball at your chest.",
+                "Step in and fire the ball into the wall like a hard basketball pass.",
+                "Catch the rebound and reset before the next throw."
+            ],
+            formCue: "Punch the ball away — full extension, fast hands.",
+            commonMistakes: "Pushing slowly instead of throwing — the whole point is speed.",
+            beginnerModification: "Use a lighter ball and throw from a staggered kneeling position.",
+            alternatives: ["Push-Up", "Medicine Ball Slam"],
+            whyThisMatters: "Pressing strength only becomes throwing and shoving power when you train it fast — this is how."
+        ),
+        ExerciseReference(
+            id: "medicine-ball-overhead-throw",
+            name: "Medicine Ball Overhead Throw",
+            muscleGroup: .core,
+            movementPattern: "Overhead throw",
+            musclesWorked: "Lats, core, and shoulders",
+            equipment: "Medicine ball, solid wall",
+            difficulty: .moderate,
+            videoPlaceholder: "Overhead medicine ball throw demo placeholder",
+            instructions: [
+                "Face the wall, ball overhead with both hands.",
+                "Step forward and whip the ball into the wall like a soccer throw-in.",
+                "Let the trunk snap forward — the arms just finish it."
+            ],
+            formCue: "The abs throw it; the arms deliver it.",
+            commonMistakes: "Arching the lower back hard instead of loading through the trunk.",
+            beginnerModification: "Kneel tall and throw at an easy effort.",
+            alternatives: ["Medicine Ball Slam", "Wall Ball Shot"],
+            whyThisMatters: "Trains the trunk snap behind serves, spikes, and overhead throws."
+        ),
+        ExerciseReference(
+            id: "medicine-ball-scoop-toss",
+            name: "Medicine Ball Scoop Toss",
+            muscleGroup: .legs,
+            movementPattern: "Hinge + throw",
+            musclesWorked: "Glutes, hamstrings, and back",
+            equipment: "Medicine ball, open space",
+            difficulty: .moderate,
+            videoPlaceholder: "Scoop toss hip-extension throw demo placeholder",
+            instructions: [
+                "Hold the ball low, hinge back like a swing.",
+                "Snap the hips forward and launch the ball up and ahead of you.",
+                "Let it fly — chase it down and repeat."
+            ],
+            formCue: "The hips are the launcher — the arms are just ropes.",
+            commonMistakes: "Squatting and lifting with the arms instead of hinging and snapping.",
+            beginnerModification: "Practice the hinge-and-snap with no release, like a kettlebell swing.",
+            alternatives: ["Kettlebell Swing", "Broad Jump"],
+            whyThisMatters: "Full hip-extension power with a release at the end — you can't fake or slow-grind a throw."
+        ),
+        ExerciseReference(
+            id: "sled-push",
+            name: "Sled Push",
+            muscleGroup: .conditioning,
+            movementPattern: "Horizontal drive",
+            musclesWorked: "Quads, glutes, and calves",
+            equipment: "Sled or prowler",
+            difficulty: .moderate,
+            videoPlaceholder: "Prowler sled push demo placeholder",
+            instructions: [
+                "Grip the poles with arms locked and lean into the sled.",
+                "Drive one leg at a time, pushing the ground behind you.",
+                "Keep a straight line from head to heel."
+            ],
+            formCue: "Low hips, long pushes — plow, don't patter.",
+            commonMistakes: "Hips popping up so the legs stop driving and the back takes over.",
+            beginnerModification: "Lighten the sled and push shorter distances.",
+            alternatives: ["Hill Sprint", "Farmer Carry"],
+            whyThisMatters: "Brutal leg drive with no eccentric — big conditioning stimulus, almost no soreness tax."
+        ),
+        ExerciseReference(
+            id: "backward-sled-drag",
+            name: "Backward Sled Drag",
+            muscleGroup: .legs,
+            movementPattern: "Backward drive",
+            musclesWorked: "Quads and calves",
+            equipment: "Sled with straps",
+            difficulty: .beginner,
+            videoPlaceholder: "Backward sled drag demo placeholder",
+            instructions: [
+                "Face the sled holding the straps, arms long.",
+                "Walk backward with short, punchy steps.",
+                "Stay low and keep constant tension on the straps."
+            ],
+            formCue: "Toe strikes and push the floor away behind you.",
+            commonMistakes: "Standing upright and yanking with the arms.",
+            beginnerModification: "Use a light load and shorter trips.",
+            alternatives: ["Sled Push", "Walking Lunge"],
+            whyThisMatters: "Quad and knee-tendon work with zero impact — a favorite for building knees that handle jumping."
+        ),
+        ExerciseReference(
+            id: "double-under",
+            name: "Double Under",
+            muscleGroup: .conditioning,
+            movementPattern: "Jump",
+            musclesWorked: "Calves, shoulders, and forearms",
+            equipment: "Jump rope",
+            difficulty: .advanced,
+            videoPlaceholder: "Double under jump rope demo placeholder",
+            instructions: [
+                "Jump slightly higher than a normal skip.",
+                "Spin the rope twice under you with fast wrists.",
+                "Land softly and keep the bounce rhythm."
+            ],
+            formCue: "Wrists spin faster, jump barely higher.",
+            commonMistakes: "Donkey-kicking or piking the legs and jumping way too high.",
+            beginnerModification: "Alternate one high single between attempts to keep rhythm.",
+            alternatives: ["Jump Rope", "Pogo Hop"],
+            whyThisMatters: "Rhythm, timing, and conditioning in one skill — and a clear goal to chase on the rope."
+        ),
+        ExerciseReference(
+            id: "jump-rope-boxer-step",
+            name: "Jump Rope Boxer Step",
+            muscleGroup: .conditioning,
+            movementPattern: "Jump",
+            musclesWorked: "Calves, ankles, and shoulders",
+            equipment: "Jump rope",
+            difficulty: .beginner,
+            videoPlaceholder: "Boxer-step jump rope demo placeholder",
+            instructions: [
+                "Skip with a light bounce, shifting weight foot to foot.",
+                "Let the free heel tap the floor each pass.",
+                "Keep the elbows in and spin from the wrists."
+            ],
+            formCue: "Shift and relax — it should feel like dancing, not jumping.",
+            commonMistakes: "Double-bouncing flat-footed with tense shoulders.",
+            beginnerModification: "Practice the side-to-side shift without the rope.",
+            alternatives: ["Jump Rope", "High Knees"],
+            whyThisMatters: "The relaxed rope style boxers use for long rounds — teaches you to stay light without burning out."
+        ),
+        ExerciseReference(
+            id: "flutter-kick",
+            name: "Flutter Kick",
+            muscleGroup: .core,
+            movementPattern: "Core stability",
+            musclesWorked: "Lower abs and hip flexors",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "Flutter kick demo placeholder",
+            instructions: [
+                "Lie on your back, hands under your hips, legs straight.",
+                "Lift both legs slightly and kick them in small, quick scissors.",
+                "Keep your lower back pressed into the floor."
+            ],
+            formCue: "Small fast kicks from the hips — like swimming on land.",
+            commonMistakes: "Letting the lower back arch off the floor as the legs drop.",
+            beginnerModification: "Bend the knees or raise the legs higher.",
+            alternatives: ["Dead Bug", "Hollow Hold"],
+            whyThisMatters: "The dryland version of a swim kick — hip-flexor endurance with a locked-in trunk."
+        ),
+        ExerciseReference(
+            id: "band-pull-apart",
+            name: "Band Pull-Apart",
+            muscleGroup: .shoulders,
+            movementPattern: "Pull",
+            musclesWorked: "Rear delts and upper back",
+            equipment: "Resistance band",
+            difficulty: .beginner,
+            videoPlaceholder: "Band pull-apart demo placeholder",
+            instructions: [
+                "Hold a band at shoulder height, arms straight.",
+                "Pull the band apart until it touches your chest.",
+                "Return slowly without letting it snap back."
+            ],
+            formCue: "Squeeze the shoulder blades together at the end.",
+            commonMistakes: "Shrugging the shoulders up and bending the elbows.",
+            beginnerModification: "Use a lighter band or a wider grip.",
+            alternatives: ["Face Pull", "Rear Delt Fly"],
+            whyThisMatters: "A daily-dose antidote to pressing, desks, and swim volume — healthy shoulders live back here."
+        ),
+        ExerciseReference(
+            id: "superman-hold",
+            name: "Superman Hold",
+            muscleGroup: .back,
+            movementPattern: "Extension hold",
+            musclesWorked: "Spinal erectors, glutes, and rear shoulders",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "Superman hold demo placeholder",
+            instructions: [
+                "Lie face down with arms extended in front.",
+                "Lift your arms, chest, and legs a few inches off the floor.",
+                "Hold steady, breathing normally, then lower."
+            ],
+            formCue: "Reach long through fingers and toes — length over height.",
+            commonMistakes: "Cranking the neck up and yanking into a high, strained arch.",
+            beginnerModification: "Lift just the arms and chest, keeping legs down.",
+            alternatives: ["Back Extension", "Bird Dog"],
+            whyThisMatters: "Streamline-position strength for swimmers and a no-equipment back extension for everyone else."
+        ),
+        ExerciseReference(
+            id: "sprawl",
+            name: "Sprawl",
+            muscleGroup: .conditioning,
+            movementPattern: "Level change",
+            musclesWorked: "Hips, core, and shoulders",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "Wrestling sprawl demo placeholder",
+            instructions: [
+                "From an athletic stance, shoot both legs back fast.",
+                "Drop your hips to the floor with chest over your hands.",
+                "Snap the feet back under you and stand ready."
+            ],
+            formCue: "Hips heavy to the floor — that's what stops a takedown.",
+            commonMistakes: "Keeping the hips high, which is a burpee, not a sprawl.",
+            beginnerModification: "Step the legs back one at a time instead of jumping.",
+            alternatives: ["Burpee", "Mountain Climber"],
+            whyThisMatters: "The defensive reflex wrestling and MMA are built on — and a savage conditioning move on its own."
+        ),
+        ExerciseReference(
+            id: "crab-walk",
+            name: "Crab Walk",
+            muscleGroup: .conditioning,
+            movementPattern: "Crawl",
+            musclesWorked: "Triceps, glutes, and core",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "Crab walk demo placeholder",
+            instructions: [
+                "Sit with hands behind you and feet flat, then lift your hips.",
+                "Walk forward or backward on hands and feet.",
+                "Keep the hips up the whole trip."
+            ],
+            formCue: "Hips stay proud — no dragging your seat.",
+            commonMistakes: "Letting the hips sag until you're basically scooting.",
+            beginnerModification: "Hold the lifted position without walking.",
+            alternatives: ["Bear Crawl", "Glute Bridge"],
+            whyThisMatters: "Opens the front of the shoulders while working the back side — crawling patterns fix a lot quietly."
+        ),
+        ExerciseReference(
+            id: "hip-escape",
+            name: "Hip Escape",
+            muscleGroup: .core,
+            movementPattern: "Ground movement",
+            musclesWorked: "Core, hips, and shoulders",
+            equipment: "Mat or soft floor",
+            difficulty: .moderate,
+            videoPlaceholder: "Hip escape shrimping demo placeholder",
+            instructions: [
+                "Lie on your back, knees bent, feet flat.",
+                "Bridge slightly, then shoot your hips back and away to one side.",
+                "Return to center and repeat to the other side."
+            ],
+            formCue: "Push through the feet and slide the hips out, not the shoulders.",
+            commonMistakes: "Scooting flat on the back instead of turning onto the shoulder.",
+            beginnerModification: "Do slow single-side reps, resetting fully between them.",
+            alternatives: ["Glute Bridge", "Mountain Climber"],
+            whyThisMatters: "The fundamental grappling escape — and sneaky-hard core and hip work for anyone."
+        ),
+        ExerciseReference(
+            id: "neck-isometric-hold",
+            name: "Neck Isometric Hold",
+            muscleGroup: .shoulders,
+            movementPattern: "Isometric hold",
+            musclesWorked: "Neck flexors, extensors, and traps",
+            equipment: "None",
+            difficulty: .beginner,
+            videoPlaceholder: "Self-resisted neck isometric demo placeholder",
+            instructions: [
+                "Place a palm on your forehead and press your head into it gently.",
+                "Hold 10 seconds without any movement.",
+                "Repeat with the hand on the back and each side of your head."
+            ],
+            formCue: "Press at half effort — the head never actually moves.",
+            commonMistakes: "Pushing hard enough to strain, or letting the head shift around.",
+            beginnerModification: "Press at a quarter effort for 5 seconds per direction.",
+            alternatives: ["Plank", "Face Pull"],
+            whyThisMatters: "A strong neck matters for combat sports and collision sports — isometrics build it without risky loading."
+        ),
+        ExerciseReference(
+            id: "lateral-bear-crawl",
+            name: "Lateral Bear Crawl",
+            muscleGroup: .conditioning,
+            movementPattern: "Crawl",
+            musclesWorked: "Shoulders, core, and hips",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "Lateral bear crawl demo placeholder",
+            instructions: [
+                "Set up on hands and toes with knees hovering an inch off the floor.",
+                "Move sideways, hand and opposite foot together.",
+                "Keep the hips level and knees low the whole way."
+            ],
+            formCue: "A glass of water on your back shouldn't spill.",
+            commonMistakes: "Hips swaying and piking up as you move.",
+            beginnerModification: "Crawl on hands and knees, taking small side steps.",
+            alternatives: ["Bear Crawl", "Crab Walk"],
+            whyThisMatters: "Adds a sideways demand the standard crawl doesn't have — shoulders and core have to work together to stay level."
+        ),
+        ExerciseReference(
+            id: "lateral-lunge",
+            name: "Lateral Lunge",
+            muscleGroup: .legs,
+            movementPattern: "Lunge",
+            musclesWorked: "Glutes, quads, and adductors",
+            equipment: "None or a dumbbell",
+            difficulty: .beginner,
+            videoPlaceholder: "Lateral lunge demo placeholder",
+            instructions: [
+                "Step wide to one side and sit into that hip.",
+                "Keep the other leg straight with both feet pointing forward.",
+                "Push off the bent leg to return to standing."
+            ],
+            formCue: "Sit back into the hip like a chair beside you.",
+            commonMistakes: "Knee drifting past the toes and the trailing foot rolling open.",
+            beginnerModification: "Shorten the step and hold onto support.",
+            alternatives: ["Reverse Lunge", "Bulgarian Split Squat"],
+            whyThisMatters: "Almost all lifting is front-to-back — this trains the side-to-side strength cutting and shuffling demand."
+        ),
+        ExerciseReference(
+            id: "nordic-hamstring-curl",
+            name: "Nordic Hamstring Curl",
+            muscleGroup: .legs,
+            movementPattern: "Knee flexion",
+            musclesWorked: "Hamstrings and calves",
+            equipment: "A partner or anchor for the ankles",
+            difficulty: .advanced,
+            videoPlaceholder: "Nordic hamstring curl demo placeholder",
+            instructions: [
+                "Kneel tall with your ankles anchored firmly.",
+                "Lower your body forward as slowly as you can.",
+                "Catch yourself with your hands and push back to the start."
+            ],
+            formCue: "One straight line from knees to head — fight every inch down.",
+            commonMistakes: "Breaking at the hips so the hamstrings stop doing the work.",
+            beginnerModification: "Use a band around the chest for assistance and only lower partway.",
+            alternatives: ["Hamstring Curl", "Romanian Deadlift"],
+            whyThisMatters: "The best-evidenced hamstring-strain reducer in sport — brutal, so it's earned gradually."
+        ),
+        ExerciseReference(
+            id: "copenhagen-plank",
+            name: "Copenhagen Plank",
+            muscleGroup: .core,
+            movementPattern: "Side plank",
+            musclesWorked: "Adductors, obliques, and hips",
+            equipment: "Bench",
+            difficulty: .advanced,
+            videoPlaceholder: "Copenhagen adductor plank demo placeholder",
+            instructions: [
+                "Lie on your side with your top foot on a bench.",
+                "Lift your hips into a straight side plank on your forearm.",
+                "Hold, keeping the bottom leg relaxed, then switch sides."
+            ],
+            formCue: "Squeeze the top inner thigh into the bench to hold you up.",
+            commonMistakes: "Hips sagging or rolling forward out of the side-on line.",
+            beginnerModification: "Rest the top knee on the bench instead of the foot.",
+            alternatives: ["Side Plank", "Plank"],
+            whyThisMatters: "Groin strains bench soccer players constantly — this is the proven adductor strengthener that fights back."
+        ),
+        ExerciseReference(
+            id: "hang-power-clean",
+            name: "Hang Power Clean",
+            muscleGroup: .legs,
+            movementPattern: "Explosive pull",
+            musclesWorked: "Glutes, hamstrings, traps, and core",
+            equipment: "Barbell",
+            difficulty: .advanced,
+            videoPlaceholder: "Hang power clean demo placeholder",
+            instructions: [
+                "Hold the bar at your thighs, hinge to just above the knees.",
+                "Jump the bar upward with a violent hip snap and shrug.",
+                "Drop under slightly and catch it on your shoulders, elbows high."
+            ],
+            formCue: "Jump with the bar, then meet it — don't curl it up.",
+            commonMistakes: "Pulling early with the arms and catching with lazy, low elbows.",
+            beginnerModification: "Drill the jump-and-shrug with an empty bar or dowel first.",
+            alternatives: ["Kettlebell Swing", "Dumbbell Snatch"],
+            whyThisMatters: "The barbell expression of hip power — but only worth loading once the catch is clean."
+        ),
+        ExerciseReference(
+            id: "push-press",
+            name: "Push Press",
+            muscleGroup: .shoulders,
+            movementPattern: "Push",
+            musclesWorked: "Shoulders, triceps, and legs",
+            equipment: "Barbell or dumbbells",
+            difficulty: .moderate,
+            videoPlaceholder: "Push press demo placeholder",
+            instructions: [
+                "Hold the bar at your shoulders, feet hip width.",
+                "Dip a few inches at the knees, then drive up fast.",
+                "Punch the bar overhead as the legs finish."
+            ],
+            formCue: "Dip straight down, drive straight up — no forward lean.",
+            commonMistakes: "A slow, deep dip that turns the drive into a squat.",
+            beginnerModification: "Strict press lighter dumbbells with no leg drive.",
+            alternatives: ["Overhead Barbell Press", "Dumbbell Thruster"],
+            whyThisMatters: "Adds leg drive to the press — heavier overhead loads and the leg-to-arm power transfer sports run on."
+        ),
+        ExerciseReference(
+            id: "suitcase-carry",
+            name: "Suitcase Carry",
+            muscleGroup: .core,
+            movementPattern: "Loaded carry",
+            musclesWorked: "Obliques, grip, and traps",
+            equipment: "One dumbbell or kettlebell",
+            difficulty: .beginner,
+            videoPlaceholder: "Suitcase carry demo placeholder",
+            instructions: [
+                "Hold one heavy weight at your side.",
+                "Walk tall without leaning toward or away from it.",
+                "Switch hands each length."
+            ],
+            formCue: "Nobody should be able to tell which hand is loaded.",
+            commonMistakes: "Leaning away from the weight and rushing the steps.",
+            beginnerModification: "Use a lighter weight for shorter walks.",
+            alternatives: ["Farmer Carry", "Side Plank"],
+            whyThisMatters: "One-sided load makes your obliques fight for every step — anti-lean strength you use carrying anything."
+        ),
+        ExerciseReference(
+            id: "overhead-carry",
+            name: "Overhead Carry",
+            muscleGroup: .shoulders,
+            movementPattern: "Loaded carry",
+            musclesWorked: "Shoulders, traps, and core",
+            equipment: "One dumbbell or kettlebell",
+            difficulty: .moderate,
+            videoPlaceholder: "Overhead carry demo placeholder",
+            instructions: [
+                "Press one weight overhead with a locked elbow.",
+                "Walk slowly, keeping the weight stacked over your shoulder.",
+                "Lower with control and switch arms."
+            ],
+            formCue: "Ribs down, bicep by the ear, knuckles to the ceiling.",
+            commonMistakes: "Arching the lower back and letting the arm drift forward.",
+            beginnerModification: "Carry the weight at shoulder height in the rack position.",
+            alternatives: ["Farmer Carry", "Overhead Barbell Press"],
+            whyThisMatters: "Overhead stability you have to earn step by step — it exposes and fixes wobbly shoulders."
+        ),
+        ExerciseReference(
+            id: "front-rack-carry",
+            name: "Front Rack Carry",
+            muscleGroup: .core,
+            movementPattern: "Loaded carry",
+            musclesWorked: "Core, upper back, and biceps",
+            equipment: "Two kettlebells or dumbbells",
+            difficulty: .moderate,
+            videoPlaceholder: "Front rack carry demo placeholder",
+            instructions: [
+                "Clean two weights to your shoulders, elbows tucked.",
+                "Walk tall, ribs pulled down against the load.",
+                "Keep breathing — don't hold one big breath the whole way."
+            ],
+            formCue: "The weights try to fold you forward — stay tall anyway.",
+            commonMistakes: "Leaning back and flaring the ribs to prop the weights up.",
+            beginnerModification: "Carry one weight in the rack and switch sides.",
+            alternatives: ["Farmer Carry", "Goblet Squat"],
+            whyThisMatters: "Front-loaded carries hammer the deep core harder than most ab work — while you just walk."
+        ),
+        ExerciseReference(
+            id: "wall-push-up",
+            name: "Wall Push-Up",
+            muscleGroup: .chest,
+            movementPattern: "Push",
+            musclesWorked: "Chest, shoulders, triceps",
+            equipment: "A wall",
+            difficulty: .beginner,
+            videoPlaceholder: "Wall push-up demo placeholder",
+            instructions: [
+                "Place your hands on a wall at shoulder height.",
+                "Step back until your body makes one straight line.",
+                "Bend the elbows to bring your chest toward the wall, then press away."
+            ],
+            formCue: "Move as one plank — ribs and hips travel together.",
+            commonMistakes: "Poking the head forward and letting the hips sag.",
+            beginnerModification: "Stand closer to the wall.",
+            alternatives: ["Incline Push-Up", "Push-Up"],
+            whyThisMatters: "The most accessible push-up there is — a real starting point, not a lesser one."
+        ),
+        ExerciseReference(
+            id: "landmine-press",
+            name: "Landmine Press",
+            muscleGroup: .shoulders,
+            movementPattern: "Push",
+            musclesWorked: "Shoulders, upper chest, and triceps",
+            equipment: "Barbell in a landmine or corner",
+            difficulty: .moderate,
+            videoPlaceholder: "Landmine press demo placeholder",
+            instructions: [
+                "Hold the bar's end at your shoulder, staggered stance.",
+                "Press up and slightly forward along the bar's arc.",
+                "Lower under control back to the shoulder."
+            ],
+            formCue: "Reach long at the top — let the shoulder blade follow the press.",
+            commonMistakes: "Leaning back and turning it into an incline shove.",
+            beginnerModification: "Press half-kneeling with a lighter load.",
+            alternatives: ["Shoulder Press", "Seated Dumbbell Press"],
+            whyThisMatters: "An overhead-ish press that cranky shoulders usually tolerate — the angle does the accommodating."
+        ),
+        ExerciseReference(
+            id: "kettlebell-deadlift",
+            name: "Kettlebell Deadlift",
+            muscleGroup: .legs,
+            movementPattern: "Hinge",
+            musclesWorked: "Glutes, hamstrings, and back",
+            equipment: "Kettlebell",
+            difficulty: .beginner,
+            videoPlaceholder: "Kettlebell deadlift demo placeholder",
+            instructions: [
+                "Stand over the bell with it between your feet.",
+                "Hinge down with a flat back and grip the handle.",
+                "Stand tall by driving the hips forward."
+            ],
+            formCue: "Push the floor away and squeeze tall — don't yank the bell.",
+            commonMistakes: "Squatting it up or rounding the back to reach the handle.",
+            beginnerModification: "Elevate the bell on a low box to shorten the range.",
+            alternatives: ["Romanian Deadlift", "Goblet Squat"],
+            whyThisMatters: "The friendliest way to learn the hinge — the pattern behind every deadlift and swing."
+        ),
+        ExerciseReference(
+            id: "bench-dip",
+            name: "Bench Dip",
+            muscleGroup: .arms,
+            movementPattern: "Push",
+            musclesWorked: "Triceps and shoulders",
+            equipment: "Bench",
+            difficulty: .beginner,
+            videoPlaceholder: "Bench dip demo placeholder",
+            instructions: [
+                "Grip the bench edge behind you, legs out front.",
+                "Lower until the elbows reach about 90 degrees.",
+                "Press back up without shrugging."
+            ],
+            formCue: "Shoulders stay down and back — away from your ears.",
+            commonMistakes: "Sinking too deep and letting the shoulders roll forward.",
+            beginnerModification: "Bend the knees and keep feet flat to unload it.",
+            alternatives: ["Triceps Dip", "Tricep Pushdown"],
+            whyThisMatters: "Tricep strength from any bench or chair — an honest stepping stone to full dips."
+        ),
+        ExerciseReference(
+            id: "band-row",
+            name: "Band Row",
+            muscleGroup: .back,
+            movementPattern: "Pull",
+            musclesWorked: "Lats, upper back, and biceps",
+            equipment: "Resistance band",
+            difficulty: .beginner,
+            videoPlaceholder: "Band row demo placeholder",
+            instructions: [
+                "Anchor a band at chest height or loop it around your feet.",
+                "Pull the handles to your ribs, elbows close.",
+                "Return slowly, resisting the band the whole way."
+            ],
+            formCue: "Lead with the elbows and finish with the shoulder blades.",
+            commonMistakes: "Letting the band snap back and shrugging into the pull.",
+            beginnerModification: "Use a lighter band and sit while rowing.",
+            alternatives: ["Dumbbell Row", "Seated Cable Row"],
+            whyThisMatters: "A rowing pattern you can do anywhere — travel, home, or as a burnout after weights."
+        ),
+        ExerciseReference(
+            id: "trap-bar-deadlift",
+            name: "Trap Bar Deadlift",
+            muscleGroup: .legs,
+            movementPattern: "Hinge",
+            musclesWorked: "Glutes, quads, hamstrings, and back",
+            equipment: "Trap (hex) bar",
+            difficulty: .moderate,
+            videoPlaceholder: "Trap bar deadlift demo placeholder",
+            instructions: [
+                "Stand inside the bar, feet hip width.",
+                "Hinge down, grip the handles, and flatten your back.",
+                "Push the floor away and stand tall."
+            ],
+            formCue: "Chest up, hips and shoulders rise together.",
+            commonMistakes: "Letting the hips shoot up first so the back does all the work.",
+            beginnerModification: "Pull from the high handles with a lighter load.",
+            alternatives: ["Conventional Deadlift", "Kettlebell Deadlift"],
+            whyThisMatters: "Deadlift strength with the load centered on you — most athletes pull safer and heavier here."
+        ),
+        ExerciseReference(
+            id: "cable-woodchop",
+            name: "Cable Woodchop",
+            muscleGroup: .core,
+            movementPattern: "Rotation",
+            musclesWorked: "Obliques, hips, and shoulders",
+            equipment: "Cable machine or band",
+            difficulty: .moderate,
+            videoPlaceholder: "Cable woodchop demo placeholder",
+            instructions: [
+                "Set the cable high and stand side-on with arms extended.",
+                "Pull the handle down and across your body to the opposite hip.",
+                "Rotate through the hips and return with control."
+            ],
+            formCue: "Turn the belt buckle — arms stay long, hips do the chopping.",
+            commonMistakes: "Chopping with just the arms while the hips stay frozen.",
+            beginnerModification: "Kneel tall and chop with a lighter load.",
+            alternatives: ["Medicine Ball Rotational Throw", "Russian Twist"],
+            whyThisMatters: "Loaded rotation under control — the strength base behind every swing, serve, and punch."
+        ),
+        ExerciseReference(
+            id: "landmine-rotation",
+            name: "Landmine Rotation",
+            muscleGroup: .core,
+            movementPattern: "Rotation",
+            musclesWorked: "Obliques, shoulders, and hips",
+            equipment: "Barbell in a landmine or corner",
+            difficulty: .moderate,
+            videoPlaceholder: "Landmine rotation demo placeholder",
+            instructions: [
+                "Hold the bar's end at arm's length in front of your chest.",
+                "Sweep it in an arc from one hip up and over to the other.",
+                "Pivot the trail foot as your hips follow the bar."
+            ],
+            formCue: "Arms stay long — the hips steer the arc.",
+            commonMistakes: "Bending the elbows and twisting only from the lower back.",
+            beginnerModification: "Shrink the arc and use just the empty bar.",
+            alternatives: ["Cable Woodchop", "Medicine Ball Rotational Throw"],
+            whyThisMatters: "Rotational strength through a big arc — direct currency for golfers, throwers, and hitters."
+        ),
+        ExerciseReference(
+            id: "ninety-ninety-hip-switch",
+            name: "90/90 Hip Switch",
+            muscleGroup: .legs,
+            movementPattern: "Hip mobility",
+            musclesWorked: "Hip rotators and glutes",
+            equipment: "None",
+            difficulty: .recovery,
+            videoPlaceholder: "90/90 hip switch demo placeholder",
+            instructions: [
+                "Sit with both knees bent at 90 degrees, one leg in front, one to the side.",
+                "Keeping your chest tall, rotate both knees over to the other side.",
+                "Pause each side and keep the feet on the floor."
+            ],
+            formCue: "Lead with the knees, sit tall — no slumping through the switch.",
+            commonMistakes: "Rounding the back and using hands to drag yourself over.",
+            beginnerModification: "Lean back on your hands for support during the switch.",
+            alternatives: ["Kneeling Hip Flexor Stretch", "Pigeon Pose"],
+            whyThisMatters: "Rotational hip range you actively control — the kind that survives into squats, cuts, and kicks."
+        ),
+        ExerciseReference(
+            id: "standing-calf-stretch",
+            name: "Standing Calf Stretch",
+            muscleGroup: .legs,
+            movementPattern: "Stretch",
+            musclesWorked: "Calves and ankles",
+            equipment: "A wall",
+            difficulty: .recovery,
+            videoPlaceholder: "Wall calf stretch demo placeholder",
+            instructions: [
+                "Step one foot back, heel flat, toes forward.",
+                "Lean into the wall until the back calf stretches.",
+                "Hold, then bend the back knee slightly to shift it lower."
+            ],
+            formCue: "Back heel glued to the floor the whole time.",
+            commonMistakes: "Letting the heel lift or the back foot turn out.",
+            beginnerModification: "Shorten the stance for a gentler stretch.",
+            alternatives: ["Standing Hamstring Stretch", "Downward Dog"],
+            whyThisMatters: "Stiff ankles quietly wreck squats and stride length — this is the cheapest fix in the gym."
+        ),
+        ExerciseReference(
+            id: "wall-slide",
+            name: "Wall Slide",
+            muscleGroup: .shoulders,
+            movementPattern: "Overhead mobility",
+            musclesWorked: "Shoulders, upper back, and serratus",
+            equipment: "A wall",
+            difficulty: .beginner,
+            videoPlaceholder: "Wall slide shoulder mobility demo placeholder",
+            instructions: [
+                "Stand with your back, head, and arms against a wall in a goalpost shape.",
+                "Slide the arms up overhead, keeping wrists and elbows on the wall.",
+                "Slide back down, tucking the elbows toward your ribs."
+            ],
+            formCue: "Ribs stay down — don't arch off the wall to cheat height.",
+            commonMistakes: "Flaring the lower back off the wall as the arms rise.",
+            beginnerModification: "Only slide through the range where contact stays.",
+            alternatives: ["Arm Swings & Circles", "Face Pull"],
+            whyThisMatters: "An honest test and builder of overhead range — if the wall slide is clean, pressing overhead gets safer."
+        ),
+        ExerciseReference(
+            id: "lateral-step-down",
+            name: "Lateral Step-Down",
+            muscleGroup: .legs,
+            movementPattern: "Single-leg squat",
+            musclesWorked: "Quads, glutes, and ankle stabilizers",
+            equipment: "Low box or step",
+            difficulty: .moderate,
+            videoPlaceholder: "Lateral step-down demo placeholder",
+            instructions: [
+                "Stand on a low box side-on, one foot hanging off the edge.",
+                "Bend the standing knee and lower the free heel toward the floor.",
+                "Tap lightly and press back up without pushing off."
+            ],
+            formCue: "The standing knee tracks over the toes — no wobble, no cave.",
+            commonMistakes: "Dropping fast and bouncing off the bottom foot.",
+            beginnerModification: "Use a lower step and hold light support.",
+            alternatives: ["Step-Up", "Bulgarian Split Squat"],
+            whyThisMatters: "Single-leg knee control in slow motion — the quality that keeps jumpers' and runners' knees healthy."
+        ),
+        ExerciseReference(
+            id: "dumbbell-pullover",
+            name: "Dumbbell Pullover",
+            muscleGroup: .chest,
+            movementPattern: "Overhead reach",
+            musclesWorked: "Lats, chest, and triceps",
+            equipment: "Bench and one dumbbell",
+            difficulty: .moderate,
+            videoPlaceholder: "Dumbbell pullover demo placeholder",
+            instructions: [
+                "Lie on a bench holding one dumbbell over your chest with both hands.",
+                "Lower it in an arc behind your head with slightly bent elbows.",
+                "Pull it back over your chest along the same arc."
+            ],
+            formCue: "Ribs stay down — stretch through the lats, not the lower back.",
+            commonMistakes: "Arching the back hard and bending the elbows into a triceps press.",
+            beginnerModification: "Use a light weight through a shorter arc.",
+            alternatives: ["Straight-Arm Pulldown", "Dumbbell Chest Fly"],
+            whyThisMatters: "Loads the long overhead reach swimmers and throwers live in — few lifts train that line at all."
         )
     ]
 
