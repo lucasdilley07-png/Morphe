@@ -5967,7 +5967,11 @@ final class PremiumStore {
     }
 
     func restore() async {
-        guard PremiumGate.storefrontEnabled else { return }
+        // isBusy must toggle or the Restore spinner/disable is inert
+        // (audit 20 P1) — mirrors purchase().
+        guard PremiumGate.storefrontEnabled, !isBusy else { return }
+        isBusy = true
+        defer { isBusy = false }
         try? await AppStore.sync()
         await refreshEntitlement()
     }

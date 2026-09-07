@@ -1031,7 +1031,14 @@ private struct ProgressHeroStrip: View {
                             ScoreRing(score: score, color: MorpheTheme.accent)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Morphe Score \(score) — tap to learn what drives it")
+                        // The ring declares its own a11y element, which can
+                        // shadow the button's label/hint — collapse to one
+                        // element so VoiceOver keeps the tap affordance
+                        // (audit 20 P2).
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityLabel("Morphe Score \(score)")
+                        .accessibilityHint("Tap to learn what drives it")
                         .alert("Morphe Score", isPresented: $showScoreExplainer) {
                             Button("Got It", role: .cancel) {}
                         } message: {

@@ -1372,7 +1372,7 @@ final class MorpheAppStore {
         // erase ABORTS (audit 19, P1): once the auth user is gone the
         // owner-only rules make the leftovers permanently undeletable.
         guard await debriefService.eraseAll(uid: uid) else {
-            showToast("Couldn't erase your debrief history — check your connection and try again.")
+            showToast("Couldn't erase your debrief history — check your connection and try again.", isError: true)
             return false
         }
         // Referral receipts this account wrote into recruiters' ledgers —
@@ -1745,7 +1745,7 @@ final class MorpheAppStore {
         )
         let snapshot = PartyWorkoutSnapshot(template: currentWorkout)
         guard await partyService.createParty(party, host: me, workout: snapshot) else {
-            showToast("Couldn't start the session — check your connection.")
+            showToast("Couldn't start the session — check your connection.", isError: true)
             return false
         }
         activeParty = party
@@ -1774,7 +1774,7 @@ final class MorpheAppStore {
             return false
         }
         guard await partyService.join(partyID: party.id, participant: me) else {
-            showToast("Couldn't join — check your connection.")
+            showToast("Couldn't join — check your connection.", isError: true)
             return false
         }
 
@@ -2313,7 +2313,7 @@ final class MorpheAppStore {
                 symbol: "checkmark.seal"
             )
         } else {
-            showToast("Couldn't send the request — check your connection and try again.")
+            showToast("Couldn't send the request — check your connection and try again.", isError: true)
         }
     }
 
@@ -4110,7 +4110,7 @@ final class MorpheAppStore {
         )
         guard let host = challengeSelfMember(for: challenge) else { return nil }
         guard await leaderboardService.createChallenge(challenge, host: host) else {
-            showToast("Couldn't create the challenge — check your connection.")
+            showToast("Couldn't create the challenge — check your connection.", isError: true)
             return nil
         }
         challenge.members = [host]
@@ -4154,7 +4154,7 @@ final class MorpheAppStore {
         }
         guard let member = challengeSelfMember(for: fetched),
               let joined = await leaderboardService.joinChallenge(code: code, member: member) else {
-            showToast("Couldn't join — check your connection.")
+            showToast("Couldn't join — check your connection.", isError: true)
             return false
         }
         activeChallenges.removeAll { $0.code == joined.code }
@@ -10390,7 +10390,7 @@ final class MorpheAppStore {
                   !code.isEmpty else { return }
             Task {
                 if await joinParty(code: code) == false {
-                    showToast("Couldn't join that party — the session may have ended.")
+                    showToast("Couldn't join that party — the session may have ended.", isError: true)
                 }
             }
         case "connect":
@@ -11099,11 +11099,11 @@ final class MorpheAppStore {
         // descending order over the next sessions (audit 10, P2-6).
         for item in fresh { seen.insert(item.id) }
         UserDefaults.standard.set(Array(seen), forKey: milestonesSeenKey)
-        // A streak/sessions/sets milestone is a COMPLETION — the star +
-        // success it exists for, not a silent banner (feedback doctrine
-        // rule 3, 2026-09).
+        // A streak/sessions/sets milestone is a COMPLETION — the star it
+        // exists for (feedback doctrine rule 3, 2026-09). NO success haptic
+        // here: the log beat already fired one on this same recordStamp==nil
+        // branch, and a second back-to-back reads as noise (audit 20 P1).
         SoundEffects.play(.star)
-        Haptics.success()
         showCelebration(title: milestone.title, detail: milestone.detail, symbol: milestone.symbol)
     }
 
@@ -11909,7 +11909,7 @@ final class MorpheAppStore {
             coachName: coachProfile.name,
             athleteName: athleteName
         ) else {
-            showToast("Couldn't open the conversation — check your connection.")
+            showToast("Couldn't open the conversation — check your connection.", isError: true)
             return nil
         }
         await refreshThreads(force: true)
@@ -12402,7 +12402,7 @@ final class MorpheAppStore {
             text: clean.wireClamped(300)
         )
         guard await feedService.addComment(comment) else {
-            showToast("Comment didn't send — check your connection.")
+            showToast("Comment didn't send — check your connection.", isError: true)
             return false
         }
         postComments[post.id, default: []].append(comment)
@@ -12551,7 +12551,7 @@ final class MorpheAppStore {
             athleteName: firstIsMe ? otherName : myName
         )
         guard let threadId else {
-            showToast("Couldn't start the chat — check your connection.")
+            showToast("Couldn't start the chat — check your connection.", isError: true)
             return false
         }
         // Forced: this call just CHANGED the inbox on the server.

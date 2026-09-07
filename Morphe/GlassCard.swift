@@ -562,6 +562,10 @@ struct CelebrationOverlay: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Morphe: \(moment.title). \(moment.detail)")
         .onAppear { if !reduceMotion { marked.toggle() } }
+        // A milestone can overwrite an on-screen "+50 XP" moment without
+        // the view leaving the tree, so onAppear won't re-fire — bounce on
+        // the moment change too (audit 20 P2).
+        .onChange(of: moment.id) { if !reduceMotion { marked.toggle() } }
     }
 }
 

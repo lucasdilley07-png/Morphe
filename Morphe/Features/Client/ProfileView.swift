@@ -1939,6 +1939,13 @@ struct MorpheProPaywallSheet: View {
                     FetchRetryCard(message: "Plans couldn't load — check your connection.") {
                         Task { await premium.load() }
                     }
+                } else if premium.products.isEmpty, premium.loadState == .loaded {
+                    // Fetch SUCCEEDED but returned nothing — unapproved or
+                    // mistyped product IDs. Honest, retryable, not an
+                    // eternal "Loading…" (audit 20 P1).
+                    FetchRetryCard(message: "Plans aren't available right now.") {
+                        Task { await premium.load() }
+                    }
                 } else if premium.products.isEmpty {
                     FetchPlaceholderCard(line: "Loading plans…")
                 } else {
