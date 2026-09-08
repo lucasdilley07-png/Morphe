@@ -929,7 +929,15 @@ struct MorpheDayPopup: View {
         let _ = store.morpheAskRefresh
         if store.shouldShowDayPopup {
             ZStack {
-                MorpheTheme.ink.ignoresSafeArea()
+                // Dimmed scrim over the app — the day popup is a centered
+                // CARD now, not a full-screen takeover (Lucas 2026-09).
+                // Tap the scrim to dismiss.
+                MorpheTheme.ink.opacity(0.72).ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            store.dismissDayPopupForSession()
+                        }
+                    }
 
                 VStack(spacing: 0) {
                     HStack {
@@ -949,28 +957,27 @@ struct MorpheDayPopup: View {
                         .accessibilityLabel("Dismiss until the next open")
                     }
 
-                    // Scrolls at accessibility sizes (audit 12, P1-6):
-                    // the takeover's own exit buttons must never clip
-                    // off-screen.
+                    // Scrolls at accessibility sizes (audit 12, P1-6): the
+                    // card's own exit buttons must never clip off-screen,
+                    // and the card must never grow to fill the phone.
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 0) {
                             MorpheCharacterBadge()
-                                .scaleEffect(1.5)
-                                .padding(.top, 32)
-                                .padding(.bottom, 28)
+                                .scaleEffect(1.3)
+                                .padding(.top, 12)
+                                .padding(.bottom, 22)
 
                             Text(store.homeGreeting)
-                                .font(.title2.weight(.bold))
+                                .font(.title3.weight(.bold))
                                 .foregroundStyle(MorpheTheme.textPrimary)
                                 .multilineTextAlignment(.center)
 
                             Text(store.dayPopupQuestion)
-                                .font(.title3)
+                                .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.textSecondary)
                                 .multilineTextAlignment(.center)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .padding(.top, 6)
-                                .padding(.horizontal, 12)
 
                             VStack(spacing: 10) {
                                 ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
@@ -983,47 +990,58 @@ struct MorpheDayPopup: View {
                                     }
                                 }
                             }
-                            .frame(maxWidth: 420)
-                            .padding(.top, 36)
-                            .padding(.bottom, 24)
+                            .padding(.top, 24)
+                            .padding(.bottom, 8)
                         }
                         .frame(maxWidth: .infinity)
                     }
                     .scrollBounceBehavior(.basedOnSize)
                 }
-                .padding(24)
+                .padding(20)
+                // The card: capped width + height, rounded panel raised
+                // over the scrim (Lucas 2026-09). Centered by the ZStack.
+                .frame(maxWidth: 340)
+                .frame(maxHeight: 500)
+                .background(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .fill(MorpheTheme.panelRaised)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .stroke(MorpheTheme.stroke, lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.35), radius: 24, y: 8)
+                )
+                .padding(.horizontal, 28)
+                // Drag-to-dismiss moves the CARD only; the scrim stays put.
+                .offset(y: max(0, dragOffset))
+                .scaleEffect(appeared || reduceMotion ? 1 : 0.96)
+                .gesture(
+                    DragGesture(minimumDistance: 5)
+                        .onChanged { value in
+                            dragOffset = max(0, value.translation.height)
+                        }
+                        .onEnded { value in
+                            if value.translation.height > 120 {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                    store.dismissDayPopupForSession()
+                                }
+                            } else {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                                    dragOffset = 0
+                                }
+                            }
+                        }
+                )
             }
-            // Overlay entrance, not a slide-up (Lucas 2026-09): it fades
-            // in place with a whisper of scale. dragOffset is retained so
-            // drag-to-dismiss still follows the finger.
-            .offset(y: max(0, dragOffset))
+            // Overlay entrance (Lucas 2026-09): scrim + card fade in
+            // together, no slide.
             .opacity(appeared || reduceMotion ? 1 : 0)
-            .scaleEffect(appeared || reduceMotion ? 1 : 0.98)
             .onAppear {
                 guard !appeared else { return }
                 withAnimation(.easeOut(duration: reduceMotion ? 0.1 : 0.3).delay(0.35)) {
                     appeared = true
                 }
             }
-            // Fluid-interfaces compliance: the takeover follows the finger
-            // and springs back below the dismiss threshold.
-            .gesture(
-                DragGesture(minimumDistance: 5)
-                    .onChanged { value in
-                        dragOffset = max(0, value.translation.height)
-                    }
-                    .onEnded { value in
-                        if value.translation.height > 120 {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                store.dismissDayPopupForSession()
-                            }
-                        } else {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                                dragOffset = 0
-                            }
-                        }
-                    }
-            )
             .transition(.opacity)
             .accessibilityAddTraits(.isModal)
             .accessibilitySortPriority(1000)
