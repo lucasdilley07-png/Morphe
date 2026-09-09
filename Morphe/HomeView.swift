@@ -932,7 +932,7 @@ struct MorpheDayPopup: View {
                 // Dimmed scrim over the app — the day popup is a centered
                 // CARD now, not a full-screen takeover (Lucas 2026-09).
                 // Tap the scrim to dismiss.
-                MorpheTheme.ink.opacity(0.72).ignoresSafeArea()
+                MorpheTheme.ink.ignoresSafeArea()
                     .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             store.dismissDayPopupForSession()
@@ -1004,7 +1004,15 @@ struct MorpheDayPopup: View {
                 .frame(maxHeight: 500)
                 .background(
                     RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        .fill(MorpheTheme.panelRaised)
+                        // Opaque base (Lucas 2026-09): panelRaised is a
+                        // translucent tint on its own, so the card showed
+                        // the screen behind it. inkAlt gives it a solid,
+                        // 100%-opaque fill; the tint rides on top for depth.
+                        .fill(MorpheTheme.inkAlt)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .fill(MorpheTheme.panelRaised)
+                        )
                         .overlay(
                             RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .stroke(MorpheTheme.stroke, lineWidth: 1)
