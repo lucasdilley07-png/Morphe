@@ -2375,6 +2375,47 @@ final class StyleProfileTests: XCTestCase {
         XCTAssertTrue(store.styleProfile.hasLearnedAnything)
     }
 
+    func testLearnedInsightLineHoldsUntilDataExists() {
+        let store = makeStore()
+        XCTAssertNil(store.learnedInsightLine(), "no data, no line — never invented")
+
+        store.workoutLogs.append(log(store, title: "A", daysAgo: 1, hour: 7, minutes: 40, exercise: "Bench Press"))
+        store.workoutLogs.append(log(store, title: "B", daysAgo: 3, hour: 7, minutes: 45, exercise: "Bench Press"))
+        store.workoutLogs.append(log(store, title: "C", daysAgo: 5, hour: 7, minutes: 50, exercise: "Squat"))
+        store.refreshStyleProfile()
+
+        // In the learned window, the time line leads.
+        var comps = Calendar.current.dateComponents([.year, .month, .day], from: .now)
+        comps.hour = 7
+        let inWindow = Calendar.current.date(from: comps) ?? .now
+        XCTAssertTrue(store.learnedInsightLine(now: inWindow)?.contains("usual training window") == true)
+
+        // Out of the window: still a real derived line, rotating by day.
+        comps.hour = 15
+        let outOfWindow = Calendar.current.date(from: comps) ?? .now
+        let line = store.learnedInsightLine(now: outOfWindow)
+        XCTAssertNotNil(line)
+        XCTAssertFalse(line?.contains("usual training window") ?? true)
+    }
+
+    func testLearnedChipsOnlyClaimRealFits() {
+        let store = makeStore()
+        XCTAssertTrue(store.learnedRecommendationChips(durationMinutes: 45, exerciseNames: ["Bench Press"]).isEmpty,
+                      "no learned data, no chips")
+
+        store.workoutLogs.append(log(store, title: "A", daysAgo: 1, hour: 7, minutes: 40, exercise: "Bench Press"))
+        store.workoutLogs.append(log(store, title: "B", daysAgo: 3, hour: 7, minutes: 45, exercise: "Bench Press"))
+        store.workoutLogs.append(log(store, title: "C", daysAgo: 5, hour: 7, minutes: 50, exercise: "Bench Press"))
+        store.refreshStyleProfile()
+
+        let fit = store.learnedRecommendationChips(durationMinutes: 45, exerciseNames: ["bench press", "Row"])
+        XCTAssertEqual(fit.count, 2, "duration within ±10 and the favorite present — both chips")
+        XCTAssertTrue(fit[1].contains("Bench Press"))
+
+        let misfit = store.learnedRecommendationChips(durationMinutes: 90, exerciseNames: ["Row"])
+        XCTAssertTrue(misfit.isEmpty, "a 90-minute plan is NOT your usual 45 — no false chip")
+    }
+
     func testHomeCardOrderResolvesSafely() {
         XCTAssertEqual(HomeCardID.resolvedOrder(from: []), HomeCardID.defaultOrder,
                        "empty means the default layout")

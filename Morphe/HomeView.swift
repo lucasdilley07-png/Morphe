@@ -57,6 +57,21 @@ struct HomeView: View {
                         .multilineTextAlignment(.center)
                         .contentTransition(.opacity)
                         .glimmer()
+                    // The visible learning loop (phase 4): one line of what
+                    // Morphe actually derived — absent until the honesty
+                    // gates have real data.
+                    if let learned = store.learnedInsightLine() {
+                        HStack(spacing: 5) {
+                            Image(systemName: "wand.and.stars")
+                                .font(.system(size: 9, weight: .bold))
+                            Text(learned)
+                                .multilineTextAlignment(.center)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .padding(.top, 2)
+                        .accessibilityLabel("Morphe learned: \(learned)")
+                    }
                     // Monday: the recap speaks (moments engine phase 2) —
                     // same derived numbers as the Progress card.
                     if let recap = store.mondayRecapLine {

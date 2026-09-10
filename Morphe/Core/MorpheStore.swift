@@ -392,6 +392,65 @@ final class MorpheAppStore {
         persistLocalProfile()
     }
 
+    // MARK: The visible learning loop (personalization phase 4)
+
+    /// One line of what Morphe actually knows, spoken on Today under the
+    /// greeting. Deterministic day-rotation across the facts that exist —
+    /// never random, never invented, absent entirely until the honesty
+    /// gates have real data. Clock injectable for tests.
+    func learnedInsightLine(now: Date = .now) -> String? {
+        guard hasCompletedOnboarding, styleProfile.hasLearnedAnything else { return nil }
+        var lines: [String] = []
+
+        // The time-window line LEADS when now is near the learned hour —
+        // that's the moment it's useful, not trivia.
+        if let hour = styleProfile.preferredTrainingHour {
+            let nowHour = Calendar.current.component(.hour, from: now)
+            if abs(nowHour - hour) <= 1 {
+                lines.append("This is your usual training window — most of your sessions land around \(Self.formattedHour(hour)).")
+            }
+        }
+        if let cadence = styleProfile.weeklyCadence, cadence > 0 {
+            lines.append("You're averaging \(String(format: "%.1f", cadence)) sessions a week — one today keeps the pace.")
+        }
+        if let favorite = styleProfile.favoriteExercises.first {
+            lines.append("\(favorite) is your most-trained exercise — your logs say so.")
+        }
+        if let intensity = styleProfile.preferredIntensity, let rating = styleProfile.averageRating {
+            lines.append("You mostly call sessions \u{201C}\(intensity.lowercased())\u{201D} and rate them \(String(format: "%.1f", rating))/10.")
+        }
+        if let minutes = styleProfile.typicalDurationMinutes {
+            lines.append("Your typical session runs about \(minutes) minutes.")
+        }
+        guard !lines.isEmpty else { return nil }
+        // In-window hour line wins outright; otherwise rotate by day so
+        // the line changes daily without randomness.
+        if lines.first?.contains("usual training window") == true { return lines.first }
+        let day = Calendar.current.ordinality(of: .day, in: .year, for: now) ?? 0
+        return lines[day % lines.count]
+    }
+
+    nonisolated static func formattedHour(_ hour: Int) -> String {
+        var comps = DateComponents(); comps.hour = hour
+        let date = Calendar.current.date(from: comps) ?? .now
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+
+    /// Learned context chips for Good for Today (phase 4): cite the fit
+    /// only when the data actually fits — a chip is a claim.
+    func learnedRecommendationChips(durationMinutes: Int?, exerciseNames: [String]) -> [String] {
+        var chips: [String] = []
+        if let typical = styleProfile.typicalDurationMinutes,
+           let duration = durationMinutes, abs(duration - typical) <= 10 {
+            chips.append("Your usual length")
+        }
+        if let favorite = styleProfile.favoriteExercises.first,
+           exerciseNames.contains(where: { $0.caseInsensitiveCompare(favorite) == .orderedSame }) {
+            chips.append("Has \(favorite) — your most-trained")
+        }
+        return chips
+    }
+
     // MARK: Today layout (personalization phase 3)
 
     /// The user's card order, resolved safely (unknowns drop, missing
@@ -497,7 +556,13 @@ final class MorpheAppStore {
         debriefContext = nil
         refreshStyleProfile()
         Haptics.success()
-        showToast("Noted — this shapes tomorrow's suggestions.")
+        // Phase 4: once a real pattern exists, the acknowledgment says so —
+        // the learning is visible, not a black box.
+        if let intensity = styleProfile.preferredIntensity {
+            showToast("Noted — you mostly train \u{201C}\(intensity.lowercased())\u{201D}. This shapes tomorrow's suggestions.")
+        } else {
+            showToast("Noted — this shapes tomorrow's suggestions.")
+        }
         pushDebrief(debrief)
     }
 
@@ -15282,13 +15347,17 @@ final class MorpheAppStore {
         confidenceNote: String?,
         prefersBuddy: Bool
     ) -> GoodForTodayWorkoutRecommendation {
-        GoodForTodayWorkoutRecommendation(
+        let template = workoutTemplates.first { $0.id == item.workoutTemplateID }
+        let learned = learnedRecommendationChips(
+            durationMinutes: template?.durationMinutes,
+            exerciseNames: template?.exercises.map(\.name) ?? [])
+        return GoodForTodayWorkoutRecommendation(
             workoutTemplateID: item.workoutTemplateID,
             workoutName: item.workoutName,
             sourceName: item.sourceName,
             reasonTitle: reasonTitle,
             reasonDetail: reasonDetail,
-            contextChips: contextChips,
+            contextChips: Array((contextChips + learned).prefix(4)),
             confidenceNote: confidenceNote,
             bestFor: item.bestFor,
             prefersBuddy: prefersBuddy,
@@ -15306,13 +15375,18 @@ final class MorpheAppStore {
         bestFor: SavedWorkoutUseCase,
         prefersBuddy: Bool
     ) -> GoodForTodayWorkoutRecommendation {
-        GoodForTodayWorkoutRecommendation(
+        // Phase 4: the learned profile annotates the pick — capped so the
+        // caller's own reasons still lead.
+        let learned = learnedRecommendationChips(
+            durationMinutes: template.durationMinutes,
+            exerciseNames: template.exercises.map(\.name))
+        return GoodForTodayWorkoutRecommendation(
             workoutTemplateID: template.id,
             workoutName: template.name,
             sourceName: sourceName,
             reasonTitle: reasonTitle,
             reasonDetail: reasonDetail,
-            contextChips: contextChips,
+            contextChips: Array((contextChips + learned).prefix(4)),
             confidenceNote: confidenceNote,
             bestFor: bestFor,
             prefersBuddy: prefersBuddy,
