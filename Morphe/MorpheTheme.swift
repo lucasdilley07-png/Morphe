@@ -416,6 +416,37 @@ enum Haptics {
 /// Morphe's daily ask. The `.ambient`
 /// session mixes with the user's own music and respects the silent switch —
 /// a gym app must never barge into someone's playlist.
+/// Selectable voicings of the app's ONE synthesized instrument
+/// (personalization phase 2, Lucas 2026-09). Every pack keeps the cue
+/// meanings — star, ding, pr, wake — and re-voices them: same notes,
+/// different register/energy. Meanings never change per pack.
+enum SoundPack: String, CaseIterable, Identifiable {
+    /// The original Milestone-character chord voice.
+    case classic
+    /// Quieter and shorter — the first two strikes only, faster decay.
+    case minimal
+    /// An octave down, struck harder, longer ring.
+    case impact
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .classic: return "Classic"
+        case .minimal: return "Minimal"
+        case .impact: return "Impact"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .classic: return "The gold-tone chord"
+        case .minimal: return "Quiet and quick"
+        case .impact: return "Low and heavy"
+        }
+    }
+}
+
 enum SoundEffects {
     enum Cue {
         case star
@@ -431,6 +462,11 @@ enum SoundEffects {
     }
 
     private static var players: [Cue: AVAudioPlayer] = [:]
+    /// The active voicing — set from the user's style profile. Changing it
+    /// drops the cached players so the next cue speaks in the new voice.
+    static var pack: SoundPack = .classic {
+        didSet { if pack != oldValue { players.removeAll() } }
+    }
     /// True while Hey Morphe owns the audio session (audit 12, P0-2) —
     /// cues must not flip the category out from under a live mic tap, and
     /// once voice releases the session, every play re-asserts .ambient so
@@ -503,11 +539,25 @@ enum SoundEffects {
             ]
         }
 
-        let total = notes.map { $0.1 + $0.2 }.max()! + 0.05
+        // Re-voice the table for the active pack — a pure transform, so
+        // every cue keeps its meaning in every voice.
+        let voiced: [(Double, Double, Double, Double, Double)]
+        switch pack {
+        case .classic:
+            voiced = notes
+        case .minimal:
+            // First two strikes only, quieter, faster decay.
+            voiced = notes.prefix(2).map { ($0.0, $0.1, $0.2 * 0.7, $0.3 + 2.5, $0.4 * 0.55) }
+        case .impact:
+            // Everything an octave down, harder, ringing longer.
+            voiced = notes.map { ($0.0 * 0.5, $0.1, $0.2 * 1.15, max($0.3 - 1.0, 2.4), min($0.4 * 1.15, 1.0)) }
+        }
+
+        let total = voiced.map { $0.1 + $0.2 }.max()! + 0.05
         let frameCount = Int(total * sampleRate)
         var samples = [Double](repeating: 0, count: frameCount)
 
-        for (frequency, start, ring, decay, gain) in notes {
+        for (frequency, start, ring, decay, gain) in voiced {
             let startFrame = Int(start * sampleRate)
             let ringFrames = Int(ring * sampleRate)
             for i in 0..<ringFrames where startFrame + i < frameCount {

@@ -766,6 +766,74 @@ struct ProfileView: View {
     }
 
     @ViewBuilder
+    private func characterChoice(_ character: MorpheCharacter) -> some View {
+        let selected = store.styleProfile.characterID == character.id
+        Button {
+            store.setStyleChoice(characterID: character.id)
+            Haptics.selection()
+        } label: {
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(
+                            colors: character.colors.map { Color(red: $0.red, green: $0.green, blue: $0.blue) },
+                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                    Text(character.letter)
+                        .font(.system(size: 18, design: .monospaced).weight(.black))
+                        .foregroundStyle(.black)
+                }
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Circle().stroke(selected ? MorpheTheme.accent : .clear, lineWidth: 2)
+                        .padding(-3)
+                )
+                Text(character.name)
+                    .font(.caption2.weight(selected ? .bold : .regular))
+                    .foregroundStyle(selected ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(character.name) — \(character.vibe)")
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+
+    @ViewBuilder
+    private func soundPackChoice(_ pack: SoundPack) -> some View {
+        let selected = store.styleProfile.soundPack == pack.rawValue
+        Button {
+            store.setStyleChoice(soundPack: pack.rawValue)
+            // Instant preview in the new voice — the choice is audible.
+            SoundEffects.play(.ding)
+            Haptics.selection()
+        } label: {
+            VStack(spacing: 3) {
+                Text(pack.title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(selected ? Color.black : MorpheTheme.textPrimary)
+                Text(pack.detail)
+                    .font(.caption2)
+                    .foregroundStyle(selected ? Color.black.opacity(0.7) : MorpheTheme.textMuted)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                    .fill(selected ? MorpheTheme.accent : MorpheTheme.panelStrong)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                    .stroke(selected ? MorpheTheme.stroke : MorpheTheme.strokeSubtle, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(pack.title) sound voice — \(pack.detail)")
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+
+    @ViewBuilder
     private func learnedRow(_ symbol: String, _ text: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: symbol)
@@ -797,6 +865,39 @@ struct ProfileView: View {
                     .foregroundStyle(MorpheTheme.textMuted)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
+            }
+
+            // Identity customization (personalization phase 2): pick
+            // Morphe's persona and the app's sound voice. Writes go through
+            // setStyleChoice so recomputes never clobber them.
+            settingsSection("Make it yours", keywords: "personalization character persona sound effects pack customize") {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Morphe's character")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    HStack(spacing: 12) {
+                        ForEach(MorpheCharacter.all) { character in
+                            characterChoice(character)
+                        }
+                    }
+                    Text("Changes the badge and how Morphe talks — never what it's honest about.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    Text("Sound voice")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    HStack(spacing: 10) {
+                        ForEach(SoundPack.allCases) { pack in
+                            soundPackChoice(pack)
+                        }
+                    }
+                    Text("Same cues, different voice — the PR sound still means a PR.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
             }
 
             // The learning loop, visible (personalization spine 2026-09):

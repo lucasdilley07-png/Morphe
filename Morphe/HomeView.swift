@@ -863,12 +863,17 @@ private struct ComebackCard: View {
 /// The Morphe character: the brand M on the gold plate — the same mark
 /// as the app icon, no invented persona.
 struct MorpheCharacterBadge: View {
+    @Environment(MorpheAppStore.self) private var store
+
     var body: some View {
+        // The chosen persona wears the badge (personalization phase 2).
+        let character = MorpheCharacter.spec(for: store.styleProfile.characterID)
         ZStack {
             Circle()
-                .fill(LinearGradient(colors: [MorpheTheme.brandYellow, MorpheTheme.brandGold],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-            Text("M")
+                .fill(LinearGradient(
+                    colors: character.colors.map { Color(red: $0.red, green: $0.green, blue: $0.blue) },
+                    startPoint: .topLeading, endPoint: .bottomTrailing))
+            Text(character.letter)
                 .font(.system(size: 22, design: .monospaced).weight(.black))
                 .foregroundStyle(.black)
         }

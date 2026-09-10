@@ -2349,6 +2349,23 @@ final class StyleProfileTests: XCTestCase {
         XCTAssertTrue(store.styleProfile.hasLearnedAnything)
     }
 
+    func testCharacterSpecFallsBackToMorphe() {
+        XCTAssertEqual(MorpheCharacter.spec(for: "atlas").name, "Atlas")
+        XCTAssertEqual(MorpheCharacter.spec(for: "no-such-id").id, "morphe",
+                       "unknown/legacy ids fall back to the original, never a blank badge")
+        XCTAssertEqual(MorpheCharacter.spec(for: "").id, "morphe")
+    }
+
+    func testSoundPackSyncsFromStyleProfile() {
+        let store = makeStore()
+        XCTAssertEqual(SoundEffects.pack, .classic)
+        store.setStyleChoice(soundPack: SoundPack.impact.rawValue)
+        XCTAssertEqual(SoundEffects.pack, .impact, "the didSet keeps the audio voice in lockstep")
+        store.setStyleChoice(soundPack: "not-a-pack")
+        XCTAssertEqual(SoundEffects.pack, .classic, "an unknown pack falls back to classic")
+        store.setStyleChoice(soundPack: SoundPack.classic.rawValue)
+    }
+
     func testChosenFieldsSurviveRecompute() {
         let store = makeStore()
         store.setStyleChoice(soundPack: "minimal", characterID: "atlas",

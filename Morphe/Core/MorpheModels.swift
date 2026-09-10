@@ -960,6 +960,52 @@ struct WorkoutDebrief: Identifiable, Codable, Hashable {
     var changeRequest: String
 }
 
+/// Morphe's choosable personas (personalization phase 2). Each keeps
+/// TRAIN HONEST — the register changes, the honesty doesn't. The spec is
+/// static data; the chosen id lives in UserStyleProfile.characterID.
+struct MorpheCharacter: Identifiable, Equatable {
+    let id: String
+    let name: String
+    /// The single letter on the badge.
+    let letter: String
+    /// Badge gradient endpoints (RGB 0–1).
+    let colors: [(red: Double, green: Double, blue: Double)]
+    /// One line fed to the Claude brain so the voice actually changes.
+    let register: String
+    /// Picker subtitle — what this persona feels like.
+    let vibe: String
+
+    static func == (lhs: MorpheCharacter, rhs: MorpheCharacter) -> Bool { lhs.id == rhs.id }
+
+    static let all: [MorpheCharacter] = [
+        MorpheCharacter(
+            id: "morphe", name: "Morphe", letter: "M",
+            colors: [(1.0, 0.839, 0.0), (0.95, 0.72, 0.0)],
+            register: "Speak in your default voice: direct, warm, British — a steady trainer who tells the truth plainly.",
+            vibe: "The original — steady and direct"),
+        MorpheCharacter(
+            id: "atlas", name: "Atlas", letter: "A",
+            colors: [(0.42, 0.62, 0.92), (0.20, 0.36, 0.66)],
+            register: "Speak calmly and methodically, like a patient strength coach — measured sentences, no exclamation points.",
+            vibe: "Calm and methodical"),
+        MorpheCharacter(
+            id: "blaze", name: "Blaze", letter: "B",
+            colors: [(1.0, 0.42, 0.21), (0.82, 0.14, 0.11)],
+            register: "Speak with high energy, like a corner coach between rounds — short punchy sentences, urgency without hype.",
+            vibe: "High energy, corner-coach"),
+        MorpheCharacter(
+            id: "sage", name: "Sage", letter: "S",
+            colors: [(0.45, 0.78, 0.55), (0.16, 0.48, 0.32)],
+            register: "Speak with quiet mindfulness, like a recovery-minded coach — unhurried, grounded, body-aware.",
+            vibe: "Grounded and unhurried"),
+    ]
+
+    /// Unknown/legacy ids fall back to the original — never a blank badge.
+    static func spec(for id: String) -> MorpheCharacter {
+        all.first { $0.id == id } ?? all[0]
+    }
+}
+
 /// The personalization spine (Lucas 2026-09-09): one profile that holds
 /// what Morphe has LEARNED about this user (mined from logs + debriefs,
 /// never invented) and what the user has CHOSEN (identity + surface

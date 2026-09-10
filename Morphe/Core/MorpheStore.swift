@@ -312,7 +312,11 @@ final class MorpheAppStore {
     /// recomputed from real logs/debriefs after every save; chosen fields
     /// survive recomputes untouched. Persisted in the profile snapshot
     /// (and therefore the cloud backup).
-    private(set) var styleProfile = UserStyleProfile()
+    private(set) var styleProfile = UserStyleProfile() {
+        didSet {
+            SoundEffects.pack = SoundPack(rawValue: styleProfile.soundPack) ?? .classic
+        }
+    }
 
     /// Recomputes the LEARNED half of the style profile from real data.
     /// Honesty gates: below the minimums every derived fact stays nil/empty
@@ -8309,6 +8313,9 @@ final class MorpheAppStore {
     func intelligenceSystemPrompt(spoken: Bool, forCoach: Bool) -> String {
         var lines: [String] = []
         lines.append("You are Morphe, an honest personal training assistant inside the Morphe iOS app. Brand: TRAIN HONEST — never inflate, never flatter, never invent logged numbers. If you don't know a number, say so.")
+        // The chosen persona changes the register, never the honesty
+        // (personalization phase 2).
+        lines.append(MorpheCharacter.spec(for: styleProfile.characterID).register)
         if forCoach {
             // The coach is a COACH (audit 17, P1): the athlete persona
             // here had Claude addressing a trainer as their own client.
