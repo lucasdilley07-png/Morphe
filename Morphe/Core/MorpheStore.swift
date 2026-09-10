@@ -101,7 +101,6 @@ final class MorpheAppStore {
         var reboundWindowIsOpen: Bool
     }
 
-    var selectedRole: AppRole = .client
     var selectedClientTab: ClientTab = .today
     /// Held-at-the-gate state: the cloud pull FAILED (network, not
     /// no-backup) for a signed-in account with no local profile. RootView
@@ -114,16 +113,6 @@ final class MorpheAppStore {
         await restoreFromCloud()
     }
 
-    var selectedCoachTab: CoachTab = .dashboard {
-        didSet {
-            // Clamp to MOUNTED tabs: .athletes and (flag-off) .network have
-            // no page in the TabView — landing there was a blank screen
-            // with no dock selection (coach audit). Athletes' roster tools
-            // live in Build; social routing falls back to Messages.
-            guard !CoachTab.visibleCases.contains(selectedCoachTab) else { return }
-            selectedCoachTab = selectedCoachTab == .athletes ? .programs : .messages
-        }
-    }
     /// Light/dark appearance — device-level (not per-profile: the person
     /// holding the phone picks how it looks). Flips the whole token system.
     var appearanceIsLight = UserDefaults.standard.bool(forKey: "morphe.appearance.light") {
@@ -179,7 +168,6 @@ final class MorpheAppStore {
     // A tab named "Learn" opens to learning, not to a scoreboard.
     var selectedHubFeature: ClientHubFeature? = .learn
     var selectedCommunitySection: ClientCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
-    var selectedCoachBuildSection: CoachBuildSection = .builder
     var quickCaptureNotes: [String] = []
 
     var clientProfile: ClientProfile
@@ -393,12 +381,7 @@ final class MorpheAppStore {
 
     func consumePendingDebriefOpen() {
         guard pendingDebriefOpen else { return }
-        // Coaches train on the SAME WorkoutView under CoachTab.train
-        // (audit 19, P0: the client-tab-only guard locked the entire
-        // coach role out of the debrief).
-        let onTrainSurface = selectedRole == .coach
-            ? selectedCoachTab == .train
-            : selectedClientTab == .train
+        let onTrainSurface = selectedClientTab == .train
         guard onTrainSurface, !showAIAgent, !showClientProfile,
               !showQuickAdd, !showUniversalSearch, !showProgressSheet,
               !trainLocalSheetPresented,
@@ -1094,10 +1077,6 @@ final class MorpheAppStore {
 
         authUser = authService.currentUser
         if let authUser {
-            selectedRole = authUser.role.appRole
-            // Keep the onboarding draft's role in sync on relaunch too, so a
-            // signed-in-but-not-onboarded coach resumes the coach flow.
-            onboardingDraft.accountType = authUser.role.appRole
             // Key cloud writes to the already-signed-in user so local saves this
             // session mirror up. (A full pull happens on an explicit sign-in.)
             cloudBackup.setUser(authUser.id)
@@ -1110,11 +1089,6 @@ final class MorpheAppStore {
                 Task { await restoreFromCloud() }
             }
 
-            // A returning coach's managed roster lives in the cloud — pull it
-            // fresh each launch (offline keeps the Firestore cache copy).
-            if selectedRole == .coach {
-                Task { await refreshManagedClients() }
-            }
             // The badge is server-owned; mirror it on every launch.
             Task { await refreshVerificationStatus() }
             // The schedule lives per-doc in the cloud — pull it fresh each
@@ -1282,8 +1256,6 @@ final class MorpheAppStore {
         lastThreadsRefreshAt = nil
         lastPresenceRefreshAt = nil
         membershipSetsFetched = false
-        coachAssignments = []
-        lastAssignmentsFetchAt = nil
         cloudRestoreBlocked = false
         threadReadCache = nil
 
@@ -1355,7 +1327,7 @@ final class MorpheAppStore {
         // after user.delete() the rules see an anonymous caller.
         await cloudBackup.eraseUser()
         managedClientService.clearCoachShare(athleteUid: uid)
-        let username = selectedRole == .coach ? coachProfile.username : profileShowcase.username
+        let username = profileShowcase.username
         if !username.isEmpty {
             await usernameDirectory.release(username, for: uid)
         }
@@ -1423,11 +1395,7 @@ final class MorpheAppStore {
         // Tab nav away from an open Progress sheet dismisses it (audit 15
         // — the obstruction sweep no longer touches it).
         showProgressSheet = false
-        if selectedRole == .coach {
-            selectedCoachTab = .train
-        } else {
-            selectedClientTab = ClientTab.train
-        }
+        selectedClientTab = ClientTab.train
     }
 
     // MARK: - Tab pop-to-root
@@ -1471,12 +1439,8 @@ final class MorpheAppStore {
     /// Lands on the Discover surface for the CURRENT role.
     func showDiscoverTab() {
         showProgressSheet = false
-        if selectedRole == .coach {
-            selectedCoachTab = .discover
-        } else {
-            // Discover is its own tab again (Lucas 2026-08-26).
-            selectedClientTab = .discover
-        }
+        // Discover is its own tab again (Lucas 2026-08-26).
+        selectedClientTab = .discover
         Haptics.impact(.light)
     }
 
@@ -1489,9 +1453,9 @@ final class MorpheAppStore {
         components.host = "connect"
         components.queryItems = [
             URLQueryItem(name: "id", value: authUser?.id ?? clientProfile.id.uuidString),
-            URLQueryItem(name: "name", value: selectedRole == .coach ? coachProfile.name : clientProfile.name),
-            URLQueryItem(name: "handle", value: selectedRole == .coach ? coachProfile.username : profileShowcase.username),
-            URLQueryItem(name: "role", value: selectedRole == .coach ? "coach" : "athlete")
+            URLQueryItem(name: "name", value: clientProfile.name),
+            URLQueryItem(name: "handle", value: profileShowcase.username),
+            URLQueryItem(name: "role", value: "athlete")
         ]
         return components.string ?? "morphe://connect"
     }
@@ -1628,8 +1592,6 @@ final class MorpheAppStore {
         switch await usernameDirectory.claim(name, for: uid, releasing: profileShowcase.username) {
         case .claimed:
             profileShowcase.username = name
-            // A coach's workspace identity carries the same handle.
-            if selectedRole == .coach { coachProfile.username = name }
             usernameChangedAtEpoch = Date.now.timeIntervalSince1970
             persistLocalProfile()
             showToast("You're @\(name) now.")
@@ -1929,20 +1891,12 @@ final class MorpheAppStore {
         authUser = user
         cloudBackup.setUser(user.id)
         trackDayActiveIfNeeded()
-        selectedRole = user.role.appRole
-        // The signed-up role drives onboarding: a coach account gets the coach
-        // flow and completeOnboarding stamps the coach workspace identity.
-        onboardingDraft.accountType = user.role.appRole
         if !hasCompletedOnboarding, !user.displayName.isEmpty {
             onboardingDraft.name = user.displayName
-        }
-        if user.role == .coach {
-            Task { await refreshManagedClients() }
         }
         Task { await refreshVerificationStatus() }
         Task { await refreshAppointments() }
         Task { await refreshThreads() }
-        Task { await refreshCoachAssignments(force: true) }
         // Blocked set BEFORE the inbox can render (post-revamp audit
         // P2-12): the CHATS landing raced the feed's gated fetch.
         Task { [weak self] in
@@ -2021,12 +1975,6 @@ final class MorpheAppStore {
             clientProfile.id = id
         }
 
-        // Restore the chosen account role unless a signed-in account already
-        // dictates it (auth wins once accounts are connected).
-        if authUser == nil, let role = AppRole(rawValue: snapshot.accountRole) {
-            selectedRole = role
-        }
-
         clientProfile.name = snapshot.name
         if let gender = GenderOption(rawValue: snapshot.gender) {
             clientProfile.gender = gender
@@ -2039,31 +1987,6 @@ final class MorpheAppStore {
         }
         if !snapshot.selectedGoals.isEmpty {
             clientProfile.selectedGoals = snapshot.selectedGoals
-        }
-
-        // A returning coach gets THEIR identity in the workspace header, built
-        // from the snapshot's own sports/goals (not clientProfile, which may
-        // still hold the seeded demo default when the coach picked no sports).
-        if selectedRole == .coach {
-            let handle = snapshot.username.isEmpty
-                ? snapshot.name.lowercased().filter { $0.isLetter || $0.isNumber }
-                : snapshot.username
-            // Round-trip the coach answers through the draft so later saves
-            // don't overwrite them with defaults.
-            if let tenure = CoachTenureOption(rawValue: snapshot.coachTenure) {
-                onboardingDraft.coachTenure = tenure
-            }
-            if let roster = CoachRosterOption(rawValue: snapshot.coachRoster) {
-                onboardingDraft.coachRoster = roster
-            }
-            applyCoachIdentity(
-                name: snapshot.name,
-                handle: handle,
-                sports: snapshot.selectedSports.compactMap { SportFocus(rawValue: $0) },
-                goals: snapshot.selectedGoals,
-                tenure: snapshot.coachTenure,
-                roster: snapshot.coachRoster
-            )
         }
 
         clientProfile.goal = snapshot.goal
@@ -2299,9 +2222,9 @@ final class MorpheAppStore {
         defer { isSubmittingVerification = false }
         let ok = await verificationService.submitRequest(
             uid: uid,
-            name: selectedRole == .coach ? coachProfile.name : profileShowcase.displayName,
-            username: selectedRole == .coach ? coachProfile.username : profileShowcase.username,
-            role: selectedRole.rawValue,
+            name: profileShowcase.displayName,
+            username: profileShowcase.username,
+            role: AppRole.client.rawValue,
             note: String(note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(300)),
             selfieJPEG: selfieJPEG
         )
@@ -2425,7 +2348,7 @@ final class MorpheAppStore {
                 id: clientProfile.id.uuidString,
                 name: clientProfile.name,
                 gender: clientProfile.gender.rawValue,
-                accountRole: selectedRole.rawValue,
+                accountRole: AppRole.client.rawValue,
                 sportMode: clientProfile.sportMode.rawValue,
                 selectedSports: clientProfile.selectedSports.map(\.rawValue),
                 selectedTrainingStyles: clientProfile.selectedTrainingStyles.map(\.rawValue),
@@ -2928,30 +2851,6 @@ final class MorpheAppStore {
     }
 
     var aiAgentQuickPrompts: [String] {
-        if selectedRole == .coach {
-            switch selectedCoachTab {
-            // Every advertised prompt gets a real answer or a real action —
-            // the "Draft…" prompts pretended to a feature that doesn't exist
-            // (AI-7 audit finding).
-            case .dashboard:
-                return ["Who needs attention today?", "Open athletes", "Summarize this week's priorities", "What can you do?"]
-            case .athletes:
-                return ["Summarize this athlete", "Who needs attention today?", "Open programs", "What can you do?"]
-            case .train:
-                return ["Start my workout", "Suggest a swap", "I'm short on time", "What can you do?"]
-            case .discover:
-                return ["Find a conditioning workout", "What should I assign a beginner?", "Suggest a session for game week", "Help me build a workout"]
-            case .programs:
-                if selectedCoachBuildSection == .library {
-                    return ["Recommend a drill", "Find a warm-up progression", "What fits low readiness?", "Suggest a boxing finisher"]
-                }
-                return ["Suggest today's session flow", "Draft a lighter version", "What should I assign next?", "Help me simplify this plan"]
-            case .network:
-                return ["Draft a coach post", "Who should I connect with?", "Summarize my network activity", "Suggest a useful comment"]
-            case .messages:
-                return ["Draft outreach", "Reply to the latest message", "Write a re-engagement text", "Summarize the conversation"]
-            }
-        }
 
         // Athlete prompts lead with ACTIONS the assistant can actually
         // perform, then a couple of coaching questions.
@@ -2972,26 +2871,6 @@ final class MorpheAppStore {
     }
 
     var aiAgentSubtitle: String {
-        if selectedRole == .coach {
-            switch selectedCoachTab {
-            case .dashboard:
-                return "Triage the day, spot risk fast, and turn alerts into action."
-            case .athletes:
-                return "Read athlete context, coach notes, and next-best follow-up without leaving the roster."
-            case .train:
-                return "Get form help, swaps, and pain-safe suggestions without breaking workout flow."
-            case .discover:
-                return "Find workouts worth assigning, build your own, and grow your roster."
-            case .programs:
-                return selectedCoachBuildSection == .library
-                    ? "Search drills, templates, and playbooks with fast coaching context."
-                    : "Use the current plan, readiness, and coaching style to shape the next session."
-            case .network:
-                return "Coach publicly without the noise: useful updates, comments, and credibility signals."
-            case .messages:
-                return "Draft cleaner outreach, follow-ups, and accountability messages."
-            }
-        }
 
         switch selectedClientTab {
         case .today:
@@ -3010,26 +2889,6 @@ final class MorpheAppStore {
     }
 
     var aiAgentPlaceholder: String {
-        if selectedRole == .coach {
-            switch selectedCoachTab {
-            case .dashboard:
-                return "Ask about athlete risk, priorities, or next moves..."
-            case .athletes:
-                return "Ask about this athlete's readiness, notes, or follow-up..."
-            case .train:
-                return "Ask for swaps, form help, or pain-safe options..."
-            case .discover:
-                return "Ask for a workout to assign or help building one..."
-            case .programs:
-                return selectedCoachBuildSection == .library
-                    ? "Ask for a drill, warm-up, or progression..."
-                    : "Ask for a session flow, regression, or assignment idea..."
-            case .network:
-                return "Ask for a post, comment, or connection idea..."
-            case .messages:
-                return "Ask for outreach, a reply, or a re-engagement note..."
-            }
-        }
 
         switch selectedClientTab {
         case .today:
@@ -3048,30 +2907,6 @@ final class MorpheAppStore {
     }
 
     var aiAgentContextLabel: String {
-        if selectedRole == .coach {
-            let athlete = selectedCoachClient?.name ?? "All athletes"
-            switch selectedCoachTab {
-            case .dashboard:
-                return "Coach Home"
-            case .athletes:
-                return "Athlete focus: \(athlete)"
-            case .train:
-                if isWorkoutSessionActive {
-                    return "Active workout: \(activeWorkoutExercise?.name ?? currentWorkout.name)"
-                }
-                return "Train"
-            case .discover:
-                return "Coach Discover"
-            case .programs:
-                return selectedCoachBuildSection == .library
-                    ? "Build Library"
-                    : "Build: \(selectedProgramTemplate?.name ?? "Program builder")"
-            case .network:
-                return "Coach network"
-            case .messages:
-                return "Inbox: \(selectedThread?.participant ?? "Messages")"
-            }
-        }
 
         switch selectedClientTab {
         case .today:
@@ -4950,60 +4785,7 @@ final class MorpheAppStore {
         }
     }
 
-    func selectRole(_ role: AppRole) {
-        guard selectedRole != role else { return }
-        selectedRole = role
-        if role == .client {
-            selectedClientTab = .today
-            selectedCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
-        } else {
-            selectedCoachTab = .dashboard
-        }
-        Haptics.impact(.light)
-        showToast(role == .client ? "Athlete account active." : "Coach account active.")
-    }
 
-    /// Replaces the seeded demo coach identity with the real user's. Sports,
-    /// goals, and specialty mirror the profile; practice stats start at zero
-    /// because a new coach has no athletes, groups, or playbooks yet.
-    /// Sports/goals are passed in from the authoritative source (the draft at
-    /// onboarding, the snapshot at relaunch) rather than read off clientProfile
-    /// — reading clientProfile stamped the seeded demo athlete's sports into a
-    /// coach's specialty whenever the coach had no sports of their own.
-    private func applyCoachIdentity(name: String, handle: String, sports: [SportFocus], goals: [String],
-                                    tenure: String = "", roster: String = "") {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        // The workspace addresses the user as a coach: "Coach Lucas" — unless
-        // they already typed the title themselves.
-        coachProfile.name = trimmed.lowercased().hasPrefix("coach") ? trimmed : "Coach \(trimmed)"
-        if !handle.isEmpty {
-            coachProfile.username = handle
-        }
-        coachProfile.sports = sports
-        coachProfile.specialty = sports.isEmpty
-            ? "Personal coaching"
-            : sports.prefix(3).map(\.rawValue).joined(separator: " / ")
-        coachProfile.selectedGoals = goals
-        // Honest headline from their own answers — no invented credentials.
-        var headlineParts: [String] = []
-        if !tenure.isEmpty { headlineParts.append("Coaching \(tenure.lowercased() == "just starting" ? "— just getting started" : "for \(tenure.lowercased())")") }
-        if !roster.isEmpty { headlineParts.append("works with \(roster.lowercased())") }
-        coachProfile.headline = headlineParts.isEmpty ? "Coaching on Morphe." : headlineParts.joined(separator: " · ")
-        coachProfile.networkRank = "Coach"
-        coachProfile.activeClients = 0
-        coachProfile.groups = []
-        coachProfile.playbooks = []
-        // Demo training styles must NEVER render for a real coach (profile
-        // audit): the seed hardcoded four styles nobody picked and no
-        // editor existed. Real identity starts empty; sports carry it.
-        coachProfile.selectedTrainingStyles = []
-        // A headline the coach EDITED (stored custom) outranks the derived
-        // one — re-derivation must not eat their words.
-        if !customCoachHeadline.isEmpty {
-            coachProfile.headline = customCoachHeadline
-        }
-    }
 
     func completeOnboarding() {
         let generatedPlan = MorpheDemoContent.generatedPlan(from: onboardingDraft)
@@ -5017,9 +4799,6 @@ final class MorpheAppStore {
         // (firstWeekStart is stamped AFTER resetToFreshUser below — stamping
         // here persisted it under the SEEDED demo profile id, which the
         // minted identity never reads, so the arc vanished on relaunch.)
-        // The signed-up account role is the source of truth once accounts are
-        // real — the draft's default must never demote a coach to athlete.
-        selectedRole = authUser?.role.appRole ?? onboardingDraft.accountType
         clientProfile.name = resolvedName
         profileShowcase.displayName = resolvedName
         // The @username the user picked (and the directory reserved) during
@@ -5033,7 +4812,6 @@ final class MorpheAppStore {
             profileShowcase.username = handle
         }
         selectedClientTab = .today
-        selectedCoachTab = .dashboard
         selectedCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
         selectedSportMode = primarySport
         // Gender is copied only when the user actually answered the step —
@@ -5102,19 +4880,6 @@ final class MorpheAppStore {
         // later via Profile; until then these stay the labeled starters).
         applyNutritionTargets()
 
-        // A coach account is the USER's practice, not demo "Coach Marcus" —
-        // stamp their identity into the workspace and zero the seeded stats.
-        if selectedRole == .coach {
-            applyCoachIdentity(
-                name: resolvedName,
-                handle: handle,
-                sports: onboardingDraft.selectedSports,
-                goals: selectedGoals,
-                tenure: onboardingDraft.coachTenure.rawValue,
-                roster: onboardingDraft.coachRoster.rawValue
-            )
-        }
-
         // Today's plan draws from the 348-workout catalog, matched to the
         // user's level and rotated by focus day to day — the plan-generation
         // step promises "matched to your sport and level," so it must actually
@@ -5158,15 +4923,6 @@ final class MorpheAppStore {
         // the flush at the end of this method, after the plan is staged.)
         forceNextProfileCloudPush = true
         persistLocalProfile()
-
-        // A coach invite code claims AFTER the reset above — the imported
-        // history lands in the fresh account instead of being wiped with the
-        // demo data. Athlete accounts only; a coach signing up has no coach.
-        let inviteCode = onboardingDraft.coachInviteCode
-            .trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        if selectedRole == .client, !inviteCode.isEmpty {
-            Task { await claimCoachInvite(code: inviteCode) }
-        }
 
         // Everything onboarding decided (profile AND the freshly staged
         // session) lands on disk before this method returns — a crash a
@@ -5802,8 +5558,6 @@ final class MorpheAppStore {
         track("checkin_completed")
         Haptics.success()
         persistLocalProfile()
-        // A fresh readiness read is exactly what a coach wants to see.
-        pushCoachShareIfEnabled()
         showToast("Recovery check-in saved.")
     }
 
@@ -6214,7 +5968,7 @@ final class MorpheAppStore {
         // suspended must surface on foreground return — cold launch was
         // the only detector, and a phone that never relaunches never
         // showed the comeback card or scheduled its reminder.
-        if hasCompletedOnboarding, selectedRole == .client {
+        if hasCompletedOnboarding {
             detectStreakLapse()
         }
 
@@ -7878,20 +7632,7 @@ final class MorpheAppStore {
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanText.isEmpty else { return false }
 
-        if selectedRole == .coach {
-            coachAIAgentConversation.append(ThreadMessage(sender: .user, senderName: coachProfile.name, text: cleanText, timestamp: "Now"))
-            // Coaches get an action layer too (AI-7): navigation and a
-            // real who-needs-attention answer — parity with the athlete
-            // side instead of advertising actions that did nothing.
-            let actionReply = coachAssistantActionReply(for: cleanText)
-            if actionReply == nil, intelligenceEnabled {
-                requestIntelligenceChatReply(forCoach: true)
-                return false
-            }
-            let reply = actionReply ?? coachAgentReply(to: cleanText)
-            coachAIAgentConversation.append(ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now"))
-            return actionReply != nil
-        } else {
+        do {
             athleteAIAgentConversation.append(ThreadMessage(sender: .user, senderName: clientProfile.name, text: cleanText, timestamp: "Now"))
             // Actions first: if the ask maps to something Morphe AI can DO
             // (start a workout, open a screen, change a setting), do it and
@@ -8515,12 +8256,11 @@ final class MorpheAppStore {
             // the built-in brain instead of a dead-ended message
             // (audit 17, P3).
             intelligenceEnabled = false
-            guard let prompt = (coach ? coachAIAgentConversation : athleteAIAgentConversation)
+            guard let prompt = athleteAIAgentConversation
                 .last(where: { $0.sender == .user })?.text else { return }
-            let reply = coach ? coachAgentReply(to: prompt) : athleteAgentReply(to: prompt)
+            let reply = athleteAgentReply(to: prompt)
             let message = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: reply, timestamp: "Now")
-            if coach { coachAIAgentConversation.append(message) }
-            else { athleteAIAgentConversation.append(message) }
+            athleteAIAgentConversation.append(message)
             return
         }
         let placeholder = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "\u{2026}", timestamp: "Now")
@@ -8552,17 +8292,15 @@ final class MorpheAppStore {
             presentVoiceExchange(heard: raw, answer: previewAIAgentReply(for: raw))
             return
         }
-        let coach = selectedRole == .coach
         let userMessage = ThreadMessage(
             sender: .user,
-            senderName: coach ? coachProfile.name : clientProfile.name,
+            senderName: clientProfile.name,
             text: raw, timestamp: "Now")
-        if coach { coachAIAgentConversation.append(userMessage) }
-        else { athleteAIAgentConversation.append(userMessage) }
+        athleteAIAgentConversation.append(userMessage)
         lastVoiceExchange = (heard: raw, answer: "Thinking\u{2026}")
         voiceExchangeClearTask?.cancel()
-        let system = intelligenceSystemPrompt(spoken: true, forCoach: coach)
-        let turns = intelligenceTurns(from: coach ? coachAIAgentConversation : athleteAIAgentConversation)
+        let system = intelligenceSystemPrompt(spoken: true, forCoach: false)
+        let turns = intelligenceTurns(from: athleteAIAgentConversation)
         let epoch = intelligenceEpoch
         Task { [weak self] in
             // Voice waits eyes-free with the mic down — a 12s cap keeps a
@@ -8572,8 +8310,7 @@ final class MorpheAppStore {
                 system: system, turns: turns, apiKey: key, timeout: 12)
             guard let self, self.intelligenceEpoch == epoch else { return }
             let aiMessage = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: answer, timestamp: "Now")
-            if coach { self.coachAIAgentConversation.append(aiMessage) }
-            else { self.athleteAIAgentConversation.append(aiMessage) }
+            self.athleteAIAgentConversation.append(aiMessage)
             self.presentVoiceExchange(heard: raw, answer: answer)
         }
     }
@@ -8593,15 +8330,13 @@ final class MorpheAppStore {
         guard hasCompletedOnboarding, !needsTermsAcceptance,
               (!FeatureFlags.accountsEnabled || authUser != nil) else { return }
         showTrainTab()
-        // Coach mode shows the coach workspace — starting an invisible
-        // athlete session underneath it would be dishonest (audit 17, P2).
-        if selectedRole == .client, !isWorkoutSessionActive { startTodayWorkout() }
+        if !isWorkoutSessionActive { startTodayWorkout() }
     }
 
     func previewAIAgentReply(for text: String) -> String {
         let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanText.isEmpty else { return "" }
-        return selectedRole == .coach ? coachAgentReply(to: cleanText) : athleteAgentReply(to: cleanText)
+        return athleteAgentReply(to: cleanText)
     }
 
     func openClientProfile() {
@@ -8913,33 +8648,6 @@ final class MorpheAppStore {
         )
     }
 
-    func assignSavedWorkout(_ item: SavedWorkoutLibraryItem, to client: CoachClient, scheduledLabel: String) {
-        guard let template = workoutTemplates.first(where: { $0.id == item.workoutTemplateID }) else {
-            showToast("That saved workout is no longer available.")
-            return
-        }
-
-        assignWorkoutTemplate(template, to: client, scheduledLabel: scheduledLabel)
-
-        if let index = coachClients.firstIndex(where: { $0.id == client.id }) {
-            coachClients[index].coachNotes += "\n• Pulled from saved library: \(item.workoutName) (\(item.sourceName))."
-        }
-
-        if client.id == clientProfile.id {
-            notifications.insert(
-                SmartNotificationItem(
-                    type: "Saved workout assignment",
-                    title: "Coach assigned a saved workout",
-                    message: "\(coachProfile.name) assigned \(item.workoutName) from the saved library.",
-                    priority: .medium,
-                    action: "Open Train"
-                ),
-                at: 0
-            )
-        }
-
-        showToast("Saved workout scheduled from the library.")
-    }
 
     func savedWorkoutInsight(for item: SavedWorkoutLibraryItem) -> SavedWorkoutLibraryInsight {
         let insight = workoutTemplateInsight(for: item.workoutTemplateID)
@@ -9024,10 +8732,6 @@ final class MorpheAppStore {
         guard !cleanNote.isEmpty else { return }
 
         quickCaptureNotes.insert(cleanNote, at: 0)
-
-        if selectedRole == .coach, let athleteID = selectedClientID, let index = coachClients.firstIndex(where: { $0.id == athleteID }) {
-            coachClients[index].coachNotes += "\n• \(cleanNote)"
-        }
 
         showToast("Quick note saved.")
     }
@@ -9172,9 +8876,6 @@ final class MorpheAppStore {
     func isPaletteUnlocked(_ palette: AccentPalette) -> Bool {
         if palette == profileShowcase.accentPalette { return true }
         if palette == .custom { return true }
-        // Coaches don't ride the athlete XP ladder — an athlete gate on a
-        // coach screen was a row of unearnable padlocks (coach audit).
-        if selectedRole == .coach { return true }
         if palette == .recruiter { return referralCount >= 1 }
         return currentLevelNumber >= paletteUnlockLevel(palette)
     }
@@ -9367,10 +9068,6 @@ final class MorpheAppStore {
     /// Nil when no door matched — the caller decides which brain answers
     /// (Claude with a key, the built-in replies without one).
     private func routeVoiceCommandDoors(_ raw: String) -> String? {
-        if selectedRole == .coach {
-            if let action = coachAssistantActionReply(for: raw) { return action }
-            return nil
-        }
         // Mid-session, the session doors lead (Lucas 2026-08-27): the whole
         // console is voice-commandable — sets, rest, navigation, undo,
         // finish, Form Check, and honest status answers.
@@ -9590,7 +9287,7 @@ final class MorpheAppStore {
     /// "log 3x10 at 135", units, questions, and navigation keep their
     /// existing behavior).
     func sessionVoiceReply(for raw: String) -> String? {
-        guard isWorkoutSessionActive, selectedRole == .client,
+        guard isWorkoutSessionActive,
               let exercise = activeWorkoutExercise else { return nil }
         let text = raw.lowercased()
 
@@ -9862,7 +9559,6 @@ final class MorpheAppStore {
     /// this month's bar (+1). Needs a real base month (2+ sessions) so a
     /// brand-new user never sees an invented target.
     var monthlyChallenge: MonthlyChallenge? {
-        guard selectedRole == .client else { return nil }
         let calendar = Calendar.current
         guard let thisMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: .now)),
               let lastMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart)
@@ -10048,11 +9744,6 @@ final class MorpheAppStore {
         }
         clientProfile.name = trimmed
         profileShowcase.displayName = trimmed
-        // A coach IS this same person — their workspace name follows
-        // (coach audit: the coach profile had no name editor at all).
-        if !coachProfile.name.isEmpty || selectedRole == .coach {
-            coachProfile.name = trimmed
-        }
         // The @username is its own claimed identity now — a rename never
         // touches it (change it separately, on its own 14-day clock).
         nameChangedAtEpoch = Date.now.timeIntervalSince1970
@@ -10184,22 +9875,18 @@ final class MorpheAppStore {
 
     func commentOnCommunityPost(_ post: ProgressPost) {
         guard let index = communityPosts.firstIndex(where: { $0.id == post.id }) else { return }
-        let authorName = selectedRole == .coach ? coachProfile.name : clientProfile.name
-        let authorAvatar = selectedRole == .coach ? "🧠" : "🔥"
-        let headline = selectedRole == .coach
-            ? coachProfile.headline
-            : "\(clientProfile.sportMode.rawValue) athlete focused on \(clientProfile.goal.lowercased())"
-        let rank = selectedRole == .coach ? coachProfile.networkRank : clientProfile.networkRank
-        let text = selectedRole == .coach
-            ? "Strong update. Keep the message practical and repeatable."
-            : "Love this. Small wins like this are what keep the streak moving."
+        let authorName = clientProfile.name
+        let authorAvatar = "🔥"
+        let headline = "\(clientProfile.sportMode.rawValue) athlete focused on \(clientProfile.goal.lowercased())"
+        let rank = clientProfile.networkRank
+        let text = "Love this. Small wins like this are what keep the streak moving."
 
         communityPosts[index].comments += 1
         communityPosts[index].commentHighlights.insert(
             NetworkComment(
                 author: authorName,
                 avatar: authorAvatar,
-                role: selectedRole,
+                role: .client,
                 headline: headline,
                 rank: rank,
                 text: text,
@@ -10229,17 +9916,6 @@ final class MorpheAppStore {
     /// Carries the sender's handle as a referral link: opening
     /// morphe://invite/<username> after install auto-follows the inviter.
     var networkInviteMessage: String {
-        // Role-aware (profile audit): a coach recruiting clients shouldn't
-        // send buddy-training copy.
-        if selectedRole == .coach {
-            let name = coachProfile.name.isEmpty ? "me" : coachProfile.name
-            var message = "I coach on Morphe — join and I'll deliver your training plan straight to your phone. Ask \(name) for your invite code."
-            let handle = coachProfile.username
-            if !handle.isEmpty {
-                message += " After you install, open morphe://invite/\(handle)."
-            }
-            return message
-        }
         let name = clientProfile.name.isEmpty ? "me" : clientProfile.name
         var message = "Train with \(name) on Morphe — log your lifts, keep your streak, and face me on the weekly board."
         let handle = profileShowcase.username
@@ -10664,28 +10340,7 @@ final class MorpheAppStore {
         )
     }
 
-    func coachNextAction(for athleteID: UUID) -> CoachNextActionRecommendation {
-        let followUp = coachFollowUpRecommendation(for: athleteID)
-        return CoachNextActionRecommendation(
-            title: followUp.title,
-            detail: followUp.detail,
-            actionLabel: followUp.actionLabel,
-            type: followUp.type
-        )
-    }
 
-    func coachFollowUpRecommendations(limit: Int = 3) -> [CoachFollowUpRecommendation] {
-        filteredCoachClients
-            .map { coachFollowUpRecommendation(for: $0.id) }
-            .sorted { lhs, rhs in
-                if lhs.priority == rhs.priority {
-                    return lhs.athleteName < rhs.athleteName
-                }
-                return lhs.priority > rhs.priority
-            }
-            .prefix(limit)
-            .map { $0 }
-    }
 
     func soloBuddyTrend(for athleteID: UUID) -> [SoloBuddyTrendPoint] {
         soloBuddyTrend(from: workoutLogs(for: athleteID))
@@ -10721,156 +10376,6 @@ final class MorpheAppStore {
         return "Solo sessions still lead the month, with buddy workouts working best as a consistency boost."
     }
 
-    // MARK: - Coach-managed clients (pre-signup profiles + claim handoff)
-
-    /// Creates a client profile for someone who isn't on Morphe yet. Returns
-    /// the new client so the UI can immediately show the shareable code.
-    @discardableResult
-    func addManagedClient(name: String, email: String, sport: SportFocus, notes: String) -> ManagedClient? {
-        guard selectedRole == .coach else { return nil }
-        guard let coachUid = authUser?.id else {
-            showToast("Sign in to add clients — their profile syncs to the cloud.")
-            return nil
-        }
-        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanName.isEmpty else {
-            showToast("Give your client a name first.")
-            return nil
-        }
-
-        let client = ManagedClient(
-            id: Self.makePartyCode(),
-            coachUid: coachUid,
-            coachName: coachProfile.name,
-            name: cleanName,
-            email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-            sport: sport,
-            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-        managedClients.insert(client, at: 0)
-        managedClientService.push(client)
-        showToast("\(cleanName) added — share code \(client.id) when they join Morphe.")
-        return client
-    }
-
-    /// Logs a workout on a managed client's record. History lives on the
-    /// client object (not in `workoutLogs`) so the coach's own training data
-    /// and backup never mix with a client's.
-    func logWorkoutForManagedClient(
-        _ clientID: String,
-        template: WorkoutTemplate?,
-        workoutTitle: String,
-        durationMinutes: Int,
-        notes: String,
-        completedAt: Date = .now
-    ) {
-        guard let index = managedClients.firstIndex(where: { $0.id == clientID }) else { return }
-        var client = managedClients[index]
-        guard !client.isClaimed else {
-            showToast("\(client.name) has claimed their account — they own their log now.")
-            return
-        }
-
-        let cleanTitle = workoutTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let fallbackTitle = template?.name ?? "\(client.sport.rawValue) session"
-        let log = WorkoutLog(
-            athleteID: client.athleteID,
-            athleteName: client.name,
-            workoutTemplateID: template?.id,
-            workoutTitle: cleanTitle.isEmpty ? fallbackTitle : cleanTitle,
-            sport: template?.sport ?? client.sport,
-            // Backdating is allowed (a coach records yesterday's session);
-            // the future is not.
-            completedAt: min(completedAt, .now),
-            durationMinutes: max(durationMinutes, 5),
-            exercises: exerciseLogs(from: template),
-            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? "\(coachProfile.name) logged this session."
-                : notes,
-            source: .coachManual,
-            enteredByUserID: coachProfile.id,
-            enteredByRole: .coach,
-            enteredByName: coachProfile.name,
-            verificationStatus: .coachSubmitted
-        )
-
-        client.logs.insert(log, at: 0)
-        client.logs.sort { $0.completedAt > $1.completedAt }
-        managedClients[index] = client
-        managedClientService.push(client)
-        SoundEffects.play(.ding)
-        showCelebration(title: "Workout logged", detail: "\(log.workoutTitle) -> \(client.name)", symbol: "plus.circle.fill")
-    }
-
-    /// Removes an UNCLAIMED managed client (a claimed one is the athlete's
-    /// account history now — the coach can't take it back).
-    func deleteManagedClient(_ clientID: String) {
-        guard let index = managedClients.firstIndex(where: { $0.id == clientID }),
-              !managedClients[index].isClaimed else { return }
-        let removed = managedClients.remove(at: index)
-        managedClientService.delete(code: removed.id)
-        showToast("\(removed.name) removed.")
-    }
-
-    /// Pulls this coach's managed clients from the cloud (launch + sign-in).
-    /// A nil fetch (offline, not signed in) keeps whatever is already local.
-    func refreshManagedClients() async {
-        guard selectedRole == .coach, let coachUid = authUser?.id else { return }
-        if let fetched = await managedClientService.fetchMine(coachUid: coachUid) {
-            managedClients = fetched
-        }
-    }
-
-    /// Athlete side of the handoff: claims the coach-created profile and
-    /// imports its history into THIS account, re-keyed to the new identity.
-    /// Coach attribution on each log is preserved (`enteredByName`), so the
-    /// history stays honest about who recorded it.
-    @discardableResult
-    func claimCoachInvite(code: String) async -> Bool {
-        guard let uid = authUser?.id else { return false }
-        let result = await managedClientService.claim(
-            code: code,
-            athleteUid: uid,
-            athleteName: clientProfile.name
-        )
-        switch result {
-        case .failure(let error):
-            // Felt failure, and the caller keeps the editor open with the
-            // typed code intact (deferred-states pass 2026-09).
-            showToast(error.message, isError: true)
-            return false
-        case .success(let claimed):
-            // Remember WHO the coach is — the coachShare consent toggle and
-            // the summary's named reader both key off this link.
-            linkedCoachUid = claimed.coachUid
-            linkedCoachName = claimed.coachName
-            track("coach_claimed")
-            // Programs assigned before the claim deliver immediately.
-            coachAssignments = claimed.assignments.sorted { $0.scheduledFor < $1.scheduledFor }
-            lastAssignmentsFetchAt = .now
-            for var log in claimed.logs.sorted(by: { $0.completedAt < $1.completedAt }) {
-                log.athleteID = clientProfile.id
-                log.athleteName = clientProfile.name
-                appendWorkoutLog(log)
-            }
-            if clientProfile.limitations.isEmpty, !claimed.notes.isEmpty {
-                // The coach's setup notes are a head start, not gospel — they
-                // only fill fields the athlete left blank.
-                clientProfile.limitations = claimed.notes
-            }
-            persistLocalProfile()
-            let count = claimed.logs.count
-            showCelebration(
-                title: "Welcome aboard",
-                detail: count > 0
-                    ? "\(claimed.coachName) already logged \(count) workout\(count == 1 ? "" : "s") for you — your history starts full."
-                    : "You're connected to \(claimed.coachName)'s roster.",
-                symbol: "person.2.fill"
-            )
-            return true
-        }
-    }
-
     // MARK: - First week arc (day-7 retention bridge)
 
     struct FirstWeekStep: Identifiable {
@@ -10885,7 +10390,7 @@ final class MorpheAppStore {
     /// the brain, but only when the thing at stake actually exists.
     var streakOnTheLineDays: Int? {
         let streak = currentAthleteWorkoutSummary.currentStreakDays
-        guard streak >= 2, selectedRole == .client else { return nil }
+        guard streak >= 2 else { return nil }
         guard !plannedRestDay() else { return nil }
         let loggedToday = currentAthleteWorkoutLogs.contains {
             Calendar.current.isDateInToday($0.completedAt)
@@ -10931,10 +10436,6 @@ final class MorpheAppStore {
         }
         if isWorkoutLoggedToday {
             return "Today's session is in the books. Want to stack another, or check your progress?"
-        }
-        if let assignment = dueCoachAssignment {
-            let coach = assignment.coachName.isEmpty ? "Your coach" : assignment.coachName
-            return "\(coach) sent you a session — ready when you are."
         }
         if let atRisk = streakOnTheLineDays {
             return "Your \(atRisk)-day streak is on the line — one session today keeps it alive."
@@ -11061,7 +10562,6 @@ final class MorpheAppStore {
     }
 
     func celebrateMilestonesAfterLog() {
-        guard selectedRole == .client else { return }
         // PRs live in recordStamp, NOT celebration (audit 10, P1-2): the
         // old guard checked the wrong variable, so a PR log let the
         // milestone fire UNDER the stamp overlay — marked seen, never
@@ -11188,7 +10688,7 @@ final class MorpheAppStore {
         // And never during the hello/welcome beat (audit 13, P2): mounting
         // under the opaque hello burned the entrance animation and fought
         // VoiceOver for focus.
-        guard hasCompletedOnboarding, selectedRole == .client,
+        guard hasCompletedOnboarding,
               !needsTermsAcceptance,
               !showHelloBeat, !showWelcomeExperience,
               !isWorkoutSessionActive, !hasUnsavedSessionWork,
@@ -11236,7 +10736,7 @@ final class MorpheAppStore {
         // Answered means answered (audit 13, P1): once tonight's check-in
         // has a reply, re-opens fall through to the standard state instead
         // of re-asking a question whose chips would all be silent no-ops.
-        if evening, !isPlannedRestDay, dueCoachAssignment == nil,
+        if evening, !isPlannedRestDay,
            eveningCheckInReplyToday == nil {
             return eveningCheckInLine
         }
@@ -11275,7 +10775,7 @@ final class MorpheAppStore {
             return choices
         }
         // Same answered-steps-aside condition as the question (audit 13, P1).
-        if evening, !isPlannedRestDay, dueCoachAssignment == nil,
+        if evening, !isPlannedRestDay,
            eveningCheckInReplyToday == nil {
             // The evening voice: honest outs, same real actions as the
             // old evening card's chips.
@@ -11293,13 +10793,6 @@ final class MorpheAppStore {
                 DayPopupChoice(kind: .trainAnyway, label: "Train anyway", symbol: "bolt.fill"),
                 DayPopupChoice(kind: .progress, label: "Check my progress", symbol: "chart.line.uptrend.xyaxis")
             ]
-        } else if let assignment = dueCoachAssignment {
-            let coach = assignment.coachName.isEmpty ? "your coach" : assignment.coachName
-            choices = [
-                DayPopupChoice(kind: .startCoach, label: "Start \(coach)'s session", symbol: "figure.strengthtraining.traditional"),
-                DayPopupChoice(kind: .ownPlan, label: "Train my own plan", symbol: "bolt.fill"),
-                DayPopupChoice(kind: .progress, label: "Check my progress", symbol: "chart.line.uptrend.xyaxis")
-            ]
         } else {
             choices = [
                 DayPopupChoice(kind: .start, label: "Start my workout", symbol: "figure.strengthtraining.traditional"),
@@ -11312,18 +10805,16 @@ final class MorpheAppStore {
     }
 
     func answerDayPopup(_ kind: DayPopupChoiceKind) {
-        // A stale coach chip must not burn the popup with no action
-        // (audit 13, P2): bail BEFORE parking so the open keeps its offer.
-        if kind == .startCoach, dueCoachAssignment == nil { return }
         // Any answer parks the popup for this app open (Lucas 2026-08-18:
         // it re-offers on the next foreground return).
         dayPopupSessionDismissed = true
         morpheAskRefresh += 1
         switch kind {
         case .startCoach:
-            guard let assignment = dueCoachAssignment else { return }
-            persistDayReply("Coach's session is live — go get it.")
-            startAssignedWorkout(assignment)
+            // Legacy chip kind from the coach era — no assignments exist
+            // in the one-account world; treated as a plain start.
+            persistDayReply("Locked in — your session's live in Train.")
+            startTodayWorkout()
         case .start:
             persistDayReply("Locked in — your session's live in Train.")
             startTodayWorkout()
@@ -11434,8 +10925,7 @@ final class MorpheAppStore {
     /// speaks under the greeting. Numbers come straight from the same
     /// derived recap the Progress card renders.
     var mondayRecapLine: String? {
-        guard selectedRole == .client,
-              Calendar.current.component(.weekday, from: .now) == 2,
+        guard Calendar.current.component(.weekday, from: .now) == 2,
               let recap = weeklyRecapData, recap.sessions > 0 else { return nil }
         var line = "Last week: \(recap.sessions) session\(recap.sessions == 1 ? "" : "s"), \(recap.sets) sets, \(recap.minutes) minutes."
         if recap.prCount > 0 {
@@ -11546,7 +11036,7 @@ final class MorpheAppStore {
     /// step's completion is DERIVED from real state — nothing to tick, the
     /// app notices. Steps stay achievable in any order.
     var firstWeekSteps: [FirstWeekStep]? {
-        guard selectedRole == .client, let start = firstWeekStart else { return nil }
+        guard let start = firstWeekStart else { return nil }
         let daysIn = Calendar.current.dateComponents(
             [.day], from: Calendar.current.startOfDay(for: start), to: Calendar.current.startOfDay(for: .now)
         ).day ?? 0
@@ -11573,11 +11063,6 @@ final class MorpheAppStore {
         managedClients.filter { !archivedClientCodes.contains($0.id) }
     }
 
-    func archiveClaimedClient(_ client: ManagedClient) {
-        guard client.isClaimed else { return }
-        archivedClientCodes.insert(client.id)
-        showToast("\(client.name) removed from your roster view. Their account and history are untouched.")
-    }
 
     func restoreArchivedClients() {
         archivedClientCodes = []
@@ -11613,107 +11098,9 @@ final class MorpheAppStore {
 
     // MARK: - Coach share (athlete-consented progress visibility)
 
-    /// Builds the consented summary from the athlete's REAL logs — every
-    /// field is derived the same way the athlete's own Progress screen
-    /// derives it. Internal so tests can pin the derivations.
-    func makeCoachShareSummary(coachUid: String) -> CoachShareSummary {
-        let logs = currentAthleteWorkoutLogs
-        let calendar = Calendar.current
-        let weeklyLogs = logs.filter {
-            calendar.isDate($0.completedAt, equalTo: .now, toGranularity: .weekOfYear)
-        }
-        let sessions = logs.prefix(10).map { log in
-            CoachShareSummary.SharedSession(
-                title: log.workoutTitle,
-                completedAt: log.completedAt,
-                sets: Self.loggedSetCount(of: log),
-                minutes: log.durationMinutes,
-                feedback: log.sessionFeedback ?? ""
-            )
-        }
-        let prs = recentPersonalRecords(limit: 5).map { record in
-            CoachShareSummary.SharedPR(
-                name: record.exerciseName,
-                weight: record.weight,
-                unit: weightUnit.rawValue,
-                date: record.date
-            )
-        }
-        // Readiness only when the athlete actually checked in today —
-        // score > 0 was NOT enough: the seeded default snapshot carries a
-        // neutral 60, and sharing that would hand the coach a fabricated
-        // signal. The check-in flag is the truth (it resets with the day).
-        let readiness: String
-        if didCompleteQuickCheckIn {
-            readiness = "Readiness \(recovery.score)/100 — \(recovery.reason)"
-        } else {
-            readiness = ""
-        }
-        return CoachShareSummary(
-            coachUid: coachUid,
-            athleteName: clientProfile.name,
-            streak: currentWorkoutStreak(from: logs),
-            weeklySets: weeklySetVolume(weeks: 1).last?.sets ?? 0,
-            weeklyWorkouts: weeklyLogs.count,
-            totalWorkouts: logs.count,
-            recentSessions: Array(sessions),
-            recentPRs: prs,
-            readinessNote: readiness
-        )
-    }
 
-    /// Flips consent. On: pushes the summary immediately (and on every
-    /// future log/check-in). Off: DELETES the doc — revocation is instant
-    /// and server-enforced, not a client courtesy.
-    func setCoachShare(enabled: Bool) {
-        guard let uid = authUser?.id else {
-            showToast("Sign in to share progress with your coach.")
-            return
-        }
-        guard !linkedCoachUid.isEmpty else {
-            showToast("Connect with a coach first — claim their invite code.")
-            return
-        }
-        coachShareEnabled = enabled
-        if enabled {
-            managedClientService.pushCoachShare(
-                makeCoachShareSummary(coachUid: linkedCoachUid), athleteUid: uid)
-            showToast("\(linkedCoachName.isEmpty ? "Your coach" : linkedCoachName) now sees your progress summary.")
-        } else {
-            managedClientService.clearCoachShare(athleteUid: uid)
-            showToast("Progress sharing is off — your coach sees nothing new.")
-        }
-    }
 
-    /// Refreshes the shared doc after anything it summarizes changed.
-    /// Quiet no-op unless consent is on and the link is real.
-    private func pushCoachShareIfEnabled() {
-        guard coachShareEnabled, !linkedCoachUid.isEmpty,
-              selectedRole == .client, let uid = authUser?.id else { return }
-        managedClientService.pushCoachShare(
-            makeCoachShareSummary(coachUid: linkedCoachUid), athleteUid: uid)
-    }
 
-    /// Coach side: pulls one claimed client's shared summary. Marks the uid
-    /// fetched either way so the UI can render "not sharing" as a KNOWN
-    /// state instead of guessing.
-    func loadCoachShare(for client: ManagedClient) async {
-        guard client.isClaimed else { return }
-        guard !client.claimedByUid.isEmpty else {
-            // Legacy/corrupt claim doc with no uid: mark it fetched so the
-            // sheet renders the honest not-sharing state instead of spinning
-            // on "Checking…" forever.
-            coachShareFetched.insert(client.claimedByUid)
-            return
-        }
-        let summary = await managedClientService.fetchCoachShare(athleteUid: client.claimedByUid)
-        coachShareFetched.insert(client.claimedByUid)
-        if let summary {
-            coachShareSummaries[client.claimedByUid] = summary
-        } else {
-            coachShareSummaries.removeValue(forKey: client.claimedByUid)
-        }
-    }
 
     // MARK: - Real 1:1 messaging (coach ↔ claimed client)
 
@@ -11750,7 +11137,7 @@ final class MorpheAppStore {
             // Fallback link capture: an athlete who claimed BEFORE the
             // linked-coach fields existed still has a coach thread — adopt
             // it so the coachShare toggle appears for them too.
-            if selectedRole == .client, linkedCoachUid.isEmpty,
+            if linkedCoachUid.isEmpty,
                let coachThread = fetched.first(where: { $0.athleteUid == uid }) {
                 linkedCoachUid = coachThread.coachUid
                 linkedCoachName = coachThread.coachName
@@ -11890,40 +11277,6 @@ final class MorpheAppStore {
         }
     }
 
-    /// Coach side: opens (creating if needed) the real thread with the
-    /// athlete who CLAIMED this managed client, and returns it (nil when
-    /// the link isn't real yet or the network said no) — the caller
-    /// navigates with THIS value; looking it up in liveThreads afterward
-    /// could silently miss the synthesized fallback (coach audit).
-    @discardableResult
-    func startThreadWithClaimedClient(_ client: ManagedClient) async -> MessageThreadSummary? {
-        guard selectedRole == .coach, let coachUid = authUser?.id else { return nil }
-        guard client.isClaimed, !client.claimedByUid.isEmpty else {
-            showToast("\(client.name) hasn't claimed their invite yet.")
-            return nil
-        }
-        let athleteName = client.claimedByName.isEmpty ? client.name : client.claimedByName
-        guard let threadId = await messagingService.ensureThread(
-            coachUid: coachUid,
-            athleteUid: client.claimedByUid,
-            coachName: coachProfile.name,
-            athleteName: athleteName
-        ) else {
-            showToast("Couldn't open the conversation — check your connection.", isError: true)
-            return nil
-        }
-        await refreshThreads(force: true)
-        let thread = liveThreads.first(where: { $0.id == threadId })
-            ?? MessageThreadSummary(
-                id: threadId,
-                coachUid: coachUid,
-                athleteUid: client.claimedByUid,
-                coachName: coachProfile.name,
-                athleteName: athleteName
-            )
-        openThread(thread)
-        return thread
-    }
 
     // MARK: - Real community feed (posts, reactions, saves, reposts)
 
@@ -11936,7 +11289,7 @@ final class MorpheAppStore {
 
     /// The display name posts publish under for the current role.
     private var feedAuthorName: String {
-        let name = selectedRole == .coach ? coachProfile.name : clientProfile.name
+        let name = clientProfile.name
         return name.isEmpty ? (authUser?.displayName ?? "Athlete") : name
     }
 
@@ -11945,17 +11298,6 @@ final class MorpheAppStore {
     /// (postStreakByline). Derived from logged facts at publish time — a
     /// lapsed streak simply stops appearing on new posts.
     var feedAuthorHeadline: String {
-        if selectedRole == .coach {
-            // Real roster, real byline (benchmark Tier 2): a coach's posts
-            // carry their practice size only when one exists — "Coach" alone
-            // stays honest at zero.
-            let roster = visibleManagedClients.count
-            let specialty = coachProfile.specialty
-            var parts = ["Coach"]
-            if !specialty.isEmpty, specialty != "Personal coaching" { parts.append(specialty) }
-            if roster > 0 { parts.append("\(roster) athlete\(roster == 1 ? "" : "s")") }
-            return String(parts.joined(separator: " · ").prefix(80))
-        }
         let sport = clientProfile.sportMode.rawValue
         let streak = clientProfile.level.streak
         let headline = (postStreakByline && streak >= 2)
@@ -12902,11 +12244,6 @@ final class MorpheAppStore {
             add(id: partner.linkedAthleteID?.uuidString ?? "partner-\(partner.id)",
                 name: partner.name, detail: "Training partner")
         }
-        if selectedRole == .coach {
-            for client in coachClients {
-                add(id: client.id.uuidString, name: client.name, detail: "Client")
-            }
-        }
         return choices
     }
 
@@ -12935,7 +12272,7 @@ final class MorpheAppStore {
             kind: kind,
             withName: withName.trimmingCharacters(in: .whitespacesAndNewlines),
             withUid: withUid,
-            createdByRole: selectedRole.rawValue
+            createdByRole: AppRole.client.rawValue
         )
         appointments.append(appointment)
         appointments.sort { $0.date < $1.date }
@@ -13522,703 +12859,6 @@ final class MorpheAppStore {
         showToast("Support contact opened.")
     }
 
-    func selectCoachSportFilter(_ sport: SportFocus?) {
-        coachSportFilter = sport
-        showToast(sport?.rawValue ?? "All sports")
-    }
-
-    func selectThread(_ thread: MessageThread) {
-        pendingCoachOutreachContext = nil
-        selectedThreadID = thread.id
-    }
-
-    func openCoachThread(for athleteID: UUID, draft: String? = nil, toast: String? = nil) {
-        guard let athlete = coachClients.first(where: { $0.id == athleteID }) else {
-            showToast("Athlete not found.")
-            return
-        }
-
-        guard let thread = messageThreads.first(where: { $0.participant == athlete.name }) else {
-            showToast("No thread found for \(athlete.name).")
-            return
-        }
-
-        selectedCoachTab = .messages
-        selectedThreadID = thread.id
-        coachThreadDraftSeed = draft
-        pendingCoachOutreachContext = nil
-
-        if let toast {
-            showToast(toast)
-        }
-    }
-
-    func openCoachFollowUpThread(for athleteID: UUID, action: CoachNextActionType, toast: String? = nil) {
-        openCoachThread(
-            for: athleteID,
-            draft: coachDraftMessage(for: action, athleteID: athleteID),
-            toast: toast
-        )
-        if let kind = coachOutreachKind(for: action) {
-            pendingCoachOutreachContext = PendingCoachOutreachContext(athleteID: athleteID, kind: kind)
-        }
-    }
-
-    func assignRecoveryPlan(to athleteID: UUID, scheduledLabel: String = "Tomorrow") {
-        guard let athlete = coachClients.first(where: { $0.id == athleteID }) else {
-            showToast("Athlete not found.")
-            return
-        }
-
-        guard let template = workoutTemplates.first(where: { $0.name == "Low Energy Recovery Day" }) else {
-            showToast("Recovery plan not available right now.")
-            return
-        }
-
-        assignWorkoutTemplate(template, to: athlete, scheduledLabel: scheduledLabel)
-    }
-
-    func openCoachOutreachShortcut(_ shortcut: CoachOutreachShortcut, for athleteID: UUID) {
-        guard let athlete = coachClients.first(where: { $0.id == athleteID }) else {
-            showToast("Athlete not found.")
-            return
-        }
-
-        guard let thread = messageThreads.first(where: { $0.participant == athlete.name }) else {
-            showToast("No thread found for \(athlete.name).")
-            return
-        }
-
-        selectedCoachTab = .messages
-        selectedThreadID = thread.id
-        coachThreadDraftSeed = coachDraftMessage(for: shortcut, athlete: athlete)
-        pendingCoachOutreachContext = PendingCoachOutreachContext(
-            athleteID: athleteID,
-            kind: coachOutreachKind(for: shortcut)
-        )
-        showToast("\(shortcut.rawValue) ready for \(athlete.name).")
-    }
-
-    func makeCoachPraiseDraft(for athleteID: UUID) -> CoachPublicPraiseDraft? {
-        guard let athlete = coachClients.first(where: { $0.id == athleteID }) else { return nil }
-
-        let latestLog = workoutLogs(for: athleteID).first
-        let lowercasedTitle = latestLog?.workoutTitle.lowercased() ?? ""
-        let lowercasedNotes = latestLog?.notes.lowercased() ?? ""
-
-        let contextLabel: String
-        let title: String
-        let body: String
-        var tags = [athlete.sport.shortTitle, "Coach Praise"]
-
-        if let latestLog, latestLog.workoutTitle == athlete.currentProgram {
-            contextLabel = "Assignment complete"
-            title = "Coach praise"
-            body = "\(athlete.name) closed the loop on \(latestLog.workoutTitle) and kept the effort honest. That is the kind of consistency that keeps the whole plan moving."
-            tags.append("Coach Assignment")
-        } else if let latestLog, latestLog.source == .partnerShared {
-            contextLabel = "Partner session"
-            title = "Coach praise"
-            body = "\(athlete.name) showed up for \(latestLog.workoutTitle) with a partner and kept the accountability high. That kind of shared work compounds."
-            tags.append("Partner Session")
-        } else if lowercasedTitle.contains("recovery") || lowercasedNotes.contains("recovery") {
-            contextLabel = "Recovery follow-through"
-            title = "Coach praise"
-            body = "\(athlete.name) followed through on a recovery-minded session and treated it like real work instead of skipping the day. That discipline matters."
-            tags.append("Recovery Win")
-        } else if let latestLog {
-            contextLabel = "Latest training win"
-            title = "Coach praise"
-            body = "\(athlete.name) put in good work on \(latestLog.workoutTitle) and kept the standard where it needed to be. Small honest sessions stack up fast."
-            tags.append("Workout Complete")
-        } else {
-            contextLabel = "Athlete consistency"
-            title = "Coach praise"
-            body = "\(athlete.name) is doing the real work of building consistency one session at a time. That is what makes the bigger performance goals possible."
-        }
-
-        return CoachPublicPraiseDraft(
-            athleteID: athlete.id,
-            athleteName: athlete.name,
-            title: title,
-            body: body,
-            contextLabel: contextLabel,
-            tags: tags
-        )
-    }
-
-    func shareCoachPraiseDraft(_ draft: CoachPublicPraiseDraft, editedText: String) {
-        // While the feed is dark there is NO surface where public praise
-        // could land — publishing would write a real athlete's name into a
-        // publicly readable doc with zero readers, then toast a lie
-        // (audit 5, P0-1). The doors are flag-hidden too; this is the
-        // backstop.
-        guard FeatureFlags.socialFeedEnabled else {
-            showToast("Public praise is off while the community feed is dark.")
-            return
-        }
-        let cleanText = editedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanText.isEmpty else { return }
-
-        if isRealFeedActive {
-            // The praise goes where people actually are — the REAL feed
-            // (coach audit: it used to insert into the dead demo array and
-            // toast "shared" over nothing).
-            Task { await publishToRealFeed(text: "\(draft.title) — \(cleanText)") }
-        } else {
-            communityPosts.insert(
-                ProgressPost(
-                    author: coachProfile.name,
-                    avatar: "🧠",
-                    role: .coach,
-                    headline: coachProfile.headline,
-                    rank: coachProfile.networkRank,
-                    timeAgo: "Now",
-                    title: draft.title,
-                    detail: cleanText,
-                    tags: draft.tags,
-                    reactions: 0,
-                    comments: 0,
-                    commentHighlights: []
-                ),
-                at: 0
-            )
-        }
-
-        trackCoachOutreach(
-            .praise,
-            athleteID: draft.athleteID,
-            athleteName: draft.athleteName,
-            sourceLabel: "Coach Praise"
-        )
-        showCelebration(title: "Coach praise shared", detail: draft.athleteName, symbol: "hands.clap.fill")
-        showToast("Public praise shared.")
-    }
-
-    func selectProgramTemplate(_ template: WorkoutTemplate) {
-        selectedProgramTemplateID = template.id
-    }
-
-    func createProgram(from draft: ProgramBuilderDraft) {
-        guard !draft.workoutName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        let exercises = draft.exercises.isEmpty ? currentWorkout.exercises : draft.exercises
-        var template = WorkoutTemplate(
-            name: draft.workoutName,
-            type: draft.sessionType.rawValue,
-            sport: draft.sport,
-            category: draft.category,
-            sessionType: draft.sessionType,
-            goal: draft.goal,
-            difficulty: draft.difficulty,
-            durationMinutes: draft.durationMinutes,
-            equipment: draft.equipment,
-            exercises: exercises,
-            defaultSets: draft.defaultSets,
-            defaultReps: draft.defaultReps,
-            restTime: draft.restTime,
-            notes: "\(draft.category.rawValue) builder - \(draft.coachNotes)",
-            coachNote: "Custom coach-built session with RPE \(draft.rpe) and rest \(draft.restTime)."
-        )
-
-        if let selectedProgramTemplateID,
-           let existingIndex = workoutTemplates.firstIndex(where: { $0.id == selectedProgramTemplateID }) {
-            template.id = selectedProgramTemplateID
-            workoutTemplates[existingIndex] = template
-        } else {
-            workoutTemplates.insert(template, at: 0)
-        }
-        selectedProgramTemplateID = template.id
-        showToast("Workout draft saved to archive.")
-    }
-
-    func assignSelectedProgram(to client: CoachClient) {
-        guard let template = selectedProgramTemplate,
-              let index = coachClients.firstIndex(where: { $0.id == client.id })
-        else { return }
-
-        coachClients[index].currentProgram = template.name
-        showCelebration(title: "Program assigned", detail: "\(template.name) -> \(client.name)", symbol: "checkmark.circle.fill")
-        showToast("Program assigned successfully.")
-    }
-
-    /// REAL program delivery (Trainerize benchmark Tier 1): the FULL
-    /// runnable workout rides the managed-client doc as an assignment and
-    /// lands in the claimed athlete's Train tab as a scheduled session —
-    /// not a note. Capped at the newest 20 so the JSON stays small.
-    func assignWorkout(_ template: WorkoutTemplate, to client: ManagedClient,
-                       on date: Date, scheduledLabel: String, silent: Bool = false) {
-        guard let index = managedClients.firstIndex(where: { $0.id == client.id }) else {
-            showToast("That client isn't on your roster anymore.")
-            return
-        }
-        let assignment = WorkoutAssignment(
-            workout: PartyWorkoutSnapshot(template: template),
-            scheduledFor: date,
-            scheduledLabel: scheduledLabel,
-            coachName: coachProfile.name
-        )
-        managedClients[index].assignments.insert(assignment, at: 0)
-        managedClients[index].assignments = Array(managedClients[index].assignments.prefix(20))
-        // The notes line stays as the coach's own paper trail.
-        let stamp = "Assigned \(template.name) for \(scheduledLabel)."
-        managedClients[index].notes = managedClients[index].notes.isEmpty
-            ? stamp
-            : managedClients[index].notes + "\n" + stamp
-        managedClientService.pushAssignments(
-            code: client.id, assignments: managedClients[index].assignments)
-        // Unclaimed docs still take a full push (keeps notes + count in
-        // sync); claimed docs are assignments-only by rule.
-        if !client.isClaimed {
-            managedClientService.push(managedClients[index])
-        }
-        if !silent {
-            // Claim state is a launch-time snapshot — word the pending case
-            // as "once claimed" rather than asserting they haven't (P2-16).
-            showToast("\(template.name) assigned to \(client.name) — it lands in their Train tab\(client.isClaimed ? "" : " once they claim their code").")
-        }
-        track("coach_assigned_workout")
-    }
-
-    /// Rule-based session generation for a client (benchmark Tier 3, the
-    /// honest core of "AI builder" value): picks the best library match for
-    /// the client's sport, skipping what they were just assigned. Rules,
-    /// not AI — and labeled that way everywhere it surfaces.
-    func generateSessionTemplate(for client: ManagedClient) -> WorkoutTemplate? {
-        let recentNames = Set(client.assignments.prefix(3).map(\.workout.name))
-        let sportMatches = workoutTemplates.filter { $0.sport == client.sport }
-        let pool = sportMatches.isEmpty
-            ? workoutTemplates.filter { $0.sport == .generalFitness }
-            : sportMatches
-        // Fresh-first: the first template they haven't just done; else the
-        // first match; else nothing (an empty library can't generate).
-        return pool.first { !recentNames.contains($0.name) } ?? pool.first
-    }
-
-    /// The default delivery slot every assign surface shares: next 17:00,
-    /// rolled to tomorrow when today's has passed (speed audit S0-7).
-    static func nextCoachSlot(from now: Date = .now) -> Date {
-        let calendar = Calendar.current
-        var slot = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: now) ?? now
-        if slot <= now { slot = calendar.date(byAdding: .day, value: 1, to: slot) ?? slot }
-        return slot
-    }
-
-    /// One-tap generate-and-deliver from the client card: next 5pm slot,
-    /// straight into their Train tab.
-    func generateAndAssignSession(for client: ManagedClient) {
-        guard let template = generateSessionTemplate(for: client) else {
-            showToast("Your library has no workouts to pick from yet.")
-            return
-        }
-        let slot = Self.nextCoachSlot()
-        assignWorkout(template, to: client, on: slot,
-                      scheduledLabel: slot.formatted(date: .abbreviated, time: .shortened),
-                      silent: true)
-        showToast("Picked \(template.name) for \(client.sport.rawValue) — delivered for \(slot.formatted(date: .abbreviated, time: .shortened)). Edit in Build if you want changes.")
-    }
-
-    /// Bulk assign — the same delivery, one sheet, many clients.
-    func assignWorkout(_ template: WorkoutTemplate, to clients: [ManagedClient],
-                       on date: Date, scheduledLabel: String) {
-        for client in clients {
-            assignWorkout(template, to: client, on: date, scheduledLabel: scheduledLabel)
-        }
-        if clients.count > 1 {
-            showToast("\(template.name) assigned to \(clients.count) clients.")
-        }
-    }
-
-    // MARK: Athlete side — coach-assigned programs
-
-    /// Assignments across every claimed coach link, soonest first.
-    private(set) var coachAssignments: [WorkoutAssignment] = []
-    private var lastAssignmentsFetchAt: Date?
-
-    /// Pulls the managed-client docs this athlete claimed (hourly gate —
-    /// assignments change at coaching cadence, not feed cadence).
-    func refreshCoachAssignments(force: Bool = false) async {
-        guard let uid = authUser?.id, selectedRole == .client,
-              !linkedCoachUid.isEmpty else { return }
-        if !force, let last = lastAssignmentsFetchAt,
-           Date.now.timeIntervalSince(last) < 3600 { return }
-        guard let docs = await managedClientService.fetchClaimed(athleteUid: uid) else { return }
-        lastAssignmentsFetchAt = .now
-        coachAssignments = docs.flatMap(\.assignments)
-            .sorted { $0.scheduledFor < $1.scheduledFor }
-    }
-
-    /// Done = a REAL log with the assignment's name on/after its scheduled
-    /// day — completion is derived from what actually happened, never a
-    /// checkbox the athlete (or coach) has to remember.
-    func isAssignmentDone(_ assignment: WorkoutAssignment) -> Bool {
-        let dayStart = Calendar.current.startOfDay(for: assignment.scheduledFor)
-        return currentAthleteWorkoutLogs.contains {
-            $0.workoutTitle == assignment.workout.name && $0.completedAt >= dayStart
-        }
-    }
-
-    /// The assignment Today's hero should lead with: due today or overdue,
-    /// not yet done (speed audit S0-2) — the coached athlete's one-tap
-    /// Start must start the COACH'S session, not the generic plan.
-    var dueCoachAssignment: WorkoutAssignment? {
-        let endOfToday = Calendar.current.date(
-            bySettingHour: 23, minute: 59, second: 59, of: .now) ?? .now
-        return pendingCoachAssignments.first { $0.scheduledFor <= endOfToday }
-    }
-
-    /// What the Train tab shows: not-yet-done assignments from the last 14
-    /// days plus everything upcoming — stale ones age out instead of
-    /// nagging forever.
-    var pendingCoachAssignments: [WorkoutAssignment] {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -14, to: .now) ?? .now
-        // One pass over the logs builds the done-lookup (speed audit S1-6) —
-        // the old shape re-scanned history per assignment per body eval.
-        let calendar = Calendar.current
-        let logsByTitle = Dictionary(grouping: currentAthleteWorkoutLogs, by: \.workoutTitle)
-        return coachAssignments.filter { assignment in
-            guard assignment.scheduledFor >= cutoff else { return false }
-            let dayStart = calendar.startOfDay(for: assignment.scheduledFor)
-            let done = (logsByTitle[assignment.workout.name] ?? []).contains {
-                $0.completedAt >= dayStart
-            }
-            return !done
-        }
-    }
-
-    /// One tap from the assignment row into a live session running the
-    /// coach's exact workout.
-    func startAssignedWorkout(_ assignment: WorkoutAssignment) {
-        let template = assignment.workout.makeTemplate(
-            type: "Coach Assignment",
-            notes: assignment.coachName.isEmpty
-                ? "Assigned by your coach."
-                : "Assigned by \(assignment.coachName)."
-        )
-        // Reuse the already-imported copy — currentWorkoutID must point at
-        // a template that's actually in the list.
-        if let existing = workoutTemplates.first(where: {
-            $0.name == template.name && $0.type == "Coach Assignment"
-        }) {
-            beginLiveWorkout(existing)
-        } else {
-            workoutTemplates.append(template)
-            beginLiveWorkout(template)
-        }
-    }
-
-    func assignWorkoutTemplate(_ template: WorkoutTemplate, to client: CoachClient, scheduledLabel: String) {
-        guard let index = coachClients.firstIndex(where: { $0.id == client.id }) else { return }
-
-        coachClients[index].currentProgram = template.name
-        coachClients[index].coachNotes += "\n• Assigned \(template.name) for \(scheduledLabel)."
-
-        if client.name == clientProfile.name {
-            clientProfile.currentProgram = template.name
-            notifications.insert(
-                SmartNotificationItem(
-                    type: "Coach assignment",
-                    title: "New workout assigned",
-                    message: "\(coachProfile.name) assigned \(template.name) for \(scheduledLabel).",
-                    priority: .medium,
-                    action: "Open Train"
-                ),
-                at: 0
-            )
-        }
-
-        addCoachTrainingActivityPost(
-            title: "Workout assigned",
-            detail: "Assigned \(template.name) to \(client.name) for \(scheduledLabel).",
-            tags: [template.sport.shortTitle, "Coach Assignment", "Training Plan"]
-        )
-        showCelebration(title: "Workout assigned", detail: "\(template.name) -> \(client.name)", symbol: "calendar.badge.plus")
-        showToast("Scheduled for \(scheduledLabel).")
-    }
-
-    func startCoachSession(
-        for athlete: CoachClient,
-        with template: WorkoutTemplate,
-        sourceLabel: String,
-        shouldCelebrate: Bool = true
-    ) {
-        guard let index = coachClients.firstIndex(where: { $0.id == athlete.id }) else { return }
-
-        coachClients[index].currentProgram = template.name
-        coachClients[index].lastWorkout = "Session started now"
-        coachClients[index].coachNotes += "\n• Started \(template.name) from \(sourceLabel)."
-        selectedProgramTemplateID = template.id
-        selectedClientID = athlete.id
-
-        if athlete.id == clientProfile.id {
-            clientProfile.currentProgram = template.name
-        }
-
-        if shouldCelebrate {
-            showCelebration(title: "Session started", detail: "\(athlete.name) • \(template.name)", symbol: "play.circle.fill")
-        }
-        showToast("Started \(template.name) for \(athlete.name).")
-    }
-
-    func startUpcomingSession(_ event: CalendarEvent, with template: WorkoutTemplate) {
-        if let athlete = athleteForUpcomingSession(event) {
-            startCoachSession(for: athlete, with: template, sourceLabel: "Upcoming Sessions", shouldCelebrate: false)
-        }
-
-        guard let eventIndex = upcomingSessions.firstIndex(where: { $0.id == event.id }) else { return }
-        upcomingSessions[eventIndex].detail = "Live now: \(template.name). " + event.detail
-
-        if let firstIndex = upcomingSessions[eventIndex].attendance.indices.first {
-            upcomingSessions[eventIndex].attendance[firstIndex].status = .present
-        }
-
-        selectedProgramTemplateID = template.id
-        showCelebration(title: "Session started", detail: "\(event.title) • \(template.name)", symbol: "bolt.circle.fill")
-        showToast("Session started from Upcoming Sessions.")
-    }
-
-    func quickAssignProgram() {
-        let targetClient = selectedCoachClient ?? coachClients.first
-
-        guard let targetClient else {
-            selectedCoachTab = .programs
-            showToast("Open Build to create the next program.")
-            return
-        }
-
-        assignSelectedProgram(to: targetClient)
-        selectedCoachTab = .programs
-    }
-
-    func selectSession(_ session: SportSession) {
-        selectedSessionID = session.id
-    }
-
-    func selectGroup(_ group: TeamGroup) {
-        selectedGroupID = group.id
-    }
-
-    func sendInterventionMessage(_ intervention: CoachIntervention) {
-        guard let threadIndex = messageThreads.firstIndex(where: { $0.participant == intervention.athleteName }) else {
-            showToast("No thread found for \(intervention.athleteName).")
-            return
-        }
-        selectedThreadID = messageThreads[threadIndex].id
-        selectedCoachTab = .messages
-        showToast("Choose a message for \(intervention.athleteName).")
-    }
-
-    /// Quick Add → the REAL add-client flow (replaces the old fake-lead
-    /// insert): lands on Build and asks the roster to present
-    /// AddManagedClientSheet via `requestAddClientSheet`.
-    func openAddClient() {
-        selectedCoachTab = .programs
-        requestAddClientSheet = true
-    }
-
-    func assignInterventionPlan(_ intervention: CoachIntervention) {
-        guard let athleteIndex = coachClients.firstIndex(where: { $0.id == intervention.athleteID }) else {
-            showToast("Athlete not found.")
-            return
-        }
-
-        let updatedProgram: String
-        let note: String
-
-        if intervention.reason.localizedCaseInsensitiveContains("pain") || intervention.reason.localizedCaseInsensitiveContains("recovery") {
-            updatedProgram = "Low Energy Recovery Day"
-            note = "Coach assigned a lighter recovery-focused session from the intervention queue."
-        } else if intervention.reason.localizedCaseInsensitiveContains("competition") || intervention.reason.localizedCaseInsensitiveContains("game") {
-            updatedProgram = "Competition Taper Session"
-            note = "Coach assigned a lighter taper session to protect readiness."
-        } else {
-            updatedProgram = "15-Minute Quick Workout"
-            note = "Coach assigned a shorter reset session to rebuild momentum."
-        }
-
-        coachClients[athleteIndex].currentProgram = updatedProgram
-        coachClients[athleteIndex].coachNotes = coachClients[athleteIndex].coachNotes + "\n• " + note
-        selectedClientID = coachClients[athleteIndex].id
-
-        if let index = coachInterventions.firstIndex(where: { $0.id == intervention.id }) {
-            coachInterventions[index].status = "Plan assigned"
-        }
-
-        showCelebration(title: "Plan assigned", detail: "\(updatedProgram) -> \(intervention.athleteName)", symbol: "figure.run")
-        showToast("Recovery-minded plan assigned.")
-    }
-
-    func assignInterventionTemplate(_ template: WorkoutTemplate, to intervention: CoachIntervention) {
-        guard let athleteIndex = coachClients.firstIndex(where: { $0.id == intervention.athleteID }) else {
-            showToast("Athlete not found.")
-            return
-        }
-
-        coachClients[athleteIndex].currentProgram = template.name
-        coachClients[athleteIndex].coachNotes += "\n• Assigned from intervention queue: \(template.name)"
-
-        if let index = coachInterventions.firstIndex(where: { $0.id == intervention.id }) {
-            coachInterventions[index].status = "Plan assigned"
-        }
-
-        showCelebration(title: "Plan assigned", detail: "\(template.name) -> \(intervention.athleteName)", symbol: "figure.run")
-        showToast("Assigned \(template.name).")
-    }
-
-    func reviewIntervention(_ intervention: CoachIntervention) {
-        if let index = coachInterventions.firstIndex(where: { $0.id == intervention.id }) {
-            coachInterventions[index].status = "Reviewed"
-        }
-
-        selectedClientID = intervention.athleteID
-        selectedCoachTab = .programs
-        showToast("Opened \(intervention.athleteName)'s profile.")
-    }
-
-    func sendOutreach(_ suggestion: OutreachSuggestion) {
-        guard let threadIndex = messageThreads.firstIndex(where: { $0.participant == suggestion.clientName }) else {
-            showToast("No thread found for \(suggestion.clientName).")
-            return
-        }
-
-        let message = ThreadMessage(sender: .coach, senderName: coachProfile.name, text: suggestion.suggestedMessage, timestamp: "Now")
-        messageThreads[threadIndex].messages.append(message)
-        messageThreads[threadIndex].preview = suggestion.suggestedMessage
-        messageThreads[threadIndex].isUnread = false
-        selectedThreadID = messageThreads[threadIndex].id
-        if let athlete = coachClients.first(where: { $0.name == suggestion.clientName }) {
-            trackCoachOutreach(
-                .generalCheckIn,
-                athleteID: athlete.id,
-                athleteName: athlete.name,
-                sourceLabel: "Outreach Suggestion"
-            )
-        }
-        showToast("Outreach sent to \(suggestion.clientName).")
-    }
-
-    func sendCoachThreadMessage(_ text: String) {
-        let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanText.isEmpty,
-              let selectedThreadID,
-              let threadIndex = messageThreads.firstIndex(where: { $0.id == selectedThreadID })
-        else { return }
-
-        let message = ThreadMessage(sender: .coach, senderName: coachProfile.name, text: cleanText, timestamp: "Now")
-        messageThreads[threadIndex].messages.append(message)
-        messageThreads[threadIndex].preview = cleanText
-        messageThreads[threadIndex].isUnread = false
-        if let context = pendingCoachOutreachContext,
-           let athlete = coachClients.first(where: { $0.id == context.athleteID }),
-           messageThreads[threadIndex].participant == athlete.name {
-            trackCoachOutreach(
-                context.kind,
-                athleteID: athlete.id,
-                athleteName: athlete.name,
-                sourceLabel: "Coach Inbox"
-            )
-        }
-        pendingCoachOutreachContext = nil
-        coachThreadDraftSeed = nil
-        showToast("Message sent.")
-    }
-
-    func sendCoachTemplate(_ template: MessageTemplate, to intervention: CoachIntervention) {
-        guard let threadIndex = messageThreads.firstIndex(where: { $0.participant == intervention.athleteName }) else {
-            showToast("No thread found for \(intervention.athleteName).")
-            return
-        }
-
-        let message = ThreadMessage(sender: .coach, senderName: coachProfile.name, text: template.body, timestamp: "Now")
-        messageThreads[threadIndex].messages.append(message)
-        messageThreads[threadIndex].preview = template.body
-        messageThreads[threadIndex].isUnread = false
-        selectedThreadID = messageThreads[threadIndex].id
-
-        if let index = coachInterventions.firstIndex(where: { $0.id == intervention.id }) {
-            coachInterventions[index].status = "Handled"
-        }
-
-        selectedCoachTab = .messages
-        showToast("Template queued to \(intervention.athleteName).")
-    }
-
-    func rescheduleUpcomingSession(_ event: CalendarEvent, to day: String, time: String) {
-        guard let index = upcomingSessions.firstIndex(where: { $0.id == event.id }) else { return }
-        upcomingSessions[index].day = day
-        upcomingSessions[index].time = time
-        showToast("Session rescheduled.")
-    }
-
-    func completeUpcomingSession(_ event: CalendarEvent) {
-        guard let index = upcomingSessions.firstIndex(where: { $0.id == event.id }) else { return }
-        upcomingSessions[index].isComplete = true
-        showToast("Session marked complete.")
-    }
-
-    func updateAttendance(for athleteName: String, in event: CalendarEvent, status: AttendanceStatus) {
-        guard let eventIndex = upcomingSessions.firstIndex(where: { $0.id == event.id }) else { return }
-
-        if let attendanceIndex = upcomingSessions[eventIndex].attendance.firstIndex(where: { $0.athleteName == athleteName }) {
-            upcomingSessions[eventIndex].attendance[attendanceIndex].status = status
-        } else {
-            upcomingSessions[eventIndex].attendance.append(
-                TeamMemberAttendance(athleteName: athleteName, status: status, note: "Updated from session card")
-            )
-        }
-
-        if let groupID = upcomingSessions[eventIndex].groupID,
-           let groupIndex = teamGroups.firstIndex(where: { $0.id == groupID }),
-           let groupAttendanceIndex = teamGroups[groupIndex].attendance.firstIndex(where: { $0.athleteName == athleteName }) {
-            teamGroups[groupIndex].attendance[groupAttendanceIndex].status = status
-        }
-
-        showToast("\(athleteName) marked \(status.rawValue).")
-    }
-
-    func sendTemplateMessage(_ template: MessageTemplate) {
-        guard let selectedThreadID,
-              let threadIndex = messageThreads.firstIndex(where: { $0.id == selectedThreadID })
-        else { return }
-
-        let message = ThreadMessage(sender: .coach, senderName: coachProfile.name, text: template.body, timestamp: "Now")
-        messageThreads[threadIndex].messages.append(message)
-        messageThreads[threadIndex].preview = template.body
-        messageThreads[threadIndex].isUnread = false
-        pendingCoachOutreachContext = nil
-        showToast("Template sent.")
-    }
-
-    func queueBroadcast() {
-        showToast("Broadcast message queued.")
-    }
-
-    func advanceLead(_ lead: LeadRecord) {
-        guard let index = leadRecords.firstIndex(where: { $0.id == lead.id }) else { return }
-        let statuses = LeadStatus.allCases
-        guard let currentIndex = statuses.firstIndex(of: leadRecords[index].status) else { return }
-        leadRecords[index].status = statuses[(currentIndex + 1) % statuses.count]
-        showToast("\(leadRecords[index].name) moved to \(leadRecords[index].status.rawValue).")
-    }
-
-    func updateCoachNotes(for athleteID: UUID, text: String) {
-        guard let index = coachClients.firstIndex(where: { $0.id == athleteID }) else { return }
-        coachClients[index].coachNotes = text
-        showToast("Coach notes saved.")
-    }
-
-    func updateAttendance(for athleteName: String, in group: TeamGroup, status: AttendanceStatus) {
-        guard let groupIndex = teamGroups.firstIndex(where: { $0.id == group.id }),
-              let athleteIndex = teamGroups[groupIndex].attendance.firstIndex(where: { $0.athleteName == athleteName })
-        else { return }
-
-        teamGroups[groupIndex].attendance[athleteIndex].status = status
-        showToast("\(athleteName) marked \(status.rawValue).")
-    }
-
-    func sendGroupAnnouncement(for group: TeamGroup) {
-        selectedGroupID = group.id
-        showToast("Group announcement sent.")
-    }
 
     private func setCurrentWorkout(named name: String) {
         guard let template = workoutTemplates.first(where: { $0.name == name }) else { return }
@@ -14743,131 +13383,11 @@ final class MorpheAppStore {
         // Drop any Claude reply still in flight (audit 17, P1) — a "new
         // chat" must not receive the old chat's answer.
         intelligenceEpoch += 1
-        if selectedRole == .coach {
-            coachAIAgentConversation = [coachAIAgentConversation.first].compactMap { $0 }
-        } else {
-            athleteAIAgentConversation = [athleteAIAgentConversation.first].compactMap { $0 }
-        }
+        athleteAIAgentConversation = [athleteAIAgentConversation.first].compactMap { $0 }
         Haptics.impact(.light)
     }
 
-    /// Coach action layer (AI-7): what it can actually DO. Everything here
-    /// either navigates or answers from real store data — no drafting
-    /// theater. Returns nil for conversational asks.
-    private func coachAssistantActionReply(for text: String) -> String? {
-        let lower = text.lowercased()
-        // Word-boundary matched (audit 13, closing audit 12 P2-10 for
-        // real): plain contains() sent "progressive overload" to the
-        // Progress tab — the voice layer had the boundary fix, but this
-        // layer runs FIRST for both chat and voice.
-        func has(_ words: String...) -> Bool {
-            words.contains {
-                lower.range(of: "\\b\(NSRegularExpression.escapedPattern(for: $0))\\b",
-                            options: .regularExpression) != nil
-            }
-        }
 
-        if has("what can you do", "help me use", "commands") || lower == "help" {
-            return "I can open any workspace tab (\"open athletes\"), tell you who needs attention today — derived from your athletes' real logs — and answer coaching questions. I don't draft messages yet, and I won't pretend to."
-        }
-
-        // Real data, not vibes: quiet = no logged session this week. The
-        // REAL roster is managedClients — coachClients is the demo array
-        // and stays empty for a launched coach (coach audit).
-        if has("who needs attention", "needs attention", "who's behind", "whos behind", "who is behind") {
-            let roster = visibleManagedClients
-            guard !roster.isEmpty else {
-                return "No athletes on your roster yet — add one from Build's roster tools and I'll track who goes quiet."
-            }
-            let calendar = Calendar.current
-            let quiet = roster.filter { client in
-                !client.logs.contains {
-                    calendar.isDate($0.completedAt, equalTo: .now, toGranularity: .weekOfYear)
-                }
-            }.map(\.name)
-            if quiet.isEmpty {
-                return "All \(roster.count) athletes have a logged session this week. Nobody's quiet — good week."
-            }
-            return "\(quiet.prefix(4).joined(separator: ", ")) \(quiet.count == 1 ? "hasn't" : "haven't") logged a session this week — start there."
-        }
-
-        if has("open athletes", "show athletes", "my athletes", "my roster", "open roster") {
-            selectedCoachTab = .athletes; closeAIAgent(); return "Opened Athletes."
-        }
-        if has("open dashboard", "go to dashboard", "show dashboard") {
-            selectedCoachTab = .dashboard; closeAIAgent(); return "Opened the dashboard."
-        }
-        if has("open programs", "go to programs", "show programs") {
-            selectedCoachTab = .programs; closeAIAgent(); return "Opened Programs."
-        }
-        if has("open discover", "browse workouts", "find a workout") {
-            selectedCoachTab = .discover; closeAIAgent(); return "Opened Discover."
-        }
-        if has("open train", "my training", "my own workout") {
-            selectedCoachTab = .train; closeAIAgent(); return "Opened Train."
-        }
-        return nil
-    }
-
-    private func coachAgentReply(to prompt: String) -> String {
-        let lowercasedPrompt = prompt.lowercased()
-        let athleteName = selectedCoachClient?.name ?? coachClients.first?.name ?? "your athlete"
-        let selectedProgram = selectedProgramTemplate?.name ?? "the current build"
-        let selectedThreadName = selectedThread?.participant ?? athleteName
-
-        switch selectedCoachTab {
-        case .dashboard:
-            // "priorit" catches both "priority" and "priorities" — the
-            // advertised quick prompt used to miss its own branch.
-            if lowercasedPrompt.contains("attention") || lowercasedPrompt.contains("priorit") {
-                return "\(coachOverview.insight.summary) Start with the highest-friction athlete first, remove one blocker, and keep the next step easy to complete today."
-            }
-        case .athletes:
-            if lowercasedPrompt.contains("summary") || lowercasedPrompt.contains("athlete") || lowercasedPrompt.contains("readiness") {
-                let recoverySummary = selectedCoachClient?.recoveryScore.reason ?? "consistency is holding but readiness wants moderation"
-                return "\(athleteName) is trending \(selectedCoachClient?.statusText.lowercased() ?? "steady"). Recovery is \(selectedCoachClient?.recoveryScore.score ?? 0) and the biggest context note is \(recoverySummary.lowercased())."
-            }
-        case .train:
-            if lowercasedPrompt.contains("workout") || lowercasedPrompt.contains("start") || lowercasedPrompt.contains("session") {
-                return "Your own training works exactly like an athlete's: start the staged workout, log sets in the console, and rate the session when you lock it in."
-            }
-        case .discover:
-            if lowercasedPrompt.contains("workout") || lowercasedPrompt.contains("assign") || lowercasedPrompt.contains("find") || lowercasedPrompt.contains("build") {
-                return "Search the catalog by name, goal, or training type, and bookmark anything worth assigning. For something exact, Build your own workout gives you full control over exercises, sets, and reps."
-            }
-        case .programs:
-            if selectedCoachBuildSection == .library,
-               lowercasedPrompt.contains("drill") || lowercasedPrompt.contains("warm-up") || lowercasedPrompt.contains("progression") {
-                let drillName = drills.first(where: { $0.sport == (selectedCoachClient?.sport ?? .boxing) })?.name ?? drills.first?.name ?? "a simple technical drill"
-                return "A strong library pull right now is \(drillName). Use it as a short primer so the athlete gets quality reps before fatigue shows up."
-            }
-            if lowercasedPrompt.contains("session") || lowercasedPrompt.contains("plan") || lowercasedPrompt.contains("lighter") {
-                return "For \(selectedProgram), keep the structure clear: warm-up, one main focus, one support block, and a short cooldown. If readiness is low, cut volume before cutting quality."
-            }
-        case .network:
-            if lowercasedPrompt.contains("post") || lowercasedPrompt.contains("comment") || lowercasedPrompt.contains("connect") {
-                return "Keep the coach network practical. Share one lesson, one athlete win, or one cue that another coach could use today."
-            }
-        case .messages:
-            if lowercasedPrompt.contains("reply") || lowercasedPrompt.contains("message") || lowercasedPrompt.contains("outreach") {
-                return "For \(selectedThreadName), lead with the last known result, remove any guilt, and end with one very clear next step they can do today."
-            }
-        }
-
-        if lowercasedPrompt.contains("summary") || lowercasedPrompt.contains("week") {
-            return "This week \(athleteName) looks steady overall. The biggest leverage move is better adherence to the core plan and one lighter recovery touchpoint before the next hard session."
-        }
-
-        if lowercasedPrompt.contains("outreach") || lowercasedPrompt.contains("message") {
-            return "Try a short outreach note: acknowledge the last result, remove pressure, and give one clear next step they can complete today."
-        }
-
-        if lowercasedPrompt.contains("recovery") || lowercasedPrompt.contains("lighter") || lowercasedPrompt.contains("adjust") {
-            return "I’d pull back the next session slightly: reduce total volume, keep technique crisp, and protect readiness instead of chasing fatigue."
-        }
-
-        return "Here’s the clean coaching read: simplify the next step, keep the message direct, and use the smallest action that still moves the athlete forward."
-    }
 
     private func motivationalGreeting(for sport: SportFocus) -> String {
         switch sport {
@@ -14968,209 +13488,6 @@ final class MorpheAppStore {
         }
     }
 
-    private func coachFollowUpRecommendation(for athleteID: UUID) -> CoachFollowUpRecommendation {
-        let logs = workoutLogs(for: athleteID)
-        let athleteName = athleteName(for: athleteID)
-        let calendar = Calendar.current
-        let thisWeekLogs = logs.filter { calendar.isDate($0.completedAt, equalTo: .now, toGranularity: .weekOfYear) }
-        let aiPendingCount = logs.filter { $0.verificationStatus == .aiPendingReview }.count
-        let buddyThisWeek = thisWeekLogs.filter { $0.source == .partnerShared }.count
-        let athleteThisWeek = thisWeekLogs.filter { $0.source == .athleteManual }.count
-        let coachThisWeek = thisWeekLogs.filter { $0.source == .coachManual }.count
-        let latestLog = logs.first
-        let partnerInsight = partnerTrainingInsight(for: athleteID)
-        let athlete = coachClients.first(where: { $0.id == athleteID })
-        let readinessStatus = athlete?.recoveryScore.status
-        let painIntervention = coachInterventions.first {
-            $0.athleteID == athleteID
-                && ($0.reason.localizedCaseInsensitiveContains("pain")
-                    || $0.reason.localizedCaseInsensitiveContains("recovery"))
-                && $0.status != "Handled"
-        }
-        let openIntervention = coachInterventions.first { $0.athleteID == athleteID && $0.status != "Handled" }
-        let latestLogIsRecent = latestLog.map { calendar.dateComponents([.day], from: $0.completedAt, to: .now).day ?? 99 <= 3 } ?? false
-        let bestRestartOutreach = bestCoachOutreachEffectiveness(
-            for: athleteID,
-            among: [.missedSessionNudge, .partnerPrompt, .generalCheckIn]
-        )
-        let painCheckEffectiveness = coachOutreachEffectiveness(for: athleteID, kind: .painCheckIn)
-        let recoveryEffectiveness = coachOutreachEffectiveness(for: athleteID, kind: .recoveryReminder)
-        let praiseEffectiveness = coachOutreachEffectiveness(for: athleteID, kind: .praise)
-
-        if aiPendingCount > 0 {
-            return CoachFollowUpRecommendation(
-                athleteID: athleteID,
-                athleteName: athleteName,
-                title: "Review AI workout imports",
-                detail: aiPendingCount == 1
-                    ? "\(athleteName) has 1 AI-parsed log waiting for coach review."
-                    : "\(athleteName) has \(aiPendingCount) AI-parsed logs waiting for coach review.",
-                actionLabel: "Show Logs",
-                type: .reviewAI,
-                priority: 100
-            )
-        }
-
-        if readinessStatus == .recoveryRecommended || readinessStatus == .takeItEasy {
-            return CoachFollowUpRecommendation(
-                athleteID: athleteID,
-                athleteName: athleteName,
-                title: "Queue a lighter training day",
-                detail: [ "\(athleteName) is trending toward a lower-readiness day. A recovery-focused session is the cleanest next move.",
-                          recoveryEffectiveness?.insightLine ]
-                    .compactMap { $0 }
-                    .joined(separator: " "),
-                actionLabel: "Load Recovery",
-                type: .assignRecovery,
-                priority: 95
-            )
-        }
-
-        if let painIntervention {
-            return CoachFollowUpRecommendation(
-                athleteID: athleteID,
-                athleteName: athleteName,
-                title: "Ask for a pain update",
-                detail: [ "\(painIntervention.reason) A fast pain check-in is the cleanest way to decide whether to swap, lighten, or keep moving.",
-                          painCheckEffectiveness?.insightLine ]
-                    .compactMap { $0 }
-                    .joined(separator: " "),
-                actionLabel: "Pain Check",
-                type: .askPainUpdate,
-                priority: 93
-            )
-        }
-
-        if athleteThisWeek == 0 && coachThisWeek == 0 {
-            if let bestRestartOutreach {
-                switch bestRestartOutreach.kind {
-                case .partnerPrompt:
-                    return CoachFollowUpRecommendation(
-                        athleteID: athleteID,
-                        athleteName: athleteName,
-                        title: "Use the accountability lever that lands",
-                        detail: "There are no logged sessions yet this week. \(bestRestartOutreach.insightLine)",
-                        actionLabel: "Draft Prompt",
-                        type: .partnerPrompt,
-                        priority: 90
-                    )
-                case .generalCheckIn:
-                    return CoachFollowUpRecommendation(
-                        athleteID: athleteID,
-                        athleteName: athleteName,
-                        title: "Open the fastest line back in",
-                        detail: "There are no logged sessions yet this week. \(bestRestartOutreach.insightLine)",
-                        actionLabel: "Open Thread",
-                        type: .messageAthlete,
-                        priority: 90
-                    )
-                default:
-                    break
-                }
-            }
-
-            return CoachFollowUpRecommendation(
-                athleteID: athleteID,
-                athleteName: athleteName,
-                title: "Nudge the week back into motion",
-                detail: [ "There are no logged sessions yet this week. A quick missed-session nudge is the fastest way to restart momentum.",
-                          coachOutreachEffectiveness(for: athleteID, kind: .missedSessionNudge)?.insightLine ]
-                    .compactMap { $0 }
-                    .joined(separator: " "),
-                actionLabel: "Draft Nudge",
-                type: .missedSessionNudge,
-                priority: 90
-            )
-        }
-
-        if athleteThisWeek == 0 && coachThisWeek > 0 {
-            if let bestRestartOutreach, bestRestartOutreach.kind == .partnerPrompt {
-                return CoachFollowUpRecommendation(
-                    athleteID: athleteID,
-                    athleteName: athleteName,
-                    title: "Restart athlete ownership with a partner prompt",
-                    detail: "\(athleteName) has coach-entered sessions this week, but no athlete-submitted logs yet. \(bestRestartOutreach.insightLine)",
-                    actionLabel: "Draft Prompt",
-                    type: .partnerPrompt,
-                    priority: 86
-                )
-            }
-
-            return CoachFollowUpRecommendation(
-                athleteID: athleteID,
-                athleteName: athleteName,
-                title: "Prompt athlete self-logging",
-                detail: [ "\(athleteName) has coach-entered sessions this week, but no athlete-submitted logs yet.",
-                          coachOutreachEffectiveness(for: athleteID, kind: .generalCheckIn)?.insightLine ]
-                    .compactMap { $0 }
-                    .joined(separator: " "),
-                actionLabel: "Open Thread",
-                type: .messageAthlete,
-                priority: 86
-            )
-        }
-
-        if partnerInsight.buddyShareLast30Days < 20,
-           (athlete?.complianceScore ?? 100) < 85,
-           openIntervention != nil || thisWeekLogs.isEmpty {
-            return CoachFollowUpRecommendation(
-                athleteID: athleteID,
-                athleteName: athleteName,
-                title: "Push partner accountability",
-                detail: [ "Buddy sessions are not showing up much lately, and adherence could use an easier accountability lever.",
-                          coachOutreachEffectiveness(for: athleteID, kind: .partnerPrompt)?.insightLine ]
-                    .compactMap { $0 }
-                    .joined(separator: " "),
-                actionLabel: "Draft Prompt",
-                type: .partnerPrompt,
-                priority: 82
-            )
-        }
-
-        if buddyThisWeek > 0 && buddyThisWeek >= max(athleteThisWeek, 1) {
-            return CoachFollowUpRecommendation(
-                athleteID: athleteID,
-                athleteName: athleteName,
-                title: "Lean into partner accountability",
-                detail: "Buddy sessions are carrying more of the adherence signal this week. Review those logs before changing the plan.",
-                actionLabel: "Buddy Logs",
-                type: .reviewBuddy,
-                priority: 78
-            )
-        }
-
-        // Public praise only exists while the feed does — with the feed
-        // dark the recommendation falls through to a direct message, the
-        // honest channel that actually reaches the athlete (audit 5, P0-1).
-        if latestLogIsRecent, FeatureFlags.socialFeedEnabled {
-            return CoachFollowUpRecommendation(
-                athleteID: athleteID,
-                athleteName: athleteName,
-                title: "Reinforce the latest win",
-                detail: [
-                    latestLog.map {
-                        "\(athleteName) just logged \($0.workoutTitle). Use that momentum while the session still feels recent."
-                    } ?? "Use the most recent workout as a conversation opener while momentum is still warm.",
-                    praiseEffectiveness?.insightLine
-                ]
-                .compactMap { $0 }
-                .joined(separator: " "),
-                actionLabel: "Praise Publicly",
-                type: .praisePublicly,
-                priority: 70
-            )
-        }
-
-        return CoachFollowUpRecommendation(
-            athleteID: athleteID,
-            athleteName: athleteName,
-            title: "Keep the line open",
-            detail: "A short coach touchpoint is the easiest way to keep \(athleteName) moving without changing the whole plan.",
-            actionLabel: "Message Athlete",
-            type: .messageAthlete,
-            priority: 60
-        )
-    }
 
     func coachDraftMessage(for action: CoachNextActionType, athleteID: UUID) -> String? {
         guard let athlete = coachClients.first(where: { $0.id == athleteID }) else { return nil }
@@ -15335,7 +13652,6 @@ final class MorpheAppStore {
             forKey: lastKnownStreakKey)
         clearComeback()
         publishWidgetSnapshot()
-        pushCoachShareIfEnabled()
 
         switch log.source {
         case .athleteManual:

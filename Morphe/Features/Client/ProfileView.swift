@@ -34,13 +34,8 @@ struct ProfileView: View {
     }
     @State private var exportFile: ExportFile?
     @State private var showPaywall = false
-    /// Coach-code claim in flight — blocks double-submit and keeps the
-    /// editor open on failure (deferred-states pass 2026-09).
-    @State private var isJoiningCoach = false
 
-    private var isCoach: Bool {
-        store.selectedRole == .coach
-    }
+
 
     /// Hoisted from AthleteProfileBody (audit 5, P1-5): as child @State the
     /// unsaved-edit guard couldn't see a typed-but-unsaved weight, so Done
@@ -53,19 +48,15 @@ struct ProfileView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 identityCard
-                if isCoach {
-                    CoachProfileBody(store: store)
-                } else {
-                    AthleteProfileBody(
-                        store: store,
-                        weightDraft: $weightDraft,
-                        onOpenProgress: { requestOpenProgress() }
-                    )
-                    detailsCard
-                    targetsCard
-                }
+                AthleteProfileBody(
+                    store: store,
+                    weightDraft: $weightDraft,
+                    onOpenProgress: { requestOpenProgress() }
+                )
+                detailsCard
+                targetsCard
                 settingsSections
-                if !isCoach {
+                if true {
                     levelCard
                 }
             }
@@ -166,7 +157,7 @@ struct ProfileView: View {
         }
         if isEditingUsername {
             let entered = UsernameRules.normalize(usernameDraft)
-            let current = isCoach ? store.coachProfile.username : store.profileShowcase.username
+            let current = store.profileShowcase.username
             if !entered.isEmpty, entered != current { return true }
         }
         if isEditingBio,
@@ -442,7 +433,7 @@ struct ProfileView: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
-                            Text(isCoach ? store.coachProfile.name : store.profileShowcase.displayName)
+                            Text(store.profileShowcase.displayName)
                                 .font(.title2.weight(.bold))
                                 .foregroundStyle(MorpheTheme.textPrimary)
                             if store.isVerifiedUser {
@@ -454,12 +445,10 @@ struct ProfileView: View {
                                     .accessibilityLabel("Verified")
                             }
                         }
-                        Text("@\(isCoach ? store.coachProfile.username : store.profileShowcase.username)")
+                        Text("@\(store.profileShowcase.username)")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(MorpheTheme.accentText)
-                        Text(isCoach
-                            ? "Coach"
-                            : "\(store.clientProfile.sportMode.rawValue)\(store.clientProfile.fitnessLevel.isEmpty ? "" : " • \(store.clientProfile.fitnessLevel)")")
+                        Text("\(store.clientProfile.sportMode.rawValue)\(store.clientProfile.fitnessLevel.isEmpty ? "" : " • \(store.clientProfile.fitnessLevel)")")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textMuted)
                     }
@@ -527,7 +516,7 @@ struct ProfileView: View {
     }
 
     private var profileInitials: String {
-        let name = isCoach ? store.coachProfile.name : store.profileShowcase.displayName
+        let name = store.profileShowcase.displayName
         let parts = name.split(separator: " ").prefix(2)
         let initials = parts.compactMap(\.first).map(String.init).joined()
         return initials.isEmpty ? "M" : initials.uppercased()
@@ -741,7 +730,6 @@ struct ProfileView: View {
             ("Morphe Intelligence", "claude ai brain api key anthropic intelligence smart answers"),
             ("Notifications", "reminders nudge streak recap board updates"),
             ("Who can see you", Self.whoCanSeeYouKeywords),
-            ("Your coach", "coach code join invite link"),
             ("Health", "apple health activity rings sleep sync workouts prefill check-in"),
             ("Your app", "appearance dark light mode theme accent color"),
             ("Your data", "export json download backup cloud morphe pro subscription plans"),
@@ -821,9 +809,9 @@ struct ProfileView: View {
                 } else {
                     settingsRow(
                         "Name",
-                        value: isCoach ? store.coachProfile.name : store.profileShowcase.displayName
+                        value: store.profileShowcase.displayName
                     ) {
-                        nameDraft = isCoach ? store.coachProfile.name : store.profileShowcase.displayName
+                        nameDraft = store.profileShowcase.displayName
                         isEditingName = true
                     }
                     if let next = store.nextNameChangeDate {
@@ -863,9 +851,9 @@ struct ProfileView: View {
                 } else {
                     settingsRow(
                         "Username",
-                        value: "@\(isCoach ? store.coachProfile.username : store.profileShowcase.username)"
+                        value: "@\(store.profileShowcase.username)"
                     ) {
-                        usernameDraft = isCoach ? store.coachProfile.username : store.profileShowcase.username
+                        usernameDraft = store.profileShowcase.username
                         isEditingUsername = true
                     }
                     if let next = store.nextUsernameChangeDate {
@@ -909,7 +897,7 @@ struct ProfileView: View {
             }
 
             settingsSection("How you train", keywords: Self.howYouTrainKeywords) {
-                if !isCoach {
+                if true {
                     // Weekly target — drives the consistency denominator on
                     // Progress; was user-set in onboarding then locked forever.
                     VStack(alignment: .leading, spacing: 8) {
@@ -1076,7 +1064,7 @@ struct ProfileView: View {
                 // Athlete-only network identity, dark with the feed. The
                 // block carries its own LEADING divider so an empty block
                 // can't leave doubles behind (audit 6, P2-5/P2-6).
-                if !isCoach, FeatureFlags.socialFeedEnabled {
+                if FeatureFlags.socialFeedEnabled {
                     Divider().overlay(MorpheTheme.strokeSubtle)
 
                     preferenceToggleRow(
@@ -1111,18 +1099,6 @@ struct ProfileView: View {
                 // Health card without it looked like the complete answer.)
                 // Only renders once a coach link exists (claimed invite
                 // or an existing coach thread) — no dead toggle.
-                if !isCoach, !store.linkedCoachUid.isEmpty {
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    preferenceToggleRow(
-                        title: "Share with coach",
-                        caption: "\(store.linkedCoachName.isEmpty ? "Your coach" : store.linkedCoachName) sees a live summary — streak, weekly volume, recent sessions, PRs, readiness. Turning it off deletes it instantly.",
-                        isOn: Binding(
-                            get: { store.coachShareEnabled },
-                            set: { store.setCoachShare(enabled: $0) }
-                        )
-                    )
-                }
                     // Blocked accounts — only renders when there's someone
                     // to manage; blocking happens from posts/comments.
                     if !store.blockedAccounts.isEmpty {
@@ -1151,60 +1127,6 @@ struct ProfileView: View {
 
             }
 
-            if !isCoach, store.linkedCoachUid.isEmpty {
-                settingsSection("Your coach", keywords: "coach code join invite link") {
-                    // A coach's invite code used to work ONLY during
-                    // onboarding — existing athletes had nowhere to type it.
-                    // (Athlete-only: a coach doesn't join a coach — the
-                    // section's own gate above enforces it; audit 15
-                    // collapsed the redundant inner copy of the condition.)
-                    Group {
-                        if isEnteringCoachCode {
-                            HStack(spacing: 8) {
-                                TextField("Coach code (e.g. 7KQ4TX)", text: $coachCodeDraft)
-                                    .textFieldStyle(MorpheFieldStyle())
-                                    .textInputAutocapitalization(.characters)
-                                    .autocorrectionDisabled()
-                                Button {
-                                    let code = coachCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    guard !code.isEmpty else { return }
-                                    isJoiningCoach = true
-                                    Task {
-                                        let ok = await store.claimCoachInvite(code: code)
-                                        isJoiningCoach = false
-                                        // Only clear the code and close on
-                                        // success — a failed claim must not
-                                        // make the user re-type a 6-char code
-                                        // (deferred-states pass 2026-09).
-                                        if ok {
-                                            coachCodeDraft = ""
-                                            isEnteringCoachCode = false
-                                        }
-                                    }
-                                } label: {
-                                    if isJoiningCoach {
-                                        ProgressView()
-                                    } else {
-                                        Text("Join")
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.accentText)
-                                .disabled(isJoiningCoach || coachCodeDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                                Button("Cancel") { isEnteringCoachCode = false }
-                                    .disabled(isJoiningCoach)
-                                    .buttonStyle(.plain)
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                            }
-                        } else {
-                            settingsRow("Coach code", value: "Have one? Join your coach", actionLabel: "Join") {
-                                isEnteringCoachCode = true
-                            }
-                        }
-                    }
-
-                }
-            }
 
             settingsSection("Health", keywords: "apple health activity rings sleep sync workouts prefill check-in") {
                     // Enabling walks through the system Health prompt; the
@@ -1224,7 +1146,7 @@ struct ProfileView: View {
                     // Read-only and honest about its limits: Apple never
                     // reveals whether a sleep READ was granted, so this just
                     // pre-fills when data comes back and stays quiet when not.
-                    if !isCoach {
+                    if true {
                         Divider().overlay(MorpheTheme.strokeSubtle)
 
                         preferenceToggleRow(
@@ -1660,82 +1582,6 @@ private struct AthleteProfileBody: View {
 
 /// Coach profile = coaching identity + a snapshot of the REAL roster
 /// (managed clients + live overview — same sources as the dashboard).
-private struct CoachProfileBody: View {
-    let store: MorpheAppStore
-    @State private var isEditingHeadline = false
-    @State private var headlineDraft = ""
-
-    var body: some View {
-        Group {
-            // PUBLIC IDENTITY first (profile audit): what a prospective
-            // client sees when they look this coach up — with the headline
-            // finally editable (it had no editor anywhere).
-            GlassCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Your Coach Card")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Text(store.coachProfile.specialty)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accentText)
-                    if isEditingHeadline {
-                        TextField("Your headline…", text: $headlineDraft, axis: .vertical)
-                            .lineLimit(1...3)
-                            .textFieldStyle(MorpheFieldStyle())
-                        HStack(spacing: 12) {
-                            Button("Save") {
-                                store.updateCoachHeadline(headlineDraft)
-                                isEditingHeadline = false
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.accentText)
-                            Button("Cancel") { isEditingHeadline = false }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.textMuted)
-                        }
-                        .frame(minHeight: 32)
-                    } else {
-                        Text(store.coachProfile.headline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                        Button("Edit Headline") {
-                            headlineDraft = store.coachProfile.headline
-                            isEditingHeadline = true
-                        }
-                        .buttonStyle(.plain)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.accentText)
-                        .frame(minHeight: 32)
-                    }
-                }
-            }
-
-            GlassCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Specialties")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    // Sports only — the training-style tokens were demo
-                    // seed data nobody picked (profile audit honesty fix);
-                    // real styles return when a real editor exists.
-                    WrapStack(spacing: 8) {
-                        ForEach(store.coachProfile.sports) { sport in
-                            SelectionToken(text: sport.shortTitle, color: MorpheTheme.color(for: sport))
-                        }
-                    }
-                }
-            }
-
-            // The coach's OWN training, demoted below the coaching identity
-            // (it led the screen before) — still real, still theirs.
-            if !store.currentAthleteWorkoutLogs.isEmpty {
-                AthleteRecentLogsCard(logs: Array(store.currentAthleteWorkoutLogs.prefix(3)))
-            }
-            // Coaching Tools prose card and the Schedule row are gone:
-            // onboarding copy doesn't live in settings, and Schedule already
-            // has its canonical one-tap door on the coach Home.
-        }
-    }
-}
 
 private struct SelectionToken: View {
     let text: String

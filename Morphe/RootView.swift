@@ -187,20 +187,10 @@ struct RootView: View {
                     TermsGateView()
                 } else {
                     AppShell {
-                        Group {
-                            // A coach account lands in the coach workspace; everyone
-                            // else gets the athlete experience. (Role comes from the
-                            // signed-in account once accounts are enabled.)
-                            if (FeatureFlags.accountsEnabled || FeatureFlags.multiUserEnabled),
-                               store.selectedRole == .coach {
-                                CoachLayout {
-                                    CoachDashboardView()
-                                }
-                            } else {
-                                ClientLayout {
-                                    ClientExperienceShell()
-                                }
-                            }
+                        // One account type (Lucas 2026-09): everyone gets the
+                        // full experience — create, share, track, train together.
+                        ClientLayout {
+                            ClientExperienceShell()
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
@@ -428,9 +418,7 @@ struct RootView: View {
         }
         // Reduce Motion: crossfades instead of moves/springs — the beats
         // still land, they just don't travel.
-        .animation(shellAnimation, value: store.selectedRole)
         .animation(shellAnimation, value: store.selectedClientTab)
-        .animation(shellAnimation, value: store.selectedCoachTab)
         .animation(shellAnimation, value: store.toastMessage)
         // The celebrations are the app's ONE emotional beat — the banner and
         // the full-screen stamp get a spring pop where everything else stays
@@ -732,7 +720,7 @@ private struct FloatingAIAgentButton: View {
         // that stops floating over bottom-right content on every tab.
         // A live Train session always compacts (screen space is training's).
         store.hasUsedAIAgent
-            || (store.selectedRole == .client && store.selectedClientTab == .train && store.isWorkoutSessionActive)
+            || (store.selectedClientTab == .train && store.isWorkoutSessionActive)
     }
 
     var body: some View {
@@ -797,7 +785,7 @@ private struct MorpheAIAgentSheet: View {
     @FocusState private var inputFocused: Bool
 
     private var messages: [ThreadMessage] {
-        store.selectedRole == .coach ? store.coachAIAgentConversation : store.athleteAIAgentConversation
+        store.athleteAIAgentConversation
     }
 
     private var trimmedPrompt: String {
@@ -1965,9 +1953,10 @@ private struct NetworkProfilePreviewSheet: View {
 
     let profile: NetworkProfilePreview
 
-    /// A client can book a coach (not another athlete, and not themselves).
+    /// Anyone can book a listed coach profile (not another athlete, and
+    /// not themselves).
     private var canBookThisCoach: Bool {
-        profile.role == .coach && store.selectedRole != .coach
+        profile.role == .coach
     }
 
     var body: some View {
@@ -2097,29 +2086,10 @@ private struct NetworkProfilePreviewSheet: View {
     }
 
     private var primaryActionTitle: String {
-        if store.selectedRole == .coach {
-            if store.coachClients.contains(where: { $0.name == profile.name }) {
-                return "Open Athlete"
-            }
-            return "Open Network"
-        }
-
-        return profile.role == .coach ? "Open Support" : "Open Network"
+        profile.role == .coach ? "Open Support" : "Open Network"
     }
 
     private func handlePrimaryAction() {
-        if store.selectedRole == .coach {
-            if let athlete = store.coachClients.first(where: { $0.name == profile.name }) {
-                store.openClientHub(athlete)
-                store.selectedCoachTab = .programs
-            } else {
-                // .network silently redirects to .messages in the store's
-                // didSet — route (and say) the truth directly (audit 5, P2).
-                store.selectedCoachTab = .messages
-                store.notify("Opened your coach inbox.")
-            }
-            return
-        }
 
         if profile.role == .coach {
             store.openCommunity(.contact)
@@ -2161,17 +2131,6 @@ private struct UniversalSearchSheet: View {
         }
 
         return Array(suggestions.prefix(6))
-    }
-
-    private var filteredCoachClients: [CoachClient] {
-        let clients = store.coachClients.filter { athlete in
-            normalizedQuery.isEmpty ||
-            athlete.name.lowercased().contains(normalizedQuery) ||
-            athlete.goal.lowercased().contains(normalizedQuery) ||
-            athlete.sport.rawValue.lowercased().contains(normalizedQuery)
-        }
-
-        return Array(clients.prefix(8))
     }
 
     private var filteredWorkouts: [WorkoutTemplate] {
@@ -2216,9 +2175,7 @@ private struct UniversalSearchSheet: View {
         VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Search",
-                    subtitle: store.selectedRole == .coach
-                        ? "Athletes, plans, and drills in one fast search."
-                        : "Accounts, workouts, and exercises without leaving the flow.",
+                    subtitle: "Accounts, workouts, and exercises without leaving the flow.",
                     titleSize: 16
                 )
 
@@ -2233,7 +2190,6 @@ private struct UniversalSearchSheet: View {
                     // one per keystroke.
                     .onChange(of: query) { _, newValue in
                         searchDebounce?.cancel()
-                        guard store.selectedRole != .coach else { return }
                         searchDebounce = Task {
                             try? await Task.sleep(nanoseconds: 350_000_000)
                             guard !Task.isCancelled else { return }
@@ -2283,134 +2239,91 @@ private struct UniversalSearchSheet: View {
 
     @ViewBuilder
     private var accountsResults: some View {
-        if store.selectedRole == .coach {
-            GlassCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Athlete Accounts")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
+        // REAL accounts (the username directory) — this tab used to show
+        // only demo "recommended connections" while searchAthletes sat
+        // wired to nothing. Debounced upstream; rows follow in place.
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Accounts")
+                    .font(.headline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
-                    ForEach(filteredCoachClients) { athlete in
-                        SearchResultRow(
-                            title: athlete.name,
-                            subtitle: "\(athlete.sport.rawValue) • \(athlete.goal)",
-                            detail: "Recovery \(athlete.recoveryScore.score) • Compliance \(athlete.complianceScore)%"
-                        ) {
-                            store.openClientHub(athlete)
-                            store.closeUniversalSearch()
-                            dismiss()
-                        }
-                    }
-
-                    if !filteredSuggestions.isEmpty {
-                        Divider()
-                            .overlay(MorpheTheme.stroke)
-
-                        Text("Suggested Connections")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textSecondary)
-
-                        ForEach(filteredSuggestions) { suggestion in
-                            SearchResultRow(
-                                title: suggestion.name,
-                                subtitle: suggestion.headline,
-                                detail: suggestion.mutualContext
-                            ) {
-                                store.openNetworkProfile(for: suggestion)
-                                store.closeUniversalSearch()
-                                dismiss()
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            // REAL accounts (the username directory) — this tab used to show
-            // only demo "recommended connections" while searchAthletes sat
-            // wired to nothing. Debounced upstream; rows follow in place.
-            GlassCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Accounts")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-
-                    if normalizedQuery.count < 2 {
-                        Text("Type at least two characters to search @usernames.")
+                if normalizedQuery.count < 2 {
+                    Text("Type at least two characters to search @usernames.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                } else if store.athleteSearchFailed {
+                    // Honest offline state (audit 13, P2): "no accounts
+                    // match" was a false claim when the query never
+                    // reached the directory. Same shape as the board's
+                    // failed + Retry.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Couldn't reach the account directory.")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textMuted)
-                    } else if store.athleteSearchFailed {
-                        // Honest offline state (audit 13, P2): "no accounts
-                        // match" was a false claim when the query never
-                        // reached the directory. Same shape as the board's
-                        // failed + Retry.
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Couldn't reach the account directory.")
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.textMuted)
-                            Button("Retry") {
-                                Task { await store.searchAthletes(query: query) }
-                            }
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentText)
+                        Button("Retry") {
+                            Task { await store.searchAthletes(query: query) }
                         }
-                    } else if store.athleteSearchResults.isEmpty {
-                        Text("No accounts match \"\(normalizedQuery)\" yet.")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                    } else {
-                        ForEach(store.athleteSearchResults) { hit in
-                            HStack(spacing: 12) {
-                                Text("@\(hit.username)")
-                                    .font(.subheadline.weight(.semibold).monospaced())
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                                Spacer()
-                                // Follow only exists where a feed can show
-                                // it (post-cut audit P1-4) — while the feed
-                                // is dark, the door is Message, not a write
-                                // into an invisible graph.
-                                if FeatureFlags.socialFeedEnabled {
-                                    Button(store.isFollowing(hit.uid) ? "Following" : "Follow") {
-                                        store.toggleFollow(uid: hit.uid, name: hit.username)
-                                    }
-                                    .buttonStyle(FilterChipStyle(
-                                        isSelected: store.isFollowing(hit.uid),
-                                        selectedColor: MorpheTheme.accent))
-                                    .accessibilityLabel(store.isFollowing(hit.uid)
-                                        ? "Unfollow \(hit.username)" : "Follow \(hit.username)")
-                                } else {
-                                    // …and the Message door has to actually
-                                    // exist (audit 5, P1-3: a found account
-                                    // was a dead end).
-                                    Button("Message") {
-                                        let uid = hit.uid
-                                        let username = hit.username
-                                        store.closeUniversalSearch()
-                                        dismiss()
-                                        Task {
-                                            if await store.startDirectChat(with: uid, name: username) {
-                                                store.openCommunity(.contact)
-                                            }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                    }
+                } else if store.athleteSearchResults.isEmpty {
+                    Text("No accounts match \"\(normalizedQuery)\" yet.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                } else {
+                    ForEach(store.athleteSearchResults) { hit in
+                        HStack(spacing: 12) {
+                            Text("@\(hit.username)")
+                                .font(.subheadline.weight(.semibold).monospaced())
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Spacer()
+                            // Follow only exists where a feed can show
+                            // it (post-cut audit P1-4) — while the feed
+                            // is dark, the door is Message, not a write
+                            // into an invisible graph.
+                            if FeatureFlags.socialFeedEnabled {
+                                Button(store.isFollowing(hit.uid) ? "Following" : "Follow") {
+                                    store.toggleFollow(uid: hit.uid, name: hit.username)
+                                }
+                                .buttonStyle(FilterChipStyle(
+                                    isSelected: store.isFollowing(hit.uid),
+                                    selectedColor: MorpheTheme.accent))
+                                .accessibilityLabel(store.isFollowing(hit.uid)
+                                    ? "Unfollow \(hit.username)" : "Follow \(hit.username)")
+                            } else {
+                                // …and the Message door has to actually
+                                // exist (audit 5, P1-3: a found account
+                                // was a dead end).
+                                Button("Message") {
+                                    let uid = hit.uid
+                                    let username = hit.username
+                                    store.closeUniversalSearch()
+                                    dismiss()
+                                    Task {
+                                        if await store.startDirectChat(with: uid, name: username) {
+                                            store.openCommunity(.contact)
                                         }
                                     }
-                                    .buttonStyle(FilterChipStyle(isSelected: false))
-                                    .accessibilityLabel("Message \(hit.username)")
                                 }
+                                .buttonStyle(FilterChipStyle(isSelected: false))
+                                .accessibilityLabel("Message \(hit.username)")
                             }
-                            .frame(minHeight: 44)
                         }
+                        .frame(minHeight: 44)
                     }
+                }
 
-                    if FeatureFlags.multiUserEnabled {
-                        ForEach(filteredSuggestions) { suggestion in
-                            SearchResultRow(
-                                title: suggestion.name,
-                                subtitle: suggestion.headline,
-                                detail: suggestion.mutualContext
-                            ) {
-                                store.openNetworkProfile(for: suggestion)
-                                store.closeUniversalSearch()
-                                dismiss()
-                            }
+                if FeatureFlags.multiUserEnabled {
+                    ForEach(filteredSuggestions) { suggestion in
+                        SearchResultRow(
+                            title: suggestion.name,
+                            subtitle: suggestion.headline,
+                            detail: suggestion.mutualContext
+                        ) {
+                            store.openNetworkProfile(for: suggestion)
+                            store.closeUniversalSearch()
+                            dismiss()
                         }
                     }
                 }
@@ -2422,7 +2335,7 @@ private struct UniversalSearchSheet: View {
     private var plansResults: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text(store.selectedRole == .coach ? "Programs + Playbooks" : "Workout Plans")
+                Text("Workout Plans")
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
 
@@ -2432,36 +2345,14 @@ private struct UniversalSearchSheet: View {
                         subtitle: "\(workout.sport.rawValue) • \(workout.goal)",
                         detail: "\(workout.durationMinutes) min • \(workout.difficulty.rawValue)"
                     ) {
-                        if store.selectedRole == .coach {
-                            store.selectProgramTemplate(workout)
-                            store.selectedCoachTab = .programs
-                            store.closeUniversalSearch()
-                            dismiss()
-                        } else {
-                            // Dismiss BEFORE queuing (audit 9, P2): the gate
-                            // dialog is hosted at the root, under this sheet.
-                            store.closeUniversalSearch()
-                            dismiss()
-                            store.openWorkoutTemplate(workout)
-                        }
+                        // Dismiss BEFORE queuing (audit 9, P2): the gate
+                        // dialog is hosted at the root, under this sheet.
+                        store.closeUniversalSearch()
+                        dismiss()
+                        store.openWorkoutTemplate(workout)
                     }
                 }
 
-                if store.selectedRole == .coach {
-                    ForEach(store.playbooks.filter { normalizedQuery.isEmpty || $0.title.lowercased().contains(normalizedQuery) || $0.philosophy.lowercased().contains(normalizedQuery) }.prefix(4)) { playbook in
-                        SearchResultRow(
-                            title: playbook.title,
-                            subtitle: playbook.philosophy,
-                            detail: "\(playbook.templates.count) templates • \(playbook.drills.count) drills"
-                        ) {
-                            store.selectedCoachTab = .programs
-                            store.selectedCoachBuildSection = .library
-                            store.notify("\(playbook.title) is ready in Build Library.")
-                            store.closeUniversalSearch()
-                            dismiss()
-                        }
-                    }
-                }
             }
         }
     }
@@ -2480,14 +2371,8 @@ private struct UniversalSearchSheet: View {
                         subtitle: exercise.musclesWorked,
                         detail: exercise.whyThisMatters
                     ) {
-                        if store.selectedRole == .coach {
-                            store.selectedCoachTab = .programs
-                            store.selectedCoachBuildSection = .library
-                            store.notify("\(exercise.name) is ready in Build Library.")
-                        } else {
-                            store.openMore(.library)
-                            store.selectedExercise = exercise
-                        }
+                        store.openMore(.library)
+                        store.selectedExercise = exercise
                         store.closeUniversalSearch()
                         dismiss()
                     }
@@ -2499,14 +2384,8 @@ private struct UniversalSearchSheet: View {
                         subtitle: "\(drill.sport.rawValue) • \(drill.skillCategory)",
                         detail: drill.whyThisMatters
                     ) {
-                        if store.selectedRole == .coach {
-                            store.selectedCoachTab = .programs
-                            store.selectedCoachBuildSection = .library
-                            store.notify("\(drill.name) is ready in Build Library.")
-                        } else {
-                            store.openMore(.library)
-                            store.notify("\(drill.name) opened from the library.")
-                        }
+                        store.openMore(.library)
+                        store.notify("\(drill.name) opened from the library.")
                         store.closeUniversalSearch()
                         dismiss()
                     }
@@ -2527,100 +2406,71 @@ private struct QuickAddSheet: View {
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Quick Add",
-                    subtitle: store.selectedRole == .coach
-                        ? "Capture the next coaching move fast."
-                        : "Log the moment, ask for help, or keep momentum moving."
+                    subtitle: "Log the moment, ask for help, or keep momentum moving."
                 )
 
-                if store.selectedRole == .coach {
-                    // Every tile leads to a real screen — no phantom CRM or
-                    // calendar writes that vanish on the next launch.
-                    QuickAddGridCard(items: [
-                        QuickAddItem(title: "Add Client", subtitle: "Create a managed athlete profile", systemImage: "person.crop.circle.badge.plus") {
-                            store.openAddClient()
+                QuickAddGridCard(items: [
+                    QuickAddItem(
+                        title: store.hasCompletedWorkoutFlow
+                            ? "Finish in Train"
+                            : (store.isWorkoutSessionActive
+                                ? "Resume Workout"
+                                : (store.isWorkoutLoggedToday ? "New Workout" : "Open Workout")),
+                        subtitle: store.hasCompletedWorkoutFlow
+                            ? "Your session is waiting to be logged"
+                            : (store.isWorkoutSessionActive
+                                ? "Jump back into Train"
+                                : (store.isWorkoutLoggedToday ? "Today's done — browse Discover" : "Start today's plan in Train")),
+                        systemImage: store.hasCompletedWorkoutFlow
+                            ? "checkmark.circle.fill"
+                            : (store.isWorkoutLoggedToday && !store.isWorkoutSessionActive ? "square.grid.2x2.fill" : "figure.run")
+                    ) {
+                        if store.hasCompletedWorkoutFlow {
+                            // ONE canonical Log button (audit E8): Train's
+                            // review flow owns the commit — this door
+                            // walks there instead of triple-wiring it.
+                            store.selectedClientTab = .train
+                        } else if store.isWorkoutSessionActive {
+                            // Resume = return to the live console. The old
+                            // path restarted the session and wiped every
+                            // logged set.
+                            store.selectedClientTab = .train
+                        } else if store.isWorkoutLoggedToday {
+                            // Today's workout is already in the books —
+                            // offer something new instead of a re-run.
+                            store.showDiscoverTab()
+                        } else {
+                            // Dismiss FIRST (audit 9, P2): the session-
+                            // work gate dialog is hosted at the root,
+                            // under this sheet.
                             dismissQuickAdd()
-                        },
-                        QuickAddItem(title: "Build Program", subtitle: "Open the program builder", systemImage: "checklist") {
-                            store.selectedCoachTab = .programs
-                            dismissQuickAdd()
-                        },
-                        // No "Join a Board" here (audit 13, P1): the weekly
-                        // board is a client surface — openCommunity sets
-                        // client-tab state the coach shell never reads, so
-                        // the tile was a door to nowhere.
-                        QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {
-                            // Two sheets can't co-present (audit 13, P1):
-                            // queue the AI cover exactly like the client
-                            // branch — onDismiss opens it when this sheet
-                            // has actually gone.
-                            store.pendingAIAgentOpen = true
-                            dismissQuickAdd()
+                            store.startTodayWorkout()
+                            return
                         }
-                    ])
-                } else {
-                    QuickAddGridCard(items: [
-                        QuickAddItem(
-                            title: store.hasCompletedWorkoutFlow
-                                ? "Finish in Train"
-                                : (store.isWorkoutSessionActive
-                                    ? "Resume Workout"
-                                    : (store.isWorkoutLoggedToday ? "New Workout" : "Open Workout")),
-                            subtitle: store.hasCompletedWorkoutFlow
-                                ? "Your session is waiting to be logged"
-                                : (store.isWorkoutSessionActive
-                                    ? "Jump back into Train"
-                                    : (store.isWorkoutLoggedToday ? "Today's done — browse Discover" : "Start today's plan in Train")),
-                            systemImage: store.hasCompletedWorkoutFlow
-                                ? "checkmark.circle.fill"
-                                : (store.isWorkoutLoggedToday && !store.isWorkoutSessionActive ? "square.grid.2x2.fill" : "figure.run")
-                        ) {
-                            if store.hasCompletedWorkoutFlow {
-                                // ONE canonical Log button (audit E8): Train's
-                                // review flow owns the commit — this door
-                                // walks there instead of triple-wiring it.
-                                store.selectedClientTab = .train
-                            } else if store.isWorkoutSessionActive {
-                                // Resume = return to the live console. The old
-                                // path restarted the session and wiped every
-                                // logged set.
-                                store.selectedClientTab = .train
-                            } else if store.isWorkoutLoggedToday {
-                                // Today's workout is already in the books —
-                                // offer something new instead of a re-run.
-                                store.showDiscoverTab()
-                            } else {
-                                // Dismiss FIRST (audit 9, P2): the session-
-                                // work gate dialog is hosted at the root,
-                                // under this sheet.
-                                dismissQuickAdd()
-                                store.startTodayWorkout()
-                                return
-                            }
-                            dismissQuickAdd()
-                        },
-                        // Named for where it actually lands (audit E9):
-                        // "Browse" implied Discover; this opens the library.
-                        QuickAddItem(title: "Exercise Library", subtitle: "Form guides by muscle group", systemImage: "books.vertical.fill") {
-                            // openMore selects the library panel — setting the
-                            // tab alone landed on whatever panel was last open.
-                            store.openMore(.library)
-                            dismissQuickAdd()
-                        },
-                        QuickAddItem(title: "Join a Board", subtitle: "Face the weekly leaderboard", systemImage: "trophy.fill") {
-                            // The BOARD pane owns the opt-in flow — this is
-                            // the door, not a silent join.
-                            store.openCommunity(.board)
-                            dismissQuickAdd()
-                        },
-                        QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {
-                            // Two sheets can't co-present: queue the AI
-                            // cover, dismiss this one, and the sheet's
-                            // onDismiss opens it — no guessed delay.
-                            store.pendingAIAgentOpen = true
-                            dismissQuickAdd()
-                        }
-                    ])
-                }
+                        dismissQuickAdd()
+                    },
+                    // Named for where it actually lands (audit E9):
+                    // "Browse" implied Discover; this opens the library.
+                    QuickAddItem(title: "Exercise Library", subtitle: "Form guides by muscle group", systemImage: "books.vertical.fill") {
+                        // openMore selects the library panel — setting the
+                        // tab alone landed on whatever panel was last open.
+                        store.openMore(.library)
+                        dismissQuickAdd()
+                    },
+                    QuickAddItem(title: "Join a Board", subtitle: "Face the weekly leaderboard", systemImage: "trophy.fill") {
+                        // The BOARD pane owns the opt-in flow — this is
+                        // the door, not a silent join.
+                        store.openCommunity(.board)
+                        dismissQuickAdd()
+                    },
+                    QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {
+                        // Two sheets can't co-present: queue the AI
+                        // cover, dismiss this one, and the sheet's
+                        // onDismiss opens it — no guessed delay.
+                        store.pendingAIAgentOpen = true
+                        dismissQuickAdd()
+                    }
+                ])
 
                 GlassCard {
                     VStack(alignment: .leading, spacing: 12) {
@@ -2630,7 +2480,7 @@ private struct QuickAddSheet: View {
                         // Honest copy: notes save to YOUR list (nothing is
                         // "attached to an athlete" — that claim was false),
                         // and an empty save no longer invents canned text.
-                        Text(store.selectedRole == .coach ? "Capture a coaching thought to act on later." : "Capture how you feel, what worked, or what to tell your coach later.")
+                        Text("Capture how you feel, what worked, or what to note for later.")
                             .foregroundStyle(MorpheTheme.textSecondary)
 
                         TextField("Type a quick note...", text: $quickNote)
@@ -2763,9 +2613,7 @@ private struct WelcomeExperienceView: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
-    private var isCoach: Bool {
-        store.selectedRole == .coach
-    }
+    private var isCoach: Bool { false }
 
     var body: some View {
         NavigationStack {

@@ -26,18 +26,6 @@ struct ClientLayout<Content: View>: View {
     }
 }
 
-struct CoachLayout<Content: View>: View {
-    let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
-    var body: some View {
-        content
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
 
 /// Thin L-brackets at the panel corners — the HUD signature. Neutral white so
 /// yellow stays reserved for actions and data.
@@ -1613,41 +1601,6 @@ struct QuickActionButton: View {
     }
 }
 
-struct RoleSwitcher: View {
-    let selectedRole: AppRole
-    let onSelect: (AppRole) -> Void
-
-    var body: some View {
-        HStack(spacing: 8) {
-            ForEach(AppRole.allCases) { role in
-                Button {
-                    onSelect(role)
-                } label: {
-                    VStack(spacing: 6) {
-                        Text(role.title)
-                            .font(.subheadline.weight(.semibold))
-                        Text(role.subtitle)
-                            .font(.caption2)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                    }
-                    .foregroundStyle(selectedRole == role ? .black : MorpheTheme.textPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(selectedRole == role ? MorpheTheme.accent : MorpheTheme.panelStrong)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                    .stroke(selectedRole == role ? MorpheTheme.stroke : MorpheTheme.strokeStrong.opacity(0.20), lineWidth: 1)
-                            )
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-}
 
 struct BottomTabNavigation<Item: MorpheTabItem & CaseIterable>: View where Item.AllCases == [Item] {
     let items: [Item]

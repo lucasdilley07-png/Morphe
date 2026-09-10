@@ -10,7 +10,6 @@ struct AuthView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var name = ""
-    @State private var role: UserRole = .athlete
 
     var body: some View {
         ZStack {
@@ -39,14 +38,6 @@ struct AuthView: View {
                                     TextField("Your name", text: $name)
                                         .textContentType(.name)
                                         .textFieldStyle(MorpheFieldStyle())
-                                }
-                                labeledField("I'm a...") {
-                                    Picker("Role", selection: $role) {
-                                        ForEach(UserRole.allCases) { option in
-                                            Text(option.title).tag(option)
-                                        }
-                                    }
-                                    .pickerStyle(.segmented)
                                 }
                             }
 
@@ -118,7 +109,7 @@ struct AuthView: View {
 
     private func submit() async {
         if isSignUp {
-            await store.signUp(email: email, password: password, role: role, name: name)
+            await store.signUp(email: email, password: password, role: .athlete, name: name)
         } else {
             await store.signIn(email: email, password: password)
         }

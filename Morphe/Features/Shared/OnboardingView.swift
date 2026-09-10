@@ -185,42 +185,19 @@ struct OnboardingFlowView: View {
         // notes). The steps that collected write-only data — gender, body
         // info, equipment, motivation, confidence, obstacle, theme, avatar —
         // were cut; ~2 minutes to first value.
-        // A coach account (role comes from sign-up) gets its own flow: identity
-        // → what they coach → how long they've coached → practice size →
-        // coaching outcome → workspace review. No athlete plan questions.
-        if store.onboardingDraft.accountType == .coach {
-            return [
-                .welcome,
-                .name,
-                .username,
-                .sport,
-                .coachExperience,
-                .coachPractice,
-                .equipment,
-                .goal,
-                .review
-            ]
-        }
         // FOUR steps to first value (was 13). Deferred fields keep their
         // Profile homes: gender, equipment, meal prep, injuries (chronic —
-        // acute pain has the mid-session flag), and the coach code moved
-        // to a Welcome link. Every deferred field defaults safely.
-        let solo: [OnboardingStep] = [
+        // acute pain has the mid-session flag). Every deferred field
+        // defaults safely. One account type — no role fork.
+        return [
             .welcome,
             .identity,
             .training,
             .week
         ]
-        guard FeatureFlags.multiUserEnabled else { return solo }
-        // Multi-user adds the athlete/coach choice right after the name.
-        var multiUser = solo
-        multiUser.insert(.accountType, at: 2)
-        return multiUser
     }
 
-    private var isCoachFlow: Bool {
-        store.onboardingDraft.accountType == .coach
-    }
+    private var isCoachFlow: Bool { false }
 
     private var currentStep: OnboardingStep {
         // Clamped: `steps` is computed and can shrink mid-flow (the coach
@@ -414,12 +391,6 @@ struct OnboardingFlowView: View {
             )
         case .gender:
             GenderStep()
-        case .accountType:
-            AccountTypeStep()
-        case .coachExperience:
-            CoachExperienceStep(selection: $store.onboardingDraft.coachTenure)
-        case .coachPractice:
-            CoachPracticeStep(selection: $store.onboardingDraft.coachRoster)
         case .goal:
             GoalSelectionStep()
         case .sport:
@@ -455,7 +426,6 @@ private enum OnboardingStep {
     case name
     case username
     case gender
-    case accountType
     case goal
     case sport
     case experience
@@ -464,8 +434,6 @@ private enum OnboardingStep {
     case mealPrep
     case injuryPain
     case coachCode
-    case coachExperience
-    case coachPractice
     case review
 }
 
@@ -819,74 +787,8 @@ private struct EquipmentStep: View {
     }
 }
 
-private struct CoachExperienceStep: View {
-    @Binding var selection: CoachTenureOption
 
-    var body: some View {
-        OnboardingCard(
-            title: "How long have you been coaching?",
-            subtitle: "Sets the tone of your workspace — nothing to prove, just where you are."
-        ) {
-            WrapStack(spacing: 8) {
-                ForEach(CoachTenureOption.allCases) { option in
-                    Button(option.rawValue) {
-                        selection = option
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: selection == option))
-                }
-            }
-        }
-    }
-}
 
-private struct CoachPracticeStep: View {
-    @Binding var selection: CoachRosterOption
-
-    var body: some View {
-        OnboardingCard(
-            title: "How many athletes do you work with?",
-            subtitle: "Your roster here starts empty and grows as athletes connect — this just sizes the workspace to your practice."
-        ) {
-            WrapStack(spacing: 8) {
-                ForEach(CoachRosterOption.allCases) { option in
-                    Button(option.rawValue) {
-                        selection = option
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: selection == option))
-                }
-            }
-        }
-    }
-}
-
-private struct AccountTypeStep: View {
-    @Environment(MorpheAppStore.self) private var store
-
-    var body: some View {
-        OnboardingCard(
-            title: "What kind of account are you creating?",
-            subtitle: "Choose the workspace that fits how you'll use Morphe."
-        ) {
-            VStack(alignment: .leading, spacing: 14) {
-                RoleSwitcher(selectedRole: store.onboardingDraft.accountType) { role in
-                    store.onboardingDraft.accountType = role
-                    Haptics.impact(.light)
-                }
-
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(store.onboardingDraft.accountType == .coach ? "Coach account: track your athletes, message them, and build their programs." : "Athlete account includes daily plans, workouts, progress, coach support, and community.")
-                            .foregroundStyle(MorpheTheme.textPrimary)
-
-                        Text("You are setting up the main identity Morphe should open into first.")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                }
-            }
-        }
-    }
-}
 
 private struct GoalSelectionStep: View {
     @Environment(MorpheAppStore.self) private var store

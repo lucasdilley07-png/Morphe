@@ -22,7 +22,6 @@
 		1B20F6002C40000100100042 /* MorpheStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100052 /* MorpheStore.swift */; };
 		1B20F6002C40000100100043 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100053 /* OnboardingView.swift */; };
 		1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100054 /* JournalScheduleView.swift */; };
-		1B20F6002C40000100100045 /* CoachDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100055 /* CoachDashboardView.swift */; };
 		1B20F6002C40000100100046 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100061 /* ProfileView.swift */; };
 		1B20F6002C40000100100047 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100062 /* MoreView.swift */; };
 		1B20F6002C40000100100048 /* WorkoutPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100063 /* WorkoutPersistence.swift */; };
@@ -127,7 +126,6 @@
 		1B20F6002C40000100100052 /* MorpheStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorpheStore.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100053 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100054 /* JournalScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalScheduleView.swift; sourceTree = "<group>"; };
-		1B20F6002C40000100100055 /* CoachDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachDashboardView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100061 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100062 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100063 /* WorkoutPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPersistence.swift; sourceTree = "<group>"; };
@@ -291,7 +289,6 @@
 		1B20F6002C40000100100059 /* Coach */ = {
 			isa = PBXGroup;
 			children = (
-				1B20F6002C40000100100055 /* CoachDashboardView.swift */,
 			);
 			path = Coach;
 			sourceTree = "<group>";
@@ -527,7 +524,6 @@
 				1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */,
 				1B20F6002C400001001000D0 /* FormCheckView.swift in Sources */,
 				1B20F6002C400001001000E0 /* CaptureView.swift in Sources */,
-				1B20F6002C40000100100045 /* CoachDashboardView.swift in Sources */,
 				1B20F6002C40000100100046 /* ProfileView.swift in Sources */,
 				1B20F6002C40000100100047 /* MoreView.swift in Sources */,
 				1B20F6002C40000100100048 /* WorkoutPersistence.swift in Sources */,

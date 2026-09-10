@@ -139,9 +139,6 @@ struct WorkoutView: View {
         }
         // Coaches train on the SAME page under the coach tab bar
         // (audit 19, P0).
-        .onChange(of: store.selectedCoachTab) { _, tab in
-            if tab == .train { store.consumePendingDebriefOpen() }
-        }
         // The store can't see this view's @State sheet stack — report it,
         // and treat every local dismissal as a consume site (audit 19, P1).
         .onChange(of: anyLocalSheetUp) { _, up in
@@ -612,10 +609,6 @@ struct WorkoutView: View {
         @Bindable var store = store
         return ScrollViewReader { proxy in
         ScrollView(showsIndicators: false) {
-            // Hourly-gated inside the store — visiting Train is the natural
-            // moment coach assignments refresh.
-            Color.clear.frame(height: 0)
-                .task { await store.refreshCoachAssignments() }
             VStack(alignment: .leading, spacing: 16) {
                 SectionTitleView(
                     title: "Train",
@@ -633,40 +626,6 @@ struct WorkoutView: View {
                 // Form Check lives inside the live session now (under the rest
                 // timer), matched to the exercise you're on — not here.
 
-                // Program delivery (Trainerize benchmark Tier 1): what the
-                // coach assigned, as runnable sessions — not notes. Rows
-                // disappear when a matching log lands (derived, no checkbox).
-                let pendingAssignments = store.pendingCoachAssignments
-                if !store.hasCompletedWorkoutFlow, !pendingAssignments.isEmpty {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("FROM YOUR COACH")
-                                .font(MorpheTheme.microLabel())
-                                .tracking(1.4)
-                                .foregroundStyle(MorpheTheme.accentText)
-
-                            ForEach(pendingAssignments.prefix(3)) { assignment in
-                                HStack(spacing: 12) {
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(assignment.workout.name)
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(MorpheTheme.textPrimary)
-                                        Text("\(assignment.scheduledFor.formatted(date: .abbreviated, time: .omitted)) · \(assignment.workout.exercises.count) exercise\(assignment.workout.exercises.count == 1 ? "" : "s")\(assignment.coachName.isEmpty ? "" : " · \(assignment.coachName)")")
-                                            .font(.caption)
-                                            .foregroundStyle(MorpheTheme.textSecondary)
-                                    }
-                                    Spacer(minLength: 8)
-                                    Button("Start") {
-                                        store.startAssignedWorkout(assignment)
-                                    }
-                                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                                    .frame(width: 96)
-                                    .accessibilityLabel("Start \(assignment.workout.name), assigned by your coach")
-                                }
-                            }
-                        }
-                    }
-                }
 
                 // Right after a finish, reviewing and logging IS the task —
                 // it leads the screen instead of hiding below planning cards.
@@ -1098,7 +1057,7 @@ struct WorkoutView: View {
                 return PostWorkoutPromptConfiguration(
                     title: currentWorkoutIsPinnedFavorite ? "Nice work. Keep the loop moving." : "This one is worth keeping close",
                     detail: currentWorkoutIsPinnedFavorite
-                        ? "You already trust this session. Share it or send a quick note to your coach before you close the day."
+                        ? "You already trust this session. Share it or send a quick note to your training partner before you close the day."
                         : "If this session landed well, pin it as a favorite or share the win before you move on.",
                     actions: currentWorkoutIsPinnedFavorite ? [.share, .messageCoach] : [.saveFavorite, .share]
                 )
@@ -1113,15 +1072,15 @@ struct WorkoutView: View {
             )
         }
 
-        // Solo: only offer what actually works. A real coach thread makes
-        // Message Coach real (it lands in Network → Contact); without one
-        // the button stays hidden — no card full of dead buttons.
+        // Solo: only offer what actually works. A real message thread makes
+        // Message real (it lands in Network → Contact); without one the
+        // button stays hidden — no card full of dead buttons.
         let hasCoachThread = !store.liveThreads.isEmpty
         guard !currentWorkoutIsPinnedFavorite else {
             guard hasCoachThread else { return nil }
             return PostWorkoutPromptConfiguration(
                 title: "Nice work. Close the loop.",
-                detail: "Send your coach a quick note while the session is still fresh.",
+                detail: "Send your training partner a quick note while the session is still fresh.",
                 actions: [.messageCoach]
             )
         }
@@ -1219,7 +1178,7 @@ private struct PostWorkoutPromptConfiguration: Hashable {
 }
 
 private enum PostWorkoutPromptAction: String, CaseIterable, Identifiable {
-    case messageCoach = "Message Coach"
+    case messageCoach = "Message"
     case share = "Share"
     case inviteBuddy = "Invite Buddy"
     case saveFavorite = "Save Favorite"
@@ -3198,18 +3157,6 @@ private struct DiscoverCatalogSection: View {
                     isCoach: $0.role == "coach"
                 )
             }
-        if store.selectedRole == .coach {
-            results += store.coachClients
-                .filter { $0.name.localizedCaseInsensitiveContains(q) }
-                .map {
-                    PersonResult(
-                        id: "athlete-\($0.id.uuidString)",
-                        name: $0.name,
-                        detail: "\($0.sport.rawValue) · \($0.fitnessLevel)",
-                        isCoach: false
-                    )
-                }
-        }
         return results
     }
 

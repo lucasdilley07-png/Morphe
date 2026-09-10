@@ -1300,44 +1300,6 @@ final class WorkoutSessionTests: XCTestCase {
         await store.flushPendingDebriefs()
     }
 
-    /// Audit 19, P0/P1: the debrief queue must serve the coach role (same
-    /// WorkoutView under CoachTab.train) and must not starve behind the
-    /// Progress sheet.
-    func testDebriefQueueServesCoachAndSurvivesProgressSheet() {
-        defer {
-            UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs")
-            UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs.pending")
-        }
-        let store = freshStore()
-        let exercise = store.allExercises.first!
-        store.createCustomWorkout(
-            name: "Queue Day",
-            sport: .strength,
-            items: [CustomWorkoutItem(exercise: exercise, sets: 1, reps: 5)]
-        )
-        store.startTodayWorkout()
-
-        // The Progress sheet is up at finish: the debrief must queue, not
-        // vanish — and its dismissal must raise it.
-        store.showProgressSheet = true
-        XCTAssertTrue(store.finishTrackedWorkoutSession())
-        XCTAssertFalse(store.showWorkoutDebrief, "queued behind the Progress sheet")
-        store.showProgressSheet = false
-        store.consumePendingDebriefOpen()
-        XCTAssertTrue(store.showWorkoutDebrief, "the dismissal is a consume site")
-        store.skipWorkoutDebrief()
-        store.cancelTrackedWorkoutSession()
-
-        // Coach role: same page, different tab enum — the guard must be
-        // role-aware.
-        store.selectedRole = .coach
-        store.selectedCoachTab = .train
-        store.debriefContextForTesting(title: "Coach Session")
-        store.pendingDebriefOpenForTesting()
-        store.consumePendingDebriefOpen()
-        XCTAssertTrue(store.showWorkoutDebrief, "coaches get the debrief too")
-        store.skipWorkoutDebrief()
-    }
 
     /// Frictionless-train wave: one spoken set parses in every phrasing the
     /// gym floor produces — and ambiguity stays unparsed rather than
@@ -2234,29 +2196,7 @@ final class BookingTests: XCTestCase {
                        "cancelling must reopen the freed slot")
     }
 
-    func testEarningsRollUpPaidVsPending() {
-        let store = MorpheAppStore() // demo incoming bookings: $200 paid, $60 pending
-        XCTAssertEqual(store.coachPaidEarnings, 200, accuracy: 0.001)
-        XCTAssertEqual(store.coachPendingEarnings, 60, accuracy: 0.001)
-    }
 
-    func testClientBookingDoesNotCountAsCoachRevenue() {
-        let store = MorpheAppStore()
-        let paidBefore = store.coachPaidEarnings
-        let pendingBefore = store.coachPendingEarnings
-        let requestsBefore = store.coachBookingRequests.count
-
-        let package = store.trainingPackages.first!
-        let slot = store.openAvailabilitySlots.first!
-        let booking = store.requestSessionBooking(package: package, slot: slot, coachName: "Coach K")
-
-        // My own outgoing booking shows in My Sessions...
-        XCTAssertTrue(store.myUpcomingBookings.contains { $0.id == booking.id })
-        // ...and must NOT appear as the coach's own incoming revenue or requests.
-        XCTAssertEqual(store.coachPaidEarnings, paidBefore, accuracy: 0.001)
-        XCTAssertEqual(store.coachPendingEarnings, pendingBefore, accuracy: 0.001)
-        XCTAssertEqual(store.coachBookingRequests.count, requestsBefore)
-    }
 
     func testFreshUserHasNoBookingsOrPackages() {
         let store = MorpheAppStore()
@@ -2265,21 +2205,8 @@ final class BookingTests: XCTestCase {
 
         XCTAssertTrue(store.sessionBookings.isEmpty, "a new account starts with no purchased sessions")
         XCTAssertTrue(store.trainingPackages.isEmpty, "a new account has no seeded coach offerings")
-        XCTAssertEqual(store.coachPaidEarnings, 0)
     }
 
-    func testFreshCoachHasNoSeededRoster() {
-        let store = MorpheAppStore()
-        store.onboardingDraft.name = "Riley"
-        store.completeOnboarding()
-
-        // The coach side must not inherit the demo roster (the "every user is
-        // Lucas" bug class, coach edition).
-        XCTAssertTrue(store.coachClients.isEmpty, "a new coach must not inherit demo clients")
-        XCTAssertTrue(store.messageThreads.isEmpty)
-        XCTAssertTrue(store.upcomingSessions.isEmpty)
-        XCTAssertEqual(store.coachOverview.atRiskClients, 0)
-    }
 }
 
 /// Locks in the tolerant profile decode — a schema change must never demote a
@@ -2315,12 +2242,12 @@ final class AuthTests: XCTestCase {
         return auth
     }
 
-    func testSignUpCreatesAccountWithRole() async throws {
+    func testSignUpCreatesAccount() async throws {
         let auth = freshAuth()
-        let user = try await auth.signUp(email: "Coach@Morphe.app", password: "secret123",
-                                         role: .coach, displayName: "Coach Sam")
-        XCTAssertEqual(user.role, .coach)
-        XCTAssertEqual(user.email, "coach@morphe.app", "email is normalized")
+        let user = try await auth.signUp(email: "Sam@Morphe.app", password: "secret123",
+                                         role: .athlete, displayName: "Sam")
+        XCTAssertEqual(user.role, .athlete, "one account type — everyone signs up as an athlete")
+        XCTAssertEqual(user.email, "sam@morphe.app", "email is normalized")
         XCTAssertFalse(user.id.isEmpty)
         XCTAssertEqual(auth.currentUser?.id, user.id, "sign-up signs the user in")
         auth.reset()
@@ -3315,23 +3242,6 @@ final class Audit4RegressionTests: XCTestCase {
         XCTAssertNil(store.selectedPlanBReason)
     }
 
-    func testCoachIdentityKeepsOwnSportsAcrossRelaunch() {
-        let store = MorpheAppStore()
-        store.onboardingDraft.name = "Sam"
-        store.onboardingDraft.accountType = .coach
-        store.onboardingDraft.selectedSports = [.soccer]
-        store.completeOnboarding()
-        // The workspace addresses the user with the coach title by design.
-        XCTAssertEqual(store.coachProfile.name, "Coach Sam")
-        XCTAssertTrue(store.coachProfile.specialty.contains("Soccer"), store.coachProfile.specialty)
-
-        let reloaded = MorpheAppStore()
-        XCTAssertEqual(reloaded.coachProfile.name, "Coach Sam",
-                       "a relaunch must not revert the workspace to demo Coach Marcus")
-        XCTAssertTrue(reloaded.coachProfile.specialty.contains("Soccer"),
-                      "specialty must come from the coach's own sports, not the demo athlete's: \(reloaded.coachProfile.specialty)")
-        XCTAssertEqual(reloaded.coachProfile.activeClients, 0)
-    }
 
     func testDeleteCustomWorkoutPerformsAndCleansSavedCards() {
         let store = freshStore()
@@ -3454,19 +3364,6 @@ final class CleanupRegressionTests: XCTestCase {
         XCTAssertNil(store.pendingWorkoutChange)
     }
 
-    // F4 — a coach who picked no sports gets an honest specialty, not the
-    // demo athlete's Boxing/Strength.
-    func testCoachWithNoSportsGetsHonestSpecialty() {
-        let store = MorpheAppStore()
-        store.onboardingDraft.name = "Dana"
-        store.onboardingDraft.accountType = .coach
-        store.onboardingDraft.selectedSports = []
-        store.completeOnboarding()
-
-        XCTAssertEqual(store.coachProfile.specialty, "Personal coaching")
-        XCTAssertFalse(store.coachProfile.specialty.contains("Boxing"),
-                       "a sportless coach must never inherit the demo athlete's sports")
-    }
 }
 
 /// Form Check Phase 2 — the cue analyzer is a pure function of rep metrics, so
@@ -4639,7 +4536,7 @@ final class AppointmentTests: XCTestCase {
         XCTAssertEqual(store.appointments.map(\.title), ["Check-in", "Leg Day"],
                        "the schedule stays sorted by date")
         XCTAssertEqual(added?.status, Appointment.statusScheduled)
-        XCTAssertEqual(added?.createdByRole, store.selectedRole.rawValue)
+        XCTAssertEqual(added?.createdByRole, AppRole.client.rawValue)
         XCTAssertEqual(store.upcomingAppointments.count, 2)
 
         // A blank title is rejected, not silently saved.
@@ -5491,47 +5388,8 @@ final class CoachShareTests: XCTestCase {
         )
     }
 
-    func testSummaryDerivesFromRealLogsOnly() {
-        let store = signedInStore()
-        store.workoutLogs.append(log(for: store, title: "Push Day", daysAgo: 0, reps: [8, 8], weights: [135, 145]))
-        store.workoutLogs.append(log(for: store, title: "Pull Day", daysAgo: 8, reps: [8], weights: [95]))
 
-        let summary = store.makeCoachShareSummary(coachUid: "uid-coach")
 
-        XCTAssertEqual(summary.coachUid, "uid-coach", "the named reader is the consent boundary")
-        XCTAssertEqual(summary.totalWorkouts, 2)
-        XCTAssertEqual(summary.weeklyWorkouts, 1, "only this week's sessions count as weekly")
-        XCTAssertEqual(summary.recentSessions.first?.title, "Push Day")
-        XCTAssertEqual(summary.recentSessions.first?.sets, 2)
-        XCTAssertEqual(summary.recentSessions.first?.feedback, "Just right")
-        XCTAssertEqual(summary.recentPRs.first?.name, "Bench Press")
-        XCTAssertEqual(summary.recentPRs.first?.weight ?? 0, 145, accuracy: 0.001)
-        XCTAssertEqual(summary.readinessNote, "", "no check-in today means NO readiness claim")
-    }
-
-    func testConsentToggleRequiresALinkedCoach() {
-        let store = signedInStore()
-        store.setCoachShare(enabled: true)
-        XCTAssertFalse(store.coachShareEnabled, "no linked coach, no consent flip")
-
-        store.linkedCoachUid = "uid-coach"
-        store.linkedCoachName = "Marcus"
-        store.setCoachShare(enabled: true)
-        XCTAssertTrue(store.coachShareEnabled)
-
-        store.setCoachShare(enabled: false)
-        XCTAssertFalse(store.coachShareEnabled, "revocation flips off cleanly")
-    }
-
-    func testLinkedCoachSurvivesRelaunch() {
-        let store = signedInStore()
-        store.linkedCoachUid = "uid-coach"
-        store.linkedCoachName = "Marcus"
-
-        let reloaded = MorpheAppStore()
-        XCTAssertEqual(reloaded.linkedCoachUid, "uid-coach")
-        XCTAssertEqual(reloaded.linkedCoachName, "Marcus")
-    }
 }
 
 // MARK: - Backlog batch (series, mid-session editing, first week, roster)
@@ -5619,28 +5477,6 @@ final class BacklogBatchTests: XCTestCase {
         XCTAssertNil(store.firstWeekSteps, "the arc never nags past week one")
     }
 
-    func testClaimedRosterArchiveIsViewStateOnly() {
-        let store = freshStore()
-        let claimed = ManagedClient(
-            id: "CODE01", coachUid: "uid-coach", coachName: "Marcus",
-            name: "Alex", status: .claimed, claimedByUid: "uid-alex"
-        )
-        let unclaimed = ManagedClient(
-            id: "CODE02", coachUid: "uid-coach", coachName: "Marcus",
-            name: "Sam", status: .unclaimed
-        )
-        store.managedClients = [claimed, unclaimed]
-
-        store.archiveClaimedClient(unclaimed)
-        XCTAssertTrue(store.archivedClientCodes.isEmpty, "unclaimed clients use real delete, not archive")
-
-        store.archiveClaimedClient(claimed)
-        XCTAssertEqual(store.visibleManagedClients.map(\.id), ["CODE02"], "archived leaves the view")
-        XCTAssertEqual(store.managedClients.count, 2, "the underlying data is untouched")
-
-        store.restoreArchivedClients()
-        XCTAssertEqual(store.visibleManagedClients.count, 2)
-    }
 }
 
 // MARK: - First-party telemetry (milestone instrumentation)
@@ -6257,25 +6093,7 @@ final class AIParityTests: XCTestCase {
                        "a form ask is a form-guide ask — Lessons used to hijack it")
     }
 
-    func testCoachActionLayerNavigates() {
-        let store = freshStore()
-        store.selectedRole = .coach
-        XCTAssertTrue(store.sendAIAgentPrompt("open athletes"))
-        // .athletes has no mounted page — the clamp lands on Build, where
-        // the roster tools actually live (coach audit: blank-screen fix).
-        XCTAssertEqual(store.selectedCoachTab, .programs)
-    }
 
-    func testCoachAttentionAnswerDerivesFromRealLogs() {
-        let store = freshStore()
-        store.selectedRole = .coach
-        XCTAssertTrue(store.sendAIAgentPrompt("who needs attention today?"),
-                      "the attention ask is an answered action, not template chat")
-        let reply = store.coachAIAgentConversation.last?.text ?? ""
-        // Whatever the roster state, the reply must be the derived shape —
-        // never the old canned "highest-friction athlete" template.
-        XCTAssertFalse(reply.contains("highest-friction athlete"))
-    }
 
     func testDerivedInsightsAreHonestAboutData() {
         let store = freshStore()
@@ -6758,35 +6576,7 @@ final class LaunchHardeningTests: XCTestCase {
         XCTAssertEqual(MorpheAppStore.parsedBodyWeightLb("77 kg", assumedUnit: .pounds) ?? 0, 169.75, accuracy: 0.1)
     }
 
-    func testLiveCoachOverviewDerivesFromRealRoster() {
-        let store = makeStore()
-        XCTAssertEqual(store.liveCoachOverview.activeClients, 0)
-        XCTAssertEqual(store.liveCoachOverview.weeklySummary, "Add your first client to start coaching.")
 
-        let fresh = ManagedClient(id: "C1", coachUid: "u", coachName: "Coach",
-                                  name: "Alex", logs: [])
-        store.managedClients = [fresh]
-        let overview = store.liveCoachOverview
-        XCTAssertEqual(overview.activeClients, 1)
-        XCTAssertEqual(overview.atRiskClients, 1, "no logged session ever = quiet 7+ days")
-        XCTAssertTrue(overview.alerts.first?.contains("Alex") == true)
-    }
-
-    func testAssignWorkoutStampsTheManagedClient() {
-        let store = makeStore()
-        store.managedClients = [
-            ManagedClient(id: "C2", coachUid: "u", coachName: "Coach", name: "Sam")
-        ]
-        let template = WorkoutTemplate(
-            name: "Foundation Strength", type: "Strength", sport: .strength,
-            goal: "", difficulty: .moderate, durationMinutes: 40,
-            equipment: "", exercises: [], notes: "", coachNote: "")
-        store.assignWorkout(template, to: store.managedClients[0],
-                            on: .now, scheduledLabel: "Friday 5:00 PM")
-        XCTAssertTrue(store.managedClients[0].notes.contains("Assigned Foundation Strength for Friday 5:00 PM."),
-                      "the assignment lands in the client doc, not a dead demo array")
-        XCTAssertEqual(store.managedClients[0].assignments.first?.workout.name, "Foundation Strength")
-    }
 
     func testRemindersMasterTogglePersists() {
         let store = makeStore()
@@ -6801,216 +6591,12 @@ final class LaunchHardeningTests: XCTestCase {
 
 // MARK: - Program delivery (Trainerize benchmark Tier 1)
 
-@MainActor
-final class ProgramDeliveryTests: XCTestCase {
-    final class SpyManagedService: ManagedClientSyncing {
-        var pushedAssignments: [(code: String, assignments: [WorkoutAssignment])] = []
-        var claimedDocs: [ManagedClient] = []
-        func push(_ client: ManagedClient) {}
-        func fetchMine(coachUid: String) async -> [ManagedClient]? { nil }
-        func claim(code: String, athleteUid: String, athleteName: String) async -> Result<ManagedClient, ManagedClientClaimError> { .failure(.network) }
-        func pushAssignments(code: String, assignments: [WorkoutAssignment]) {
-            pushedAssignments.append((code, assignments))
-        }
-        func fetchClaimed(athleteUid: String) async -> [ManagedClient]? { claimedDocs }
-        func delete(code: String) {}
-        func pushCoachShare(_ summary: CoachShareSummary, athleteUid: String) {}
-        func clearCoachShare(athleteUid: String) {}
-        func fetchCoachShare(athleteUid: String) async -> CoachShareSummary? { nil }
-    }
-
-    private func makeStore(service: SpyManagedService) -> MorpheAppStore {
-        WorkoutFilePersistence().clear()
-        ProfileFilePersistence().clear()
-        let store = MorpheAppStore(managedClientService: service)
-        store.onboardingDraft.name = "Sarah"
-        store.completeOnboarding()
-        store.authUser = AppUser(id: "me-uid", email: "s@m.app", role: .athlete,
-                                 displayName: "Sarah", createdAt: .now)
-        return store
-    }
-
-    private var sampleTemplate: WorkoutTemplate {
-        WorkoutTemplate(
-            name: "Coach Special", type: "Strength", sport: .strength,
-            goal: "Get stronger", difficulty: .moderate, durationMinutes: 40,
-            equipment: "", exercises: [
-                WorkoutExercise(id: "e1", exerciseLibraryID: "lib1", name: "Goblet Squat",
-                                muscleGroup: .legs, sets: "3", reps: "10",
-                                difficulty: .moderate, formCue: "", intensityLabel: "")
-            ], notes: "", coachNote: "")
-    }
-
-    func testAssignDeliversFullRunnableSnapshot() {
-        let service = SpyManagedService()
-        let store = makeStore(service: service)
-        store.managedClients = [
-            ManagedClient(id: "C1", coachUid: "me-uid", coachName: "Coach",
-                          name: "Alex", status: .claimed, claimedByUid: "alex-uid")
-        ]
-        store.assignWorkout(sampleTemplate, to: store.managedClients[0],
-                            on: .now, scheduledLabel: "Friday 5 PM")
-
-        XCTAssertEqual(service.pushedAssignments.count, 1)
-        let delivered = service.pushedAssignments[0]
-        XCTAssertEqual(delivered.code, "C1")
-        XCTAssertEqual(delivered.assignments.first?.workout.name, "Coach Special")
-        XCTAssertEqual(delivered.assignments.first?.workout.exercises.first?.name, "Goblet Squat",
-                       "the FULL runnable workout rides the doc — not a name-only note")
-        XCTAssertTrue(store.managedClients[0].notes.contains("Assigned Coach Special"),
-                      "the paper-trail note still lands")
-    }
-
-    func testAssignmentsCapAtTwenty() {
-        let service = SpyManagedService()
-        let store = makeStore(service: service)
-        store.managedClients = [
-            ManagedClient(id: "C2", coachUid: "me-uid", coachName: "Coach", name: "Sam")
-        ]
-        for _ in 0..<25 {
-            store.assignWorkout(sampleTemplate, to: store.managedClients[0],
-                                on: .now, scheduledLabel: "x")
-        }
-        XCTAssertEqual(store.managedClients[0].assignments.count, 20,
-                       "the doc's JSON stays bounded")
-    }
-
-    func testAthleteSeesPendingAndCompletionDerivesFromLogs() async {
-        let service = SpyManagedService()
-        let store = makeStore(service: service)
-        store.linkedCoachUid = "coach-uid"
-        let assignment = WorkoutAssignment(
-            workout: PartyWorkoutSnapshot(template: sampleTemplate),
-            scheduledFor: .now, scheduledLabel: "today", coachName: "Coach Q")
-        service.claimedDocs = [
-            ManagedClient(id: "C3", coachUid: "coach-uid", coachName: "Coach Q",
-                          name: "Sarah", status: .claimed, claimedByUid: "me-uid",
-                          assignments: [assignment])
-        ]
-
-        await store.refreshCoachAssignments(force: true)
-        XCTAssertEqual(store.pendingCoachAssignments.count, 1, "delivered and waiting")
-
-        // Logging the coach's workout completes it — derived, no checkbox.
-        XCTAssertTrue(store.logPastWorkout(
-            template: sampleTemplate, on: .now, durationMinutes: 40,
-            entries: [(name: "Goblet Squat", sets: 3, reps: 10, weight: 40, muscleGroup: nil)]))
-        XCTAssertTrue(store.isAssignmentDone(assignment))
-        XCTAssertTrue(store.pendingCoachAssignments.isEmpty,
-                      "a matching real log clears the row")
-    }
-
-    func testStartAssignedWorkoutRunsTheCoachsExactSession() {
-        let service = SpyManagedService()
-        let store = makeStore(service: service)
-        let assignment = WorkoutAssignment(
-            workout: PartyWorkoutSnapshot(template: sampleTemplate),
-            scheduledFor: .now, coachName: "Coach Q")
-
-        store.startAssignedWorkout(assignment)
-        XCTAssertTrue(store.isWorkoutSessionActive)
-        XCTAssertEqual(store.currentWorkout.name, "Coach Special")
-        XCTAssertEqual(store.currentWorkout.exercises.first?.name, "Goblet Squat")
-        XCTAssertEqual(store.currentWorkout.type, "Coach Assignment")
-    }
-}
 
 // MARK: - Tier 2: honest coach analytics + feed identity
 
-@MainActor
-final class CoachTier2Tests: XCTestCase {
-    private func makeStore() -> MorpheAppStore {
-        WorkoutFilePersistence().clear()
-        ProfileFilePersistence().clear()
-        let store = MorpheAppStore()
-        store.onboardingDraft.name = "Sarah"
-        store.completeOnboarding()
-        store.authUser = AppUser(id: "coach-uid", email: "c@m.app", role: .coach,
-                                 displayName: "Sarah", createdAt: .now)
-        store.selectedRole = .coach
-        return store
-    }
-
-    func testCoachHeadlineDerivesFromRealRoster() {
-        let store = makeStore()
-        XCTAssertTrue(store.feedAuthorHeadline.hasPrefix("Coach"),
-                      "the byline leads with the role")
-        XCTAssertFalse(store.feedAuthorHeadline.contains("athlete"),
-                       "zero clients = no practice-size claim")
-        store.managedClients = [
-            ManagedClient(id: "C1", coachUid: "coach-uid", coachName: "S", name: "A"),
-            ManagedClient(id: "C2", coachUid: "coach-uid", coachName: "S", name: "B")
-        ]
-        XCTAssertTrue(store.feedAuthorHeadline.contains("2 athletes"),
-                      "the byline states the REAL roster count")
-    }
-
-    func testLiveAnalyticsStayHonestWithoutSharedData() {
-        let store = makeStore()
-        XCTAssertEqual(store.liveCoachAnalytics.rosterCount, 0)
-
-        var client = ManagedClient(id: "C3", coachUid: "coach-uid", coachName: "S",
-                                   name: "Alex", status: .claimed, claimedByUid: "alex-uid")
-        client.assignments = [WorkoutAssignment(
-            workout: PartyWorkoutSnapshot(template: WorkoutTemplate(
-                name: "W", type: "t", sport: .strength, goal: "", difficulty: .moderate,
-                durationMinutes: 30, equipment: "", exercises: [], notes: "", coachNote: "")),
-            scheduledFor: Calendar.current.date(byAdding: .day, value: -3, to: .now)!)]
-        store.managedClients = [client]
-
-        let analytics = store.liveCoachAnalytics
-        XCTAssertEqual(analytics.rosterCount, 1)
-        XCTAssertEqual(analytics.quietCount, 1, "no sessions anywhere = quiet")
-        XCTAssertNil(analytics.assignmentCompletion,
-                     "no shared progress = NO completion claim, not a fake 0%")
-    }
-
-    func testAwaitingReplyCountsThreadsWhereClientSpokeLast() {
-        let store = makeStore()
-        store.managedClients = [
-            ManagedClient(id: "C4", coachUid: "coach-uid", coachName: "S", name: "A")
-        ]
-        store.liveThreads = [
-            MessageThreadSummary(id: "t1", coachUid: "coach-uid", athleteUid: "a1",
-                                 coachName: "S", athleteName: "A",
-                                 lastMessage: "hey coach", lastSender: "a1"),
-            MessageThreadSummary(id: "t2", coachUid: "coach-uid", athleteUid: "a2",
-                                 coachName: "S", athleteName: "B",
-                                 lastMessage: "done!", lastSender: "coach-uid")
-        ]
-        XCTAssertEqual(store.liveCoachAnalytics.awaitingReply, 1,
-                       "only the thread where the client spoke last is a real reply queue item")
-    }
-}
 
 // MARK: - Tier 3 slice: rule-based session generation
 
-@MainActor
-final class SessionGenerationTests: XCTestCase {
-    func testGeneratorMatchesSportAndSkipsRecentAssignments() {
-        WorkoutFilePersistence().clear()
-        ProfileFilePersistence().clear()
-        let store = MorpheAppStore()
-        store.onboardingDraft.name = "Sarah"
-        store.completeOnboarding()
-
-        var client = ManagedClient(id: "G1", coachUid: "u", coachName: "C",
-                                   name: "Alex", sport: .strength)
-        guard let first = store.generateSessionTemplate(for: client) else {
-            return XCTFail("a seeded library must generate")
-        }
-        XCTAssertEqual(first.sport, .strength, "the pick matches the client's sport")
-
-        // Assign it — the next generation must pick something fresh when
-        // the library has an alternative.
-        client.assignments = [WorkoutAssignment(
-            workout: PartyWorkoutSnapshot(template: first), scheduledFor: .now)]
-        if let second = store.generateSessionTemplate(for: client),
-           store.workoutTemplates.filter({ $0.sport == .strength }).count > 1 {
-            XCTAssertNotEqual(second.name, first.name, "fresh-first, not a repeat")
-        }
-    }
-}
 
 // MARK: - Fresh-audit fix wave
 

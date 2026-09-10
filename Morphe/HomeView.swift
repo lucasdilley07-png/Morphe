@@ -154,38 +154,6 @@ struct HomeView: View {
                         onViewProgress: { store.openProgress() },
                         onTrainAgain: { store.selectedClientTab = .train }
                     )
-                } else if let assignment = store.dueCoachAssignment {
-                    // The coach's session leads Today (speed audit S0-2):
-                    // the one-tap Start used to launch the generic plan
-                    // over the coach's assignment.
-                    GlassCard {
-                        VStack(alignment: .center, spacing: 12) {
-                            Text("FROM \(assignment.coachName.isEmpty ? "YOUR COACH" : assignment.coachName.uppercased())")
-                                .font(MorpheTheme.microLabel())
-                                .tracking(1.4)
-                                .foregroundStyle(MorpheTheme.accentText)
-                            Text(assignment.workout.name)
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            Text("\(assignment.workout.exercises.count) exercise\(assignment.workout.exercises.count == 1 ? "" : "s") · scheduled \(assignment.scheduledFor.formatted(date: .abbreviated, time: .shortened))")
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                            Button("Start Coach's Session") {
-                                store.startAssignedWorkout(assignment)
-                            }
-                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                            Button("Train My Own Plan Instead") {
-                                store.startTodayWorkout()
-                            }
-                            .buttonStyle(.plain)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
-                        }
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
-                    }
                 } else {
                     // Loss framing over gain framing — but only for a REAL
                     // streak (2+ days, training day, nothing logged). The
@@ -248,8 +216,7 @@ struct HomeView: View {
                 // strip once week one is over (Lucas, 2026-08-16) — profile
                 // info first, then the staged session, then the plan tools.
                 if store.firstWeekSteps == nil,
-                   !store.isPlannedRestDay, !store.isWorkoutLoggedToday,
-                   store.dueCoachAssignment == nil {
+                   !store.isPlannedRestDay, !store.isWorkoutLoggedToday {
                     nextMoveCard
                 }
 
@@ -340,25 +307,21 @@ struct HomeView: View {
                     }
                 }
 
-                // Schedule (and Coach when linked) leads the planning
-                // half of Today (Lucas 2026-08-28): what's booked outranks
-                // the what-if tools below.
-                // REAL coach messaging: only exists once a coach link is real
-                // (the athlete claimed an invite and a thread exists). An
-                // athlete without a coach never sees a Coach card at all.
-                // When Coach and Schedule are BOTH present they share one
-                // slim two-column row so Today doesn't end in a stack of
-                // look-alike link-cards.
+                // Schedule (and Messages when threads exist) leads the
+                // planning half of Today (Lucas 2026-08-28): what's booked
+                // outranks the what-if tools below. When Messages and
+                // Schedule are BOTH present they share one slim two-column
+                // row so Today doesn't end in a stack of look-alike cards.
                 if store.liveThreads.isEmpty {
                     scheduleLinkCard
                 } else {
                     HStack(alignment: .top, spacing: 12) {
                         HomeLinkTile(
                             systemImage: "bubble.left.and.bubble.right.fill",
-                            title: "Coach",
+                            title: "Messages",
                             detail: coachTileDetail,
                             detailIsMuted: coachTileDetailIsMuted,
-                            accessibilityLabel: "Coach messages"
+                            accessibilityLabel: "Messages"
                         ) {
                             // Deep-link into the one messaging surface —
                             // Network → Contact auto-opens a lone thread.
@@ -466,7 +429,6 @@ struct HomeView: View {
         .refreshable {
             await store.refreshThreads()
             await store.refreshAppointments()
-            await store.refreshCoachAssignments(force: true)
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
         .sheet(isPresented: $showAppointments) {
@@ -596,7 +558,7 @@ private struct MorpheAsksCard: View {
         // rest-day-specific reply, and hiding it made that the one answer
         // Morphe never spoke back.
         if let reply = store.morpheAskReplyToday, !store.isWorkoutLoggedToday,
-           store.dueCoachAssignment == nil {
+           true {
             GlassCard {
                 VStack(spacing: 10) {
                     HStack(spacing: 8) {
@@ -1081,7 +1043,7 @@ private struct EveningCheckInCard: View {
     var body: some View {
         let _ = store.morpheAskRefresh
         if let reply = store.eveningCheckInReplyToday, !store.isWorkoutLoggedToday,
-           !store.isPlannedRestDay, store.dueCoachAssignment == nil,
+           !store.isPlannedRestDay,
            !store.isWorkoutSessionActive {
             GlassCard {
                 VStack(spacing: 10) {

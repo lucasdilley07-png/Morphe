@@ -61,7 +61,7 @@ struct QRConnectSheet: View {
     private var myCodeCard: some View {
         GlassCard {
             VStack(spacing: 14) {
-                Text(store.selectedRole == .coach ? store.coachProfile.name : store.clientProfile.name)
+                Text(store.clientProfile.name)
                     .font(.title3.weight(.bold))
                     .foregroundStyle(MorpheTheme.textPrimary)
 
@@ -81,7 +81,7 @@ struct QRConnectSheet: View {
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
 
-                let handle = store.selectedRole == .coach ? store.coachProfile.username : store.profileShowcase.username
+                let handle = store.profileShowcase.username
                 if !handle.isEmpty {
                     Text("@\(handle)")
                         .font(.subheadline.weight(.semibold))
