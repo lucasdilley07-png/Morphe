@@ -6,6 +6,7 @@ struct HomeView: View {
     @State private var showSupport = false
     @State private var showAppointments = false
     @State private var showEmptyLibraryNotice = false
+    @State private var showLayoutEditor = false
     @State private var greetingAppeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -278,11 +279,6 @@ struct HomeView: View {
                     }
                 }
 
-                if store.todayExperienceTier >= 2, let insight = store.primaryAthletePatternInsight {
-                    HomePatternInsightCard(insight: insight) {
-                        store.openProgress()
-                    }
-                }
 
                 if !store.isWorkoutLoggedToday {
                     if store.minimumWinModeEnabled {
@@ -307,115 +303,30 @@ struct HomeView: View {
                     }
                 }
 
-                // Schedule (and Messages when threads exist) leads the
-                // planning half of Today (Lucas 2026-08-28): what's booked
-                // outranks the what-if tools below. When Messages and
-                // Schedule are BOTH present they share one slim two-column
-                // row so Today doesn't end in a stack of look-alike cards.
-                if store.liveThreads.isEmpty {
-                    scheduleLinkCard
-                } else {
-                    HStack(alignment: .top, spacing: 12) {
-                        HomeLinkTile(
-                            systemImage: "bubble.left.and.bubble.right.fill",
-                            title: "Messages",
-                            detail: messagesTileDetail,
-                            detailIsMuted: messagesTileDetailIsMuted,
-                            accessibilityLabel: "Messages"
-                        ) {
-                            // Deep-link into the one messaging surface —
-                            // Network → Contact auto-opens a lone thread.
-                            store.openCommunity(.contact)
-                        }
-
-                        HomeLinkTile(
-                            systemImage: "calendar.badge.clock",
-                            title: "Schedule",
-                            detail: scheduleTileDetail,
-                            detailIsMuted: store.upcomingAppointments.isEmpty,
-                            accessibilityLabel: "Schedule"
-                        ) {
-                            showAppointments = true
-                        }
-                    }
+                // Personalization phase 3: the four cards below the hero
+                // render in the USER'S order; hidden cards skip. Morphe
+                // may PROPOSE an order from real usage — the chip below —
+                // but never rearranges on its own.
+                if let suggestion = store.homeLayoutSuggestion {
+                    HomeLayoutSuggestionChip(suggestion: suggestion)
+                }
+                ForEach(store.visibleHomeCards) { card in
+                    homeCard(card)
                 }
 
-                if store.todayExperienceTier >= 1 || store.minimumWinModeEnabled {
-                HomeExpandableSection(
-                    title: "If plans change",
-                    subtitle: adjustmentSubtitle,
-                    isExpanded: $showAdjustments
-                ) {
-                    if !store.isWorkoutLoggedToday,
-                       (store.minimumWinModeEnabled || store.selectedConfidence == .notConfident || store.selectedPlanBReason != nil) {
-                        SmartPlanAdjustmentCard(adjustment: store.currentPlanAdjustment)
-                    }
-
-                    // Derived from real logs/check-ins when they exist; the
-                    // static tips are only the zero-data fallback (AI-6).
-                    AIInsightCard(insight: store.isWorkoutLoggedToday ? store.derivedProgressInsight : store.derivedTodayInsight)
-
-                    if !store.isWorkoutLoggedToday {
-                        DailyCheckInPlannerCard(
-                            isComplete: store.didCompleteQuickCheckIn,
-                            selectedConfidence: store.selectedConfidence,
-                            selectedReason: store.selectedPlanBReason,
-                            onSelectConfidence: { store.selectConfidence($0) },
-                            onSelectPlanB: { reason in
-                                store.choosePlanB(reason)
-                            },
-                            onMinimumWin: { store.activateMinimumWinMode() },
-                            onShorterWorkout: { store.applyWorkoutAdjustment(.shorter) },
-                            onRecoveryWorkout: { store.applyWorkoutAdjustment(.recovery) },
-                            onReschedule: { store.applyWorkoutAdjustment(.reschedule) }
-                        )
-                    }
+                Button {
+                    showLayoutEditor = true
+                } label: {
+                    Label("Edit Today's layout", systemImage: "slider.horizontal.3")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .frame(minHeight: 32)
+                        .contentShape(Rectangle())
                 }
-                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Edit Today's layout — reorder or hide cards")
 
-                if store.todayExperienceTier >= 2 {
-                HomeExpandableSection(
-                    title: "Support & progress",
-                    subtitle: supportSubtitle,
-                    isExpanded: $showSupport
-                ) {
-                    // One context card (audit D7): plan + phase + goal in a
-                    // single read instead of three look-alike link cards.
-                    WorkoutPlanByCoachMiniCard(
-                        profile: store.clientProfile,
-                        phase: store.profileShowcase.currentPhase,
-                        goalLine: upcomingGoalText
-                    )
 
-                    if FeatureFlags.multiUserEnabled {
-                        PartnerWorkoutCard(
-                            partners: store.workoutPartners,
-                            selectedPartner: store.selectedWorkoutPartner,
-                            selectedMode: store.selectedPartnerWorkoutMode,
-                            isEnabled: store.partnerWorkoutEnabled,
-                            plan: store.currentPartnerWorkoutPlan,
-                            onSelectPartner: { store.selectWorkoutPartner($0) },
-                            onSelectMode: { store.selectPartnerWorkoutMode($0) },
-                            onToggleEnabled: { store.togglePartnerWorkout($0) }
-                        )
-                    }
-
-                    if store.minimumWinModeEnabled || store.selectedPlanBReason != nil || store.streakProtected {
-                        StreakProtectionCard(
-                            isProtected: store.streakProtected,
-                            options: MorpheDemoContent.streakProtectionOptions
-                        ) { option in
-                            store.protectStreak(with: option)
-                        }
-                    }
-
-                    MorpheHubEntryCard {
-                        store.openProgress()
-                    } openMore: {
-                        store.openMore(.scores)
-                    }
-                }
-                }
 
             }
             .padding(.horizontal, 20)
@@ -431,6 +342,12 @@ struct HomeView: View {
             await store.refreshAppointments()
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
+        .sheet(isPresented: $showLayoutEditor) {
+            HomeLayoutEditorSheet()
+                .environment(store)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $showAppointments) {
             NavigationStack {
                 ClientAppointmentsView()
@@ -467,6 +384,7 @@ struct HomeView: View {
 
     private var scheduleLinkCard: some View {
         Button {
+            store.noteHomeCardUsed(.schedule)
             showAppointments = true
         } label: {
             GlassCard {
@@ -499,6 +417,146 @@ struct HomeView: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Schedule")
+    }
+
+
+    /// One reorderable Today card (personalization phase 3). Tier gates
+    /// stay inside each card — hiding is the user's; earning is the app's.
+    @ViewBuilder
+    private func homeCard(_ card: HomeCardID) -> some View {
+        switch card {
+        case .insight:
+            if store.todayExperienceTier >= 2, let insight = store.primaryAthletePatternInsight {
+                HomePatternInsightCard(insight: insight) {
+                    store.noteHomeCardUsed(.insight)
+                    store.openProgress()
+                }
+            }
+        case .schedule:
+            // Schedule (and Messages when threads exist) leads the
+            // planning half of Today (Lucas 2026-08-28): what's booked
+            // outranks the what-if tools below. When Messages and
+            // Schedule are BOTH present they share one slim two-column
+            // row so Today doesn't end in a stack of look-alike cards.
+            if store.liveThreads.isEmpty {
+                scheduleLinkCard
+            } else {
+                HStack(alignment: .top, spacing: 12) {
+                    HomeLinkTile(
+                        systemImage: "bubble.left.and.bubble.right.fill",
+                        title: "Messages",
+                        detail: messagesTileDetail,
+                        detailIsMuted: messagesTileDetailIsMuted,
+                        accessibilityLabel: "Messages"
+                    ) {
+                        // Deep-link into the one messaging surface —
+                        // Network → Contact auto-opens a lone thread.
+                        store.noteHomeCardUsed(.schedule)
+                        store.openCommunity(.contact)
+                    }
+
+                    HomeLinkTile(
+                        systemImage: "calendar.badge.clock",
+                        title: "Schedule",
+                        detail: scheduleTileDetail,
+                        detailIsMuted: store.upcomingAppointments.isEmpty,
+                        accessibilityLabel: "Schedule"
+                    ) {
+                        store.noteHomeCardUsed(.schedule)
+                        showAppointments = true
+                    }
+                }
+            }
+        case .adjustments:
+            if store.todayExperienceTier >= 1 || store.minimumWinModeEnabled {
+            HomeExpandableSection(
+                title: "If plans change",
+                subtitle: adjustmentSubtitle,
+                isExpanded: Binding(
+                    get: { showAdjustments },
+                    set: { expanded in
+                        if expanded, !showAdjustments { store.noteHomeCardUsed(.adjustments) }
+                        showAdjustments = expanded
+                    }
+                )
+            ) {
+                if !store.isWorkoutLoggedToday,
+                   (store.minimumWinModeEnabled || store.selectedConfidence == .notConfident || store.selectedPlanBReason != nil) {
+                    SmartPlanAdjustmentCard(adjustment: store.currentPlanAdjustment)
+                }
+
+                // Derived from real logs/check-ins when they exist; the
+                // static tips are only the zero-data fallback (AI-6).
+                AIInsightCard(insight: store.isWorkoutLoggedToday ? store.derivedProgressInsight : store.derivedTodayInsight)
+
+                if !store.isWorkoutLoggedToday {
+                    DailyCheckInPlannerCard(
+                        isComplete: store.didCompleteQuickCheckIn,
+                        selectedConfidence: store.selectedConfidence,
+                        selectedReason: store.selectedPlanBReason,
+                        onSelectConfidence: { store.selectConfidence($0) },
+                        onSelectPlanB: { reason in
+                            store.choosePlanB(reason)
+                        },
+                        onMinimumWin: { store.activateMinimumWinMode() },
+                        onShorterWorkout: { store.applyWorkoutAdjustment(.shorter) },
+                        onRecoveryWorkout: { store.applyWorkoutAdjustment(.recovery) },
+                        onReschedule: { store.applyWorkoutAdjustment(.reschedule) }
+                    )
+                }
+            }
+            }
+        case .support:
+            if store.todayExperienceTier >= 2 {
+            HomeExpandableSection(
+                title: "Support & progress",
+                subtitle: supportSubtitle,
+                isExpanded: Binding(
+                    get: { showSupport },
+                    set: { expanded in
+                        if expanded, !showSupport { store.noteHomeCardUsed(.support) }
+                        showSupport = expanded
+                    }
+                )
+            ) {
+                // One context card (audit D7): plan + phase + goal in a
+                // single read instead of three look-alike link cards.
+                WorkoutPlanByCoachMiniCard(
+                    profile: store.clientProfile,
+                    phase: store.profileShowcase.currentPhase,
+                    goalLine: upcomingGoalText
+                )
+
+                if FeatureFlags.multiUserEnabled {
+                    PartnerWorkoutCard(
+                        partners: store.workoutPartners,
+                        selectedPartner: store.selectedWorkoutPartner,
+                        selectedMode: store.selectedPartnerWorkoutMode,
+                        isEnabled: store.partnerWorkoutEnabled,
+                        plan: store.currentPartnerWorkoutPlan,
+                        onSelectPartner: { store.selectWorkoutPartner($0) },
+                        onSelectMode: { store.selectPartnerWorkoutMode($0) },
+                        onToggleEnabled: { store.togglePartnerWorkout($0) }
+                    )
+                }
+
+                if store.minimumWinModeEnabled || store.selectedPlanBReason != nil || store.streakProtected {
+                    StreakProtectionCard(
+                        isProtected: store.streakProtected,
+                        options: MorpheDemoContent.streakProtectionOptions
+                    ) { option in
+                        store.protectStreak(with: option)
+                    }
+                }
+
+                MorpheHubEntryCard {
+                    store.openProgress()
+                } openMore: {
+                    store.openMore(.scores)
+                }
+            }
+            }
+        }
     }
 
     private var messagesTileDetail: String {
@@ -862,6 +920,127 @@ private struct ComebackCard: View {
 
 /// The Morphe character: the brand M on the gold plate — the same mark
 /// as the app icon, no invented persona.
+/// The suggest-then-confirm chip (personalization phase 3): Morphe
+/// proposes a layout change from real usage and waits for a yes — it
+/// never silently rearranges (the Start-menu lesson).
+private struct HomeLayoutSuggestionChip: View {
+    @Environment(MorpheAppStore.self) private var store
+    let suggestion: (move: HomeCardID, above: HomeCardID)
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                    Text("MORPHE NOTICED")
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(2)
+                        .foregroundStyle(MorpheTheme.accentText)
+                }
+                Text("You use \(suggestion.move.title) a lot — move it above \(suggestion.above.title)?")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 10) {
+                    Button("Move it up") {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            store.applyHomeLayoutSuggestion()
+                        }
+                        Haptics.selection()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(minHeight: 32)
+                    Button("Keep it as is") {
+                        store.declineHomeLayoutSuggestion()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(minHeight: 32)
+                }
+            }
+        }
+    }
+}
+
+/// Drag-to-reorder + show/hide editor for Today's cards (phase 3).
+/// Writes flow through setStyleChoice, so choices persist and recomputes
+/// never touch them.
+struct HomeLayoutEditorSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(store.homeCardLayout) { card in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(card.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Text(card.detail)
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            Spacer()
+                            Button {
+                                var hidden = store.styleProfile.homeHiddenCards
+                                if hidden.contains(card.rawValue) {
+                                    hidden.removeAll { $0 == card.rawValue }
+                                } else {
+                                    hidden.append(card.rawValue)
+                                }
+                                store.setStyleChoice(homeHiddenCards: hidden)
+                                Haptics.selection()
+                            } label: {
+                                Image(systemName: store.styleProfile.homeHiddenCards.contains(card.rawValue) ? "eye.slash" : "eye")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(store.styleProfile.homeHiddenCards.contains(card.rawValue) ? MorpheTheme.textMuted : MorpheTheme.accentText)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(store.styleProfile.homeHiddenCards.contains(card.rawValue) ? "Show \(card.title)" : "Hide \(card.title)")
+                        }
+                        .listRowBackground(MorpheTheme.inkAlt)
+                    }
+                    .onMove { from, to in
+                        var order = store.homeCardLayout
+                        order.move(fromOffsets: from, toOffset: to)
+                        store.setStyleChoice(homeCardOrder: order.map(\.rawValue))
+                        Haptics.selection()
+                    }
+                } header: {
+                    Text("Drag to reorder — the greeting and workout hero stay on top.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                } footer: {
+                    Text("Morphe may suggest an order based on how you use Today. It asks first — it never rearranges on its own.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(MorpheTheme.ink)
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Today's layout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(MorpheTheme.accentText)
+                }
+            }
+        }
+    }
+}
+
 struct MorpheCharacterBadge: View {
     @Environment(MorpheAppStore.self) private var store
 

@@ -1005,6 +1005,48 @@ struct MorpheCharacter: Identifiable, Equatable {
     }
 }
 
+/// The reorderable units of the Today page (personalization phase 3).
+/// The greeting + workout hero stay fixed — they're the state machinery
+/// (rest day, streak, comeback). Everything below is the user's layout.
+enum HomeCardID: String, CaseIterable, Identifiable {
+    case insight
+    case schedule
+    case adjustments
+    case support
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .insight: return "Pattern insight"
+        case .schedule: return "Schedule & messages"
+        case .adjustments: return "If plans change"
+        case .support: return "Support & progress"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .insight: return "What your logs say about how you train"
+        case .schedule: return "Booked sessions and conversations"
+        case .adjustments: return "Lighter days, plan B, and honest outs"
+        case .support: return "Plan context, partners, and your scores"
+        }
+    }
+
+    static let defaultOrder: [HomeCardID] = [.insight, .schedule, .adjustments, .support]
+
+    /// Resolves a persisted order: unknown ids drop, missing ids append
+    /// in default order — the page can never lose a card to bad data.
+    static func resolvedOrder(from raw: [String]) -> [HomeCardID] {
+        var order = raw.compactMap(HomeCardID.init(rawValue:))
+        for card in defaultOrder where !order.contains(card) {
+            order.append(card)
+        }
+        return order
+    }
+}
+
 /// The personalization spine (Lucas 2026-09-09): one profile that holds
 /// what Morphe has LEARNED about this user (mined from logs + debriefs,
 /// never invented) and what the user has CHOSEN (identity + surface
@@ -1037,6 +1079,14 @@ struct UserStyleProfile: Codable, Equatable {
     var characterID: String = "morphe"
     /// User-arranged Today card order; empty means the default layout.
     var homeCardOrder: [String] = []
+    /// Cards the user hid from Today (raw HomeCardID values).
+    var homeHiddenCards: [String] = []
+    /// How often each Today card gets used (learned half — feeds the
+    /// suggest-then-confirm layout proposal, never silent rearranging).
+    var homeCardTaps: [String: Int] = [:]
+    /// Suggestion pair keys ("cardA>cardB") the user already declined —
+    /// a declined proposal never re-asks.
+    var declinedLayoutSuggestions: [String] = []
 
     var updatedAt: Date = .distantPast
 
@@ -1057,6 +1107,9 @@ struct UserStyleProfile: Codable, Equatable {
         soundPack = ((try? c.decodeIfPresent(String.self, forKey: .soundPack)) ?? nil) ?? "classic"
         characterID = ((try? c.decodeIfPresent(String.self, forKey: .characterID)) ?? nil) ?? "morphe"
         homeCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .homeCardOrder)) ?? nil) ?? []
+        homeHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .homeHiddenCards)) ?? nil) ?? []
+        homeCardTaps = ((try? c.decodeIfPresent([String: Int].self, forKey: .homeCardTaps)) ?? nil) ?? [:]
+        declinedLayoutSuggestions = ((try? c.decodeIfPresent([String].self, forKey: .declinedLayoutSuggestions)) ?? nil) ?? []
         updatedAt = ((try? c.decodeIfPresent(Date.self, forKey: .updatedAt)) ?? nil) ?? .distantPast
     }
 

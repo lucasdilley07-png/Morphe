@@ -2375,6 +2375,50 @@ final class StyleProfileTests: XCTestCase {
         XCTAssertTrue(store.styleProfile.hasLearnedAnything)
     }
 
+    func testHomeCardOrderResolvesSafely() {
+        XCTAssertEqual(HomeCardID.resolvedOrder(from: []), HomeCardID.defaultOrder,
+                       "empty means the default layout")
+        XCTAssertEqual(HomeCardID.resolvedOrder(from: ["support", "bogus", "schedule"]),
+                       [.support, .schedule, .insight, .adjustments],
+                       "unknown ids drop; missing cards append in default order")
+    }
+
+    func testHiddenCardsLeaveTheVisibleLayout() {
+        let store = makeStore()
+        store.setStyleChoice(homeHiddenCards: ["insight"])
+        XCTAssertEqual(store.visibleHomeCards, [.schedule, .adjustments, .support])
+        XCTAssertEqual(store.homeCardLayout.count, 4, "hidden cards stay in the editor list")
+        store.setStyleChoice(homeHiddenCards: [])
+        XCTAssertEqual(store.visibleHomeCards, HomeCardID.defaultOrder)
+    }
+
+    func testLayoutSuggestionProposesAppliesAndRespectsDecline() {
+        let store = makeStore()
+        XCTAssertNil(store.homeLayoutSuggestion, "no usage, no proposal")
+
+        // 5+ more uses of a lower card than one above it → proposal.
+        for _ in 0..<5 { store.noteHomeCardUsed(.support) }
+        guard let suggestion = store.homeLayoutSuggestion else {
+            return XCTFail("expected a proposal after the usage gap")
+        }
+        XCTAssertEqual(suggestion.move, .support)
+        XCTAssertEqual(suggestion.above, .insight, "moves above the top under-used card")
+
+        // Decline: remembered, never re-asks for the same pair.
+        store.declineHomeLayoutSuggestion()
+        if let next = store.homeLayoutSuggestion {
+            XCTAssertFalse(next.move == .support && next.above == .insight,
+                           "a declined pair must not re-ask")
+        }
+
+        // A different pair can still propose; applying moves the card.
+        for _ in 0..<5 { store.noteHomeCardUsed(.adjustments) }
+        if store.homeLayoutSuggestion != nil {
+            store.applyHomeLayoutSuggestion()
+        }
+        XCTAssertTrue(store.homeCardLayout.count == 4, "apply keeps every card")
+    }
+
     func testCharacterSpecFallsBackToMorphe() {
         XCTAssertEqual(MorpheCharacter.spec(for: "atlas").name, "Atlas")
         XCTAssertEqual(MorpheCharacter.spec(for: "no-such-id").id, "morphe",

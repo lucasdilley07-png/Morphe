@@ -383,11 +383,74 @@ final class MorpheAppStore {
     /// Explicit customization writes (pickers land here; recomputes never
     /// touch these fields).
     func setStyleChoice(soundPack: String? = nil, characterID: String? = nil,
-                        homeCardOrder: [String]? = nil) {
+                        homeCardOrder: [String]? = nil, homeHiddenCards: [String]? = nil) {
         if let soundPack { styleProfile.soundPack = soundPack }
         if let characterID { styleProfile.characterID = characterID }
         if let homeCardOrder { styleProfile.homeCardOrder = homeCardOrder }
+        if let homeHiddenCards { styleProfile.homeHiddenCards = homeHiddenCards }
         styleProfile.updatedAt = .now
+        persistLocalProfile()
+    }
+
+    // MARK: Today layout (personalization phase 3)
+
+    /// The user's card order, resolved safely (unknowns drop, missing
+    /// append) — the single source both Today and the editor render from.
+    var homeCardLayout: [HomeCardID] {
+        HomeCardID.resolvedOrder(from: styleProfile.homeCardOrder)
+    }
+
+    /// Layout minus the hidden cards — what Today actually shows.
+    var visibleHomeCards: [HomeCardID] {
+        homeCardLayout.filter { !styleProfile.homeHiddenCards.contains($0.rawValue) }
+    }
+
+    /// Lightweight usage signal: a card's primary action fired. Feeds the
+    /// layout proposal — counts only, no timestamps, stays on the profile.
+    func noteHomeCardUsed(_ card: HomeCardID) {
+        styleProfile.homeCardTaps[card.rawValue, default: 0] += 1
+        persistLocalProfile()
+    }
+
+    /// Suggest-then-confirm (phase 3 doctrine: Morphe PROPOSES an order
+    /// from real usage; it never silently rearranges). A proposal appears
+    /// when a visible card has been used 5+ more times than a visible
+    /// card above it, and that exact pair hasn't been declined.
+    var homeLayoutSuggestion: (move: HomeCardID, above: HomeCardID)? {
+        let cards = visibleHomeCards
+        guard cards.count >= 2 else { return nil }
+        let taps = styleProfile.homeCardTaps
+        for lowerIndex in 1..<cards.count {
+            let lower = cards[lowerIndex]
+            for upperIndex in 0..<lowerIndex {
+                let upper = cards[upperIndex]
+                let key = "\(lower.rawValue)>\(upper.rawValue)"
+                if taps[lower.rawValue, default: 0] - taps[upper.rawValue, default: 0] >= 5,
+                   !styleProfile.declinedLayoutSuggestions.contains(key) {
+                    return (move: lower, above: upper)
+                }
+            }
+        }
+        return nil
+    }
+
+    /// User said yes: move the card directly above the target, keep
+    /// everything else stable.
+    func applyHomeLayoutSuggestion() {
+        guard let suggestion = homeLayoutSuggestion else { return }
+        var order = homeCardLayout
+        order.removeAll { $0 == suggestion.move }
+        let index = order.firstIndex(of: suggestion.above) ?? 0
+        order.insert(suggestion.move, at: index)
+        setStyleChoice(homeCardOrder: order.map(\.rawValue))
+        showToast("\(suggestion.move.title) moved up.")
+    }
+
+    /// User said no: remember the exact pair so it never re-asks.
+    func declineHomeLayoutSuggestion() {
+        guard let suggestion = homeLayoutSuggestion else { return }
+        styleProfile.declinedLayoutSuggestions.append(
+            "\(suggestion.move.rawValue)>\(suggestion.above.rawValue)")
         persistLocalProfile()
     }
 
