@@ -306,6 +306,87 @@ final class MorpheAppStore {
         return decoded
     }()
 
+    // MARK: - Personalization spine (Lucas 2026-09-09)
+
+    /// What Morphe has learned + what the user chose. Derived facts are
+    /// recomputed from real logs/debriefs after every save; chosen fields
+    /// survive recomputes untouched. Persisted in the profile snapshot
+    /// (and therefore the cloud backup).
+    private(set) var styleProfile = UserStyleProfile()
+
+    /// Recomputes the LEARNED half of the style profile from real data.
+    /// Honesty gates: below the minimums every derived fact stays nil/empty
+    /// — Morphe never speaks about a pattern it hasn't actually seen.
+    func refreshStyleProfile() {
+        var profile = styleProfile
+        let logs = currentAthleteWorkoutLogs
+
+        if workoutDebriefs.count >= 2 {
+            let counts = Dictionary(grouping: workoutDebriefs, by: \.intensity)
+            profile.preferredIntensity = counts.max {
+                ($0.value.count, $0.key.rawValue) < ($1.value.count, $1.key.rawValue)
+            }?.key.rawValue
+            profile.averageRating = Double(workoutDebriefs.map(\.rating).reduce(0, +))
+                / Double(workoutDebriefs.count)
+        } else {
+            profile.preferredIntensity = nil
+            profile.averageRating = nil
+        }
+        profile.recentChangeRequests = workoutDebriefs.suffix(8)
+            .map(\.changeRequest)
+            .filter { !$0.isEmpty }
+            .suffix(5)
+            .reversed()
+
+        if logs.count >= 3 {
+            var exerciseCounts: [String: Int] = [:]
+            for log in logs {
+                for exercise in log.exercises {
+                    exerciseCounts[exercise.name, default: 0] += 1
+                }
+            }
+            profile.favoriteExercises = exerciseCounts
+                .sorted { ($0.value, $1.key) > ($1.value, $0.key) }
+                .prefix(5).map(\.key)
+
+            let hours = logs.map { Calendar.current.component(.hour, from: $0.completedAt) }.sorted()
+            profile.preferredTrainingHour = hours[hours.count / 2]
+
+            let durations = logs.map(\.durationMinutes).sorted()
+            profile.typicalDurationMinutes = durations[durations.count / 2]
+
+            let cutoff = Calendar.current.date(byAdding: .day, value: -28, to: .now) ?? .now
+            let recent = logs.filter { $0.completedAt >= cutoff }.count
+            profile.weeklyCadence = (Double(recent) / 28.0 * 7.0 * 10).rounded() / 10
+        } else {
+            profile.favoriteExercises = []
+            profile.preferredTrainingHour = nil
+            profile.typicalDurationMinutes = nil
+            profile.weeklyCadence = nil
+        }
+
+        profile.updatedAt = .now
+        guard profile != styleProfile else { return }
+        styleProfile = profile
+        persistLocalProfile()
+    }
+
+    /// Explicit customization writes (pickers land here; recomputes never
+    /// touch these fields).
+    func setStyleChoice(soundPack: String? = nil, characterID: String? = nil,
+                        homeCardOrder: [String]? = nil) {
+        if let soundPack { styleProfile.soundPack = soundPack }
+        if let characterID { styleProfile.characterID = characterID }
+        if let homeCardOrder { styleProfile.homeCardOrder = homeCardOrder }
+        styleProfile.updatedAt = .now
+        persistLocalProfile()
+    }
+
+    /// Snapshot restore path.
+    func applyStyleProfile(_ profile: UserStyleProfile) {
+        styleProfile = profile
+    }
+
     /// Raised by finishTrackedWorkoutSession; the Train page presents the
     /// debrief sheet while true.
     var showWorkoutDebrief = false
@@ -342,6 +423,7 @@ final class MorpheAppStore {
         persistWorkoutDebriefs()
         showWorkoutDebrief = false
         debriefContext = nil
+        refreshStyleProfile()
         Haptics.success()
         showToast("Noted — this shapes tomorrow's suggestions.")
         pushDebrief(debrief)
@@ -1074,6 +1156,9 @@ final class MorpheAppStore {
         if let persistedProfile {
             applyPersistedProfile(persistedProfile)
         }
+        // The learned half of the style profile re-derives on every launch —
+        // logs/debriefs may have changed since the snapshot was written.
+        refreshStyleProfile()
 
         authUser = authService.currentUser
         if let authUser {
@@ -1989,6 +2074,11 @@ final class MorpheAppStore {
             clientProfile.selectedGoals = snapshot.selectedGoals
         }
 
+        if let styleData = snapshot.styleProfileJSON.data(using: .utf8),
+           let restored = try? JSONDecoder().decode(UserStyleProfile.self, from: styleData) {
+            styleProfile = restored
+        }
+
         clientProfile.goal = snapshot.goal
         clientProfile.physicalGoalTarget = snapshot.physicalGoalTarget
         clientProfile.weightGoalTarget = snapshot.weightGoalTarget
@@ -2418,6 +2508,10 @@ final class MorpheAppStore {
             .filter { Self.autoDerivedTaskTitles.contains($0.title) }.count
         snapshot.mealPrepHabit = clientProfile.mealPrepHabit
         snapshot.mealPrepInterested = clientProfile.mealPrepInterested
+        if let styleData = try? JSONEncoder().encode(styleProfile),
+           let styleJSON = String(data: styleData, encoding: .utf8) {
+            snapshot.styleProfileJSON = styleJSON
+        }
         return snapshot
     }
 
@@ -8231,6 +8325,31 @@ final class MorpheAppStore {
             } else {
                 lines.append("Today's planned workout: \(currentWorkout.name).")
             }
+            // The personalization spine feeds the brain (Lucas 2026-09):
+            // real derived facts only — the honesty gates upstream mean an
+            // empty profile adds nothing rather than inventing patterns.
+            var known: [String] = []
+            if let intensity = styleProfile.preferredIntensity {
+                known.append("they usually rate sessions '\(intensity)'")
+            }
+            if let rating = styleProfile.averageRating {
+                known.append("average session rating \(String(format: "%.1f", rating))/10")
+            }
+            if !styleProfile.favoriteExercises.isEmpty {
+                known.append("most-trained exercises: \(styleProfile.favoriteExercises.prefix(3).joined(separator: ", "))")
+            }
+            if let hour = styleProfile.preferredTrainingHour {
+                known.append("they usually train around \(hour):00")
+            }
+            if let cadence = styleProfile.weeklyCadence {
+                known.append("about \(String(format: "%.1f", cadence)) sessions/week lately")
+            }
+            if let request = styleProfile.recentChangeRequests.first {
+                known.append("their latest session note: '\(request)'")
+            }
+            if !known.isEmpty {
+                lines.append("Learned from their real logs (use naturally, don't recite): \(known.joined(separator: "; ")).")
+            }
         }
         lines.append("Plain text only — no markdown, no lists, no headings.")
         if spoken {
@@ -13652,6 +13771,7 @@ final class MorpheAppStore {
             forKey: lastKnownStreakKey)
         clearComeback()
         publishWidgetSnapshot()
+        refreshStyleProfile()
 
         switch log.source {
         case .athleteManual:

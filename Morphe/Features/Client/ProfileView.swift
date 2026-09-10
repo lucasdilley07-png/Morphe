@@ -765,6 +765,26 @@ struct ProfileView: View {
         }
     }
 
+    @ViewBuilder
+    private func learnedRow(_ symbol: String, _ text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.accentText)
+                .frame(width: 18)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func formattedHour(_ hour: Int) -> String {
+        var comps = DateComponents(); comps.hour = hour
+        let date = Calendar.current.date(from: comps) ?? .now
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+
     private var settingsSections: some View {
         @Bindable var store = store
         return VStack(alignment: .leading, spacing: 16) {
@@ -777,6 +797,39 @@ struct ProfileView: View {
                     .foregroundStyle(MorpheTheme.textMuted)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
+            }
+
+            // The learning loop, visible (personalization spine 2026-09):
+            // Morphe says exactly what it has derived from real logs — and
+            // says "still learning" instead of inventing patterns.
+            settingsSection("What Morphe has learned", keywords: "personalization learned patterns ai adapt") {
+                if store.styleProfile.hasLearnedAnything {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let intensity = store.styleProfile.preferredIntensity {
+                            learnedRow("gauge.with.needle", "You usually rate sessions \u{201C}\(intensity.lowercased())\u{201D}")
+                        }
+                        if let rating = store.styleProfile.averageRating {
+                            learnedRow("star.fill", "Average session rating \(String(format: "%.1f", rating))/10")
+                        }
+                        if !store.styleProfile.favoriteExercises.isEmpty {
+                            learnedRow("dumbbell.fill", "Most-trained: \(store.styleProfile.favoriteExercises.prefix(3).joined(separator: ", "))")
+                        }
+                        if let hour = store.styleProfile.preferredTrainingHour {
+                            learnedRow("clock.fill", "You usually train around \(formattedHour(hour))")
+                        }
+                        if let cadence = store.styleProfile.weeklyCadence {
+                            learnedRow("calendar", "About \(String(format: "%.1f", cadence)) sessions a week lately")
+                        }
+                        Text("Derived from your real logs and debriefs — it sharpens Morphe's answers and suggestions. Nothing here is invented.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .padding(.top, 2)
+                    }
+                } else {
+                    Text("Still learning you. Log a few sessions and answer the post-workout debriefs — patterns show up here as they become real.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
             }
 
             settingsSection("Your account", keywords: "name username handle referrals invite share") {

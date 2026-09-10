@@ -2280,6 +2280,102 @@ private func XCTAssertThrowsErrorAsync(_ expression: @autoclosure () async throw
     catch { /* expected */ }
 }
 
+/// Personalization spine (2026-09-09): learned facts derive from real
+/// logs/debriefs only, honesty gates hold below the minimums, and the
+/// profile round-trips through the snapshot.
+@MainActor
+final class StyleProfileTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func makeStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    private func log(_ store: MorpheAppStore, title: String, daysAgo: Int,
+                     hour: Int, minutes: Int, exercise: String) -> WorkoutLog {
+        var comps = Calendar.current.dateComponents([.year, .month, .day], from:
+            Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now)
+        comps.hour = hour
+        return WorkoutLog(
+            athleteID: store.clientProfile.id, athleteName: store.clientProfile.name,
+            workoutTitle: title, sport: .strength,
+            completedAt: Calendar.current.date(from: comps) ?? .now,
+            durationMinutes: minutes,
+            exercises: [LoggedExercise(
+                name: exercise, sets: "3 sets", reps: "8, 8, 8", weight: "135 lb",
+                note: "", repsPerSet: [8, 8, 8], weightsPerSet: [135, 135, 135],
+                rpePerSet: [0, 0, 0], weightUnit: "lb"
+            )],
+            notes: "", source: .athleteManual,
+            enteredByUserID: store.clientProfile.id, enteredByRole: .client,
+            enteredByName: store.clientProfile.name, verificationStatus: .athleteSubmitted,
+            sessionFeedback: ""
+        )
+    }
+
+    func testHonestyGatesHoldBelowMinimums() {
+        let store = makeStore()
+        store.workoutLogs.append(log(store, title: "A", daysAgo: 1, hour: 7, minutes: 40, exercise: "Bench Press"))
+        store.refreshStyleProfile()
+
+        XCTAssertNil(store.styleProfile.preferredIntensity, "one debrief is not a pattern")
+        XCTAssertTrue(store.styleProfile.favoriteExercises.isEmpty, "two logs are not a pattern")
+        XCTAssertNil(store.styleProfile.preferredTrainingHour)
+        XCTAssertFalse(store.styleProfile.hasLearnedAnything)
+    }
+
+    func testLearnedFactsDeriveFromRealData() {
+        let store = makeStore()
+        store.workoutLogs.append(log(store, title: "A", daysAgo: 1, hour: 7, minutes: 40, exercise: "Bench Press"))
+        store.workoutLogs.append(log(store, title: "B", daysAgo: 3, hour: 7, minutes: 50, exercise: "Bench Press"))
+        store.workoutLogs.append(log(store, title: "C", daysAgo: 5, hour: 18, minutes: 45, exercise: "Squat"))
+
+        store.submitWorkoutDebrief(intensity: .hard, rating: 8, changeRequest: "More arms")
+        store.submitWorkoutDebrief(intensity: .hard, rating: 6, changeRequest: "")
+
+        XCTAssertEqual(store.styleProfile.preferredIntensity, WorkoutIntensity.hard.rawValue)
+        XCTAssertEqual(store.styleProfile.averageRating ?? 0, 7.0, accuracy: 0.001)
+        XCTAssertEqual(store.styleProfile.favoriteExercises.first, "Bench Press")
+        XCTAssertEqual(store.styleProfile.preferredTrainingHour, 7, "median hour, not mean")
+        XCTAssertEqual(store.styleProfile.typicalDurationMinutes, 45)
+        XCTAssertEqual(store.styleProfile.recentChangeRequests, ["More arms"], "empty answers never count as requests")
+        XCTAssertTrue(store.styleProfile.hasLearnedAnything)
+    }
+
+    func testChosenFieldsSurviveRecompute() {
+        let store = makeStore()
+        store.setStyleChoice(soundPack: "minimal", characterID: "atlas",
+                             homeCardOrder: ["progress", "schedule"])
+        store.refreshStyleProfile()
+
+        XCTAssertEqual(store.styleProfile.soundPack, "minimal")
+        XCTAssertEqual(store.styleProfile.characterID, "atlas")
+        XCTAssertEqual(store.styleProfile.homeCardOrder, ["progress", "schedule"])
+    }
+
+    func testStyleProfileRoundTripsThroughSnapshot() throws {
+        let store = makeStore()
+        store.setStyleChoice(soundPack: "minimal")
+        store.workoutLogs.append(log(store, title: "A", daysAgo: 1, hour: 7, minutes: 40, exercise: "Bench Press"))
+        store.workoutLogs.append(log(store, title: "B", daysAgo: 2, hour: 7, minutes: 40, exercise: "Bench Press"))
+        store.workoutLogs.append(log(store, title: "C", daysAgo: 3, hour: 7, minutes: 40, exercise: "Bench Press"))
+        store.refreshStyleProfile()
+        store.flushPendingPersists()
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.styleProfile.soundPack, "minimal", "chosen fields survive relaunch")
+        XCTAssertEqual(reloaded.styleProfile.favoriteExercises.first, "Bench Press",
+                       "learned fields re-derive from the same logs on launch")
+    }
+}
+
 /// Verifies the Morphe Score and streak are derived from real logs, not seeded.
 @MainActor
 final class MetricsTests: XCTestCase {

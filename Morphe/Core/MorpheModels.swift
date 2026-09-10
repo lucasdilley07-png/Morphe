@@ -960,6 +960,48 @@ struct WorkoutDebrief: Identifiable, Codable, Hashable {
     var changeRequest: String
 }
 
+/// The personalization spine (Lucas 2026-09-09): one profile that holds
+/// what Morphe has LEARNED about this user (mined from logs + debriefs,
+/// never invented) and what the user has CHOSEN (identity + surface
+/// customization). Every adaptive surface reads from here; every picker
+/// writes here. Rides the local snapshot + cloud backup as JSON.
+struct UserStyleProfile: Codable, Equatable {
+    // MARK: Learned (derived — recomputed, never hand-set)
+
+    /// Most common debrief intensity answer, once 2+ debriefs exist.
+    var preferredIntensity: String?
+    /// Mean debrief rating (0–10), once 2+ debriefs exist.
+    var averageRating: Double?
+    /// Top exercises by logged frequency (max 5), once 3+ logs exist.
+    var favoriteExercises: [String] = []
+    /// Median start hour (0–23) of logged sessions, once 3+ logs exist.
+    var preferredTrainingHour: Int?
+    /// Median logged session length, once 3+ logs exist.
+    var typicalDurationMinutes: Int?
+    /// Sessions per week over the last 28 days, once 3+ logs exist.
+    var weeklyCadence: Double?
+    /// The user's own words from recent debrief change requests (max 5,
+    /// newest first). Sourced verbatim — Morphe never paraphrases them.
+    var recentChangeRequests: [String] = []
+
+    // MARK: Chosen (explicit customization — pickers write these)
+
+    /// Sound-effect set. "classic" is today's gold-tone kit.
+    var soundPack: String = "classic"
+    /// Morphe's own character/persona identity on this device.
+    var characterID: String = "morphe"
+    /// User-arranged Today card order; empty means the default layout.
+    var homeCardOrder: [String] = []
+
+    var updatedAt: Date = .distantPast
+
+    /// True when enough real data exists to speak about patterns at all.
+    var hasLearnedAnything: Bool {
+        preferredIntensity != nil || !favoriteExercises.isEmpty
+            || preferredTrainingHour != nil || weeklyCadence != nil
+    }
+}
+
 struct GoodForTodayWorkoutRecommendation: Hashable {
     var workoutTemplateID: UUID
     var workoutName: String

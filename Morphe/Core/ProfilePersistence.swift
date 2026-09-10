@@ -124,6 +124,9 @@ struct LocalProfileSnapshot: Codable, Equatable {
     // headline on relaunch.
     var coachTenure: String = ""
     var coachRoster: String = ""
+    // Personalization spine (2026-09-09): the UserStyleProfile as JSON —
+    // learned patterns + chosen customization ride the same backup.
+    var styleProfileJSON: String = ""
     // People connected via QR code scan (both roles).
     var scannedConnections: [ScannedConnection] = []
     // Rolling per-day task results feeding the personalized difficulty dial.
@@ -227,6 +230,7 @@ extension LocalProfileSnapshot {
         prefersCompactExerciseView = ((try? c.decodeIfPresent(Bool.self, forKey: .prefersCompactExerciseView)) ?? nil) ?? false
         coachTenure = str(.coachTenure)
         coachRoster = str(.coachRoster)
+        styleProfileJSON = str(.styleProfileJSON)
         scannedConnections = ((try? c.decodeIfPresent([ScannedConnection].self, forKey: .scannedConnections)) ?? nil) ?? []
         taskHistory = ((try? c.decodeIfPresent([TaskDayRecord].self, forKey: .taskHistory)) ?? nil) ?? []
         hasAcceptedTerms = ((try? c.decodeIfPresent(Bool.self, forKey: .hasAcceptedTerms)) ?? nil) ?? false
