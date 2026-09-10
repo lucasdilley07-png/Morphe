@@ -2320,6 +2320,32 @@ final class StyleProfileTests: XCTestCase {
         )
     }
 
+    func testFreshUserStartsUnlearned() {
+        // Audit 21 P0: the demo seed's 3 logs were mined into the style
+        // profile before onboarding and survived resetToFreshUser — a
+        // brand-new user saw fabricated "learned" facts.
+        let store = makeStore()
+        XCTAssertFalse(store.styleProfile.hasLearnedAnything,
+                       "a fresh identity has no patterns — demo logs must never be mined")
+        XCTAssertTrue(store.styleProfile.favoriteExercises.isEmpty)
+        XCTAssertNil(store.styleProfile.weeklyCadence)
+    }
+
+    func testSignOutWipesStyleProfile() {
+        let store = makeStore()
+        store.setStyleChoice(soundPack: "impact", characterID: "blaze")
+        store.workoutLogs.append(log(store, title: "A", daysAgo: 1, hour: 7, minutes: 40, exercise: "Bench Press"))
+        store.workoutLogs.append(log(store, title: "B", daysAgo: 2, hour: 7, minutes: 40, exercise: "Bench Press"))
+        store.workoutLogs.append(log(store, title: "C", daysAgo: 3, hour: 7, minutes: 40, exercise: "Bench Press"))
+        store.refreshStyleProfile()
+        XCTAssertTrue(store.styleProfile.hasLearnedAnything)
+
+        store.signOut()
+        XCTAssertEqual(store.styleProfile, UserStyleProfile(),
+                       "account B must not inherit A's learned facts, character, or sounds")
+        XCTAssertEqual(SoundEffects.pack, .classic)
+    }
+
     func testHonestyGatesHoldBelowMinimums() {
         let store = makeStore()
         store.workoutLogs.append(log(store, title: "A", daysAgo: 1, hour: 7, minutes: 40, exercise: "Bench Press"))
@@ -5708,15 +5734,26 @@ final class MessagingDoorTests: XCTestCase {
                         "the seed must survive routing so ThreadChatView can consume it")
     }
 
-    func testPostWorkoutCoachDoorWithoutRealThreadsDoesNotStrandTheUser() {
+    func testPostWorkoutMessageDoorLandsOnContactWithoutAStraySeed() {
+        // Audit 21: the inbox has an honest empty state + a real new-chat
+        // search now, so the door always lands on Contact — but the draft
+        // seed is only planted when exactly ONE thread will auto-open;
+        // otherwise it would inject into whichever chat opens next.
         let store = freshStore()
         XCTAssertTrue(store.liveThreads.isEmpty)
-        let tabBefore = store.selectedClientTab
         store.openPostWorkoutCoachThread()
-        // No demo thread matches the coach name on a real fresh account, so
-        // the demo fallback declines to navigate — the user stays put
-        // instead of landing on an empty demo inbox.
-        XCTAssertEqual(store.selectedClientTab, tabBefore)
+        XCTAssertEqual(store.selectedClientTab, .community)
+        XCTAssertEqual(store.selectedCommunitySection, .contact)
+        XCTAssertNil(store.athleteThreadDraftSeed,
+                     "no auto-open thread means no seed to misdeliver")
+
+        store.liveThreads = [
+            MessageThreadSummary(id: "t1", coachUid: "a", athleteUid: "me", coachName: "A", athleteName: "S"),
+            MessageThreadSummary(id: "t2", coachUid: "b", athleteUid: "me", coachName: "B", athleteName: "S")
+        ]
+        store.openPostWorkoutCoachThread()
+        XCTAssertNil(store.athleteThreadDraftSeed,
+                     "two threads, no auto-open — the seed must not survive into an unrelated chat")
     }
 }
 

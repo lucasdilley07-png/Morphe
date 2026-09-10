@@ -358,7 +358,7 @@ struct OnboardingFlowView: View {
         @Bindable var store = store
         switch step {
         case .welcome:
-            WelcomeLandingStep(coachCode: $store.onboardingDraft.coachInviteCode)
+            WelcomeLandingStep()
         case .identity:
             VStack(alignment: .leading, spacing: 16) {
                 NameStep(name: $store.onboardingDraft.name)
@@ -408,8 +408,6 @@ struct OnboardingFlowView: View {
                 frequency: $store.onboardingDraft.mealPrepFrequency,
                 interested: $store.onboardingDraft.mealPrepInterested
             )
-        case .coachCode:
-            CoachCodeStep(code: $store.onboardingDraft.coachInviteCode)
         case .review:
             ProfileReviewStep()
         }
@@ -433,7 +431,6 @@ private enum OnboardingStep {
     case equipment
     case mealPrep
     case injuryPain
-    case coachCode
     case review
 }
 
@@ -546,45 +543,8 @@ private struct UsernameStep: View {
     }
 }
 
-/// Optional step: an athlete whose coach pre-created their profile enters the
-/// invite code here — the claim itself runs right after onboarding completes,
-/// pulling the coach-logged history into the brand-new account.
-private struct CoachCodeStep: View {
-    @Binding var code: String
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("OPTIONAL — TRAIN WITH A COACH")
-                    .font(MorpheTheme.microLabel())
-                    .tracking(1.4)
-                    .foregroundStyle(MorpheTheme.accentText)
-
-                Text("Did a coach set you up?")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(MorpheTheme.textPrimary)
-
-                Text("If your coach already created your profile on Morphe, enter the invite code they shared — the workouts they logged for you become your training history. No code? Just tap Next.")
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-
-                TextField("Invite code (e.g. 7KQ4TX)", text: $code)
-                    .font(.system(.title3, design: .monospaced).weight(.semibold))
-                    .textInputAutocapitalization(.characters)
-                    .autocorrectionDisabled()
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(MorpheTheme.panelStrong)
-                    )
-            }
-        }
-    }
-}
 
 private struct WelcomeLandingStep: View {
-    @Binding var coachCode: String
-    @State private var showCoachCodeSheet = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -624,24 +584,6 @@ private struct WelcomeLandingStep: View {
                     Text("Four steps, about a minute — every answer shapes the plan.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
-
-                    // The coach handoff moved out of the step flow: solo
-                    // users never walk a step they'd "fail".
-                    Button("Have a coach code?") {
-                        showCoachCodeSheet = true
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accentAlt)
-                    .sheet(isPresented: $showCoachCodeSheet) {
-                        VStack(alignment: .leading, spacing: 16) {
-                            CoachCodeStep(code: $coachCode)
-                            Button("Done") { showCoachCodeSheet = false }
-                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        }
-                        .padding(20)
-                        .presentationDetents([.medium])
-                        .presentationDragIndicator(.visible)
-                    }
                 }
             }
 

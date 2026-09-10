@@ -319,8 +319,8 @@ struct HomeView: View {
                         HomeLinkTile(
                             systemImage: "bubble.left.and.bubble.right.fill",
                             title: "Messages",
-                            detail: coachTileDetail,
-                            detailIsMuted: coachTileDetailIsMuted,
+                            detail: messagesTileDetail,
+                            detailIsMuted: messagesTileDetailIsMuted,
                             accessibilityLabel: "Messages"
                         ) {
                             // Deep-link into the one messaging surface —
@@ -501,7 +501,7 @@ struct HomeView: View {
         .accessibilityLabel("Schedule")
     }
 
-    private var coachTileDetail: String {
+    private var messagesTileDetail: String {
         guard let first = store.liveThreads.first else { return "" }
         let name = first.counterpartName(for: store.authUser?.id ?? "")
         return first.lastMessage.isEmpty
@@ -509,7 +509,7 @@ struct HomeView: View {
             : "\(name): \(first.lastMessage)"
     }
 
-    private var coachTileDetailIsMuted: Bool {
+    private var messagesTileDetailIsMuted: Bool {
         store.liveThreads.first?.lastMessage.isEmpty ?? true
     }
 

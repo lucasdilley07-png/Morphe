@@ -571,6 +571,15 @@ enum SoundEffects {
             }
         }
 
+        // Impact's octave-down partials stay phase-aligned longer, so the
+        // summed PR cue can exceed the Int16 clamp and distort (audit 21).
+        // Normalize by peak whenever a voicing runs hot.
+        let peak = samples.map(abs).max() ?? 0
+        if peak > 0.98 {
+            let scale = 0.98 / peak
+            samples = samples.map { $0 * scale }
+        }
+
         return wav(from: samples)
     }
 

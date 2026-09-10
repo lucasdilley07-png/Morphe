@@ -881,8 +881,7 @@ struct WorkoutTemplate: Identifiable, Hashable {
 
 enum SavedWorkoutLibraryFilter: String, CaseIterable, Identifiable {
     case all = "All"
-    case coach = "Coach"
-    case athletes = "Athletes"
+    case athletes = "Partners"
     // Renamed from "My Copies": this segment now holds EVERYTHING the user
     // made — built-from-scratch workouts and edited catalog copies.
     case myCopies = "My Workouts"
@@ -1041,9 +1040,30 @@ struct UserStyleProfile: Codable, Equatable {
 
     var updatedAt: Date = .distantPast
 
+    /// Tolerant decode, same doctrine as LocalProfileSnapshot: a field
+    /// added later must never throw the whole profile away and silently
+    /// reset the user's chosen character/sounds (audit 21, P2).
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        preferredIntensity = try? c.decodeIfPresent(String.self, forKey: .preferredIntensity)
+        averageRating = try? c.decodeIfPresent(Double.self, forKey: .averageRating)
+        favoriteExercises = ((try? c.decodeIfPresent([String].self, forKey: .favoriteExercises)) ?? nil) ?? []
+        preferredTrainingHour = try? c.decodeIfPresent(Int.self, forKey: .preferredTrainingHour)
+        typicalDurationMinutes = try? c.decodeIfPresent(Int.self, forKey: .typicalDurationMinutes)
+        weeklyCadence = try? c.decodeIfPresent(Double.self, forKey: .weeklyCadence)
+        recentChangeRequests = ((try? c.decodeIfPresent([String].self, forKey: .recentChangeRequests)) ?? nil) ?? []
+        soundPack = ((try? c.decodeIfPresent(String.self, forKey: .soundPack)) ?? nil) ?? "classic"
+        characterID = ((try? c.decodeIfPresent(String.self, forKey: .characterID)) ?? nil) ?? "morphe"
+        homeCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .homeCardOrder)) ?? nil) ?? []
+        updatedAt = ((try? c.decodeIfPresent(Date.self, forKey: .updatedAt)) ?? nil) ?? .distantPast
+    }
+
     /// True when enough real data exists to speak about patterns at all.
     var hasLearnedAnything: Bool {
-        preferredIntensity != nil || !favoriteExercises.isEmpty
+        preferredIntensity != nil || averageRating != nil
+            || !favoriteExercises.isEmpty
             || preferredTrainingHour != nil || weeklyCadence != nil
     }
 }
@@ -1892,10 +1912,6 @@ struct OnboardingDraft: Hashable {
     /// Required consent on the review step — completing onboarding with this
     /// true ALSO satisfies the standalone terms gate.
     var agreedToTerms: Bool = false
-    /// Invite code from a coach who pre-created this athlete's profile —
-    /// entered (optionally) during onboarding; the claim runs right after
-    /// `completeOnboarding()` so the reset can't wipe the imported history.
-    var coachInviteCode: String = ""
     var trainingDaysPerWeek: Int = 3
     var preferredWorkoutLength: Int = 30
     var coachingTone: CoachingTone = .direct

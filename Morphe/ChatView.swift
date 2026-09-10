@@ -258,7 +258,7 @@ struct CommunityView: View {
         }
         .refreshable { await store.refreshAppointments() }
         .sheet(isPresented: $showCalendarEditor) {
-            AppointmentEditorSheet(nameSuggestions: store.appointmentPeopleChoices.map(\.name))
+            AppointmentEditorSheet()
                 .environment(store)
         }
     }
@@ -3792,19 +3792,9 @@ struct AthleteInboxView: View {
                         Text("No conversations yet")
                             .font(.headline)
                             .foregroundStyle(MorpheTheme.textPrimary)
-                        Text("Search a username above to start a chat, or join a coach with their invite code and that thread appears here.")
+                        Text("Search a username above to start a chat — new conversations appear here.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
-                        // The code door WHERE the coach thread will appear
-                        // (launch audit P1-10) — not just buried in Profile.
-                        if store.linkedCoachUid.isEmpty {
-                            Button("Have a coach code? Enter it here") {
-                                store.openClientProfile()
-                            }
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentText)
-                            .frame(minHeight: 32)
-                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)

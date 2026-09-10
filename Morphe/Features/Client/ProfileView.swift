@@ -4,8 +4,6 @@ import PhotosUI
 struct ProfileView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var isEditingName = false
-    @State private var isEnteringCoachCode = false
-    @State private var coachCodeDraft = ""
     @State private var showTermsSheet = false
     @State private var nameDraft = ""
     @State private var isEditingInjuries = false
@@ -56,9 +54,7 @@ struct ProfileView: View {
                 detailsCard
                 targetsCard
                 settingsSections
-                if true {
-                    levelCard
-                }
+                levelCard
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
@@ -744,7 +740,7 @@ struct ProfileView: View {
     private static let howYouTrainKeywords =
         "training days week injuries limits auto rest timer effort rpe rir weight unit kg lb pounds kilograms"
     private static let whoCanSeeYouKeywords =
-        "weekly board leaderboard privacy feed posts streak byline accent share coach blocked accounts unblock"
+        "weekly board leaderboard privacy feed posts streak byline accent share blocked accounts unblock"
 
     /// One grouped section: small-caps header + rows, hidden when the
     /// search query matches neither its title nor its keywords.
@@ -767,7 +763,7 @@ struct ProfileView: View {
 
     @ViewBuilder
     private func characterChoice(_ character: MorpheCharacter) -> some View {
-        let selected = store.styleProfile.characterID == character.id
+        let selected = MorpheCharacter.spec(for: store.styleProfile.characterID).id == character.id
         Button {
             store.setStyleChoice(characterID: character.id)
             Haptics.selection()
@@ -781,6 +777,7 @@ struct ProfileView: View {
                     Text(character.letter)
                         .font(.system(size: 18, design: .monospaced).weight(.black))
                         .foregroundStyle(.black)
+                        .minimumScaleFactor(0.5)
                 }
                 .frame(width: 40, height: 40)
                 .overlay(
@@ -790,6 +787,8 @@ struct ProfileView: View {
                 Text(character.name)
                     .font(.caption2.weight(selected ? .bold : .regular))
                     .foregroundStyle(selected ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
@@ -801,7 +800,7 @@ struct ProfileView: View {
 
     @ViewBuilder
     private func soundPackChoice(_ pack: SoundPack) -> some View {
-        let selected = store.styleProfile.soundPack == pack.rawValue
+        let selected = (SoundPack(rawValue: store.styleProfile.soundPack) ?? .classic) == pack
         Button {
             store.setStyleChoice(soundPack: pack.rawValue)
             // Instant preview in the new voice — the choice is audible.
@@ -812,9 +811,13 @@ struct ProfileView: View {
                 Text(pack.title)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(selected ? Color.black : MorpheTheme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                 Text(pack.detail)
                     .font(.caption2)
                     .foregroundStyle(selected ? Color.black.opacity(0.7) : MorpheTheme.textMuted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
@@ -1051,90 +1054,88 @@ struct ProfileView: View {
             }
 
             settingsSection("How you train", keywords: Self.howYouTrainKeywords) {
-                if true {
-                    // Weekly target — drives the consistency denominator on
-                    // Progress; was user-set in onboarding then locked forever.
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Training days per week")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        WrapStack(spacing: 8) {
-                            ForEach(1...7, id: \.self) { count in
-                                Button("\(count)") {
-                                    store.updateTrainingDaysPerWeek(count)
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.trainingDaysPerWeek == count, selectedColor: MorpheTheme.accent))
-                                .accessibilityLabel("\(count) days per week")
+                // Weekly target — drives the consistency denominator on
+                // Progress; was user-set in onboarding then locked forever.
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Training days per week")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
+                        ForEach(1...7, id: \.self) { count in
+                            Button("\(count)") {
+                                store.updateTrainingDaysPerWeek(count)
                             }
+                            .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.trainingDaysPerWeek == count, selectedColor: MorpheTheme.accent))
+                            .accessibilityLabel("\(count) days per week")
                         }
                     }
-
-                    // WHICH days (rest-day model): pick them and Today shows
-                    // an honest rest card on off days + the daily reminder
-                    // skips them. None picked = every day is a training day.
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Training days")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        HStack(spacing: 6) {
-                            ForEach(Array(zip(1...7, ["S", "M", "T", "W", "T", "F", "S"])), id: \.0) { weekday, label in
-                                Button(label) {
-                                    if store.trainingDays.contains(weekday) {
-                                        store.trainingDays.remove(weekday)
-                                    } else {
-                                        store.trainingDays.insert(weekday)
-                                    }
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: store.trainingDays.contains(weekday), selectedColor: MorpheTheme.accent))
-                                .accessibilityLabel("\(Calendar.current.weekdaySymbols[weekday - 1])\(store.trainingDays.contains(weekday) ? ", training day" : "")")
-                            }
-                        }
-                        Text(store.trainingDays.isEmpty
-                            ? "No days picked — every day shows your workout."
-                            : "Off days show a rest card and skip the reminder.")
-                            .font(.caption2)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                    }
-
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    // Injuries are safety data — collected in onboarding and
-                    // previously never editable again.
-                    if isEditingInjuries {
-                        VStack(alignment: .leading, spacing: 8) {
-                            TextField("Injuries or limits Morphe should respect", text: $injuriesDraft, axis: .vertical)
-                                .textFieldStyle(MorpheFieldStyle())
-                                .lineLimit(2...4)
-                            HStack(spacing: 12) {
-                                Button("Save") {
-                                    store.updateInjuryNote(injuriesDraft)
-                                    isEditingInjuries = false
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.accentText)
-                                .accessibilityLabel("Save injury note")
-                                Button("Cancel") {
-                                    isEditingInjuries = false
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.textMuted)
-                                .accessibilityLabel("Cancel injury note edit")
-                            }
-                        }
-                    } else {
-                        settingsRow(
-                            "Injuries & limits",
-                            value: store.clientProfile.limitations.isEmpty ? "None noted" : store.clientProfile.limitations
-                        ) {
-                            injuriesDraft = store.clientProfile.limitations
-                            isEditingInjuries = true
-                        }
-                    }
-
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
                 }
+
+                // WHICH days (rest-day model): pick them and Today shows
+                // an honest rest card on off days + the daily reminder
+                // skips them. None picked = every day is a training day.
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Training days")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    HStack(spacing: 6) {
+                        ForEach(Array(zip(1...7, ["S", "M", "T", "W", "T", "F", "S"])), id: \.0) { weekday, label in
+                            Button(label) {
+                                if store.trainingDays.contains(weekday) {
+                                    store.trainingDays.remove(weekday)
+                                } else {
+                                    store.trainingDays.insert(weekday)
+                                }
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: store.trainingDays.contains(weekday), selectedColor: MorpheTheme.accent))
+                            .accessibilityLabel("\(Calendar.current.weekdaySymbols[weekday - 1])\(store.trainingDays.contains(weekday) ? ", training day" : "")")
+                        }
+                    }
+                    Text(store.trainingDays.isEmpty
+                        ? "No days picked — every day shows your workout."
+                        : "Off days show a rest card and skip the reminder.")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
+                // Injuries are safety data — collected in onboarding and
+                // previously never editable again.
+                if isEditingInjuries {
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("Injuries or limits Morphe should respect", text: $injuriesDraft, axis: .vertical)
+                            .textFieldStyle(MorpheFieldStyle())
+                            .lineLimit(2...4)
+                        HStack(spacing: 12) {
+                            Button("Save") {
+                                store.updateInjuryNote(injuriesDraft)
+                                isEditingInjuries = false
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .accessibilityLabel("Save injury note")
+                            Button("Cancel") {
+                                isEditingInjuries = false
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .accessibilityLabel("Cancel injury note edit")
+                        }
+                    }
+                } else {
+                    settingsRow(
+                        "Injuries & limits",
+                        value: store.clientProfile.limitations.isEmpty ? "None noted" : store.clientProfile.limitations
+                    ) {
+                        injuriesDraft = store.clientProfile.limitations
+                        isEditingInjuries = true
+                    }
+                }
+
+
+                Divider().overlay(MorpheTheme.strokeSubtle)
 
                 // Live-session preferences for BOTH roles (audit 6, P1-4):
                 // coaches train in the same console, so the rest timer and
@@ -1247,12 +1248,6 @@ struct ProfileView: View {
                 }
 
 
-                // Athlete-only: the coach-share summary has no coach-side
-                // surface. (Sleep-from-Health moved to the HEALTH section —
-                // audit 15, P1: searching "sleep" filtered it out while a
-                // Health card without it looked like the complete answer.)
-                // Only renders once a coach link exists (claimed invite
-                // or an existing coach thread) — no dead toggle.
                     // Blocked accounts — only renders when there's someone
                     // to manage; blocking happens from posts/comments.
                     if !store.blockedAccounts.isEmpty {
@@ -1300,18 +1295,16 @@ struct ProfileView: View {
                     // Read-only and honest about its limits: Apple never
                     // reveals whether a sleep READ was granted, so this just
                     // pre-fills when data comes back and stays quiet when not.
-                    if true {
-                        Divider().overlay(MorpheTheme.strokeSubtle)
+                    Divider().overlay(MorpheTheme.strokeSubtle)
 
-                        preferenceToggleRow(
-                            title: "Sleep from Health",
-                            caption: "Pre-fills the check-in's sleep slider from last night's Apple Health sleep. You can always adjust it.",
-                            isOn: Binding(
-                                get: { store.healthSleepEnabled },
-                                set: { newValue in Task { await store.setHealthSleepPrefill(enabled: newValue) } }
-                            )
+                    preferenceToggleRow(
+                        title: "Sleep from Health",
+                        caption: "Pre-fills the check-in's sleep slider from last night's Apple Health sleep. You can always adjust it.",
+                        isOn: Binding(
+                            get: { store.healthSleepEnabled },
+                            set: { newValue in Task { await store.setHealthSleepPrefill(enabled: newValue) } }
                         )
-                    }
+                    )
             }
 
             settingsSection("Your app", keywords: "appearance dark light mode theme accent color") {
@@ -1436,7 +1429,7 @@ struct ProfileView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Morphe Pro")
                                     .foregroundStyle(MorpheTheme.textPrimary)
-                                Text("Programs, advanced analytics, coach tools. Your data stays free forever.")
+                                Text("Programs, advanced analytics, and more. Your data stays free forever.")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textMuted)
                             }
@@ -1922,7 +1915,7 @@ struct MorpheProPaywallSheet: View {
                 VStack(alignment: .leading, spacing: 10) {
                     paywallRow("calendar.badge.clock", "Structured programs — multi-week arcs with deloads built in")
                     paywallRow("chart.line.uptrend.xyaxis", "Advanced analytics — e1RM, plateaus, muscle balance, trends")
-                    paywallRow("person.2.badge.gearshape", "Coach tools — rosters, programs, and client insights")
+                    paywallRow("person.2.badge.gearshape", "Advanced tools — programs, analytics, and deeper insights")
                 }
 
                 Text("Your data, your export, and every safety feature stay free — always.")

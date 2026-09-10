@@ -6121,7 +6121,7 @@ private struct SavedWorkoutsLibraryCard: View {
 
                                 VStack(alignment: .trailing, spacing: 8) {
                                     StatusBadge(
-                                        text: item.sourceRole == .coach ? "Coach source" : sourceBadgeText(for: item),
+                                        text: sourceBadgeText(for: item),
                                         color: sourceBadgeColor(for: item)
                                     )
                                     StatusBadge(
@@ -6234,8 +6234,6 @@ private struct SavedWorkoutsLibraryCard: View {
         switch selectedFilter {
         case .all:
             filtered = items
-        case .coach:
-            filtered = items.filter { $0.sourceRole == .coach }
         case .athletes:
             filtered = items.filter { $0.sourceRole == .client && $0.sourceContext != "Built by you" }
         case .myCopies:
@@ -6317,14 +6315,11 @@ private struct SavedWorkoutsLibraryCard: View {
         // ("Morphe AI" survives in saves persisted before the honest rename.)
         if item.sourceName == "Morphe Programs" { return "Morphe Program" }
         if item.sourceName == "Morphe" || item.sourceName == "Morphe AI" { return "Morphe" }
-        return item.sourceRole == .coach ? "Coach source" : "Athlete source"
+        return "Athlete source"
     }
 
     private func sourceBadgeColor(for item: SavedWorkoutLibraryItem) -> Color {
-        if item.sourceRole == .coach {
-            return MorpheTheme.accentAlt
-        }
-        return item.sourceContext == "Built by you" ? MorpheTheme.warning : MorpheTheme.accent
+        item.sourceContext == "Built by you" ? MorpheTheme.warning : MorpheTheme.accent
     }
 
     private func useCaseColor(for useCase: SavedWorkoutUseCase) -> Color {
@@ -6365,10 +6360,6 @@ private struct SavedWorkoutsLibraryCard: View {
 
         if item.bestFor == .fallback && insight.completionCount > 0 {
             badges.append(.init(title: "Fallback win", color: MorpheTheme.accentAlt))
-        }
-
-        if item.sourceRole == .coach && insight.completionCount > 0 {
-            badges.append(.init(title: "Coach assigned", color: MorpheTheme.lavender))
         }
 
         return Array(badges.prefix(3))
@@ -6473,10 +6464,6 @@ private struct ShortcutWorkoutSection: View {
 
         if item.bestFor == .fallback && insight.completionCount > 0 {
             badges.append(.init(title: "Fallback win", color: MorpheTheme.accentAlt))
-        }
-
-        if item.sourceRole == .coach && insight.completionCount > 0 {
-            badges.append(.init(title: "Coach assigned", color: MorpheTheme.lavender))
         }
 
         return Array(badges.prefix(3))

@@ -462,15 +462,12 @@ struct ClientAppointmentsView: View {
     }
 }
 
-/// Compact add-appointment editor, shared by client and coach. The coach
-/// passes `nameSuggestions` (managed client names) so "With" can be picked
-/// from the roster or typed freely — an appointment's other party may not be
+/// Compact add-appointment editor. "With" can be picked from people this
+/// account knows or typed freely — an appointment's other party may not be
 /// a Morphe account at all.
 struct AppointmentEditorSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-
-    var nameSuggestions: [String] = []
 
     @State private var title = ""
     @State private var kind: AppointmentKind = .session
@@ -558,18 +555,6 @@ struct AppointmentEditorSheet: View {
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.accentText)
                                     .accessibilityLabel("Appointment linked to \(withName)'s profile")
-                            }
-
-                            if !nameSuggestions.isEmpty {
-                                Menu {
-                                    ForEach(nameSuggestions, id: \.self) { name in
-                                        Button(name) { withName = name }
-                                    }
-                                } label: {
-                                    Label("Pick Client", systemImage: "person.crop.circle.badge.checkmark")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(MorpheTheme.accentAlt)
-                                }
                             }
 
                             TextField("Notes (optional)", text: $notes, axis: .vertical)

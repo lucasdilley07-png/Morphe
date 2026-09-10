@@ -2155,17 +2155,6 @@ private struct UniversalSearchSheet: View {
         return Array(exercises.prefix(8))
     }
 
-    private var filteredDrills: [DrillReference] {
-        let drills = store.drills.filter { drill in
-            normalizedQuery.isEmpty ||
-            drill.name.lowercased().contains(normalizedQuery) ||
-            drill.skillCategory.lowercased().contains(normalizedQuery) ||
-            drill.sport.rawValue.lowercased().contains(normalizedQuery)
-        }
-
-        return Array(drills.prefix(8))
-    }
-
     var body: some View {
         // One scroll owner per page (audit 13, P1): the pager fills the
         // sheet and each page scrolls itself — the old shape (a 420pt
@@ -2378,18 +2367,6 @@ private struct UniversalSearchSheet: View {
                     }
                 }
 
-                ForEach(filteredDrills) { drill in
-                    SearchResultRow(
-                        title: drill.name,
-                        subtitle: "\(drill.sport.rawValue) • \(drill.skillCategory)",
-                        detail: drill.whyThisMatters
-                    ) {
-                        store.openMore(.library)
-                        store.notify("\(drill.name) opened from the library.")
-                        store.closeUniversalSearch()
-                        dismiss()
-                    }
-                }
             }
         }
     }
@@ -2613,7 +2590,6 @@ private struct WelcomeExperienceView: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
-    private var isCoach: Bool { false }
 
     var body: some View {
         NavigationStack {
@@ -2626,22 +2602,19 @@ private struct WelcomeExperienceView: View {
                             HStack(spacing: 12) {
                                 MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 84)
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Welcome to Morphe, \(isCoach ? store.coachProfile.name : store.clientProfile.name)")
+                                    Text("Welcome to Morphe, \(store.clientProfile.name)")
                                         .font(.title3.weight(.bold))
                                         .foregroundStyle(MorpheTheme.textPrimary)
-                                    Text(isCoach ? "Your coach workspace is live and your first command center is ready." : "Your profile is live and your first plan is ready.")
+                                    Text("Your profile is live and your first plan is ready.")
                                         .foregroundStyle(MorpheTheme.textSecondary)
                                 }
                             }
 
-                            Text(isCoach ? "Your coaching system is live. Start with the athletes who need you most, then move into programs and outreach." : store.clientProfile.welcomeMessage)
+                            Text(store.clientProfile.welcomeMessage)
                                 .font(.headline)
                                 .foregroundStyle(MorpheTheme.textPrimary)
 
                             HStack(spacing: 8) {
-                                if FeatureFlags.multiUserEnabled {
-                                    MetricPill(label: "Account", value: isCoach ? "Coach" : "Athlete")
-                                }
                                 MetricPill(label: "Primary Sport", value: store.clientProfile.sportMode.rawValue)
                                 MetricPill(label: "Primary Goal", value: store.clientProfile.goal)
                             }
@@ -2667,14 +2640,14 @@ private struct WelcomeExperienceView: View {
                                 .foregroundStyle(MorpheTheme.textPrimary)
                             // Names the tabs that actually exist, and promises
                             // only what tier 0 shows: one workout to start.
-                            Text(isCoach ? "Open Home to triage the day, use Athletes for profiles and notes, then move into Build or Inbox when you want to act." : "Today has your first workout ready. Open Train when you're ready to move — and everything else in Morphe grows from the workouts you log.")
+                            Text("Today has your first workout ready. Open Train when you're ready to move — and everything else in Morphe grows from the workouts you log.")
                                 .foregroundStyle(MorpheTheme.textSecondary)
                             Text("You can update your name and weight unit anytime from your profile.")
                                 .foregroundStyle(MorpheTheme.textPrimary)
                         }
                     }
 
-                    Button(isCoach ? "Open Home" : "Start Training") {
+                    Button("Start Training") {
                         store.dismissWelcomeExperience()
                         dismiss()
                     }
