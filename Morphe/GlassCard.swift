@@ -139,6 +139,21 @@ struct SectionTitleView: View {
 /// talks back. `level` is real voice energy — mic RMS while capturing,
 /// per-word pulses while speaking — so the motion is the audio, not a
 /// looped animation. Reduce Motion renders a calm static ring.
+/// Leaf host for the ring: the ONLY view whose body reads voiceLevel,
+/// so per-buffer level writes stop invalidating the root shell
+/// (audit 22, P1).
+struct MorpheVoiceRingHost: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    var body: some View {
+        MorpheFrequencyRing(
+            level: store.heyMorphe.voiceLevel,
+            speaking: store.heyMorphe.state == .speaking
+        )
+        .frame(width: 240, height: 240)
+    }
+}
+
 struct MorpheFrequencyRing: View {
     /// 0…1 voice energy from HeyMorpheEngine.
     var level: Double
@@ -177,15 +192,25 @@ struct MorpheFrequencyRing: View {
         let glowRadius = baseRadius * (1.15 + level * 0.35)
         let glowRect = CGRect(x: center.x - glowRadius, y: center.y - glowRadius,
                               width: glowRadius * 2, height: glowRadius * 2)
+        let glowTint = MorpheTheme.isLight ? MorpheTheme.brandYellowText : MorpheTheme.brandYellow
         context.fill(Path(ellipseIn: glowRect), with: .radialGradient(
-            Gradient(colors: [MorpheTheme.brandYellow.opacity(0.10 + level * 0.14), .clear]),
+            Gradient(colors: [glowTint.opacity(0.10 + level * 0.14), .clear]),
             center: center, startRadius: 0, endRadius: glowRadius))
 
-        let groups: [(waves: Double, direction: Double, tint: Color)] = [
-            (3, 1, MorpheTheme.brandYellow),
-            (4, -1, MorpheTheme.brandGold),
-            (5, 1, Color.white.opacity(0.75))
-        ]
+        // Light appearance flips the palette (audit 22, P1: white
+        // ribbons at 0.3 alpha on a white field were invisible) — deeper
+        // golds and near-black replace yellow-on-dark and white.
+        let groups: [(waves: Double, direction: Double, tint: Color)] = MorpheTheme.isLight
+            ? [
+                (3, 1, MorpheTheme.brandYellowText),
+                (4, -1, Color(red: 0.55, green: 0.40, blue: 0.0)),
+                (5, 1, Color.black.opacity(0.65))
+            ]
+            : [
+                (3, 1, MorpheTheme.brandYellow),
+                (4, -1, MorpheTheme.brandGold),
+                (5, 1, Color.white.opacity(0.75))
+            ]
 
         for (groupIndex, group) in groups.enumerated() {
             let phase = time * speed * group.direction + Double(groupIndex) * 2.1
@@ -204,7 +229,8 @@ struct MorpheFrequencyRing: View {
                     if step == 0 { path.move(to: point) } else { path.addLine(to: point) }
                 }
                 path.closeSubpath()
-                let opacity = 0.10 + (1 - Double(strand) / 7.0) * (0.16 + level * 0.14)
+                var opacity = 0.10 + (1 - Double(strand) / 7.0) * (0.16 + level * 0.14)
+                if MorpheTheme.isLight { opacity = min(opacity * 1.8, 0.85) }
                 context.stroke(path, with: .color(group.tint.opacity(opacity)), lineWidth: 1)
             }
         }

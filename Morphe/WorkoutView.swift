@@ -4173,6 +4173,25 @@ private struct TodaysWorkoutCard: View {
                             Spacer(minLength: 0)
                         }
 
+                        // The WHY chips — including the learned ones
+                        // ("Your usual length") that phase 4 computed but
+                        // nothing rendered (audit 22, P0).
+                        if !suggestion.contextChips.isEmpty {
+                            WrapStack(spacing: 6) {
+                                ForEach(suggestion.contextChips, id: \.self) { chip in
+                                    Text(chip)
+                                        .font(MorpheTheme.microLabel(10))
+                                        .foregroundStyle(MorpheTheme.textSecondary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule().fill(MorpheTheme.panelStrong)
+                                                .overlay(Capsule().stroke(MorpheTheme.strokeSubtle, lineWidth: 1))
+                                        )
+                                }
+                            }
+                        }
+
                         Button("Use This", action: onUseSuggestion)
                             .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
                             .accessibilityLabel("Switch today's workout to \(suggestion.workoutName)")

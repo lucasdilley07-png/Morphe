@@ -353,12 +353,11 @@ struct RootView: View {
         .overlay {
             if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking {
                 // The Jarvis wave: centered, non-blocking, moving with the
-                // real audio (Lucas 2026-09).
-                MorpheFrequencyRing(
-                    level: store.heyMorphe.voiceLevel,
-                    speaking: store.heyMorphe.state == .speaking
-                )
-                .frame(width: 210, height: 210)
+                // real audio (Lucas 2026-09). A LEAF view — it reads
+                // voiceLevel in its own body so the ~46/sec level writes
+                // invalidate 240pt of Canvas, not the whole root shell
+                // (audit 22, P1).
+                MorpheVoiceRingHost()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .allowsHitTesting(false)
                 .transition(.opacity)
@@ -1113,7 +1112,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// (audit 12, P0-3).
     static let shared = HeyMorpheEngine()
 
-    private(set) var state: VoiceState = .off
+    private(set) var state: VoiceState = .off {
+        didSet { levelTapLive = state == .active }
+    }
+    /// Audio-thread read of "does anyone want mic levels" — see the tap.
+    private var levelTapLive = false
     private(set) var liveTranscript = ""
     /// Live voice energy 0…1 for the frequency ring (Jarvis wave,
     /// Lucas 2026-09): the ACTIVE capture tap feeds real mic RMS; while
@@ -1121,6 +1124,15 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// write, decayed by a timer while speaking.
     private(set) var voiceLevel: Double = 0
     private var speakingDecayTimer: Timer?
+
+    /// Kills the speaking decay timer and zeroes the ring — safe to call
+    /// from any exit path, no state guard (audit 22, P1: the guarded
+    /// delegate cleanup missed stop() and the watchdog).
+    private func endSpeakingLevel() {
+        speakingDecayTimer?.invalidate()
+        speakingDecayTimer = nil
+        voiceLevel = 0
+    }
 
     /// RMS → display level. Pure so tests can pin the mapping.
     nonisolated static func normalizedLevel(rms: Float) -> Double {
@@ -1308,6 +1320,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     deinit {
+        speakingDecayTimer?.invalidate()
+        speakingWatchdog?.invalidate()
+        quietPollTimer?.invalidate()
         if let interruptionObserver {
             NotificationCenter.default.removeObserver(interruptionObserver)
         }
@@ -1415,6 +1430,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         tearDownRecognition()
         speakingWatchdog?.invalidate()
         speakingWatchdog = nil
+        endSpeakingLevel()
         synthesizer.stopSpeaking(at: .immediate)
         // Give the session BACK (audit 12, P0-2): the app's sounds are
         // .ambient — mix with the user's music, respect the silent switch.
@@ -1500,6 +1516,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             DispatchQueue.main.async {
                 guard let self, self.state == .speaking else { return }
                 self.synthesizer.stopSpeaking(at: .immediate)
+                self.endSpeakingLevel()
                 self.state = .passive
                 self.beginListening()
             }
@@ -1574,11 +1591,13 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             let format = node.outputFormat(forBus: 0)
             node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
                 request.append(buffer)
-                // Mic energy for the frequency ring — computed here on the
-                // audio thread, marshaled to main. Only the ACTIVE capture
-                // renders the ring, but computing always is a few adds per
-                // buffer and keeps the tap uniform.
-                if let channel = buffer.floatChannelData?[0] {
+                // Mic energy for the frequency ring. This ONE tap serves
+                // both passive wake-listening and active capture (the
+                // passive→active transition never reinstalls it) — the
+                // ring only mounts during active, so the main-thread hop
+                // is gated on levelTapLive (audit 22, P2: 46 hops/sec for
+                // an unmounted view). RMS math itself is a few adds.
+                if self?.levelTapLive == true, let channel = buffer.floatChannelData?[0] {
                     let count = Int(buffer.frameLength)
                     var sum: Float = 0
                     for i in 0..<count { sum += channel[i] * channel[i] }
@@ -1630,6 +1649,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
 
     private func standDown() {
         state = .off
+        endSpeakingLevel()
         followUpDeadline = nil
         activeIsFollowUp = false
         directCaptureSession = false
@@ -1848,9 +1868,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             // timer pulls it back down between words.
             self.voiceLevel = min(0.45 + Double(characterRange.length) * 0.06, 0.95)
             if self.speakingDecayTimer == nil {
-                self.speakingDecayTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+                let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
                     Task { @MainActor in self?.voiceLevel *= 0.88 }
                 }
+                self.speakingDecayTimer = timer
+                RunLoop.main.add(timer, forMode: .common)
             }
         }
     }
@@ -1858,9 +1880,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         DispatchQueue.main.async {
             guard self.state == .speaking else { return }
-            self.speakingDecayTimer?.invalidate()
-            self.speakingDecayTimer = nil
-            self.voiceLevel = 0
+            self.endSpeakingLevel()
             // The answer just landed — hold the door open for a follow-up
             // command with no re-wake (rebuild 2026-08).
             self.followUpDeadline = Date().addingTimeInterval(6)
@@ -1872,9 +1892,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         DispatchQueue.main.async {
             guard self.state == .speaking else { return }
-            self.speakingDecayTimer?.invalidate()
-            self.speakingDecayTimer = nil
-            self.voiceLevel = 0
+            self.endSpeakingLevel()
             self.state = .passive
             self.beginListening()
         }

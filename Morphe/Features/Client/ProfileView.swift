@@ -850,12 +850,6 @@ struct ProfileView: View {
         }
     }
 
-    private func formattedHour(_ hour: Int) -> String {
-        var comps = DateComponents(); comps.hour = hour
-        let date = Calendar.current.date(from: comps) ?? .now
-        return date.formatted(date: .omitted, time: .shortened)
-    }
-
     private var settingsSections: some View {
         @Bindable var store = store
         return VStack(alignment: .leading, spacing: 16) {
@@ -913,16 +907,16 @@ struct ProfileView: View {
                             learnedRow("gauge.with.needle", "You usually rate sessions \u{201C}\(intensity.lowercased())\u{201D}")
                         }
                         if let rating = store.styleProfile.averageRating {
-                            learnedRow("star.fill", "Average session rating \(String(format: "%.1f", rating))/10")
+                            learnedRow("star.fill", "Average session rating \(rating.formatted(.number.precision(.fractionLength(1))))/10")
                         }
                         if !store.styleProfile.favoriteExercises.isEmpty {
                             learnedRow("dumbbell.fill", "Most-trained: \(store.styleProfile.favoriteExercises.prefix(3).joined(separator: ", "))")
                         }
                         if let hour = store.styleProfile.preferredTrainingHour {
-                            learnedRow("clock.fill", "You usually train around \(formattedHour(hour))")
+                            learnedRow("clock.fill", "You usually train around \(MorpheAppStore.formattedHour(hour))")
                         }
-                        if let cadence = store.styleProfile.weeklyCadence {
-                            learnedRow("calendar", "About \(String(format: "%.1f", cadence)) sessions a week lately")
+                        if let cadence = store.styleProfile.weeklyCadence, cadence > 0 {
+                            learnedRow("calendar", "About \(cadence.formatted(.number.precision(.fractionLength(1)))) sessions a week lately")
                         }
                         Text("Derived from your real logs and debriefs — it sharpens Morphe's answers and suggestions. Nothing here is invented.")
                             .font(.caption)

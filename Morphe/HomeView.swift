@@ -61,9 +61,9 @@ struct HomeView: View {
                     // Morphe actually derived — absent until the honesty
                     // gates have real data.
                     if let learned = store.learnedInsightLine() {
-                        HStack(spacing: 5) {
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
                             Image(systemName: "wand.and.stars")
-                                .font(.system(size: 9, weight: .bold))
+                                .font(.caption2.weight(.bold))
                             Text(learned)
                                 .multilineTextAlignment(.center)
                         }
@@ -327,6 +327,14 @@ struct HomeView: View {
                 }
                 ForEach(store.visibleHomeCards) { card in
                     homeCard(card)
+                }
+
+                if store.visibleHomeCards.isEmpty {
+                    Text("All cards hidden — tap Edit Today's layout to bring them back.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 8)
                 }
 
                 Button {
@@ -960,22 +968,28 @@ private struct HomeLayoutSuggestionChip: View {
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 10) {
                     Button("Move it up") {
+                        // The RENDERED pair, not a recompute — state could
+                        // shift between render and tap (audit 22, P2).
                         withAnimation(.easeInOut(duration: 0.3)) {
-                            store.applyHomeLayoutSuggestion()
+                            store.applyHomeLayoutSuggestion(suggestion)
                         }
                         Haptics.selection()
                     }
                     .buttonStyle(.plain)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(MorpheTheme.accentText)
-                    .frame(minHeight: 32)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                     Button("Keep it as is") {
-                        store.declineHomeLayoutSuggestion()
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            store.declineHomeLayoutSuggestion(suggestion)
+                        }
                     }
                     .buttonStyle(.plain)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(MorpheTheme.textMuted)
-                    .frame(minHeight: 32)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
             }
         }
@@ -1002,6 +1016,13 @@ struct HomeLayoutEditorSheet: View {
                                 Text(card.detail)
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textMuted)
+                                // The eye can be on while the tier gate is
+                                // shut — say why nothing shows (audit 22).
+                                if let unlock = store.homeCardUnlockNote(card) {
+                                    Text(unlock)
+                                        .font(.caption2)
+                                        .foregroundStyle(MorpheTheme.accentText)
+                                }
                             }
                             Spacer()
                             Button {
@@ -1020,7 +1041,7 @@ struct HomeLayoutEditorSheet: View {
                                     .frame(width: 44, height: 44)
                                     .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.borderless)
                             .accessibilityLabel(store.styleProfile.homeHiddenCards.contains(card.rawValue) ? "Show \(card.title)" : "Hide \(card.title)")
                         }
                         .listRowBackground(MorpheTheme.inkAlt)

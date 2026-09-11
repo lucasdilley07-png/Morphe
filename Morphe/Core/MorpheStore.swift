@@ -343,9 +343,15 @@ final class MorpheAppStore {
 
         if workoutDebriefs.count >= 2 {
             let counts = Dictionary(grouping: workoutDebriefs, by: \.intensity)
-            profile.preferredIntensity = counts.max {
+            // "Mostly" requires a plurality, not an alphabetical tiebreak
+            // on a 1-1 split (audit 22, P1).
+            if let top = counts.max(by: {
                 ($0.value.count, $0.key.rawValue) < ($1.value.count, $1.key.rawValue)
-            }?.key.rawValue
+            }), top.value.count * 2 > workoutDebriefs.count {
+                profile.preferredIntensity = top.key.rawValue
+            } else {
+                profile.preferredIntensity = nil
+            }
             profile.averageRating = Double(workoutDebriefs.map(\.rating).reduce(0, +))
                 / Double(workoutDebriefs.count)
         } else {
@@ -365,7 +371,11 @@ final class MorpheAppStore {
                     exerciseCounts[exercise.name, default: 0] += 1
                 }
             }
+            // A "most-trained" exercise needs at least 2 appearances —
+            // three all-different logs must not crown an alphabetical
+            // winner (audit 22, P1).
             profile.favoriteExercises = exerciseCounts
+                .filter { $0.value >= 2 }
                 .sorted { ($0.value, $1.key) > ($1.value, $0.key) }
                 .prefix(5).map(\.key)
 
@@ -402,7 +412,13 @@ final class MorpheAppStore {
                         homeCardOrder: [String]? = nil, homeHiddenCards: [String]? = nil) {
         if let soundPack { styleProfile.soundPack = soundPack }
         if let characterID { styleProfile.characterID = characterID }
-        if let homeCardOrder { styleProfile.homeCardOrder = homeCardOrder }
+        if let homeCardOrder {
+            styleProfile.homeCardOrder = homeCardOrder
+            // A reorder is the user's word on the layout — usage counters
+            // restart so the chip can't immediately second-guess the drag
+            // (audit 22, P1).
+            styleProfile.homeCardTaps = [:]
+        }
         if let homeHiddenCards { styleProfile.homeHiddenCards = homeHiddenCards }
         styleProfile.updatedAt = .now
         persistLocalProfile()
@@ -418,31 +434,44 @@ final class MorpheAppStore {
         guard hasCompletedOnboarding, styleProfile.hasLearnedAnything else { return nil }
         var lines: [String] = []
 
-        // The time-window line LEADS when now is near the learned hour —
-        // that's the moment it's useful, not trivia.
+        // Wrap-aware window check (audit 22, P2: hour 23 at 00:xx is IN
+        // the window for a late-night trainer).
         if let hour = styleProfile.preferredTrainingHour {
             let nowHour = Calendar.current.component(.hour, from: now)
-            if abs(nowHour - hour) <= 1 {
+            let gap = abs(nowHour - hour)
+            if min(gap, 24 - gap) <= 1 {
                 lines.append("This is your usual training window — most of your sessions land around \(Self.formattedHour(hour)).")
             }
         }
-        if let cadence = styleProfile.weeklyCadence, cadence > 0 {
-            lines.append("You're averaging \(String(format: "%.1f", cadence)) sessions a week — one today keeps the pace.")
+        // The cadence nudge must never contradict the prompt above it
+        // (audit 22, P1: "session is in the books" + "one today keeps the
+        // pace" on the same screen), and Mondays the recap already speaks
+        // numbers — two adjacent session counts read as a mismatch.
+        if let cadence = styleProfile.weeklyCadence, cadence > 0,
+           !isWorkoutLoggedToday, !isPlannedRestDay, mondayRecapLine == nil {
+            lines.append("You're averaging \(cadence.formatted(.number.precision(.fractionLength(1)))) sessions a week — one today keeps the pace.")
         }
         if let favorite = styleProfile.favoriteExercises.first {
             lines.append("\(favorite) is your most-trained exercise — your logs say so.")
         }
         if let intensity = styleProfile.preferredIntensity, let rating = styleProfile.averageRating {
-            lines.append("You mostly call sessions \u{201C}\(intensity.lowercased())\u{201D} and rate them \(String(format: "%.1f", rating))/10.")
+            lines.append("You mostly call sessions \u{201C}\(intensity.lowercased())\u{201D} and rate them \(rating.formatted(.number.precision(.fractionLength(1))))/10.")
         }
         if let minutes = styleProfile.typicalDurationMinutes {
-            lines.append("Your typical session runs about \(minutes) minutes.")
+            lines.append("Your typical session runs about \(minutes) minute\(minutes == 1 ? "" : "s").")
         }
         guard !lines.isEmpty else { return nil }
-        // In-window hour line wins outright; otherwise rotate by day so
-        // the line changes daily without randomness.
-        if lines.first?.contains("usual training window") == true { return lines.first }
         let day = Calendar.current.ordinality(of: .day, in: .year, for: now) ?? 0
+        // In the window, ALTERNATE days lead with the window line instead
+        // of returning it outright (audit 22, P2: a consistent user's
+        // open hour correlates with their training hour by construction,
+        // so the outright return showed one sentence forever). Odd days
+        // rotate the other facts.
+        if lines.first?.contains("usual training window") == true {
+            let others = Array(lines.dropFirst())
+            if day.isMultiple(of: 2) || others.isEmpty { return lines[0] }
+            return others[day % others.count]
+        }
         return lines[day % lines.count]
     }
 
@@ -480,10 +509,43 @@ final class MorpheAppStore {
         homeCardLayout.filter { !styleProfile.homeHiddenCards.contains($0.rawValue) }
     }
 
+    /// True when this card renders actual content at the CURRENT tier —
+    /// the suggestion engine must never name a card the user can't see
+    /// (audit 22, P0).
+    func homeCardRendersContent(_ card: HomeCardID) -> Bool {
+        switch card {
+        case .insight:
+            return todayExperienceTier >= 2 && primaryAthletePatternInsight != nil
+        case .schedule:
+            return true
+        case .adjustments:
+            return todayExperienceTier >= 1 || minimumWinModeEnabled
+        case .support:
+            return todayExperienceTier >= 2
+        }
+    }
+
+    /// Editor copy for a card whose tier gate hasn't opened yet — the eye
+    /// can be on while nothing renders; say why (audit 22, P1).
+    func homeCardUnlockNote(_ card: HomeCardID) -> String? {
+        guard !homeCardRendersContent(card) else { return nil }
+        switch card {
+        case .insight: return "Appears once 5+ sessions reveal a pattern"
+        case .schedule: return nil
+        case .adjustments: return "Appears after your first logged session"
+        case .support: return "Appears after 5 logged sessions"
+        }
+    }
+
     /// Lightweight usage signal: a card's primary action fired. Feeds the
     /// layout proposal — counts only, no timestamps, stays on the profile.
+    /// Counts halve past 50 so this month's behavior outvotes month one
+    /// (audit 22, P2).
     func noteHomeCardUsed(_ card: HomeCardID) {
         styleProfile.homeCardTaps[card.rawValue, default: 0] += 1
+        if styleProfile.homeCardTaps.values.contains(where: { $0 > 50 }) {
+            styleProfile.homeCardTaps = styleProfile.homeCardTaps.mapValues { max($0 / 2, 1) }
+        }
         persistLocalProfile()
     }
 
@@ -492,27 +554,35 @@ final class MorpheAppStore {
     /// when a visible card has been used 5+ more times than a visible
     /// card above it, and that exact pair hasn't been declined.
     var homeLayoutSuggestion: (move: HomeCardID, above: HomeCardID)? {
-        let cards = visibleHomeCards
+        // Only cards that render CONTENT right now can be proposed —
+        // naming an invisible card is a claim the screen contradicts
+        // (audit 22, P0). Strongest inversion wins, not the first
+        // (audit 22, P2).
+        let cards = visibleHomeCards.filter { homeCardRendersContent($0) }
         guard cards.count >= 2 else { return nil }
         let taps = styleProfile.homeCardTaps
+        var best: (move: HomeCardID, above: HomeCardID, gap: Int)?
         for lowerIndex in 1..<cards.count {
             let lower = cards[lowerIndex]
             for upperIndex in 0..<lowerIndex {
                 let upper = cards[upperIndex]
                 let key = "\(lower.rawValue)>\(upper.rawValue)"
-                if taps[lower.rawValue, default: 0] - taps[upper.rawValue, default: 0] >= 5,
-                   !styleProfile.declinedLayoutSuggestions.contains(key) {
-                    return (move: lower, above: upper)
+                let gap = taps[lower.rawValue, default: 0] - taps[upper.rawValue, default: 0]
+                if gap >= 5, !styleProfile.declinedLayoutSuggestions.contains(key),
+                   gap > (best?.gap ?? 0) {
+                    best = (lower, upper, gap)
                 }
             }
         }
-        return nil
+        return best.map { (move: $0.move, above: $0.above) }
     }
 
     /// User said yes: move the card directly above the target, keep
-    /// everything else stable.
-    func applyHomeLayoutSuggestion() {
-        guard let suggestion = homeLayoutSuggestion else { return }
+    /// everything else stable. Takes the RENDERED suggestion so a state
+    /// shift between render and tap can't apply a different pair
+    /// (audit 22, P2).
+    func applyHomeLayoutSuggestion(_ suggestion: (move: HomeCardID, above: HomeCardID)? = nil) {
+        guard let suggestion = suggestion ?? homeLayoutSuggestion else { return }
         var order = homeCardLayout
         order.removeAll { $0 == suggestion.move }
         let index = order.firstIndex(of: suggestion.above) ?? 0
@@ -521,11 +591,17 @@ final class MorpheAppStore {
         showToast("\(suggestion.move.title) moved up.")
     }
 
-    /// User said no: remember the exact pair so it never re-asks.
-    func declineHomeLayoutSuggestion() {
-        guard let suggestion = homeLayoutSuggestion else { return }
-        styleProfile.declinedLayoutSuggestions.append(
-            "\(suggestion.move.rawValue)>\(suggestion.above.rawValue)")
+    /// User said no: one decline silences the CARD, not just the pair —
+    /// otherwise the chip re-renders with a near-identical proposal and
+    /// the button looks broken (audit 22, P1).
+    func declineHomeLayoutSuggestion(_ suggestion: (move: HomeCardID, above: HomeCardID)? = nil) {
+        guard let suggestion = suggestion ?? homeLayoutSuggestion else { return }
+        for other in HomeCardID.allCases where other != suggestion.move {
+            let key = "\(suggestion.move.rawValue)>\(other.rawValue)"
+            if !styleProfile.declinedLayoutSuggestions.contains(key) {
+                styleProfile.declinedLayoutSuggestions.append(key)
+            }
+        }
         persistLocalProfile()
     }
 
@@ -8496,16 +8572,16 @@ final class MorpheAppStore {
                 known.append("they usually rate sessions '\(intensity)'")
             }
             if let rating = styleProfile.averageRating {
-                known.append("average session rating \(String(format: "%.1f", rating))/10")
+                known.append("average session rating \(rating.formatted(.number.precision(.fractionLength(1))))/10")
             }
             if !styleProfile.favoriteExercises.isEmpty {
                 known.append("most-trained exercises: \(styleProfile.favoriteExercises.prefix(3).joined(separator: ", "))")
             }
             if let hour = styleProfile.preferredTrainingHour {
-                known.append("they usually train around \(hour):00")
+                known.append("they usually train around \(Self.formattedHour(hour))")
             }
-            if let cadence = styleProfile.weeklyCadence {
-                known.append("about \(String(format: "%.1f", cadence)) sessions/week lately")
+            if let cadence = styleProfile.weeklyCadence, cadence > 0 {
+                known.append("about \(cadence.formatted(.number.precision(.fractionLength(1)))) sessions/week lately")
             }
             if let request = styleProfile.recentChangeRequests.first {
                 // User free text: flatten newlines/quotes so it stays a
@@ -15367,13 +15443,14 @@ final class MorpheAppStore {
         let learned = learnedRecommendationChips(
             durationMinutes: template?.durationMinutes,
             exerciseNames: template?.exercises.map(\.name) ?? [])
+        let mergedChips = Array(contextChips.prefix(max(4 - learned.count, 0)) + learned)
         return GoodForTodayWorkoutRecommendation(
             workoutTemplateID: item.workoutTemplateID,
             workoutName: item.workoutName,
             sourceName: item.sourceName,
             reasonTitle: reasonTitle,
             reasonDetail: reasonDetail,
-            contextChips: Array((contextChips + learned).prefix(4)),
+            contextChips: mergedChips,
             confidenceNote: confidenceNote,
             bestFor: item.bestFor,
             prefersBuddy: prefersBuddy,
@@ -15396,13 +15473,14 @@ final class MorpheAppStore {
         let learned = learnedRecommendationChips(
             durationMinutes: template.durationMinutes,
             exerciseNames: template.exercises.map(\.name))
+        let mergedChips = Array(contextChips.prefix(max(4 - learned.count, 0)) + learned)
         return GoodForTodayWorkoutRecommendation(
             workoutTemplateID: template.id,
             workoutName: template.name,
             sourceName: sourceName,
             reasonTitle: reasonTitle,
             reasonDetail: reasonDetail,
-            contextChips: Array((contextChips + learned).prefix(4)),
+            contextChips: mergedChips,
             confidenceNote: confidenceNote,
             bestFor: bestFor,
             prefersBuddy: prefersBuddy,
@@ -15698,8 +15776,12 @@ final class MorpheAppStore {
         // toast is FELT, not just read — a "no" must not feel like a "yes".
         if isError { Haptics.error() }
         toastMessage = message
+        // Long messages earn longer reads (audit 22, P2): the learning
+        // acknowledgments wrap to two lines, and sheet-dismiss animation
+        // eats a third of the old flat 2s.
+        let seconds: Double = message.count > 60 ? 3.5 : 2
         Task {
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: .seconds(seconds))
             if self.toastMessage == message {
                 self.toastMessage = nil
             }

@@ -2394,11 +2394,17 @@ final class StyleProfileTests: XCTestCase {
         store.workoutLogs.append(log(store, title: "C", daysAgo: 5, hour: 7, minutes: 50, exercise: "Squat"))
         store.refreshStyleProfile()
 
-        // In the learned window, the time line leads.
+        // In the window the time line leads on ALTERNATE days (audit 22:
+        // an outright return showed one sentence forever). Across two
+        // consecutive days, exactly the even one carries it.
         var comps = Calendar.current.dateComponents([.year, .month, .day], from: .now)
         comps.hour = 7
-        let inWindow = Calendar.current.date(from: comps) ?? .now
-        XCTAssertTrue(store.learnedInsightLine(now: inWindow)?.contains("usual training window") == true)
+        let today = Calendar.current.date(from: comps) ?? .now
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today
+        let windowHits = [today, tomorrow].compactMap { store.learnedInsightLine(now: $0) }
+            .filter { $0.contains("usual training window") }
+        XCTAssertEqual(windowHits.count, 1,
+                       "the window line leads every OTHER day, not every day")
 
         // Out of the window: still a real derived line, rotating by day.
         comps.hour = 15
@@ -2443,31 +2449,53 @@ final class StyleProfileTests: XCTestCase {
         XCTAssertEqual(store.visibleHomeCards, HomeCardID.defaultOrder)
     }
 
-    func testLayoutSuggestionProposesAppliesAndRespectsDecline() {
+    func testLayoutSuggestionNeverNamesInvisibleCards() {
+        // Audit 22 P0: at tier 0 only Schedule renders — a proposal that
+        // names Pattern insight is a claim the screen contradicts.
         let store = makeStore()
+        for _ in 0..<10 { store.noteHomeCardUsed(.schedule) }
+        XCTAssertNil(store.homeLayoutSuggestion,
+                     "one renderable card can never produce a proposal")
+    }
+
+    func testLayoutSuggestionProposesAppliesAndDeclinesCardWide() {
+        let store = makeStore()
+        // Tier 2 (5 logs) so schedule/adjustments/support all render.
+        for day in 1...5 {
+            store.workoutLogs.append(log(store, title: "W\(day)", daysAgo: day,
+                                          hour: 7, minutes: 40, exercise: "Bench Press"))
+        }
         XCTAssertNil(store.homeLayoutSuggestion, "no usage, no proposal")
 
-        // 5+ more uses of a lower card than one above it → proposal.
         for _ in 0..<5 { store.noteHomeCardUsed(.support) }
         guard let suggestion = store.homeLayoutSuggestion else {
             return XCTFail("expected a proposal after the usage gap")
         }
         XCTAssertEqual(suggestion.move, .support)
-        XCTAssertEqual(suggestion.above, .insight, "moves above the top under-used card")
+        // At tier 2 with 5 real logs the insight card genuinely renders,
+        // so proposing above it is honest — the invisible-card guard is
+        // pinned by testLayoutSuggestionNeverNamesInvisibleCards.
+        XCTAssertTrue(store.homeCardRendersContent(suggestion.above),
+                      "a proposal may only name a card the user can actually see")
 
-        // Decline: remembered, never re-asks for the same pair.
-        store.declineHomeLayoutSuggestion()
-        if let next = store.homeLayoutSuggestion {
-            XCTAssertFalse(next.move == .support && next.above == .insight,
-                           "a declined pair must not re-ask")
-        }
+        // Decline silences the CARD, not just the pair (audit 22, P1:
+        // pair-only decline swapped in a near-identical chip).
+        store.declineHomeLayoutSuggestion(suggestion)
+        XCTAssertNil(store.homeLayoutSuggestion, "declined card stays quiet")
 
-        // A different pair can still propose; applying moves the card.
+        // A different card can still propose; applying moves it and
+        // resets the counters.
         for _ in 0..<5 { store.noteHomeCardUsed(.adjustments) }
-        if store.homeLayoutSuggestion != nil {
-            store.applyHomeLayoutSuggestion()
+        guard let second = store.homeLayoutSuggestion else {
+            return XCTFail("a different card may still propose")
         }
-        XCTAssertTrue(store.homeCardLayout.count == 4, "apply keeps every card")
+        XCTAssertEqual(second.move, .adjustments)
+        store.applyHomeLayoutSuggestion(second)
+        XCTAssertEqual(store.homeCardLayout.count, 4, "apply keeps every card")
+        XCTAssertEqual(store.homeCardLayout.first, .adjustments,
+                       "moved directly above the proposal's target (the visible top card)")
+        XCTAssertTrue(store.styleProfile.homeCardTaps.isEmpty,
+                      "an accepted (or manual) reorder restarts the usage counters")
     }
 
     func testCharacterSpecFallsBackToMorphe() {
