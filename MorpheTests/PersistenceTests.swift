@@ -2375,6 +2375,16 @@ final class StyleProfileTests: XCTestCase {
         XCTAssertTrue(store.styleProfile.hasLearnedAnything)
     }
 
+    func testVoiceLevelMappingIsBoundedAndUseful() {
+        // The frequency ring's input contract: silence maps to 0, speech
+        // RMS (~0.01–0.15 on iPhone mics) spreads across the range, and
+        // nothing can push past 1.
+        XCTAssertEqual(HeyMorpheEngine.normalizedLevel(rms: 0), 0)
+        XCTAssertEqual(HeyMorpheEngine.normalizedLevel(rms: 0.05), 0.4, accuracy: 0.0001)
+        XCTAssertEqual(HeyMorpheEngine.normalizedLevel(rms: 5), 1, "clamped — a shout can't break the ring")
+        XCTAssertEqual(HeyMorpheEngine.normalizedLevel(rms: -1), 0, "negative RMS is noise, floors at 0")
+    }
+
     func testLearnedInsightLineHoldsUntilDataExists() {
         let store = makeStore()
         XCTAssertNil(store.learnedInsightLine(), "no data, no line — never invented")

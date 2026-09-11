@@ -134,6 +134,83 @@ struct SectionTitleView: View {
 /// The "Hey Morphe" edge glow: the Siri-glow pattern in brand gold — a
 /// soft breathing border around the whole screen while Morphe listens or
 /// answers. Chrome, not content; hidden from hit-testing and VoiceOver.
+/// The Jarvis wave (Lucas 2026-09): layered frequency ribbons in the
+/// brand gold, breathing while Morphe listens and pulsing while it
+/// talks back. `level` is real voice energy — mic RMS while capturing,
+/// per-word pulses while speaking — so the motion is the audio, not a
+/// looped animation. Reduce Motion renders a calm static ring.
+struct MorpheFrequencyRing: View {
+    /// 0…1 voice energy from HeyMorpheEngine.
+    var level: Double
+    /// Speaking runs the phase faster than listening.
+    var speaking: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Group {
+            if reduceMotion {
+                Canvas { context, size in
+                    Self.draw(context: context, size: size, time: 0, level: 0.35, speaking: false)
+                }
+            } else {
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                    Canvas { context, size in
+                        let t = timeline.date.timeIntervalSinceReferenceDate
+                        Self.draw(context: context, size: size, time: t, level: level, speaking: speaking)
+                    }
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// Three ribbon groups × seven strands, each strand a closed ring
+    /// whose radius is modulated by two sine terms — the layered-line
+    /// look of a frequency field. Pure function of (time, level).
+    private static func draw(context: GraphicsContext, size: CGSize, time: Double, level: Double, speaking: Bool) {
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let baseRadius = min(size.width, size.height) * 0.34
+        let energy = 0.10 + level * 0.55
+        let speed = speaking ? 1.7 : 0.9
+
+        // Soft gold glow behind everything, swelling with the voice.
+        let glowRadius = baseRadius * (1.15 + level * 0.35)
+        let glowRect = CGRect(x: center.x - glowRadius, y: center.y - glowRadius,
+                              width: glowRadius * 2, height: glowRadius * 2)
+        context.fill(Path(ellipseIn: glowRect), with: .radialGradient(
+            Gradient(colors: [MorpheTheme.brandYellow.opacity(0.10 + level * 0.14), .clear]),
+            center: center, startRadius: 0, endRadius: glowRadius))
+
+        let groups: [(waves: Double, direction: Double, tint: Color)] = [
+            (3, 1, MorpheTheme.brandYellow),
+            (4, -1, MorpheTheme.brandGold),
+            (5, 1, Color.white.opacity(0.75))
+        ]
+
+        for (groupIndex, group) in groups.enumerated() {
+            let phase = time * speed * group.direction + Double(groupIndex) * 2.1
+            for strand in 0..<7 {
+                let strandOffset = Double(strand) * 0.085
+                let amplitude = baseRadius * energy * (0.55 + Double(strand) * 0.09)
+                var path = Path()
+                let steps = 120
+                for step in 0...steps {
+                    let theta = Double(step) / Double(steps) * 2 * .pi
+                    let wobble = sin(theta * group.waves + phase + strandOffset * 4)
+                        + 0.45 * sin(theta * (group.waves + 2) - phase * 1.3 + strandOffset * 7)
+                    let radius = baseRadius + amplitude * wobble * 0.5
+                    let point = CGPoint(x: center.x + cos(theta) * radius,
+                                        y: center.y + sin(theta) * radius)
+                    if step == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                }
+                path.closeSubpath()
+                let opacity = 0.10 + (1 - Double(strand) / 7.0) * (0.16 + level * 0.14)
+                context.stroke(path, with: .color(group.tint.opacity(opacity)), lineWidth: 1)
+            }
+        }
+    }
+}
+
 struct VoiceGlowOverlay: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulsing = false

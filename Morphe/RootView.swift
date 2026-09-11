@@ -201,7 +201,12 @@ struct RootView: View {
         .sheet(item: $store.selectedExercise, onDismiss: {
             store.consumePendingDebriefOpen()
         }) { exercise in
+            // Sheets are separate presentation roots — the root-level
+            // preferredColorScheme doesn't reach them, so every sheet
+            // pins the store's appearance itself or it follows the SYSTEM
+            // scheme instead of the in-app toggle.
             ExerciseDetailView(exercise: exercise)
+                .preferredColorScheme(store.selectedAppearance)
         }
         .sheet(item: $store.pendingPartnerSessionPost, onDismiss: {
             store.dismissPendingPartnerSessionPost()
@@ -214,6 +219,7 @@ struct RootView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .background(PremiumBackground())
+            .preferredColorScheme(store.selectedAppearance)
         }
         .sheet(item: $store.selectedNetworkProfile, onDismiss: {
             store.closeNetworkProfile()
@@ -227,6 +233,7 @@ struct RootView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .background(PremiumBackground())
+            .preferredColorScheme(store.selectedAppearance)
         }
         .sheet(isPresented: $store.showClientProfile, onDismiss: {
             store.closeClientProfile()
@@ -244,6 +251,7 @@ struct RootView: View {
             .sheetToastSurface()
             .background(PremiumBackground())
             .presentationDragIndicator(.visible)
+            .preferredColorScheme(store.selectedAppearance)
         }
         .sheet(isPresented: $store.showProgressSheet, onDismiss: {
             // The Progress sheet blocks the debrief consume guard — its
@@ -266,6 +274,7 @@ struct RootView: View {
             .sheetToastSurface()
             .background(PremiumBackground())
             .presentationDragIndicator(.visible)
+            .preferredColorScheme(store.selectedAppearance)
         }
         .sheet(isPresented: $store.showUniversalSearch, onDismiss: {
             store.consumePendingProgressOpen()
@@ -277,6 +286,7 @@ struct RootView: View {
             }
             .background(PremiumBackground())
             .presentationDragIndicator(.visible)
+            .preferredColorScheme(store.selectedAppearance)
         }
         .sheet(isPresented: $store.showQuickAdd, onDismiss: {
             // Retires the 0.6s guess-timer: if Ask Morphe queued the AI
@@ -298,6 +308,7 @@ struct RootView: View {
             // expandable when the note editor needs room.
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+            .preferredColorScheme(store.selectedAppearance)
         }
         .fullScreenCover(isPresented: $store.showAIAgent, onDismiss: {
             // A chat/voice "show my progress" closed this cover with the
@@ -314,10 +325,12 @@ struct RootView: View {
             // sheet teardown writing through the shared binding could cancel
             // a pending change.
             .background(PremiumBackground())
+            .preferredColorScheme(store.selectedAppearance)
         }
         .sheet(isPresented: $store.showWelcomeExperience) {
             WelcomeExperienceView()
                 .environment(store)
+                .preferredColorScheme(store.selectedAppearance)
         }
         .sessionWorkGateDialog()
         .alert("Save more workouts to switch", isPresented: $store.showSwitchNeedsSavedWorkouts) {
@@ -339,6 +352,16 @@ struct RootView: View {
         // during it.
         .overlay {
             if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking {
+                // The Jarvis wave: centered, non-blocking, moving with the
+                // real audio (Lucas 2026-09).
+                MorpheFrequencyRing(
+                    level: store.heyMorphe.voiceLevel,
+                    speaking: store.heyMorphe.state == .speaking
+                )
+                .frame(width: 210, height: 210)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .allowsHitTesting(false)
+                .transition(.opacity)
                 VoiceGlowOverlay()
                     .transition(.opacity)
             }
@@ -1092,6 +1115,25 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
 
     private(set) var state: VoiceState = .off
     private(set) var liveTranscript = ""
+    /// Live voice energy 0…1 for the frequency ring (Jarvis wave,
+    /// Lucas 2026-09): the ACTIVE capture tap feeds real mic RMS; while
+    /// Morphe speaks, per-word delegate pulses drive it. Smoothed on
+    /// write, decayed by a timer while speaking.
+    private(set) var voiceLevel: Double = 0
+    private var speakingDecayTimer: Timer?
+
+    /// RMS → display level. Pure so tests can pin the mapping.
+    nonisolated static func normalizedLevel(rms: Float) -> Double {
+        // Speech RMS on iPhone mics lives around 0.01–0.15; ×8 spreads
+        // that across the ring's range without pegging shouts at 1.
+        min(max(Double(rms) * 8, 0), 1)
+    }
+
+    private func ingestMicLevel(_ raw: Double) {
+        // Fast attack, slow release — the ring jumps with speech and
+        // settles between words instead of flickering.
+        voiceLevel = raw > voiceLevel ? raw : voiceLevel * 0.82 + raw * 0.18
+    }
     var onWake: (() -> Void)?
     /// (command, isFollowUp). A follow-up command was spoken in the short
     /// window after Morphe answered — no wake phrase required, and the
@@ -1530,8 +1572,20 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             let node = audioEngine.inputNode
             let format = node.outputFormat(forBus: 0)
-            node.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
                 request.append(buffer)
+                // Mic energy for the frequency ring — computed here on the
+                // audio thread, marshaled to main. Only the ACTIVE capture
+                // renders the ring, but computing always is a few adds per
+                // buffer and keeps the tap uniform.
+                if let channel = buffer.floatChannelData?[0] {
+                    let count = Int(buffer.frameLength)
+                    var sum: Float = 0
+                    for i in 0..<count { sum += channel[i] * channel[i] }
+                    let rms = count > 0 ? sqrtf(sum / Float(count)) : 0
+                    let level = HeyMorpheEngine.normalizedLevel(rms: rms)
+                    DispatchQueue.main.async { self?.ingestMicLevel(level) }
+                }
             }
             audioEngine.prepare()
             try audioEngine.start()
@@ -1787,9 +1841,26 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
 
     // MARK: AVSpeechSynthesizerDelegate
 
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, willSpeakRangeOfSpeechString characterRange: NSRange, utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async {
+            guard self.state == .speaking else { return }
+            // One pulse per word — longer words push harder. The decay
+            // timer pulls it back down between words.
+            self.voiceLevel = min(0.45 + Double(characterRange.length) * 0.06, 0.95)
+            if self.speakingDecayTimer == nil {
+                self.speakingDecayTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+                    Task { @MainActor in self?.voiceLevel *= 0.88 }
+                }
+            }
+        }
+    }
+
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         DispatchQueue.main.async {
             guard self.state == .speaking else { return }
+            self.speakingDecayTimer?.invalidate()
+            self.speakingDecayTimer = nil
+            self.voiceLevel = 0
             // The answer just landed — hold the door open for a follow-up
             // command with no re-wake (rebuild 2026-08).
             self.followUpDeadline = Date().addingTimeInterval(6)
@@ -1801,6 +1872,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         DispatchQueue.main.async {
             guard self.state == .speaking else { return }
+            self.speakingDecayTimer?.invalidate()
+            self.speakingDecayTimer = nil
+            self.voiceLevel = 0
             self.state = .passive
             self.beginListening()
         }
@@ -2077,6 +2151,7 @@ private struct NetworkProfilePreviewSheet: View {
         }
         .sheet(isPresented: $showBooking) {
             CoachBookingSheet(coachName: profile.name)
+                .preferredColorScheme(store.selectedAppearance)
         }
     }
 

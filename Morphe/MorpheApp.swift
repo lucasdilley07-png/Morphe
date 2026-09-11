@@ -33,6 +33,12 @@ struct MorpheApp: App {
                 .id("\(store.appearanceIsLight)-\(store.profileShowcase.accentPalette.rawValue)-\(store.profileShowcase.customAccentHex)")
                 .environment(store)
                 .preferredColorScheme(store.selectedAppearance)
+                .onAppear {
+                    // Cold-start half of the sheet fix: didSet only fires on
+                    // toggle, so the saved preference is pinned on the window
+                    // once it exists. Sheets ignore preferredColorScheme.
+                    MorpheAppStore.applyWindowAppearance(isLight: store.appearanceIsLight)
+                }
                 .onReceive(NotificationCenter.default.publisher(for: .morpheIntentArrived)) { _ in
                     // Intent fired while the app was already frontmost —
                     // no scene-phase change to piggyback on.

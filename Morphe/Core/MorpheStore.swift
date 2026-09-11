@@ -119,6 +119,22 @@ final class MorpheAppStore {
         didSet {
             MorpheTheme.isLight = appearanceIsLight
             UserDefaults.standard.set(appearanceIsLight, forKey: "morphe.appearance.light")
+            Self.applyWindowAppearance(isLight: appearanceIsLight)
+        }
+    }
+
+    /// Pins the scheme on every window, not just the SwiftUI root:
+    /// sheets and covers are separate presentation roots that ignore the
+    /// root view's preferredColorScheme, so without this the profile
+    /// sheet (and 40+ other sheets) follow the SYSTEM appearance instead
+    /// of the in-app toggle.
+    static func applyWindowAppearance(isLight: Bool) {
+        let style: UIUserInterfaceStyle = isLight ? .light : .dark
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows {
+                window.overrideUserInterfaceStyle = style
+            }
         }
     }
 
