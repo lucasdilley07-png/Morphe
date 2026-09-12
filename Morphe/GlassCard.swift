@@ -176,15 +176,17 @@ struct MorpheFrequencyRing: View {
                 }
             }
         }
-        // The brand M sits STILL at the center while the frequency moves
-        // around it (Lucas 2026-09) — outside the TimelineView, so it
-        // never animates. Sized to the ring's calm inner field.
+        // The REAL brand mark sits STILL at the center while the
+        // frequency moves around it (Lucas 2026-09) — the LaunchMark
+        // asset ships a transparent background, so only the gold M
+        // renders. Outside the TimelineView: it never animates.
         .overlay {
             GeometryReader { proxy in
                 let side = min(proxy.size.width, proxy.size.height)
-                Text("M")
-                    .font(.system(size: side * 0.21, design: .monospaced).weight(.black))
-                    .foregroundStyle(MorpheTheme.isLight ? MorpheTheme.brandYellowText : MorpheTheme.brandYellow)
+                Image("LaunchMark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: side * 0.42, height: side * 0.42)
                     .frame(width: proxy.size.width, height: proxy.size.height)
             }
         }
