@@ -176,6 +176,18 @@ struct MorpheFrequencyRing: View {
                 }
             }
         }
+        // The brand M sits STILL at the center while the frequency moves
+        // around it (Lucas 2026-09) — outside the TimelineView, so it
+        // never animates. Sized to the ring's calm inner field.
+        .overlay {
+            GeometryReader { proxy in
+                let side = min(proxy.size.width, proxy.size.height)
+                Text("M")
+                    .font(.system(size: side * 0.21, design: .monospaced).weight(.black))
+                    .foregroundStyle(MorpheTheme.isLight ? MorpheTheme.brandYellowText : MorpheTheme.brandYellow)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+            }
+        }
         .accessibilityHidden(true)
     }
 
