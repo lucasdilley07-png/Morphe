@@ -1200,8 +1200,11 @@ struct MorpheDayPopup: View {
                         choiceButton(choice)
                             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     } else {
+                        // Solid answer bubbles (Lucas 2026-09) — the
+                        // app-wide outlined secondary read see-through
+                        // over the scrim.
                         choiceButton(choice)
-                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .buttonStyle(SolidChoiceButtonStyle())
                     }
                 }
             }
@@ -1260,6 +1263,37 @@ struct MorpheSpeechBubble<Content: View>: View {
                         .shadow(color: .black.opacity(0.30), radius: 18, y: 6)
                 )
         }
+    }
+}
+
+/// Solid answer pill for the day popup (Lucas 2026-09): same opaque
+/// surface as MorpheSpeechBubble, so the choices read as Morphe's
+/// bubbles too — never see-through over the scrim.
+struct SolidChoiceButtonStyle: ButtonStyle {
+    private var fill: Color {
+        MorpheTheme.isLight
+            ? Color(red: 0.96, green: 0.96, blue: 0.965)
+            : Color(red: 0.125, green: 0.125, blue: 0.135)
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.body, design: .rounded).weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.55)
+            .foregroundStyle(configuration.isPressed ? MorpheTheme.textSecondary : MorpheTheme.textPrimary)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(configuration.isPressed ? MorpheTheme.panelInteractive : fill)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(MorpheTheme.stroke, lineWidth: 1)
+            )
+            .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
