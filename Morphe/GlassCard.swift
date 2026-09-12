@@ -620,19 +620,28 @@ struct CelebrationOverlay: View {
         // Floats over scroll content like the toast: solid ink fill + gold
         // hairline (a translucent surface tint read as see-through here).
         HStack(spacing: 12) {
-            Image(systemName: moment.symbol)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(MorpheTheme.accentText)
-                .symbolEffect(.bounce, value: marked)
+            // Morphe's face on every spoken overlay (bubble redesign
+            // 2026-09): the frequency ring replaces the bare SF symbol —
+            // the symbol moves inline next to the title, keeping its
+            // meaning (star/trophy/flame).
+            MorpheFrequencyRing(level: 0.3, speaking: false)
+                .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("MORPHE")
                     .font(MorpheTheme.microLabel(9))
                     .tracking(2)
                     .foregroundStyle(MorpheTheme.accentText)
-                Text(moment.title)
-                    .font(.headline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                HStack(spacing: 6) {
+                    Image(systemName: moment.symbol)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .symbolEffect(.bounce, value: marked)
+                    Text(moment.title)
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                }
                 Text(moment.detail)
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)

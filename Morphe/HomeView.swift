@@ -1077,30 +1077,13 @@ struct HomeLayoutEditorSheet: View {
     }
 }
 
-struct MorpheCharacterBadge: View {
-    @Environment(MorpheAppStore.self) private var store
 
-    var body: some View {
-        // The chosen persona wears the badge (personalization phase 2).
-        let character = MorpheCharacter.spec(for: store.styleProfile.characterID)
-        ZStack {
-            Circle()
-                .fill(LinearGradient(
-                    colors: character.colors.map { Color(red: $0.red, green: $0.green, blue: $0.blue) },
-                    startPoint: .topLeading, endPoint: .bottomTrailing))
-            Text(character.letter)
-                .font(.system(size: 22, design: .monospaced).weight(.black))
-                .foregroundStyle(.black)
-        }
-        .frame(width: 44, height: 44)
-        .accessibilityHidden(true)
-    }
-}
-
-/// The full-screen day takeover (Lucas 2026-08-18): Morphe rises from
-/// the bottom edge covering the whole screen on EVERY app open — the
-/// character, the question for the current state, three common answers
-/// plus Other. Swipe down or X parks it until the next open.
+/// The day-open moment (Lucas 2026-09, bubble redesign): no card, no
+/// square — Morphe IS the black-and-gold frequency ring, speaking in
+/// text bubbles over a dimmed scrim. The ring breathes gently; the
+/// greeting + question ride one bubble with a tail pointing at the
+/// ring; the answers are pill chips. Tap the scrim, drag down, or hit
+/// the X to park it until the next open.
 struct MorpheDayPopup: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -1111,10 +1094,8 @@ struct MorpheDayPopup: View {
         let _ = store.morpheAskRefresh
         if store.shouldShowDayPopup {
             ZStack {
-                // Dimmed scrim over the app — the day popup is a centered
-                // CARD now, not a full-screen takeover (Lucas 2026-09).
-                // Tap the scrim to dismiss.
-                MorpheTheme.ink.ignoresSafeArea()
+                // Dimmed scrim — tap to dismiss.
+                MorpheTheme.ink.opacity(0.88).ignoresSafeArea()
                     .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             store.dismissDayPopupForSession()
@@ -1138,28 +1119,34 @@ struct MorpheDayPopup: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel("Dismiss until the next open")
                     }
+                    .padding(.horizontal, 8)
+
+                    Spacer(minLength: 0)
 
                     // Scrolls at accessibility sizes (audit 12, P1-6): the
-                    // card's own exit buttons must never clip off-screen,
-                    // and the card must never grow to fill the phone.
+                    // answers must never clip off-screen.
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 0) {
-                            MorpheCharacterBadge()
-                                .scaleEffect(1.3)
-                                .padding(.top, 12)
-                                .padding(.bottom, 22)
+                            // Morphe's face: the frequency ring, breathing
+                            // at a gentle idle level.
+                            MorpheFrequencyRing(level: 0.22, speaking: false)
+                                .frame(width: 170, height: 170)
+                                .accessibilityHidden(true)
 
-                            Text(store.homeGreeting)
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                                .multilineTextAlignment(.center)
-
-                            Text(store.dayPopupQuestion)
-                                .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.top, 6)
+                            MorpheSpeechBubble {
+                                VStack(spacing: 6) {
+                                    Text(store.homeGreeting)
+                                        .font(.headline.weight(.bold))
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                        .multilineTextAlignment(.center)
+                                    Text(store.dayPopupQuestion)
+                                        .font(.subheadline)
+                                        .foregroundStyle(MorpheTheme.textSecondary)
+                                        .multilineTextAlignment(.center)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .padding(.top, -6)
 
                             VStack(spacing: 10) {
                                 ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
@@ -1172,37 +1159,17 @@ struct MorpheDayPopup: View {
                                     }
                                 }
                             }
-                            .padding(.top, 24)
-                            .padding(.bottom, 8)
+                            .frame(maxWidth: 320)
+                            .padding(.top, 22)
                         }
                         .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 24)
                     }
                     .scrollBounceBehavior(.basedOnSize)
+
+                    Spacer(minLength: 24)
                 }
-                .padding(20)
-                // The card: capped width + height, rounded panel raised
-                // over the scrim (Lucas 2026-09). Centered by the ZStack.
-                .frame(maxWidth: 340)
-                .frame(maxHeight: 500)
-                .background(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                        // Opaque base (Lucas 2026-09): panelRaised is a
-                        // translucent tint on its own, so the card showed
-                        // the screen behind it. inkAlt gives it a solid,
-                        // 100%-opaque fill; the tint rides on top for depth.
-                        .fill(MorpheTheme.inkAlt)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                .fill(MorpheTheme.panelRaised)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                .stroke(MorpheTheme.stroke, lineWidth: 1)
-                        )
-                        .shadow(color: .black.opacity(0.35), radius: 24, y: 8)
-                )
-                .padding(.horizontal, 28)
-                // Drag-to-dismiss moves the CARD only; the scrim stays put.
+                // Drag-to-dismiss moves Morphe + bubbles; the scrim stays.
                 .offset(y: max(0, dragOffset))
                 .scaleEffect(appeared || reduceMotion ? 1 : 0.96)
                 .gesture(
@@ -1223,8 +1190,7 @@ struct MorpheDayPopup: View {
                         }
                 )
             }
-            // Overlay entrance (Lucas 2026-09): scrim + card fade in
-            // together, no slide.
+            // Fade-in entrance, no slide (Lucas 2026-09).
             .opacity(appeared || reduceMotion ? 1 : 0)
             .onAppear {
                 guard !appeared else { return }
@@ -1248,6 +1214,52 @@ struct MorpheDayPopup: View {
                 .frame(maxWidth: .infinity)
         }
         .accessibilityLabel(choice.label)
+    }
+}
+
+/// A text bubble Morphe speaks through (bubble redesign 2026-09): an
+/// opaque rounded bubble with a tail pointing up at the ring. Solid fill
+/// — the screens behind must never bleed through the words.
+struct MorpheSpeechBubble<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // The tail, pointing up toward Morphe.
+            Triangle()
+                .fill(MorpheTheme.inkAlt)
+                .overlay(Triangle().fill(MorpheTheme.panelRaised))
+                .frame(width: 22, height: 11)
+            content()
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .frame(maxWidth: 340)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(MorpheTheme.inkAlt)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(MorpheTheme.panelRaised)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(MorpheTheme.stroke, lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.30), radius: 18, y: 6)
+                )
+        }
+    }
+}
+
+/// Upward-pointing triangle for speech-bubble tails.
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 
