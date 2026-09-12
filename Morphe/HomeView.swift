@@ -1102,7 +1102,21 @@ struct MorpheDayPopup: View {
                         }
                     }
 
-                VStack(spacing: 0) {
+                // Centered on screen (Lucas 2026-09): the block sits at
+                // true vertical center when it fits, and falls back to a
+                // scroll at accessibility sizes (audit 12, P1-6).
+                ViewThatFits(in: .vertical) {
+                    popupContent
+                    ScrollView(showsIndicators: false) {
+                        popupContent
+                            .padding(.vertical, 60)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+
+                // The X floats top-right, out of the centered flow.
+                VStack {
                     HStack {
                         Spacer()
                         Button {
@@ -1120,54 +1134,7 @@ struct MorpheDayPopup: View {
                         .accessibilityLabel("Dismiss until the next open")
                     }
                     .padding(.horizontal, 8)
-
-                    Spacer(minLength: 0)
-
-                    // Scrolls at accessibility sizes (audit 12, P1-6): the
-                    // answers must never clip off-screen.
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 0) {
-                            // Morphe's face: the frequency ring, breathing
-                            // at a gentle idle level.
-                            MorpheFrequencyRing(level: 0.22, speaking: false)
-                                .frame(width: 170, height: 170)
-                                .accessibilityHidden(true)
-
-                            MorpheSpeechBubble {
-                                VStack(spacing: 6) {
-                                    Text(store.homeGreeting)
-                                        .font(.headline.weight(.bold))
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                        .multilineTextAlignment(.center)
-                                    Text(store.dayPopupQuestion)
-                                        .font(.subheadline)
-                                        .foregroundStyle(MorpheTheme.textSecondary)
-                                        .multilineTextAlignment(.center)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                            .padding(.top, -6)
-
-                            VStack(spacing: 10) {
-                                ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
-                                    if index == 0 {
-                                        choiceButton(choice)
-                                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                                    } else {
-                                        choiceButton(choice)
-                                            .buttonStyle(SecondaryCTAButtonStyle())
-                                    }
-                                }
-                            }
-                            .frame(maxWidth: 320)
-                            .padding(.top, 22)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 24)
-                    }
-                    .scrollBounceBehavior(.basedOnSize)
-
-                    Spacer(minLength: 24)
+                    Spacer()
                 }
                 // Drag-to-dismiss moves Morphe + bubbles; the scrim stays.
                 .offset(y: max(0, dragOffset))
@@ -1204,6 +1171,47 @@ struct MorpheDayPopup: View {
         }
     }
 
+    private var popupContent: some View {
+        VStack(spacing: 0) {
+            // Morphe's face: the frequency ring, breathing at a gentle
+            // idle level.
+            MorpheFrequencyRing(level: 0.22, speaking: false)
+                .frame(width: 170, height: 170)
+                .accessibilityHidden(true)
+
+            MorpheSpeechBubble {
+                VStack(spacing: 6) {
+                    Text(store.homeGreeting)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .multilineTextAlignment(.center)
+                    Text(store.dayPopupQuestion)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.top, -6)
+
+            VStack(spacing: 10) {
+                ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
+                    if index == 0 {
+                        choiceButton(choice)
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    } else {
+                        choiceButton(choice)
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                    }
+                }
+            }
+            .frame(maxWidth: 320)
+            .padding(.top, 22)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 24)
+    }
+
     private func choiceButton(_ choice: MorpheAppStore.DayPopupChoice) -> some View {
         Button {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
@@ -1223,12 +1231,20 @@ struct MorpheDayPopup: View {
 struct MorpheSpeechBubble<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
+    /// One fully opaque surface (Lucas 2026-09: "solid, not see-through")
+    /// — a real color, not layered tints that read translucent over the
+    /// scrim.
+    private var bubbleFill: Color {
+        MorpheTheme.isLight
+            ? Color(red: 0.96, green: 0.96, blue: 0.965)
+            : Color(red: 0.125, green: 0.125, blue: 0.135)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // The tail, pointing up toward Morphe.
             Triangle()
-                .fill(MorpheTheme.inkAlt)
-                .overlay(Triangle().fill(MorpheTheme.panelRaised))
+                .fill(bubbleFill)
                 .frame(width: 22, height: 11)
             content()
                 .padding(.horizontal, 18)
@@ -1236,11 +1252,7 @@ struct MorpheSpeechBubble<Content: View>: View {
                 .frame(maxWidth: 340)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(MorpheTheme.inkAlt)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(MorpheTheme.panelRaised)
-                        )
+                        .fill(bubbleFill)
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .stroke(MorpheTheme.stroke, lineWidth: 1)
