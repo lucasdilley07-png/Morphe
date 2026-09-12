@@ -352,6 +352,14 @@ struct RootView: View {
         // during it.
         .overlay {
             if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking {
+                // Hey Morphe dims the stage 35% (Lucas 2026-09): the app
+                // recedes under the ring while the exchange is live. Black
+                // in both appearances — a dim, not a theme surface. Taps
+                // still pass through; the exchange is hands-free.
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
                 // The Jarvis wave: centered, non-blocking, moving with the
                 // real audio (Lucas 2026-09). A LEAF view — it reads
                 // voiceLevel in its own body so the ~46/sec level writes
