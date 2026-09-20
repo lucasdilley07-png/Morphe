@@ -148,7 +148,8 @@ struct MorpheVoiceRingHost: View {
     var body: some View {
         MorpheFrequencyRing(
             level: store.heyMorphe.voiceLevel,
-            speaking: store.heyMorphe.state == .speaking
+            speaking: store.heyMorphe.state == .speaking,
+            whiteMark: true
         )
         .frame(width: 240, height: 240)
     }
@@ -159,6 +160,10 @@ struct MorpheFrequencyRing: View {
     var level: Double
     /// Speaking runs the phase faster than listening.
     var speaking: Bool
+    /// Voice-AI variant (Lucas 2026-09): the sharp mark renders WHITE
+    /// with the orange/gold bloom underneath. Default keeps the gold
+    /// mark for the day popup and celebration banners.
+    var whiteMark: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -192,19 +197,29 @@ struct MorpheFrequencyRing: View {
                         .resizable()
                         .renderingMode(.template)
                         .scaledToFit()
-                        .foregroundStyle(MorpheTheme.brandYellow)
+                        // The voice ring's underglow leans orange so the
+                        // white M reads hot against it.
+                        .foregroundStyle(whiteMark ? Color(red: 1.0, green: 0.62, blue: 0.10) : MorpheTheme.brandYellow)
                         .blur(radius: side * 0.045)
-                        .opacity(0.85)
+                        .opacity(0.9)
                     Image("LaunchMark")
                         .resizable()
                         .renderingMode(.template)
                         .scaledToFit()
-                        .foregroundStyle(Color(red: 1.0, green: 0.92, blue: 0.55))
+                        .foregroundStyle(whiteMark ? MorpheTheme.brandYellow : Color(red: 1.0, green: 0.92, blue: 0.55))
                         .blur(radius: side * 0.016)
-                        .opacity(0.7)
-                    Image("LaunchMark")
-                        .resizable()
-                        .scaledToFit()
+                        .opacity(0.75)
+                    if whiteMark {
+                        Image("LaunchMark")
+                            .resizable()
+                            .renderingMode(.template)
+                            .scaledToFit()
+                            .foregroundStyle(.white)
+                    } else {
+                        Image("LaunchMark")
+                            .resizable()
+                            .scaledToFit()
+                    }
                 }
                 .frame(width: side * 0.42, height: side * 0.42)
                 .frame(width: proxy.size.width, height: proxy.size.height)
