@@ -183,11 +183,31 @@ struct MorpheFrequencyRing: View {
         .overlay {
             GeometryReader { proxy in
                 let side = min(proxy.size.width, proxy.size.height)
-                Image("LaunchMark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: side * 0.42, height: side * 0.42)
-                    .frame(width: proxy.size.width, height: proxy.size.height)
+                // Inner glow (Lucas 2026-09): two blurred gold copies of
+                // the mark's own shape breathe light from inside its
+                // edges, with the sharp mark on top — the M looks lit
+                // from within, not spotlit from outside.
+                ZStack {
+                    Image("LaunchMark")
+                        .resizable()
+                        .renderingMode(.template)
+                        .scaledToFit()
+                        .foregroundStyle(MorpheTheme.brandYellow)
+                        .blur(radius: side * 0.045)
+                        .opacity(0.85)
+                    Image("LaunchMark")
+                        .resizable()
+                        .renderingMode(.template)
+                        .scaledToFit()
+                        .foregroundStyle(Color(red: 1.0, green: 0.92, blue: 0.55))
+                        .blur(radius: side * 0.016)
+                        .opacity(0.7)
+                    Image("LaunchMark")
+                        .resizable()
+                        .scaledToFit()
+                }
+                .frame(width: side * 0.42, height: side * 0.42)
+                .frame(width: proxy.size.width, height: proxy.size.height)
             }
         }
         .accessibilityHidden(true)
