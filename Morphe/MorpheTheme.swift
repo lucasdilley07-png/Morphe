@@ -474,7 +474,13 @@ enum SoundEffects {
     static var externalAudioOwner = false
 
     static func play(_ cue: Cue) {
-        if !externalAudioOwner {
+        // Only claim .ambient from an IDLE session (audio audit P1-7):
+        // the owner flag is maintained by the speech engines alone, so a
+        // reward ding during video capture used to flip the category
+        // under the live AVCaptureSession. .playAndRecord in any form
+        // means someone real holds the session — leave it be.
+        let current = AVAudioSession.sharedInstance().category
+        if !externalAudioOwner, current == .soloAmbient || current == .ambient {
             try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
         }
         if players[cue] == nil {

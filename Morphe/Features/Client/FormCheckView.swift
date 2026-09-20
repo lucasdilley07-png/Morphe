@@ -311,7 +311,14 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
 
     let exerciseName: String
     let movement: FormCheckMovement
-    let session = AVCaptureSession()
+    let session: AVCaptureSession = {
+        let session = AVCaptureSession()
+        // Video-only capture (audio audit P1-6): never let the capture
+        // session auto-configure the app audio session — Form Check has
+        // no mic input, so it has no business touching audio at all.
+        session.automaticallyConfiguresApplicationAudioSession = false
+        return session
+    }()
 
     private let sessionQueue = DispatchQueue(label: "com.morpheapp.formcheck.session")
     private let videoQueue = DispatchQueue(label: "com.morpheapp.formcheck.video")

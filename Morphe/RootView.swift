@@ -1125,6 +1125,15 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     }
     /// Audio-thread read of "does anyone want mic levels" — see the tap.
     private var levelTapLive = false
+    /// True only after WE activated the shared session (audio audit P0-1):
+    /// stop()/standDown() on a session we never owned must be a no-op —
+    /// deactivating someone else's session pauses their music.
+    private var sessionOwned = false
+    /// True only while our mic tap is installed — touching
+    /// audioEngine.inputNode lazily INSTANTIATES the input IO unit
+    /// against whatever session is current, which is itself an audio
+    /// interruption (the "closing the app pauses my music" culprit).
+    private var didInstallTap = false
     private(set) var liveTranscript = ""
     /// Live voice energy 0…1 for the frequency ring (Jarvis wave,
     /// Lucas 2026-09): the ACTIVE capture tap feeds real mic RMS; while
@@ -1352,6 +1361,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             let session = AVAudioSession.sharedInstance()
             try? session.setActive(false, options: .notifyOthersOnDeactivation)
             try? session.setCategory(.ambient, options: [.mixWithOthers])
+            sessionOwned = false
         }
         waitingForQuiet = true
         startQuietPoll()
@@ -1439,13 +1449,19 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         speakingWatchdog?.invalidate()
         speakingWatchdog = nil
         endSpeakingLevel()
-        synthesizer.stopSpeaking(at: .immediate)
-        // Give the session BACK (audit 12, P0-2): the app's sounds are
-        // .ambient — mix with the user's music, respect the silent switch.
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
         SoundEffects.externalAudioOwner = false
-        let session = AVAudioSession.sharedInstance()
-        try? session.setActive(false, options: .notifyOthersOnDeactivation)
-        try? session.setCategory(.ambient, options: [.mixWithOthers])
+        // Give the session back ONLY if we ever took it (audio audit
+        // P0-1): deactivating a session we never owned — every single
+        // backgrounding with the toggle off — interrupts other apps.
+        if sessionOwned {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            try? session.setCategory(.ambient, options: [.mixWithOthers])
+            sessionOwned = false
+        }
     }
 
     /// Dictation and video capture call these so exactly one engine owns
@@ -1525,6 +1541,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
                 guard let self, self.state == .speaking else { return }
                 self.synthesizer.stopSpeaking(at: .immediate)
                 self.endSpeakingLevel()
+                self.restoreMixSession()
                 self.state = .passive
                 self.beginListening()
             }
@@ -1536,20 +1553,46 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     private func tearDownRecognition() {
         commandTimer?.invalidate()
         commandTimer = nil
-        // UNCONDITIONAL removal (audit 13, P0): an interruption stops the
-        // engine before we get here, so gating on isRunning left the tap
-        // installed — and the next installTap on the same bus is a hard
-        // crash. Both calls are safe no-ops when nothing is running.
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        // Removal is unconditional ONCE A TAP EVER EXISTED (audit 13, P0:
+        // gating on isRunning left an interrupted tap installed, and the
+        // next installTap crashed). But it must be gated on didInstallTap
+        // (audio audit P0-1): audioEngine.inputNode lazily INSTANTIATES
+        // the input IO unit, so touching it on a process that never armed
+        // the mic is itself an audio interruption — the "closing the app
+        // pauses my music" bug.
+        if didInstallTap {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+            didInstallTap = false
+        }
         request?.endAudio()
         task?.cancel()
         task = nil
         request = nil
     }
 
+    /// Deactivate-then-rearm helper (audio audit P1-5): a bare category
+    /// swap does NOT reliably lift .duckOthers — only deactivation does.
+    /// Safe when we never owned the session (no-op).
+    private func restoreMixSession() {
+        guard sessionOwned else { return }
+        let session = AVAudioSession.sharedInstance()
+        try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        sessionOwned = false
+        try? session.setCategory(.playAndRecord, mode: .default,
+                                 options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+    }
+
     private func beginListening() {
         guard state == .passive else { return }
+        // The courtesy check lives HERE, at the actual activation point
+        // (audio audit P0-2) — not just in start(): the permission hops
+        // are async and every ~60s recognizer recycle re-activates, so a
+        // playlist started after arming was being grabbed mid-song.
+        guard !AVAudioSession.sharedInstance().isOtherAudioPlaying else {
+            parkForOtherAudio(handback: sessionOwned)
+            return
+        }
         tearDownRecognition()
         liveTranscript = ""
         // No recognizer for this locale at all — that's permanent, not a
@@ -1565,6 +1608,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             return
         }
         guard recognizer.isAvailable else {
+            // A speak() duck may still be applied — lift it before the
+            // backoff, or the music stays quiet for up to 40s (audio
+            // audit P1-5).
+            restoreMixSession()
             scheduleRestart()
             return
         }
@@ -1595,6 +1642,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             try session.setCategory(.playAndRecord, mode: .default,
                                     options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothA2DP])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
+            sessionOwned = true
             let node = audioEngine.inputNode
             let format = node.outputFormat(forBus: 0)
             node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
@@ -1614,6 +1662,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
                     DispatchQueue.main.async { self?.ingestMicLevel(level) }
                 }
             }
+            didInstallTap = true
             audioEngine.prepare()
             try audioEngine.start()
             // NOT the place to reset restartAttempts (audit 13, P1): the
@@ -1664,9 +1713,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         followUpCaptureStart = nil
         tearDownRecognition()
         SoundEffects.externalAudioOwner = false
-        let session = AVAudioSession.sharedInstance()
-        try? session.setActive(false, options: .notifyOthersOnDeactivation)
-        try? session.setCategory(.ambient, options: [.mixWithOthers])
+        if sessionOwned {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            try? session.setCategory(.ambient, options: [.mixWithOthers])
+            sessionOwned = false
+        }
     }
 
     private func handle(result: SFSpeechRecognitionResult?, error: Error?) {
@@ -1889,6 +1941,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         DispatchQueue.main.async {
             guard self.state == .speaking else { return }
             self.endSpeakingLevel()
+            // Lift the speak() duck for REAL before re-arming (audio
+            // audit P1-5): only deactivation reliably un-ducks.
+            self.restoreMixSession()
             // The answer just landed — hold the door open for a follow-up
             // command with no re-wake (rebuild 2026-08).
             self.followUpDeadline = Date().addingTimeInterval(6)
@@ -1901,6 +1956,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         DispatchQueue.main.async {
             guard self.state == .speaking else { return }
             self.endSpeakingLevel()
+            self.restoreMixSession()
             self.state = .passive
             self.beginListening()
         }
@@ -1979,7 +2035,12 @@ final class DictationEngine: NSObject {
 
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.record, mode: .measurement, options: .duckOthers)
+            // .playAndRecord + mixWithOthers + duckOthers (audio audit
+            // P0-3): the old exclusive .record/.measurement HARD-STOPPED
+            // the user's music for the whole dictation. This ducks it
+            // while the mic is live and hands it back on stop().
+            try session.setCategory(.playAndRecord, mode: .default,
+                                    options: [.mixWithOthers, .duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             let inputNode = audioEngine.inputNode
             let format = inputNode.outputFormat(forBus: 0)

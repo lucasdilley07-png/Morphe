@@ -66,6 +66,18 @@ final class CaptureCameraController: NSObject {
         if mode == .video {
             HeyMorpheEngine.shared.pauseForExternalAudio()
         }
+        // Own the audio session explicitly (audio audit P0-4): the
+        // default auto-configuration installs a NON-mixing .playAndRecord
+        // on our behalf and nothing ever deactivates it — recording one
+        // clip paused the user's music permanently. Video mode ducks
+        // while the mic is genuinely live; photo mode touches nothing.
+        session.automaticallyConfiguresApplicationAudioSession = false
+        if mode == .video {
+            let audio = AVAudioSession.sharedInstance()
+            try? audio.setCategory(.playAndRecord, mode: .default,
+                                   options: [.mixWithOthers, .duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+            try? audio.setActive(true, options: .notifyOthersOnDeactivation)
+        }
         sessionQueue.async { [self] in
             session.beginConfiguration()
             session.sessionPreset = .high
@@ -109,8 +121,14 @@ final class CaptureCameraController: NSObject {
         sessionQueue.async { [self] in
             if movieOutput.isRecording { movieOutput.stopRecording() }
             if session.isRunning { session.stopRunning() }
-            // Resume back on the main thread — same rule as the pause.
             DispatchQueue.main.async {
+                // UNCONDITIONAL handback (audio audit P0-4): the old path
+                // relied on resumeAfterExternalAudio, which only acts when
+                // other audio is playing — false precisely because this
+                // capture paused it, so the session was never released.
+                let audio = AVAudioSession.sharedInstance()
+                try? audio.setActive(false, options: .notifyOthersOnDeactivation)
+                try? audio.setCategory(.ambient, options: [.mixWithOthers])
                 HeyMorpheEngine.shared.resumeAfterExternalAudio()
             }
         }

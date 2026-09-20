@@ -9606,6 +9606,10 @@ final class MorpheAppStore {
         }
         guard retries > 0 else {
             pendingDirectVoiceCapture = false
+            // Honest failure (audio audit P2-8): the engine parks behind
+            // other audio, so the lock-screen mic tap did nothing — say
+            // why instead of silently swallowing the tap.
+            showToast("Morphe's mic waits while other audio plays — pause it and try again.")
             return
         }
         // The engine arms asynchronously after foreground — give it a few
