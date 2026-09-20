@@ -10,7 +10,10 @@ enum MorpheTheme {
     /// on one switch. Dark = the ink HUD; light = a warm paper field (the
     /// Hims-audit "Calm" option, now real). Views read tokens, never raw
     /// white/black, so both modes stay legible.
-    static var isLight = false
+    // LIGHT is the default look (Lucas 2026-09): white field, black
+    // text/logos, orange-gold highlights. Dark remains one toggle away in
+    // Profile → Your app; a device that already chose keeps its choice.
+    static var isLight = (UserDefaults.standard.object(forKey: "morphe.appearance.light") as? Bool) ?? true
 
     static var ink: Color {
         isLight ? Color.white                                              // clean white field
@@ -155,7 +158,9 @@ enum MorpheTheme {
     /// accentText but pinned to the brand pair. Always-dark surfaces
     /// (share cards, camera) keep the raw `brandYellow` literal.
     static var brandYellowText: Color {
-        isLight ? Color(red: 0.54, green: 0.42, blue: 0.0) : brandYellow
+        // Light default leans ORANGE-gold (Lucas 2026-09) — warmer than
+        // the old olive-gold, still dark enough to read on white.
+        isLight ? Color(red: 0.68, green: 0.40, blue: 0.0) : brandYellow
     }
 
     /// HSB darken for light-mode text: cap brightness so any accent hue
