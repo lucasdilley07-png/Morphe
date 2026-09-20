@@ -2498,6 +2498,25 @@ final class StyleProfileTests: XCTestCase {
                       "an accepted (or manual) reorder restarts the usage counters")
     }
 
+    func testVoiceAndStyleSpecsFallBackSafely() {
+        XCTAssertEqual(MorpheVoiceOption.spec(for: "australian").title, "Aussie")
+        XCTAssertEqual(MorpheVoiceOption.spec(for: "no-such-voice").id, "british",
+                       "unknown voice ids fall back to the Jarvis original")
+        XCTAssertEqual(MorpheCommunicationStyle.spec(for: "drill").title, "Drill")
+        XCTAssertEqual(MorpheCommunicationStyle.spec(for: "").id, "direct",
+                       "unknown styles fall back to direct")
+
+        let store = makeStore()
+        store.setStyleChoice(voiceStyle: "american", communicationStyle: "analytical")
+        XCTAssertEqual(store.styleProfile.voiceStyle, "american")
+        XCTAssertEqual(store.styleProfile.communicationStyle, "analytical")
+        XCTAssertEqual(HeyMorpheEngine.preferredVoiceStyle, "american",
+                       "the engine syncs from the profile didSet")
+        XCTAssertTrue(store.intelligenceSystemPrompt(spoken: false).contains("analytical"),
+                      "the delivery register reaches the Claude prompt")
+        store.setStyleChoice(voiceStyle: "british", communicationStyle: "direct")
+    }
+
     func testCharacterSpecFallsBackToMorphe() {
         XCTAssertEqual(MorpheCharacter.spec(for: "atlas").name, "Atlas")
         XCTAssertEqual(MorpheCharacter.spec(for: "no-such-id").id, "morphe",

@@ -720,6 +720,8 @@ struct ProfileView: View {
     /// honest empty state (audit 15, P2: a miss left a lone search field).
     private var settingsSearchIsDry: Bool {
         let sections: [(String, String)] = [
+            ("Make it yours", Self.makeItYoursKeywords),
+            ("What Morphe has learned", "personalization learned patterns ai adapt"),
             ("Your account", "name username handle referrals invite share"),
             ("How you train", Self.howYouTrainKeywords),
             ("Voice", "hey morphe voice speech microphone hands free wake"),
@@ -737,6 +739,8 @@ struct ProfileView: View {
 
     /// Shared keyword strings (audit 15, P2: "auto" couldn't find "Auto
     /// rest timer"; the feed-identity rows were unfindable by their names).
+    private static let makeItYoursKeywords =
+        "personalization character persona sound effects pack customize voice accent communication style delivery"
     private static let howYouTrainKeywords =
         "training days week injuries limits auto rest timer effort rpe rir weight unit kg lb pounds kilograms"
     private static let whoCanSeeYouKeywords =
@@ -867,7 +871,7 @@ struct ProfileView: View {
             // Identity customization (personalization phase 2): pick
             // Morphe's persona and the app's sound voice. Writes go through
             // setStyleChoice so recomputes never clobber them.
-            settingsSection("Make it yours", keywords: "personalization character persona sound effects pack customize") {
+            settingsSection("Make it yours", keywords: Self.makeItYoursKeywords) {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Morphe's character")
                         .font(.subheadline.weight(.semibold))

@@ -115,7 +115,7 @@ final class MorpheAppStore {
 
     /// Light/dark appearance — device-level (not per-profile: the person
     /// holding the phone picks how it looks). Flips the whole token system.
-    var appearanceIsLight = UserDefaults.standard.bool(forKey: "morphe.appearance.light") {
+    var appearanceIsLight = (UserDefaults.standard.object(forKey: "morphe.appearance.light") as? Bool) ?? true {
         didSet {
             MorpheTheme.isLight = appearanceIsLight
             UserDefaults.standard.set(appearanceIsLight, forKey: "morphe.appearance.light")
@@ -331,6 +331,7 @@ final class MorpheAppStore {
     private(set) var styleProfile = UserStyleProfile() {
         didSet {
             SoundEffects.pack = SoundPack(rawValue: styleProfile.soundPack) ?? .classic
+            HeyMorpheEngine.preferredVoiceStyle = styleProfile.voiceStyle
         }
     }
 
@@ -409,9 +410,12 @@ final class MorpheAppStore {
     /// Explicit customization writes (pickers land here; recomputes never
     /// touch these fields).
     func setStyleChoice(soundPack: String? = nil, characterID: String? = nil,
-                        homeCardOrder: [String]? = nil, homeHiddenCards: [String]? = nil) {
+                        homeCardOrder: [String]? = nil, homeHiddenCards: [String]? = nil,
+                        voiceStyle: String? = nil, communicationStyle: String? = nil) {
         if let soundPack { styleProfile.soundPack = soundPack }
         if let characterID { styleProfile.characterID = characterID }
+        if let voiceStyle { styleProfile.voiceStyle = voiceStyle }
+        if let communicationStyle { styleProfile.communicationStyle = communicationStyle }
         if let homeCardOrder {
             styleProfile.homeCardOrder = homeCardOrder
             // A reorder is the user's word on the layout — usage counters
@@ -1202,7 +1206,7 @@ final class MorpheAppStore {
         self.cloudBackup = cloudBackup
         self.partyService = partyService
         self.managedClientService = managedClientService
-        MorpheTheme.isLight = UserDefaults.standard.bool(forKey: "morphe.appearance.light")
+        MorpheTheme.isLight = (UserDefaults.standard.object(forKey: "morphe.appearance.light") as? Bool) ?? true
         self.usernameDirectory = usernameDirectory
         self.verificationService = verificationService
         self.appointmentService = appointmentService
@@ -8552,6 +8556,9 @@ final class MorpheAppStore {
         // The chosen persona changes the register, never the honesty
         // (personalization phase 2).
         lines.append(MorpheCharacter.spec(for: styleProfile.characterID).register)
+        // The chosen delivery style (personalization: voice options) —
+        // how it talks, layered over who it is.
+        lines.append(MorpheCommunicationStyle.spec(for: styleProfile.communicationStyle).register)
         do {
             lines.append("The user is \(clientProfile.name.isEmpty ? "the athlete" : clientProfile.name). Weight unit: \(weightUnit == .kilograms ? "kilograms" : "pounds").")
             if isWorkoutSessionActive {

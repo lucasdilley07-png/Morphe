@@ -1232,7 +1232,16 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// compact — "Daniel" ships on every iPhone; an enhanced or premium
     /// download upgrades Morphe automatically). Falls back to the
     /// system's default British voice, then the device default.
-    private static let morpheVoice: AVSpeechSynthesisVoice? = {
+    /// The user's chosen voice style — synced from the style profile the
+    /// same way SoundEffects.pack is (personalization: voice options).
+    static var preferredVoiceStyle = "british"
+
+    /// Quality-ranked pick for a voice option: premium > enhanced >
+    /// compact within the option's language+gender; graceful fallbacks
+    /// when a language pack isn't installed (any gender in the language,
+    /// then plain language default, then the British original).
+    nonisolated static func voice(for styleID: String) -> AVSpeechSynthesisVoice? {
+        let option = MorpheVoiceOption.spec(for: styleID)
         let rank: (AVSpeechSynthesisVoiceQuality) -> Int = {
             switch $0 {
             case .premium: return 2
@@ -1240,11 +1249,14 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             default: return 0
             }
         }
-        let britishMales = AVSpeechSynthesisVoice.speechVoices()
-            .filter { $0.language == "en-GB" && $0.gender == .male }
-        return britishMales.max(by: { rank($0.quality) < rank($1.quality) })
+        let inLanguage = AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language == option.language }
+        let wanted = inLanguage.filter { $0.gender == (option.wantsMale ? .male : .female) }
+        return wanted.max(by: { rank($0.quality) < rank($1.quality) })
+            ?? inLanguage.max(by: { rank($0.quality) < rank($1.quality) })
+            ?? AVSpeechSynthesisVoice(language: option.language)
             ?? AVSpeechSynthesisVoice(language: "en-GB")
-    }()
+    }
     private var commandTimer: Timer?
     /// The recognizer has never heard of "Morphe" and transcribes what it
     /// knows — "Hey Murphy" above all (audit 14). Two defenses: the request
@@ -1526,11 +1538,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             options: [.duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = 0.5
-        // The Morphe register (Lucas 2026-08-28): a measured British
-        // male — the Jarvis voice. Slightly lowered pitch keeps it in
-        // the chest without sounding processed.
-        utterance.voice = Self.morpheVoice
-        utterance.pitchMultiplier = 0.92
+        // The user's chosen voice (personalization) — default remains the
+        // measured British male, the Jarvis original. Pitch rides the
+        // option so male voices stay in the chest.
+        let voiceOption = MorpheVoiceOption.spec(for: Self.preferredVoiceStyle)
+        utterance.voice = Self.voice(for: voiceOption.id)
+        utterance.pitchMultiplier = voiceOption.pitch
         synthesizer.speak(utterance)
         // Watchdog (audit 12, P2-8): if the utterance never finishes, the
         // glow must not stay lit and the mic must come back.

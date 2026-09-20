@@ -1047,6 +1047,73 @@ enum HomeCardID: String, CaseIterable, Identifiable {
     }
 }
 
+/// Morphe's spoken accent/voice options (Lucas 2026-09). The id is the
+/// chosen value in UserStyleProfile.voiceStyle; resolution to a real
+/// AVSpeechSynthesisVoice happens in HeyMorpheEngine (quality-ranked,
+/// graceful fallback when a language pack isn't installed).
+struct MorpheVoiceOption: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let detail: String
+    /// BCP-47 language for the synthesizer voice.
+    let language: String
+    /// Preferred gender for the quality-ranked pick.
+    let wantsMale: Bool
+    /// Slightly lowered pitch keeps the male voices in the chest.
+    let pitch: Float
+
+    static func == (lhs: MorpheVoiceOption, rhs: MorpheVoiceOption) -> Bool { lhs.id == rhs.id }
+
+    static let all: [MorpheVoiceOption] = [
+        MorpheVoiceOption(id: "british", title: "British", detail: "The Jarvis original",
+                          language: "en-GB", wantsMale: true, pitch: 0.92),
+        MorpheVoiceOption(id: "british-female", title: "British F", detail: "Measured and warm",
+                          language: "en-GB", wantsMale: false, pitch: 1.0),
+        MorpheVoiceOption(id: "american", title: "American", detail: "Straight-ahead coach",
+                          language: "en-US", wantsMale: true, pitch: 0.94),
+        MorpheVoiceOption(id: "australian", title: "Aussie", detail: "Relaxed and up-front",
+                          language: "en-AU", wantsMale: true, pitch: 0.94),
+    ]
+
+    /// Unknown/legacy ids fall back to the British original.
+    static func spec(for id: String) -> MorpheVoiceOption {
+        all.first { $0.id == id } ?? all[0]
+    }
+}
+
+/// How Morphe talks — delivery, not personality (the character persona
+/// carries personality; this carries the register the Claude brain
+/// answers in). Built-in rule replies keep their fixed copy.
+struct MorpheCommunicationStyle: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let detail: String
+    /// The line fed to the Claude system prompt.
+    let register: String
+
+    static func == (lhs: MorpheCommunicationStyle, rhs: MorpheCommunicationStyle) -> Bool { lhs.id == rhs.id }
+
+    static let all: [MorpheCommunicationStyle] = [
+        MorpheCommunicationStyle(
+            id: "direct", title: "Direct", detail: "Short and straight",
+            register: "Delivery: direct and economical — answer first, no filler, no pep-talk padding."),
+        MorpheCommunicationStyle(
+            id: "encouraging", title: "Encouraging", detail: "Warm and supportive",
+            register: "Delivery: encouraging — acknowledge the effort genuinely before the answer, but never invent praise the logs don't support."),
+        MorpheCommunicationStyle(
+            id: "drill", title: "Drill", detail: "Terse, pushy, zero fluff",
+            register: "Delivery: drill-sergeant terse — clipped imperatives, push for the next rep, still honest about numbers."),
+        MorpheCommunicationStyle(
+            id: "analytical", title: "Analytical", detail: "Numbers first",
+            register: "Delivery: analytical — lead with the relevant numbers and trends from their data, then the takeaway."),
+    ]
+
+    /// Unknown/legacy ids fall back to direct.
+    static func spec(for id: String) -> MorpheCommunicationStyle {
+        all.first { $0.id == id } ?? all[0]
+    }
+}
+
 /// The personalization spine (Lucas 2026-09-09): one profile that holds
 /// what Morphe has LEARNED about this user (mined from logs + debriefs,
 /// never invented) and what the user has CHOSEN (identity + surface
@@ -1075,6 +1142,10 @@ struct UserStyleProfile: Codable, Equatable {
 
     /// Sound-effect set. "classic" is today's gold-tone kit.
     var soundPack: String = "classic"
+    /// Morphe's spoken voice (MorpheVoiceOption id). "british" = Jarvis.
+    var voiceStyle: String = "british"
+    /// Morphe's delivery register (MorpheCommunicationStyle id).
+    var communicationStyle: String = "direct"
     /// Morphe's own character/persona identity on this device.
     var characterID: String = "morphe"
     /// User-arranged Today card order; empty means the default layout.
@@ -1105,6 +1176,8 @@ struct UserStyleProfile: Codable, Equatable {
         weeklyCadence = try? c.decodeIfPresent(Double.self, forKey: .weeklyCadence)
         recentChangeRequests = ((try? c.decodeIfPresent([String].self, forKey: .recentChangeRequests)) ?? nil) ?? []
         soundPack = ((try? c.decodeIfPresent(String.self, forKey: .soundPack)) ?? nil) ?? "classic"
+        voiceStyle = ((try? c.decodeIfPresent(String.self, forKey: .voiceStyle)) ?? nil) ?? "british"
+        communicationStyle = ((try? c.decodeIfPresent(String.self, forKey: .communicationStyle)) ?? nil) ?? "direct"
         characterID = ((try? c.decodeIfPresent(String.self, forKey: .characterID)) ?? nil) ?? "morphe"
         homeCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .homeCardOrder)) ?? nil) ?? []
         homeHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .homeHiddenCards)) ?? nil) ?? []
