@@ -235,6 +235,17 @@ struct MorpheFrequencyRing: View {
     var whiteMark: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Phase accumulator (Lucas 2026-09: the frequency moves ONLY when
+    /// voice is actually picked up). Each frame advances the wave by
+    /// dt × speed × level — silence freezes the ribbons mid-shape;
+    /// speech makes them flow at the voice's own energy. A reference
+    /// box, not @State: mutating it during render must not re-render.
+    private final class PhaseBox {
+        var phase: Double = 0
+        var lastTime: Double?
+    }
+    @State private var phaseBox = PhaseBox()
+
     var body: some View {
         Group {
             if reduceMotion {
@@ -245,7 +256,14 @@ struct MorpheFrequencyRing: View {
                 TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
                     Canvas { context, size in
                         let t = timeline.date.timeIntervalSinceReferenceDate
-                        Self.draw(context: context, size: size, time: t, level: level, speaking: speaking)
+                        let dt = min(max(t - (phaseBox.lastTime ?? t), 0), 0.2)
+                        phaseBox.lastTime = t
+                        // A whisper of idle drift (0.04) keeps the ring
+                        // alive enough to read as ON; real motion is the
+                        // voice.
+                        let speed = speaking ? 1.7 : 0.9
+                        phaseBox.phase += dt * speed * (0.04 + level * 1.8)
+                        Self.draw(context: context, size: size, time: phaseBox.phase, level: level, speaking: speaking)
                     }
                 }
             }
@@ -304,7 +322,9 @@ struct MorpheFrequencyRing: View {
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
         let baseRadius = min(size.width, size.height) * 0.34
         let energy = 0.10 + level * 0.55
-        let speed = speaking ? 1.7 : 0.9
+        // `time` arrives as the voice-driven phase accumulator (or 0 for
+        // the static render) — no further speed scaling here.
+        let speed = 1.0
 
         // Soft gold glow behind everything, swelling with the voice.
         let glowRadius = baseRadius * (1.15 + level * 0.35)

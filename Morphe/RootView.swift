@@ -1150,6 +1150,18 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     private(set) var voiceLevel: Double = 0
     private var speakingDecayTimer: Timer?
 
+    /// Morphe ACTIVATED (Lucas 2026-09-21): claim the stage — a
+    /// non-mixing activation pauses the user's music/other audio for the
+    /// exchange. restoreMixSession + the passive re-arm hand it back
+    /// (.notifyOthersOnDeactivation resumes what was playing).
+    private func claimStageForActiveCapture() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playAndRecord, mode: .default,
+                                 options: [.defaultToSpeaker, .allowBluetoothA2DP])
+        try? session.setActive(true, options: .notifyOthersOnDeactivation)
+        sessionOwned = true
+    }
+
     /// Kills the speaking decay timer and zeroes the ring — safe to call
     /// from any exit path, no state guard (audit 22, P1: the guarded
     /// delegate cleanup missed stop() and the watchdog).
@@ -1413,16 +1425,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         // .active restart must not re-arm the wake engine underneath it —
         // resumeAfterExternalAudio is the only door back (audit 13).
         guard state == .off, !externalAudioActive else { return }
-        // Audio courtesy (Lucas 2026-08-27): if another app is playing,
-        // stay down — arming a record session from cold pauses their
-        // audio. The quiet-hint observer re-arms when it ends, and every
-        // foreground return retries through here too.
-        if AVAudioSession.sharedInstance().isOtherAudioPlaying {
-            // No handback needed — nothing was armed yet.
-            waitingForQuiet = true
-            startQuietPoll()
-            return
-        }
+        // Contract change (Lucas 2026-09-21): passive listening arms
+        // OVER other audio with a mixable session — the wake word must
+        // work mid-playlist. Music pauses only on ACTIVATION.
         waitingForQuiet = false
         quietPollTimer?.invalidate()
         quietPollTimer = nil
@@ -1516,10 +1521,6 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         // included (audit 16, P2: dictation left the session active, and
         // the duckOthers contract un-ducks only on DEACTIVATION — without
         // this the borrowed-mic flow left the music quiet).
-        if AVAudioSession.sharedInstance().isOtherAudioPlaying {
-            parkForOtherAudio(handback: true)
-            return
-        }
         restartAttempts = 0
         state = .passive
         beginListening()
@@ -1610,14 +1611,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
 
     private func beginListening() {
         guard state == .passive else { return }
-        // The courtesy check lives HERE, at the actual activation point
-        // (audio audit P0-2) — not just in start(): the permission hops
-        // are async and every ~60s recognizer recycle re-activates, so a
-        // playlist started after arming was being grabbed mid-song.
-        guard !AVAudioSession.sharedInstance().isOtherAudioPlaying else {
-            parkForOtherAudio(handback: sessionOwned)
-            return
-        }
+        // Passive listening MIXES over the user's music (Lucas 2026-09-21
+        // contract): the wake word must be hearable mid-playlist. Music
+        // pauses only when Morphe ACTIVATES (claimStageForActiveCapture)
+        // and resumes when the exchange ends (restoreMixSession).
         tearDownRecognition()
         liveTranscript = ""
         // No recognizer for this locale at all — that's permanent, not a
@@ -1754,6 +1751,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             case .passive:
                 if let command = Self.commandAfterWake(in: text) {
                     state = .active
+                    claimStageForActiveCapture()
                     activeIsFollowUp = false
                     liveTranscript = command
                     onWake?()
@@ -1768,6 +1766,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
                     // store routes these doors-only, so ambient chatter
                     // costs nothing.
                     state = .active
+                    claimStageForActiveCapture()
                     activeIsFollowUp = true
                     followUpCaptureStart = Date()
                     liveTranscript = text
@@ -1877,6 +1876,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     func enterActiveCapture() -> Bool {
         guard state == .passive else { return false }
         state = .active
+        claimStageForActiveCapture()
         activeIsFollowUp = true       // whole-stream capture machinery…
         directCaptureSession = true   // …with full routing on fire
         followUpCaptureStart = Date()
@@ -1896,7 +1896,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         if command.isEmpty || Self.isCancelPhrase(command) {
             // Woke then silence, or an explicit retraction ("never mind")
             // — back to scanning, no charge, no spoken reply (a misfire
-            // must cost nothing: rebuild 2026-08).
+            // must cost nothing: rebuild 2026-08). Hand the music back
+            // first (Lucas 2026-09-21).
+            restoreMixSession()
             state = .passive
             beginListening()
             return
