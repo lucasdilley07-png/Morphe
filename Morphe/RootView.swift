@@ -369,8 +369,6 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .allowsHitTesting(false)
                 .transition(.opacity)
-                VoiceGlowOverlay()
-                    .transition(.opacity)
             }
         }
         .overlay(alignment: .top) {
@@ -759,12 +757,12 @@ private struct FloatingAIAgentButton: View {
         } label: {
             Group {
                 if isCompact {
-                    GlowingMorpheMark(size: 24)
+                    GlowingMorpheMark(size: 24, whiteMark: true)
                         .frame(width: 50, height: 50)
                         .background(buttonBackground.clipShape(Circle()))
                 } else {
                     HStack(spacing: 10) {
-                        GlowingMorpheMark(size: 20)
+                        GlowingMorpheMark(size: 20, whiteMark: true)
                         Text(label)
                             .font(.subheadline.weight(.bold))
                     }
@@ -1534,13 +1532,17 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             .playAndRecord, mode: .default,
             options: [.duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
         let utterance = AVSpeechUtterance(string: text)
-        utterance.rate = 0.5
+        utterance.rate = 0.48
         // The user's chosen voice (personalization) — default remains the
         // measured British male, the Jarvis original. Pitch rides the
         // option so male voices stay in the chest.
         let voiceOption = MorpheVoiceOption.spec(for: Self.preferredVoiceStyle)
         utterance.voice = Self.voice(for: voiceOption.id)
         utterance.pitchMultiplier = voiceOption.pitch
+        // Room to breathe (luxury audit): the wake cue's tail clears
+        // before Morphe speaks, and the mic waits a beat after.
+        utterance.preUtteranceDelay = 0.25
+        utterance.postUtteranceDelay = 0.15
         synthesizer.speak(utterance)
         // Watchdog (audit 12, P2-8): if the utterance never finishes, the
         // glow must not stay lit and the mic must come back.

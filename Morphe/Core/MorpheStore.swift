@@ -8553,6 +8553,8 @@ final class MorpheAppStore {
     func intelligenceSystemPrompt(spoken: Bool) -> String {
         var lines: [String] = []
         lines.append("You are Morphe, an honest personal training assistant inside the Morphe iOS app. Brand: TRAIN HONEST — never inflate, never flatter, never invent logged numbers. If you don't know a number, say so.")
+        // The luxury register (audit 2026-09): quiet confidence, enforced.
+        lines.append("Never open with praise of the question or the user's plan. Never use exclamation marks. Never say 'Great question', 'Absolutely', or 'I'd be happy to'. Lead with the answer; reasoning follows only if it changes what they should do. Short sentences. No hedging adverbs.")
         // The chosen persona changes the register, never the honesty
         // (personalization phase 2).
         lines.append(MorpheCharacter.spec(for: styleProfile.characterID).register)
@@ -8638,11 +8640,15 @@ final class MorpheAppStore {
         let system = intelligenceSystemPrompt(spoken: false)
         let turns = intelligenceTurns(from: athleteAIAgentConversation)
         Task { [weak self] in
-            let answer = await MorpheIntelligence.safeReply(system: system, turns: turns, apiKey: key)
+            let answer = await MorpheIntelligence.safeReply(
+                system: system, turns: turns, apiKey: key, timeout: 20)
             guard let self else { return }
             do {
                 if let i = self.athleteAIAgentConversation.firstIndex(where: { $0.id == placeholder.id }) {
                     self.athleteAIAgentConversation[i].text = answer
+                    // One tick when the answer lands (luxury audit) — the
+                    // cheapest premium signal there is.
+                    Haptics.impact(.light)
                 }
             }
         }
@@ -10787,9 +10793,9 @@ final class MorpheAppStore {
     var homeGreeting: String {
         let hour = Calendar.current.component(.hour, from: .now)
         switch hour {
-        case 5..<12: return "Good morning, \(greetingName)!"
-        case 12..<17: return "Hi \(greetingName)!"
-        case 17..<22: return "Good evening, \(greetingName)!"
+        case 5..<12: return "Good morning, \(greetingName)."
+        case 12..<17: return "Hi \(greetingName)."
+        case 17..<22: return "Good evening, \(greetingName)."
         default: return "Late one, \(greetingName)?"
         }
     }

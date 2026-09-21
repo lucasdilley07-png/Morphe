@@ -152,6 +152,11 @@ enum MorpheIntelligence {
             "model": "claude-opus-5",
             "max_tokens": 4000,
             "system": system,
+            // Thinking off (luxury audit): adaptive thinking shared the
+            // token budget with the visible text, so a long think could
+            // return an EMPTY reply as "ranLong" — the least premium
+            // outcome. The prompt already enforces brevity.
+            "thinking": ["type": "disabled"],
             "output_config": ["effort": "low"],
             "messages": messages
         ]

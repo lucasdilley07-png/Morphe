@@ -1175,7 +1175,7 @@ struct MorpheDayPopup: View {
         VStack(spacing: 0) {
             // Morphe's face: the frequency ring, breathing at a gentle
             // idle level.
-            MorpheFrequencyRing(level: 0.22, speaking: false)
+            MorpheFrequencyRing(level: 0.22, speaking: false, whiteMark: true)
                 .frame(width: 170, height: 170)
                 .accessibilityHidden(true)
 

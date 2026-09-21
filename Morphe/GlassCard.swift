@@ -148,6 +148,9 @@ struct SectionTitleView: View {
 /// ring builds its own richer glow stack).
 struct GlowingMorpheMark: View {
     var size: CGFloat
+    /// White mark over the gold bloom (Lucas 2026-09) — the AI surfaces
+    /// wear it; gold-on-gold stays the default elsewhere.
+    var whiteMark: Bool = false
 
     var body: some View {
         ZStack {
@@ -156,11 +159,19 @@ struct GlowingMorpheMark: View {
                 .renderingMode(.template)
                 .scaledToFit()
                 .foregroundStyle(MorpheTheme.brandYellow)
-                .blur(radius: size * 0.16)
-                .opacity(0.9)
-            Image("LaunchMark")
-                .resizable()
-                .scaledToFit()
+                .blur(radius: size * (whiteMark ? 0.22 : 0.16))
+                .opacity(whiteMark ? 1.0 : 0.9)
+            if whiteMark {
+                Image("LaunchMark")
+                    .resizable()
+                    .renderingMode(.template)
+                    .scaledToFit()
+                    .foregroundStyle(.white)
+            } else {
+                Image("LaunchMark")
+                    .resizable()
+                    .scaledToFit()
+            }
         }
         .frame(width: size, height: size)
     }
@@ -310,30 +321,6 @@ struct MorpheFrequencyRing: View {
     }
 }
 
-struct VoiceGlowOverlay: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var pulsing = false
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: 46, style: .continuous)
-            .strokeBorder(MorpheTheme.brandYellow, lineWidth: 5)
-            .blur(radius: 8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 46, style: .continuous)
-                    .strokeBorder(MorpheTheme.brandYellow.opacity(0.9), lineWidth: 1.5)
-            )
-            .opacity(pulsing || reduceMotion ? 0.95 : 0.45)
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
-                    pulsing = true
-                }
-            }
-            .accessibilityHidden(true)
-    }
-}
 
 /// Live transcription while Morphe captures a command (rebuild 2026-08):
 /// both Siri and ChatGPT show the words as they land — seeing "10 at 135"
