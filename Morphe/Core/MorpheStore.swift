@@ -8640,15 +8640,30 @@ final class MorpheAppStore {
         let system = intelligenceSystemPrompt(spoken: false)
         let turns = intelligenceTurns(from: athleteAIAgentConversation)
         Task { [weak self] in
-            let answer = await MorpheIntelligence.safeReply(
-                system: system, turns: turns, apiKey: key, timeout: 20)
-            guard let self else { return }
+            // STREAM (luxury audit): first tokens replace the ellipsis in
+            // ~600ms; deltas append in place. On failure, fall back to the
+            // same honest error copy safeReply produces.
+            var landedFirstDelta = false
             do {
+                _ = try await MorpheIntelligence.streamReply(
+                    system: system, turns: turns, apiKey: key, timeout: 20
+                ) { partial in
+                    guard let self else { return }
+                    if let i = self.athleteAIAgentConversation.firstIndex(where: { $0.id == placeholder.id }) {
+                        self.athleteAIAgentConversation[i].text = partial
+                        if !landedFirstDelta {
+                            landedFirstDelta = true
+                            // One tick when the answer STARTS landing.
+                            Haptics.impact(.light)
+                        }
+                    }
+                }
+            } catch {
+                guard let self else { return }
+                let message = (error as? MorpheIntelligence.IntelligenceError)?.errorDescription
+                    ?? MorpheIntelligence.IntelligenceError.network.errorDescription ?? "I couldn't reach Claude."
                 if let i = self.athleteAIAgentConversation.firstIndex(where: { $0.id == placeholder.id }) {
-                    self.athleteAIAgentConversation[i].text = answer
-                    // One tick when the answer lands (luxury audit) — the
-                    // cheapest premium signal there is.
-                    Haptics.impact(.light)
+                    self.athleteAIAgentConversation[i].text = message
                 }
             }
         }

@@ -422,7 +422,7 @@ struct ProfileView: View {
     }
 
     private var identityCard: some View {
-        GlassCard {
+        GlassCard(.hero) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 14) {
                     profilePhotoView
@@ -750,10 +750,11 @@ struct ProfileView: View {
     /// search query matches neither its title nor its keywords.
     @ViewBuilder
     private func settingsSection<Content: View>(
-        _ title: String, keywords: String, @ViewBuilder content: () -> Content
+        _ title: String, keywords: String, emphasis: CardEmphasis = .standard,
+        @ViewBuilder content: () -> Content
     ) -> some View {
         if settingsSectionMatches(title: title, keywords: keywords) {
-            GlassCard {
+            GlassCard(emphasis) {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(title.uppercased())
                         .font(MorpheTheme.microLabel(10))
@@ -1392,7 +1393,7 @@ struct ProfileView: View {
 
             }
 
-            settingsSection("More info and support", keywords: "about terms privacy policy contact support email version") {
+            settingsSection("More info and support", keywords: "about terms privacy policy contact support email version", emphasis: .quiet) {
                 // About: the terms the user agreed to, the privacy policy,
                 // a human to email, and which build they're on — table
                 // stakes the audit found missing entirely.
@@ -1421,7 +1422,7 @@ struct ProfileView: View {
             }
 
             if FeatureFlags.accountsEnabled {
-                settingsSection("Login", keywords: "sign out log out delete account remove") {
+                settingsSection("Login", keywords: "sign out log out delete account remove", emphasis: .quiet) {
                     Button("Sign Out") {
                         showSignOutConfirm = true
                     }

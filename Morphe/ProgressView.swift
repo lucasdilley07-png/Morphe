@@ -1010,7 +1010,7 @@ private struct ProgressHeroStrip: View {
     @State private var showScoreExplainer = false
 
     var body: some View {
-        GlassCard {
+        GlassCard(.hero) {
             VStack(alignment: .leading, spacing: 12) {
                 if showMetrics {
                     HStack(alignment: .center, spacing: 16) {

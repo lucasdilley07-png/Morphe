@@ -410,7 +410,7 @@ struct HomeView: View {
             store.noteHomeCardUsed(.schedule)
             showAppointments = true
         } label: {
-            GlassCard {
+            GlassCard(.quiet) {
                 HStack(spacing: 12) {
                     Image(systemName: "calendar.badge.clock")
                         .font(.headline)
@@ -674,7 +674,7 @@ private struct HomeLinkTile: View {
 
     var body: some View {
         Button(action: action) {
-            GlassCard {
+            GlassCard(.quiet) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Image(systemName: systemImage)
@@ -888,7 +888,7 @@ private struct ComebackCard: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        GlassCard {
+        GlassCard(.hero) {
             VStack(alignment: .center, spacing: 12) {
                 HStack(spacing: 10) {
                     Image(systemName: "arrow.counterclockwise.circle.fill")
@@ -951,7 +951,7 @@ private struct HomeLayoutSuggestionChip: View {
     let suggestion: (move: HomeCardID, above: HomeCardID)
 
     var body: some View {
-        GlassCard {
+        GlassCard(.quiet) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     Image(systemName: "wand.and.stars")
@@ -1088,6 +1088,8 @@ struct MorpheDayPopup: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    @State private var bubbleIn = false
+    @State private var choicesIn = false
     @State private var dragOffset: CGFloat = 0
 
     var body: some View {
@@ -1161,8 +1163,21 @@ struct MorpheDayPopup: View {
             .opacity(appeared || reduceMotion ? 1 : 0)
             .onAppear {
                 guard !appeared else { return }
-                withAnimation(.easeOut(duration: reduceMotion ? 0.1 : 0.3).delay(0.35)) {
+                // Morphe ARRIVES, then speaks, then offers answers
+                // (luxury audit): ring → bubble → choices. Reduce Motion
+                // collapses to one fade.
+                if reduceMotion {
+                    appeared = true; bubbleIn = true; choicesIn = true
+                    return
+                }
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35)) {
                     appeared = true
+                }
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85).delay(0.63)) {
+                    bubbleIn = true
+                }
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85).delay(0.77)) {
+                    choicesIn = true
                 }
             }
             .transition(.opacity)
@@ -1193,6 +1208,8 @@ struct MorpheDayPopup: View {
                 }
             }
             .padding(.top, -6)
+            .opacity(bubbleIn ? 1 : 0)
+            .offset(y: bubbleIn ? 0 : 8)
 
             VStack(spacing: 10) {
                 ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
@@ -1210,6 +1227,8 @@ struct MorpheDayPopup: View {
             }
             .frame(maxWidth: 320)
             .padding(.top, 22)
+            .opacity(choicesIn ? 1 : 0)
+            .offset(y: choicesIn ? 0 : 8)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 24)
@@ -1363,7 +1382,7 @@ private struct TodayDoneCard: View {
     @State private var sharePayload: SharePayload?
 
     var body: some View {
-        GlassCard {
+        GlassCard(.hero) {
             VStack(alignment: .center, spacing: 14) {
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.seal.fill")
@@ -1438,7 +1457,7 @@ private struct TodayNextMoveCard: View {
     @State private var inlineReply: String?
 
     var body: some View {
-        GlassCard {
+        GlassCard(.hero) {
             VStack(alignment: .center, spacing: 14) {
                 Text(minimumWinModeEnabled ? "Today's fallback is active" : "Here's what I've got for you")
                     .font(.headline)
@@ -1870,7 +1889,7 @@ private struct MorpheHubEntryCard: View {
     let openMore: () -> Void
 
     var body: some View {
-        GlassCard {
+        GlassCard(.quiet) {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Want the bigger picture?")
                     .font(.headline)

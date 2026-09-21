@@ -1210,7 +1210,7 @@ private struct WorkoutCompleteCard: View {
     let onFinish: () -> Void
 
     var body: some View {
-        GlassCard {
+        GlassCard(.hero) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark.seal.fill")
@@ -1838,7 +1838,7 @@ private struct ActiveWorkoutTrackerCard: View {
     }
 
     var body: some View {
-        GlassCard {
+        GlassCard(.hero) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -3290,7 +3290,7 @@ private struct DiscoverCatalogSection: View {
     /// QR connect entry (moved here from the Messages empty state): show your
     /// Morphe code or scan a coach's / training partner's.
     private var connectCard: some View {
-        GlassCard {
+        GlassCard(.quiet) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Connect")
                     .font(.headline)
@@ -4114,7 +4114,7 @@ private struct TodaysWorkoutCard: View {
     let onTrainTogether: () -> Void
 
     var body: some View {
-        GlassCard {
+        GlassCard(.hero) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Today's Workout")
                     .font(.headline)

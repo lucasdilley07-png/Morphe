@@ -351,7 +351,8 @@ struct RootView: View {
         // (audit 12, P2-1): voice works during it, so it must be visible
         // during it.
         .overlay {
-            if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking {
+            if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking
+                || store.heyMorphe.state == .thinking {
                 // Hey Morphe dims the stage 35% (Lucas 2026-09): the app
                 // recedes under the ring while the exchange is live. Black
                 // in both appearances — a dim, not a theme surface. Taps
@@ -907,7 +908,16 @@ private struct MorpheAIAgentSheet: View {
                 .accessibilityLabel("New chat")
             }
             ToolbarItem(placement: .principal) {
-                Text("Morphe AI")
+                HStack(spacing: 8) {
+                    MorpheFrequencyRing(
+                        level: store.athleteAIAgentConversation.last?.text == "\u{2026}" ? 0.55 : 0.15,
+                        speaking: false)
+                        .frame(width: 26, height: 26)
+                    Text("MORPHE")
+                        .font(MorpheTheme.microLabel(11))
+                        .tracking(2)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                }
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
             }
@@ -1107,6 +1117,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         case off
         case passive
         case active
+        /// Between command and answer (luxury audit): the stage stays lit
+        /// while Claude works — the ring tightens instead of vanishing.
+        case thinking
         case speaking
     }
 
@@ -1880,14 +1893,18 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         directCaptureSession = false
         activeIsFollowUp = false
         liveTranscript = ""
-        state = .passive
         if command.isEmpty || Self.isCancelPhrase(command) {
             // Woke then silence, or an explicit retraction ("never mind")
             // — back to scanning, no charge, no spoken reply (a misfire
             // must cost nothing: rebuild 2026-08).
+            state = .passive
             beginListening()
             return
         }
+        // The stage stays lit while Claude works (luxury audit): the ring
+        // tightens instead of vanishing for up to 12s. speak() takes over
+        // (.speaking) or exits back to .passive.
+        state = .thinking
         tearDownRecognition()
         onCommand?(command, wasFollowUp)
     }

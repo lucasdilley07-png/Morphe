@@ -55,25 +55,56 @@ struct HUDCornerTicks: View {
     }
 }
 
+/// Card contrast tiers (2026-09): important cards read LOUDER against
+/// the field, quiet ones recede. HERO = the page's one moment; QUIET =
+/// hints/links/footers; STANDARD = everything else (the default, and
+/// pixel-identical to the pre-tier card).
+enum CardEmphasis {
+    case hero, standard, quiet
+
+    var fill: Color {
+        switch self {
+        case .hero: return MorpheTheme.panelRaised
+        case .standard: return MorpheTheme.panel
+        case .quiet: return MorpheTheme.panelQuiet
+        }
+    }
+    var stroke: Color {
+        switch self {
+        case .hero: return MorpheTheme.stroke
+        case .standard: return MorpheTheme.panelStrong
+        case .quiet: return MorpheTheme.strokeSubtle
+        }
+    }
+    /// The HUD ticks mark importance — quiet cards drop them.
+    var showsCornerTicks: Bool { self != .quiet }
+}
+
 private struct PerformancePanelBackground: View {
     var cornerRadius: CGFloat = MorpheTheme.radius
+    var emphasis: CardEmphasis = .standard
 
     var body: some View {
-        // Flat telemetry panel: one surface tint, one hairline, corner ticks.
+        // Flat telemetry panel: one surface tint, one hairline, corner
+        // ticks — tiered by emphasis (contrast tiers 2026-09).
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(MorpheTheme.panel)
+            .fill(emphasis.fill)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(MorpheTheme.panelStrong, lineWidth: 1)
+                    .stroke(emphasis.stroke, lineWidth: 1)
             )
-            .overlay(HUDCornerTicks())
+            .overlay {
+                if emphasis.showsCornerTicks { HUDCornerTicks() }
+            }
     }
 }
 
 struct GlassCard<Content: View>: View {
+    let emphasis: CardEmphasis
     let content: Content
 
-    init(@ViewBuilder content: () -> Content) {
+    init(_ emphasis: CardEmphasis = .standard, @ViewBuilder content: () -> Content) {
+        self.emphasis = emphasis
         self.content = content()
     }
 
@@ -81,7 +112,7 @@ struct GlassCard<Content: View>: View {
         content
             .padding(16)
             .frame(maxWidth: .infinity)
-            .background(PerformancePanelBackground())
+            .background(PerformancePanelBackground(emphasis: emphasis))
     }
 }
 
@@ -181,8 +212,11 @@ struct MorpheVoiceRingHost: View {
     @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
+        // Thinking (luxury audit): a tight, steady presence — working,
+        // not performing.
+        let thinking = store.heyMorphe.state == .thinking
         MorpheFrequencyRing(
-            level: store.heyMorphe.voiceLevel,
+            level: thinking ? 0.45 : store.heyMorphe.voiceLevel,
             speaking: store.heyMorphe.state == .speaking,
             whiteMark: true
         )
@@ -2098,7 +2132,7 @@ struct FetchPlaceholderCard: View {
     let line: String
 
     var body: some View {
-        GlassCard {
+        GlassCard(.quiet) {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(0..<2, id: \.self) { _ in
                     RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
@@ -2121,7 +2155,7 @@ struct FetchRetryCard: View {
     let onRetry: () -> Void
 
     var body: some View {
-        GlassCard {
+        GlassCard(.quiet) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     Image(systemName: "wifi.exclamationmark")
@@ -2148,7 +2182,7 @@ struct FetchRetryCard: View {
 
 struct ManifestoCard: View {
     var body: some View {
-        GlassCard {
+        GlassCard(.quiet) {
             VStack(alignment: .leading, spacing: 14) {
                 Text("WHY MORPHE")
                     .font(MorpheTheme.microLabel())

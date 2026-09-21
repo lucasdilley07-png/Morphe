@@ -122,9 +122,74 @@ enum MorpheIntelligence {
 
     // MARK: The call
 
+    /// Streaming chat reply (luxury audit 2026-09): first tokens land in
+    /// ~600ms instead of the full-generation wait. Deltas arrive on the
+    /// MainActor; the final full text returns (or throws — callers wrap
+    /// with the same error copy as safeReply). Voice still uses safeReply:
+    /// a spoken answer needs the complete utterance anyway.
+    static func streamReply(system: String, turns: [Turn], apiKey: String,
+                            timeout: TimeInterval = 30,
+                            onDelta: @MainActor @escaping (String) -> Void) async throws -> String {
+        var request = try makeRequest(system: system, turns: turns, apiKey: apiKey,
+                                      timeout: timeout, stream: true)
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        guard let http = response as? HTTPURLResponse else { throw IntelligenceError.network }
+        guard http.statusCode == 200 else {
+            throw http.statusCode == 401 || http.statusCode == 403
+                ? IntelligenceError.badKey : IntelligenceError.badRequest
+        }
+        var full = ""
+        for try await line in bytes.lines {
+            guard line.hasPrefix("data: ") else { continue }
+            let payload = line.dropFirst(6)
+            guard payload != "[DONE]",
+                  let data = payload.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+            if json["type"] as? String == "content_block_delta",
+               let delta = json["delta"] as? [String: Any],
+               delta["type"] as? String == "text_delta",
+               let text = delta["text"] as? String {
+                full += text
+                let snapshot = full
+                await onDelta(snapshot)
+            }
+        }
+        let trimmed = full.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw IntelligenceError.ranLong }
+        return trimmed
+    }
+
+    /// Shared request builder for both paths.
+    private static func makeRequest(system: String, turns: [Turn], apiKey: String,
+                                    timeout: TimeInterval, stream: Bool) throws -> URLRequest {
+        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = timeout
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        var messages: [[String: Any]] = []
+        for turn in turns.drop(while: { !$0.isUser }) {
+            messages.append(["role": turn.isUser ? "user" : "assistant",
+                             "content": turn.text])
+        }
+        guard messages.first?["role"] as? String == "user" else { throw IntelligenceError.malformed }
+        var body: [String: Any] = [
+            "model": "claude-opus-5",
+            "max_tokens": 4000,
+            "system": system,
+            "thinking": ["type": "disabled"],
+            "output_config": ["effort": "low"],
+            "messages": messages
+        ]
+        if stream { body["stream"] = true }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
     /// One non-streaming Messages API request. Replies are deliberately
-    /// short (voice-first: the system prompt caps spoken length), so a
-    /// single response body beats streaming complexity here.
+    /// short (voice-first: the system prompt caps spoken length) — the
+    /// VOICE path uses this; chat streams via streamReply.
     static func reply(system: String, turns: [Turn], apiKey: String,
                       timeout: TimeInterval = 30) async throws -> String {
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
