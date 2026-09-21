@@ -759,18 +759,12 @@ private struct FloatingAIAgentButton: View {
         } label: {
             Group {
                 if isCompact {
-                    Image("LaunchMark")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 24, height: 24)
+                    GlowingMorpheMark(size: 24)
                         .frame(width: 50, height: 50)
                         .background(buttonBackground.clipShape(Circle()))
                 } else {
                     HStack(spacing: 10) {
-                        Image("LaunchMark")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 20, height: 20)
+                        GlowingMorpheMark(size: 20)
                         Text(label)
                             .font(.subheadline.weight(.bold))
                     }

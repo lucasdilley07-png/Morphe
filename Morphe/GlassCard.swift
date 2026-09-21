@@ -142,6 +142,30 @@ struct SectionTitleView: View {
 /// Leaf host for the ring: the ONLY view whose body reads voiceLevel,
 /// so per-buffer level writes stop invalidating the root shell
 /// (audit 22, P1).
+/// The brand M with its gold glow (Lucas 2026-09: every Morphe mark
+/// glows). A soft brandYellow bloom shaped by the mark itself under the
+/// sharp logo — reusable anywhere the M appears outside the ring (the
+/// ring builds its own richer glow stack).
+struct GlowingMorpheMark: View {
+    var size: CGFloat
+
+    var body: some View {
+        ZStack {
+            Image("LaunchMark")
+                .resizable()
+                .renderingMode(.template)
+                .scaledToFit()
+                .foregroundStyle(MorpheTheme.brandYellow)
+                .blur(radius: size * 0.16)
+                .opacity(0.9)
+            Image("LaunchMark")
+                .resizable()
+                .scaledToFit()
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 struct MorpheVoiceRingHost: View {
     @Environment(MorpheAppStore.self) private var store
 
