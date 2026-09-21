@@ -2333,7 +2333,7 @@ final class StyleProfileTests: XCTestCase {
 
     func testSignOutWipesStyleProfile() {
         let store = makeStore()
-        store.setStyleChoice(soundPack: "impact", characterID: "blaze")
+        store.setStyleChoice(soundPack: "impact")
         store.workoutLogs.append(log(store, title: "A", daysAgo: 1, hour: 7, minutes: 40, exercise: "Bench Press"))
         store.workoutLogs.append(log(store, title: "B", daysAgo: 2, hour: 7, minutes: 40, exercise: "Bench Press"))
         store.workoutLogs.append(log(store, title: "C", daysAgo: 3, hour: 7, minutes: 40, exercise: "Bench Press"))
@@ -2517,10 +2517,13 @@ final class StyleProfileTests: XCTestCase {
         store.setStyleChoice(voiceStyle: "british", communicationStyle: "direct")
     }
 
-    func testCharacterSpecFallsBackToMorphe() {
-        XCTAssertEqual(MorpheCharacter.spec(for: "atlas").name, "Atlas")
-        XCTAssertEqual(MorpheCharacter.spec(for: "no-such-id").id, "morphe",
-                       "unknown/legacy ids fall back to the original, never a blank badge")
+    func testCharacterSpecIsAlwaysMorphe() {
+        // One character (Lucas 2026-09): legacy picks (atlas/blaze/sage)
+        // and unknown ids all resolve to Morphe — accent + communication
+        // style are the customization now.
+        XCTAssertEqual(MorpheCharacter.all.count, 1)
+        XCTAssertEqual(MorpheCharacter.spec(for: "atlas").id, "morphe")
+        XCTAssertEqual(MorpheCharacter.spec(for: "no-such-id").id, "morphe")
         XCTAssertEqual(MorpheCharacter.spec(for: "").id, "morphe")
     }
 
@@ -2536,12 +2539,12 @@ final class StyleProfileTests: XCTestCase {
 
     func testChosenFieldsSurviveRecompute() {
         let store = makeStore()
-        store.setStyleChoice(soundPack: "minimal", characterID: "atlas",
+        store.setStyleChoice(soundPack: "minimal", characterID: "morphe",
                              homeCardOrder: ["progress", "schedule"])
         store.refreshStyleProfile()
 
         XCTAssertEqual(store.styleProfile.soundPack, "minimal")
-        XCTAssertEqual(store.styleProfile.characterID, "atlas")
+        XCTAssertEqual(store.styleProfile.characterID, "morphe")
         XCTAssertEqual(store.styleProfile.homeCardOrder, ["progress", "schedule"])
     }
 

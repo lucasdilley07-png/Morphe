@@ -976,27 +976,15 @@ struct MorpheCharacter: Identifiable, Equatable {
 
     static func == (lhs: MorpheCharacter, rhs: MorpheCharacter) -> Bool { lhs.id == rhs.id }
 
+    // ONE character (Lucas 2026-09): Morphe is the identity — the user
+    // customizes its ACCENT and COMMUNICATION STYLE, not who it is.
+    // Legacy ids (atlas/blaze/sage) resolve here via spec()'s fallback.
     static let all: [MorpheCharacter] = [
         MorpheCharacter(
             id: "morphe", name: "Morphe", letter: "M",
             colors: [(1.0, 0.839, 0.0), (0.95, 0.72, 0.0)],
-            register: "Speak in your default voice: direct, warm, British — a steady trainer who tells the truth plainly.",
-            vibe: "The original — steady and direct"),
-        MorpheCharacter(
-            id: "atlas", name: "Atlas", letter: "A",
-            colors: [(0.42, 0.62, 0.92), (0.20, 0.36, 0.66)],
-            register: "Speak calmly and methodically, like a patient strength coach — measured sentences, no exclamation points.",
-            vibe: "Calm and methodical"),
-        MorpheCharacter(
-            id: "blaze", name: "Blaze", letter: "B",
-            colors: [(1.0, 0.42, 0.21), (0.82, 0.14, 0.11)],
-            register: "Speak with high energy, like a corner coach between rounds — short punchy sentences, urgency without hype.",
-            vibe: "High energy, corner-coach"),
-        MorpheCharacter(
-            id: "sage", name: "Sage", letter: "S",
-            colors: [(0.45, 0.78, 0.55), (0.16, 0.48, 0.32)],
-            register: "Speak with quiet mindfulness, like a recovery-minded coach — unhurried, grounded, body-aware.",
-            vibe: "Grounded and unhurried"),
+            register: "You are Morphe — a steady trainer who tells the truth plainly. The accent and delivery style below are the user's choices; wear them naturally.",
+            vibe: "The one and only"),
     ]
 
     /// Unknown/legacy ids fall back to the original — never a blank badge.

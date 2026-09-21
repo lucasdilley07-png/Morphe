@@ -766,43 +766,6 @@ struct ProfileView: View {
     }
 
     @ViewBuilder
-    private func characterChoice(_ character: MorpheCharacter) -> some View {
-        let selected = MorpheCharacter.spec(for: store.styleProfile.characterID).id == character.id
-        Button {
-            store.setStyleChoice(characterID: character.id)
-            Haptics.selection()
-        } label: {
-            VStack(spacing: 6) {
-                ZStack {
-                    Circle()
-                        .fill(LinearGradient(
-                            colors: character.colors.map { Color(red: $0.red, green: $0.green, blue: $0.blue) },
-                            startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Text(character.letter)
-                        .font(.system(size: 18, design: .monospaced).weight(.black))
-                        .foregroundStyle(.black)
-                        .minimumScaleFactor(0.5)
-                }
-                .frame(width: 40, height: 40)
-                .overlay(
-                    Circle().stroke(selected ? MorpheTheme.accent : .clear, lineWidth: 2)
-                        .padding(-3)
-                )
-                Text(character.name)
-                    .font(.caption2.weight(selected ? .bold : .regular))
-                    .foregroundStyle(selected ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-            }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(character.name) — \(character.vibe)")
-        .accessibilityAddTraits(selected ? [.isSelected] : [])
-    }
-
-    @ViewBuilder
     private func soundPackChoice(_ pack: SoundPack) -> some View {
         let selected = (SoundPack(rawValue: store.styleProfile.soundPack) ?? .classic) == pack
         Button {
@@ -873,20 +836,6 @@ struct ProfileView: View {
             // setStyleChoice so recomputes never clobber them.
             settingsSection("Make it yours", keywords: Self.makeItYoursKeywords) {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Morphe's character")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    HStack(spacing: 12) {
-                        ForEach(MorpheCharacter.all) { character in
-                            characterChoice(character)
-                        }
-                    }
-                    Text("Changes the badge and how Morphe talks — never what it's honest about.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
                     Text("Sound voice")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textPrimary)

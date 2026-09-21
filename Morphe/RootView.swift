@@ -759,15 +759,18 @@ private struct FloatingAIAgentButton: View {
         } label: {
             Group {
                 if isCompact {
-                    Image(systemName: "sparkles")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Image("LaunchMark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
                         .frame(width: 50, height: 50)
                         .background(buttonBackground.clipShape(Circle()))
                 } else {
                     HStack(spacing: 10) {
-                        Image(systemName: "sparkles")
-                            .font(.subheadline.weight(.bold))
+                        Image("LaunchMark")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
                         Text(label)
                             .font(.subheadline.weight(.bold))
                     }
