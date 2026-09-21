@@ -134,16 +134,21 @@ enum MorpheIntelligence {
                                       timeout: timeout, stream: true)
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
         guard let http = response as? HTTPURLResponse else { throw IntelligenceError.network }
-        guard http.statusCode == 200 else {
-            throw http.statusCode == 401 || http.statusCode == 403
-                ? IntelligenceError.badKey : IntelligenceError.badRequest
+        // Same status taxonomy as the non-streaming path (audit 23, P1:
+        // a 429 told the user to "rephrase").
+        switch http.statusCode {
+        case 200: break
+        case 401, 403: throw IntelligenceError.badKey
+        case 429: throw IntelligenceError.rateLimited
+        case 500...: throw IntelligenceError.overloaded
+        default: throw IntelligenceError.badRequest
         }
         var full = ""
+        var stopReason: String?
         for try await line in bytes.lines {
             guard line.hasPrefix("data: ") else { continue }
             let payload = line.dropFirst(6)
-            guard payload != "[DONE]",
-                  let data = payload.data(using: .utf8),
+            guard let data = payload.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
             if json["type"] as? String == "content_block_delta",
                let delta = json["delta"] as? [String: Any],
@@ -153,7 +158,17 @@ enum MorpheIntelligence {
                 let snapshot = full
                 await onDelta(snapshot)
             }
+            // stop_reason arrives in message_delta (audit 23, P1): a
+            // refusal with HTTP 200 must read as declined — including a
+            // MID-stream refusal, which must not pass off a truncated
+            // partial as a finished answer.
+            if json["type"] as? String == "message_delta",
+               let delta = json["delta"] as? [String: Any],
+               let reason = delta["stop_reason"] as? String {
+                stopReason = reason
+            }
         }
+        if stopReason == "refusal" { throw IntelligenceError.declined }
         let trimmed = full.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw IntelligenceError.ranLong }
         return trimmed
@@ -178,7 +193,6 @@ enum MorpheIntelligence {
             "model": "claude-opus-5",
             "max_tokens": 4000,
             "system": system,
-            "thinking": ["type": "disabled"],
             "output_config": ["effort": "low"],
             "messages": messages
         ]
@@ -221,7 +235,6 @@ enum MorpheIntelligence {
             // token budget with the visible text, so a long think could
             // return an EMPTY reply as "ranLong" — the least premium
             // outcome. The prompt already enforces brevity.
-            "thinking": ["type": "disabled"],
             "output_config": ["effort": "low"],
             "messages": messages
         ]

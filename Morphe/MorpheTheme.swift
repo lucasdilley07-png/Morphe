@@ -29,7 +29,7 @@ enum MorpheTheme {
     /// Below `panel`: hints, links-out, footers, meta cards — present
     /// enough to group, quiet enough to recede (contrast tiers 2026-09).
     static var panelQuiet: Color {
-        isLight ? Color.black.opacity(0.018) : Color.white.opacity(0.018)
+        isLight ? Color.black.opacity(0.03) : Color.white.opacity(0.03)
     }
     static var panelStrong: Color {
         isLight ? Color.black.opacity(0.065) : Color.white.opacity(0.06)

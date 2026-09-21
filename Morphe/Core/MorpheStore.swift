@@ -328,6 +328,11 @@ final class MorpheAppStore {
     /// recomputed from real logs/debriefs after every save; chosen fields
     /// survive recomputes untouched. Persisted in the profile snapshot
     /// (and therefore the cloud backup).
+    /// True while a chat reply streams — the header ring reads this
+    /// (audit 23: the old "…" text signal died at the first delta).
+    var aiReplyInFlight = false
+    private var aiReplyTask: Task<Void, Never>?
+
     private(set) var styleProfile = UserStyleProfile() {
         didSet {
             SoundEffects.pack = SoundPack(rawValue: styleProfile.soundPack) ?? .classic
@@ -8639,7 +8644,9 @@ final class MorpheAppStore {
         athleteAIAgentConversation.append(placeholder)
         let system = intelligenceSystemPrompt(spoken: false)
         let turns = intelligenceTurns(from: athleteAIAgentConversation)
-        Task { [weak self] in
+        aiReplyInFlight = true
+        aiReplyTask = Task { [weak self] in
+            defer { Task { @MainActor in self?.aiReplyInFlight = false } }
             // STREAM (luxury audit): first tokens replace the ellipsis in
             // ~600ms; deltas append in place. On failure, fall back to the
             // same honest error copy safeReply produces.
@@ -8694,7 +8701,13 @@ final class MorpheAppStore {
             // (audit 17, P2). Chat keeps the longer window.
             let answer = await MorpheIntelligence.safeReply(
                 system: system, turns: turns, apiKey: key, timeout: 12)
-            guard let self, self.intelligenceEpoch == epoch else { return }
+            guard let self, self.intelligenceEpoch == epoch else {
+                // A dropped reply must not strand .thinking (audit 23,
+                // P0): the empty-text speak path restores .passive and
+                // the mic — otherwise the dim + ring stay forever.
+                Task { @MainActor in self?.heyMorphe.speak("") }
+                return
+            }
             let aiMessage = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: answer, timestamp: "Now")
             self.athleteAIAgentConversation.append(aiMessage)
             self.presentVoiceExchange(heard: raw, answer: answer)
@@ -13767,6 +13780,11 @@ final class MorpheAppStore {
         // Drop any Claude reply still in flight (audit 17, P1) — a "new
         // chat" must not receive the old chat's answer.
         intelligenceEpoch += 1
+        // Kill a stream still in flight (audit 23, P2): the SSE ran to
+        // completion — and kept billing — after "New chat".
+        aiReplyTask?.cancel()
+        aiReplyTask = nil
+        aiReplyInFlight = false
         athleteAIAgentConversation = [athleteAIAgentConversation.first].compactMap { $0 }
         Haptics.impact(.light)
     }

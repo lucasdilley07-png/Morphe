@@ -197,7 +197,7 @@ struct GlowingMorpheMark: View {
                     .resizable()
                     .renderingMode(.template)
                     .scaledToFit()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.isLight ? MorpheTheme.brandYellowText : .white)
             } else {
                 Image("LaunchMark")
                     .resizable()
@@ -283,7 +283,7 @@ struct MorpheFrequencyRing: View {
                             .resizable()
                             .renderingMode(.template)
                             .scaledToFit()
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.isLight ? MorpheTheme.brandYellowText : .white)
                     } else {
                         Image("LaunchMark")
                             .resizable()

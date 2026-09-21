@@ -1181,6 +1181,11 @@ struct MorpheDayPopup: View {
                 }
             }
             .transition(.opacity)
+            .onDisappear {
+                // The stagger plays on every open, not once per process
+                // (audit 23, P2).
+                appeared = false; bubbleIn = false; choicesIn = false
+            }
             .accessibilityAddTraits(.isModal)
             .accessibilitySortPriority(1000)
         }

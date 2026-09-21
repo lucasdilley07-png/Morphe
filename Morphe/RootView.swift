@@ -910,7 +910,7 @@ private struct MorpheAIAgentSheet: View {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 8) {
                     MorpheFrequencyRing(
-                        level: store.athleteAIAgentConversation.last?.text == "\u{2026}" ? 0.55 : 0.15,
+                        level: store.aiReplyInFlight ? 0.55 : 0.15,
                         speaking: false)
                         .frame(width: 26, height: 26)
                     Text("MORPHE")

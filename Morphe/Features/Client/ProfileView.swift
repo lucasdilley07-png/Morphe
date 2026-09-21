@@ -767,6 +767,40 @@ struct ProfileView: View {
     }
 
     @ViewBuilder
+    private func styleChip(title: String, detail: String, selected: Bool,
+                           accessibility: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(selected ? Color.black : MorpheTheme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(selected ? Color.black.opacity(0.7) : MorpheTheme.textMuted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 2)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                    .fill(selected ? MorpheTheme.accent : MorpheTheme.panelStrong)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                    .stroke(selected ? MorpheTheme.stroke : MorpheTheme.strokeSubtle, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibility)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+
+    @ViewBuilder
     private func soundPackChoice(_ pack: SoundPack) -> some View {
         let selected = (SoundPack(rawValue: store.styleProfile.soundPack) ?? .classic) == pack
         Button {
@@ -846,6 +880,48 @@ struct ProfileView: View {
                         }
                     }
                     Text("Same cues, different voice — the PR sound still means a PR.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    Text("Morphe's voice")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    HStack(spacing: 10) {
+                        ForEach(MorpheVoiceOption.all) { option in
+                            styleChip(
+                                title: option.title, detail: option.detail,
+                                selected: MorpheVoiceOption.spec(for: store.styleProfile.voiceStyle).id == option.id,
+                                accessibility: "\(option.title) voice — \(option.detail)"
+                            ) {
+                                store.setStyleChoice(voiceStyle: option.id)
+                                Haptics.selection()
+                            }
+                        }
+                    }
+                    Text("The accent Morphe answers in — applies from the next spoken reply.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    Text("Communication style")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    HStack(spacing: 10) {
+                        ForEach(MorpheCommunicationStyle.all) { style in
+                            styleChip(
+                                title: style.title, detail: style.detail,
+                                selected: MorpheCommunicationStyle.spec(for: store.styleProfile.communicationStyle).id == style.id,
+                                accessibility: "\(style.title) style — \(style.detail)"
+                            ) {
+                                store.setStyleChoice(communicationStyle: style.id)
+                                Haptics.selection()
+                            }
+                        }
+                    }
+                    Text("How Morphe talks in chat and voice — delivery changes, honesty never does.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
