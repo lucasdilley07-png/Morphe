@@ -8680,11 +8680,43 @@ final class MorpheAppStore {
     /// instant-acknowledgment lesson from the ChatGPT audit), and the
     /// answer is spoken the moment it lands. The exchange also writes
     /// into the chat thread so it survives the chip's 8s fade.
+    /// Sentences that are COMPLETE in a streaming partial — the voice
+    /// pipeline speaks each one as it lands (Siri-tier wave 2026-09-23).
+    /// `flushRemainder` treats trailing text with no terminator as a
+    /// final sentence (stream ended).
+    nonisolated static func completeSentences(in text: String, flushRemainder: Bool = false) -> [String] {
+        var sentences: [String] = []
+        var current = ""
+        for character in text {
+            current.append(character)
+            if character == "." || character == "!" || character == "?" {
+                let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { sentences.append(trimmed) }
+                current = ""
+            }
+        }
+        if flushRemainder {
+            let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { sentences.append(trimmed) }
+        }
+        return sentences
+    }
+
+    /// Generation stamp for voice replies: a barge-in or a new command
+    /// mid-stream supersedes the old stream's deltas.
+    private var voiceReplyGeneration = 0
+    private var voiceStreamTask: Task<Void, Never>?
+
     private func requestIntelligenceVoiceReply(for raw: String) {
         guard let key = MorpheIntelligence.apiKey else {
             presentVoiceExchange(heard: raw, answer: previewAIAgentReply(for: raw))
             return
         }
+        // Supersede any stream still talking (barge-in fires a new
+        // command while the old one may be mid-generation).
+        voiceStreamTask?.cancel()
+        voiceReplyGeneration += 1
+        let generation = voiceReplyGeneration
         let userMessage = ThreadMessage(
             sender: .user,
             senderName: clientProfile.name,
@@ -8695,22 +8727,79 @@ final class MorpheAppStore {
         let system = intelligenceSystemPrompt(spoken: true)
         let turns = intelligenceTurns(from: athleteAIAgentConversation)
         let epoch = intelligenceEpoch
-        Task { [weak self] in
-            // Voice waits eyes-free with the mic down — a 12s cap keeps a
-            // stalled network from deadening the wake word for 30s
-            // (audit 17, P2). Chat keeps the longer window.
-            let answer = await MorpheIntelligence.safeReply(
-                system: system, turns: turns, apiKey: key, timeout: 12)
-            guard let self, self.intelligenceEpoch == epoch else {
-                // A dropped reply must not strand .thinking (audit 23,
-                // P0): the empty-text speak path restores .passive and
-                // the mic — otherwise the dim + ring stay forever.
-                Task { @MainActor in self?.heyMorphe.speak("") }
-                return
+        voiceStreamTask = Task { [weak self] in
+            // STREAMED voice (Siri-tier wave): sentences speak as they
+            // arrive — first audio ~1s. The 12s cap still bounds a stalled
+            // network (audit 17, P2).
+            var enqueuedCount = 0
+            var openedSpeech = false
+            do {
+                let full = try await MorpheIntelligence.streamReply(
+                    system: system, turns: turns, apiKey: key, timeout: 12
+                ) { partial in
+                    guard let self,
+                          self.intelligenceEpoch == epoch,
+                          self.voiceReplyGeneration == generation else { return }
+                    self.lastVoiceExchange = (heard: raw, answer: partial)
+                    let sentences = Self.completeSentences(in: partial)
+                    while enqueuedCount < sentences.count {
+                        let sentence = sentences[enqueuedCount]
+                        enqueuedCount += 1
+                        if !openedSpeech {
+                            openedSpeech = true
+                            self.heyMorphe.beginStreamedSpeech()
+                        }
+                        self.heyMorphe.enqueueSpeech(Self.spokenForm(of: sentence))
+                    }
+                }
+                guard let self else { return }
+                if self.intelligenceEpoch != epoch {
+                    self.heyMorphe.cancelStreamedSpeech()
+                    return
+                }
+                guard self.voiceReplyGeneration == generation else { return }
+                // Flush any trailing text without a terminator, then close.
+                let sentences = Self.completeSentences(in: full, flushRemainder: true)
+                while enqueuedCount < sentences.count {
+                    let sentence = sentences[enqueuedCount]
+                    enqueuedCount += 1
+                    if !openedSpeech {
+                        openedSpeech = true
+                        self.heyMorphe.beginStreamedSpeech()
+                    }
+                    self.heyMorphe.enqueueSpeech(Self.spokenForm(of: sentence))
+                }
+                self.heyMorphe.finishStreamedSpeech()
+                let aiMessage = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: full, timestamp: "Now")
+                self.athleteAIAgentConversation.append(aiMessage)
+                self.lastVoiceExchange = (heard: raw, answer: full)
+                // Chip lives as long as the answer deserves (luxury audit).
+                self.voiceExchangeClearTask?.cancel()
+                self.voiceExchangeClearTask = Task { [weak self] in
+                    let seconds = max(8.0, Double(full.count) / 12.0)
+                    try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                    guard !Task.isCancelled else { return }
+                    self?.lastVoiceExchange = nil
+                }
+            } catch {
+                guard let self else { return }
+                if self.intelligenceEpoch != epoch {
+                    self.heyMorphe.cancelStreamedSpeech()
+                    return
+                }
+                guard self.voiceReplyGeneration == generation else { return }
+                let message = (error as? MorpheIntelligence.IntelligenceError)?.errorDescription
+                    ?? MorpheIntelligence.IntelligenceError.network.errorDescription
+                    ?? "I couldn't reach Claude."
+                let aiMessage = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: message, timestamp: "Now")
+                self.athleteAIAgentConversation.append(aiMessage)
+                if openedSpeech {
+                    self.heyMorphe.finishStreamedSpeech()
+                    self.lastVoiceExchange = (heard: raw, answer: message)
+                } else {
+                    self.presentVoiceExchange(heard: raw, answer: message)
+                }
             }
-            let aiMessage = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: answer, timestamp: "Now")
-            self.athleteAIAgentConversation.append(aiMessage)
-            self.presentVoiceExchange(heard: raw, answer: answer)
         }
     }
 
@@ -9391,6 +9480,16 @@ final class MorpheAppStore {
         }
         let doorReply = routeVoiceCommandDoors(raw)
         if doorReply == nil, isFollowUp {
+            // Conversation mode (2026-09-23): a QUESTION in the breath
+            // after an answer reaches the brain — that's how a real
+            // back-and-forth feels. Non-question ambient chatter still
+            // costs nothing, and mutations still require the wake word
+            // (guarded above, before the doors).
+            if intelligenceEnabled, Self.isQuestionShaped(raw.lowercased()) {
+                voiceNavigationSweep(for: raw)
+                requestIntelligenceVoiceReply(for: raw)
+                return
+            }
             // Silence — clear any lingering chip so the old exchange
             // doesn't flash back (audit 17, P2), and speak("") hands the
             // mic straight back.
@@ -13781,10 +13880,12 @@ final class MorpheAppStore {
         // chat" must not receive the old chat's answer.
         intelligenceEpoch += 1
         // Kill a stream still in flight (audit 23, P2): the SSE ran to
-        // completion — and kept billing — after "New chat".
+        // completion — and kept billing — after "New chat". The voice
+        // stream too (Siri-tier wave).
         aiReplyTask?.cancel()
         aiReplyTask = nil
         aiReplyInFlight = false
+        voiceStreamTask?.cancel()
         athleteAIAgentConversation = [athleteAIAgentConversation.first].compactMap { $0 }
         Haptics.impact(.light)
     }

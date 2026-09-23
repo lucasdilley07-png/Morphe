@@ -1150,6 +1150,20 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     private(set) var voiceLevel: Double = 0
     private var speakingDecayTimer: Timer?
 
+    // Streamed speech (Siri-tier wave 2026-09-23): sentences arrive from
+    // the Claude stream and speak as they land — first audio ~1s instead
+    // of the full-generation wait. The queue drains chunk by chunk; the
+    // stream-open flag keeps the exchange alive between sentences.
+    private var speechQueue: [String] = []
+    private var speechStreamOpen = false
+    private var speechStallTimer: Timer?
+    /// Everything spoken this exchange — the barge-in echo guard checks
+    /// candidate transcripts against it (AEC is good, not perfect).
+    private var currentlySpeakingText = ""
+    /// True after the exchange's first chunk — later chunks skip the
+    /// pre-utterance breath so sentences flow.
+    private var spokeFirstChunk = false
+
     /// Morphe ACTIVATED (Lucas 2026-09-21): claim the stage — a
     /// non-mixing activation pauses the user's music/other audio for the
     /// exchange. restoreMixSession + the passive re-arm hand it back
@@ -1371,6 +1385,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     deinit {
         speakingDecayTimer?.invalidate()
         speakingWatchdog?.invalidate()
+        speechStallTimer?.invalidate()
         quietPollTimer?.invalidate()
         if let interruptionObserver {
             NotificationCenter.default.removeObserver(interruptionObserver)
@@ -1473,6 +1488,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         tearDownRecognition()
         speakingWatchdog?.invalidate()
         speakingWatchdog = nil
+        speechStallTimer?.invalidate()
+        speechQueue = []
+        speechStreamOpen = false
         endSpeakingLevel()
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
@@ -1534,17 +1552,76 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         // command path already tore recognition down expecting speech to
         // hand the mic back — go straight back to listening instead.
         guard !text.isEmpty else {
+            speechQueue = []
+            speechStreamOpen = false
             state = .passive
             beginListening()
             return
         }
+        // One-shot replies (doors, session voice, errors) ride the same
+        // streamed machinery as Claude sentences — one exit path.
+        beginStreamedSpeech()
+        enqueueSpeech(text)
+        finishStreamedSpeech()
+    }
+
+    /// Opens a spoken exchange (Siri-tier wave): ducked audio with ECHO
+    /// CANCELLATION (.voiceChat) and the recognizer kept LIVE, so the
+    /// user can barge in mid-answer like GPT-4o voice. Sentences arrive
+    /// via enqueueSpeech; finishStreamedSpeech closes the stream.
+    func beginStreamedSpeech() {
+        guard state != .off else { return }
+        guard state != .speaking else { return }
         state = .speaking
+        speechQueue = []
+        speechStreamOpen = true
+        currentlySpeakingText = ""
+        spokeFirstChunk = false
         tearDownRecognition()
-        // Duck only while Morphe is actually talking (audit 13, P1) —
-        // beginListening restores .mixWithOthers when the mic returns.
+        // .voiceChat = system echo cancellation: the mic stays hot while
+        // Morphe talks WITHOUT hearing itself.
         try? AVAudioSession.sharedInstance().setCategory(
-            .playAndRecord, mode: .default,
+            .playAndRecord, mode: .voiceChat,
             options: [.duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+        armBargeInRecognition()
+    }
+
+    /// A sentence (or a whole one-shot reply) to speak next.
+    func enqueueSpeech(_ text: String) {
+        guard state == .speaking, !text.isEmpty else { return }
+        speechQueue.append(text)
+        speechStallTimer?.invalidate()
+        if !synthesizer.isSpeaking { speakNextChunk() }
+    }
+
+    /// The reply stream ended — once the queue drains, the exchange
+    /// concludes (follow-up window, mic handback).
+    func finishStreamedSpeech() {
+        guard state == .speaking else { return }
+        speechStreamOpen = false
+        if speechQueue.isEmpty, !synthesizer.isSpeaking {
+            concludeSpeaking()
+        }
+    }
+
+    /// Kills an in-flight exchange without a follow-up window (store
+    /// epoch changes: new chat, sign-out).
+    func cancelStreamedSpeech() {
+        guard state == .speaking || state == .thinking else { return }
+        speechQueue = []
+        speechStreamOpen = false
+        speechStallTimer?.invalidate()
+        synthesizer.stopSpeaking(at: .immediate)
+        endSpeakingLevel()
+        restoreMixSession()
+        state = .passive
+        beginListening()
+    }
+
+    private func speakNextChunk() {
+        guard state == .speaking, !speechQueue.isEmpty else { return }
+        let text = speechQueue.removeFirst()
+        currentlySpeakingText += " " + text
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = 0.48
         // The user's chosen voice (personalization) — default remains the
@@ -1553,27 +1630,93 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         let voiceOption = MorpheVoiceOption.spec(for: Self.preferredVoiceStyle)
         utterance.voice = Self.voice(for: voiceOption.id)
         utterance.pitchMultiplier = voiceOption.pitch
-        // Room to breathe (luxury audit): the wake cue's tail clears
-        // before Morphe speaks, and the mic waits a beat after.
-        utterance.preUtteranceDelay = 0.25
-        utterance.postUtteranceDelay = 0.15
+        // Breathe before the FIRST chunk only (luxury audit: the wake
+        // cue's tail clears) — later sentences flow.
+        utterance.preUtteranceDelay = spokeFirstChunk ? 0 : 0.25
+        utterance.postUtteranceDelay = 0.05
+        spokeFirstChunk = true
         synthesizer.speak(utterance)
-        // Watchdog (audit 12, P2-8): if the utterance never finishes, the
-        // glow must not stay lit and the mic must come back.
+        // Watchdog (audit 12, P2-8): per-chunk ceiling — a stuck utterance
+        // must hand the mic back.
         speakingWatchdog?.invalidate()
         let ceiling = max(4.0, Double(text.count) / 10.0)
         let watchdog = Timer(timeInterval: ceiling, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self, self.state == .speaking else { return }
                 self.synthesizer.stopSpeaking(at: .immediate)
-                self.endSpeakingLevel()
-                self.restoreMixSession()
-                self.state = .passive
-                self.beginListening()
+                self.concludeSpeaking()
             }
         }
         speakingWatchdog = watchdog
         RunLoop.main.add(watchdog, forMode: .common)
+    }
+
+    /// The exchange is over: follow-up window opens (10s — conversation
+    /// mode 2026-09-23), audio hands back, the mic returns.
+    private func concludeSpeaking() {
+        speakingWatchdog?.invalidate()
+        speakingWatchdog = nil
+        speechStallTimer?.invalidate()
+        speechQueue = []
+        speechStreamOpen = false
+        endSpeakingLevel()
+        restoreMixSession()
+        followUpDeadline = Date().addingTimeInterval(10)
+        state = .passive
+        beginListening()
+    }
+
+    /// The user talked over Morphe (barge-in). Cut the answer, keep the
+    /// stage, and capture what they're saying as the next command.
+    private func bargeIn(with text: String) {
+        speechQueue = []
+        speechStreamOpen = false
+        speechStallTimer?.invalidate()
+        speakingWatchdog?.invalidate()
+        speakingWatchdog = nil
+        synthesizer.stopSpeaking(at: .immediate)
+        endSpeakingLevel()
+        state = .active
+        claimStageForActiveCapture()
+        // Follow-up machinery captures the whole stream (no wake phrase in
+        // it) — mutations still require a wake, same as any follow-up.
+        activeIsFollowUp = true
+        followUpCaptureStart = Date()
+        liveTranscript = text
+        onWake?()
+        armCommandTimer(after: 1.2)
+    }
+
+    /// Minimal recognition re-arm for barge-in: the full beginListening
+    /// guards ran at arm time — if the recognizer vanished since, we just
+    /// lose barge-in for this one answer.
+    private func armBargeInRecognition() {
+        guard let recognizer = SFSpeechRecognizer(),
+              recognizer.isAvailable, recognizer.supportsOnDeviceRecognition else { return }
+        self.recognizer = recognizer
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        request.requiresOnDeviceRecognition = true
+        request.contextualStrings = Self.contextualVocabulary
+        self.request = request
+        do {
+            let node = audioEngine.inputNode
+            let format = node.outputFormat(forBus: 0)
+            node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+                request.append(buffer)
+            }
+            didInstallTap = true
+            audioEngine.prepare()
+            try audioEngine.start()
+        } catch { return }
+        var startedTask: SFSpeechRecognitionTask?
+        startedTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            DispatchQueue.main.async {
+                guard let self, self.task === startedTask else { return }
+                self.handle(result: result, error: error)
+            }
+        }
+        task = startedTask
     }
 
     private func tearDownRecognition() {
@@ -1744,7 +1887,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     private func handle(result: SFSpeechRecognitionResult?, error: Error?) {
-        guard state == .passive || state == .active else { return }
+        guard state == .passive || state == .active || state == .speaking else { return }
         if let result {
             let text = result.bestTranscription.formattedString
             switch state {
@@ -1825,10 +1968,27 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
                     liveTranscript = ""
                     state = .passive
                 }
+            case .speaking:
+                // Barge-in (Siri-tier wave): real speech over the answer
+                // cuts Morphe off. AEC keeps its own voice out of the mic;
+                // the containment check catches what leaks through.
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let command = Self.commandAfterWake(in: trimmed) {
+                    bargeIn(with: command)
+                } else if trimmed.split(separator: " ").count >= 3,
+                          !currentlySpeakingText.lowercased()
+                              .contains(trimmed.lowercased()) {
+                    bargeIn(with: trimmed)
+                }
             default:
                 break
             }
             if result.isFinal {
+                if state == .speaking {
+                    // The barge-in recognizer capped its stream mid-answer
+                    // — nothing to fire; the exchange keeps speaking.
+                    return
+                }
                 // The recognizer capped the stream (~1 min) — fire what we
                 // have or go back to scanning.
                 state == .active ? fireCommand() : scheduleRestart()
@@ -1836,6 +1996,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
             }
         }
         if error != nil {
+            if state == .speaking { return }
             state == .active ? fireCommand() : scheduleRestart()
         }
     }
@@ -1971,25 +2132,37 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         DispatchQueue.main.async {
             guard self.state == .speaking else { return }
-            self.endSpeakingLevel()
-            // Lift the speak() duck for REAL before re-arming (audio
-            // audit P1-5): only deactivation reliably un-ducks.
-            self.restoreMixSession()
-            // The answer just landed — hold the door open for a follow-up
-            // command with no re-wake (rebuild 2026-08).
-            self.followUpDeadline = Date().addingTimeInterval(6)
-            self.state = .passive
-            self.beginListening()
+            if !self.speechQueue.isEmpty {
+                // Next sentence is already here — keep talking.
+                self.speakNextChunk()
+                return
+            }
+            if self.speechStreamOpen {
+                // Between sentences: the stream is still generating. Hold
+                // the exchange briefly; a stalled stream must not strand
+                // the mic (3.5s ceiling).
+                self.speechStallTimer?.invalidate()
+                let timer = Timer(timeInterval: 3.5, repeats: false) { [weak self] _ in
+                    DispatchQueue.main.async {
+                        guard let self, self.state == .speaking else { return }
+                        self.concludeSpeaking()
+                    }
+                }
+                self.speechStallTimer = timer
+                RunLoop.main.add(timer, forMode: .common)
+                return
+            }
+            self.concludeSpeaking()
         }
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         DispatchQueue.main.async {
+            // Barge-in/stop change state BEFORE cancelling — this guard
+            // makes their didCancel a no-op. A cancel that arrives while
+            // still .speaking is external: conclude cleanly.
             guard self.state == .speaking else { return }
-            self.endSpeakingLevel()
-            self.restoreMixSession()
-            self.state = .passive
-            self.beginListening()
+            self.concludeSpeaking()
         }
     }
 }

@@ -2375,6 +2375,22 @@ final class StyleProfileTests: XCTestCase {
         XCTAssertTrue(store.styleProfile.hasLearnedAnything)
     }
 
+    func testCompleteSentencesSplitsForStreamedSpeech() {
+        // The voice pipeline speaks sentences as they stream (Siri-tier
+        // wave): only COMPLETE sentences leave a partial; the remainder
+        // flushes when the stream closes.
+        XCTAssertEqual(MorpheAppStore.completeSentences(in: "One done. Two still going"),
+                       ["One done."])
+        XCTAssertEqual(MorpheAppStore.completeSentences(in: "One done. Two still going",
+                                                        flushRemainder: true),
+                       ["One done.", "Two still going"])
+        XCTAssertEqual(MorpheAppStore.completeSentences(in: "Push hard! Ready? Go."),
+                       ["Push hard!", "Ready?", "Go."])
+        XCTAssertTrue(MorpheAppStore.completeSentences(in: "   ").isEmpty)
+        XCTAssertEqual(MorpheAppStore.completeSentences(in: "No terminator yet"),
+                       [], "an unterminated partial speaks nothing early")
+    }
+
     func testVoiceLevelMappingIsBoundedAndUseful() {
         // The frequency ring's input contract: silence maps to 0, speech
         // RMS (~0.01–0.15 on iPhone mics) spreads across the range, and
