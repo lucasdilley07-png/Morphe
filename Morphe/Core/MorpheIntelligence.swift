@@ -281,3 +281,140 @@ enum MorpheIntelligence {
         return text
     }
 }
+
+
+/// Neural voice (Tier 2 of Siri-level, 2026-09-23): Morphe's spoken
+/// replies rendered by ElevenLabs Flash instead of the on-device
+/// synthesizer. The key lives in the Keychain exactly like the Claude
+/// key; no key = the on-device voice, unchanged. HONESTY: with a key,
+/// the TEXT of Morphe's answers leaves the phone to make the audio —
+/// the settings copy says so. Workout data does not leave.
+enum MorpheNeuralVoice {
+
+    private static let service = "com.morpheapp.Morphe"
+    private static let account = "elevenlabs-api-key"
+    private static var cachedKey: String??
+
+    static var apiKey: String? {
+        if let cached = cachedKey { return cached }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        let key = (status == errSecSuccess)
+            ? (item as? Data).flatMap { String(data: $0, encoding: .utf8) }
+            : nil
+        if status == errSecSuccess || status == errSecItemNotFound {
+            cachedKey = .some(key)
+        }
+        return key
+    }
+
+    static var isEnabled: Bool { apiKey?.isEmpty == false }
+
+    @discardableResult
+    static func setAPIKey(_ key: String) -> Bool {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8) else { return false }
+        let base: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(base as CFDictionary)
+        var add = base
+        add[kSecValueData as String] = data
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        let status = SecItemAdd(add as CFDictionary, nil)
+        if status == errSecSuccess { cachedKey = .some(trimmed) }
+        return status == errSecSuccess
+    }
+
+    static func clearAPIKey() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(query as CFDictionary)
+        cachedKey = .some(nil)
+        resolvedVoiceCache = [:]
+    }
+
+    // MARK: Voice resolution — name-matched, never hardcoded ids
+
+    /// Preferred premade-voice NAMES per Morphe voice style, best first.
+    /// Matched against the account's live voice list at runtime, so no
+    /// voice id is baked in to rot.
+    nonisolated static func preferredNames(for styleID: String) -> [String] {
+        switch styleID {
+        case "british-female": return ["Alice", "Charlotte", "Lily", "Matilda"]
+        case "american": return ["Brian", "Chris", "Eric", "Bill"]
+        case "australian": return ["Charlie", "Liam"]
+        default: return ["Daniel", "George", "Callum"]
+        }
+    }
+
+    /// Pure pick for tests: first preferred name present wins
+    /// (case-insensitive); otherwise the account's first voice.
+    nonisolated static func pickVoiceID(from voices: [(id: String, name: String)],
+                                        for styleID: String) -> String? {
+        for wanted in preferredNames(for: styleID) {
+            if let hit = voices.first(where: { $0.name.caseInsensitiveCompare(wanted) == .orderedSame }) {
+                return hit.id
+            }
+        }
+        return voices.first?.id
+    }
+
+    private static var resolvedVoiceCache: [String: String] = [:]
+
+    /// Resolves (and caches per launch) the voice id for a style.
+    static func voiceID(for styleID: String, apiKey: String) async -> String? {
+        if let cached = resolvedVoiceCache[styleID] { return cached }
+        guard let url = URL(string: "https://api.elevenlabs.io/v1/voices") else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 6
+        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let list = json["voices"] as? [[String: Any]] else { return nil }
+        let voices: [(id: String, name: String)] = list.compactMap { entry in
+            guard let id = entry["voice_id"] as? String,
+                  let name = entry["name"] as? String else { return nil }
+            return (id, name)
+        }
+        guard let picked = pickVoiceID(from: voices, for: styleID) else { return nil }
+        resolvedVoiceCache[styleID] = picked
+        return picked
+    }
+
+    /// One sentence → MP3 via the Flash model (lowest latency).
+    static func synthesize(_ text: String, voiceID: String, apiKey: String) async throws -> Data {
+        guard let url = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceID)") else {
+            throw URLError(.badURL)
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 6
+        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue("audio/mpeg", forHTTPHeaderField: "accept")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "text": text,
+            "model_id": "eleven_flash_v2_5",
+            "voice_settings": ["stability": 0.5, "similarity_boost": 0.75]
+        ])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200, !data.isEmpty else {
+            throw URLError(.badServerResponse)
+        }
+        return data
+    }
+}

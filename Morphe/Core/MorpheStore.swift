@@ -8552,6 +8552,22 @@ final class MorpheAppStore {
         intelligenceEnabled = false
     }
 
+    // MARK: Neural voice key (Tier 2, 2026-09-23) — same Keychain
+    // doctrine as the Claude key.
+
+    var neuralVoiceEnabled = MorpheNeuralVoice.isEnabled
+
+    func setNeuralVoiceKey(_ key: String) -> Bool {
+        let saved = MorpheNeuralVoice.setAPIKey(key)
+        neuralVoiceEnabled = MorpheNeuralVoice.isEnabled
+        return saved
+    }
+
+    func clearNeuralVoiceKey() {
+        MorpheNeuralVoice.clearAPIKey()
+        neuralVoiceEnabled = false
+    }
+
     /// Everything Claude needs to answer like Morphe: identity, honesty
     /// rules, and the live training context. Spoken replies get a hard
     /// brevity contract — the answer is read aloud on a gym floor.

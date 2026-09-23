@@ -725,7 +725,7 @@ struct ProfileView: View {
             ("Your account", "name username handle referrals invite share"),
             ("How you train", Self.howYouTrainKeywords),
             ("Voice", "hey morphe voice speech microphone hands free wake"),
-            ("Morphe Intelligence", "claude ai brain api key anthropic intelligence smart answers"),
+            ("Morphe Intelligence", "claude ai brain api key anthropic intelligence smart answers neural voice elevenlabs speech audio"),
             ("Notifications", "reminders nudge streak recap board updates"),
             ("Who can see you", Self.whoCanSeeYouKeywords),
             ("Health", "apple health activity rings sleep sync workouts prefill check-in"),
@@ -1211,8 +1211,10 @@ struct ProfileView: View {
 
             }
 
-            settingsSection("Morphe Intelligence", keywords: "claude ai brain api key anthropic intelligence smart answers") {
+            settingsSection("Morphe Intelligence", keywords: "claude ai brain api key anthropic intelligence smart answers neural voice elevenlabs speech audio") {
                     IntelligenceKeyEditor()
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+                    NeuralVoiceKeyEditor()
             }
 
             settingsSection("Notifications", keywords: "reminders nudge streak recap board updates") {
@@ -2023,6 +2025,76 @@ struct MorpheProPaywallSheet: View {
 // The Claude brain is opt-in behind the user's OWN Anthropic API key: the
 // copy is honest about cost, the key lives in the Keychain, and removing
 // it returns the app to the built-in instant replies with zero residue.
+/// ElevenLabs key for the neural Morphe voice (Tier 2). Honest about
+/// the boundary: answer TEXT leaves the phone to make the audio;
+/// workout data does not. No key = the on-device voice, unchanged.
+private struct NeuralVoiceKeyEditor: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var draftKey = ""
+    @State private var showSaveError = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 8) {
+                    Text("Neural voice")
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    StatusBadge(
+                        text: store.neuralVoiceEnabled ? "On" : "Off",
+                        color: store.neuralVoiceEnabled ? MorpheTheme.accent : MorpheTheme.textMuted)
+                }
+                Text(store.neuralVoiceEnabled
+                     ? "On \u{2014} Morphe speaks with an ElevenLabs neural voice on your own key. The TEXT of each spoken answer leaves your phone to make the audio; your workout data does not. Calls bill to your key."
+                     : "Paste your own ElevenLabs API key and Morphe trades the on-device voice for a neural one \u{2014} the accent picks above still apply. The TEXT of spoken answers would leave your phone to make the audio; your workout data would not. Without a key, the on-device voice runs: free, private, offline.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            if store.neuralVoiceEnabled {
+                Button(role: .destructive) {
+                    store.clearNeuralVoiceKey()
+                    draftKey = ""
+                    Haptics.impact(.light)
+                } label: {
+                    Text("Remove key")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+            } else {
+                SecureField("ElevenLabs API key", text: $draftKey)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .textFieldStyle(MorpheFieldStyle())
+                    .onChange(of: draftKey) { _, _ in showSaveError = false }
+                Button {
+                    let trimmed = draftKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                    // Cheap shape check: ElevenLabs keys are long hex-ish
+                    // tokens — catch an obviously wrong paste (a URL, an
+                    // sk-ant- key) before the first billed call fails.
+                    if trimmed.count >= 20, !trimmed.hasPrefix("sk-ant-"),
+                       !trimmed.contains(" "), store.setNeuralVoiceKey(trimmed) {
+                        draftKey = ""
+                        showSaveError = false
+                        Haptics.success()
+                    } else {
+                        showSaveError = true
+                        Haptics.error()
+                    }
+                } label: {
+                    Text("Save key")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .disabled(draftKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                if showSaveError {
+                    Text("That doesn't look like an ElevenLabs key \u{2014} check what you pasted and try again.")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+    }
+}
+
 private struct IntelligenceKeyEditor: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var draftKey = ""

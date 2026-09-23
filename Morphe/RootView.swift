@@ -1112,7 +1112,7 @@ private struct AIAgentMessageRow: View {
 /// — this is foreground-only by platform rule, and the settings copy says
 /// so. Recognition is forced on-device where the hardware supports it.
 @Observable
-final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
+final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
     enum VoiceState {
         case off
         case passive
@@ -1163,6 +1163,16 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     /// True after the exchange's first chunk — later chunks skip the
     /// pre-utterance breath so sentences flow.
     private var spokeFirstChunk = false
+
+    // Neural voice (Tier 2, 2026-09-23): with an ElevenLabs key, chunks
+    // render server-side and play through AVAudioPlayer — same queue,
+    // same exits. Any fetch failure falls back to the on-device voice
+    // for THAT chunk, so an exchange can never go silent.
+    private var neuralPlayer: AVAudioPlayer?
+    private var neuralFetchTask: Task<Void, Never>?
+    private var neuralPrefetchTask: Task<Void, Never>?
+    private var prefetchedChunk: (text: String, data: Data)?
+    private var neuralMeterTimer: Timer?
 
     /// Morphe ACTIVATED (Lucas 2026-09-21): claim the stage — a
     /// non-mixing activation pauses the user's music/other audio for the
@@ -1386,6 +1396,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         speakingDecayTimer?.invalidate()
         speakingWatchdog?.invalidate()
         speechStallTimer?.invalidate()
+        neuralMeterTimer?.invalidate()
         quietPollTimer?.invalidate()
         if let interruptionObserver {
             NotificationCenter.default.removeObserver(interruptionObserver)
@@ -1491,6 +1502,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         speechStallTimer?.invalidate()
         speechQueue = []
         speechStreamOpen = false
+        stopNeuralPlayback()
         endSpeakingLevel()
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
@@ -1612,6 +1624,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         speechStreamOpen = false
         speechStallTimer?.invalidate()
         synthesizer.stopSpeaking(at: .immediate)
+        stopNeuralPlayback()
         endSpeakingLevel()
         restoreMixSession()
         state = .passive
@@ -1622,6 +1635,15 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         guard state == .speaking, !speechQueue.isEmpty else { return }
         let text = speechQueue.removeFirst()
         currentlySpeakingText += " " + text
+        armChunkWatchdog(for: text)
+        if let key = MorpheNeuralVoice.apiKey, !key.isEmpty {
+            speakChunkNeural(text, key: key)
+        } else {
+            speakChunkOnDevice(text)
+        }
+    }
+
+    private func speakChunkOnDevice(_ text: String) {
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = 0.48
         // The user's chosen voice (personalization) — default remains the
@@ -1636,19 +1658,111 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         utterance.postUtteranceDelay = 0.05
         spokeFirstChunk = true
         synthesizer.speak(utterance)
-        // Watchdog (audit 12, P2-8): per-chunk ceiling — a stuck utterance
-        // must hand the mic back.
+    }
+
+    /// Per-chunk watchdog (audit 12, P2-8): a stuck utterance OR a hung
+    /// neural fetch must hand the mic back. The neural path budgets fetch
+    /// time on top of playback.
+    private func armChunkWatchdog(for text: String) {
         speakingWatchdog?.invalidate()
-        let ceiling = max(4.0, Double(text.count) / 10.0)
+        let ceiling = max(6.0, Double(text.count) / 10.0 + 4.0)
         let watchdog = Timer(timeInterval: ceiling, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self, self.state == .speaking else { return }
                 self.synthesizer.stopSpeaking(at: .immediate)
+                self.stopNeuralPlayback()
                 self.concludeSpeaking()
             }
         }
         speakingWatchdog = watchdog
         RunLoop.main.add(watchdog, forMode: .common)
+    }
+
+    /// Fetch (or take the prefetch), then play. The ring rides REAL
+    /// output metering — the motion is the actual neural audio.
+    private func speakChunkNeural(_ text: String, key: String) {
+        let styleID = MorpheVoiceOption.spec(for: Self.preferredVoiceStyle).id
+        neuralFetchTask?.cancel()
+        neuralFetchTask = Task { [weak self] in
+            var data: Data?
+            if let prefetched = self?.prefetchedChunk, prefetched.text == text {
+                data = prefetched.data
+                self?.prefetchedChunk = nil
+            } else if let voiceID = await MorpheNeuralVoice.voiceID(for: styleID, apiKey: key) {
+                data = try? await MorpheNeuralVoice.synthesize(text, voiceID: voiceID, apiKey: key)
+            }
+            let fetched = data
+            DispatchQueue.main.async {
+                guard let self, self.state == .speaking else { return }
+                if let fetched, let player = try? AVAudioPlayer(data: fetched) {
+                    player.delegate = self
+                    player.isMeteringEnabled = true
+                    self.neuralPlayer = player
+                    self.spokeFirstChunk = true
+                    player.play()
+                    self.startNeuralMetering()
+                    self.prefetchNextChunk(key: key, styleID: styleID)
+                } else {
+                    // Server voice unavailable — this sentence speaks
+                    // on-device rather than dropping (honest fallback).
+                    self.speakChunkOnDevice(text)
+                }
+            }
+        }
+    }
+
+    /// Renders the NEXT queued sentence while the current one plays —
+    /// the difference between gapless flow and per-sentence stutter.
+    private func prefetchNextChunk(key: String, styleID: String) {
+        guard let next = speechQueue.first, prefetchedChunk?.text != next else { return }
+        neuralPrefetchTask?.cancel()
+        neuralPrefetchTask = Task { [weak self] in
+            guard let voiceID = await MorpheNeuralVoice.voiceID(for: styleID, apiKey: key),
+                  let data = try? await MorpheNeuralVoice.synthesize(next, voiceID: voiceID, apiKey: key)
+            else { return }
+            DispatchQueue.main.async {
+                guard let self, self.state == .speaking else { return }
+                self.prefetchedChunk = (next, data)
+            }
+        }
+    }
+
+    private func startNeuralMetering() {
+        neuralMeterTimer?.invalidate()
+        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, let player = self.neuralPlayer, player.isPlaying else { return }
+                player.updateMeters()
+                let db = Double(player.averagePower(forChannel: 0))
+                self.ingestMicLevel(max(0, min(1, (db + 45) / 40)))
+            }
+        }
+        neuralMeterTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopNeuralPlayback() {
+        neuralFetchTask?.cancel()
+        neuralFetchTask = nil
+        neuralPrefetchTask?.cancel()
+        neuralPrefetchTask = nil
+        neuralPlayer?.stop()
+        neuralPlayer = nil
+        neuralMeterTimer?.invalidate()
+        neuralMeterTimer = nil
+        prefetchedChunk = nil
+    }
+
+    // MARK: AVAudioPlayerDelegate (neural chunks)
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        DispatchQueue.main.async {
+            guard self.state == .speaking else { return }
+            self.neuralMeterTimer?.invalidate()
+            self.neuralMeterTimer = nil
+            self.neuralPlayer = nil
+            self.speechChunkFinished()
+        }
     }
 
     /// The exchange is over: follow-up window opens (10s — conversation
@@ -1659,6 +1773,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         speechStallTimer?.invalidate()
         speechQueue = []
         speechStreamOpen = false
+        stopNeuralPlayback()
         endSpeakingLevel()
         restoreMixSession()
         followUpDeadline = Date().addingTimeInterval(10)
@@ -1675,6 +1790,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
         speakingWatchdog?.invalidate()
         speakingWatchdog = nil
         synthesizer.stopSpeaking(at: .immediate)
+        stopNeuralPlayback()
         endSpeakingLevel()
         state = .active
         claimStageForActiveCapture()
@@ -2132,6 +2248,14 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate {
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         DispatchQueue.main.async {
             guard self.state == .speaking else { return }
+            self.speechChunkFinished()
+        }
+    }
+
+    /// One exit for both voices: next chunk, hold for the stream, or
+    /// conclude.
+    private func speechChunkFinished() {
+        do {
             if !self.speechQueue.isEmpty {
                 // Next sentence is already here — keep talking.
                 self.speakNextChunk()

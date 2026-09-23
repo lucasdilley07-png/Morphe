@@ -2375,6 +2375,23 @@ final class StyleProfileTests: XCTestCase {
         XCTAssertTrue(store.styleProfile.hasLearnedAnything)
     }
 
+    func testNeuralVoicePickMatchesStyleByName() {
+        // Tier 2: voice ids are resolved from the account's live list by
+        // NAME — nothing hardcoded to rot. Preferred name wins
+        // case-insensitively; otherwise the first voice; empty list = nil.
+        let voices: [(id: String, name: String)] = [
+            ("v1", "Rachel"), ("v2", "daniel"), ("v3", "Brian")
+        ]
+        XCTAssertEqual(MorpheNeuralVoice.pickVoiceID(from: voices, for: "british"), "v2",
+                       "Daniel is the preferred British male, matched case-insensitively")
+        XCTAssertEqual(MorpheNeuralVoice.pickVoiceID(from: voices, for: "american"), "v3")
+        XCTAssertEqual(MorpheNeuralVoice.pickVoiceID(from: voices, for: "british-female"), "v1",
+                       "no preferred name present falls back to the first voice")
+        XCTAssertNil(MorpheNeuralVoice.pickVoiceID(from: [], for: "british"))
+        XCTAssertEqual(MorpheNeuralVoice.preferredNames(for: "no-such-style").first, "Daniel",
+                       "unknown styles fall back to the British set")
+    }
+
     func testCompleteSentencesSplitsForStreamedSpeech() {
         // The voice pipeline speaks sentences as they stream (Siri-tier
         // wave): only COMPLETE sentences leave a partial; the remainder
