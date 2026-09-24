@@ -16,8 +16,10 @@ struct LaunchSequenceView: View {
 
     var body: some View {
         ZStack {
-            // The launch beat matches the app icon: gold M on a black field.
-            Color.black.ignoresSafeArea()
+            // The launch beat lives on the app's own field (Lucas
+            // 2026-09-24): white in light mode, near-black in dark. The
+            // gold M stays gold in both — it matches the app icon.
+            MorpheTheme.ink.ignoresSafeArea()
 
             VStack(spacing: 22) {
                 Spacer()
@@ -27,14 +29,12 @@ struct LaunchSequenceView: View {
                 Text("MORPHE")
                     .scaledFont(size: 28, weight: .bold, design: .monospaced)
                     .tracking(6)
-                    // The launch beat is ALWAYS the black brand field —
-                    // literal white on purpose, both appearances.
-                    .foregroundStyle(.white)
+                    .foregroundStyle(MorpheTheme.textPrimary)
 
                 Text(message.uppercased())
                     .font(MorpheTheme.microLabel(12))
                     .tracking(1.8)
-                    .foregroundStyle(Color.white.opacity(0.66))
+                    .foregroundStyle(MorpheTheme.textSecondary)
                     .transition(.opacity)
 
                 Spacer()

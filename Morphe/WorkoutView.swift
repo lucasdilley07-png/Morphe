@@ -35,8 +35,6 @@ struct WorkoutView: View {
     @State private var voiceSetLogger = VoiceSetLogController()
     @State private var showDiscardConfirm = false
     @State private var showLibrary = false
-    @State private var showExerciseList = false
-    @State private var showAdjustments = false
     @State private var showSessionQueue = false
     @State private var showHistory = false
     @State private var showBuilder = false
@@ -369,7 +367,7 @@ struct WorkoutView: View {
                 // — a second Finish/Discard row here would just compete.
                 if !store.isTrackedWorkoutComplete {
                     HStack(spacing: 10) {
-                        Button("Finish & Review") {
+                        Button("Finish session") {
                             if store.finishTrackedWorkoutSession() {
                                 restRunning = false
                             }
@@ -891,49 +889,6 @@ struct WorkoutView: View {
                 }
 
                 TrainExpandableSection(
-                    title: "Exercise list",
-                    subtitle: "\(store.currentWorkout.exercises.count) moves in today's plan. Open it when you want detail, not before you need it.",
-                    isExpanded: $showExerciseList
-                ) {
-                    TrainUtilityCard(
-                        isCompact: store.prefersCompactExerciseView,
-                        onSelectCompact: { isCompact in
-                            store.setCompactExerciseView(isCompact)
-                        }
-                    )
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(store.currentWorkout.exercises) { exercise in
-                            if store.prefersCompactExerciseView {
-                                ExerciseCompactRow(
-                                    exercise: exercise,
-                                    onViewForm: { store.showExerciseDetail(for: exercise) },
-                                    onSwap: { swapTarget = exercise }
-                                )
-                            } else {
-                                ExercisePlanCard(
-                                    exercise: exercise,
-                                    onViewForm: { store.showExerciseDetail(for: exercise) },
-                                    onSwap: { swapTarget = exercise }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                TrainExpandableSection(
-                    title: "Adjust today",
-                    subtitle: "Shorten it, recover, or swap the day without losing the habit.",
-                    isExpanded: $showAdjustments
-                ) {
-                    SmartPlanAdjustmentCard(adjustment: store.currentPlanAdjustment)
-
-                    AddSwitchWorkoutCard { option in
-                        store.applyWorkoutAdjustment(option)
-                    }
-                }
-
-                TrainExpandableSection(
                     title: "Form help and history",
                     subtitle: "Open your library help or check recent sessions without crowding the start of the workout page.",
                     isExpanded: $showHistory
@@ -1226,8 +1181,15 @@ private struct WorkoutCompleteCard: View {
                     }
                 }
 
-                Button("Finish & Review", action: onFinish)
+                Button("Finish session", action: onFinish)
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+
+                // The tap delivers exactly what it names (UX wave
+                // 2026-09-24): three questions come first, so the card
+                // says so instead of promising a recap it delays.
+                Text("Three quick questions, then your recap.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
             }
         }
         .accessibilityElement(children: .combine)

@@ -657,12 +657,21 @@ final class MorpheAppStore {
         debriefContext = nil
         refreshStyleProfile()
         Haptics.success()
-        // Phase 4: once a real pattern exists, the acknowledgment says so —
-        // the learning is visible, not a black box.
+        // Peak-end (UX wave 2026-09-24): what memory keeps is the END of
+        // the session, and until now the end was a form and a meta-toast.
+        // The last beat is now the user's own result — their title, their
+        // score — with the visible-learning line riding as the detail
+        // when a real pattern exists (Phase 4 stays: no black box).
         if let intensity = styleProfile.preferredIntensity {
-            showToast("Noted — you mostly train \u{201C}\(intensity.lowercased())\u{201D}. This shapes tomorrow's suggestions.")
+            showCelebration(
+                title: "In the books",
+                detail: "\(debrief.workoutTitle) — \(debrief.rating)/10. You mostly train \u{201C}\(intensity.lowercased())\u{201D}; tomorrow leans that way.",
+                symbol: "checkmark.seal.fill")
         } else {
-            showToast("Noted — this shapes tomorrow's suggestions.")
+            showCelebration(
+                title: "In the books",
+                detail: "\(debrief.workoutTitle) — you scored it \(debrief.rating)/10. Every debrief sharpens tomorrow's plan.",
+                symbol: "checkmark.seal.fill")
         }
         pushDebrief(debrief)
     }
