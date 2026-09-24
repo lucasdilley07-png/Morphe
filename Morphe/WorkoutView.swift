@@ -1022,7 +1022,7 @@ struct WorkoutView: View {
         if isRecoverySession {
             return PostWorkoutPromptConfiguration(
                 title: "Turn the lighter day into real momentum",
-                detail: "Recovery still counts when it keeps the week honest. Save the session or log a quick reset before you move on.",
+                detail: "Recovery still counts when it keeps the week on track. Save the session or log a quick reset before you move on.",
                 actions: [.recoveryReset, .saveFavorite]
             )
         }

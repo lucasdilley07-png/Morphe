@@ -2241,7 +2241,7 @@ enum MorpheDemoContent {
             musclesWorked: "Deep abdominals, hip flexors, quads",
             equipment: "None (mat optional)",
             difficulty: .moderate,
-            videoPlaceholder: "From seated, you lean back, float your shins parallel to the floor and reach your arms forward, balancing in a V on the back of your sit bones. The chest stays proud rather than collapsed. Each hold is short, honest work for the deepest layer of your abs.",
+            videoPlaceholder: "From seated, you lean back, float your shins parallel to the floor and reach your arms forward, balancing in a V on the back of your sit bones. The chest stays proud rather than collapsed. Each hold is short, focused work for the deepest layer of your abs.",
             instructions: [
                 "Sit tall with knees bent and feet flat, hands resting behind your thighs.",
                 "Lean back until your arms go light and lift your shins parallel to the floor.",
@@ -3762,7 +3762,7 @@ enum MorpheDemoContent {
             commonMistakes: "Sinking too deep and letting the shoulders roll forward.",
             beginnerModification: "Bend the knees and keep feet flat to unload it.",
             alternatives: ["Triceps Dip", "Tricep Pushdown"],
-            whyThisMatters: "Tricep strength from any bench or chair — an honest stepping stone to full dips."
+            whyThisMatters: "Tricep strength from any bench or chair — a proven stepping stone to full dips."
         ),
         ExerciseReference(
             id: "band-row",
@@ -3902,7 +3902,7 @@ enum MorpheDemoContent {
             commonMistakes: "Flaring the lower back off the wall as the arms rise.",
             beginnerModification: "Only slide through the range where contact stays.",
             alternatives: ["Arm Swings & Circles", "Face Pull"],
-            whyThisMatters: "An honest test and builder of overhead range — if the wall slide is clean, pressing overhead gets safer."
+            whyThisMatters: "A true test and builder of overhead range — if the wall slide is clean, pressing overhead gets safer."
         ),
         ExerciseReference(
             id: "lateral-step-down",
@@ -5150,7 +5150,7 @@ enum MorpheDemoContent {
             durationMinutes: 30,
             exercises: [
                 LoggedExercise(name: "Shadowboxing Rounds", sets: "3", reps: "3 min", weight: "Bodyweight", note: "Stayed light on the feet."),
-                LoggedExercise(name: "Heavy Bag Intervals", sets: "4", reps: "2 min", weight: "Bodyweight", note: "Kept the pace honest."),
+                LoggedExercise(name: "Heavy Bag Intervals", sets: "4", reps: "2 min", weight: "Bodyweight", note: "Kept the pace up."),
                 LoggedExercise(name: "Plank", sets: "2", reps: "45 sec", weight: "Bodyweight", note: "Core finisher.")
             ],
             notes: "Conditioning round on the bag. Logged right after.",

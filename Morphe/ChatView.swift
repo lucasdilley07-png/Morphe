@@ -496,7 +496,7 @@ private struct NetworkStoriesRail: View {
                             subtitle: "Coach highlights",
                             items: [
                                 "Boxing Base Builder is still the right fit this week.",
-                                "Keep the first round moderate and honest.",
+                                "Keep the first round moderate and controlled.",
                                 "Protein and sleep matter more than extra fatigue tonight."
                             ]
                         )

@@ -921,7 +921,7 @@ struct ProfileView: View {
                             }
                         }
                     }
-                    Text("How Morphe talks in chat and voice — delivery changes, honesty never does.")
+                    Text("How Morphe talks in chat and voice — delivery changes, the numbers never do.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
@@ -1250,7 +1250,7 @@ struct ProfileView: View {
 
                     preferenceToggleRow(
                         title: "Auto-share workouts",
-                        caption: "Posts an honest recap to the feed when you log a session. Each session shows a toggle to keep it private.",
+                        caption: "Posts a real recap to the feed when you log a session. Each session shows a toggle to keep it private.",
                         isOn: $store.autoShareWorkoutsEnabled
                     )
 
@@ -1949,7 +1949,7 @@ struct MorpheProPaywallSheet: View {
                     .foregroundStyle(MorpheTheme.textMuted)
 
                 if premium.hasEntitlement {
-                    Text("You're Pro. Thanks for backing honest training.")
+                    Text("You're Pro. Thanks for backing smarter training.")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(MorpheTheme.accentText)
                 } else if premium.products.isEmpty, premium.loadState == .failed {

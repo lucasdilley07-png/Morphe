@@ -1017,7 +1017,7 @@ enum HomeCardID: String, CaseIterable, Identifiable {
         switch self {
         case .insight: return "What your logs say about how you train"
         case .schedule: return "Booked sessions and conversations"
-        case .adjustments: return "Lighter days, plan B, and honest outs"
+        case .adjustments: return "Lighter days, plan B, and smart outs"
         case .support: return "Plan context, partners, and your scores"
         }
     }
@@ -1090,7 +1090,7 @@ struct MorpheCommunicationStyle: Identifiable, Equatable {
             register: "Delivery: encouraging — acknowledge the effort genuinely before the answer, but never invent praise the logs don't support."),
         MorpheCommunicationStyle(
             id: "drill", title: "Drill", detail: "Terse, pushy, zero fluff",
-            register: "Delivery: drill-sergeant terse — clipped imperatives, push for the next rep, still honest about numbers."),
+            register: "Delivery: drill-sergeant terse — clipped imperatives, push for the next rep, still straight with the numbers."),
         MorpheCommunicationStyle(
             id: "analytical", title: "Analytical", detail: "Numbers first",
             register: "Delivery: analytical — lead with the relevant numbers and trends from their data, then the takeaway."),

@@ -6360,7 +6360,7 @@ final class MorpheAppStore {
             ("Form first, load second. A clean rep at lighter weight beats a grinding one every time.",
              "Open the form guide for your first exercise before you load the bar.",
              "Start today's workout"),
-            ("Consistency beats intensity: three honest sessions a week outwork one heroic Saturday.",
+            ("Consistency beats intensity: three solid sessions a week outwork one heroic Saturday.",
              "Protect your scheduled days this week — even a shortened session counts.",
              "Start today's workout"),
             ("Sleep is the strongest recovery tool you own. Tonight's sleep is part of today's training.",
@@ -8582,7 +8582,7 @@ final class MorpheAppStore {
     /// brevity contract — the answer is read aloud on a gym floor.
     func intelligenceSystemPrompt(spoken: Bool) -> String {
         var lines: [String] = []
-        lines.append("You are Morphe, an honest personal training assistant inside the Morphe iOS app. Brand: TRAIN SMARTER — never inflate, never flatter, never invent logged numbers. If you don't know a number, say so.")
+        lines.append("You are Morphe, a personal training assistant inside the Morphe iOS app. Brand: TRAIN SMARTER — never inflate, never flatter, never invent logged numbers. If you don't know a number, say so.")
         // The luxury register (audit 2026-09): quiet confidence, enforced.
         lines.append("Never open with praise of the question or the user's plan. Never use exclamation marks. Never say 'Great question', 'Absolutely', or 'I'd be happy to'. Lead with the answer; reasoning follows only if it changes what they should do. Short sentences. No hedging adverbs.")
         // The chosen persona changes the register, never the honesty
@@ -13615,7 +13615,7 @@ final class MorpheAppStore {
             let partnerLine = partnerInsight.lastPartnerName.map { "with \($0)" } ?? "with a training partner"
             return "Partner sessions look like a good adherence lever for you right now. Let’s get one on the calendar \(partnerLine) this week and use it to keep momentum steady."
         case .recovery:
-            return "Today is a recovery-minded day. Keep the work honest, lighter, and easy to finish so you are ready for the next real push instead of forcing extra fatigue."
+            return "Today is a recovery-minded day. Keep the work light, controlled, and easy to finish so you are ready for the next real push instead of forcing extra fatigue."
         }
     }
 
@@ -14070,7 +14070,7 @@ final class MorpheAppStore {
                 clientProfile.coachName,
                 lowercasedPrompt.contains("pain")
                     ? "Thanks for flagging that. Keep the next round lighter, skip anything sharp, and send me an update after the warm-up."
-                    : "That works. Keep the session clean, stay honest with the effort, and message me after you're done."
+                    : "That works. Keep the session clean, stay sharp with the effort, and message me after you're done."
             )
         case "Jay":
             return (.client, "Jay", "Perfect. I’ll match your pace and keep the last round for clean volume.")
@@ -14209,7 +14209,7 @@ final class MorpheAppStore {
         if insights.isEmpty {
             appendInsight(
                 title: "Your pattern is still taking shape",
-                detail: "Every logged session teaches Morphe what actually works for you. A few more honest check-ins will sharpen the next recommendations fast.",
+                detail: "Every logged session teaches Morphe what actually works for you. A few more real check-ins will sharpen the next recommendations fast.",
                 badge: "Still learning",
                 systemImage: "sparkles"
             )
@@ -14251,7 +14251,7 @@ final class MorpheAppStore {
 
         switch log.source {
         case .athleteManual:
-            recentWins.insert("You logged \(log.workoutTitle) and kept the momentum honest.", at: 0)
+            recentWins.insert("You logged \(log.workoutTitle) and kept the momentum going.", at: 0)
         case .coachManual:
             notifications.insert(
                 SmartNotificationItem(
@@ -14382,7 +14382,7 @@ final class MorpheAppStore {
         case .recoveryReminder:
             return "Recovery reminders help you stay on track"
         case .painCheckIn:
-            return "Fast pain check-ins keep the week honest"
+            return "Fast pain check-ins keep the week on track"
         case .generalCheckIn:
             return "Coach check-ins help the next session happen"
         }
@@ -14959,7 +14959,7 @@ final class MorpheAppStore {
 
     private func postWorkoutHighlightText() -> String {
         if partnerWorkoutEnabled, let partner = selectedWorkoutPartner {
-            return "Finished \(currentWorkout.name) with \(partner.name) and kept the pace honest from first set to last."
+            return "Finished \(currentWorkout.name) with \(partner.name) and kept the pace strong from first set to last."
         }
 
         if currentWorkout.name == clientProfile.currentProgram {

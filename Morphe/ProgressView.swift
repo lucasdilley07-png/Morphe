@@ -2601,7 +2601,7 @@ private struct RecoveryTrendCard: View {
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
 
-                Text("Your daily check-in scores — sleep, energy, soreness, and mood rolled into one honest number.")
+                Text("Your daily check-in scores — sleep, energy, soreness, and mood rolled into one clear number.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
 
