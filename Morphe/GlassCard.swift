@@ -2226,7 +2226,7 @@ struct ManifestoCard: View {
 
                 // Brand yellow on purpose — the motto doesn't follow the
                 // user's accent palette, same as the share card footer.
-                Text("TRAIN HONEST")
+                Text("TRAIN SMARTER")
                     .scaledFont(size: 13, weight: .bold, design: .monospaced)
                     .tracking(2.4)
                     .foregroundStyle(MorpheTheme.brandYellowText)
@@ -2312,7 +2312,7 @@ private struct ShareCardFrame<Content: View>: View {
                     Spacer()
                     // The motto rides every card — the brand line travels
                     // with the stats, not instead of them.
-                    Text("TRAIN HONEST")
+                    Text("TRAIN SMARTER")
                         .font(.system(size: 12, design: .monospaced).weight(.bold))
                         .tracking(1.6)
                         .foregroundStyle(MorpheTheme.brandYellow)

@@ -2258,7 +2258,7 @@ private struct BoardStoryView: View {
 
                 HStack {
                     Spacer()
-                    Text("TRAIN HONEST")
+                    Text("TRAIN SMARTER")
                         .scaledFont(size: 11, weight: .bold, design: .monospaced)
                         .tracking(1.6)
                         .foregroundStyle(MorpheTheme.brandYellow)
@@ -2590,7 +2590,7 @@ private struct StoryCardView: View {
                     .tracking(1.6)
                     .foregroundStyle(MorpheTheme.textPrimary.opacity(0.7))
                 Spacer()
-                Text("TRAIN HONEST")
+                Text("TRAIN SMARTER")
                     .scaledFont(size: 11, weight: .bold, design: .monospaced)
                     .tracking(1.6)
                     .foregroundStyle(MorpheTheme.brandYellow)
