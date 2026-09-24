@@ -8824,17 +8824,46 @@ final class MorpheAppStore {
     /// "Start my workout in Morphe" — Siri/Shortcuts/Action Button set a
     /// flag; the app consumes it on foreground (cold launch included).
     func consumePendingIntentActions() {
-        guard UserDefaults.standard.bool(forKey: "morphe.intent.startWorkout") else { return }
-        // Consumed even when gated (deliberate): a workout silently
-        // starting minutes after onboarding would be worse than dropping
-        // the ask.
-        UserDefaults.standard.set(false, forKey: "morphe.intent.startWorkout")
+        let defaults = UserDefaults.standard
+        let wantsWorkout = defaults.bool(forKey: "morphe.intent.startWorkout")
+        let wantsTalk = defaults.bool(forKey: "morphe.intent.talkToMorphe")
+        let wantsProgress = defaults.bool(forKey: "morphe.intent.openProgress")
+        let askQuestion = defaults.string(forKey: "morphe.intent.askQuestion")
+        guard wantsWorkout || wantsTalk || wantsProgress || askQuestion != nil else { return }
+        // Consumed even when gated (deliberate): an action silently firing
+        // minutes after onboarding would be worse than dropping the ask.
+        defaults.set(false, forKey: "morphe.intent.startWorkout")
+        defaults.set(false, forKey: "morphe.intent.talkToMorphe")
+        defaults.set(false, forKey: "morphe.intent.openProgress")
+        defaults.removeObject(forKey: "morphe.intent.askQuestion")
         // Same shell gate as the voice engine (audit 17, P1): a signed-out
-        // Siri ask must not start a live session under the auth wall.
+        // Siri ask must not act under the auth wall.
         guard hasCompletedOnboarding, !needsTermsAcceptance,
               (!FeatureFlags.accountsEnabled || authUser != nil) else { return }
-        showTrainTab()
-        if !isWorkoutSessionActive { startTodayWorkout() }
+        if wantsWorkout {
+            showTrainTab()
+            if !isWorkoutSessionActive { startTodayWorkout() }
+        }
+        if wantsProgress {
+            openProgress()
+        }
+        if let askQuestion, !askQuestion.isEmpty {
+            // Siri collected the question — open the chat with the answer
+            // already streaming (Tier 3).
+            openAIAgent()
+            sendAIAgentPrompt(askQuestion)
+        }
+        if wantsTalk {
+            // Action button / "Talk to Morphe": the lock-screen direct-
+            // capture machinery — mic hot, no wake phrase. Requires the
+            // voice toggle; the attempt path toasts honestly if parked.
+            if heyMorpheEnabled {
+                pendingDirectVoiceCapture = true
+                consumePendingDirectVoiceCapture()
+            } else {
+                showToast("Turn on Hey Morphe in Profile \u{2192} Voice to talk hands-free.")
+            }
+        }
     }
 
     func previewAIAgentReply(for text: String) -> String {

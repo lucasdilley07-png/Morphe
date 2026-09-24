@@ -1121,6 +1121,35 @@ final class WorkoutSessionTests: XCTestCase {
         store.cancelTrackedWorkoutSession()
     }
 
+    /// Tier 3: "Hey Siri, ask Morphe…" leaves the question in a flag;
+    /// consumption opens the chat with the prompt already sent — behind
+    /// the same guarded door.
+    func testAskMorpheIntentOpensChatWithTheQuestion() {
+        UserDefaults.standard.set("how was my week", forKey: "morphe.intent.askQuestion")
+        let store = freshStore()
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+        store.acceptTerms()
+        store.consumePendingIntentActions()
+        XCTAssertTrue(store.showAIAgent, "the chat opens on the Siri ask")
+        XCTAssertTrue(store.athleteAIAgentConversation.contains { $0.text == "how was my week" },
+                      "the collected question is already in the conversation")
+        XCTAssertNil(UserDefaults.standard.string(forKey: "morphe.intent.askQuestion"),
+                     "consumed, never replayed")
+    }
+
+    /// Tier 3: the Action-button "Talk to Morphe" flag with the voice
+    /// toggle OFF says why instead of silently doing nothing.
+    func testTalkIntentWithoutVoiceToggleExplainsItself() {
+        UserDefaults.standard.set(true, forKey: "morphe.intent.talkToMorphe")
+        let store = freshStore()
+        store.authUser = AppUser(id: "user-1", email: "sarah@morphe.app", role: .athlete, displayName: "Sarah", createdAt: .now)
+        store.acceptTerms()
+        store.setHeyMorphe(enabled: false)
+        store.consumePendingIntentActions()
+        XCTAssertNotNil(store.toastMessage, "the dropped tap is explained, not swallowed")
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: "morphe.intent.talkToMorphe"))
+    }
+
     /// Audit 17, P1: a signed-out Siri ask must not start a live session
     /// underneath the auth wall — the flag is consumed, nothing runs.
     func testAppIntentRespectsAuthWall() {
