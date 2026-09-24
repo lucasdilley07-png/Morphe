@@ -2071,6 +2071,7 @@ private struct NeuralVoiceKeyEditor: View {
                     // tokens — catch an obviously wrong paste (a URL, an
                     // sk-ant- key) before the first billed call fails.
                     if trimmed.count >= 20, !trimmed.hasPrefix("sk-ant-"),
+                       !trimmed.hasPrefix("sk-proj-"),
                        !trimmed.contains(" "), store.setNeuralVoiceKey(trimmed) {
                         draftKey = ""
                         showSaveError = false

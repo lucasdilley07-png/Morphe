@@ -2409,16 +2409,17 @@ final class StyleProfileTests: XCTestCase {
         // NAME — nothing hardcoded to rot. Preferred name wins
         // case-insensitively; otherwise the first voice; empty list = nil.
         let voices: [(id: String, name: String)] = [
-            ("v1", "Rachel"), ("v2", "daniel"), ("v3", "Brian")
+            ("v1", "Rachel"), ("v2", "daniel"), ("v3", "Sawyer")
         ]
         XCTAssertEqual(MorpheNeuralVoice.pickVoiceID(from: voices, for: "british"), "v2",
-                       "Daniel is the preferred British male, matched case-insensitively")
-        XCTAssertEqual(MorpheNeuralVoice.pickVoiceID(from: voices, for: "american"), "v3")
-        XCTAssertEqual(MorpheNeuralVoice.pickVoiceID(from: voices, for: "british-female"), "v1",
-                       "no preferred name present falls back to the first voice")
+                       "legacy Daniel still matches, case-insensitively")
+        XCTAssertEqual(MorpheNeuralVoice.pickVoiceID(from: voices, for: "american"), "v3",
+                       "the post-2026 replacement names lead")
+        XCTAssertNil(MorpheNeuralVoice.pickVoiceID(from: voices, for: "british-female"),
+                     "audit 24: NO blind first-voice fallback — a random cloned voice is worse than on-device")
         XCTAssertNil(MorpheNeuralVoice.pickVoiceID(from: [], for: "british"))
-        XCTAssertEqual(MorpheNeuralVoice.preferredNames(for: "no-such-style").first, "Daniel",
-                       "unknown styles fall back to the British set")
+        XCTAssertEqual(MorpheNeuralVoice.preferredNames(for: "no-such-style").first, "Finley",
+                       "unknown styles fall back to the British set (replacement name first)")
     }
 
     func testCompleteSentencesSplitsForStreamedSpeech() {
@@ -2430,11 +2431,32 @@ final class StyleProfileTests: XCTestCase {
         XCTAssertEqual(MorpheAppStore.completeSentences(in: "One done. Two still going",
                                                         flushRemainder: true),
                        ["One done.", "Two still going"])
+        // A terminator at end-of-text stays open until the stream closes
+        // (audit 24, P1): the next delta may continue the number/sentence.
         XCTAssertEqual(MorpheAppStore.completeSentences(in: "Push hard! Ready? Go."),
+                       ["Push hard!", "Ready?"])
+        XCTAssertEqual(MorpheAppStore.completeSentences(in: "Push hard! Ready? Go.",
+                                                        flushRemainder: true),
                        ["Push hard!", "Ready?", "Go."])
+        // Decimals never split mid-number (audit 24, P1).
+        XCTAssertEqual(MorpheAppStore.completeSentences(in: "Do 102.5 kg today. Then rest",
+                                                        flushRemainder: true),
+                       ["Do 102.5 kg today.", "Then rest"])
         XCTAssertTrue(MorpheAppStore.completeSentences(in: "   ").isEmpty)
         XCTAssertEqual(MorpheAppStore.completeSentences(in: "No terminator yet"),
                        [], "an unterminated partial speaks nothing early")
+    }
+
+    func testQuestionShapeMatchesWholeWordsOnly() {
+        // Conversation-mode gate (audit 24, P2): question starts match as
+        // whole words — gym nouns that merely begin with one stay silent.
+        XCTAssertTrue(MorpheAppStore.isQuestionShaped("what's the best split"))
+        XCTAssertTrue(MorpheAppStore.isQuestionShaped("how much rest"))
+        XCTAssertTrue(MorpheAppStore.isQuestionShaped("tell me about deloads"))
+        XCTAssertTrue(MorpheAppStore.isQuestionShaped("ready to go?"))
+        XCTAssertFalse(MorpheAppStore.isQuestionShaped("shoulder press form was clean"))
+        XCTAssertFalse(MorpheAppStore.isQuestionShaped("candy after this set"))
+        XCTAssertFalse(MorpheAppStore.isQuestionShaped("done with legs"))
     }
 
     func testVoiceLevelMappingIsBoundedAndUseful() {

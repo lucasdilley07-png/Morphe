@@ -1168,6 +1168,14 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     // render server-side and play through AVAudioPlayer — same queue,
     // same exits. Any fetch failure falls back to the on-device voice
     // for THAT chunk, so an exchange can never go silent.
+    /// True from chunk dispatch until its audio finishes — the neural
+    /// path plays through AVAudioPlayer, so synthesizer.isSpeaking is
+    /// FALSE while a neural chunk plays and one-shots concluded before
+    /// their audio arrived (audit 24, P0).
+    private var chunkInFlight = false
+    /// Barge captures are deliberate interruptions — the ambient-speech
+    /// ceiling (8s/12 words) must not swallow them (audit 24, P1).
+    private var isBargeCapture = false
     private var neuralPlayer: AVAudioPlayer?
     private var neuralFetchTask: Task<Void, Never>?
     private var neuralPrefetchTask: Task<Void, Never>?
@@ -1502,6 +1510,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         speechStallTimer?.invalidate()
         speechQueue = []
         speechStreamOpen = false
+        chunkInFlight = false
+        isBargeCapture = false
         stopNeuralPlayback()
         endSpeakingLevel()
         if synthesizer.isSpeaking {
@@ -1566,6 +1576,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         guard !text.isEmpty else {
             speechQueue = []
             speechStreamOpen = false
+            chunkInFlight = false
+            // The capture that led here claimed the stage — hand the
+            // music back before re-arming (audit 24, P1).
+            restoreMixSession()
             state = .passive
             beginListening()
             return
@@ -1603,7 +1617,15 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         guard state == .speaking, !text.isEmpty else { return }
         speechQueue.append(text)
         speechStallTimer?.invalidate()
-        if !synthesizer.isSpeaking { speakNextChunk() }
+        if !chunkInFlight {
+            speakNextChunk()
+        } else if neuralPlayer != nil, prefetchedChunk == nil,
+                  let key = MorpheNeuralVoice.apiKey, !key.isEmpty {
+            // A sentence landed while one plays — render it now so the
+            // handoff is gapless (audit 24, P2: prefetch only fired at
+            // play() time, which streaming usually beat).
+            prefetchNextChunk(key: key, styleID: MorpheVoiceOption.spec(for: Self.preferredVoiceStyle).id)
+        }
     }
 
     /// The reply stream ended — once the queue drains, the exchange
@@ -1611,7 +1633,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     func finishStreamedSpeech() {
         guard state == .speaking else { return }
         speechStreamOpen = false
-        if speechQueue.isEmpty, !synthesizer.isSpeaking {
+        if speechQueue.isEmpty, !chunkInFlight {
             concludeSpeaking()
         }
     }
@@ -1622,6 +1644,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         guard state == .speaking || state == .thinking else { return }
         speechQueue = []
         speechStreamOpen = false
+        chunkInFlight = false
+        speakingWatchdog?.invalidate()
+        speakingWatchdog = nil
         speechStallTimer?.invalidate()
         synthesizer.stopSpeaking(at: .immediate)
         stopNeuralPlayback()
@@ -1634,6 +1659,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     private func speakNextChunk() {
         guard state == .speaking, !speechQueue.isEmpty else { return }
         let text = speechQueue.removeFirst()
+        chunkInFlight = true
         currentlySpeakingText += " " + text
         armChunkWatchdog(for: text)
         if let key = MorpheNeuralVoice.apiKey, !key.isEmpty {
@@ -1691,16 +1717,22 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
             } else if let voiceID = await MorpheNeuralVoice.voiceID(for: styleID, apiKey: key) {
                 data = try? await MorpheNeuralVoice.synthesize(text, voiceID: voiceID, apiKey: key)
             }
+            // A cancelled fetch must not speak over its replacement
+            // (audit 24, P0).
+            guard !Task.isCancelled else { return }
             let fetched = data
             DispatchQueue.main.async {
-                guard let self, self.state == .speaking else { return }
-                if let fetched, let player = try? AVAudioPlayer(data: fetched) {
+                guard let self, self.state == .speaking, self.chunkInFlight else { return }
+                if let fetched, let player = try? AVAudioPlayer(data: fetched), player.play() {
                     player.delegate = self
                     player.isMeteringEnabled = true
                     self.neuralPlayer = player
                     self.spokeFirstChunk = true
-                    player.play()
                     self.startNeuralMetering()
+                    // Re-arm the watchdog to the REAL playback length —
+                    // the fetch already spent part of the estimate-based
+                    // ceiling (audit 24, P1).
+                    self.armPlaybackWatchdog(seconds: player.duration + 1.5)
                     self.prefetchNextChunk(key: key, styleID: styleID)
                 } else {
                     // Server voice unavailable — this sentence speaks
@@ -1725,6 +1757,20 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                 self.prefetchedChunk = (next, data)
             }
         }
+    }
+
+    private func armPlaybackWatchdog(seconds: TimeInterval) {
+        speakingWatchdog?.invalidate()
+        let watchdog = Timer(timeInterval: max(seconds, 2), repeats: false) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.state == .speaking else { return }
+                self.synthesizer.stopSpeaking(at: .immediate)
+                self.stopNeuralPlayback()
+                self.concludeSpeaking()
+            }
+        }
+        speakingWatchdog = watchdog
+        RunLoop.main.add(watchdog, forMode: .common)
     }
 
     private func startNeuralMetering() {
@@ -1757,10 +1803,15 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         DispatchQueue.main.async {
-            guard self.state == .speaking else { return }
+            // A superseded player finishing must not advance the queue
+            // (audit 24, P0).
+            guard self.state == .speaking, player === self.neuralPlayer else { return }
             self.neuralMeterTimer?.invalidate()
             self.neuralMeterTimer = nil
             self.neuralPlayer = nil
+            // Let the ring settle between chunks instead of freezing at
+            // the last level (audit 24, P2).
+            self.ingestMicLevel(0)
             self.speechChunkFinished()
         }
     }
@@ -1774,6 +1825,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         speechQueue = []
         speechStreamOpen = false
         stopNeuralPlayback()
+        chunkInFlight = false
         endSpeakingLevel()
         restoreMixSession()
         followUpDeadline = Date().addingTimeInterval(10)
@@ -1781,11 +1833,35 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         beginListening()
     }
 
+    /// Punctuation-blind form for echo comparison (audit 24, P1).
+    nonisolated static func normalizedForEcho(_ text: String) -> String {
+        text.lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    /// Drops leading words that are Morphe's own leaked echo — the barge
+    /// transcript starts at beginStreamedSpeech, so it can carry a prefix
+    /// of the answer before AEC settles (audit 24, P1).
+    private func strippingSpokenEcho(from text: String) -> String {
+        let spoken = Self.normalizedForEcho(currentlySpeakingText)
+        var words = text.split(separator: " ").map(String.init)
+        while words.count > 1,
+              let first = words.first,
+              spoken.contains(Self.normalizedForEcho(first)),
+              spoken.contains(Self.normalizedForEcho(words.prefix(2).joined(separator: " "))) {
+            words.removeFirst()
+        }
+        return words.joined(separator: " ")
+    }
+
     /// The user talked over Morphe (barge-in). Cut the answer, keep the
     /// stage, and capture what they're saying as the next command.
-    private func bargeIn(with text: String) {
+    private func bargeIn(with text: String, viaWake: Bool) {
         speechQueue = []
         speechStreamOpen = false
+        chunkInFlight = false
         speechStallTimer?.invalidate()
         speakingWatchdog?.invalidate()
         speakingWatchdog = nil
@@ -1793,14 +1869,21 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         stopNeuralPlayback()
         endSpeakingLevel()
         state = .active
-        claimStageForActiveCapture()
-        // Follow-up machinery captures the whole stream (no wake phrase in
-        // it) — mutations still require a wake, same as any follow-up.
-        activeIsFollowUp = true
-        followUpCaptureStart = Date()
+        // NO session change here (audit 24, P1): the stage is already
+        // claimed non-mix and the barge mic is live — a category flip
+        // mid-tap can stall the engine.
+        // A wake barge is a full wake (no double chime, full routing);
+        // a bare barge rides follow-up machinery (whole-stream capture,
+        // mutations still need a wake) but is EXEMPT from the ambient
+        // ceiling — it was a deliberate interruption (audit 24, P1).
+        isBargeCapture = true
+        activeIsFollowUp = !viaWake
+        followUpCaptureStart = viaWake ? nil : Date()
         liveTranscript = text
         onWake?()
-        armCommandTimer(after: 1.2)
+        // A wake with a natural pause earns the breath window, same as a
+        // normal wake (audit 24, P1).
+        armCommandTimer(after: text.isEmpty ? 2.5 : 1.4)
     }
 
     /// Minimal recognition re-arm for barge-in: the full beginListening
@@ -1817,6 +1900,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         self.request = request
         do {
             let node = audioEngine.inputNode
+            // Hardware echo cancellation (audit 24, P1: .voiceChat mode
+            // alone doesn't enable it for AVAudioEngine input) — best
+            // effort; the text echo guard stays as the second line.
+            try? node.setVoiceProcessingEnabled(true)
             let format = node.outputFormat(forBus: 0)
             node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
                 request.append(buffer)
@@ -1861,6 +1948,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// Safe when we never owned the session (no-op).
     private func restoreMixSession() {
         guard sessionOwned else { return }
+        // iOS refuses to deactivate a session while input runs, and try?
+        // swallowed the refusal — music never resumed after answers
+        // (audit 24, P0). The barge-in mic must die first; beginListening
+        // re-arms its own stream anyway.
+        tearDownRecognition()
         let session = AVAudioSession.sharedInstance()
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
         sessionOwned = false
@@ -2043,19 +2135,25 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     liveTranscript = command
                     onWake?()
                     armCommandTimer(after: command.isEmpty ? 2.5 : 1.4)
-                } else if let began = followUpCaptureStart,
+                } else if !isBargeCapture, let began = followUpCaptureStart,
                           Date().timeIntervalSince(began) > 8
                             || text.split(separator: " ").count > 12 {
                     // Ceiling (audit 17, P1): continuous background speech
                     // re-arms the settle timer forever — the wake path got
                     // this fix in audit 14; the follow-up path needs its
-                    // own. Collapse silently and go back to scanning.
+                    // own. Collapse silently and go back to scanning —
+                    // releasing the claimed stage and restarting the
+                    // recognizer so the stale transcript can't re-enter
+                    // capture (audit 24, P1).
                     commandTimer?.invalidate()
                     commandTimer = nil
                     liveTranscript = ""
                     activeIsFollowUp = false
                     followUpCaptureStart = nil
+                    followUpDeadline = nil
+                    restoreMixSession()
                     state = .passive
+                    beginListening()
                 } else if text != liveTranscript {
                     liveTranscript = text
                     armCommandTimer(after: 1.4)
@@ -2078,23 +2176,32 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     // The recognizer retro-corrected the wake phrase AWAY —
                     // it heard the gym TV, not the user. Without this the
                     // armed timer fired the stale fragment as a phantom
-                    // command (audit 14, P2).
+                    // command (audit 14, P2). Release the claimed stage and
+                    // restart clean (audit 24, P1).
                     commandTimer?.invalidate()
                     commandTimer = nil
                     liveTranscript = ""
+                    restoreMixSession()
                     state = .passive
+                    beginListening()
                 }
             case .speaking:
                 // Barge-in (Siri-tier wave): real speech over the answer
-                // cuts Morphe off. AEC keeps its own voice out of the mic;
-                // the containment check catches what leaks through.
+                // cuts Morphe off. Echo comparison is punctuation-blind
+                // (audit 24, P1: the recognizer emits no punctuation, so
+                // leaked echo spanning a comma passed the old check and
+                // Morphe interrupted itself). Bare barges need 4+ NON-echo
+                // words; wake barges always win.
                 let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 if let command = Self.commandAfterWake(in: trimmed) {
-                    bargeIn(with: command)
-                } else if trimmed.split(separator: " ").count >= 3,
-                          !currentlySpeakingText.lowercased()
-                              .contains(trimmed.lowercased()) {
-                    bargeIn(with: trimmed)
+                    bargeIn(with: strippingSpokenEcho(from: command), viaWake: true)
+                } else {
+                    let candidate = strippingSpokenEcho(from: trimmed)
+                    if candidate.split(separator: " ").count >= 4,
+                       !Self.normalizedForEcho(currentlySpeakingText)
+                           .contains(Self.normalizedForEcho(candidate)) {
+                        bargeIn(with: candidate, viaWake: false)
+                    }
                 }
             default:
                 break
@@ -2182,8 +2289,20 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         }
         // The stage stays lit while Claude works (luxury audit): the ring
         // tightens instead of vanishing for up to 12s. speak() takes over
-        // (.speaking) or exits back to .passive.
+        // (.speaking) or exits back to .passive. A 20s ceiling unsticks a
+        // connection that trickles forever (audit 24, P2 — the network
+        // cap is an IDLE timeout, not a total one).
+        isBargeCapture = false
         state = .thinking
+        speakingWatchdog?.invalidate()
+        let thinkingWatchdog = Timer(timeInterval: 20, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.state == .thinking else { return }
+                self.cancelStreamedSpeech()
+            }
+        }
+        speakingWatchdog = thinkingWatchdog
+        RunLoop.main.add(thinkingWatchdog, forMode: .common)
         tearDownRecognition()
         onCommand?(command, wasFollowUp)
     }
@@ -2255,6 +2374,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// One exit for both voices: next chunk, hold for the stream, or
     /// conclude.
     private func speechChunkFinished() {
+        chunkInFlight = false
         do {
             if !self.speechQueue.isEmpty {
                 // Next sentence is already here — keep talking.
@@ -2266,7 +2386,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                 // the exchange briefly; a stalled stream must not strand
                 // the mic (3.5s ceiling).
                 self.speechStallTimer?.invalidate()
-                let timer = Timer(timeInterval: 3.5, repeats: false) { [weak self] _ in
+                let timer = Timer(timeInterval: 15, repeats: false) { [weak self] _ in
                     DispatchQueue.main.async {
                         guard let self, self.state == .speaking else { return }
                         self.concludeSpeaking()

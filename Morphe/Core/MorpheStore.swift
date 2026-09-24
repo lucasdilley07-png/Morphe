@@ -8703,13 +8703,22 @@ final class MorpheAppStore {
     nonisolated static func completeSentences(in text: String, flushRemainder: Bool = false) -> [String] {
         var sentences: [String] = []
         var current = ""
-        for character in text {
+        var index = text.startIndex
+        while index < text.endIndex {
+            let character = text[index]
             current.append(character)
-            if character == "." || character == "!" || character == "?" {
+            let next = text.index(after: index)
+            // A terminator ends a sentence only when whitespace follows —
+            // "102.5 kg" must not split at the decimal (audit 24, P1), and
+            // end-of-text stays open until flushRemainder says the stream
+            // is really done (the next delta may continue the number).
+            if character == "." || character == "!" || character == "?",
+               next < text.endIndex, text[next].isWhitespace {
                 let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !trimmed.isEmpty { sentences.append(trimmed) }
                 current = ""
             }
+            index = next
         }
         if flushRemainder {
             let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -8769,11 +8778,14 @@ final class MorpheAppStore {
                     }
                 }
                 guard let self else { return }
+                // Generation FIRST (audit 24, P2): a superseded task whose
+                // epoch also moved must die silently — cancelStreamedSpeech
+                // here would cut the NEW exchange mid-sentence.
+                guard self.voiceReplyGeneration == generation else { return }
                 if self.intelligenceEpoch != epoch {
                     self.heyMorphe.cancelStreamedSpeech()
                     return
                 }
-                guard self.voiceReplyGeneration == generation else { return }
                 // Flush any trailing text without a terminator, then close.
                 let sentences = Self.completeSentences(in: full, flushRemainder: true)
                 while enqueuedCount < sentences.count {
@@ -8799,17 +8811,21 @@ final class MorpheAppStore {
                 }
             } catch {
                 guard let self else { return }
+                // Generation FIRST here too — same audit 24, P2 race.
+                guard self.voiceReplyGeneration == generation else { return }
                 if self.intelligenceEpoch != epoch {
                     self.heyMorphe.cancelStreamedSpeech()
                     return
                 }
-                guard self.voiceReplyGeneration == generation else { return }
                 let message = (error as? MorpheIntelligence.IntelligenceError)?.errorDescription
                     ?? MorpheIntelligence.IntelligenceError.network.errorDescription
                     ?? "I couldn't reach Claude."
                 let aiMessage = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: message, timestamp: "Now")
                 self.athleteAIAgentConversation.append(aiMessage)
                 if openedSpeech {
+                    // Say what happened (audit 24, P1): a stream that dies
+                    // after the first sentence must not just trail off.
+                    self.heyMorphe.enqueueSpeech(Self.spokenForm(of: message))
                     self.heyMorphe.finishStreamedSpeech()
                     self.lastVoiceExchange = (heard: raw, answer: message)
                 } else {
@@ -8848,12 +8864,18 @@ final class MorpheAppStore {
             openProgress()
         }
         if let askQuestion, !askQuestion.isEmpty {
-            // Siri collected the question — open the chat with the answer
-            // already streaming (Tier 3).
-            openAIAgent()
-            sendAIAgentPrompt(askQuestion)
+            // Send FIRST (audit 24, P1): an action-shaped ask ("open my
+            // progress") navigates and closes the chat in the SAME
+            // transaction — open-then-send stranded pendingProgressOpen
+            // behind a cover that never presented. Only a conversational
+            // answer needs the chat sheet raised.
+            if !sendAIAgentPrompt(askQuestion) {
+                openAIAgent()
+            }
         }
-        if wantsTalk {
+        // Ask wins over Talk when both queued (audit 24, P2): the chat is
+        // already answering — a direct capture would fight it for the mic.
+        if wantsTalk, askQuestion == nil {
             // Action button / "Talk to Morphe": the lock-screen direct-
             // capture machinery — mic hot, no wake phrase. Requires the
             // voice toggle; the attempt path toasts honestly if parked.
@@ -9513,6 +9535,12 @@ final class MorpheAppStore {
     /// a key in Settings; otherwise the built-in coaching reply runs,
     /// exactly as before.
     func handleVoiceCommand(_ raw: String, isFollowUp: Bool) {
+        // A new command supersedes any reply stream still generating
+        // (audit 24, P1): a barge that routes to a DOOR never reaches
+        // requestIntelligenceVoiceReply, so the old stream would keep
+        // running and overwrite this exchange's chip and transcript.
+        voiceStreamTask?.cancel()
+        voiceReplyGeneration += 1
         if isFollowUp, Self.isMutatingVoiceCommand(raw) {
             // Mutations require the wake word (audit 17, P1): the
             // follow-up window with the full door set reopened the exact
@@ -10046,14 +10074,20 @@ final class MorpheAppStore {
 
     /// One question detector for the voice layer (audit 12, P0-1 lineage):
     /// interrogatives get answers, never navigation.
-    private static let voiceQuestionStarts = [
+    private static let voiceQuestionStarts: Set<String> = [
         "should", "when", "what", "how", "why", "where", "who",
-        "is ", "are ", "am ", "do ", "does ", "did ", "would", "could",
-        "can ", "explain", "tell me"
+        "is", "are", "am", "do", "does", "did", "would", "could",
+        "can", "explain"
     ]
 
     static func isQuestionShaped(_ lowered: String) -> Bool {
-        lowered.contains("?") || voiceQuestionStarts.contains { lowered.hasPrefix($0) }
+        if lowered.contains("?") { return true }
+        if lowered.hasPrefix("tell me") { return true }
+        // Whole-word matching (audit 24, P2): "shoulder press form" must
+        // not read as a "should" question. Contractions still count
+        // ("what's the best split").
+        guard let first = lowered.split(separator: " ").first.map(String.init) else { return false }
+        return voiceQuestionStarts.contains { first == $0 || first.hasPrefix($0 + "'") }
     }
 
     /// Everything that can cover the shell steps aside before a voice door
@@ -11252,6 +11286,10 @@ final class MorpheAppStore {
 
     func noteBackgrounded() {
         wasBackgrounded = true
+        // A backgrounded app must not keep a voice stream generating and
+        // then start speaking on return (audit 24, P2).
+        voiceStreamTask?.cancel()
+        voiceReplyGeneration += 1
     }
 
     /// Called on .active — the popup re-offers only after a real

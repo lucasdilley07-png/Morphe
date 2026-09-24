@@ -343,7 +343,7 @@ enum MorpheNeuralVoice {
         ]
         SecItemDelete(query as CFDictionary)
         cachedKey = .some(nil)
-        resolvedVoiceCache = [:]
+        Task { @MainActor in resolvedVoiceCache = [:] }
     }
 
     // MARK: Voice resolution — name-matched, never hardcoded ids
@@ -352,16 +352,21 @@ enum MorpheNeuralVoice {
     /// Matched against the account's live voice list at runtime, so no
     /// voice id is baked in to rot.
     nonisolated static func preferredNames(for styleID: String) -> [String] {
+        // Replacement names first (ElevenLabs retires its legacy Default
+        // voices 2026-12-31; audit 24 verified the successors), legacy
+        // names after for pre-2026 accounts.
         switch styleID {
-        case "british-female": return ["Alice", "Charlotte", "Lily", "Matilda"]
-        case "american": return ["Brian", "Chris", "Eric", "Bill"]
-        case "australian": return ["Charlie", "Liam"]
-        default: return ["Daniel", "George", "Callum"]
+        case "british-female": return ["Alicia", "Florence", "Alice", "Lily"]
+        case "american": return ["Sawyer", "Caleb", "Eddie", "Wyatt", "Brian", "Chris", "Eric", "Bill"]
+        case "australian": return ["Baxter", "Charlie"]
+        default: return ["Finley", "Eldrin", "Daniel", "George"]
         }
     }
 
     /// Pure pick for tests: first preferred name present wins
-    /// (case-insensitive); otherwise the account's first voice.
+    /// (case-insensitive). NO first-voice fallback (audit 24, P1): a
+    /// random cloned voice from the account is worse than the honest
+    /// on-device fallback.
     nonisolated static func pickVoiceID(from voices: [(id: String, name: String)],
                                         for styleID: String) -> String? {
         for wanted in preferredNames(for: styleID) {
@@ -369,14 +374,27 @@ enum MorpheNeuralVoice {
                 return hit.id
             }
         }
-        return voices.first?.id
+        return nil
     }
 
-    private static var resolvedVoiceCache: [String: String] = [:]
+    /// nil value = resolution FAILED this session (audit 24, P1: a bad
+    /// key re-ran the /v1/voices round trip before every sentence).
+    /// MainActor-isolated: the dictionary was racing concurrent fetch and
+    /// prefetch writes (audit 24, P1).
+    @MainActor private static var resolvedVoiceCache: [String: String?] = [:]
 
-    /// Resolves (and caches per launch) the voice id for a style.
+    /// Resolves (and caches per launch, failures included) the voice id
+    /// for a style.
     static func voiceID(for styleID: String, apiKey: String) async -> String? {
-        if let cached = resolvedVoiceCache[styleID] { return cached }
+        if let cached = await MainActor.run(body: { resolvedVoiceCache[styleID] }) {
+            return cached
+        }
+        let picked = await fetchVoiceID(for: styleID, apiKey: apiKey)
+        await MainActor.run { resolvedVoiceCache[styleID] = .some(picked) }
+        return picked
+    }
+
+    private static func fetchVoiceID(for styleID: String, apiKey: String) async -> String? {
         guard let url = URL(string: "https://api.elevenlabs.io/v1/voices") else { return nil }
         var request = URLRequest(url: url)
         request.timeoutInterval = 6
@@ -390,14 +408,14 @@ enum MorpheNeuralVoice {
                   let name = entry["name"] as? String else { return nil }
             return (id, name)
         }
-        guard let picked = pickVoiceID(from: voices, for: styleID) else { return nil }
-        resolvedVoiceCache[styleID] = picked
-        return picked
+        return pickVoiceID(from: voices, for: styleID)
     }
 
     /// One sentence → MP3 via the Flash model (lowest latency).
     static func synthesize(_ text: String, voiceID: String, apiKey: String) async throws -> Data {
-        guard let url = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceID)") else {
+        // Compact output (audit 24, P2): spoken coaching lines don't need
+        // 128kbps — 32kbps mp3 fetches faster and plays identically here.
+        guard let url = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceID)?output_format=mp3_22050_32") else {
             throw URLError(.badURL)
         }
         var request = URLRequest(url: url)
