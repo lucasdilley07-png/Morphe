@@ -522,9 +522,9 @@ struct HomeView: View {
                             store.choosePlanB(reason)
                         },
                         onMinimumWin: { store.activateMinimumWinMode() },
-                        onShorterWorkout: { store.applyWorkoutAdjustment(.shorter) },
-                        onRecoveryWorkout: { store.applyWorkoutAdjustment(.recovery) },
-                        onReschedule: { store.applyWorkoutAdjustment(.reschedule) }
+                        onShorterWorkout: { store.applyWorkoutAdjustment(.shorter, navigate: false) },
+                        onRecoveryWorkout: { store.applyWorkoutAdjustment(.recovery, navigate: false) },
+                        onReschedule: { store.applyWorkoutAdjustment(.reschedule, navigate: false) }
                     )
                 }
             }

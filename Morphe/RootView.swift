@@ -399,12 +399,12 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.4), value: store.showHelloBeat)
         .overlay(alignment: .top) {
+            // The 64pt clears the floating icon row (52pt) for BOTH
+            // surfaces — the celebration banner drew over the avatar and
+            // quick-add buttons (audit 25, P2).
             VStack(spacing: 10) {
                 if let toast = store.toastMessage {
                     ToastBanner(text: toast)
-                        // Clears the floating icon row (52pt) instead of
-                        // drawing over the avatar/quick-add buttons.
-                        .padding(.top, 64)
                         .transition(reduceMotion
                             ? .opacity
                             : .move(edge: .top).combined(with: .opacity))
@@ -415,6 +415,7 @@ struct RootView: View {
                         .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
                 }
             }
+            .padding(.top, 64)
             .padding(.horizontal, 20)
         }
         .overlay(alignment: .bottomTrailing) {

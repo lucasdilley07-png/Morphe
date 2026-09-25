@@ -93,7 +93,7 @@
       "level": "Beginner",
       "durationMinutes": 40,
       "equipmentProfile": "Dumbbells",
-      "notes": "The beginner-friendly fat-loss circuit: squat, push, pull, press, swing, plank — three laps with just enough rest to keep form honest. Ideal 3x per week for someone new to weights who wants to lose fat without living in the gym. Progress by cutting rest to 30 seconds, then adding weight.",
+      "notes": "The beginner-friendly fat-loss circuit: squat, push, pull, press, swing, plank — three laps with just enough rest to keep form clean. Ideal 3x per week for someone new to weights who wants to lose fat without living in the gym. Progress by cutting rest to 30 seconds, then adding weight.",
       "exercises": [
         {
           "libraryID": "bodyweight-squat",
@@ -416,7 +416,7 @@
       "level": "Moderate",
       "durationMinutes": 45,
       "equipmentProfile": "Dumbbells",
-      "notes": "The lower-body partner to DB Upper Hypertrophy: squats, hinges, lunges and hip thrusts in the 10-12 range with 75-90 seconds rest. Hold a dumbbell on your hips for the thrusts. Legs respond to honest depth and full range — shorten the rest before you shorten the squat.",
+      "notes": "The lower-body partner to DB Upper Hypertrophy: squats, hinges, lunges and hip thrusts in the 10-12 range with 75-90 seconds rest. Hold a dumbbell on your hips for the thrusts. Legs respond to real depth and full range — shorten the rest before you shorten the squat.",
       "exercises": [
         {
           "libraryID": "glute-bridge",

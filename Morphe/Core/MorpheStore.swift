@@ -464,7 +464,7 @@ final class MorpheAppStore {
             lines.append("\(favorite) is your most-trained exercise — your logs say so.")
         }
         if let intensity = styleProfile.preferredIntensity, let rating = styleProfile.averageRating {
-            lines.append("You mostly call sessions \u{201C}\(intensity.lowercased())\u{201D} and rate them \(rating.formatted(.number.precision(.fractionLength(1))))/10.")
+            lines.append("You mostly call sessions \u{201C}\((WorkoutIntensity(rawValue: intensity)?.label ?? intensity).lowercased())\u{201D} and rate them \(rating.formatted(.number.precision(.fractionLength(1))))/10.")
         }
         if let minutes = styleProfile.typicalDurationMinutes {
             lines.append("Your typical session runs about \(minutes) minute\(minutes == 1 ? "" : "s").")
@@ -657,21 +657,17 @@ final class MorpheAppStore {
         debriefContext = nil
         refreshStyleProfile()
         Haptics.success()
-        // Peak-end (UX wave 2026-09-24): what memory keeps is the END of
-        // the session, and until now the end was a form and a meta-toast.
-        // The last beat is now the user's own result — their title, their
-        // score — with the visible-learning line riding as the detail
-        // when a real pattern exists (Phase 4 stays: no black box).
+        // The debrief ack stays modest (audit 25, P1: "In the books" +
+        // success haptic fired OVER the "Not saved yet — tap Log Workout"
+        // banner; finished is not saved). The win beat now fires at Log
+        // Workout, the session's real end. Intensity shows its label, not
+        // its rawValue (audit 25, P2: "allout"), and the claim matches
+        // what debriefs actually feed (suggestions, not the plan builder).
         if let intensity = styleProfile.preferredIntensity {
-            showCelebration(
-                title: "In the books",
-                detail: "\(debrief.workoutTitle) — \(debrief.rating)/10. You mostly train \u{201C}\(intensity.lowercased())\u{201D}; tomorrow leans that way.",
-                symbol: "checkmark.seal.fill")
+            let label = WorkoutIntensity(rawValue: intensity)?.label.lowercased() ?? intensity.lowercased()
+            showToast("Noted — you mostly train \u{201C}\(label)\u{201D}. It feeds Morphe's suggestions.")
         } else {
-            showCelebration(
-                title: "In the books",
-                detail: "\(debrief.workoutTitle) — you scored it \(debrief.rating)/10. Every debrief sharpens tomorrow's plan.",
-                symbol: "checkmark.seal.fill")
+            showToast("Noted — every debrief feeds Morphe's suggestions.")
         }
         pushDebrief(debrief)
     }
@@ -830,7 +826,6 @@ final class MorpheAppStore {
     var selectedWorkoutPartnerID: UUID?
     var selectedPartnerWorkoutMode: PartnerWorkoutMode = .live
     var partnerWorkoutEnabled = false
-    var prefersCompactExerciseView = false
     var athleteMessageThreads: [MessageThread]
     var selectedAthleteThreadID: UUID?
     var athleteThreadDraftSeed: String?
@@ -2415,7 +2410,6 @@ final class MorpheAppStore {
         if let mode = NutritionMode(rawValue: snapshot.nutritionMode) {
             nutrition.mode = mode
         }
-        prefersCompactExerciseView = snapshot.prefersCompactExerciseView
         scannedConnections = snapshot.scannedConnections
 
         rebuildPersonalRules()
@@ -2751,7 +2745,6 @@ final class MorpheAppStore {
                 painReports: painReports.map {
                     PainReportSnapshot(area: $0.area, severity: $0.severity, triggerExercise: $0.triggerExercise, alternative: $0.alternative, note: $0.note)
                 },
-                prefersCompactExerciseView: prefersCompactExerciseView,
                 coachTenure: onboardingDraft.coachTenure.rawValue,
                 coachRoster: onboardingDraft.coachRoster.rawValue,
                 scannedConnections: scannedConnections,
@@ -7766,6 +7759,23 @@ final class MorpheAppStore {
                 prCard: prShareCardData(exerciseName: pr.name, weight: pr.weight, previous: pr.previous)
             )
             recentWins.insert("New PR: \(pr.name) at \(weightUnit.format(pr.weight)).", at: 0)
+        } else if let debrief = workoutDebriefs.last,
+                  Calendar.current.isDateInToday(debrief.completedAt) {
+            // Peak-end (audit 25): the log IS the session's end — a fresh
+            // debrief lets the last beat carry the user's own result
+            // instead of the generic XP line. A rough day gets a level
+            // acknowledgment, not a party.
+            if debrief.rating <= 4 {
+                showCelebration(
+                    title: "In the books",
+                    detail: "\(debrief.workoutTitle) — \(debrief.rating)/10. Rough days count too. +50 XP",
+                    symbol: "checkmark.circle")
+            } else {
+                showCelebration(
+                    title: "In the books",
+                    detail: "\(debrief.workoutTitle) — \(debrief.rating)/10 \u{00B7} +50 XP",
+                    symbol: "checkmark.seal.fill")
+            }
         } else {
             // The celebration speaks in the coaching tone the user picked.
             showCelebration(title: "+50 XP", detail: profileShowcase.coachingTone.workoutCompleteDetail, symbol: "sparkles")
@@ -8397,7 +8407,7 @@ final class MorpheAppStore {
            lower.range(of: #"(?:log|did|add)\s+[a-z][a-z ]+\d{1,2}\s*[x×]\s*\d"#,
                        options: .regularExpression) != nil {
             let active = activeWorkoutExercise?.name ?? "the active exercise"
-            return "I log against \(active) — swap to the exercise you mean in Train, then say \"log 3x10 at 135\"."
+            return "I log against \(active) — move to the exercise you mean in Train, then say \"log 3x10 at 135\"."
         }
 
         // Mid-session set logging: "log 3x10 at 135". Weight omitted falls
@@ -8582,7 +8592,7 @@ final class MorpheAppStore {
     /// brevity contract — the answer is read aloud on a gym floor.
     func intelligenceSystemPrompt(spoken: Bool) -> String {
         var lines: [String] = []
-        lines.append("You are Morphe, a personal training assistant inside the Morphe iOS app. Brand: TRAIN SMARTER — never inflate, never flatter, never invent logged numbers. If you don't know a number, say so.")
+        lines.append("You are Morphe, a personal training assistant inside the Morphe iOS app. Brand: TRAIN SMARTER. Rules: never inflate, never flatter, never invent logged numbers. If you don't know a number, say so.")
         // The luxury register (audit 2026-09): quiet confidence, enforced.
         lines.append("Never open with praise of the question or the user's plan. Never use exclamation marks. Never say 'Great question', 'Absolutely', or 'I'd be happy to'. Lead with the answer; reasoning follows only if it changes what they should do. Short sentences. No hedging adverbs.")
         // The chosen persona changes the register, never the honesty
@@ -9368,12 +9378,6 @@ final class MorpheAppStore {
             )
         )
         showToast("Ready check sent to \(partner.name).")
-    }
-
-    func setCompactExerciseView(_ isCompact: Bool) {
-        prefersCompactExerciseView = isCompact
-        persistLocalProfile()
-        showToast(isCompact ? "Compact exercise view on." : "Detailed exercise cards on.")
     }
 
     // Selection toggles stay quiet on success — the chip itself shows the
@@ -14070,7 +14074,7 @@ final class MorpheAppStore {
                 clientProfile.coachName,
                 lowercasedPrompt.contains("pain")
                     ? "Thanks for flagging that. Keep the next round lighter, skip anything sharp, and send me an update after the warm-up."
-                    : "That works. Keep the session clean, stay sharp with the effort, and message me after you're done."
+                    : "That works. Keep the session clean, pace the effort well, and message me after you're done."
             )
         case "Jay":
             return (.client, "Jay", "Perfect. I’ll match your pace and keep the last round for clean volume.")
@@ -15998,15 +16002,24 @@ final class MorpheAppStore {
     /// aboard" died unseen during onboarding's hello window).
     private var pendingCelebration: (title: String, detail: String, symbol: String)?
 
+    private var celebrationClearTask: Task<Void, Never>?
+
     private func showCelebration(title: String, detail: String, symbol: String) {
         if showHelloBeat || showWelcomeExperience {
             pendingCelebration = (title, detail, symbol)
             return
         }
-        celebration = CelebrationMoment(title: title, detail: detail, symbol: symbol)
-        Task {
-            try? await Task.sleep(for: .seconds(1.5))
-            if self.celebration?.title == title {
+        let moment = CelebrationMoment(title: title, detail: detail, symbol: symbol)
+        celebration = moment
+        // Long details earn toast-length display (audit 25, P1: 1.5s minus
+        // the sheet-dismiss animation left ~1s of reading time). The clear
+        // is id-matched and cancellable so a fresh banner is never cut
+        // short by its predecessor's timer (audit 25, P2).
+        celebrationClearTask?.cancel()
+        celebrationClearTask = Task {
+            try? await Task.sleep(for: .seconds(detail.count > 60 ? 3.5 : 1.5))
+            guard !Task.isCancelled else { return }
+            if self.celebration?.id == moment.id {
                 self.celebration = nil
             }
         }

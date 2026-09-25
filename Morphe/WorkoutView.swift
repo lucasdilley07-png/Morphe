@@ -875,8 +875,8 @@ struct WorkoutView: View {
                 }
 
                 // Post-finish, the review flow owns the screen (audit D3):
-                // the library/adjust/form disclosures come back the moment
-                // the session is logged or discarded. Nothing is deleted.
+                // the library/form disclosures come back the moment the
+                // session is logged or discarded. Nothing is deleted.
                 if !store.hasCompletedWorkoutFlow {
                 if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
                     PartnerSessionCard(
@@ -898,7 +898,7 @@ struct WorkoutView: View {
                             Text("Need form help or substitutions?")
                                 .font(.headline)
                                 .foregroundStyle(MorpheTheme.textPrimary)
-                            Text("Open Learn for the exercise library and beginner-friendly form help, or swap a move right from today's plan.")
+                            Text("Open Learn for the exercise library and beginner-friendly form help, or swap a move from Session tools once you start.")
                                 .foregroundStyle(MorpheTheme.textSecondary)
                             HStack(spacing: 10) {
                                 Button("Library") {
@@ -4533,39 +4533,6 @@ private struct PartyRecapCard: View {
     }
 }
 
-private struct TrainUtilityCard: View {
-    let isCompact: Bool
-    let onSelectCompact: (Bool) -> Void
-
-    var body: some View {
-        GlassCard {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Workout Layout")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("Switch between a detailed card view and a faster compact list.")
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                }
-
-                Spacer()
-
-                HStack(spacing: 8) {
-                    Button("Cards") {
-                        onSelectCompact(false)
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: !isCompact, selectedColor: MorpheTheme.accent))
-
-                    Button("Compact") {
-                        onSelectCompact(true)
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: isCompact, selectedColor: MorpheTheme.accentAlt))
-                }
-            }
-        }
-    }
-}
-
 private struct PartnerSessionCard: View {
     let partner: WorkoutPartner
     let mode: PartnerWorkoutMode
@@ -5410,32 +5377,6 @@ private struct CircuitModeView: View {
         }
         store.activeWorkoutExerciseIndex = min(originalIndex, max(store.currentWorkout.exercises.count - 1, 0))
         dismiss()
-    }
-}
-
-private struct AddSwitchWorkoutCard: View {
-    let onSelect: (WorkoutAdjustmentOption) -> Void
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Need to adjust today?")
-                    .font(.headline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
-
-                LazyVGrid(
-                    columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
-                    spacing: 10
-                ) {
-                    ForEach(WorkoutAdjustmentOption.allCases) { option in
-                        Button(option.rawValue) {
-                            onSelect(option)
-                        }
-                        .buttonStyle(SecondaryCTAButtonStyle())
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -6464,84 +6405,6 @@ private struct SavedWorkoutCompletionBadgeRow: View {
             WrapStack(spacing: 8) {
                 ForEach(Array(badges.enumerated()), id: \.offset) { _, badge in
                     StatusBadge(text: badge.title, color: badge.color)
-                }
-            }
-        }
-    }
-}
-
-private struct ExercisePlanCard: View {
-    let exercise: WorkoutExercise
-    let onViewForm: () -> Void
-    let onSwap: () -> Void
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(exercise.name)
-                            .font(.headline)
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                        Text(exercise.muscleGroup.rawValue)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentAlt)
-                    }
-
-                    Spacer()
-
-                    MetricPill(label: "Difficulty", value: exercise.difficulty.rawValue)
-                }
-
-                HStack(spacing: 8) {
-                    MetricPill(label: "Sets", value: exercise.sets)
-                    MetricPill(label: "Reps", value: exercise.reps)
-                }
-
-                Text("Coach cue: \(exercise.formCue)")
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-
-                HStack(spacing: 10) {
-                    Button("View Form", action: onViewForm)
-                        .buttonStyle(SecondaryCTAButtonStyle())
-
-                    Button("Swap", action: onSwap)
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
-                }
-            }
-        }
-    }
-}
-
-private struct ExerciseCompactRow: View {
-    let exercise: WorkoutExercise
-    let onViewForm: () -> Void
-    let onSwap: () -> Void
-
-    var body: some View {
-        GlassCard {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(exercise.name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("\(exercise.sets) • \(exercise.reps)")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                    Text(exercise.formCue)
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                        .lineLimit(2)
-                }
-
-                Spacer()
-
-                VStack(spacing: 8) {
-                    Button("Form", action: onViewForm)
-                        .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accentAlt))
-                    Button("Swap", action: onSwap)
-                        .buttonStyle(FilterChipStyle(isSelected: false, selectedColor: MorpheTheme.accent))
                 }
             }
         }

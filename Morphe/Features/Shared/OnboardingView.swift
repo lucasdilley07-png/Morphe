@@ -68,9 +68,10 @@ struct MorpheLoadingMark: View {
     var body: some View {
         ZStack {
             MorpheMarkShape()
-                // launchMark, not accent: the launch M must match the app
-                // icon's brand yellow even when the user picked another accent.
-                .fill(MorpheTheme.launchMark)
+                // Brand gold, not accent — but #FFD600 reads at ~1.4:1 on
+                // the light field (audit 25, P1), so light mode uses the
+                // theme's darkened gold, same as every gold text surface.
+                .fill(MorpheTheme.isLight ? MorpheTheme.brandYellowText : MorpheTheme.launchMark)
                 .frame(width: size, height: size)
 
             // The spinner: a quarter-ish arc sweeping a ring around the M.
@@ -78,7 +79,8 @@ struct MorpheLoadingMark: View {
                 .trim(from: 0, to: 0.28)
                 .stroke(
                     AngularGradient(
-                        colors: [MorpheTheme.launchMark.opacity(0), MorpheTheme.launchMark],
+                        colors: [(MorpheTheme.isLight ? MorpheTheme.brandYellowText : MorpheTheme.launchMark).opacity(0),
+                                 MorpheTheme.isLight ? MorpheTheme.brandYellowText : MorpheTheme.launchMark],
                         center: .center,
                         startAngle: .degrees(0),
                         endAngle: .degrees(100)

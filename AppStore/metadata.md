@@ -10,14 +10,14 @@ Copy/paste these into App Store Connect. Fields are length-limited as noted.
 > Optional keyword variant (helps search): `Morphe: Workout Tracker` (23 chars)
 
 ## Subtitle (≤30 chars)
-**Train honest. Log real sets.** (28 chars)
+**Train smarter. Log real sets.** (29 chars)
 
 > Keyword-heavy alternative if search rank matters more than brand at
 > launch: `Workout builder & tracker` — the keyword field below already
 > carries workout/tracker/gym either way.
 
 ## Promotional text (≤170 chars, editable any time without review)
-Train honest: real sets, real programs, and stat cards that only state what you logged. No ads, no trackers — your numbers are yours.
+Train smarter: real sets, real programs, and stat cards that only state what you logged. No ads, no trackers — your numbers are yours.
 
 ## Keywords (≤100 chars, comma-separated, no spaces)
 `workout,gym,fitness,tracker,exercise,log,strength,reps,sets,training,lifting,recovery,builder`
@@ -25,7 +25,7 @@ Train honest: real sets, real programs, and stat cards that only state what you 
 ## Description (≤4000 chars)
 Morphe is a fitness app for people who want to build the habit, not chase perfection. Plan your workouts, log every set with real weight and reps, and watch a Morphe Score that reflects what you actually did — not a number someone made up.
 
-TRAIN HONEST — THE HOUSE RULES
+TRAIN SMARTER — THE HOUSE RULES
 • Real scores only — every stat is computed from sets you logged
 • No ads, no trackers — your numbers are never sold or used to target you
 • Your data, your export, and every safety feature stay free, always
@@ -54,7 +54,7 @@ CHECK YOUR RECOVERY
 • Morphe adjusts the day around how you actually feel
 
 TRAIN TOGETHER
-• Follow athletes, share sessions as honest stat cards, and react and comment
+• Follow athletes, share sessions as real stat cards, and react and comment
 • Post story-ready cards of your session, a new PR, or your streak — every number on them is a logged fact
 • Weekly leaderboards and code-joinable challenges — opt-in, real scores only
 • Live buddy sessions: train the same workout together in real time
@@ -69,7 +69,7 @@ YOUR DATA, YOUR CALL
 Built for beginners and anyone rebuilding momentum. Small wins. Real transformation.
 
 ## What's New (release notes, first version)
-First release of Morphe. Build workouts, log real sets, run multi-week programs, and share honest progress with a community that trains — with opt-in Apple Health sync, cloud backup, and full data export/deletion built in.
+First release of Morphe. Build workouts, log real sets, run multi-week programs, and share real progress with a community that trains — with opt-in Apple Health sync, cloud backup, and full data export/deletion built in.
 
 ---
 

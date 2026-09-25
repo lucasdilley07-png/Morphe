@@ -2261,7 +2261,7 @@ private struct BoardStoryView: View {
                     Text("TRAIN SMARTER")
                         .scaledFont(size: 11, weight: .bold, design: .monospaced)
                         .tracking(1.6)
-                        .foregroundStyle(MorpheTheme.brandYellow)
+                        .foregroundStyle(MorpheTheme.brandYellowText)
                 }
             }
             .padding(20)
@@ -2593,7 +2593,7 @@ private struct StoryCardView: View {
                 Text("TRAIN SMARTER")
                     .scaledFont(size: 11, weight: .bold, design: .monospaced)
                     .tracking(1.6)
-                    .foregroundStyle(MorpheTheme.brandYellow)
+                    .foregroundStyle(MorpheTheme.brandYellowText)
             }
         }
         .padding(24)

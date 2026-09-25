@@ -1017,7 +1017,7 @@ enum HomeCardID: String, CaseIterable, Identifiable {
         switch self {
         case .insight: return "What your logs say about how you train"
         case .schedule: return "Booked sessions and conversations"
-        case .adjustments: return "Lighter days, plan B, and smart outs"
+        case .adjustments: return "Lighter days and backup plans"
         case .support: return "Plan context, partners, and your scores"
         }
     }

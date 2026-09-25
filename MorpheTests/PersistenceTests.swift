@@ -1197,6 +1197,57 @@ final class WorkoutSessionTests: XCTestCase {
     }
 
     /// Debrief wave (Lucas 2026-08-28): the pop-up rises at finish, a
+    func testLogAfterDebriefCelebratesTheUsersOwnResult() {
+        // Peak-end (audit 25): a fresh debrief makes the log's last beat
+        // carry the user's own result. A rough day gets an acknowledgment,
+        // not a party — and the win beat belongs to Log Workout, never to
+        // the debrief save (finished is not saved).
+        defer {
+            UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs")
+            UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs.pending")
+        }
+        UserDefaults.standard.removeObject(forKey: "morphe.workout.debriefs")
+        let store = freshStore()
+        let exercise = store.allExercises.first!
+        store.createCustomWorkout(
+            name: "Peak End Day",
+            sport: .strength,
+            items: [CustomWorkoutItem(exercise: exercise, sets: 1, reps: 5)]
+        )
+        // Session 1 sets a first record on purpose — the PR stamp owns
+        // that log, so it's dismissed to clear the field.
+        store.startTodayWorkout()
+        _ = store.completeTrackedSet(reps: 5, weight: 20)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        store.skipWorkoutDebrief()
+        store.logWorkout()
+        store.dismissRecordStamp()
+
+        // Session 2 matches the record (no PR): a fresh debrief makes the
+        // log speak the user's own result.
+        store.startTodayWorkout()
+        _ = store.completeTrackedSet(reps: 5, weight: 20)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        store.submitWorkoutDebrief(intensity: .hard, rating: 9, changeRequest: "")
+        // The "All sets logged" nudge from the final set may still be up —
+        // the contract is only that the WIN beat waits for Log Workout.
+        XCTAssertNotEqual(store.celebration?.title, "In the books",
+                          "the debrief save must not fire the win beat — nothing is in history yet")
+        store.logWorkout()
+        XCTAssertEqual(store.celebration?.title, "In the books")
+        XCTAssertTrue(store.celebration?.detail.contains("Peak End Day") == true)
+        XCTAssertTrue(store.celebration?.detail.contains("9/10") == true)
+
+        // Rough day: same beat, humbler voice.
+        store.startTodayWorkout()
+        _ = store.completeTrackedSet(reps: 5, weight: 20)
+        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        store.submitWorkoutDebrief(intensity: .light, rating: 2, changeRequest: "")
+        store.logWorkout()
+        XCTAssertEqual(store.celebration?.title, "In the books")
+        XCTAssertTrue(store.celebration?.detail.contains("Rough days count too") == true)
+    }
+
     /// saved answer persists + feeds personalization, and a skip costs
     /// nothing. Defaults are scrubbed so no other test inherits a verdict.
     func testWorkoutDebriefFlowSavesAndPersonalizes() {

@@ -774,12 +774,26 @@ struct CelebrationOverlay: View {
                 .stroke(MorpheTheme.accent.opacity(0.45), lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Morphe: \(moment.title). \(moment.detail)")
-        .onAppear { if !reduceMotion { marked.toggle() } }
+        .accessibilityLabel("Morphe: \(moment.title). \(spokenDetail)")
+        // VoiceOver never heard the moment (audit 25, P2): focus returns
+        // to the screen on sheet dismissal and the banner is gone before
+        // anyone reaches it — announce it instead.
+        .onAppear {
+            if !reduceMotion { marked.toggle() }
+            AccessibilityNotification.Announcement("\(moment.title). \(spokenDetail)").post()
+        }
         // A milestone can overwrite an on-screen "+50 XP" moment without
         // the view leaving the tree, so onAppear won't re-fire — bounce on
         // the moment change too (audit 20 P2).
-        .onChange(of: moment.id) { if !reduceMotion { marked.toggle() } }
+        .onChange(of: moment.id) {
+            if !reduceMotion { marked.toggle() }
+            AccessibilityNotification.Announcement("\(moment.title). \(spokenDetail)").post()
+        }
+    }
+
+    /// "9/10" reads as a date to VoiceOver — say "out of 10".
+    private var spokenDetail: String {
+        moment.detail.replacingOccurrences(of: "/10", with: " out of 10")
     }
 }
 

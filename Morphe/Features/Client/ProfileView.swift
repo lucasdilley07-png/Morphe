@@ -934,7 +934,7 @@ struct ProfileView: View {
                 if store.styleProfile.hasLearnedAnything {
                     VStack(alignment: .leading, spacing: 8) {
                         if let intensity = store.styleProfile.preferredIntensity {
-                            learnedRow("gauge.with.needle", "You usually rate sessions \u{201C}\(intensity.lowercased())\u{201D}")
+                            learnedRow("gauge.with.needle", "You usually rate sessions \u{201C}\((WorkoutIntensity(rawValue: intensity)?.label ?? intensity).lowercased())\u{201D}")
                         }
                         if let rating = store.styleProfile.averageRating {
                             learnedRow("star.fill", "Average session rating \(rating.formatted(.number.precision(.fractionLength(1))))/10")

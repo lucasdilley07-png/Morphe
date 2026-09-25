@@ -3762,7 +3762,7 @@ enum MorpheDemoContent {
             commonMistakes: "Sinking too deep and letting the shoulders roll forward.",
             beginnerModification: "Bend the knees and keep feet flat to unload it.",
             alternatives: ["Triceps Dip", "Tricep Pushdown"],
-            whyThisMatters: "Tricep strength from any bench or chair — a proven stepping stone to full dips."
+            whyThisMatters: "Tricep strength from any bench or chair — a stepping stone to full dips."
         ),
         ExerciseReference(
             id: "band-row",

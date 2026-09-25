@@ -119,7 +119,6 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var recoveryPain: Bool = false
     // Durable safety + display preferences.
     var painReports: [PainReportSnapshot] = []
-    var prefersCompactExerciseView: Bool = false
     // Coach onboarding answers (coach accounts only) — rebuild the workspace
     // headline on relaunch.
     var coachTenure: String = ""
@@ -227,7 +226,6 @@ extension LocalProfileSnapshot {
         recoveryMood = ((try? c.decodeIfPresent(Int.self, forKey: .recoveryMood)) ?? nil) ?? 0
         recoveryPain = ((try? c.decodeIfPresent(Bool.self, forKey: .recoveryPain)) ?? nil) ?? false
         painReports = ((try? c.decodeIfPresent([PainReportSnapshot].self, forKey: .painReports)) ?? nil) ?? []
-        prefersCompactExerciseView = ((try? c.decodeIfPresent(Bool.self, forKey: .prefersCompactExerciseView)) ?? nil) ?? false
         coachTenure = str(.coachTenure)
         coachRoster = str(.coachRoster)
         styleProfileJSON = str(.styleProfileJSON)
