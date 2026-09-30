@@ -23,6 +23,7 @@ private struct MorpheTodaySnapshot {
     var weekSets: Int
     var loggedToday: Bool
     var hasData: Bool
+    var weekBars: [Int]
 
     static func load(for renderDate: Date = .now) -> MorpheTodaySnapshot {
         let defaults = UserDefaults(suiteName: "group.com.morpheapp.Morphe")
@@ -37,7 +38,8 @@ private struct MorpheTodaySnapshot {
             todayWorkout: defaults?.string(forKey: "widget.todayWorkout") ?? "",
             weekSets: defaults?.integer(forKey: "widget.weekSets") ?? 0,
             loggedToday: isSameDay && (defaults?.bool(forKey: "widget.loggedToday") ?? false),
-            hasData: defaults?.object(forKey: "widget.todayWorkout") != nil
+            hasData: defaults?.object(forKey: "widget.todayWorkout") != nil,
+            weekBars: (defaults?.array(forKey: "widget.weekBars") as? [Int]) ?? []
         )
     }
 }
@@ -50,7 +52,8 @@ private struct MorpheTodayEntry: TimelineEntry {
 private struct MorpheTodayProvider: TimelineProvider {
     func placeholder(in context: Context) -> MorpheTodayEntry {
         MorpheTodayEntry(date: .now, snapshot: MorpheTodaySnapshot(
-            streak: 5, todayWorkout: "Push Day", weekSets: 24, loggedToday: false, hasData: true))
+            streak: 5, todayWorkout: "Push Day", weekSets: 24, loggedToday: false, hasData: true,
+            weekBars: [12, 0, 9, 14, 0, 8, 6]))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (MorpheTodayEntry) -> Void) {
@@ -86,7 +89,7 @@ struct MorpheTodayWidget: Widget {
         }
         .configurationDisplayName("Today's Training")
         .description("Your streak, today's workout, and this week's sets.")
-        .supportedFamilies([.systemSmall, .accessoryRectangular, .accessoryCircular])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular])
     }
 }
 
@@ -122,6 +125,55 @@ private struct MorpheTodayWidgetView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
+        case .systemMedium:
+            // Home-screen medium: today's decision PLUS the week's shape —
+            // seven bars of real logged sets, today on the right.
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flame.fill")
+                            .font(.caption)
+                            .foregroundStyle(Self.gold)
+                        Text("\(snapshot.streak)")
+                            .font(.system(.title3, design: .monospaced).weight(.bold))
+                            .foregroundStyle(.white)
+                        Text("DAY STREAK")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .tracking(1.1)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    if snapshot.hasData {
+                        Text(snapshot.loggedToday ? "IN THE BOOKS" : "UP TODAY")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .tracking(1.1)
+                            .foregroundStyle(Self.gold)
+                        Text(snapshot.loggedToday ? "Workout logged \u{2713}" : snapshot.todayWorkout)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(2)
+                    } else {
+                        Text("Open Morphe to start \u{2014} the widget fills in from your first session.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if snapshot.hasData {
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Text("LAST 7 DAYS")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .tracking(1.1)
+                            .foregroundStyle(.secondary)
+                        WeekBarsRow(bars: snapshot.weekBars)
+                        Text("\(snapshot.weekSets) sets this week")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         default:
             // Home-screen small: today's decision at a glance.
             VStack(alignment: .leading, spacing: 6) {
@@ -160,6 +212,30 @@ private struct MorpheTodayWidgetView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
+    }
+}
+
+/// Seven days of real logged sets as capsules, today rightmost. Bars
+/// scale to the week's own max; an empty day stays a visible stub so the
+/// row never lies by omission.
+private struct WeekBarsRow: View {
+    let bars: [Int]
+
+    private static let gold = Color(red: 1.0, green: 0.84, blue: 0.0)
+
+    var body: some View {
+        let shown = bars.count == 7 ? bars : Array(repeating: 0, count: 7)
+        let top = max(shown.max() ?? 1, 1)
+        HStack(alignment: .bottom, spacing: 5) {
+            ForEach(Array(shown.enumerated()), id: \.offset) { index, sets in
+                Capsule(style: .continuous)
+                    .fill(sets > 0 ? Self.gold.opacity(index == 6 ? 1 : 0.75)
+                                   : Color.white.opacity(0.14))
+                    .frame(width: 9, height: sets > 0 ? max(10, 42 * CGFloat(sets) / CGFloat(top)) : 4)
+            }
+        }
+        .frame(height: 44, alignment: .bottom)
+        .accessibilityLabel("Sets over the last seven days: \(shown.map(String.init).joined(separator: ", "))")
     }
 }
 

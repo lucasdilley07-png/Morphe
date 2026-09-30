@@ -13026,6 +13026,23 @@ final class MorpheAppStore {
         defaults.set(currentWorkout.name, forKey: "widget.todayWorkout")
         defaults.set(weeklySetVolume(weeks: 1).last?.sets ?? 0, forKey: "widget.weekSets")
         defaults.set(isWorkoutLoggedToday, forKey: "widget.loggedToday")
+        // Last 7 days of logged sets, today last — the medium widget's
+        // bar row. Same counting rule as weeklySetVolume: real reps
+        // arrays first, display-string fallback for older logs.
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let weekBars: [Int] = (0..<7).reversed().map { offset in
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else { return 0 }
+            return currentAthleteWorkoutLogs
+                .filter { calendar.isDate($0.completedAt, inSameDayAs: day) }
+                .reduce(0) { total, log in
+                    total + log.exercises.reduce(0) { t, exercise in
+                        if let reps = exercise.repsPerSet, !reps.isEmpty { return t + reps.count }
+                        return t + (Int(exercise.sets.prefix(while: \.isNumber)) ?? 0)
+                    }
+                }
+        }
+        defaults.set(weekBars, forKey: "widget.weekBars")
         // The day this snapshot was true. The widget compares against ITS
         // render day, so "Logged today ✓" can't survive into tomorrow when
         // the app isn't opened.
