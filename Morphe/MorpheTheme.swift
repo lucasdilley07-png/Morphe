@@ -13,7 +13,19 @@ enum MorpheTheme {
     // LIGHT is the default look (Lucas 2026-09): white field, black
     // text/logos, orange-gold highlights. Dark remains one toggle away in
     // Profile → Your app; a device that already chose keeps its choice.
-    static var isLight = (UserDefaults.standard.object(forKey: "morphe.appearance.light") as? Bool) ?? true
+    /// The saved choice wins; an untouched device seeds from the SYSTEM
+    /// appearance (Lucas 2026-09-30: a system-dark phone used to get a
+    /// dark splash, then a white app, on every cold launch). The key is
+    /// written only when the user actually toggles, so an undecided
+    /// device keeps following the system.
+    static func defaultIsLight() -> Bool {
+        if let chosen = UserDefaults.standard.object(forKey: "morphe.appearance.light") as? Bool {
+            return chosen
+        }
+        return UITraitCollection.current.userInterfaceStyle != .dark
+    }
+
+    static var isLight = MorpheTheme.defaultIsLight()
 
     static var ink: Color {
         isLight ? Color.white                                              // clean white field

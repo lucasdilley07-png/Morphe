@@ -115,7 +115,7 @@ final class MorpheAppStore {
 
     /// Light/dark appearance — device-level (not per-profile: the person
     /// holding the phone picks how it looks). Flips the whole token system.
-    var appearanceIsLight = (UserDefaults.standard.object(forKey: "morphe.appearance.light") as? Bool) ?? true {
+    var appearanceIsLight = MorpheTheme.defaultIsLight() {
         didSet {
             MorpheTheme.isLight = appearanceIsLight
             UserDefaults.standard.set(appearanceIsLight, forKey: "morphe.appearance.light")
