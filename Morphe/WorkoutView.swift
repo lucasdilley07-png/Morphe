@@ -480,8 +480,19 @@ struct WorkoutView: View {
             // rest/weight signal that fired while this view was unmounted
             // lands here — same shape as pendingLibraryReveal.
             if let seconds = store.consumePendingVoiceRest() {
-                restSeconds = seconds
-                restRunning = true
+                // Cold catch-up (audit 26 deferred): the lock-screen rest
+                // may have been running for a while before this view
+                // mounted — resume from the SHARED anchor, not a fresh
+                // full rest. A past anchor means it already finished.
+                if let end = RestTimerSharedState.readEndDate() {
+                    if end > .now {
+                        restSeconds = max(Int(end.timeIntervalSinceNow.rounded()), 1)
+                        restRunning = true
+                    }
+                } else {
+                    restSeconds = seconds
+                    restRunning = true
+                }
             }
             if let logged = store.consumeVoiceLoggedWeight() {
                 pendingWeight = logged
@@ -4659,6 +4670,19 @@ private struct WorkoutRestControlBar: View {
         }
         .onAppear {
             if isRunning {
+                // The wall clock kept going while the loop was suspended —
+                // resync before restarting, or the frozen `seconds` would
+                // silently EXTEND the rest on re-anchor.
+                if let end = RestTimerSharedState.readEndDate() {
+                    if end > .now {
+                        seconds = max(Int(end.timeIntervalSinceNow.rounded()), 1)
+                    } else {
+                        // The rest finished while this view was away.
+                        isRunning = false
+                        seconds = defaultSeconds
+                        return
+                    }
+                }
                 startCountdown()
             } else if let end = RestTimerSharedState.readEndDate(), end > .now {
                 // Mid-session relaunch: the session restored but this bar's
@@ -4670,7 +4694,12 @@ private struct WorkoutRestControlBar: View {
             }
         }
         .onDisappear {
-            cancelCountdown()
+            // Leaving the view must NOT end the rest (audit 26 deferred):
+            // the shared anchor and the lock-screen countdown keep
+            // running — only this view's 1s loop stops. onAppear resyncs
+            // from the anchor on the way back in.
+            countdownTask?.cancel()
+            countdownTask = nil
         }
         // The 1s loop suspends with the app; the lock-screen Live Activity
         // runs on wall clock. Coming back to the foreground, the in-app

@@ -13050,7 +13050,12 @@ final class MorpheAppStore {
         defaults.set(currentWorkoutStreak(from: currentAthleteWorkoutLogs), forKey: "widget.streak")
         defaults.set(currentWorkout.name, forKey: "widget.todayWorkout")
         defaults.set(weeklySetVolume(weeks: 1).last?.sets ?? 0, forKey: "widget.weekSets")
-        defaults.set(isWorkoutLoggedToday, forKey: "widget.loggedToday")
+        // The widget's own bars and streak count EVERY source, so its
+        // "logged today" must too (audit 26 deferred: a coach-entered
+        // session filled today's bar while the widget said "UP TODAY").
+        // In-app isWorkoutLoggedToday keeps its manual+partner meaning.
+        defaults.set(currentAthleteWorkoutLogs.contains { Calendar.current.isDateInToday($0.completedAt) },
+                     forKey: "widget.loggedToday")
         defaults.set(!currentAthleteWorkoutLogs.isEmpty, forKey: "widget.hasLogs")
         // Last 7 days of logged sets, today last — the medium widget's
         // bar row. Same counting rule as weeklySetVolume: real reps
