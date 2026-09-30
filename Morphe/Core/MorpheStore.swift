@@ -1634,9 +1634,27 @@ final class MorpheAppStore {
         // debriefs under the next account's uid.
         wipeLocalDebriefs()
         purgeConversationalDefaults()
+        // The Home/Lock Screen are per-account surfaces too (audit 26,
+        // P1): the snapshot dies with the account, and a live session
+        // card must not keep logging into the next sign-in's memory.
+        clearWidgetSnapshot()
+        isWorkoutSessionActive = false
+        WorkoutSessionActivityController.end()
         loadTrainingPreferences()
         loadCompetitionState()
         reloadPerProfileMirrors()
+    }
+
+    /// Removes every widget key from the shared app group and redraws the
+    /// widgets empty — sign-out and account deletion both route here.
+    private func clearWidgetSnapshot() {
+        guard let defaults = UserDefaults(suiteName: Self.widgetSuiteName) else { return }
+        for key in ["widget.streak", "widget.todayWorkout", "widget.weekSets",
+                    "widget.loggedToday", "widget.day", "widget.weekBars",
+                    "widget.streakValidThrough", "widget.hasLogs"] {
+            defaults.removeObject(forKey: key)
+        }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func wipeLocalDebriefs() {
@@ -6332,6 +6350,10 @@ final class MorpheAppStore {
         flushPendingPersists()
         // A new day the app was OPENED counts as an active day.
         trackDayActiveIfNeeded()
+        // The rollover moved the plan and the day flags — the widget must
+        // say the NEW day's truth (audit 26, P1: it kept yesterday's
+        // workout as "UP TODAY" all day).
+        publishWidgetSnapshot()
     }
 
     /// Honest, general training tips rotated by calendar day — the same tip
@@ -6609,6 +6631,9 @@ final class MorpheAppStore {
     }
 
     private func performStartTodayWorkout() {
+        // The session card belongs on the lock screen from the FIRST
+        // second, not from the first set (audit 26, P1).
+        defer { WatchBridge.shared.publish() }
         resetSessionVoice()
         isWorkoutSessionActive = true
         hasStartedWorkoutFlow = true
@@ -13026,6 +13051,7 @@ final class MorpheAppStore {
         defaults.set(currentWorkout.name, forKey: "widget.todayWorkout")
         defaults.set(weeklySetVolume(weeks: 1).last?.sets ?? 0, forKey: "widget.weekSets")
         defaults.set(isWorkoutLoggedToday, forKey: "widget.loggedToday")
+        defaults.set(!currentAthleteWorkoutLogs.isEmpty, forKey: "widget.hasLogs")
         // Last 7 days of logged sets, today last — the medium widget's
         // bar row. Same counting rule as weeklySetVolume: real reps
         // arrays first, display-string fallback for older logs.
@@ -13043,6 +13069,26 @@ final class MorpheAppStore {
                 }
         }
         defaults.set(weekBars, forKey: "widget.weekBars")
+        // The day through which the streak claim stays TRUE without the
+        // app opening (audit 26, P2: a lapsed lifter kept "12 DAY STREAK"
+        // on their home screen forever). Same gap rule as
+        // currentWorkoutStreak: worst-case rest span for n training days.
+        var activeDays = Set(currentAthleteWorkoutLogs.map { calendar.startOfDay(for: $0.completedAt) })
+        for key in protectedDayKeys {
+            if let day = Self.date(fromDayKey: key) {
+                activeDays.insert(calendar.startOfDay(for: day))
+            }
+        }
+        if let latestActive = activeDays.max() {
+            let allowedGap = max(1, 8 - max(1, min(7, clientProfile.trainingDaysPerWeek)))
+            if let validThrough = calendar.date(byAdding: .day, value: allowedGap, to: latestActive) {
+                let vt = calendar.dateComponents([.year, .month, .day], from: validThrough)
+                defaults.set(String(format: "%04d-%02d-%02d", vt.year ?? 0, vt.month ?? 0, vt.day ?? 0),
+                             forKey: "widget.streakValidThrough")
+            }
+        } else {
+            defaults.removeObject(forKey: "widget.streakValidThrough")
+        }
         // The day this snapshot was true. The widget compares against ITS
         // render day, so "Logged today ✓" can't survive into tomorrow when
         // the app isn't opened.
@@ -14674,6 +14720,9 @@ final class MorpheAppStore {
             ($0.source == .athleteManual || $0.source == .partnerShared) && Calendar.current.isDateInToday($0.completedAt)
         }
         recomputeClientMetrics(from: logs)
+        // Any mutation of the current athlete's logs — add, edit, delete,
+        // protect — lands on the widget in the same breath (audit 26, P1).
+        publishWidgetSnapshot()
     }
 
     /// A neutral plan adjustment for a user who hasn't reported anything —

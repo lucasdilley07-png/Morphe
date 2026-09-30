@@ -75,9 +75,13 @@ enum WorkoutSessionActivityController {
     static func end() {
         restEndDate = nil
         RestTimerSharedState.write(endDate: nil)
-        let current = activity ?? Activity<WorkoutSessionAttributes>.activities.first
+        // Sweep EVERY activity — strays from a crashed run otherwise
+        // live on the lock screen forever (audit 26, P2).
+        let leftovers = Activity<WorkoutSessionAttributes>.activities
         activity = nil
-        guard let current else { return }
-        Task { await current.end(nil, dismissalPolicy: .immediate) }
+        guard !leftovers.isEmpty else { return }
+        Task {
+            for stray in leftovers { await stray.end(nil, dismissalPolicy: .immediate) }
+        }
     }
 }

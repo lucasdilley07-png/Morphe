@@ -22,8 +22,10 @@ final class WatchBridge: NSObject, WCSessionDelegate {
     private var sequence = UserDefaults.standard.integer(forKey: "morphe.watch.seq")
 
     func activate(store: MorpheAppStore) {
-        guard WCSession.isSupported() else { return }
+        // Store first: the Live Activity sync rides publish() even where
+        // WCSession doesn't exist (iPad — audit 26, P2).
         self.store = store
+        guard WCSession.isSupported() else { return }
         let session = WCSession.default
         session.delegate = self
         session.activate()

@@ -33,14 +33,42 @@ private struct MorpheTodaySnapshot {
         let renderDay = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
         let snapshotDay = defaults?.string(forKey: "widget.day") ?? ""
         let isSameDay = snapshotDay == renderDay
+        // Bars are "7 days ending on the day the app WROTE them" — after
+        // midnight with the app unopened, the gold rightmost bar would be
+        // yesterday's (audit 26, P2: the widget contradicted its own "UP
+        // TODAY"). Shift left by the days elapsed since the snapshot.
+        var bars = (defaults?.array(forKey: "widget.weekBars") as? [Int]) ?? []
+        if bars.count == 7, !snapshotDay.isEmpty, snapshotDay != renderDay,
+           let written = Self.day(from: snapshotDay),
+           let rendered = Self.day(from: renderDay) {
+            let elapsed = Calendar.current.dateComponents([.day], from: written, to: rendered).day ?? 0
+            if elapsed > 0 {
+                let shift = min(elapsed, 7)
+                bars = Array(bars.dropFirst(shift)) + Array(repeating: 0, count: shift)
+            }
+        }
+        // A streak claim is only true through its allowed rest gap — the
+        // app writes the horizon; past it, the widget stops bragging
+        // (audit 26, P2). yyyy-mm-dd compares correctly as a string.
+        var streak = defaults?.integer(forKey: "widget.streak") ?? 0
+        if let validThrough = defaults?.string(forKey: "widget.streakValidThrough"),
+           renderDay > validThrough {
+            streak = 0
+        }
         return MorpheTodaySnapshot(
-            streak: defaults?.integer(forKey: "widget.streak") ?? 0,
+            streak: streak,
             todayWorkout: defaults?.string(forKey: "widget.todayWorkout") ?? "",
             weekSets: defaults?.integer(forKey: "widget.weekSets") ?? 0,
             loggedToday: isSameDay && (defaults?.bool(forKey: "widget.loggedToday") ?? false),
-            hasData: defaults?.object(forKey: "widget.todayWorkout") != nil,
-            weekBars: (defaults?.array(forKey: "widget.weekBars") as? [Int]) ?? []
+            hasData: defaults?.bool(forKey: "widget.hasLogs") ?? false,
+            weekBars: bars
         )
+    }
+
+    private static func day(from key: String) -> Date? {
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return Calendar.current.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
     }
 }
 
@@ -53,11 +81,18 @@ private struct MorpheTodayProvider: TimelineProvider {
     func placeholder(in context: Context) -> MorpheTodayEntry {
         MorpheTodayEntry(date: .now, snapshot: MorpheTodaySnapshot(
             streak: 5, todayWorkout: "Push Day", weekSets: 24, loggedToday: false, hasData: true,
-            weekBars: [12, 0, 9, 14, 0, 8, 6]))
+            weekBars: [6, 0, 4, 5, 0, 5, 4]))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (MorpheTodayEntry) -> Void) {
-        completion(MorpheTodayEntry(date: .now, snapshot: .load()))
+        let snapshot = MorpheTodaySnapshot.load()
+        // The widget GALLERY on a fresh install shows the sample, not a
+        // wall of zeros (audit 26) — real data still previews as itself.
+        if context.isPreview, !snapshot.hasData {
+            completion(placeholder(in: context))
+        } else {
+            completion(MorpheTodayEntry(date: .now, snapshot: snapshot))
+        }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<MorpheTodayEntry>) -> Void) {
@@ -78,8 +113,6 @@ private struct MorpheTodayProvider: TimelineProvider {
 }
 
 struct MorpheTodayWidget: Widget {
-    private static let gold = Color(red: 1.0, green: 0.84, blue: 0.0)
-
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "MorpheTodayWidget", provider: MorpheTodayProvider()) { entry in
             MorpheTodayWidgetView(snapshot: entry.snapshot)
@@ -102,28 +135,42 @@ private struct MorpheTodayWidgetView: View {
     var body: some View {
         switch family {
         case .accessoryCircular:
-            // Streak dial for the lock screen.
-            VStack(spacing: 0) {
-                Image(systemName: "flame.fill")
-                    .font(.caption2)
-                Text("\(snapshot.streak)")
-                    .font(.system(.title3, design: .monospaced).weight(.bold))
-            }
-            .accessibilityLabel("\(snapshot.streak) day streak")
-        case .accessoryRectangular:
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 4) {
+            // Streak dial for the lock screen — a fresh install says so
+            // instead of faking a zero streak (audit 26, P2).
+            if snapshot.hasData {
+                VStack(spacing: 0) {
                     Image(systemName: "flame.fill")
                         .font(.caption2)
-                    Text("\(snapshot.streak)-day streak")
-                        .font(.caption.weight(.semibold))
+                        .widgetAccentable()
+                    Text("\(snapshot.streak)")
+                        .font(.system(.title3, design: .monospaced).weight(.bold))
                 }
-                Text(snapshot.loggedToday ? "Logged today" : snapshot.todayWorkout)
+                .accessibilityLabel("\(snapshot.streak) day streak")
+            } else {
+                Image(systemName: "dumbbell.fill")
+                    .font(.title3)
+                    .accessibilityLabel("Open Morphe to start")
+            }
+        case .accessoryRectangular:
+            if snapshot.hasData {
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flame.fill")
+                            .font(.caption2)
+                            .widgetAccentable()
+                        Text("\(snapshot.streak)-day streak")
+                            .font(.caption.weight(.semibold))
+                    }
+                    Text(snapshot.loggedToday ? "Logged today" : snapshot.todayWorkout)
+                        .font(.caption2)
+                        .lineLimit(1)
+                    Text("\(snapshot.weekSets) sets this week")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Open Morphe to start — this fills in from your first session.")
                     .font(.caption2)
-                    .lineLimit(1)
-                Text("\(snapshot.weekSets) sets this week")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
             }
         case .systemMedium:
             // Home-screen medium: today's decision PLUS the week's shape —
@@ -134,13 +181,16 @@ private struct MorpheTodayWidgetView: View {
                         Image(systemName: "flame.fill")
                             .font(.caption)
                             .foregroundStyle(Self.gold)
+                            .widgetAccentable()
                         Text("\(snapshot.streak)")
                             .font(.system(.title3, design: .monospaced).weight(.bold))
                             .foregroundStyle(.white)
+                            .minimumScaleFactor(0.7)
                         Text("DAY STREAK")
                             .font(.system(size: 9, weight: .bold, design: .monospaced))
                             .tracking(1.1)
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                     Spacer(minLength: 0)
                     if snapshot.hasData {
@@ -148,6 +198,7 @@ private struct MorpheTodayWidgetView: View {
                             .font(.system(size: 9, weight: .bold, design: .monospaced))
                             .tracking(1.1)
                             .foregroundStyle(Self.gold)
+                            .widgetAccentable()
                         Text(snapshot.loggedToday ? "Workout logged \u{2713}" : snapshot.todayWorkout)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.white)
@@ -166,14 +217,21 @@ private struct MorpheTodayWidgetView: View {
                             .font(.system(size: 9, weight: .bold, design: .monospaced))
                             .tracking(1.1)
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
                         WeekBarsRow(bars: snapshot.weekBars)
-                        Text("\(snapshot.weekSets) sets this week")
+                        // The total is the bars' own sum (audit 26, P1:
+                        // "this week" was a CALENDAR week — a different
+                        // window than the rolling bars above it, so the
+                        // two numbers could contradict each other).
+                        Text("\(snapshot.weekBars.reduce(0, +)) sets · last 7 days")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         default:
             // Home-screen small: today's decision at a glance.
             VStack(alignment: .leading, spacing: 6) {
@@ -181,13 +239,16 @@ private struct MorpheTodayWidgetView: View {
                     Image(systemName: "flame.fill")
                         .font(.caption)
                         .foregroundStyle(Self.gold)
+                        .widgetAccentable()
                     Text("\(snapshot.streak)")
                         .font(.system(.title3, design: .monospaced).weight(.bold))
                         .foregroundStyle(.white)
+                        .minimumScaleFactor(0.7)
                     Text("DAY STREAK")
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
                         .tracking(1.1)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
 
                 Spacer(minLength: 0)
@@ -197,6 +258,7 @@ private struct MorpheTodayWidgetView: View {
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
                         .tracking(1.1)
                         .foregroundStyle(Self.gold)
+                        .widgetAccentable()
                     Text(snapshot.loggedToday ? "Workout logged ✓" : snapshot.todayWorkout)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.white)
@@ -210,7 +272,7 @@ private struct MorpheTodayWidgetView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 }
@@ -231,6 +293,7 @@ private struct WeekBarsRow: View {
                 Capsule(style: .continuous)
                     .fill(sets > 0 ? Self.gold.opacity(index == 6 ? 1 : 0.75)
                                    : Color.white.opacity(0.14))
+                    .widgetAccentable(sets > 0)
                     .frame(width: 9, height: sets > 0 ? max(10, 42 * CGFloat(sets) / CGFloat(top)) : 4)
             }
         }
@@ -290,6 +353,8 @@ struct WorkoutSessionLiveActivity: Widget {
                         .monospacedDigit()
                         .foregroundStyle(morpheGold)
                         .frame(width: 44)
+                } else if context.state.workoutComplete {
+                    Image(systemName: "checkmark.seal.fill").foregroundStyle(morpheGold)
                 } else {
                     Text("\(context.state.setsDone)/\(context.state.setsTarget)")
                         .foregroundStyle(morpheGold)
