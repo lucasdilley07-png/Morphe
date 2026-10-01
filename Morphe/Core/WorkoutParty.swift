@@ -410,6 +410,16 @@ protocol LeaderboardSyncing: AnyObject {
     /// One user's entry, nil when they haven't posted this week.
     func fetchEntry(weekKey: String, uid: String) async -> WeeklyLeaderboardEntry?
 
+    // Respect — the one-tap reaction on a board week. The giver's doc id
+    // IS the giver's uid, so giving twice is idempotent and revoking is
+    // deleting your own doc.
+    func giveRespect(weekKey: String, to uid: String, from giverUid: String)
+    func revokeRespect(weekKey: String, to uid: String, from giverUid: String)
+    /// Doc-count per athlete uid (count() aggregation); empty on failure.
+    func fetchRespectCounts(weekKey: String, uids: [String]) async -> [String: Int]
+    /// Which of `uids` the giver has already respected this week.
+    func fetchMyRespect(weekKey: String, giverUid: String, among uids: [String]) async -> Set<String>
+
     // Challenges
     func createChallenge(_ challenge: ChallengeSummary, host: ChallengeMember) async -> Bool
     /// Joins by code; returns the challenge (with members) or nil when the
@@ -427,6 +437,10 @@ final class NoOpLeaderboardService: LeaderboardSyncing {
     func postScore(weekKey: String, entry: WeeklyLeaderboardEntry) {}
     func fetchTop(weekKey: String, limit: Int) async -> [WeeklyLeaderboardEntry]? { nil }
     func fetchEntry(weekKey: String, uid: String) async -> WeeklyLeaderboardEntry? { nil }
+    func giveRespect(weekKey: String, to uid: String, from giverUid: String) {}
+    func revokeRespect(weekKey: String, to uid: String, from giverUid: String) {}
+    func fetchRespectCounts(weekKey: String, uids: [String]) async -> [String: Int] { [:] }
+    func fetchMyRespect(weekKey: String, giverUid: String, among uids: [String]) async -> Set<String> { [] }
     func createChallenge(_ challenge: ChallengeSummary, host: ChallengeMember) async -> Bool { false }
     func joinChallenge(code: String, member: ChallengeMember) async -> ChallengeSummary? { nil }
     func fetchChallenge(code: String) async -> ChallengeSummary? { nil }
@@ -442,6 +456,54 @@ final class FirebaseLeaderboardService: LeaderboardSyncing {
 
     private func challengeDoc(_ code: String) -> DocumentReference {
         db.collection("challenges").document(code)
+    }
+
+    private func respect(_ weekKey: String, uid: String) -> CollectionReference {
+        entries(weekKey).document(uid).collection("respect")
+    }
+
+    // MARK: Respect
+
+    func giveRespect(weekKey: String, to uid: String, from giverUid: String) {
+        // Fire-and-forget like every social write — Firestore queues offline.
+        respect(weekKey, uid: uid).document(giverUid).setData([
+            "createdAt": FieldValue.serverTimestamp()
+        ])
+    }
+
+    func revokeRespect(weekKey: String, to uid: String, from giverUid: String) {
+        respect(weekKey, uid: uid).document(giverUid).delete()
+    }
+
+    func fetchRespectCounts(weekKey: String, uids: [String]) async -> [String: Int] {
+        // Server-side count() aggregation — one cheap aggregate per row
+        // instead of reading every respect doc (same idiom as the feed).
+        var counts: [String: Int] = [:]
+        for uid in uids {
+            let query = respect(weekKey, uid: uid).count
+            guard let snap = try? await query.getAggregation(source: .server) else { continue }
+            counts[uid] = Int(truncating: snap.count)
+        }
+        return counts
+    }
+
+    func fetchMyRespect(weekKey: String, giverUid: String, among uids: [String]) async -> Set<String> {
+        // One direct doc-get per visible row, run concurrently — each is
+        // the single respect/{giverUid} doc, cached offline by Firestore.
+        await withTaskGroup(of: String?.self) { group in
+            for uid in uids {
+                let doc = respect(weekKey, uid: uid).document(giverUid)
+                group.addTask {
+                    guard let snap = try? await doc.getDocument(), snap.exists else { return nil }
+                    return uid
+                }
+            }
+            var mine: Set<String> = []
+            for await hit in group {
+                if let uid = hit { mine.insert(uid) }
+            }
+            return mine
+        }
     }
 
     // MARK: Weekly board

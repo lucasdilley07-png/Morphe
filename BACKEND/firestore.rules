@@ -385,6 +385,21 @@ service cloud.firestore {
         && (request.resource.data.get('verified', false) != true
             || get(/databases/$(database)/documents/users/$(uid)).data.get('verified', false) == true);
       allow delete: if false;
+
+      // Respect — the one-tap reaction on an athlete's WEEK (2026-09-30,
+      // from the engagement research: every logged unit a friend can see
+      // gets a one-tap acknowledgment). Referral-receipt shape: the GIVER
+      // writes their own doc under the receiver's entry, create-only,
+      // giver-revocable, never updatable. Counts come from counting docs —
+      // no forgeable counters.
+      match /respect/{giverUid} {
+        allow read: if isSignedIn();
+        allow create: if isOwner(giverUid)
+          && giverUid != uid
+          && request.resource.data.keys().hasOnly(['createdAt']);
+        allow update: if false;
+        allow delete: if isOwner(giverUid);
+      }
     }
 
     // Code-joinable challenges. The 6-char doc id is the join code — knowing

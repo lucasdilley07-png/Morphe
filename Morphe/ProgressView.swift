@@ -2305,6 +2305,48 @@ struct WeeklyBoardCard: View {
 
             Spacer()
 
+            // Respect — the one-tap reaction on a training partner's week
+            // (2026-09-30). Only real logged work is visible here, so the
+            // tap only ever lands on real work. Your own row shows what
+            // you've RECEIVED, read-only.
+            let respectCount = store.boardRespectCounts[entry.uid, default: 0]
+            if isMe {
+                if respectCount > 0 {
+                    HStack(spacing: 3) {
+                        Image(systemName: "hands.clap.fill")
+                            .font(.caption2)
+                        Text("\(respectCount)")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .accessibilityLabel("\(respectCount) respect received")
+                }
+            } else if store.authUser != nil {
+                let mine = store.myRespectedBoardUids.contains(entry.uid)
+                Button {
+                    store.toggleBoardRespect(for: entry.uid)
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: mine ? "hands.clap.fill" : "hands.clap")
+                            .font(.caption2)
+                        if respectCount > 0 {
+                            Text("\(respectCount)")
+                                .font(.caption2.weight(.semibold))
+                                .contentTransition(.numericText())
+                        }
+                    }
+                    .foregroundStyle(mine ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                    // The row is 3pt-padded — the control carries its own
+                    // 44pt-wide target so gym thumbs land it.
+                    .frame(minWidth: 44, minHeight: 30)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(mine
+                    ? "Take back respect for \(entry.name)"
+                    : "Give respect to \(entry.name)")
+            }
+
             Text("\(entry.score) sets")
                 .font(.caption)
                 .foregroundStyle(MorpheTheme.textSecondary)
@@ -2315,7 +2357,9 @@ struct WeeklyBoardCard: View {
             isMe ? MorpheTheme.accent.opacity(0.10) : Color.clear,
             in: RoundedRectangle(cornerRadius: MorpheTheme.radius)
         )
-        .accessibilityElement(children: .combine)
+        // Combining children swallowed the button (audit habit): contain
+        // keeps the row readable AND the respect tap reachable.
+        .accessibilityElement(children: .contain)
     }
 }
 

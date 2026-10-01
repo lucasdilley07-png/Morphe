@@ -230,6 +230,34 @@ try:
     check("B deletes own receipt (account erasure)", True,
           fs_call(B, "DELETE", f"users/{A['uid']}/referrals/{B['uid']}"))
 
+    print("\n— Board respect (giver writes own receipt under the receiver's entry) —")
+    wk = f"test-{RUN_ID}"
+    check("B posts own board entry (staging)", True,
+          fs_call(B, "PATCH", f"leaderboards/{wk}/entries/{B['uid']}",
+                  {"fields": {"uid": s(B["uid"]), "name": s("B"),
+                              "score": i(30), "workouts": i(3)}}))
+    check("A gives respect to B's week", True,
+          fs_call(A, "PATCH", f"leaderboards/{wk}/entries/{B['uid']}/respect/{A['uid']}",
+                  {"fields": {"createdAt": ts}}))
+    check("A re-gives (updates) the same respect", False,
+          fs_call(A, "PATCH", f"leaderboards/{wk}/entries/{B['uid']}/respect/{A['uid']}",
+                  {"fields": {"createdAt": ts}}))
+    check("C forges respect under a giver id that isn't theirs", False,
+          fs_call(C, "PATCH", f"leaderboards/{wk}/entries/{B['uid']}/respect/forged-{RUN_ID}",
+                  {"fields": {"createdAt": ts}}))
+    check("B self-respects own entry", False,
+          fs_call(B, "PATCH", f"leaderboards/{wk}/entries/{B['uid']}/respect/{B['uid']}",
+                  {"fields": {"createdAt": ts}}))
+    check("A sneaks an extra key into respect", False,
+          fs_call(A, "PATCH", f"leaderboards/{wk}/entries/{B['uid']}/respect/{A['uid']}x",
+                  {"fields": {"createdAt": ts, "sneak": s("x")}}))
+    check("C reads B's respect (signed-in read)", True,
+          fs_call(C, "GET", f"leaderboards/{wk}/entries/{B['uid']}/respect/{A['uid']}"))
+    check("C deletes A's respect doc", False,
+          fs_call(C, "DELETE", f"leaderboards/{wk}/entries/{B['uid']}/respect/{A['uid']}"))
+    check("A takes back own respect", True,
+          fs_call(A, "DELETE", f"leaderboards/{wk}/entries/{B['uid']}/respect/{A['uid']}"))
+
     print("\n— Telemetry (first-party, own-uid) —")
     check("A records own telemetry event", True,
           fs_call(A, "PATCH", f"telemetry/t-{RUN_ID}",

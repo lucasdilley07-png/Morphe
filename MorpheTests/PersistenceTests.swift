@@ -2504,6 +2504,21 @@ final class StyleProfileTests: XCTestCase {
                        [], "an unterminated partial speaks nothing early")
     }
 
+    func testBoardRespectIsGuardedAndHonest() {
+        // The one-tap reaction (2026-09-30): a signed-out tap invents
+        // nothing — no optimistic count, no remembered give. The real
+        // write path is covered by the live rules checks.
+        let store = MorpheAppStore()
+        store.weeklyLeaderboard = [WeeklyLeaderboardEntry(
+            uid: "friend-1", name: "Sam", verified: false,
+            score: 30, workouts: 3, updatedAt: nil)]
+        XCTAssertNil(store.authUser, "staging assumption: tests run signed out")
+        store.toggleBoardRespect(for: "friend-1")
+        XCTAssertEqual(store.boardRespectCounts["friend-1", default: 0], 0,
+                       "no account, no respect — nothing optimistic appears")
+        XCTAssertTrue(store.myRespectedBoardUids.isEmpty)
+    }
+
     func testQuestionShapeMatchesWholeWordsOnly() {
         // Conversation-mode gate (audit 24, P2): question starts match as
         // whole words — gym nouns that merely begin with one stay silent.

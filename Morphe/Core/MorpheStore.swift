@@ -1038,6 +1038,11 @@ final class MorpheAppStore {
     /// The user's own entry as last fetched — present even when they sit
     /// outside the fetched top 50 (their honest "you posted" proof).
     var weeklyLeaderboardSelfEntry: WeeklyLeaderboardEntry?
+    /// Respect received per board uid this week (real doc counts) and the
+    /// rows the signed-in user has already respected. Both hydrate with
+    /// the board and clear on sign-out.
+    var boardRespectCounts: [String: Int] = [:]
+    var myRespectedBoardUids: Set<String> = []
     /// Weekly-board opt-in. Persisted in UserDefaults (documented exception —
     /// see `loadCompetitionState`).
     /// Master switch for every scheduled reminder (training nudge, streak
@@ -1643,6 +1648,8 @@ final class MorpheAppStore {
         // P1): the snapshot dies with the account, and a live session
         // card must not keep logging into the next sign-in's memory.
         clearWidgetSnapshot()
+        boardRespectCounts = [:]
+        myRespectedBoardUids = []
         isWorkoutSessionActive = false
         WorkoutSessionActivityController.end()
         loadTrainingPreferences()
@@ -4243,6 +4250,40 @@ final class MorpheAppStore {
             weeklyLeaderboardSelfEntry = await leaderboardService.fetchEntry(weekKey: weekKey, uid: me.uid)
         } else {
             weeklyLeaderboardSelfEntry = nil
+        }
+        // Respect rides the same refresh: real doc counts for every
+        // visible row, plus which rows are already mine. Failures keep
+        // the optimistic state on screen rather than zeroing it.
+        var respectUids = weeklyLeaderboard.map(\.uid)
+        if let mine = weeklyLeaderboardSelfEntry?.uid, !respectUids.contains(mine) {
+            respectUids.append(mine)
+        }
+        if !respectUids.isEmpty {
+            let counts = await leaderboardService.fetchRespectCounts(weekKey: weekKey, uids: respectUids)
+            if !counts.isEmpty { boardRespectCounts = counts }
+            if let giver = authUser?.id {
+                myRespectedBoardUids = await leaderboardService.fetchMyRespect(
+                    weekKey: weekKey, giverUid: giver, among: respectUids)
+            }
+        }
+    }
+
+    /// The one-tap reaction (2026-09-30, from the engagement research):
+    /// give or take back respect on a training partner's week. Optimistic
+    /// — the count moves on the tap and the write queues offline. Signed-
+    /// out and self taps are visible no-ops: nothing invented, ever.
+    func toggleBoardRespect(for uid: String) {
+        guard let giver = authUser?.id, giver != uid else { return }
+        let weekKey = LeaderboardWeek.key()
+        if myRespectedBoardUids.contains(uid) {
+            myRespectedBoardUids.remove(uid)
+            boardRespectCounts[uid] = max(0, boardRespectCounts[uid, default: 1] - 1)
+            leaderboardService.revokeRespect(weekKey: weekKey, to: uid, from: giver)
+        } else {
+            myRespectedBoardUids.insert(uid)
+            boardRespectCounts[uid, default: 0] += 1
+            leaderboardService.giveRespect(weekKey: weekKey, to: uid, from: giver)
+            Haptics.impact(.light)
         }
     }
 
