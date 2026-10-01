@@ -13060,12 +13060,9 @@ final class MorpheAppStore {
         defaults.set(currentWorkoutStreak(from: currentAthleteWorkoutLogs), forKey: "widget.streak")
         defaults.set(currentWorkout.name, forKey: "widget.todayWorkout")
         defaults.set(weeklySetVolume(weeks: 1).last?.sets ?? 0, forKey: "widget.weekSets")
-        // The widget's own bars and streak count EVERY source, so its
-        // "logged today" must too (audit 26 deferred: a coach-entered
-        // session filled today's bar while the widget said "UP TODAY").
-        // In-app isWorkoutLoggedToday keeps its manual+partner meaning.
-        defaults.set(currentAthleteWorkoutLogs.contains { Calendar.current.isDateInToday($0.completedAt) },
-                     forKey: "widget.loggedToday")
+        // isWorkoutLoggedToday counts every source now (Lucas 2026-09-30),
+        // so the widget reads the same single truth as every in-app surface.
+        defaults.set(isWorkoutLoggedToday, forKey: "widget.loggedToday")
         defaults.set(!currentAthleteWorkoutLogs.isEmpty, forKey: "widget.hasLogs")
         // Last 7 days of logged sets, today last — the medium widget's
         // bar row. Same counting rule as weeklySetVolume: real reps
@@ -14731,9 +14728,11 @@ final class MorpheAppStore {
         guard athleteID == clientProfile.id else { return }
         refreshCurrentAthleteWorkoutHistory()
         workoutConsistency = updatedWorkoutConsistencyFromCurrentLogs()
-        isWorkoutLoggedToday = logs.contains {
-            ($0.source == .athleteManual || $0.source == .partnerShared) && Calendar.current.isDateInToday($0.completedAt)
-        }
+        // Every source counts (Lucas 2026-09-30, closing audit 27's split
+        // verdict): a coach-entered session is still the athlete's trained
+        // day — the day popup, Home hero, Quick Add, and the 5pm reminder
+        // now agree with the widget, streak, and bars.
+        isWorkoutLoggedToday = logs.contains { Calendar.current.isDateInToday($0.completedAt) }
         recomputeClientMetrics(from: logs)
         // Any mutation of the current athlete's logs — add, edit, delete,
         // protect — lands on the widget in the same breath (audit 26, P1).
