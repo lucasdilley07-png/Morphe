@@ -516,6 +516,12 @@ struct WorkoutView: View {
         .onChange(of: store.voiceRestStopToken) { _, _ in
             restRunning = false
         }
+        .onChange(of: store.isWorkoutSessionActive) { _, active in
+            // A session torn down from OUTSIDE Train (template open, plan
+            // stage, sign-out) must take its rest with it — stranded
+            // restRunning was the phantom-rest seed (audit 27, P2).
+            if !active { restRunning = false }
+        }
         .onChange(of: store.voiceFormCheckToken) { _, _ in
             showFormCheck = true
         }
@@ -4658,15 +4664,16 @@ private struct WorkoutRestControlBar: View {
                 // The wall clock kept going while the loop was suspended —
                 // resync before restarting, or the frozen `seconds` would
                 // silently EXTEND the rest on re-anchor.
-                if let end = RestTimerSharedState.readEndDate() {
-                    if end > .now {
-                        seconds = max(Int(end.timeIntervalSinceNow.rounded()), 1)
-                    } else {
-                        // The rest finished while this view was away.
-                        isRunning = false
-                        seconds = defaultSeconds
-                        return
-                    }
+                if let end = RestTimerSharedState.readEndDate(), end > .now {
+                    seconds = max(Int(end.timeIntervalSinceNow.rounded()), 1)
+                } else {
+                    // Past OR missing anchor: the rest ended (or the
+                    // session was torn down from outside Train) while this
+                    // view was away — never restart from frozen seconds
+                    // (audit 27, P2: the phantom-rest path).
+                    isRunning = false
+                    seconds = defaultSeconds
+                    return
                 }
                 startCountdown()
             } else if let end = RestTimerSharedState.readEndDate(), end > .now {

@@ -1215,7 +1215,12 @@ final class MorpheAppStore {
         self.cloudBackup = cloudBackup
         self.partyService = partyService
         self.managedClientService = managedClientService
-        MorpheTheme.isLight = (UserDefaults.standard.object(forKey: "morphe.appearance.light") as? Bool) ?? true
+        // One source of truth (audit 27, P0): this line used to re-read
+        // the key with a hardcoded light fallback, overwriting the system
+        // seed — tokens went light while the scheme pins went dark. Same
+        // derivation as appearanceIsLight's initializer (self isn't
+        // touchable mid-init).
+        MorpheTheme.isLight = MorpheTheme.defaultIsLight()
         self.usernameDirectory = usernameDirectory
         self.verificationService = verificationService
         self.appointmentService = appointmentService
@@ -9879,6 +9884,11 @@ final class MorpheAppStore {
         voiceRestSeconds = seconds
         voiceRestRequestToken += 1
         pendingVoiceRestSeconds = seconds
+        // The request carries its OWN end time (audit 27, P1): the cold
+        // catch-up used to judge voice rests against whatever anchor the
+        // lock screen last wrote — a stale one silently dropped a rest
+        // Morphe had just promised out loud.
+        RestTimerSharedState.write(endDate: Date().addingTimeInterval(TimeInterval(seconds)))
     }
 
     /// Consumed by WorkoutView.onAppear — the catch-up half of the token

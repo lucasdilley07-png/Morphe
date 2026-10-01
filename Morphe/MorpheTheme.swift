@@ -22,7 +22,9 @@ enum MorpheTheme {
         if let chosen = UserDefaults.standard.object(forKey: "morphe.appearance.light") as? Bool {
             return chosen
         }
-        return UITraitCollection.current.userInterfaceStyle != .dark
+        // Screen traits, not .current — the store seeds before any scene
+        // exists, where .current is undefined (audit 27, P2).
+        return UIScreen.main.traitCollection.userInterfaceStyle != .dark
     }
 
     static var isLight = MorpheTheme.defaultIsLight()
