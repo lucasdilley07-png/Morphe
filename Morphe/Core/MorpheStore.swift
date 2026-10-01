@@ -5163,6 +5163,12 @@ final class MorpheAppStore {
         let resolvedName = trimmedName.isEmpty ? clientProfile.name : trimmedName
 
         hasCompletedOnboarding = true
+        // The day takeover sits out the very first session (UX test
+        // 2026-09-30): a brand-new user got the guide hint AND the
+        // check-in stacked in their first five seconds. It greets every
+        // open again from the next foreground return (Lucas 2026-08-18
+        // rule unchanged).
+        dayPopupSessionDismissed = true
         // (firstWeekStart is stamped AFTER resetToFreshUser below — stamping
         // here persisted it under the SEEDED demo profile id, which the
         // minted identity never reads, so the arc vanished on relaunch.)
@@ -6969,12 +6975,15 @@ final class MorpheAppStore {
         let targetSets = targetSetCount(for: exercise)
         let currentCount = completedWorkoutSets[exercise.id, default: 0]
 
-        guard allowExtra || currentCount < targetSets else {
+        guard allowExtra || isWarmup || currentCount < targetSets else {
             showToast("\(exercise.name) is already complete.")
             return false
         }
 
-        let updatedCount = currentCount + 1
+        // Warm-ups never consume a planned working slot (UX test
+        // 2026-09-30): one working set plus one warm-up used to read 2/2
+        // and auto-advance the plan past unfinished work.
+        let updatedCount = isWarmup ? currentCount : currentCount + 1
         completedWorkoutSets[exercise.id] = updatedCount
         trackedSetReps[exercise.id, default: []].append(reps)
         // Record weight per set (0 = bodyweight) so logs carry real load, not "As logged".
@@ -6988,7 +6997,7 @@ final class MorpheAppStore {
         pendingSetDrafts[exercise.id] = nil
         Haptics.impact(.light)
 
-        if updatedCount == targetSets {
+        if !isWarmup, updatedCount == targetSets {
             if isTrackedWorkoutComplete {
                 showCelebration(
                     title: "All sets logged",
@@ -7757,7 +7766,7 @@ final class MorpheAppStore {
         if isActivation {
             track("activation_first_log")
             // First log = the moment reminders become worth having (E1).
-            requestNotificationPermissionIfNeeded()
+            requestNotificationPermissionIfNeeded(afterSeconds: 6)
         }
         // Re-aim the daily nudge past the session that just landed (E2).
         refreshDailyTrainingReminder()
@@ -12958,11 +12967,21 @@ final class MorpheAppStore {
     /// comeback, recap, board) silently no-oped for exactly the users
     /// they exist to keep. Fired at the first workout log: the moment
     /// the user has something worth being reminded about.
-    func requestNotificationPermissionIfNeeded() {
+    func requestNotificationPermissionIfNeeded(afterSeconds delay: Double = 0) {
         // Unit tests run hosted inside Morphe.app and log workouts — without
         // this guard every suite run queues a REAL permission alert against
         // the simulator, which then ambushes the next manual QA session.
         guard NSClassFromString("XCTestCase") == nil else { return }
+        if delay > 0 {
+            // The first-log ask used to fire the same tick as the "In the
+            // books" beat — the system dialog ate the user's biggest win
+            // moment (UX test 2026-09-30). The celebration plays first.
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(delay))
+                await MainActor.run { self?.requestNotificationPermissionIfNeeded() }
+            }
+            return
+        }
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .notDetermined else { return }

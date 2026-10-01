@@ -1888,80 +1888,6 @@ private struct ActiveWorkoutTrackerCard: View {
                         .foregroundStyle(MorpheTheme.textPrimary)
                 }
 
-                // Every logged set stays visible and editable — a fat-fingered
-                // entry is a tap away from being fixed, not permanent.
-                if !repsLogged.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(Array(repsLogged.enumerated()), id: \.offset) { index, reps in
-                            HStack(spacing: 10) {
-                                Text("Set \(index + 1)")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(MorpheTheme.accentAlt)
-                                    .frame(width: 44, alignment: .leading)
-
-                                Text("\(reps) reps · \(weightUnit.format(weightsLogged.indices.contains(index) ? weightsLogged[index] : 0))")
-                                    .font(.caption)
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-
-                                if warmupsLogged.indices.contains(index), warmupsLogged[index] {
-                                    Text("W")
-                                        .font(MorpheTheme.microLabel(9))
-                                        .tracking(0.5)
-                                        .foregroundStyle(MorpheTheme.accentAlt)
-                                        .padding(.horizontal, 5)
-                                        .padding(.vertical, 2)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                                                .stroke(MorpheTheme.accentAlt.opacity(0.5), lineWidth: 1)
-                                        )
-                                        .accessibilityLabel("Warm-up set")
-                                }
-
-                                Spacer(minLength: 0)
-
-                                Button {
-                                    onEditSet(index)
-                                } label: {
-                                    // Visual stays 28pt; the tappable area is
-                                    // 44pt — gym thumbs miss small targets.
-                                    Image(systemName: "pencil")
-                                        .font(.caption)
-                                        .frame(width: 28, height: 28)
-                                        .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(MorpheTheme.stroke, lineWidth: 1))
-                                        .frame(width: 44, height: 44)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                                .accessibilityLabel("Edit set \(index + 1)")
-
-                                Button {
-                                    onDeleteSet(index)
-                                } label: {
-                                    Image(systemName: "trash")
-                                        .font(.caption)
-                                        .frame(width: 28, height: 28)
-                                        .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(MorpheTheme.stroke, lineWidth: 1))
-                                        .frame(width: 44, height: 44)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.danger)
-                                .accessibilityLabel("Delete set \(index + 1)")
-                            }
-                        }
-                    }
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(MorpheTheme.panelStrong.opacity(0.6))
-                    )
-                    // A logged set slides in instead of snapping — the most
-                    // frequent completion moment in the app (feedback pass
-                    // 2026-09). SwiftUI degrades this to a soft fade under
-                    // Reduce Motion automatically.
-                    .animation(.easeOut(duration: 0.25), value: repsLogged.count)
-                }
 
                 if let nextExercise {
                     HStack(alignment: .center, spacing: 10) {
@@ -2092,6 +2018,83 @@ private struct ActiveWorkoutTrackerCard: View {
 
                     Button("Next", action: onNext)
                         .buttonStyle(SecondaryCTAButtonStyle())
+                }
+                // Logged sets live BELOW the controls (UX test
+                // 2026-09-30): each row used to push Log Set down a
+                // step, so mid-session taps landed on the weight field.
+                // A fat-fingered entry stays a tap away from fixed.
+                // entry is a tap away from being fixed, not permanent.
+                if !repsLogged.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(Array(repsLogged.enumerated()), id: \.offset) { index, reps in
+                            HStack(spacing: 10) {
+                                Text("Set \(index + 1)")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(MorpheTheme.accentAlt)
+                                    .frame(width: 44, alignment: .leading)
+
+                                Text("\(reps) reps · \(weightUnit.format(weightsLogged.indices.contains(index) ? weightsLogged[index] : 0))")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+
+                                if warmupsLogged.indices.contains(index), warmupsLogged[index] {
+                                    Text("W")
+                                        .font(MorpheTheme.microLabel(9))
+                                        .tracking(0.5)
+                                        .foregroundStyle(MorpheTheme.accentAlt)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 2)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                                                .stroke(MorpheTheme.accentAlt.opacity(0.5), lineWidth: 1)
+                                        )
+                                        .accessibilityLabel("Warm-up set")
+                                }
+
+                                Spacer(minLength: 0)
+
+                                Button {
+                                    onEditSet(index)
+                                } label: {
+                                    // Visual stays 28pt; the tappable area is
+                                    // 44pt — gym thumbs miss small targets.
+                                    Image(systemName: "pencil")
+                                        .font(.caption)
+                                        .frame(width: 28, height: 28)
+                                        .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(MorpheTheme.stroke, lineWidth: 1))
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .accessibilityLabel("Edit set \(index + 1)")
+
+                                Button {
+                                    onDeleteSet(index)
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.caption)
+                                        .frame(width: 28, height: 28)
+                                        .background(RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous).stroke(MorpheTheme.stroke, lineWidth: 1))
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(MorpheTheme.danger)
+                                .accessibilityLabel("Delete set \(index + 1)")
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .fill(MorpheTheme.panelStrong.opacity(0.6))
+                    )
+                    // A logged set slides in instead of snapping — the most
+                    // frequent completion moment in the app (feedback pass
+                    // 2026-09). SwiftUI degrades this to a soft fade under
+                    // Reduce Motion automatically.
+                    .animation(.easeOut(duration: 0.25), value: repsLogged.count)
                 }
             }
         }

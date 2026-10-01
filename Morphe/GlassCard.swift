@@ -2043,10 +2043,21 @@ struct FilterChipStyle: ButtonStyle {
     let isSelected: Bool
     var selectedColor: Color = MorpheTheme.accent
 
+    private var selectedForeground: Color {
+        // Hardcoded black text went black-on-black for the dark sport
+        // colors in light mode (UX test 2026-09-30: "General Fitness"
+        // and "Strength" were illegible when selected).
+        var white: CGFloat = 0
+        if UIColor(selectedColor).getWhite(&white, alpha: nil) {
+            return white < 0.45 ? .white : .black
+        }
+        return .black
+    }
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(isSelected ? .black : MorpheTheme.textPrimary)
+            .foregroundStyle(isSelected ? selectedForeground : MorpheTheme.textPrimary)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(

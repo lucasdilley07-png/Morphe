@@ -2010,7 +2010,10 @@ struct OnboardingDraft: Hashable {
     var age: Int = 25
     var height: String = ""
     var weight: String = ""
-    var selectedGoals: [FitnessGoalOption] = [.improveConditioning]
+    // Empty on purpose (UX test 2026-09-30): "1 of 5 selected" before
+    // the user touched anything pre-answered their goals — off-brand for
+    // an app whose law is nothing invented. primaryGoal still falls back.
+    var selectedGoals: [FitnessGoalOption] = []
     var physicalGoalTarget: String = ""
     var weightGoalTarget: String = ""
     var goalDeadline: String = ""

@@ -247,6 +247,11 @@ struct RootView: View {
                 // unsaved edits (drafts live in its @State) before closing.
                 ProfileView()
                     .environment(store)
+                    // Theme tokens are statics — the root rebuild doesn't
+                    // reach a PRESENTED sheet, which kept stale light
+                    // tokens under the dark scheme when the user flipped
+                    // appearance from inside it (UX test 2026-09-30).
+                    .id(store.appearanceIsLight)
             }
             .sheetToastSurface()
             .background(PremiumBackground())

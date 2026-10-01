@@ -1026,6 +1026,11 @@ final class WorkoutSessionTests: XCTestCase {
     /// mid-interaction — the dismissal parks it for this open.
     func testComebackDismissParksTheTakeover() {
         let store = freshStore()
+        // The takeover sits out the onboarding session (UX wave
+        // 2026-09-30) — a real user meets it on the NEXT open, so the
+        // test walks through a background return first.
+        store.noteBackgrounded()
+        store.reopenDayPopup()
         XCTAssertTrue(store.shouldShowDayPopup)
         store.dismissComebackCard()
         XCTAssertFalse(store.shouldShowDayPopup,
@@ -1621,8 +1626,9 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.trackedSetWeights[sessionExercise.id, default: []].last, 135,
                        "the replay is last session's work set, not today's warm-up")
 
-        // Warm-up + work filled the 2-set target and auto-advanced —
-        // the extra set lands on the now-active exercise.
+        // Warm-ups no longer consume working slots (UX wave 2026-09-30),
+        // so the exercise sits at 1/2 and stays active — the extra set
+        // completes it here.
         let extra = store.routeVoiceCommand("extra set 12 at 100")
         XCTAssertTrue(extra.contains("Logged 12"), "unexpected: \(extra)")
     }

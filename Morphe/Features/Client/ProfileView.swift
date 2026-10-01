@@ -1363,6 +1363,11 @@ struct ProfileView: View {
                             accentDot(for: palette)
                         }
                     }
+                    // Locks were mute until tapped (UX test 2026-09-30):
+                    // a first-timer saw five padlocks with no path.
+                    Text("Locked colors unlock as you level up \u{2014} tap one to see its level.")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
                     // The Custom dot's editor: any color at all. Applies
                     // live and persists with the profile (cloud included).
                     if store.profileShowcase.accentPalette == .custom {
