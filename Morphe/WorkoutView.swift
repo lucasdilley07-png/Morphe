@@ -100,7 +100,7 @@ struct WorkoutView: View {
                     weight: $pendingWeight,
                     rpe: $pendingRPE,
                     isEditing: context.editIndex != nil
-                ) { label in
+                ) { label, isWarmup in
                     if let editIndex = context.editIndex, let exercise = store.activeWorkoutExercise {
                         store.updateTrackedSet(exerciseID: exercise.id, setIndex: editIndex, reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE)
                         // Editing seeded pendingRPE from the STORED set —
@@ -111,7 +111,7 @@ struct WorkoutView: View {
                         // Opening the full logger is an explicit action, so it may
                         // log past the planned set count ("Add extra set").
                         let exercise = store.activeWorkoutExercise
-                        if store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true, label: label) {
+                        if store.completeTrackedSet(reps: pendingRepCount, weight: pendingWeight, rpe: pendingRPE, allowExtra: true, label: label, isWarmup: isWarmup) {
                             pendingRPE = nil
                             // Superset halves hop with no rest — the timer
                             // belongs after the pair.
@@ -263,8 +263,8 @@ struct WorkoutView: View {
                         rpe: $pendingRPE,
                         weightUnit: store.weightUnit,
                         onPrevious: { store.goToPreviousTrackedExercise() },
-                        onQuickLogSet: { reps, isWarmup in
-                            if store.completeTrackedSet(reps: reps, weight: pendingWeight, rpe: pendingRPE, isWarmup: isWarmup) {
+                        onQuickLogSet: { reps in
+                            if store.completeTrackedSet(reps: reps, weight: pendingWeight, rpe: pendingRPE) {
                                 // RPE is a per-set read — a stale rating must
                                 // never silently ride into the next set.
                                 pendingRPE = nil
@@ -1736,8 +1736,7 @@ private struct ActiveWorkoutTrackerCard: View {
     @Binding var rpe: Int?
     let weightUnit: WeightUnit
     let onPrevious: () -> Void
-    let onQuickLogSet: (Int, Bool) -> Void
-    @State private var isWarmupSet = false
+    let onQuickLogSet: (Int) -> Void
     let onOpenCustomRepLogger: () -> Void
     let onEditSet: (Int) -> Void
     let onDeleteSet: (Int) -> Void
@@ -1998,7 +1997,7 @@ private struct ActiveWorkoutTrackerCard: View {
                             Button {
                                 weight = last.weight
                                 repsToLog = min(max(last.reps, 1), 50)
-                                onQuickLogSet(last.reps, false)
+                                onQuickLogSet(last.reps)
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "arrow.counterclockwise")
@@ -2051,25 +2050,11 @@ private struct ActiveWorkoutTrackerCard: View {
                                 .accessibilityLabel("Plate loading: \(plateBreakdown)")
                         }
 
-                        // RPE moved to the More sheet (Lucas's call) — the
-                        // console keeps only the warm-up flag. Warm-ups
-                        // count as work in the session, never toward PRs
-                        // or e1RM; the chip resets after each log.
-                        HStack(spacing: 6) {
-                            Button("Warm-up") {
-                                isWarmupSet.toggle()
-                                Haptics.selection()
-                            }
-                            .buttonStyle(FilterChipStyle(isSelected: isWarmupSet, selectedColor: MorpheTheme.accentAlt))
-                            .accessibilityLabel(isWarmupSet ? "Logging as warm-up set" : "Mark as warm-up set")
-                            .accessibilityAddTraits(isWarmupSet ? .isSelected : [])
-
-                            Spacer(minLength: 0)
-                        }
-
+                        // RPE and the warm-up flag both live in the More
+                        // sheet now (Lucas 2026-09-30) — the console stays
+                        // two steppers and one button.
                         Button(logButtonTitle) {
-                            onQuickLogSet(repsToLog, isWarmupSet)
-                            isWarmupSet = false
+                            onQuickLogSet(repsToLog)
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                         .accessibilityLabel(
@@ -2088,7 +2073,7 @@ private struct ActiveWorkoutTrackerCard: View {
                         onOpenCustomRepLogger()
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
-                    .accessibilityLabel(isExerciseComplete ? "Log an extra set" : "Log a custom set with RPE")
+                    .accessibilityLabel(isExerciseComplete ? "Log an extra set" : "Log a custom set — effort, warm-up, note, dropset or superset")
 
                     Button("Rest", action: onStartRest)
                         .buttonStyle(SecondaryCTAButtonStyle())
@@ -5471,13 +5456,14 @@ private struct SetRepLoggingSheet: View {
     @Binding var weight: Double
     @Binding var rpe: Int?
     var isEditing = false
-    let onSave: (String) -> Void
+    let onSave: (String, Bool) -> Void
 
     @State private var weightText = ""
     @State private var showRPEHelp = false
     @State private var style: SetStyle = .standard
     @State private var subEntries: [SubEntry] = []
     @State private var setNote = ""
+    @State private var isWarmupSet = false
 
     private var logButtonTitle: String {
         switch style {
@@ -5664,9 +5650,26 @@ private struct SetRepLoggingSheet: View {
                 // Per-set note — "grip slipped", "belt on", "left knee".
                 // Standard sets carry it via the label pipeline into the
                 // history's "Set N:" lines.
-                if style == .standard {
+                if style == .standard, !isEditing {
                     TextField("Set note (optional)", text: $setNote)
                         .textFieldStyle(MorpheFieldStyle())
+
+                    // Warm-up moved here from the quick console (Lucas
+                    // 2026-09-30), joining RPE. Warm-ups count as session
+                    // work, never toward PRs or e1RM. New sets only — an
+                    // edit keeps the set's original standing.
+                    if !isEditing {
+                        HStack(spacing: 6) {
+                            Button("Warm-up") {
+                                isWarmupSet.toggle()
+                                Haptics.selection()
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: isWarmupSet, selectedColor: MorpheTheme.accentAlt))
+                            .accessibilityLabel(isWarmupSet ? "Logging as warm-up set" : "Mark as warm-up set")
+                            .accessibilityAddTraits(isWarmupSet ? .isSelected : [])
+                            Spacer(minLength: 0)
+                        }
+                    }
                 }
 
                 HStack(spacing: 10) {
@@ -5739,7 +5742,7 @@ private struct SetRepLoggingSheet: View {
             weight = mainWeight
         }
 
-        onSave(label)
+        onSave(label, style == .standard && isWarmupSet)
         dismiss()
     }
 }
