@@ -1234,7 +1234,7 @@ struct ProfileView: View {
                     // both (audit 5, P1-4: a coach could never leave).
                     preferenceToggleRow(
                         title: "Weekly board",
-                        caption: "Ranks your logged sessions against other athletes under your name. Leaving removes your row immediately.",
+                        caption: "Ranks your logged sessions against other athletes under your name. Leaving stops your updates \u{2014} this week's posted entry stands until Monday.",
                         isOn: Binding(
                             get: { store.leaderboardOptIn },
                             set: { $0 ? store.joinWeeklyBoard() : store.leaveWeeklyBoard() }
