@@ -26,6 +26,10 @@ struct MorpheApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                // Scrolling any page slides the keyboard off and returns
+                // to the content under it; screens that chose the
+                // follow-the-finger mode (the chats) keep their own.
+                .scrollDismissesKeyboard(.immediately)
                 // Theme tokens are statics — SwiftUI won't re-run leaf
                 // bodies just because a static changed. New identity on the
                 // appearance flip rebuilds the whole tree, so every view
@@ -38,6 +42,7 @@ struct MorpheApp: App {
                     // toggle, so the saved preference is pinned on the window
                     // once it exists. Sheets ignore preferredColorScheme.
                     MorpheAppStore.applyWindowAppearance(isLight: store.appearanceIsLight)
+                    KeyboardSwipeDismisser.shared.install()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .morpheIntentArrived)) { _ in
                     // Intent fired while the app was already frontmost —
@@ -77,5 +82,69 @@ struct MorpheApp: App {
                     }
                 }
         }
+    }
+}
+
+/// A downward swipe anywhere on the page puts the keyboard away — the
+/// same gesture as scrolling, for the screens (and the pinned consoles)
+/// that have nothing to scroll. Lives on the window, so sheets are
+/// covered; it never cancels or delays the touches underneath.
+final class KeyboardSwipeDismisser: NSObject, UIGestureRecognizerDelegate {
+    static let shared = KeyboardSwipeDismisser()
+    private var keyboardVisible = false
+    private var observing = false
+
+    func install() {
+        if !observing {
+            observing = true
+            let center = NotificationCenter.default
+            center.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.keyboardVisible = true
+            }
+            center.addObserver(forName: UIResponder.keyboardDidHideNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.keyboardVisible = false
+            }
+        }
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows
+            where !(window.gestureRecognizers ?? []).contains(where: { $0.name == Self.recognizerName }) {
+                let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+                pan.name = Self.recognizerName
+                pan.cancelsTouchesInView = false
+                pan.delaysTouchesBegan = false
+                pan.delaysTouchesEnded = false
+                pan.delegate = self
+                window.addGestureRecognizer(pan)
+            }
+        }
+    }
+
+    private static let recognizerName = "morphe.keyboard.swipeDismiss"
+
+    @objc private func handlePan(_ pan: UIPanGestureRecognizer) {
+        guard keyboardVisible, pan.state == .changed, let window = pan.view else { return }
+        let move = pan.translation(in: window)
+        // A deliberate downward swipe: far enough, and more down than sideways
+        // (a pager swipe or a horizontal chip scroll is not a dismissal).
+        guard move.y > 28, move.y > abs(move.x) * 1.5 else { return }
+        window.endEditing(true)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        true
+    }
+
+    /// A drag that starts inside a text field is a caret move or a text
+    /// selection, never a dismissal.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard keyboardVisible else { return false }
+        var view = touch.view
+        while let current = view {
+            if current is UITextField || current is UITextView { return false }
+            view = current.superview
+        }
+        return true
     }
 }
