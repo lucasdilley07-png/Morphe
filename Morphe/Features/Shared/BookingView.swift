@@ -190,7 +190,7 @@ private struct BookingPackageCard: View {
                                 if package.isPopular {
                                     Text("POPULAR")
                                         .font(.caption2.weight(.heavy))
-                                        .foregroundStyle(.black)
+                                        .foregroundStyle(.white)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 3)
                                         .background(Capsule().fill(MorpheTheme.accent))
@@ -242,7 +242,7 @@ private struct BookingSlotChip: View {
                 Text(slot.time)
                     .font(.caption2)
             }
-            .foregroundStyle(isSelected ? .black : MorpheTheme.textPrimary)
+            .foregroundStyle(isSelected ? .white : MorpheTheme.textPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(

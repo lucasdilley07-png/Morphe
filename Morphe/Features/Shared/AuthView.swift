@@ -77,7 +77,7 @@ struct AuthView: View {
                                 Task { await submit() }
                             } label: {
                                 HStack(spacing: 8) {
-                                    if store.isAuthBusy { ProgressView().tint(.black) }
+                                    if store.isAuthBusy { ProgressView().tint(.white) }
                                     Text(isSignUp ? "Create Account" : "Sign In")
                                 }
                                 .frame(maxWidth: .infinity)

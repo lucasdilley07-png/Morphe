@@ -5,7 +5,7 @@ import SwiftUI
 struct WatchRootView: View {
     @EnvironmentObject private var model: WatchSessionModel
 
-    private let gold = Color(red: 0.94, green: 0.78, blue: 0.28)
+    private let gold = Color(red: 0.478, green: 0.635, blue: 1.0)  // spartan blue, lit for the dark face (rebrand 2026-10-01)
 
     var body: some View {
         Group {

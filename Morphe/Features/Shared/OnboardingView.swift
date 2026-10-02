@@ -67,11 +67,12 @@ struct MorpheLoadingMark: View {
 
     var body: some View {
         ZStack {
-            MorpheMarkShape()
-                // Brand gold, not accent — but #FFD600 reads at ~1.4:1 on
-                // the light field (audit 25, P1), so light mode uses the
-                // theme's darkened gold, same as every gold text surface.
-                .fill(MorpheTheme.isLight ? MorpheTheme.brandYellowText : MorpheTheme.launchMark)
+            // The brand face itself (rebrand 2026-10-01): the glass-box
+            // helmet asset, full color — identical to the home-screen icon.
+            Image("LaunchMark")
+                .resizable()
+                .scaledToFit()
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
                 .frame(width: size, height: size)
 
             // The spinner: a quarter-ish arc sweeping a ring around the M.
@@ -79,8 +80,8 @@ struct MorpheLoadingMark: View {
                 .trim(from: 0, to: 0.28)
                 .stroke(
                     AngularGradient(
-                        colors: [(MorpheTheme.isLight ? MorpheTheme.brandYellowText : MorpheTheme.launchMark).opacity(0),
-                                 MorpheTheme.isLight ? MorpheTheme.brandYellowText : MorpheTheme.launchMark],
+                        colors: [(MorpheTheme.isLight ? MorpheTheme.brandBlueText : MorpheTheme.launchMark).opacity(0),
+                                 MorpheTheme.isLight ? MorpheTheme.brandBlueText : MorpheTheme.launchMark],
                         center: .center,
                         startAngle: .degrees(0),
                         endAngle: .degrees(100)
@@ -102,21 +103,34 @@ struct MorpheLoadingMark: View {
 /// scaled from the icon's 1024-point design space (Tools/make-app-icon.swift)
 /// so the launch screen and the home-screen icon are pixel-for-pixel kin.
 struct MorpheMarkShape: Shape {
-    // Design-space geometry, verbatim from the icon generator.
-    private static let leftPanel: [CGPoint] = [
-        CGPoint(x: 244, y: 293), CGPoint(x: 390, y: 253),
-        CGPoint(x: 390, y: 757), CGPoint(x: 244, y: 694)
+    // The Spartan helmet (rebrand 2026-10-01, docs/BRAND-SPARTAN.md): an
+    // original geometric corinthian silhouette in the app's own rounded-
+    // polygon language — low wedge crest, domed shell with nose guard,
+    // twin cheek guards; the eye band and mouth slits are negative space.
+    // Geometry verbatim from the icon generator's 1024 design space.
+    private static let crest: [CGPoint] = [
+        CGPoint(x: 432, y: 172), CGPoint(x: 512, y: 120), CGPoint(x: 592, y: 172),
+        CGPoint(x: 576, y: 206), CGPoint(x: 512, y: 186), CGPoint(x: 448, y: 206)
     ]
-    private static let rightPanel: [CGPoint] = [
-        CGPoint(x: 634, y: 253), CGPoint(x: 780, y: 293),
-        CGPoint(x: 780, y: 694), CGPoint(x: 634, y: 757)
+    private static let dome: [CGPoint] = [
+        CGPoint(x: 336, y: 460), CGPoint(x: 326, y: 352), CGPoint(x: 366, y: 258),
+        CGPoint(x: 452, y: 204), CGPoint(x: 512, y: 194), CGPoint(x: 572, y: 204),
+        CGPoint(x: 658, y: 258), CGPoint(x: 698, y: 352), CGPoint(x: 688, y: 460),
+        CGPoint(x: 548, y: 460), CGPoint(x: 548, y: 688), CGPoint(x: 512, y: 716),
+        CGPoint(x: 476, y: 688), CGPoint(x: 476, y: 460)
     ]
-    private static let centerChevron: [CGPoint] = [
-        CGPoint(x: 419, y: 373), CGPoint(x: 512, y: 464), CGPoint(x: 605, y: 373),
-        CGPoint(x: 605, y: 559), CGPoint(x: 512, y: 656), CGPoint(x: 419, y: 559)
+    private static let cheekLeft: [CGPoint] = [
+        CGPoint(x: 338, y: 492), CGPoint(x: 462, y: 492), CGPoint(x: 462, y: 640),
+        CGPoint(x: 430, y: 766), CGPoint(x: 396, y: 830), CGPoint(x: 344, y: 770),
+        CGPoint(x: 324, y: 640), CGPoint(x: 330, y: 548)
+    ]
+    private static let cheekRight: [CGPoint] = [
+        CGPoint(x: 686, y: 492), CGPoint(x: 562, y: 492), CGPoint(x: 562, y: 640),
+        CGPoint(x: 594, y: 766), CGPoint(x: 628, y: 830), CGPoint(x: 680, y: 770),
+        CGPoint(x: 700, y: 640), CGPoint(x: 694, y: 548)
     ]
     // The mark's bounds inside the 1024 icon canvas.
-    private static let designBounds = CGRect(x: 244, y: 253, width: 536, height: 504)
+    private static let designBounds = CGRect(x: 324, y: 120, width: 376, height: 710)
 
     func path(in rect: CGRect) -> Path {
         let design = Self.designBounds
@@ -132,9 +146,10 @@ struct MorpheMarkShape: Shape {
         }
 
         var path = Path()
-        addRoundedPolygon(Self.leftPanel.map(mapped), radius: 23 * scale, to: &path)
-        addRoundedPolygon(Self.rightPanel.map(mapped), radius: 23 * scale, to: &path)
-        addRoundedPolygon(Self.centerChevron.map(mapped), radius: 17 * scale, to: &path)
+        addRoundedPolygon(Self.crest.map(mapped), radius: 12 * scale, to: &path)
+        addRoundedPolygon(Self.dome.map(mapped), radius: 20 * scale, to: &path)
+        addRoundedPolygon(Self.cheekLeft.map(mapped), radius: 16 * scale, to: &path)
+        addRoundedPolygon(Self.cheekRight.map(mapped), radius: 16 * scale, to: &path)
         return path
     }
 

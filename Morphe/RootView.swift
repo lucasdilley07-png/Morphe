@@ -3286,7 +3286,7 @@ private struct WelcomeTag: View {
     var body: some View {
         Text(text)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.black)
+            .foregroundStyle(.white)  // audit 28, P0: black fails on the blue fills
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(

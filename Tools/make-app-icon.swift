@@ -3,29 +3,28 @@ import ImageIO
 import Foundation
 import UniformTypeIdentifiers
 
-// Renders the Morphe "M" mark (three angular strokes) on a gold field.
-// Geometry lives in a 1024x1024 space, tuned against the reference image.
+// Renders the Morphe Spartan helmet (rebrand 2026-10-01) — an original
+// geometric corinthian silhouette drawn from the ancient armor form in
+// the app's rounded-polygon language — white glass on a blue field.
+// Geometry lives in a 1024x1024 space, shared with MorpheMarkShape.
 
 let size = 1024
 let args = CommandLine.arguments
 let outPath = args.count > 1 ? args[1] : "icon.png"
-// gold variants: 0 = brand yellow (DEFAULT — matches every in-app button),
-// 1 = reference gold, 2 = darker gold, 3 = deep gold
+// variants: 0 = white helmet on blue field (DEFAULT — the app icon),
+// 1 = blue helmet on transparent (LaunchMark asset)
 let variant = args.count > 2 ? Int(args[2]) ?? 0 : 0
 
-let golds: [(CGFloat, CGFloat, CGFloat)] = [
-    (1.0, 0.839, 0.0),       // #FFD600 brand yellow — MorpheTheme.accent
-    (0.941, 0.706, 0.161),   // #F0B429 reference
-    (0.871, 0.647, 0.110),   // #DEA51C darker gold
-    (0.796, 0.573, 0.075),   // #CB9213 deep gold
-]
-let gold = golds[min(variant, golds.count - 1)]
-let ink: (CGFloat, CGFloat, CGFloat) = (0, 0, 0) // pure black
+let brandBlue: (CGFloat, CGFloat, CGFloat) = (0.161, 0.341, 0.851)   // #2957D9
+let markWhite: (CGFloat, CGFloat, CGFloat) = (1.0, 1.0, 1.0)
+let mark = variant == 1 ? brandBlue : markWhite
 
 guard let ctx = CGContext(data: nil, width: size, height: size,
                           bitsPerComponent: 8, bytesPerRow: 0,
                           space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else {
+                          bitmapInfo: variant == 1
+                              ? CGImageAlphaInfo.premultipliedLast.rawValue
+                              : CGImageAlphaInfo.noneSkipLast.rawValue) else {
     fatalError("no context")
 }
 
@@ -33,24 +32,26 @@ guard let ctx = CGContext(data: nil, width: size, height: size,
 ctx.translateBy(x: 0, y: CGFloat(size))
 ctx.scaleBy(x: 1, y: -1)
 
-// Glass restyle (2026-08-10): same M, Apple-glass rendering — a subtle
-// depth gradient replaces the flat field so the mark reads as an object.
-let bgColors = [
-    CGColor(srgbRed: 0.075, green: 0.075, blue: 0.086, alpha: 1),   // lifted top
-    CGColor(srgbRed: 0.016, green: 0.016, blue: 0.020, alpha: 1)    // deep base
-] as CFArray
-let bgGradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            colors: bgColors, locations: [0, 1])!
-ctx.drawLinearGradient(bgGradient,
-                       start: CGPoint(x: 512, y: 0),
-                       end: CGPoint(x: 512, y: 1024), options: [])
-// Faint ambient gold bloom behind the mark.
-let bloom = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
-                       colors: [CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 0.16),
-                                CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 0)] as CFArray,
-                       locations: [0, 1])!
-ctx.drawRadialGradient(bloom, startCenter: CGPoint(x: 512, y: 470), startRadius: 0,
-                       endCenter: CGPoint(x: 512, y: 470), endRadius: 430, options: [])
+// Apple-glass rendering on the Spartan blue field (variant 0 only) — a
+// depth gradient so the mark reads as an object; variant 1 stays clear.
+if variant == 0 {
+    let bgColors = [
+        CGColor(srgbRed: 0.212, green: 0.420, blue: 0.941, alpha: 1),   // lifted top blue
+        CGColor(srgbRed: 0.090, green: 0.192, blue: 0.541, alpha: 1)    // deep base blue
+    ] as CFArray
+    let bgGradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                colors: bgColors, locations: [0, 1])!
+    ctx.drawLinearGradient(bgGradient,
+                           start: CGPoint(x: 512, y: 0),
+                           end: CGPoint(x: 512, y: 1024), options: [])
+    // Faint ambient white bloom behind the helmet.
+    let bloom = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                           colors: [CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.14),
+                                    CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0)] as CFArray,
+                           locations: [0, 1])!
+    ctx.drawRadialGradient(bloom, startCenter: CGPoint(x: 512, y: 470), startRadius: 0,
+                           endCenter: CGPoint(x: 512, y: 470), endRadius: 430, options: [])
+}
 
 /// Rounded polygon path.
 func roundedPolygon(_ pts: [CGPoint], radius: CGFloat) -> CGPath {
@@ -74,47 +75,51 @@ func roundedPolygon(_ pts: [CGPoint], radius: CGFloat) -> CGPath {
     return path
 }
 
-// Panels collected into one path so shadow, gradient, and sheen apply
-// to the whole mark as a single glass object.
+// Helmet pieces collected into one path so shadow, gradient, and sheen
+// apply to the whole mark as a single glass object. Negative space (eye
+// band, mouth slits) is the field showing through between pieces.
 let markPath = CGMutablePath()
 
-// Left panel: outer edge vertical, top tilts up toward center, bottom tilts
-// down toward center.
-let left: [CGPoint] = [
-    CGPoint(x: 244, y: 293),   // top-left (outer)
-    CGPoint(x: 390, y: 253),   // top-right (inner, higher)
-    CGPoint(x: 390, y: 757),   // bottom-right (inner, lower)
-    CGPoint(x: 244, y: 694),   // bottom-left (outer)
+// Low wedge crest above the dome.
+let crest: [CGPoint] = [
+    CGPoint(x: 432, y: 172), CGPoint(x: 512, y: 120), CGPoint(x: 592, y: 172),
+    CGPoint(x: 576, y: 206), CGPoint(x: 512, y: 186), CGPoint(x: 448, y: 206),
 ]
-markPath.addPath(roundedPolygon(left, radius: 23))
+markPath.addPath(roundedPolygon(crest, radius: 12))
 
-// Right panel: mirror of the left around x = 512.
-let right: [CGPoint] = [
-    CGPoint(x: 634, y: 253),   // top-left (inner, higher)
-    CGPoint(x: 780, y: 293),   // top-right (outer)
-    CGPoint(x: 780, y: 694),   // bottom-right (outer)
-    CGPoint(x: 634, y: 757),   // bottom-left (inner, lower)
+// Dome + brow + nose guard: the brow underside runs flat at y 460 and the
+// nose descends between the eye openings to its tip.
+let dome: [CGPoint] = [
+    CGPoint(x: 336, y: 460), CGPoint(x: 326, y: 352), CGPoint(x: 366, y: 258),
+    CGPoint(x: 452, y: 204), CGPoint(x: 512, y: 194), CGPoint(x: 572, y: 204),
+    CGPoint(x: 658, y: 258), CGPoint(x: 698, y: 352), CGPoint(x: 688, y: 460),
+    CGPoint(x: 548, y: 460), CGPoint(x: 548, y: 688), CGPoint(x: 512, y: 716),
+    CGPoint(x: 476, y: 688), CGPoint(x: 476, y: 460),
 ]
-markPath.addPath(roundedPolygon(right, radius: 23))
+markPath.addPath(roundedPolygon(dome, radius: 20))
 
-// Center stroke: chevron band pointing down — vertical sides, top V dip,
-// bottom V point.
-let center: [CGPoint] = [
-    CGPoint(x: 419, y: 373),   // top-left
-    CGPoint(x: 512, y: 464),   // top dip
-    CGPoint(x: 605, y: 373),   // top-right
-    CGPoint(x: 605, y: 559),   // right side bottom
-    CGPoint(x: 512, y: 656),   // bottom point
-    CGPoint(x: 419, y: 559),   // left side bottom
+// Cheek guards, tapering to the jaw.
+let cheekLeft: [CGPoint] = [
+    CGPoint(x: 338, y: 492), CGPoint(x: 462, y: 492), CGPoint(x: 462, y: 640),
+    CGPoint(x: 430, y: 766), CGPoint(x: 396, y: 830), CGPoint(x: 344, y: 770),
+    CGPoint(x: 324, y: 640), CGPoint(x: 330, y: 548),
 ]
-markPath.addPath(roundedPolygon(center, radius: 17))
+markPath.addPath(roundedPolygon(cheekLeft, radius: 16))
+let cheekRight: [CGPoint] = [
+    CGPoint(x: 686, y: 492), CGPoint(x: 562, y: 492), CGPoint(x: 562, y: 640),
+    CGPoint(x: 594, y: 766), CGPoint(x: 628, y: 830), CGPoint(x: 680, y: 770),
+    CGPoint(x: 700, y: 640), CGPoint(x: 694, y: 548),
+]
+markPath.addPath(roundedPolygon(cheekRight, radius: 16))
 
 // 1. Soft lift: the mark floats off the field.
 ctx.saveGState()
-ctx.setShadow(offset: CGSize(width: 0, height: -14), blur: 36,
-              color: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.55))
+if variant == 0 {
+    ctx.setShadow(offset: CGSize(width: 0, height: -14), blur: 36,
+                  color: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 0.35))
+}
 ctx.addPath(markPath)
-ctx.setFillColor(CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 1))
+ctx.setFillColor(CGColor(srgbRed: mark.0, green: mark.1, blue: mark.2, alpha: 1))
 ctx.fillPath()
 ctx.restoreGState()
 
@@ -122,16 +127,18 @@ ctx.restoreGState()
 ctx.saveGState()
 ctx.addPath(markPath)
 ctx.clip()
-let glassColors = [
-    CGColor(srgbRed: 1.0, green: 0.905, blue: 0.36, alpha: 1),      // lit top
-    CGColor(srgbRed: gold.0, green: gold.1, blue: gold.2, alpha: 1), // brand mid
-    CGColor(srgbRed: 0.83, green: 0.62, blue: 0.0, alpha: 1)        // deep base
-] as CFArray
+let glassColors = variant == 1
+    ? [CGColor(srgbRed: 0.306, green: 0.471, blue: 0.941, alpha: 1), // lit blue top
+       CGColor(srgbRed: brandBlue.0, green: brandBlue.1, blue: brandBlue.2, alpha: 1),
+       CGColor(srgbRed: 0.098, green: 0.212, blue: 0.573, alpha: 1)] as CFArray
+    : [CGColor(srgbRed: 1.0, green: 1.0, blue: 1.0, alpha: 1),      // lit white top
+       CGColor(srgbRed: 0.929, green: 0.949, blue: 1.0, alpha: 1),  // cool mid
+       CGColor(srgbRed: 0.788, green: 0.843, blue: 0.957, alpha: 1)] as CFArray
 let glass = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
                        colors: glassColors, locations: [0, 0.55, 1])!
 ctx.drawLinearGradient(glass,
-                       start: CGPoint(x: 512, y: 253),
-                       end: CGPoint(x: 512, y: 757), options: [])
+                       start: CGPoint(x: 512, y: 120),
+                       end: CGPoint(x: 512, y: 830), options: [])
 
 // 3. Specular sheen: the bubble highlight — a broad ellipse of white
 // falling off across the upper half, clipped to the mark.
@@ -151,11 +158,11 @@ ctx.restoreGState()
 // 4. Bottom edge glow: a whisper of reflected light along the base.
 let rim = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
                      colors: [CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.0),
-                              CGColor(srgbRed: 1, green: 0.95, blue: 0.7, alpha: 0.18)] as CFArray,
+                              CGColor(srgbRed: 0.75, green: 0.84, blue: 1, alpha: 0.18)] as CFArray,
                      locations: [0, 1])!
 ctx.drawLinearGradient(rim,
-                       start: CGPoint(x: 512, y: 600),
-                       end: CGPoint(x: 512, y: 757), options: [])
+                       start: CGPoint(x: 512, y: 640),
+                       end: CGPoint(x: 512, y: 830), options: [])
 ctx.restoreGState()
 
 guard let image = ctx.makeImage() else { fatalError("no image") }

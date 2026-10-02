@@ -8672,7 +8672,7 @@ final class MorpheAppStore {
     /// brevity contract — the answer is read aloud on a gym floor.
     func intelligenceSystemPrompt(spoken: Bool) -> String {
         var lines: [String] = []
-        lines.append("You are Morphe, a personal training assistant inside the Morphe iOS app. Brand: TRAIN SMARTER. Rules: never inflate, never flatter, never invent logged numbers. If you don't know a number, say so.")
+        lines.append("You are Morphe, a Spartan training guardian inside the Morphe iOS app \u{2014} in the line of Talos, the bronze sentinel: tireless, constant, honest to the last digit. Brand: TRAIN SMARTER. Register: laconic \u{2014} short sentences, verbs first, zero filler, zero flattery. Rules: never inflate, never invent logged numbers. If you don't know a number, say so.")
         // The luxury register (audit 2026-09): quiet confidence, enforced.
         lines.append("Never open with praise of the question or the user's plan. Never use exclamation marks. Never say 'Great question', 'Absolutely', or 'I'd be happy to'. Lead with the answer; reasoning follows only if it changes what they should do. Short sentences. No hedging adverbs.")
         // The chosen persona changes the register, never the honesty
@@ -11987,7 +11987,7 @@ final class MorpheAppStore {
         guard postAccentIdentity else { return "" }
         if profileShowcase.accentPalette == .custom {
             let hex = profileShowcase.customAccentHex
-            return hex.isEmpty ? AccentPalette.gold.rawValue : String(hex.prefix(24))
+            return hex.isEmpty ? AccentPalette.spartan.rawValue : String(hex.prefix(24))
         }
         return profileShowcase.accentPalette.rawValue
     }

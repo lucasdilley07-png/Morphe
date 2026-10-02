@@ -4690,7 +4690,7 @@ enum MorpheDemoContent {
         avatar: AvatarProfile(style: .fightReady, gear: "Boxing wraps", outfit: "Black kit", background: "Dim gym lights", badgeFrame: "Builder ring", levelGlow: "Electric blue"),
         banner: BannerProfile(preset: .boxing, title: "Build Momentum", subtitle: "Consistency Era"),
         theme: .morpheBlackBlue,
-        accentPalette: .gold,
+        accentPalette: .spartan,
         currentPhase: "Build Consistency",
         coachingTone: .direct,
         badges: [

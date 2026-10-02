@@ -496,7 +496,7 @@ struct CaptureView: View {
                 } label: {
                     HStack(spacing: 8) {
                         if isPosting {
-                            ProgressView().tint(.black)
+                            ProgressView().tint(.white)
                         } else {
                             Image(systemName: "paperplane.fill")
                                 .font(.subheadline.weight(.bold))
@@ -505,11 +505,11 @@ struct CaptureView: View {
                             .font(MorpheTheme.microLabel(12))
                             .tracking(1.6)
                     }
-                    .foregroundStyle(.black)
+                    .foregroundStyle(.white)  // audit 28, P0: black fails on the blue fills
                     .frame(maxWidth: .infinity, minHeight: 52)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(MorpheTheme.brandYellow)
+                            .fill(MorpheTheme.brandBlue)
                     )
                 }
                 .buttonStyle(.plain)
@@ -558,7 +558,7 @@ struct CaptureView: View {
                     HStack(spacing: 8) {
                         switch clipSaveState {
                         case .saving:
-                            ProgressView().tint(.black)
+                            ProgressView().tint(.white)
                         case .saved:
                             Image(systemName: "checkmark")
                                 .font(.subheadline.weight(.bold))
@@ -570,11 +570,11 @@ struct CaptureView: View {
                             .font(MorpheTheme.microLabel(12))
                             .tracking(1.6)
                     }
-                    .foregroundStyle(.black)
+                    .foregroundStyle(.white)  // audit 28, P0: black fails on the blue fills
                     .frame(maxWidth: .infinity, minHeight: 52)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(MorpheTheme.brandYellow)
+                            .fill(MorpheTheme.brandBlue)
                     )
                 }
                 .buttonStyle(.plain)

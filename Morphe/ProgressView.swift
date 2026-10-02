@@ -2560,7 +2560,7 @@ private struct CreateChallengeSheet: View {
                     ForEach(ChallengeMetric.allCases) { option in
                         Button(option.label) { metric = option }
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(metric == option ? .black : MorpheTheme.textPrimary)
+                            .foregroundStyle(metric == option ? .white : MorpheTheme.textPrimary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                             .background(

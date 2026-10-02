@@ -41,22 +41,26 @@ enum MorpheTheme {
         isLight ? Color(red: 0.965, green: 0.965, blue: 0.97)
                 : Color(red: 0.102, green: 0.102, blue: 0.110)
     }
+    /// The glass tint both modes build panels from (rebrand 2026-10-01).
+    private static let glassBlue = Color(red: 0.161, green: 0.341, blue: 0.851)
+    private static let glassBlueDark = Color(red: 0.75, green: 0.84, blue: 1.0)
+
     static var panel: Color {
-        isLight ? Color.black.opacity(0.04) : Color.white.opacity(0.035)
+        isLight ? glassBlue.opacity(0.055) : glassBlueDark.opacity(0.045)
     }
     /// Below `panel`: hints, links-out, footers, meta cards — present
     /// enough to group, quiet enough to recede (contrast tiers 2026-09).
     static var panelQuiet: Color {
-        isLight ? Color.black.opacity(0.03) : Color.white.opacity(0.03)
+        isLight ? glassBlue.opacity(0.04) : glassBlueDark.opacity(0.035)
     }
     static var panelStrong: Color {
-        isLight ? Color.black.opacity(0.065) : Color.white.opacity(0.06)
+        isLight ? glassBlue.opacity(0.09) : glassBlueDark.opacity(0.07)
     }
     static var panelRaised: Color {
-        isLight ? Color.black.opacity(0.09) : Color.white.opacity(0.085)
+        isLight ? glassBlue.opacity(0.12) : glassBlueDark.opacity(0.10)
     }
     static var panelInteractive: Color {
-        isLight ? Color.black.opacity(0.13) : Color.white.opacity(0.13)
+        isLight ? glassBlue.opacity(0.16) : glassBlueDark.opacity(0.15)
     }
     static var textPrimary: Color {
         // Light: BLACK, not charcoal — white text flips fully.
@@ -70,15 +74,15 @@ enum MorpheTheme {
         isLight ? Color.black.opacity(0.55) : Color.white.opacity(0.56)
     }
     static var stroke: Color {
-        isLight ? Color.black.opacity(0.12) : Color.white.opacity(0.10)
+        isLight ? glassBlue.opacity(0.22) : glassBlueDark.opacity(0.16)
     }
     static var strokeSubtle: Color {
-        isLight ? Color.black.opacity(0.06) : Color.white.opacity(0.05)
+        isLight ? glassBlue.opacity(0.11) : glassBlueDark.opacity(0.08)
     }
     static let warning = Color(red: 0.98, green: 0.70, blue: 0.25)         // amber, distinct from accent
     static let danger = Color(red: 0.95, green: 0.36, blue: 0.36)
     static let lavender = Color(red: 0.72, green: 0.72, blue: 0.74)        // neutral (no off-brand purple)
-    private static var currentAccentPalette: AccentPalette = .gold
+    private static var currentAccentPalette: AccentPalette = .spartan
 
     /// HUD corner radius — sharp, technical. One knob for the whole system.
     // Hims-audit revamp (2026-08-09): soft, calm geometry. The hard 3pt
@@ -157,16 +161,20 @@ enum MorpheTheme {
         LinearGradient(colors: [panel, panel], startPoint: .top, endPoint: .bottom)
     }
 
-    /// MORPHE signature yellow (#FFD600). Single-accent by default: `.gold`
-    /// (the default palette) resolves to this brand pair, so the app ships
-    /// looking exactly on-brand. Users can personalize via the accent picker,
-    /// which swaps `accent`/`accentAlt` to that palette's pair app-wide.
-    static let brandYellow = Color(red: 1.0, green: 0.839, blue: 0.0)      // #FFD600
-    static let brandGold = Color(red: 0.95, green: 0.72, blue: 0.0)        // deeper gold for gradients
+    /// MORPHE Spartan blue (#2957D9) — the brand since the 2026-10-01
+    /// rebrand (docs/BRAND-SPARTAN.md): white and blue, helmet mark,
+    /// Talos-guardian AI. Single-accent by default: `.spartan` (the
+    /// default palette) resolves to this brand pair. The gold era survives
+    /// as the user-selectable legacy "Gold" palette only.
+    static let brandBlue = Color(red: 0.161, green: 0.341, blue: 0.851)    // #2957D9
+    static let brandBlueDeep = Color(red: 0.102, green: 0.231, blue: 0.639) // deeper blue for gradients
+    /// Legacy gold pair — the pre-rebrand brand, kept for the Gold palette.
+    static let legacyGold = Color(red: 1.0, green: 0.839, blue: 0.0)       // #FFD600
+    static let legacyGoldDeep = Color(red: 0.95, green: 0.72, blue: 0.0)
 
-    /// The launch M + app-icon color. Always brand yellow, regardless of the
-    /// user's accent palette — the launch beat must match the app icon.
-    static var launchMark: Color { brandYellow }
+    /// The launch helmet + app-icon color. Always brand blue, regardless
+    /// of the user's accent palette — the launch beat must match the icon.
+    static var launchMark: Color { brandBlue }
 
     /// Accent for TEXT and glyphs on themed surfaces. The palette is tuned
     /// for the dark HUD; on the light field #FFD600 reads at ~1.4:1, so
@@ -174,16 +182,27 @@ enum MorpheTheme {
     /// Fills (capsule CTAs, chips) keep using `accent` — their contrast
     /// comes from the dark label on top, not the fill itself.
     static var accentText: Color {
-        isLight ? darkenedForLightText(accent) : accent
+        asText(accent)
     }
 
-    /// Brand yellow as TEXT (celebration kicker, PR value): same rule as
-    /// accentText but pinned to the brand pair. Always-dark surfaces
-    /// (share cards, camera) keep the raw `brandYellow` literal.
-    static var brandYellowText: Color {
-        // Light default leans ORANGE-gold (Lucas 2026-09) — warmer than
-        // the old olive-gold, still dark enough to read on white.
-        isLight ? Color(red: 0.68, green: 0.40, blue: 0.0) : brandYellow
+    /// Any accent-family color used as INK: light mode darkens to legible
+    /// (the brand blue already passes and stays itself), dark mode lifts
+    /// to the #7AA2FF class (audit 28, P1: #2957D9 on #121214 is 3.1:1).
+    static func asText(_ color: Color) -> Color {
+        if isLight {
+            return currentAccentPalette == .spartan && color == brandBlue
+                ? brandBlue : darkenedForLightText(color)
+        }
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard UIColor(color).getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return color }
+        return b >= 0.8 ? color : Color(hue: h, saturation: s * 0.72, brightness: 0.95, opacity: a)
+    }
+
+    /// Brand blue as TEXT (celebration kicker, PR value): pinned to the
+    /// brand pair. #2957D9 reads at ~5.5:1 on white, so light mode uses
+    /// it straight; dark mode lightens and desaturates per the design bar.
+    static var brandBlueText: Color {
+        isLight ? brandBlue : Color(red: 0.478, green: 0.635, blue: 1.0)   // #7AA2FF on dark
     }
 
     /// HSB darken for light-mode text: cap brightness so any accent hue
@@ -196,20 +215,31 @@ enum MorpheTheme {
     }
 
     static var accent: Color {
-        currentAccentPalette == .gold ? brandYellow : colors(for: currentAccentPalette).primary
+        switch currentAccentPalette {
+        case .spartan: return brandBlue
+        case .gold: return legacyGold
+        default: return colors(for: currentAccentPalette).primary
+        }
     }
 
     static var accentAlt: Color {
-        currentAccentPalette == .gold ? brandGold : colors(for: currentAccentPalette).secondary
+        switch currentAccentPalette {
+        case .spartan:
+            // Deep blue vanishes on the dark canvas (audit 28, P1: 2.0:1)
+            // — dark mode lifts the secondary to a lit blue.
+            return isLight ? brandBlueDeep : Color(red: 0.30, green: 0.47, blue: 0.94)
+        case .gold: return legacyGoldDeep
+        default: return colors(for: currentAccentPalette).secondary
+        }
     }
 
     /// The resolved color behind AccentPalette.custom for THIS profile.
     /// Set through apply(accentPalette:customHex:) — defaults to gold.
-    private(set) static var customAccentColor: Color = brandYellow
+    private(set) static var customAccentColor: Color = brandBlue
 
     static func apply(accentPalette: AccentPalette, customHex: String = "") {
         currentAccentPalette = accentPalette
-        customAccentColor = color(fromHex: customHex) ?? brandYellow
+        customAccentColor = color(fromHex: customHex) ?? brandBlue
     }
 
     /// "#RRGGBB" (leading # optional) → Color. Nil on anything malformed —
@@ -242,7 +272,7 @@ enum MorpheTheme {
     /// travels ON their posts, never through this device's setting.
     static func accentColor(forPaletteId id: String) -> Color {
         if let hexColor = color(fromHex: id) { return hexColor }
-        guard let palette = AccentPalette(rawValue: id), palette != .custom else { return brandYellow }
+        guard let palette = AccentPalette(rawValue: id), palette != .custom else { return brandBlue }
         return colors(for: palette).primary
     }
 
@@ -278,6 +308,8 @@ enum MorpheTheme {
                 Color(red: 0.98, green: 0.54, blue: 0.78),
                 Color(red: 0.90, green: 0.34, blue: 0.62)
             )
+        case .spartan:
+            return (brandBlue, brandBlueDeep)
         case .gold:
             return (
                 Color(red: 0.92, green: 0.80, blue: 0.42),
@@ -672,7 +704,9 @@ struct PrimaryCTAButtonStyle: ButtonStyle {
             // Never hyphenate a button label — shrink to fit.
             .lineLimit(1)
             .minimumScaleFactor(0.55)
-            .foregroundStyle(.black)
+            // White on the blue fills (audit 28, P0): black carried over
+            // from the gold era fails AA on #2957D9.
+            .foregroundStyle(.white)
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)

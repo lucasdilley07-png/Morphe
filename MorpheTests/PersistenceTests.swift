@@ -5768,7 +5768,8 @@ final class DepthSprintTests: XCTestCase {
 
     func testPaletteUnlocksGateAndGrandfather() {
         let store = freshStore()   // level 1
-        XCTAssertTrue(store.isPaletteUnlocked(.gold), "brand default ships free")
+        XCTAssertTrue(store.isPaletteUnlocked(.spartan), "the brand default ships free")
+        XCTAssertTrue(store.isPaletteUnlocked(.gold), "the legacy gold stays reachable at level 1")
         XCTAssertFalse(store.isPaletteUnlocked(.pink), "pink is a level-12 earn")
 
         let before = store.profileShowcase.accentPalette
@@ -6168,8 +6169,8 @@ final class ThreadReadStateTests: XCTestCase {
         XCTAssertEqual(FeedPost(id: "p", authorUid: "u", authorName: "A", text: "t").authorAccent, "")
         XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "Electric Blue"),
                        MorpheTheme.colors(for: .electricBlue).primary)
-        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "not-a-palette"), MorpheTheme.brandYellow)
-        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: ""), MorpheTheme.brandYellow)
+        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "not-a-palette"), MorpheTheme.brandBlue)
+        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: ""), MorpheTheme.brandBlue)
     }
 }
 
@@ -6390,8 +6391,8 @@ final class CustomizationTests: XCTestCase {
         // A hex on the wire renders as that color for every viewer.
         XCTAssertEqual(MorpheTheme.hex(from: MorpheTheme.accentColor(forPaletteId: "#FF0000")), "#FF0000")
         // A foreign "Custom" id must NOT read this device's custom color.
-        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "Custom"), MorpheTheme.brandYellow)
-        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "garbage"), MorpheTheme.brandYellow)
+        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "Custom"), MorpheTheme.brandBlue)
+        XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "garbage"), MorpheTheme.brandBlue)
     }
 
     func testCustomAccentPersistsAcrossRelaunch() {

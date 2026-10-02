@@ -131,7 +131,7 @@ private struct MorpheTodayWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let snapshot: MorpheTodaySnapshot
 
-    private static let gold = Color(red: 1.0, green: 0.84, blue: 0.0)
+    private static let gold = Color(red: 0.478, green: 0.635, blue: 1.0)  // spartan blue on dark (rebrand 2026-10-01)
 
     var body: some View {
         switch family {
@@ -284,7 +284,7 @@ private struct MorpheTodayWidgetView: View {
 private struct WeekBarsRow: View {
     let bars: [Int]
 
-    private static let gold = Color(red: 1.0, green: 0.84, blue: 0.0)
+    private static let gold = Color(red: 0.478, green: 0.635, blue: 1.0)  // spartan blue on dark (rebrand 2026-10-01)
 
     var body: some View {
         let shown = bars.count == 7 ? bars : Array(repeating: 0, count: 7)
@@ -312,7 +312,7 @@ private struct WeekBarsRow: View {
 // the store's own doors; the mic opens the app straight into capture
 // (iOS forbids third-party wake words on the lock screen).
 
-private let morpheGold = Color(red: 1.0, green: 0.84, blue: 0.0)
+private let morpheGold = Color(red: 0.478, green: 0.635, blue: 1.0)  // spartan blue on dark (rebrand 2026-10-01)
 
 struct WorkoutSessionLiveActivity: Widget {
     var body: some WidgetConfiguration {

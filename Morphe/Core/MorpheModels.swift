@@ -633,6 +633,8 @@ enum ThemePreset: String, CaseIterable, Identifiable {
 }
 
 enum AccentPalette: String, CaseIterable, Identifiable {
+    /// The brand default since the Spartan rebrand (2026-10-01) — free.
+    case spartan = "Spartan Blue"
     case electricBlue = "Electric Blue"
     case green = "Green"
     case red = "Red"
@@ -2035,7 +2037,7 @@ struct OnboardingDraft: Hashable {
     var confidence: ConfidenceLevel = .maybe
     var biggestObstacle: ObstacleOption = .time
     var theme: ThemePreset = .morpheBlackBlue
-    var accentPalette: AccentPalette = .gold
+    var accentPalette: AccentPalette = .spartan
     var avatarStyle: AvatarStyle = .cleanStarter
 
     var goal: FitnessGoalOption {

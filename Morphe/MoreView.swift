@@ -469,8 +469,8 @@ private struct QuizCallingCard: View {
     private var plate: (fill: LinearGradient, text: Color) {
         switch index % 4 {
         case 0:
-            return (LinearGradient(colors: [MorpheTheme.brandYellow, MorpheTheme.brandGold],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing), .black)
+            return (LinearGradient(colors: [MorpheTheme.brandBlue, MorpheTheme.brandBlueDeep],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing), .white)
         case 1:
             return (LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.12),
                                             Color(red: 0.16, green: 0.15, blue: 0.10)],

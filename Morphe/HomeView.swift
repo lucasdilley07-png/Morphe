@@ -1954,13 +1954,13 @@ private struct PartnerWorkoutCard: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(partner.name)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(selectedPartner?.id == partner.id ? .black : MorpheTheme.textPrimary)
+                                        .foregroundStyle(selectedPartner?.id == partner.id ? .white : MorpheTheme.textPrimary)
                                     Text(partner.sport.shortTitle)
                                         .font(.caption.weight(.semibold))
-                                        .foregroundStyle(selectedPartner?.id == partner.id ? .black.opacity(0.75) : MorpheTheme.textSecondary)
+                                        .foregroundStyle(selectedPartner?.id == partner.id ? .white.opacity(0.85) : MorpheTheme.textSecondary)
                                     Text(partner.status)
                                         .font(.caption2)
-                                        .foregroundStyle(selectedPartner?.id == partner.id ? .black.opacity(0.7) : MorpheTheme.textMuted)
+                                        .foregroundStyle(selectedPartner?.id == partner.id ? .white.opacity(0.8) : MorpheTheme.textMuted)
                                 }
                                 .padding(12)
                                 .frame(width: 150, alignment: .leading)

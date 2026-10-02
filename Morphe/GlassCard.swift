@@ -174,7 +174,7 @@ struct SectionTitleView: View {
 /// so per-buffer level writes stop invalidating the root shell
 /// (audit 22, P1).
 /// The brand M with its gold glow (Lucas 2026-09: every Morphe mark
-/// glows). A soft brandYellow bloom shaped by the mark itself under the
+/// glows). A soft brandBlue bloom shaped by the mark itself under the
 /// sharp logo — reusable anywhere the M appears outside the ring (the
 /// ring builds its own richer glow stack).
 struct GlowingMorpheMark: View {
@@ -184,25 +184,16 @@ struct GlowingMorpheMark: View {
     var whiteMark: Bool = false
 
     var body: some View {
+        // The glass-box helmet renders full color (rebrand 2026-10-01) —
+        // a soft brand-blue halo behind it carries the glow on any canvas.
         ZStack {
+            RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
+                .fill(MorpheTheme.brandBlue.opacity(0.5))
+                .blur(radius: size * 0.2)
             Image("LaunchMark")
                 .resizable()
-                .renderingMode(.template)
                 .scaledToFit()
-                .foregroundStyle(MorpheTheme.brandYellow)
-                .blur(radius: size * (whiteMark ? 0.22 : 0.16))
-                .opacity(whiteMark ? 1.0 : 0.9)
-            if whiteMark {
-                Image("LaunchMark")
-                    .resizable()
-                    .renderingMode(.template)
-                    .scaledToFit()
-                    .foregroundStyle(MorpheTheme.isLight ? MorpheTheme.brandYellowText : .white)
-            } else {
-                Image("LaunchMark")
-                    .resizable()
-                    .scaledToFit()
-            }
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
         }
         .frame(width: size, height: size)
     }
@@ -280,33 +271,16 @@ struct MorpheFrequencyRing: View {
                 // edges, with the sharp mark on top — the M looks lit
                 // from within, not spotlit from outside.
                 ZStack {
+                    // Blue underglow breathes from behind the glass box —
+                    // lit from within, not spotlit (rebrand 2026-10-01).
+                    RoundedRectangle(cornerRadius: side * 0.1, style: .continuous)
+                        .fill(MorpheTheme.brandBlue.opacity(0.55))
+                        .frame(width: side * 0.4, height: side * 0.4)
+                        .blur(radius: side * 0.05)
                     Image("LaunchMark")
                         .resizable()
-                        .renderingMode(.template)
                         .scaledToFit()
-                        // The voice ring's underglow leans orange so the
-                        // white M reads hot against it.
-                        .foregroundStyle(whiteMark ? Color(red: 1.0, green: 0.62, blue: 0.10) : MorpheTheme.brandYellow)
-                        .blur(radius: side * 0.045)
-                        .opacity(0.9)
-                    Image("LaunchMark")
-                        .resizable()
-                        .renderingMode(.template)
-                        .scaledToFit()
-                        .foregroundStyle(whiteMark ? MorpheTheme.brandYellow : Color(red: 1.0, green: 0.92, blue: 0.55))
-                        .blur(radius: side * 0.016)
-                        .opacity(0.75)
-                    if whiteMark {
-                        Image("LaunchMark")
-                            .resizable()
-                            .renderingMode(.template)
-                            .scaledToFit()
-                            .foregroundStyle(MorpheTheme.isLight ? MorpheTheme.brandYellowText : .white)
-                    } else {
-                        Image("LaunchMark")
-                            .resizable()
-                            .scaledToFit()
-                    }
+                        .clipShape(RoundedRectangle(cornerRadius: side * 0.092, style: .continuous))
                 }
                 .frame(width: side * 0.42, height: side * 0.42)
                 .frame(width: proxy.size.width, height: proxy.size.height)
@@ -330,7 +304,7 @@ struct MorpheFrequencyRing: View {
         let glowRadius = baseRadius * (1.15 + level * 0.35)
         let glowRect = CGRect(x: center.x - glowRadius, y: center.y - glowRadius,
                               width: glowRadius * 2, height: glowRadius * 2)
-        let glowTint = MorpheTheme.isLight ? MorpheTheme.brandYellowText : MorpheTheme.brandYellow
+        let glowTint = MorpheTheme.isLight ? MorpheTheme.brandBlueText : MorpheTheme.brandBlue
         context.fill(Path(ellipseIn: glowRect), with: .radialGradient(
             Gradient(colors: [glowTint.opacity(0.10 + level * 0.14), .clear]),
             center: center, startRadius: 0, endRadius: glowRadius))
@@ -340,13 +314,13 @@ struct MorpheFrequencyRing: View {
         // golds and near-black replace yellow-on-dark and white.
         let groups: [(waves: Double, direction: Double, tint: Color)] = MorpheTheme.isLight
             ? [
-                (3, 1, MorpheTheme.brandYellowText),
-                (4, -1, Color(red: 0.55, green: 0.40, blue: 0.0)),
+                (3, 1, MorpheTheme.brandBlueText),
+                (4, -1, Color(red: 0.10, green: 0.22, blue: 0.56)),
                 (5, 1, Color.black.opacity(0.65))
             ]
             : [
-                (3, 1, MorpheTheme.brandYellow),
-                (4, -1, MorpheTheme.brandGold),
+                (3, 1, MorpheTheme.brandBlue),
+                (4, -1, MorpheTheme.brandBlueDeep),
                 (5, 1, Color.white.opacity(0.75))
             ]
 
@@ -386,7 +360,7 @@ struct VoiceTranscriptPill: View {
         HStack(spacing: 8) {
             Image(systemName: "waveform")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(MorpheTheme.brandYellowText)
+                .foregroundStyle(MorpheTheme.brandBlueText)
                 .symbolEffect(.variableColor.iterative, options: .repeating)
             Text(text)
                 .font(.subheadline.weight(.semibold))
@@ -459,7 +433,7 @@ struct HelloBeatOverlay: View {
             Text("hello, \(store.greetingName)")
                 .font(.system(size: 42, weight: .light, design: .serif))
                 .italic()
-                .foregroundStyle(MorpheTheme.brandYellowText)
+                .foregroundStyle(MorpheTheme.brandBlueText)
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
                 .padding(.horizontal, 32)
@@ -667,7 +641,9 @@ struct StatusBadge: View {
         Text(text.uppercased())
             .font(MorpheTheme.microLabel(10))
             .tracking(1.1)
-            .foregroundStyle(color)
+            // Ink treatment (audit 28, P1): a raw deep accent as text
+            // fails on the dark canvas.
+            .foregroundStyle(MorpheTheme.asText(color))
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
             .background(
@@ -825,7 +801,7 @@ struct RecordStampOverlay: View {
                 Text(moment.kicker)
                     .scaledFont(size: 13, weight: .bold, design: .monospaced)
                     .tracking(3)
-                    .foregroundStyle(MorpheTheme.brandYellowText)
+                    .foregroundStyle(MorpheTheme.brandBlueText)
                     .padding(.bottom, 16)
 
                 Text(moment.headline)
@@ -838,7 +814,7 @@ struct RecordStampOverlay: View {
 
                 Text(moment.valueLine.uppercased())
                     .scaledFont(size: 28, weight: .bold, design: .monospaced)
-                    .foregroundStyle(MorpheTheme.brandYellowText)
+                    .foregroundStyle(MorpheTheme.brandBlueText)
 
                 if !moment.detailLine.isEmpty {
                     Text(moment.detailLine.uppercased())
@@ -863,7 +839,7 @@ struct RecordStampOverlay: View {
                                 )
                             }
                         }
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandYellow))
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandBlue))
                         .frame(width: 220)
                     }
                     Button("Done", action: onDismiss)
@@ -2056,7 +2032,7 @@ struct FilterChipStyle: ButtonStyle {
         if UIColor(selectedColor).getWhite(&white, alpha: nil) {
             return white < 0.45 ? .white : .black
         }
-        return .black
+        return .white
     }
 
     func makeBody(configuration: Configuration) -> some View {
@@ -2259,7 +2235,7 @@ struct ManifestoCard: View {
                 Text("TRAIN SMARTER")
                     .scaledFont(size: 13, weight: .bold, design: .monospaced)
                     .tracking(2.4)
-                    .foregroundStyle(MorpheTheme.brandYellowText)
+                    .foregroundStyle(MorpheTheme.brandBlueText)
             }
         }
     }
@@ -2313,7 +2289,7 @@ private struct ShareCardFrame<Content: View>: View {
                     Text("MORPHE")
                         .font(.system(size: 22, design: .monospaced).weight(.black))
                         .tracking(6)
-                        .foregroundStyle(MorpheTheme.brandYellow)
+                        .foregroundStyle(MorpheTheme.brandBlue)
                     Spacer()
                     Text(dateLabel.uppercased())
                         .font(.system(size: 11, design: .monospaced).weight(.semibold))
@@ -2345,7 +2321,9 @@ private struct ShareCardFrame<Content: View>: View {
                     Text("TRAIN SMARTER")
                         .font(.system(size: 12, design: .monospaced).weight(.bold))
                         .tracking(1.6)
-                        .foregroundStyle(MorpheTheme.brandYellow)
+                        // Lit blue: the card is always dark and #2957D9
+                        // reads 3.5:1 on it (audit 28, P1).
+                        .foregroundStyle(Color(red: 0.478, green: 0.635, blue: 1.0))
                 }
             }
             .padding(36)
@@ -2398,7 +2376,7 @@ struct ShareCardView: View {
                     Text(factLine)
                         .font(.system(size: 15, design: .monospaced).weight(.bold))
                         .tracking(1.2)
-                        .foregroundStyle(MorpheTheme.brandYellow)
+                        .foregroundStyle(Color(red: 0.478, green: 0.635, blue: 1.0))
                         .padding(.bottom, 18)
                 }
 
@@ -2406,7 +2384,7 @@ struct ShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "trophy.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.brandYellow)
+                            .foregroundStyle(MorpheTheme.brandBlue)
                         Text("NEW PR · \(name.uppercased())")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
@@ -2420,7 +2398,7 @@ struct ShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "flame.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.brandYellow)
+                            .foregroundStyle(MorpheTheme.brandBlue)
                         Text("\(data.streak)-DAY STREAK")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
@@ -2444,7 +2422,7 @@ struct PRShareCardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "trophy.fill")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(MorpheTheme.brandYellow)
+                        .foregroundStyle(MorpheTheme.brandBlue)
                     ShareCardKicker(text: "NEW RECORD")
                 }
                 .padding(.bottom, 10)
@@ -2458,7 +2436,7 @@ struct PRShareCardView: View {
 
                 Text(data.weightLabel.uppercased())
                     .font(.system(size: 34, design: .monospaced).weight(.bold))
-                    .foregroundStyle(MorpheTheme.brandYellow)
+                    .foregroundStyle(MorpheTheme.brandBlue)
 
                 if !data.previousLabel.isEmpty {
                     Text("UP FROM \(data.previousLabel.uppercased())")
@@ -2482,14 +2460,14 @@ struct StreakShareCardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(MorpheTheme.brandYellow)
+                        .foregroundStyle(MorpheTheme.brandBlue)
                     ShareCardKicker(text: "CONSISTENCY")
                 }
                 .padding(.bottom, 14)
 
                 Text("\(data.streak)")
                     .font(.system(size: 96, design: .monospaced).weight(.bold))
-                    .foregroundStyle(MorpheTheme.brandYellow)
+                    .foregroundStyle(MorpheTheme.brandBlue)
 
                 Text("DAY STREAK")
                     .font(.system(size: 18, design: .monospaced).weight(.bold))
@@ -2518,7 +2496,7 @@ struct RecapShareCardView: View {
 
                 Text("\(data.sessions)")
                     .font(.system(size: 96, design: .monospaced).weight(.bold))
-                    .foregroundStyle(MorpheTheme.brandYellow)
+                    .foregroundStyle(MorpheTheme.brandBlue)
 
                 Text(data.sessions == 1 ? "SESSION" : "SESSIONS")
                     .font(.system(size: 18, design: .monospaced).weight(.bold))
@@ -2535,7 +2513,7 @@ struct RecapShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "trophy.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.brandYellow)
+                            .foregroundStyle(MorpheTheme.brandBlue)
                         Text("\(data.prCount) NEW PR\(data.prCount == 1 ? "" : "S")")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
@@ -2548,7 +2526,7 @@ struct RecapShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "flame.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.brandYellow)
+                            .foregroundStyle(MorpheTheme.brandBlue)
                         Text("\(data.streak)-DAY STREAK")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)

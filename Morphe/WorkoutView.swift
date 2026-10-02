@@ -657,11 +657,11 @@ struct WorkoutView: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                     }
-                    .foregroundStyle(.black)
+                    .foregroundStyle(.white)  // audit 28, P0: black fails on the blue fills
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(MorpheTheme.brandYellow)
+                            .fill(MorpheTheme.brandBlue)
                     )
                     .accessibilityElement(children: .combine)
 
@@ -1255,10 +1255,10 @@ private struct WorkoutDebriefSheet: View {
                                         .background(
                                             RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                                                 .fill(intensity == option
-                                                      ? MorpheTheme.brandYellow
+                                                      ? MorpheTheme.brandBlue
                                                       : MorpheTheme.panelStrong.opacity(0.6))
                                         )
-                                        .foregroundStyle(intensity == option ? .black : MorpheTheme.textPrimary)
+                                        .foregroundStyle(intensity == option ? .white : MorpheTheme.textPrimary)
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityLabel("\(option.label) intensity")
@@ -1883,7 +1883,7 @@ private struct ActiveWorkoutTrackerCard: View {
                        let prLine = store.prProximityLine(for: exercise) {
                         Text(prLine)
                             .font(MorpheTheme.microLabel(10)).tracking(1.0)
-                            .foregroundStyle(MorpheTheme.brandYellowText)
+                            .foregroundStyle(MorpheTheme.brandBlueText)
                     }
                     Text(exercise.formCue)
                         .font(.caption)
@@ -2253,7 +2253,7 @@ private struct VoiceSetLogBar: View {
                 HStack(spacing: 10) {
                     Image(systemName: controller.isListening ? "waveform" : "mic.fill")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(controller.isListening ? MorpheTheme.brandYellowText : MorpheTheme.accentText)
+                        .foregroundStyle(controller.isListening ? MorpheTheme.brandBlueText : MorpheTheme.accentText)
                         .symbolEffect(.variableColor.iterative, isActive: controller.isListening)
                     Text(controller.isListening
                          ? (controller.transcript.isEmpty ? "Listening — say \"10 at 135\"…" : controller.transcript)
@@ -3522,7 +3522,7 @@ private struct DiscoverCatalogSection: View {
                             Text("Clear")
                             Text("\(activeFilterCount)")
                                 .font(.caption2.weight(.bold))
-                                .foregroundStyle(.black)
+                                .foregroundStyle(.white)
                                 .frame(width: 16, height: 16)
                                 .background(Circle().fill(MorpheTheme.accent))
                         }
@@ -3580,7 +3580,7 @@ private struct DiscoverCatalogSection: View {
                     .scaledFont(size: 8, weight: .bold)
             }
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(isSelected ? .black : MorpheTheme.textPrimary)
+            .foregroundStyle(isSelected ? .white : MorpheTheme.textPrimary)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(

@@ -493,7 +493,7 @@ struct ProfileView: View {
 
                 Image(systemName: "camera.fill")
                     .scaledFont(size: 11, weight: .bold)
-                    .foregroundStyle(.black)
+                    .foregroundStyle(.white)  // audit 28, P0: black fails on the blue fills
                     .padding(5)
                     .background(Circle().fill(MorpheTheme.accent))
             }
@@ -1268,7 +1268,7 @@ struct ProfileView: View {
 
                     preferenceToggleRow(
                         title: "Accent on posts",
-                        caption: "Your accent color tints your name and story bubble for others. Off posts in the default gold.",
+                        caption: "Your accent color tints your name and story bubble for others. Off posts in the default Spartan blue.",
                         isOn: $store.postAccentIdentity
                     )
                 }
@@ -1577,7 +1577,9 @@ struct ProfileView: View {
     /// The dot shows the color the palette actually resolves to — `.gold`
     /// means the brand-yellow pair, not the muted legacy gold swatch.
     private func accentDotColor(for palette: AccentPalette) -> Color {
-        palette == .gold ? MorpheTheme.brandYellow : MorpheTheme.colors(for: palette).primary
+        // The legacy Gold dot stays GOLD — the rename to blue must not
+        // relabel the relic (spartan rebrand 2026-10-01).
+        palette == .gold ? MorpheTheme.legacyGold : MorpheTheme.colors(for: palette).primary
     }
 
     /// ColorPicker ↔ stored hex. Setting routes through the store so the
@@ -1586,7 +1588,7 @@ struct ProfileView: View {
         Binding(
             get: {
                 MorpheTheme.color(fromHex: store.profileShowcase.customAccentHex)
-                    ?? MorpheTheme.brandYellow
+                    ?? MorpheTheme.brandBlue
             },
             set: { store.updateCustomAccent(hex: MorpheTheme.hex(from: $0)) }
         )
@@ -1614,7 +1616,7 @@ struct ProfileView: View {
                         .frame(width: 36, height: 36)
                     Image(systemName: "checkmark")
                         .scaledFont(size: 12, weight: .bold)
-                        .foregroundStyle(.black)
+                        .foregroundStyle(.white)
                 } else if !isUnlocked {
                     Image(systemName: "lock.fill")
                         .scaledFont(size: 10, weight: .bold)
