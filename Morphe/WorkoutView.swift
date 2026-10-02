@@ -124,6 +124,7 @@ struct WorkoutView: View {
                 }
                 .environment(store)
                 .presentationDetents([.height(620)])
+                .presentationCornerRadius(28)
             }
         )
         .onAppear {
@@ -171,6 +172,7 @@ struct WorkoutView: View {
                 WorkoutDebriefSheet()
                     .environment(store)
                     .presentationDetents([.medium, .large])
+                    .presentationCornerRadius(28)
             }
         )
         .background(

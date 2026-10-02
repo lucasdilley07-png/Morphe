@@ -30,12 +30,16 @@ enum MorpheTheme {
     static var isLight = MorpheTheme.defaultIsLight()
 
     static var ink: Color {
+        // Dark canvas sits in the #121214 class, never true black (design
+        // wave 2026-10-01: #050506 bloomed on OLED and made hairlines
+        // vibrate; the researched bar is L 8-12%).
         isLight ? Color.white                                              // clean white field
-                : Color(red: 0.020, green: 0.020, blue: 0.024)             // flat near-black
+                : Color(red: 0.071, green: 0.071, blue: 0.078)             // #121214 class
     }
     static var inkAlt: Color {
+        // Elevated surface = +3-4 L points above the canvas, not a shadow.
         isLight ? Color(red: 0.965, green: 0.965, blue: 0.97)
-                : Color(red: 0.043, green: 0.043, blue: 0.047)
+                : Color(red: 0.102, green: 0.102, blue: 0.110)
     }
     static var panel: Color {
         isLight ? Color.black.opacity(0.04) : Color.white.opacity(0.035)

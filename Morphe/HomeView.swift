@@ -1284,7 +1284,8 @@ struct MorpheSpeechBubble<Content: View>: View {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .stroke(MorpheTheme.stroke, lineWidth: 1)
                         )
-                        .shadow(color: .black.opacity(0.30), radius: 18, y: 6)
+                        .shadow(color: .black.opacity(0.14), radius: 4, y: 3)
+                        .shadow(color: .black.opacity(0.14), radius: 26, y: 14)
                 )
         }
     }

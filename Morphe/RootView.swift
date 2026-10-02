@@ -217,6 +217,7 @@ struct RootView: View {
                     .environment(store)
             }
             .presentationDetents([.medium, .large])
+            .presentationCornerRadius(28)
             .presentationDragIndicator(.visible)
             .background(PremiumBackground())
             .preferredColorScheme(store.selectedAppearance)
@@ -231,6 +232,7 @@ struct RootView: View {
             }
             .sheetToastSurface()
             .presentationDetents([.medium, .large])
+            .presentationCornerRadius(28)
             .presentationDragIndicator(.visible)
             .background(PremiumBackground())
             .preferredColorScheme(store.selectedAppearance)
@@ -312,6 +314,7 @@ struct RootView: View {
             // Quick actions get a quick sheet (HIG): medium detent first,
             // expandable when the note editor needs room.
             .presentationDetents([.medium, .large])
+            .presentationCornerRadius(28)
             .presentationDragIndicator(.visible)
             .preferredColorScheme(store.selectedAppearance)
         }

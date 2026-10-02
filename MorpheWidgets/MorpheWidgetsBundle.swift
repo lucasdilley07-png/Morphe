@@ -117,7 +117,8 @@ struct MorpheTodayWidget: Widget {
         StaticConfiguration(kind: "MorpheTodayWidget", provider: MorpheTodayProvider()) { entry in
             MorpheTodayWidgetView(snapshot: entry.snapshot)
                 .containerBackground(for: .widget) {
-                    Color(red: 0.02, green: 0.02, blue: 0.024)
+                    // Matches MorpheTheme.ink dark (design wave 2026-10-01).
+                    Color(red: 0.071, green: 0.071, blue: 0.078)
                 }
         }
         .configurationDisplayName("Today's Training")
