@@ -64,22 +64,19 @@ struct LaunchSequenceView: View {
     }
 }
 
-/// The glass-box helmet with a blue arc orbiting it — Morphe's loading spinner.
+/// The helmet with a blue arc orbiting it — Morphe's loading spinner.
 struct MorpheLoadingMark: View {
     var size: CGFloat = 132
     @State private var isSpinning = false
 
     var body: some View {
         ZStack {
-            // The brand face itself (rebrand 2026-10-01): the glass-box
-            // helmet asset, full color — identical to the home-screen icon.
-            Image("LaunchMark")
-                .resizable()
-                .scaledToFit()
-                .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+            // The helmet alone (Lucas 2026-10-02) — the same mark, in the
+            // same spot, the system splash (LaunchSplash) just drew.
+            MorpheHelmetMark(glowRadius: size * 0.08)
                 .frame(width: size, height: size)
 
-            // The spinner: a quarter-ish arc sweeping a ring around the M.
+            // The spinner: a quarter-ish arc sweeping a ring around the helmet.
             Circle()
                 .trim(from: 0, to: 0.28)
                 .stroke(

@@ -13,7 +13,7 @@ let size = 1024
 let args = CommandLine.arguments
 let outPath = args.count > 1 ? args[1] : "icon.png"
 // variants: 0 = white helmet on blue field (DEFAULT — the app icon),
-// 1 = blue helmet on transparent (LaunchMark asset)
+// 1 = blue helmet on transparent (the retired LaunchMark asset)
 let variant = args.count > 2 ? Int(args[2]) ?? 0 : 0
 
 let brandBlue: (CGFloat, CGFloat, CGFloat) = (0.161, 0.341, 0.851)   // #2957D9

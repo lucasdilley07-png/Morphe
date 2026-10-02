@@ -173,6 +173,29 @@ struct SectionTitleView: View {
 /// Leaf host for the ring: the ONLY view whose body reads voiceLevel,
 /// so per-buffer level writes stop invalidating the root shell
 /// (audit 22, P1).
+/// The Spartan helmet on its own — Morphe's in-app face (Lucas
+/// 2026-10-02: the glass tile is the home-screen icon only). On the light
+/// field it is a brand-blue silhouette (an icy helmet on white would
+/// vanish); on the dark canvas it is the frosted helmet, lit from behind.
+struct MorpheHelmetMark: View {
+    var glowRadius: CGFloat = 10
+
+    var body: some View {
+        if MorpheTheme.isLight {
+            Image("HelmetMark")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(MorpheTheme.brandBlue)
+        } else {
+            Image("HelmetMark")
+                .resizable()
+                .scaledToFit()
+                .shadow(color: MorpheTheme.brandBlue.opacity(0.7), radius: glowRadius)
+        }
+    }
+}
+
 struct MorpheVoiceRingHost: View {
     @Environment(MorpheAppStore.self) private var store
 
@@ -229,26 +252,16 @@ struct MorpheFrequencyRing: View {
             }
         }
         // The REAL brand mark sits STILL at the center while the
-        // frequency moves around it (Lucas 2026-09) — the LaunchMark
-        // glass-box helmet, clipped to its tile. Outside the
+        // frequency moves around it (Lucas 2026-09). Outside the
         // TimelineView: it never animates.
         .overlay {
             GeometryReader { proxy in
                 let side = min(proxy.size.width, proxy.size.height)
-                ZStack {
-                    // Blue underglow breathes from behind the glass box —
-                    // lit from within, not spotlit (rebrand 2026-10-01).
-                    RoundedRectangle(cornerRadius: side * 0.1, style: .continuous)
-                        .fill(MorpheTheme.brandBlue.opacity(0.55))
-                        .frame(width: side * 0.4, height: side * 0.4)
-                        .blur(radius: side * 0.05)
-                    Image("LaunchMark")
-                        .resizable()
-                        .scaledToFit()
-                        .clipShape(RoundedRectangle(cornerRadius: side * 0.092, style: .continuous))
-                }
-                .frame(width: side * 0.42, height: side * 0.42)
-                .frame(width: proxy.size.width, height: proxy.size.height)
+                // The helmet alone at the ring's center (Lucas 2026-10-02:
+                // no glass tile when the app opens).
+                MorpheHelmetMark(glowRadius: side * 0.05)
+                    .frame(width: side * 0.42, height: side * 0.42)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
             }
         }
         .accessibilityHidden(true)
