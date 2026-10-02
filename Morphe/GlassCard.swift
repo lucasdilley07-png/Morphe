@@ -173,15 +173,12 @@ struct SectionTitleView: View {
 /// Leaf host for the ring: the ONLY view whose body reads voiceLevel,
 /// so per-buffer level writes stop invalidating the root shell
 /// (audit 22, P1).
-/// The brand M with its gold glow (Lucas 2026-09: every Morphe mark
-/// glows). A soft brandBlue bloom shaped by the mark itself under the
-/// sharp logo — reusable anywhere the M appears outside the ring (the
-/// ring builds its own richer glow stack).
+/// The brand mark with its glow (Lucas 2026-09: every Morphe mark
+/// glows). A soft brandBlue bloom under the glass-box helmet — reusable
+/// anywhere the mark appears outside the ring (the ring builds its own
+/// richer glow stack).
 struct GlowingMorpheMark: View {
     var size: CGFloat
-    /// White mark over the gold bloom (Lucas 2026-09) — the AI surfaces
-    /// wear it; gold-on-gold stays the default elsewhere.
-    var whiteMark: Bool = false
 
     var body: some View {
         // The glass-box helmet renders full color (rebrand 2026-10-01) —
@@ -208,8 +205,7 @@ struct MorpheVoiceRingHost: View {
         let thinking = store.heyMorphe.state == .thinking
         MorpheFrequencyRing(
             level: thinking ? 0.45 : store.heyMorphe.voiceLevel,
-            speaking: store.heyMorphe.state == .speaking,
-            whiteMark: true
+            speaking: store.heyMorphe.state == .speaking
         )
         .frame(width: 240, height: 240)
     }
@@ -220,10 +216,6 @@ struct MorpheFrequencyRing: View {
     var level: Double
     /// Speaking runs the phase faster than listening.
     var speaking: Bool
-    /// Voice-AI variant (Lucas 2026-09): the sharp mark renders WHITE
-    /// with the orange/gold bloom underneath. Default keeps the gold
-    /// mark for the day popup and celebration banners.
-    var whiteMark: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Phase accumulator (Lucas 2026-09: the frequency moves ONLY when
@@ -261,15 +253,11 @@ struct MorpheFrequencyRing: View {
         }
         // The REAL brand mark sits STILL at the center while the
         // frequency moves around it (Lucas 2026-09) — the LaunchMark
-        // asset ships a transparent background, so only the gold M
-        // renders. Outside the TimelineView: it never animates.
+        // glass-box helmet, clipped to its tile. Outside the
+        // TimelineView: it never animates.
         .overlay {
             GeometryReader { proxy in
                 let side = min(proxy.size.width, proxy.size.height)
-                // Inner glow (Lucas 2026-09): two blurred gold copies of
-                // the mark's own shape breathe light from inside its
-                // edges, with the sharp mark on top — the M looks lit
-                // from within, not spotlit from outside.
                 ZStack {
                     // Blue underglow breathes from behind the glass box —
                     // lit from within, not spotlit (rebrand 2026-10-01).
@@ -320,7 +308,9 @@ struct MorpheFrequencyRing: View {
             ]
             : [
                 (3, 1, MorpheTheme.brandBlue),
-                (4, -1, MorpheTheme.brandBlueDeep),
+                // Lit blue, not brandBlueDeep: #1A3BA3 is 2:1 on the dark
+                // canvas and the second ribbon vanished (audit 29).
+                (4, -1, MorpheTheme.brandBlueText),
                 (5, 1, Color.white.opacity(0.75))
             ]
 
@@ -1329,7 +1319,7 @@ struct TaskRow: View {
         Button(action: onToggle) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: task.isCompleted ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(task.isCompleted ? MorpheTheme.accent : MorpheTheme.textMuted)
+                    .foregroundStyle(task.isCompleted ? MorpheTheme.accentText : MorpheTheme.textMuted)
                     .font(.headline)
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -2026,13 +2016,9 @@ struct FilterChipStyle: ButtonStyle {
 
     private var selectedForeground: Color {
         // Hardcoded black text went black-on-black for the dark sport
-        // colors in light mode (UX test 2026-09-30: "General Fitness"
-        // and "Strength" were illegible when selected).
-        var white: CGFloat = 0
-        if UIColor(selectedColor).getWhite(&white, alpha: nil) {
-            return white < 0.45 ? .white : .black
-        }
-        return .white
+        // colors in light mode (UX test 2026-09-30) — the ink follows
+        // the fill, at the WCAG crossover.
+        MorpheTheme.onFill(selectedColor)
     }
 
     func makeBody(configuration: Configuration) -> some View {
@@ -2118,10 +2104,15 @@ struct HUDDisclosureStyle: DisclosureGroupStyle {
                     Image(systemName: configuration.isExpanded ? "minus" : "plus")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(MorpheTheme.accentText)
+                        .accessibilityHidden(true)
                 }
+                // A full 44pt row (audit 29: one text line was a 20pt
+                // target), and VoiceOver hears the state, not "Add".
+                .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityValue(configuration.isExpanded ? "Expanded" : "Collapsed")
 
             if configuration.isExpanded {
                 configuration.content

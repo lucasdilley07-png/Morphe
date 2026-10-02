@@ -1,8 +1,8 @@
 # MORPHE — the Spartan identity (ratified 2026-10-01)
 
 Same name. New blood. Three sources fused into one brand: hardcore spartan
-principles, Apple/glass design craft, and the oldest machine-guardian story
-ever told.
+principles, Apple/glass design craft, and one of the oldest
+machine-guardian stories ever told.
 
 ## The idea in one breath
 
@@ -27,11 +27,19 @@ Gold survives only as the legacy "Gold" user palette — a relic, not the flag.
 
 ## The mark
 
-An ORIGINAL geometric corinthian helmet: low wedge crest, domed shell,
-T-shaped face opening, twin cheek guards — drawn in Morphe's own
-rounded-polygon HUD language, from the ancient form itself. Never traced
-from any film, game, or logo. White on blue field (icon); blue on white
-(in-app, splash); white with blue bloom (the AI ring center).
+**Shipped: Lucas's own glass-box helmet** — a frosted corinthian helmet
+inside a blue glass tile (helmet composited at 80%). It is the app icon,
+the launch splash, the in-app launch mark, the AI launcher, and the center
+of the frequency ring, always full color with a blue halo.
+
+The original geometric helmet drawn in code (crest + dome + T opening) is
+retired: `MorpheMarkShape` is deleted and `Tools/make-app-icon.swift` must
+not be run against the assets. Open: a simplified mark for very small
+sizes, where the tile reads as a blue square (see `SPARTAN-LORE.md` §7).
+
+From the ancient form, never traced from any film, game, or logo. The
+corinthian helmet is the Archaic Greek helmet in general; do not claim it
+is "what Leonidas wore".
 
 ## Voice — laconic
 
@@ -55,12 +63,23 @@ ethic; the rebrand names it. The AI speaks like a guardian, not a hype man.
 ## Pitch frame
 
 "Morphe is the Spartan in your pocket: an AI guardian — in the direct
-line of Talos, the first machine ever imagined — that trains you with
-total honesty. White-and-blue Apple-glass design, a laconic voice, and a
+line of Talos, one of the first machine guardians ever imagined — that
+trains you with total honesty. White-and-blue Apple-glass design, a laconic voice, and a
 single law older than Sparta itself: every number is earned."
 Differentiators unchanged and now sharper: the only tracker you can talk
 to · every stat earned · it learns you. The theme gives the pitch a
 story the feature list never had.
+
+(Corrected 2026-10-01: "the first machine ever imagined" overclaimed —
+Homer's automata are older on the page. See `SPARTAN-LORE.md` §2.)
+
+## The record under the brand
+
+`docs/SPARTAN-LORE.md` is the sourced research: Talos, the verified
+sayings, the agoge ladder, the idea bank, and the risks (the "molon labe"
+association, Spartan Race's SPARTAN trademarks, and where the popular
+picture of Sparta is wrong). Law: no ancient quote ships without its
+citation, and the app says plainly what it leaves behind (helotry).
 
 ## Phase map
 
@@ -69,5 +88,10 @@ story the feature list never had.
    this doc.
 2. Per-screen UI pass in the spartan language (glass controls, concentric
    geometry per iOS 26).
-3. Spartan communication-style picker entry + spoken-register polish.
+2b. **SHIPPED 2026-10-01 (lore wave)**: The Code sheet, saying of the
+   day, agoge ranks on levels, comeback line, bibasis + The Thousand,
+   lore quizzes, AI lore guardrail; plus the rebrand backlog (dedicated
+   launch splash, one-time Gold→Spartan Blue migration, watch icon).
+3. **SHIPPED 2026-10-01**: "Laconic" is the default communication style
+   (Direct renamed, id kept). Spoken-register polish still open.
 4. Share cards, App Store metadata + screenshots, pitch deck.

@@ -1149,6 +1149,31 @@ enum MorpheDemoContent {
             alternatives: ["Jump Rope", "Mountain Climber"],
             whyThisMatters: "Quick turnover and knee drive are the mechanics of speed."
         ),
+        // The Spartan jump (docs/SPARTAN-LORE.md): the move is in
+        // Aristophanes (Lysistrata 82); the name and the record are in
+        // Pollux (Onomasticon 4.102), who preserves a verse for a girl who
+        // reached a thousand. Counted reps, for prizes.
+        ExerciseReference(
+            id: "bibasis",
+            name: "Bibasis",
+            muscleGroup: .conditioning,
+            movementPattern: "Jump, heels to glutes",
+            musclesWorked: "Calves, hamstrings, quads, and glutes",
+            equipment: "None",
+            difficulty: .moderate,
+            videoPlaceholder: "",
+            instructions: [
+                "Stand tall, feet under hips.",
+                "Jump straight up and snap both heels back toward your glutes.",
+                "Land softly on the balls of your feet, knees bent.",
+                "Count every clean rep. The count is the point."
+            ],
+            formCue: "Up tall, heels back, land quiet.",
+            commonMistakes: "Folding forward at the waist instead of jumping tall, and landing stiff-legged.",
+            beginnerModification: "Alternate one heel at a time as a running butt kick.",
+            alternatives: ["High Knees", "Jump Squat"],
+            whyThisMatters: "The Spartan jump: counted rep by rep in ancient contests. A Laconian girl's record of a thousand is preserved by Pollux (Onomasticon 4.102)."
+        ),
         ExerciseReference(
             id: "lateral-shuffle",
             name: "Lateral Shuffle",
@@ -4251,6 +4276,36 @@ enum MorpheDemoContent {
             options: ["Quit training", "Let the body recover so it comes back stronger", "Max out every day", "Only do cardio"],
             correctIndex: 1,
             explanation: "An easier week every few weeks lets fatigue clear so you rebound stronger. It's planned, not a setback.",
+            rewardXP: 12
+        ),
+        // From the Spartan record (docs/SPARTAN-LORE.md) — each answer
+        // carries its ancient source and the training point it makes.
+        MiniQuiz(
+            question: "At Mantinea, what did the Spartan line advance to?",
+            options: ["War cries", "Drums", "Pipe-players, at a slow pace", "Silence, at a sprint"],
+            correctIndex: 2,
+            explanation: "They advanced slowly to pipes so the line arrived unbroken (Thucydides 5.70). A held tempo beats a rushed rep.",
+            rewardXP: 10
+        ),
+        MiniQuiz(
+            question: "A Spartan told his mother his sword was too short. Her answer?",
+            options: ["Find a longer one", "Add a step to it", "Stay home", "Use a spear"],
+            correctIndex: 1,
+            explanation: "\u{201C}Add a step to it\u{201D} (Plutarch, Sayings of Spartan Women 18). When the tool is limited, change the approach.",
+            rewardXP: 10
+        ),
+        MiniQuiz(
+            question: "What did Talos, the bronze guardian of Crete, do every day?",
+            options: ["Slept until attacked", "Circled the island three times", "Forged weapons", "Trained the army"],
+            correctIndex: 1,
+            explanation: "He ran the island's shore three times a day (Apollodorus, Library 1.9.26). The watch that never skips is the one that works.",
+            rewardXP: 10
+        ),
+        MiniQuiz(
+            question: "Aristodemus fought recklessly at Plataea to erase his disgrace. What did Sparta do?",
+            options: ["Named him the bravest", "Withheld its honors", "Made him king", "Exiled him"],
+            correctIndex: 1,
+            explanation: "He had left the line wanting to die; Sparta ranked above him a man who fought well with no wish to die (Herodotus 9.71). After time away, come back steady.",
             rewardXP: 12
         )
     ]

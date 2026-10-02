@@ -190,7 +190,7 @@ private struct BookingPackageCard: View {
                                 if package.isPopular {
                                     Text("POPULAR")
                                         .font(.caption2.weight(.heavy))
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 3)
                                         .background(Capsule().fill(MorpheTheme.accent))
@@ -206,9 +206,9 @@ private struct BookingPackageCard: View {
                         VStack(alignment: .trailing, spacing: 2) {
                             Text(package.price)
                                 .font(.title3.weight(.bold))
-                                .foregroundStyle(isSelected ? MorpheTheme.accent : MorpheTheme.textPrimary)
+                                .foregroundStyle(isSelected ? MorpheTheme.accentText : MorpheTheme.textPrimary)
                             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(isSelected ? MorpheTheme.accent : MorpheTheme.textMuted)
+                                .foregroundStyle(isSelected ? MorpheTheme.accentText : MorpheTheme.textMuted)
                         }
                     }
 
@@ -242,7 +242,7 @@ private struct BookingSlotChip: View {
                 Text(slot.time)
                     .font(.caption2)
             }
-            .foregroundStyle(isSelected ? .white : MorpheTheme.textPrimary)
+            .foregroundStyle(isSelected ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(

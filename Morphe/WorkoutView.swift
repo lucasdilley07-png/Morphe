@@ -2700,7 +2700,7 @@ private struct AddExerciseToSessionSheet: View {
                                 }
                             }
                             .pickerStyle(.menu)
-                            .tint(MorpheTheme.accent)
+                            .tint(MorpheTheme.accentText)
                             Button("Add Exercise") {
                                 let created = store.addCustomExercise(
                                     name: newExerciseName,
@@ -3522,7 +3522,7 @@ private struct DiscoverCatalogSection: View {
                             Text("Clear")
                             Text("\(activeFilterCount)")
                                 .font(.caption2.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
                                 .frame(width: 16, height: 16)
                                 .background(Circle().fill(MorpheTheme.accent))
                         }
@@ -3580,7 +3580,7 @@ private struct DiscoverCatalogSection: View {
                     .scaledFont(size: 8, weight: .bold)
             }
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(isSelected ? .white : MorpheTheme.textPrimary)
+            .foregroundStyle(isSelected ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(
@@ -3759,7 +3759,7 @@ private struct DiscoverProgramCard: View {
                     Button(action: onSave) {
                         Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(isSaved ? MorpheTheme.accent : MorpheTheme.textSecondary)
+                            .foregroundStyle(isSaved ? MorpheTheme.accentText : MorpheTheme.textSecondary)
                             // 44x44 to meet the app's own tap-target rule
                             // (affordance audit 2026-09: was 32x24, a miss
                             // in a scrolling list of cards).
@@ -4244,7 +4244,7 @@ struct TrainTogetherSheet: View {
                         DatePicker("Class starts", selection: $classTime, displayedComponents: [.hourAndMinute])
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textPrimary)
-                            .tint(MorpheTheme.accent)
+                            .tint(MorpheTheme.accentText)
                     }
                 }
 
@@ -4435,7 +4435,7 @@ struct PartySessionStrip: View {
                             HStack(spacing: 8) {
                                 Text("\(rank + 1)")
                                     .font(.caption.monospaced().weight(.bold))
-                                    .foregroundStyle(rank == 0 ? MorpheTheme.accent : MorpheTheme.textMuted)
+                                    .foregroundStyle(rank == 0 ? MorpheTheme.accentText : MorpheTheme.textMuted)
                                     .frame(width: 18, alignment: .leading)
                                 Text(member.name)
                                     .font(.subheadline.weight(.semibold))
@@ -4950,7 +4950,7 @@ private struct CircuitModeView: View {
                             } label: {
                                 HStack(spacing: 10) {
                                     Image(systemName: station.isEnabled ? "checkmark.square.fill" : "square")
-                                        .foregroundStyle(station.isEnabled ? MorpheTheme.accent : MorpheTheme.textMuted)
+                                        .foregroundStyle(station.isEnabled ? MorpheTheme.accentText : MorpheTheme.textMuted)
                                     Text(station.name)
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(station.isEnabled ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
@@ -6675,7 +6675,7 @@ struct WorkoutBuilderSheet: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        .tint(MorpheTheme.accent)
+                        .tint(MorpheTheme.accentText)
                     }
 
                     HStack {
@@ -6859,7 +6859,7 @@ private struct ExercisePickerSheet: View {
                                     }
                                 }
                                 .pickerStyle(.menu)
-                                .tint(MorpheTheme.accent)
+                                .tint(MorpheTheme.accentText)
                                 Button("Add Exercise") {
                                     let created = store.addCustomExercise(name: customName, muscleGroup: customMuscle)
                                     items.append(CustomWorkoutItem(exercise: created))
@@ -6938,7 +6938,7 @@ private struct ExercisePickerSheet: View {
                 }
                 Spacer()
                 Image(systemName: isAdded ? "checkmark.circle.fill" : "plus")
-                    .foregroundStyle(isAdded ? Color(red: 0.30, green: 0.85, blue: 0.45) : MorpheTheme.accent)
+                    .foregroundStyle(isAdded ? Color(red: 0.30, green: 0.85, blue: 0.45) : MorpheTheme.accentText)
             }
             .padding(12)
             .background(

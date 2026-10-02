@@ -1991,7 +1991,7 @@ private struct StoryBubble: View {
                             .overlay(
                                 Text(initial)
                                     .font(.headline)
-                                    .foregroundStyle(ringState == .empty ? MorpheTheme.accent : accent)
+                                    .foregroundStyle(ringState == .empty ? MorpheTheme.accentText : accent)
                             )
                     )
                     .overlay(alignment: .topTrailing) {
@@ -2125,7 +2125,7 @@ private struct StorySessionViewer: View {
                         } label: {
                             Image(systemName: reaction.symbol)
                                 .font(.subheadline.weight(.bold))
-                                .foregroundStyle(isMine ? MorpheTheme.brandBlue : MorpheTheme.textPrimary)
+                                .foregroundStyle(isMine ? MorpheTheme.brandBlueText : MorpheTheme.textPrimary)
                                 .frame(width: 44, height: 44)
                                 .background(
                                     RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
@@ -2230,7 +2230,7 @@ private struct BoardStoryView: View {
                         HStack(spacing: 12) {
                             Text("#\(index + 1)")
                                 .scaledFont(size: 22, weight: .bold, design: .monospaced)
-                                .foregroundStyle(index == 0 ? MorpheTheme.brandBlue : MorpheTheme.textPrimary.opacity(0.55))
+                                .foregroundStyle(index == 0 ? MorpheTheme.brandBlueText : MorpheTheme.textPrimary.opacity(0.55))
                                 .frame(width: 44, alignment: .leading)
                             Text(entry.name)
                                 .scaledFont(size: 22, weight: .black)
@@ -2467,13 +2467,13 @@ struct FeedGridTile: View {
                 if post.verified {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(MorpheTheme.brandBlue)
+                        .foregroundStyle(MorpheTheme.brandBlueText)
                 }
                 Spacer(minLength: 0)
                 if let count = store.feedReactionCounts[post.id], count > 0 {
                     Image(systemName: "heart.fill")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(MorpheTheme.brandBlue)
+                        .foregroundStyle(MorpheTheme.brandBlueText)
                     Text("\(count)")
                         .font(.caption2.weight(.bold).monospaced())
                         .foregroundStyle(MorpheTheme.textPrimary)
@@ -2562,7 +2562,7 @@ private struct StoryCardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "trophy.fill")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(MorpheTheme.brandBlue)
+                        .foregroundStyle(MorpheTheme.brandBlueText)
                     Text("NEW PR · \(name.uppercased())")
                         .scaledFont(size: 12, weight: .bold, design: .monospaced)
                         .tracking(1.2)
@@ -2641,7 +2641,7 @@ private struct FeedAuthorView: View {
                             .font(MorpheTheme.microLabel(10))
                             .tracking(1.4)
                     }
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .padding(.vertical, 6)
                 }
                 .buttonStyle(.plain)
@@ -2929,7 +2929,7 @@ private struct FeedPostCard: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "trophy.fill")
                                     .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(MorpheTheme.accent)
+                                    .foregroundStyle(MorpheTheme.accentText)
                                 Text("PR · \(name)")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(MorpheTheme.textPrimary)
@@ -2955,7 +2955,7 @@ private struct FeedPostCard: View {
                             HStack(spacing: 4) {
                                 Image(systemName: "flame.fill")
                                     .font(.caption2)
-                                    .foregroundStyle(MorpheTheme.accent)
+                                    .foregroundStyle(MorpheTheme.accentText)
                                 Text("\(reactionCount)")
                             }
                         }

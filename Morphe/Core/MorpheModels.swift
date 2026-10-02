@@ -984,7 +984,7 @@ struct MorpheCharacter: Identifiable, Equatable {
     static let all: [MorpheCharacter] = [
         MorpheCharacter(
             id: "morphe", name: "Morphe", letter: "M",
-            colors: [(1.0, 0.839, 0.0), (0.95, 0.72, 0.0)],
+            colors: [(0.161, 0.341, 0.851), (0.102, 0.231, 0.639)],
             register: "You are Morphe — a steady trainer who tells the truth plainly. The accent and delivery style below are the user's choices; wear them naturally.",
             vibe: "The one and only"),
     ]
@@ -1084,9 +1084,13 @@ struct MorpheCommunicationStyle: Identifiable, Equatable {
     static func == (lhs: MorpheCommunicationStyle, rhs: MorpheCommunicationStyle) -> Bool { lhs.id == rhs.id }
 
     static let all: [MorpheCommunicationStyle] = [
+        // The Spartan register (rebrand 2026-10-01): "Direct" renamed, id
+        // kept — every persisted "direct" choice becomes Laconic with no
+        // migration. The register lives HERE, not in the base identity, so
+        // a user who picks Encouraging actually gets warmth (audit 28, P2).
         MorpheCommunicationStyle(
-            id: "direct", title: "Direct", detail: "Short and straight",
-            register: "Delivery: direct and economical — answer first, no filler, no pep-talk padding."),
+            id: "direct", title: "Laconic", detail: "Few words, all true",
+            register: "Delivery: laconic, the Spartan register — the fewest words that carry the full answer. Verbs first, no filler, no pep-talk padding."),
         MorpheCommunicationStyle(
             id: "encouraging", title: "Encouraging", detail: "Warm and supportive",
             register: "Delivery: encouraging — acknowledge the effort genuinely before the answer, but never invent praise the logs don't support."),
@@ -1102,6 +1106,189 @@ struct MorpheCommunicationStyle: Identifiable, Equatable {
     static func spec(for id: String) -> MorpheCommunicationStyle {
         all.first { $0.id == id } ?? all[0]
     }
+}
+
+// MARK: - The Spartan record (docs/SPARTAN-LORE.md)
+//
+// Everything here is taken from the ancient record and carries where it is
+// written down. Same law as the logs: nothing invented, nothing padded. A
+// line nobody can cite does not ship — and the app says plainly what it
+// does NOT take from Sparta.
+
+/// One saying, as translated, with its situation and its source.
+struct LaconicSaying: Identifiable, Hashable {
+    let text: String
+    let speaker: String
+    /// The situation, in one line — a laconic reply means nothing alone.
+    let context: String
+    /// Where it is written down.
+    let source: String
+
+    var id: String { text }
+}
+
+/// One short read from the record, tied to a training principle.
+struct LoreEntry: Identifiable, Hashable {
+    let title: String
+    let body: String
+    let source: String
+
+    var id: String { title }
+}
+
+/// The three stages of the agoge are Xenophon's (Constitution of the
+/// Lacedaemonians 2–4: boys, youths, those in their prime); Plutarch
+/// (Lycurgus 16–17) adds entry at seven and the twenty-year-old eirēn.
+/// The ages on this ladder — hēbōn at 20, full standing at 30 — are the
+/// standard modern reconstruction, not a line in either text.
+enum AgogeRank: Int, CaseIterable, Identifiable {
+    case pais, paidiskos, hebon, homoios
+
+    var id: Int { rawValue }
+
+    static func rank(forLevel level: Int) -> AgogeRank {
+        switch level {
+        case ..<11: return .pais
+        case 11..<20: return .paidiskos
+        case 20..<30: return .hebon
+        default: return .homoios
+        }
+    }
+
+    /// The level this rank is reached at.
+    var firstLevel: Int {
+        switch self {
+        case .pais: return 1
+        case .paidiskos: return 11
+        case .hebon: return 20
+        case .homoios: return 30
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .pais: return "Pais"
+        case .paidiskos: return "Paidiskos"
+        case .hebon: return "Hēbōn"
+        case .homoios: return "Homoios"
+        }
+    }
+
+    /// Plain-English gloss — the Greek never stands alone.
+    var gloss: String {
+        switch self {
+        case .pais: return "First stage of the agoge"
+        case .paidiskos: return "Second stage of the agoge"
+        case .hebon: return "Third stage: the young adults"
+        case .homoios: return "One of the Equals"
+        }
+    }
+
+    var next: AgogeRank? { AgogeRank(rawValue: rawValue + 1) }
+}
+
+enum SpartanLore {
+    /// Verified sayings only, each VERBATIM from a public-domain Loeb
+    /// translation (Babbitt for the Sayings, Helmbold for On
+    /// Talkativeness, Perrin for the Lycurgus) and fact-checked against
+    /// the text (audit 29). The citation is the work and saying number,
+    /// checkable by anyone. Never reword one to make it punchier.
+    static let sayings: [LaconicSaying] = [
+        LaconicSaying(
+            text: "If.",
+            speaker: "The Spartans",
+            context: "Philip of Macedon wrote: if I invade Laconia, I shall turn you out.",
+            source: "Plutarch, On Talkativeness 17"),
+        LaconicSaying(
+            text: "Add a step to it.",
+            speaker: "A Spartan mother",
+            context: "Her son complained that his sword was short.",
+            source: "Plutarch, Sayings of Spartan Women 18"),
+        LaconicSaying(
+            text: "Won't it be nice, then, if we shall have shade in which to fight them?",
+            speaker: "Leonidas",
+            context: "Told the Persian arrows would hide the sun. Herodotus gives the reply to Dienekes (7.226).",
+            source: "Plutarch, Sayings of Spartans, Leonidas 6"),
+        LaconicSaying(
+            text: "These they put on for their own sake, but the shield for the common good of the whole line.",
+            speaker: "Demaratus",
+            context: "Asked why losing a shield brought disgrace and losing a helmet or breastplate did not.",
+            source: "Plutarch, Sayings of Spartans, Demaratus 2"),
+        LaconicSaying(
+            text: "The Spartans did not ask \u{2018}how many are the enemy,\u{2019} but \u{2018}where are they?\u{2019}",
+            speaker: "Agis II",
+            context: "As Plutarch reports his saying.",
+            source: "Plutarch, Sayings of Spartans, Agis son of Archidamus 3"),
+        LaconicSaying(
+            text: "At every step, my child, remember your valour.",
+            speaker: "A Spartan mother",
+            context: "To her lame son, as she walked with him to the battlefield.",
+            source: "Plutarch, Sayings of Spartan Women 13"),
+        LaconicSaying(
+            text: "A city will be well fortified which is surrounded by brave men and not by bricks.",
+            speaker: "Lycurgus",
+            context: "Asked by letter about fortifying the city.",
+            source: "Plutarch, Life of Lycurgus 19"),
+        LaconicSaying(
+            text: "Either this or upon this.",
+            speaker: "A Spartan mother",
+            context: "Handing her son his shield.",
+            source: "Plutarch, Sayings of Spartan Women 16"),
+    ]
+
+    /// One saying a day, no randomness: the count of local calendar days
+    /// since a fixed date picks the line, so a reopen never reshuffles it.
+    /// (Counted between local midnights — `ordinality(of: .day, in: .era)`
+    /// rolls over at UTC midnight and changed the line mid-evening.)
+    static func saying(on date: Date = .now, calendar: Calendar = .current) -> LaconicSaying {
+        let anchor = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1)) ?? .distantPast
+        let days = calendar.dateComponents(
+            [.day], from: calendar.startOfDay(for: anchor), to: calendar.startOfDay(for: date)).day ?? 0
+        let count = sayings.count
+        return sayings[((days % count) + count) % count]
+    }
+
+    /// Short reads: what the record says, then what it means under a bar.
+    /// The first sentence(s) are the record; the last is Morphe's reading.
+    static let guardian = LoreEntry(
+        title: "The guardian",
+        body: "Talos was a man of bronze who guarded Crete, circling the island three times every day. One vein ran through him from neck to ankle, sealed by a single nail. He is among the oldest machine guardians ever imagined, and the line Morphe stands in: a constant watch, one source of truth.",
+        source: "Apollonius, Argonautica 4.1638–88 · Apollodorus, Library 1.9.26")
+
+    static let entries: [LoreEntry] = [
+        guardian,
+        LoreEntry(
+            title: "They marched to flutes",
+            body: "At Mantinea the other army came on in haste and fury. The Spartans advanced slowly to pipe-players, so the line would arrive unbroken. Pace is not weakness. A set done at a held tempo beats a rushed one.",
+            source: "Thucydides 5.70"),
+        LoreEntry(
+            title: "The reckless return",
+            body: "Aristodemus missed Thermopylae and came home to disgrace. At Plataea he broke from the line, wanting to die, and fought furiously. Sparta withheld its honors and ranked above him a man who fought well with no wish to die. Herodotus himself thought Aristodemus the bravest. After time away, come back to the work, not to prove a point.",
+            source: "Herodotus 7.229–231, 9.71"),
+        LoreEntry(
+            title: "The thousand",
+            body: "The bibasis was a Laconian jump: spring up and touch the heels to the buttocks, counted rep by rep, for prizes. A verse records a girl who reached a thousand, the most ever. Spartan girls trained too. Counted work is an old idea.",
+            source: "Pollux, Onomasticon 4.102 · Aristophanes, Lysistrata 82"),
+        LoreEntry(
+            title: "The mess",
+            body: "Every Spartan ate in a mess of about fifteen, and each member brought a fixed share every month. One vote against kept a newcomer out. Train with people who carry their share, and carry yours.",
+            source: "Plutarch, Life of Lycurgus 12"),
+        LoreEntry(
+            title: "Before the work",
+            body: "A Persian scout at Thermopylae found the Spartans exercising and combing their hair. Xerxes found it laughable. He was told it is their custom to dress their hair before risking their lives. The routine before the effort is part of the effort.",
+            source: "Herodotus 7.208–209"),
+        LoreEntry(
+            title: "Fear had a temple",
+            body: "Sparta kept a shrine to Fear, not to ward it off but because they held that fear keeps a people together. Nerves before a heavy set are not a fault. They are attention.",
+            source: "Plutarch, Life of Cleomenes 9"),
+    ]
+
+    /// The honest half. Sparta is not a model society and Morphe does not
+    /// pretend it was — the brand takes three things and leaves the rest.
+    static let whatWeLeave = LoreEntry(
+        title: "What Morphe leaves behind",
+        body: "Sparta ran on the forced labor of the helots, an enslaved majority, and policed them with terror. Almost everything written about Sparta comes from outsiders, much of it centuries later; historians call the polished version the Spartan mirage. Morphe takes three things: discipline, brevity, and the line that holds together. It leaves the rest.",
+        source: "Thucydides 4.80 · Plutarch, Lycurgus 28 · Ollier, Le mirage spartiate (1933)")
 }
 
 /// The personalization spine (Lucas 2026-09-09): one profile that holds

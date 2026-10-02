@@ -6,7 +6,8 @@ import UniformTypeIdentifiers
 // Renders the Morphe Spartan helmet (rebrand 2026-10-01) — an original
 // geometric corinthian silhouette drawn from the ancient armor form in
 // the app's rounded-polygon language — white glass on a blue field.
-// Geometry lives in a 1024x1024 space, shared with MorpheMarkShape.
+// Geometry lives in a 1024x1024 space. SUPERSEDED: the shipped icon is
+// Lucas's glass-box helmet image — do not run this against the assets.
 
 let size = 1024
 let args = CommandLine.arguments

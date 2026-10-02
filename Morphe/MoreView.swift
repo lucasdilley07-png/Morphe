@@ -3,6 +3,9 @@ import SwiftUI
 struct MoreView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var openedQuiz: MiniQuiz?
+    /// The saying the door card showed when it was tapped — The Code
+    /// leads with exactly that line.
+    @State private var openedSaying: LaconicSaying?
 
     /// The three surfaces this tab actually owns. Scores/Progress duplicated
     /// the Progress tab and Quick Tools duplicated the Train tab + AI FAB, so
@@ -23,7 +26,7 @@ struct MoreView: View {
 
     /// Quizzes unlock chronologically (90f7d48): the FIRST uncompleted quiz
     /// is today's, one attempt per calendar day (`quizAnsweredToday` blocks
-    /// chaining), and after 16 the wall says all-done honestly. (This
+    /// chaining), and after the last one the wall says all-done honestly. (This
     /// comment previously described the retired day-picks-it scheme — on
     /// the wrong declaration, claiming the opposite rule. Audit 13, P2.)
     private let mobilityLibrary = [
@@ -328,6 +331,16 @@ struct MoreView: View {
 
     private var learningPanel: some View {
         Group {
+            // The record's line for today (docs/SPARTAN-LORE.md) — the
+            // door to The Code. One saying a day, never reshuffled.
+            RecordLineCard(saying: SpartanLore.saying()) {
+                openedSaying = SpartanLore.saying()
+            }
+            .sheet(item: $openedSaying) { saying in
+                SpartanCodeSheet(saying: saying)
+                    .environment(store)
+            }
+
             // Discover-style quiz wall (Lucas 2026-08-16): every quiz is a
             // tall calling card in a two-column grid — today's card is live,
             // finished ones review, the rest honestly say when they unlock.
@@ -658,5 +671,308 @@ private struct LibraryDrillRow: View {
                 .foregroundStyle(MorpheTheme.textSecondary)
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - The Code (the Spartan record, sourced)
+
+/// Ancient words wear a serif — the one typographic break from the HUD,
+/// so the record always reads as the record and never as app copy.
+private extension Font {
+    static func record(_ style: Font.TextStyle, weight: Font.Weight = .semibold) -> Font {
+        .system(style, design: .serif).weight(weight)
+    }
+}
+
+/// The one micro-label treatment The Code uses, everywhere.
+private struct CodeLabel: View {
+    let text: String
+    var color: Color = MorpheTheme.textMuted
+
+    var body: some View {
+        Text(text.uppercased())
+            .font(MorpheTheme.microLabel())
+            .tracking(1.4)
+            .foregroundStyle(color)
+    }
+}
+
+/// Today's saying as a slim door into The Code.
+struct RecordLineCard: View {
+    let saying: LaconicSaying
+    let onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            GlassCard(.quiet) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        CodeLabel(text: "From the record", color: MorpheTheme.accentText)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    Text("\u{201C}\(saying.text)\u{201D}")
+                        .font(.record(.title3))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("\(saying.speaker) · \(saying.source)")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .multilineTextAlignment(.leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("From the record: \(saying.text) \(saying.speaker), \(saying.source)")
+        .accessibilityHint("Opens The Code")
+    }
+}
+
+/// The Code: what Morphe takes from Sparta, every line with its source —
+/// and, said plainly, what it leaves behind. Opened from the Learn tab
+/// and from the rank on the Profile level card. The caller passes the
+/// saying it showed, so the page always leads with the line that was
+/// tapped (a midnight rollover can't swap it underneath).
+struct SpartanCodeSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    var saying: LaconicSaying = SpartanLore.saying()
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            SpartanCodeContent(saying: saying, onDone: { dismiss() })
+                .padding(24)
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(28)
+        .background(PremiumBackground())
+    }
+}
+
+/// The Code's page, separate from its scroll container so it can be laid
+/// out and rendered on its own.
+struct SpartanCodeContent: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    var saying: LaconicSaying = SpartanLore.saying()
+    let onDone: () -> Void
+
+    private var rank: AgogeRank { AgogeRank.rank(forLevel: store.currentLevelNumber) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    CodeLabel(text: "The Code", color: MorpheTheme.accentText)
+                    Text("Nothing here is invented.")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    Text("Every line is in the ancient record. The source sits under it.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                // The exit at the top of a long page — not only at the end.
+                Button(action: onDone) {
+                    Image(systemName: "xmark")
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(MorpheTheme.panelStrong).frame(width: 32, height: 32))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+            }
+
+            // The typographic moment: the day's line, large, in serif.
+            // Capped below the largest accessibility sizes so the page
+            // still has content under it.
+            VStack(alignment: .leading, spacing: 12) {
+                Text("\u{201C}\(saying.text)\u{201D}")
+                    .font(.record(saying.text.count > 40 ? .title : .largeTitle, weight: .bold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                Text("\(saying.speaker). \(saying.context)")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                sourceLine(saying.source)
+            }
+            .accessibilityElement(children: .combine)
+
+            ladder
+
+            GlassCard {
+                VStack(alignment: .leading, spacing: 4) {
+                    sectionLabel("The record")
+                        .padding(.bottom, 4)
+                    ForEach(SpartanLore.entries) { entry in
+                        DisclosureGroup {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(entry.body)
+                                    .font(.subheadline)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                sourceLine(entry.source)
+                            }
+                            .padding(.bottom, 8)
+                        } label: {
+                            // Priority over the style's hairline, so a
+                            // title only wraps when it truly has to.
+                            Text(entry.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .multilineTextAlignment(.leading)
+                                .layoutPriority(1)
+                        }
+                        .disclosureGroupStyle(HUDDisclosureStyle())
+                    }
+                }
+            }
+
+            GlassCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    // The day's line already leads the page — the list
+                    // is the rest of the record.
+                    sectionLabel("More sayings")
+                    ForEach(SpartanLore.sayings.filter { $0 != saying }) { other in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\u{201C}\(other.text)\u{201D}")
+                                .font(.record(.body))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text("\(other.speaker). \(other.context)")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            sourceLine(other.source)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            GlassCard(.quiet) {
+                VStack(alignment: .leading, spacing: 8) {
+                    sectionLabel(SpartanLore.whatWeLeave.title)
+                    Text(SpartanLore.whatWeLeave.body)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    sourceLine(SpartanLore.whatWeLeave.source)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Button("Done", action: onDone)
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// The agoge ladder as a climbed rail: the line is lit up to the
+    /// user's own rung — earned from logged work only, like every other
+    /// number in the app. A rail, not a column of radio buttons: nothing
+    /// here is selectable.
+    private var ladder: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                sectionLabel("The ladder")
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(AgogeRank.allCases) { rung in
+                        ladderRow(rung)
+                    }
+                }
+                Text("The three stages are Xenophon\u{2019}s. The ages on the rungs, twenty and thirty, are the standard modern reconstruction. Levels come only from logged work.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                sourceLine("Xenophon, Constitution of the Lacedaemonians 2\u{2013}4 · Plutarch, Lycurgus 16\u{2013}18")
+            }
+        }
+    }
+
+    private func ladderRow(_ rung: AgogeRank) -> some View {
+        let isCurrent = rung == rank
+        let reached = rung.rawValue <= rank.rawValue
+        let lit = MorpheTheme.accentText
+        let unlit = MorpheTheme.stroke
+        let levelText = isCurrent ? "You · Level \(store.currentLevelNumber)" : "Level \(rung.firstLevel)"
+        return HStack(alignment: .top, spacing: 12) {
+            // Rail segment + node. The segment above a node is lit when
+            // the node is reached; below it, when the NEXT one is.
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(rung == .pais ? Color.clear : (reached ? lit : unlit))
+                    .frame(width: 2, height: 8)
+                Circle()
+                    .fill(reached ? lit : Color.clear)
+                    .overlay(Circle().stroke(reached ? lit : unlit, lineWidth: 2))
+                    .frame(width: isCurrent ? 16 : 12, height: isCurrent ? 16 : 12)
+                Rectangle()
+                    .fill(rung.next == nil ? Color.clear
+                          : (rung.rawValue < rank.rawValue ? lit : unlit))
+                    .frame(width: 2)
+                    .frame(maxHeight: .infinity)
+            }
+            .frame(width: 16)
+            .accessibilityHidden(true)
+
+            // Side by side at normal sizes; stacked once the type is
+            // large enough that both columns would break mid-word.
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ladderTitle(rung, isCurrent: isCurrent)
+                        CodeLabel(text: levelText, color: isCurrent ? lit : MorpheTheme.textMuted)
+                    }
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        ladderTitle(rung, isCurrent: isCurrent)
+                        Spacer(minLength: 0)
+                        CodeLabel(text: levelText, color: isCurrent ? lit : MorpheTheme.textMuted)
+                            .monospacedDigit()
+                    }
+                }
+            }
+            .padding(.top, 4)
+            .padding(.bottom, 12)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(rung.title), \(rung.gloss), from level \(rung.firstLevel). \(isCurrent ? "Your rank, level \(store.currentLevelNumber)" : (reached ? "Reached" : "Not reached yet"))")
+    }
+
+    private func ladderTitle(_ rung: AgogeRank, isCurrent: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(rung.title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isCurrent ? MorpheTheme.accentText : MorpheTheme.textPrimary)
+            Text(rung.gloss)
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func sectionLabel(_ text: String) -> some View {
+        CodeLabel(text: text)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func sourceLine(_ source: String) -> some View {
+        Text(source)
+            .font(.caption2)
+            .foregroundStyle(MorpheTheme.textMuted)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }

@@ -63,6 +63,10 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var theme: String
     var accentPalette: String
     var customAccentHex: String = ""
+    /// Which brand era wrote this snapshot's palette: 0 = before the
+    /// Spartan rebrand (Gold was the default), 1 = after. See
+    /// MorpheAppStore.rebrandMigratedAccent.
+    var paletteEpoch: Int = 0
     var coachingTone: String
     var avatarStyle: String
     var displayName: String
@@ -185,6 +189,7 @@ extension LocalProfileSnapshot {
         theme = str(.theme)
         accentPalette = str(.accentPalette)
         customAccentHex = str(.customAccentHex)
+        paletteEpoch = ((try? c.decodeIfPresent(Int.self, forKey: .paletteEpoch)) ?? nil) ?? 0
         coachingTone = str(.coachingTone)
         avatarStyle = str(.avatarStyle)
         displayName = str(.displayName)

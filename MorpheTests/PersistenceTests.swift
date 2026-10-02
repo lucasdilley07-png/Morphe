@@ -7112,6 +7112,205 @@ final class AuditSeamTests: XCTestCase {
 }
 
 
+/// The Spartan record (docs/SPARTAN-LORE.md): the never-invent law applied
+/// to the lore, the agoge ladder, and the one-time gold-to-blue migration.
+@MainActor
+final class SpartanLoreTests: XCTestCase {
+    private func makeStore() -> MorpheAppStore {
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        return store
+    }
+
+    func testEverySayingAndEntryCarriesItsSource() {
+        XCTAssertFalse(SpartanLore.sayings.isEmpty)
+        for saying in SpartanLore.sayings {
+            XCTAssertFalse(saying.source.isEmpty, "\(saying.text) ships without a source")
+            XCTAssertFalse(saying.speaker.isEmpty)
+            XCTAssertFalse(saying.context.isEmpty, "a laconic reply means nothing without its situation")
+        }
+        for entry in SpartanLore.entries + [SpartanLore.whatWeLeave] {
+            XCTAssertFalse(entry.source.isEmpty, "\(entry.title) ships without a source")
+        }
+        XCTAssertEqual(Set(SpartanLore.sayings.map(\.id)).count, SpartanLore.sayings.count)
+        XCTAssertFalse(SpartanLore.sayings.contains { $0.text.lowercased().contains("come and take") },
+                       "the one phrase the brand deliberately leaves alone")
+    }
+
+    func testSayingOfTheDayIsStableWithinADayAndRotates() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let morning = calendar.date(from: DateComponents(year: 2026, month: 10, day: 1, hour: 6))!
+        let night = calendar.date(from: DateComponents(year: 2026, month: 10, day: 1, hour: 23))!
+        XCTAssertEqual(SpartanLore.saying(on: morning, calendar: calendar),
+                       SpartanLore.saying(on: night, calendar: calendar),
+                       "a reopen never reshuffles the day's line")
+        let seen = Set((0..<SpartanLore.sayings.count).map { offset in
+            SpartanLore.saying(on: calendar.date(byAdding: .day, value: offset, to: morning)!, calendar: calendar)
+        })
+        XCTAssertEqual(seen.count, SpartanLore.sayings.count, "consecutive days walk the whole record")
+    }
+
+    func testAgogeLadderMatchesTheRecord() {
+        XCTAssertEqual(AgogeRank.rank(forLevel: 1), .pais)
+        XCTAssertEqual(AgogeRank.rank(forLevel: 10), .pais)
+        XCTAssertEqual(AgogeRank.rank(forLevel: 11), .paidiskos)
+        XCTAssertEqual(AgogeRank.rank(forLevel: 19), .paidiskos)
+        XCTAssertEqual(AgogeRank.rank(forLevel: 20), .hebon, "hebontes were the twenty-year-olds")
+        XCTAssertEqual(AgogeRank.rank(forLevel: 29), .hebon)
+        XCTAssertEqual(AgogeRank.rank(forLevel: 30), .homoios, "full standing at thirty")
+        XCTAssertEqual(AgogeRank.rank(forLevel: 400), .homoios)
+        for rank in AgogeRank.allCases {
+            XCTAssertEqual(AgogeRank.rank(forLevel: rank.firstLevel), rank)
+        }
+        XCTAssertNil(AgogeRank.homoios.next)
+    }
+
+    func testGoldFromBeforeTheRebrandMigratesAndALaterPickSticks() {
+        XCTAssertEqual(MorpheAppStore.rebrandMigratedAccent(.gold, paletteEpoch: 0), .spartan,
+                       "the pre-rebrand default moves to the new brand")
+        XCTAssertEqual(MorpheAppStore.rebrandMigratedAccent(.green, paletteEpoch: 0), .green,
+                       "any other palette was a choice and is untouched")
+        XCTAssertEqual(MorpheAppStore.rebrandMigratedAccent(.gold, paletteEpoch: MorpheAppStore.spartanPaletteEpoch), .gold,
+                       "a Gold written after the rebrand is the user's own pick")
+    }
+
+    /// The whole path, through real files: a profile saved by the gold-era
+    /// build relaunches in Spartan Blue, the migrated snapshot carries the
+    /// new epoch, and a Gold picked afterwards survives its own relaunch.
+    func testGoldEraProfileRelaunchesBlueThenHonorsADeliberateGold() throws {
+        _ = makeStore()
+        // Absorb the first store's pending writes, then age the file back
+        // to what a pre-rebrand build wrote.
+        let files = ProfileFilePersistence()
+        _ = MorpheAppStore()
+        var old = try XCTUnwrap(files.loadProfile())
+        old.accentPalette = AccentPalette.gold.rawValue
+        old.paletteEpoch = 0
+        files.saveProfile(old)
+
+        let relaunched = MorpheAppStore()
+        XCTAssertEqual(relaunched.profileShowcase.accentPalette, .spartan)
+        relaunched.settleRebrandMigration()
+        let migrated = try XCTUnwrap(files.loadProfile())
+        XCTAssertEqual(migrated.accentPalette, AccentPalette.spartan.rawValue,
+                       "settling writes the migrated palette to disk at once")
+        XCTAssertEqual(migrated.paletteEpoch, MorpheAppStore.spartanPaletteEpoch)
+
+        relaunched.updateAccentPalette(.gold)
+        let again = MorpheAppStore()
+        XCTAssertEqual(again.profileShowcase.accentPalette, .gold,
+                       "Gold chosen after the rebrand is a choice, not the old default")
+        again.updateAccentPalette(.spartan)
+    }
+
+    func testOldSnapshotsDecodeAsThePreRebrandEpoch() throws {
+        let files = ProfileFilePersistence()
+        _ = makeStore()
+        _ = MorpheAppStore()
+        let current = try XCTUnwrap(files.loadProfile())
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: JSONEncoder().encode(current)) as? [String: Any])
+        json.removeValue(forKey: "paletteEpoch")
+        let decoded = try JSONDecoder().decode(
+            LocalProfileSnapshot.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertEqual(decoded.paletteEpoch, 0, "a snapshot with no epoch predates the rebrand")
+        XCTAssertEqual(current.paletteEpoch, MorpheAppStore.spartanPaletteEpoch,
+                       "every snapshot this build writes carries the current epoch")
+    }
+
+    func testLoreIntentIsPhrasesNotSubstrings() {
+        for lore in ["who is talos", "tell me a spartan saying", "give me a saying",
+                     "what's my agoge rank", "a laconic quote please", "who are you"] {
+            XCTAssertTrue(MorpheAppStore.isLoreQuestion(lore), "\(lore) asks for the lore")
+        }
+        for ordinary in ["are you saying my readiness is low?", "what's my rank on the board?",
+                         "quote my last pr", "how do i train for a spartan race?",
+                         "what's next in my spartan workout?", "my ranking this week"] {
+            XCTAssertFalse(MorpheAppStore.isLoreQuestion(ordinary), "\(ordinary) is not a lore question")
+        }
+    }
+
+    func testALevelUpOutranksTheBannerThatAwardedIt() {
+        let store = makeStore()
+        // Past the first-run welcome, where banners show instead of queueing.
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
+        // One point short of level 2: the quiz award crosses the line.
+        store.clientProfile.level.currentXP = store.clientProfile.level.targetXP - 1
+        let quiz = store.quizzes[0]
+        store.answerQuiz(quiz, with: quiz.correctIndex)
+        XCTAssertEqual(store.celebration?.title, "Quiz complete")
+        XCTAssertEqual(store.pendingLevelUp?.title, "Level 2",
+                       "the level-up is held while the caller's own banner lands")
+        store.flushPendingLevelUp()
+        XCTAssertEqual(store.celebration?.title, "Level 2",
+                       "and then replaces it — the level is the bigger moment")
+        XCTAssertNil(store.pendingLevelUp)
+    }
+
+    func testTheThousandCountsOnlyRawLoggedReps() {
+        func log(_ exercises: [LoggedExercise]) -> WorkoutLog {
+            WorkoutLog(athleteID: UUID(), athleteName: "T", workoutTemplateID: nil,
+                       workoutTitle: "Jumps", sport: .strength, completedAt: .now,
+                       durationMinutes: 10, exercises: exercises, notes: "",
+                       source: .athleteManual, enteredByUserID: UUID(),
+                       enteredByRole: .client, enteredByName: "T",
+                       verificationStatus: .athleteSubmitted)
+        }
+        var counted = LoggedExercise(name: "Bibasis", sets: "2", reps: "50", weight: "", note: "")
+        counted.repsPerSet = [50, 40]
+        // Display strings alone are not rep data — they contribute nothing.
+        let displayOnly = LoggedExercise(name: "Bibasis", sets: "3", reps: "100", weight: "", note: "")
+        var other = LoggedExercise(name: "High Knees", sets: "1", reps: "30", weight: "", note: "")
+        other.repsPerSet = [30]
+        XCTAssertEqual(MorpheAppStore.lifetimeReps(of: "Bibasis", in: [log([counted, other]), log([displayOnly])]), 90)
+    }
+
+    func testBibasisIsInTheLibraryWithItsSource() {
+        let library = MorpheDemoContent.exerciseDatabase
+        let bibasis = library.first { $0.id == "bibasis" }
+        XCTAssertEqual(bibasis?.name, MorpheAppStore.bibasisExerciseName,
+                       "the badge counts by this exact name")
+        XCTAssertTrue(bibasis?.whyThisMatters.contains("Pollux") == true)
+        XCTAssertEqual(Set(library.map(\.id)).count, library.count, "library ids stay unique")
+        for name in bibasis?.alternatives ?? [] {
+            XCTAssertTrue(library.contains { $0.name == name }, "\(name) must exist to be a swap")
+        }
+    }
+
+    func testLaconicIsTheDefaultRegisterAndThePromptHoldsTheLoreLaw() {
+        XCTAssertEqual(MorpheCommunicationStyle.spec(for: "direct").title, "Laconic",
+                       "every persisted 'direct' choice becomes Laconic with no migration")
+        let store = makeStore()
+        store.setStyleChoice(communicationStyle: "direct")
+        let everyTurn = store.intelligenceSystemPrompt(spoken: false, userText: "how was my week")
+        XCTAssertTrue(everyTurn.contains("Talos"))
+        XCTAssertTrue(everyTurn.contains("laconic"))
+        XCTAssertTrue(everyTurn.contains("never invent or 'adapt' an ancient quote"))
+        XCTAssertFalse(everyTurn.contains(SpartanLore.sayings[1].source),
+                       "the record is not paid for on turns that never ask for it")
+
+        let loreTurn = store.intelligenceSystemPrompt(spoken: true, userText: "Give me a Spartan saying")
+        for saying in SpartanLore.sayings {
+            XCTAssertTrue(loreTurn.contains(saying.text) && loreTurn.contains(saying.source),
+                          "the brain may only quote what it can cite")
+        }
+
+        store.setStyleChoice(communicationStyle: "encouraging")
+        let warm = store.intelligenceSystemPrompt(spoken: false)
+        XCTAssertFalse(warm.contains("Delivery: laconic"),
+                       "a warmer style is honored, not overridden by the base identity")
+        XCTAssertFalse(warm.contains("Lead with the answer"),
+                       "Encouraging acknowledges first; the answer-first rule yields to it")
+        store.setStyleChoice(communicationStyle: "direct")
+    }
+}
+
+
 /// Audit-18 test double: scripted backend for the debrief sync layer.
 /// MainActor-isolated (audit 19, P2): the tests and the store both run on
 /// the main actor, so an unisolated mutable array was an off-actor

@@ -904,6 +904,20 @@ private struct ComebackCard: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
+                // The record on returning (docs/SPARTAN-LORE.md), above
+                // the choice it informs: claim, then where it is written.
+                VStack(spacing: 4) {
+                    Text("Sparta withheld its honors from the reckless return.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    Text("Herodotus 9.71")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityElement(children: .combine)
+
                 HStack(spacing: 10) {
                     Button("Ease me in", action: onEaseIn)
                         .frame(maxWidth: .infinity)
@@ -1195,7 +1209,7 @@ struct MorpheDayPopup: View {
         VStack(spacing: 0) {
             // Morphe's face: the frequency ring, breathing at a gentle
             // idle level.
-            MorpheFrequencyRing(level: 0.22, speaking: false, whiteMark: true)
+            MorpheFrequencyRing(level: 0.22, speaking: false)
                 .frame(width: 170, height: 170)
                 .accessibilityHidden(true)
 
@@ -1500,7 +1514,7 @@ private struct TodayNextMoveCard: View {
                         if let intensityNote = store.workoutIntensityNote {
                             Text(intensityNote)
                                 .font(.footnote)
-                                .foregroundStyle(MorpheTheme.accent.opacity(0.9))
+                                .foregroundStyle(MorpheTheme.accentText)
                         }
                     }
 
@@ -1954,13 +1968,13 @@ private struct PartnerWorkoutCard: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(partner.name)
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(selectedPartner?.id == partner.id ? .white : MorpheTheme.textPrimary)
+                                        .foregroundStyle(selectedPartner?.id == partner.id ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
                                     Text(partner.sport.shortTitle)
                                         .font(.caption.weight(.semibold))
-                                        .foregroundStyle(selectedPartner?.id == partner.id ? .white.opacity(0.85) : MorpheTheme.textSecondary)
+                                        .foregroundStyle(selectedPartner?.id == partner.id ? MorpheTheme.onFill(MorpheTheme.accent).opacity(0.9) : MorpheTheme.textSecondary)
                                     Text(partner.status)
                                         .font(.caption2)
-                                        .foregroundStyle(selectedPartner?.id == partner.id ? .white.opacity(0.8) : MorpheTheme.textMuted)
+                                        .foregroundStyle(selectedPartner?.id == partner.id ? MorpheTheme.onFill(MorpheTheme.accent).opacity(0.9) : MorpheTheme.textMuted)
                                 }
                                 .padding(12)
                                 .frame(width: 150, alignment: .leading)
@@ -2043,7 +2057,7 @@ private struct FirstWeekCard: View {
                     HStack(spacing: 10) {
                         Image(systemName: step.done ? "checkmark.circle.fill" : "circle")
                             .font(.subheadline)
-                            .foregroundStyle(step.done ? MorpheTheme.accent : MorpheTheme.textMuted)
+                            .foregroundStyle(step.done ? MorpheTheme.accentText : MorpheTheme.textMuted)
                         Text(step.title)
                             .font(.subheadline)
                             .foregroundStyle(step.done ? MorpheTheme.textMuted : MorpheTheme.textPrimary)

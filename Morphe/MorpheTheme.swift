@@ -193,9 +193,34 @@ enum MorpheTheme {
             return currentAccentPalette == .spartan && color == brandBlue
                 ? brandBlue : darkenedForLightText(color)
         }
+        // Gate on LUMINANCE, not HSB brightness (audit 29, P1): brand
+        // blue has brightness 0.85, sailed through the old `b >= 0.8`
+        // gate unlifted, and every accent label in dark mode shipped at
+        // 3.1:1. Anything darker than ~5:1 on the canvas gets lifted.
+        guard relativeLuminance(color) < 0.25 else { return color }
+        if color == brandBlue { return brandBlueText }
         var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         guard UIColor(color).getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return color }
-        return b >= 0.8 ? color : Color(hue: h, saturation: s * 0.72, brightness: 0.95, opacity: a)
+        return Color(hue: h, saturation: s * 0.6, brightness: 1.0, opacity: a)
+    }
+
+    /// WCAG relative luminance (0 black … 1 white).
+    static func relativeLuminance(_ color: Color) -> Double {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &a) else { return 0 }
+        func linear(_ channel: CGFloat) -> Double {
+            let c = Double(min(max(channel, 0), 1))
+            return c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+    }
+
+    /// Label ink for text sitting ON a filled accent surface, chosen at
+    /// the WCAG crossover (luminance 0.179): white on Spartan blue, black
+    /// on every other palette — they are all light fills, where white
+    /// lands between 1.4:1 and 2.8:1 (audit 29, P1).
+    static func onFill(_ fill: Color) -> Color {
+        relativeLuminance(fill) < 0.179 ? .white : .black
     }
 
     /// Brand blue as TEXT (celebration kicker, PR value): pinned to the
@@ -227,7 +252,9 @@ enum MorpheTheme {
         case .spartan:
             // Deep blue vanishes on the dark canvas (audit 28, P1: 2.0:1)
             // — dark mode lifts the secondary to a lit blue.
-            return isLight ? brandBlueDeep : Color(red: 0.30, green: 0.47, blue: 0.94)
+            // #6C8FF5 — 5.9:1 on the canvas, AA on the raised panels too
+            // (audit 29: the first lift, #4C78F0, was 3.8:1 on hero cards).
+            return isLight ? brandBlueDeep : Color(red: 0.424, green: 0.561, blue: 0.961)
         case .gold: return legacyGoldDeep
         default: return colors(for: currentAccentPalette).secondary
         }
@@ -500,7 +527,7 @@ enum SoundPack: String, CaseIterable, Identifiable {
 
     var detail: String {
         switch self {
-        case .classic: return "The gold-tone chord"
+        case .classic: return "The original chord"
         case .minimal: return "Quiet and quick"
         case .impact: return "Low and heavy"
         }
@@ -704,9 +731,10 @@ struct PrimaryCTAButtonStyle: ButtonStyle {
             // Never hyphenate a button label — shrink to fit.
             .lineLimit(1)
             .minimumScaleFactor(0.55)
-            // White on the blue fills (audit 28, P0): black carried over
-            // from the gold era fails AA on #2957D9.
-            .foregroundStyle(.white)
+            // The ink follows the fill (audit 29, P1): white on Spartan
+            // blue, black on the light palettes — a fixed white failed
+            // every palette except the brand's.
+            .foregroundStyle(MorpheTheme.onFill(accent))
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)

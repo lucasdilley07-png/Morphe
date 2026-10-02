@@ -767,12 +767,12 @@ private struct FloatingAIAgentButton: View {
         } label: {
             Group {
                 if isCompact {
-                    GlowingMorpheMark(size: 24, whiteMark: true)
+                    GlowingMorpheMark(size: 24)
                         .frame(width: 50, height: 50)
                         .background(buttonBackground.clipShape(Circle()))
                 } else {
                     HStack(spacing: 10) {
-                        GlowingMorpheMark(size: 20, whiteMark: true)
+                        GlowingMorpheMark(size: 20)
                         Text(label)
                             .font(.subheadline.weight(.bold))
                     }
@@ -975,7 +975,7 @@ private struct MorpheAIAgentSheet: View {
                 } label: {
                     Image(systemName: dictation.isRecording ? "mic.fill" : "mic")
                         .font(.system(size: 22))
-                        .foregroundStyle(dictation.isRecording ? MorpheTheme.accent : MorpheTheme.textSecondary)
+                        .foregroundStyle(dictation.isRecording ? MorpheTheme.accentText : MorpheTheme.textSecondary)
                         .symbolEffect(.pulse, isActive: dictation.isRecording)
                         // 44pt minimum hit target — the glyph alone is too
                         // small to tap reliably mid-workout.
@@ -988,7 +988,7 @@ private struct MorpheAIAgentSheet: View {
                 Button(action: send) {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 32))
-                        .foregroundStyle(trimmedPrompt.isEmpty ? MorpheTheme.textMuted : MorpheTheme.accent)
+                        .foregroundStyle(trimmedPrompt.isEmpty ? MorpheTheme.textMuted : MorpheTheme.accentText)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -3286,7 +3286,7 @@ private struct WelcomeTag: View {
     var body: some View {
         Text(text)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.white)  // audit 28, P0: black fails on the blue fills
+            .foregroundStyle(MorpheTheme.onFill(color))  // the ink follows the fill (audit 29)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(

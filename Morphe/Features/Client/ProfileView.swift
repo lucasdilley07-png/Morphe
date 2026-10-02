@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 
 struct ProfileView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(MorpheAppStore.self) private var store
     @State private var isEditingName = false
     @State private var showTermsSheet = false
@@ -32,6 +33,7 @@ struct ProfileView: View {
     }
     @State private var exportFile: ExportFile?
     @State private var showPaywall = false
+    @State private var showingCode = false
 
 
 
@@ -385,40 +387,103 @@ struct ProfileView: View {
         let level = store.clientProfile.level
         return GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .lastTextBaseline) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("LEVEL")
-                            .font(MorpheTheme.microLabel(10))
-                            .tracking(1.4)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        Text("\(store.currentLevelNumber)")
-                            .scaledFont(size: 34, weight: .bold, design: .monospaced)
-                            .foregroundStyle(MorpheTheme.accentText)
+                // The XP readout reads as ONE element; the rank row below
+                // is its own button.
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .lastTextBaseline) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("LEVEL")
+                                .font(MorpheTheme.microLabel(10))
+                                .tracking(1.4)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Text("\(store.currentLevelNumber)")
+                                .scaledFont(size: 34, weight: .bold, design: .monospaced)
+                                .foregroundStyle(MorpheTheme.accentText)
+                        }
+
+                        Spacer()
+
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text("XP TO LEVEL \(store.currentLevelNumber + 1)")
+                                .font(MorpheTheme.microLabel(10))
+                                .tracking(1.4)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Text("\(level.currentXP) / \(level.targetXP)")
+                                .font(.system(.title3, design: .monospaced).weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                        }
                     }
 
-                    Spacer()
+                    ProgressBarView(progress: level.progress, color: MorpheTheme.accent)
 
-                    VStack(alignment: .trailing, spacing: 3) {
-                        Text("XP TO LEVEL \(store.currentLevelNumber + 1)")
-                            .font(MorpheTheme.microLabel(10))
-                            .tracking(1.4)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                        Text("\(level.currentXP) / \(level.targetXP)")
-                            .font(.system(.title3, design: .monospaced).weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                    }
+                    Text("Earn XP from workouts, daily wins, and quizzes. Each tier of ten levels asks a little more: 100 XP per level through 10, then 200, then 300.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Level \(store.currentLevelNumber), \(level.currentXP) of \(level.targetXP) XP to level \(store.currentLevelNumber + 1)")
 
-                ProgressBarView(progress: level.progress, color: MorpheTheme.accent)
+                Rectangle()
+                    .fill(MorpheTheme.strokeSubtle)
+                    .frame(height: 1)
 
-                Text("Earn XP from workouts, daily wins, and quizzes. Each tier of ten levels asks a little more: 100 XP per level through 10, then 200, then 300.")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                rankRow
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Level \(store.currentLevelNumber), \(level.currentXP) of \(level.targetXP) XP to level \(store.currentLevelNumber + 1)")
+        .sheet(isPresented: $showingCode) {
+            SpartanCodeSheet()
+                .environment(store)
+        }
+    }
+
+    /// The agoge rung this level stands on (Sparta's own ladder) — opens
+    /// The Code, where every rung and its source is laid out.
+    private var rankRow: some View {
+        let rank = AgogeRank.rank(forLevel: store.currentLevelNumber)
+        let nextLabel = rank.next.map { "\($0.title) at \($0.firstLevel)" }
+        return Button {
+            showingCode = true
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("RANK")
+                        .font(MorpheTheme.microLabel())
+                        .tracking(1.4)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    Text(rank.title)
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text(rank.gloss)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    // At accessibility sizes the next rung drops under
+                    // the rank instead of fighting it for the row.
+                    if dynamicTypeSize.isAccessibilitySize, let nextLabel {
+                        Text(nextLabel)
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+                Spacer(minLength: 0)
+                if !dynamicTypeSize.isAccessibilitySize, let nextLabel {
+                    Text(nextLabel.uppercased())
+                        .font(MorpheTheme.microLabel())
+                        .tracking(1.4)
+                        .monospacedDigit()
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Rank: \(rank.title), \(rank.gloss)\(rank.next.map { ". Next: \($0.title) at level \($0.firstLevel)" } ?? "")")
+        .accessibilityHint("Opens The Code")
     }
 
     private var identityCard: some View {
@@ -493,7 +558,7 @@ struct ProfileView: View {
 
                 Image(systemName: "camera.fill")
                     .scaledFont(size: 11, weight: .bold)
-                    .foregroundStyle(.white)  // audit 28, P0: black fails on the blue fills
+                    .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))  // the ink follows the fill (audit 29)
                     .padding(5)
                     .background(Circle().fill(MorpheTheme.accent))
             }
@@ -773,12 +838,12 @@ struct ProfileView: View {
             VStack(spacing: 3) {
                 Text(title)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(selected ? Color.black : MorpheTheme.textPrimary)
+                    .foregroundStyle(selected ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text(detail)
                     .font(.caption2)
-                    .foregroundStyle(selected ? Color.black.opacity(0.7) : MorpheTheme.textMuted)
+                    .foregroundStyle(selected ? MorpheTheme.onFill(MorpheTheme.accent).opacity(0.9) : MorpheTheme.textMuted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
@@ -812,12 +877,12 @@ struct ProfileView: View {
             VStack(spacing: 3) {
                 Text(pack.title)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(selected ? Color.black : MorpheTheme.textPrimary)
+                    .foregroundStyle(selected ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text(pack.detail)
                     .font(.caption2)
-                    .foregroundStyle(selected ? Color.black.opacity(0.7) : MorpheTheme.textMuted)
+                    .foregroundStyle(selected ? MorpheTheme.onFill(MorpheTheme.accent).opacity(0.9) : MorpheTheme.textMuted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
@@ -1616,11 +1681,11 @@ struct ProfileView: View {
                         .frame(width: 36, height: 36)
                     Image(systemName: "checkmark")
                         .scaledFont(size: 12, weight: .bold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.onFill(accentDotColor(for: palette)))
                 } else if !isUnlocked {
                     Image(systemName: "lock.fill")
                         .scaledFont(size: 10, weight: .bold)
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(MorpheTheme.textSecondary)
                 }
             }
             .frame(width: 44, height: 44)

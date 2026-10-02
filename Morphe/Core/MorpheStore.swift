@@ -2326,7 +2326,15 @@ final class MorpheAppStore {
         }
         var localProfile = profile
         localProfile.profilePhotoBase64 = ""
+        // The cloud copy may predate the rebrand: the local file takes the
+        // palette the app is actually wearing, at the current epoch — or
+        // this save would put the old default straight back (audit 29).
+        localProfile.accentPalette = profileShowcase.accentPalette.rawValue
+        localProfile.paletteEpoch = Self.spartanPaletteEpoch
         profilePersistence.saveProfile(localProfile)
+        // Last, once the whole restore has landed: push the migrated
+        // palette back up and say what changed.
+        settleRebrandMigration()
     }
 
     /// Applies a saved local-profile snapshot over the seeded demo profile.
@@ -2389,7 +2397,9 @@ final class MorpheAppStore {
             profileShowcase.theme = theme
         }
         if let accent = AccentPalette(rawValue: snapshot.accentPalette) {
-            profileShowcase.accentPalette = accent
+            let resolved = Self.rebrandMigratedAccent(accent, paletteEpoch: snapshot.paletteEpoch)
+            profileShowcase.accentPalette = resolved
+            if resolved != accent { rebrandMigrationPending = true }
         }
         profileShowcase.customAccentHex = snapshot.customAccentHex
         if let tone = CoachingTone(rawValue: snapshot.coachingTone) {
@@ -2734,6 +2744,7 @@ final class MorpheAppStore {
                 theme: profileShowcase.theme.rawValue,
                 accentPalette: profileShowcase.accentPalette.rawValue,
                 customAccentHex: profileShowcase.customAccentHex,
+                paletteEpoch: Self.spartanPaletteEpoch,
                 coachingTone: profileShowcase.coachingTone.rawValue,
                 avatarStyle: profileShowcase.avatar.style.rawValue,
                 displayName: profileShowcase.displayName,
@@ -5191,9 +5202,44 @@ final class MorpheAppStore {
         withAnimation(.easeInOut(duration: 0.3)) {
             isShowingLaunchSequence = false
         }
+        // A profile lives on this device: its palette is settled from here.
+        if hasCompletedOnboarding { settleRebrandMigration() }
     }
 
+    // MARK: Rebrand migration (Spartan, 2026-10-01)
+    //
+    // Gold was the DEFAULT before the rebrand, so a "Gold" in a snapshot
+    // written before the flip is the old default, not a choice. It moves
+    // to Spartan Blue once, with a notice that says where Gold still
+    // lives. The marker rides IN the snapshot (paletteEpoch), not in
+    // device defaults (audit 29): it follows the profile through cloud
+    // restore, a second device, and an account switch — and every
+    // snapshot this build writes carries the current epoch, so a Gold
+    // picked after the rebrand is the user's own and sticks everywhere.
 
+    static let spartanPaletteEpoch = 1
+
+    /// Pure decision: the accent a restored profile should wear.
+    static func rebrandMigratedAccent(_ accent: AccentPalette, paletteEpoch: Int) -> AccentPalette {
+        accent == .gold && paletteEpoch < spartanPaletteEpoch ? .spartan : accent
+    }
+
+    private var rebrandMigrationPending = false
+
+    /// Writes the migrated palette (and its epoch) to disk right away —
+    /// until a snapshot with the new epoch lands, a relaunch simply
+    /// re-derives the same migration. The notice waits for the shell to
+    /// be on screen so it can actually be read.
+    func settleRebrandMigration() {
+        guard rebrandMigrationPending else { return }
+        rebrandMigrationPending = false
+        persistLocalProfile()
+        flushProfilePersistIfNeeded()
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.2))
+            self?.showToast("New colors: Spartan Blue is the brand now. Gold is still yours in Profile.")
+        }
+    }
 
     func completeOnboarding() {
         let generatedPlan = MorpheDemoContent.generatedPlan(from: onboardingDraft)
@@ -8667,14 +8713,84 @@ final class MorpheAppStore {
         neuralVoiceEnabled = false
     }
 
+    /// The never-invent law applied to the lore (docs/SPARTAN-LORE.md).
+    /// Always on, and short: who Talos is and what may never be done.
+    static let loreGuardrail = "Lore law: Talos was the man of bronze who guarded Crete, circling it three times a day (Apollodorus 1.9.26). Never quote an ancient source from memory, and never invent or 'adapt' an ancient quote. Never glorify Sparta's slavery of the helots; Morphe takes discipline, brevity, and the shield line, nothing else. Never use the phrase 'molon labe'. Do not bring up history unasked."
+
+    /// The record itself — sent only on a turn that asks for it (audit
+    /// 29: 300 tokens on every request was the wrong trade).
+    static let loreRecord: String = {
+        let sayings = SpartanLore.sayings
+            .map { "\u{201C}\($0.text)\u{201D} \($0.speaker). \($0.context) Source: \($0.source)." }
+            .joined(separator: " ")
+        return "The user is asking about the lore. These are the only Spartan sayings you may quote, word for word, and you say the source in plain words every time: \(sayings)"
+    }()
+
+    /// True when the user is actually asking about the lore — whole
+    /// intent phrases, not bare substrings ("are you saying…", "my rank
+    /// on the board" and "quote my last PR" are NOT lore; audit 29, P1).
+    static func isLoreQuestion(_ lowercasedPrompt: String) -> Bool {
+        loreIntent(in: lowercasedPrompt) != nil
+    }
+
+    private enum LoreIntent { case talos, identity, rank, saying }
+
+    private static func loreIntent(in prompt: String) -> LoreIntent? {
+        func hasWord(_ word: String) -> Bool {
+            prompt.range(of: "\\b\(word)\\b", options: .regularExpression) != nil
+        }
+        if hasWord("talos") { return .talos }
+        if prompt.contains("who are you") { return .identity }
+        if hasWord("agoge") || prompt.contains("my agoge rank") { return .rank }
+        let namesSparta = hasWord("spartan") || hasWord("spartans") || hasWord("sparta") || hasWord("laconic")
+        let asksForLine = hasWord("saying") || hasWord("sayings") || hasWord("quote")
+            || hasWord("lore") || hasWord("code")
+        if namesSparta && asksForLine { return .saying }
+        if prompt.contains("give me a saying") || prompt.contains("tell me a saying")
+            || prompt.contains("saying of the day") { return .saying }
+        return nil
+    }
+
+    /// Built-in answers about the lore — the same record the Claude brain
+    /// is held to, so the app answers identically with no key set. The
+    /// source is written inline: the spoken path strips parentheses, and
+    /// a quote must never be heard without where it comes from.
+    private func loreReply(to lowercasedPrompt: String) -> String? {
+        switch Self.loreIntent(in: lowercasedPrompt) {
+        case .talos:
+            return "\(SpartanLore.guardian.body) Source: \(SpartanLore.guardian.source)."
+        case .identity:
+            return "Morphe. A training guardian in the line of Talos, the man of bronze who circled Crete three times a day. I watch your training the same way: every number from your own logs, nothing invented."
+        case .rank:
+            let rank = AgogeRank.rank(forLevel: currentLevelNumber)
+            let ahead = rank.next.map { " Next: \($0.title) at level \($0.firstLevel)." } ?? " There is no rank above it."
+            return "Level \(currentLevelNumber). Rank: \(rank.title). \(rank.gloss).\(ahead) The three stages are Xenophon's, Constitution of the Lacedaemonians 2 to 4."
+        case .saying:
+            let saying = SpartanLore.saying()
+            return "\u{201C}\(saying.text)\u{201D} \(saying.speaker). \(saying.context) Source: \(saying.source)."
+        case nil:
+            return nil
+        }
+    }
+
     /// Everything Claude needs to answer like Morphe: identity, honesty
     /// rules, and the live training context. Spoken replies get a hard
     /// brevity contract — the answer is read aloud on a gym floor.
-    func intelligenceSystemPrompt(spoken: Bool) -> String {
+    func intelligenceSystemPrompt(spoken: Bool, userText: String? = nil) -> String {
         var lines: [String] = []
-        lines.append("You are Morphe, a Spartan training guardian inside the Morphe iOS app \u{2014} in the line of Talos, the bronze sentinel: tireless, constant, honest to the last digit. Brand: TRAIN SMARTER. Register: laconic \u{2014} short sentences, verbs first, zero filler, zero flattery. Rules: never inflate, never invent logged numbers. If you don't know a number, say so.")
+        // The register itself lives in the communication style below (the
+        // default is Laconic) so a user's Encouraging choice is honored;
+        // the identity carries only who Morphe is and the honesty laws.
+        lines.append("You are Morphe, a Spartan training guardian inside the Morphe iOS app \u{2014} in the line of Talos, the bronze sentinel: tireless, constant, honest to the last digit. Brand: TRAIN SMARTER. Rules: never flatter, never inflate, never invent logged numbers. If you don't know a number, say so.")
+        lines.append(Self.loreGuardrail)
+        if let userText, Self.isLoreQuestion(userText.lowercased()) {
+            lines.append(Self.loreRecord)
+        }
         // The luxury register (audit 2026-09): quiet confidence, enforced.
-        lines.append("Never open with praise of the question or the user's plan. Never use exclamation marks. Never say 'Great question', 'Absolutely', or 'I'd be happy to'. Lead with the answer; reasoning follows only if it changes what they should do. Short sentences. No hedging adverbs.")
+        // "Lead with the answer" yields to the Encouraging style, whose
+        // register asks for one true acknowledgment first (audit 29).
+        let leadsWithAnswer = MorpheCommunicationStyle.spec(for: styleProfile.communicationStyle).id != "encouraging"
+        lines.append("Never open with praise of the question or the user's plan. Never use exclamation marks. Never say 'Great question', 'Absolutely', or 'I'd be happy to'. \(leadsWithAnswer ? "Lead with the answer; reasoning" : "Reasoning") follows only if it changes what they should do. Short sentences. No hedging adverbs.")
         // The chosen persona changes the register, never the honesty
         // (personalization phase 2).
         lines.append(MorpheCharacter.spec(for: styleProfile.characterID).register)
@@ -8757,7 +8873,9 @@ final class MorpheAppStore {
         }
         let placeholder = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "\u{2026}", timestamp: "Now")
         athleteAIAgentConversation.append(placeholder)
-        let system = intelligenceSystemPrompt(spoken: false)
+        let system = intelligenceSystemPrompt(
+            spoken: false,
+            userText: athleteAIAgentConversation.last(where: { $0.sender == .user })?.text)
         let turns = intelligenceTurns(from: athleteAIAgentConversation)
         aiReplyInFlight = true
         aiReplyTask = Task { [weak self] in
@@ -8848,7 +8966,7 @@ final class MorpheAppStore {
         athleteAIAgentConversation.append(userMessage)
         lastVoiceExchange = (heard: raw, answer: "Thinking\u{2026}")
         voiceExchangeClearTask?.cancel()
-        let system = intelligenceSystemPrompt(spoken: true)
+        let system = intelligenceSystemPrompt(spoken: true, userText: raw)
         let turns = intelligenceTurns(from: athleteAIAgentConversation)
         let epoch = intelligenceEpoch
         voiceStreamTask = Task { [weak self] in
@@ -9505,11 +9623,12 @@ final class MorpheAppStore {
     /// persist the profile.
     // MARK: Milestone unlocks (levels finally mean something)
 
-    /// Level each accent palette unlocks at. Gold (the brand default) plus
-    /// two others ship free; the rest are earned. Cosmetics ONLY — data,
-    /// analytics, and safety are never gated behind progression.
+    /// Level each accent palette unlocks at. Spartan Blue (the brand
+    /// default), legacy Gold, and two others ship free; the rest are
+    /// earned. Cosmetics ONLY — data, analytics, and safety are never
+    /// gated behind progression.
     static let paletteUnlockLevels: [AccentPalette: Int] = [
-        .gold: 1, .electricBlue: 1, .green: 1,
+        .spartan: 1, .gold: 1, .electricBlue: 1, .green: 1,
         .red: 3, .orange: 5, .purple: 8, .pink: 12
     ]
 
@@ -10291,6 +10410,18 @@ final class MorpheAppStore {
     /// The profile badge grid — computed from logs and state on every read,
     /// so a badge can never exist without the data that backs it. This
     /// replaced the seeded showcase badges, which were demo content.
+    static let bibasisExerciseName = "Bibasis"
+
+    /// Sum of logged reps for one exercise across every session, from the
+    /// raw per-set arrays (the only rep data that is not a display string).
+    static func lifetimeReps(of exerciseName: String, in logs: [WorkoutLog]) -> Int {
+        logs.reduce(0) { total, log in
+            total + log.exercises
+                .filter { $0.name == exerciseName }
+                .reduce(0) { $0 + ($1.repsPerSet ?? []).reduce(0, +) }
+        }
+    }
+
     var earnedBadges: [ProfileBadge] {
         var badges: [ProfileBadge] = []
         let logs = currentAthleteWorkoutLogs
@@ -10316,6 +10447,17 @@ final class MorpheAppStore {
                 title: "\(milestone)-Day Streak",
                 detail: "Best run \(best) days — schedule-aware, planned rest counted.",
                 icon: "flame.fill"))
+        }
+
+        // The Thousand (Pollux, Onomasticon 4.102): a Laconian girl's
+        // record at the bibasis. Lifetime reps, counted from raw per-set
+        // data only — a log without it contributes nothing.
+        let bibasisReps = Self.lifetimeReps(of: Self.bibasisExerciseName, in: logs)
+        if bibasisReps >= 1000 {
+            badges.append(ProfileBadge(
+                title: "The Thousand",
+                detail: "\(bibasisReps.formatted()) bibasis reps logged. The old Spartan record was a thousand.",
+                icon: "figure.jumprope"))
         }
 
         for programID in completedProgramIDs {
@@ -13655,13 +13797,30 @@ final class MorpheAppStore {
                 let unlockedNames = Self.paletteUnlockLevels
                     .filter { $0.value == nextLevel }
                     .keys.map(\.rawValue).sorted()
-                let levelDetail = unlockedNames.isEmpty
+                var levelDetail = unlockedNames.isEmpty
                     ? "Keep stacking the work."
                     : "\(unlockedNames.joined(separator: " + ")) accent unlocked — it's in Profile."
-                showCelebration(title: "Level \(nextLevel)", detail: levelDetail, symbol: "arrow.up.circle.fill")
+                // A rung of the agoge ladder outranks a bare number: the
+                // level that crosses into a new rank names it.
+                let rank = AgogeRank.rank(forLevel: nextLevel)
+                if rank.firstLevel == nextLevel, rank != .pais {
+                    levelDetail = "Rank: \(rank.title). \(rank.gloss)."
+                        + (unlockedNames.isEmpty ? "" : " \(unlockedNames.joined(separator: " + ")) accent unlocked.")
+                }
+                // Every XP source fires its own banner right after this
+                // returns ("+50 XP", "Quiz complete"), and the banner is
+                // last-writer-wins — the level-up was replaced before it
+                // ever rendered (audit 29, P1). Held here and shown once
+                // the caller's turn is done, so the level outranks it.
+                pendingLevelUp = (title: "Level \(nextLevel)", detail: levelDetail, symbol: "arrow.up.circle.fill")
             }
             Haptics.success()
+            if pendingLevelUp != nil {
+                Task { [weak self] in self?.flushPendingLevelUp() }
+            }
         } else {
+            // A refund in the same turn cancels the banner it un-earned.
+            pendingLevelUp = nil
             // Demote through level boundaries so un-checking refunds exactly
             // what was earned — the old clamp-at-zero let a level-up survive
             // the refund (free levels via boundary toggling).
@@ -13678,6 +13837,16 @@ final class MorpheAppStore {
             clientProfile.level.currentXP = max(clientProfile.level.currentXP - remaining, 0)
         }
         persistLocalProfile()
+    }
+
+    /// The newest level-up of this turn, waiting for the caller's own
+    /// banner to land first (see updateXP).
+    private(set) var pendingLevelUp: (title: String, detail: String, symbol: String)?
+
+    func flushPendingLevelUp() {
+        guard let moment = pendingLevelUp else { return }
+        pendingLevelUp = nil
+        showCelebration(title: moment.title, detail: moment.detail, symbol: moment.symbol)
     }
 
     private func levelNumber(from title: String) -> Int? {
@@ -14097,6 +14266,10 @@ final class MorpheAppStore {
                 return "The best learning move right now is to pair one lesson with one action. Pick a form tip or recovery basic, then use it in your next session today."
             }
         }
+
+        // The lore answers from the cited record — after every data and
+        // tab handler, so it only ever replaces the honest "I don't know".
+        if let lore = loreReply(to: lowercasedPrompt) { return lore }
 
         // ACCURACY over vibes: the old last resort was generic coach-tone
         // filler that pretended to answer anything. An honest assistant

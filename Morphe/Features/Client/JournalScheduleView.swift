@@ -503,10 +503,10 @@ struct AppointmentEditorSheet: View {
                                 }
                             }
                             .pickerStyle(.menu)
-                            .tint(MorpheTheme.accent)
+                            .tint(MorpheTheme.accentText)
 
                             DatePicker("Time", selection: $date, in: .now...)
-                                .tint(MorpheTheme.accent)
+                                .tint(MorpheTheme.accentText)
                                 .foregroundStyle(MorpheTheme.textPrimary)
 
                             Stepper("Duration: \(durationMinutes) min", value: $durationMinutes, in: 15...240, step: 15)

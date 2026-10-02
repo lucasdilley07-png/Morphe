@@ -817,7 +817,7 @@ private struct SoloVsBuddyProgressCard: View {
                                 x: .value("Week", point.week),
                                 y: .value("Sessions", point.soloSessions)
                             )
-                            .foregroundStyle(MorpheTheme.accent.opacity(0.9))
+                            .foregroundStyle(MorpheTheme.accentText)
                             .position(by: .value("Type", "Solo"))
 
                             BarMark(
@@ -1664,7 +1664,7 @@ private struct LogOldWorkoutSheet: View {
                                 }
 
                                 DatePicker("Day", selection: $day, in: dateRange, displayedComponents: .date)
-                                    .tint(MorpheTheme.accent)
+                                    .tint(MorpheTheme.accentText)
                                     .foregroundStyle(MorpheTheme.textPrimary)
 
                                 Stepper("Duration: \(durationMinutes) min", value: $durationMinutes, in: 5...240, step: 5)
@@ -2288,12 +2288,12 @@ struct WeeklyBoardCard: View {
         HStack(spacing: 8) {
             Text("\(rank)")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(isMe ? MorpheTheme.accent : MorpheTheme.textMuted)
+                .foregroundStyle(isMe ? MorpheTheme.accentText : MorpheTheme.textMuted)
                 .frame(width: 22, alignment: .leading)
 
             Text(isMe ? "\(entry.name) (you)" : entry.name)
                 .font(.caption.weight(isMe ? .bold : .semibold))
-                .foregroundStyle(isMe ? MorpheTheme.accent : MorpheTheme.textPrimary)
+                .foregroundStyle(isMe ? MorpheTheme.accentText : MorpheTheme.textPrimary)
                 .lineLimit(1)
 
             if entry.verified {
@@ -2451,7 +2451,7 @@ private struct ChallengesCard: View {
 
                 Text(challenge.isExpired ? "Ended" : "\(challenge.daysLeft)d left")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(challenge.isExpired ? MorpheTheme.textMuted : MorpheTheme.accent)
+                    .foregroundStyle(challenge.isExpired ? MorpheTheme.textMuted : MorpheTheme.accentText)
             }
 
             HStack(spacing: 8) {
@@ -2560,7 +2560,7 @@ private struct CreateChallengeSheet: View {
                     ForEach(ChallengeMetric.allCases) { option in
                         Button(option.label) { metric = option }
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(metric == option ? .white : MorpheTheme.textPrimary)
+                            .foregroundStyle(metric == option ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                             .background(
@@ -2579,7 +2579,7 @@ private struct CreateChallengeSheet: View {
                     ForEach(durationOptions, id: \.self) { option in
                         Button("\(option) days") { days = option }
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(days == option ? .black : MorpheTheme.textPrimary)
+                            .foregroundStyle(days == option ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
                             .background(

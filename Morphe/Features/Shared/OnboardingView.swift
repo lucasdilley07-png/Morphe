@@ -18,7 +18,8 @@ struct LaunchSequenceView: View {
         ZStack {
             // The launch beat lives on the app's own field (Lucas
             // 2026-09-24): white in light mode, near-black in dark. The
-            // gold M stays gold in both — it matches the app icon.
+            // helmet mark is identical in both — it matches the app icon,
+            // and the system splash (LaunchSplash) lands it in this spot.
             MorpheTheme.ink.ignoresSafeArea()
 
             VStack(spacing: 22) {
@@ -31,7 +32,10 @@ struct LaunchSequenceView: View {
                     .tracking(6)
                     .foregroundStyle(MorpheTheme.textPrimary)
 
-                Text(message.uppercased())
+                // A non-empty placeholder holds the line's height on the
+                // first frame, so the mark never shifts when the message
+                // lands (it sits where the system splash drew it).
+                Text((message.isEmpty ? " " : message).uppercased())
                     .font(MorpheTheme.microLabel(12))
                     .tracking(1.8)
                     .foregroundStyle(MorpheTheme.textSecondary)
@@ -60,7 +64,7 @@ struct LaunchSequenceView: View {
     }
 }
 
-/// The app-icon M with a gold arc orbiting it — Morphe's loading spinner.
+/// The glass-box helmet with a blue arc orbiting it — Morphe's loading spinner.
 struct MorpheLoadingMark: View {
     var size: CGFloat = 132
     @State private var isSpinning = false
@@ -96,93 +100,6 @@ struct MorpheLoadingMark: View {
         .frame(width: size * 1.5, height: size * 1.5)
         .onAppear { isSpinning = true }
         .accessibilityLabel("Morphe is loading")
-    }
-}
-
-/// The Morphe "M" mark — the same three rounded strokes as the app icon,
-/// scaled from the icon's 1024-point design space (Tools/make-app-icon.swift)
-/// so the launch screen and the home-screen icon are pixel-for-pixel kin.
-struct MorpheMarkShape: Shape {
-    // The Spartan helmet (rebrand 2026-10-01, docs/BRAND-SPARTAN.md): an
-    // original geometric corinthian silhouette in the app's own rounded-
-    // polygon language — low wedge crest, domed shell with nose guard,
-    // twin cheek guards; the eye band and mouth slits are negative space.
-    // Geometry verbatim from the icon generator's 1024 design space.
-    private static let crest: [CGPoint] = [
-        CGPoint(x: 432, y: 172), CGPoint(x: 512, y: 120), CGPoint(x: 592, y: 172),
-        CGPoint(x: 576, y: 206), CGPoint(x: 512, y: 186), CGPoint(x: 448, y: 206)
-    ]
-    private static let dome: [CGPoint] = [
-        CGPoint(x: 336, y: 460), CGPoint(x: 326, y: 352), CGPoint(x: 366, y: 258),
-        CGPoint(x: 452, y: 204), CGPoint(x: 512, y: 194), CGPoint(x: 572, y: 204),
-        CGPoint(x: 658, y: 258), CGPoint(x: 698, y: 352), CGPoint(x: 688, y: 460),
-        CGPoint(x: 548, y: 460), CGPoint(x: 548, y: 688), CGPoint(x: 512, y: 716),
-        CGPoint(x: 476, y: 688), CGPoint(x: 476, y: 460)
-    ]
-    private static let cheekLeft: [CGPoint] = [
-        CGPoint(x: 338, y: 492), CGPoint(x: 462, y: 492), CGPoint(x: 462, y: 640),
-        CGPoint(x: 430, y: 766), CGPoint(x: 396, y: 830), CGPoint(x: 344, y: 770),
-        CGPoint(x: 324, y: 640), CGPoint(x: 330, y: 548)
-    ]
-    private static let cheekRight: [CGPoint] = [
-        CGPoint(x: 686, y: 492), CGPoint(x: 562, y: 492), CGPoint(x: 562, y: 640),
-        CGPoint(x: 594, y: 766), CGPoint(x: 628, y: 830), CGPoint(x: 680, y: 770),
-        CGPoint(x: 700, y: 640), CGPoint(x: 694, y: 548)
-    ]
-    // The mark's bounds inside the 1024 icon canvas.
-    private static let designBounds = CGRect(x: 324, y: 120, width: 376, height: 710)
-
-    func path(in rect: CGRect) -> Path {
-        let design = Self.designBounds
-        let scale = min(rect.width / design.width, rect.height / design.height)
-        let offsetX = rect.minX + (rect.width - design.width * scale) / 2
-        let offsetY = rect.minY + (rect.height - design.height * scale) / 2
-
-        func mapped(_ point: CGPoint) -> CGPoint {
-            CGPoint(
-                x: offsetX + (point.x - design.minX) * scale,
-                y: offsetY + (point.y - design.minY) * scale
-            )
-        }
-
-        var path = Path()
-        addRoundedPolygon(Self.crest.map(mapped), radius: 12 * scale, to: &path)
-        addRoundedPolygon(Self.dome.map(mapped), radius: 20 * scale, to: &path)
-        addRoundedPolygon(Self.cheekLeft.map(mapped), radius: 16 * scale, to: &path)
-        addRoundedPolygon(Self.cheekRight.map(mapped), radius: 16 * scale, to: &path)
-        return path
-    }
-
-    /// Same corner-rounding as the icon generator: each vertex becomes a quad
-    /// curve between points backed off along the adjoining edges.
-    private func addRoundedPolygon(_ points: [CGPoint], radius: CGFloat, to path: inout Path) {
-        let count = points.count
-        guard count >= 3 else { return }
-        for index in 0..<count {
-            let previous = points[(index + count - 1) % count]
-            let current = points[index]
-            let next = points[(index + 1) % count]
-            let incoming = CGVector(dx: current.x - previous.x, dy: current.y - previous.y)
-            let outgoing = CGVector(dx: next.x - current.x, dy: next.y - current.y)
-            let incomingLength = max(hypot(incoming.dx, incoming.dy), 0.001)
-            let outgoingLength = max(hypot(outgoing.dx, outgoing.dy), 0.001)
-            let cornerRadius = min(radius, incomingLength / 2, outgoingLength / 2)
-            let entry = CGPoint(
-                x: current.x - incoming.dx / incomingLength * cornerRadius,
-                y: current.y - incoming.dy / incomingLength * cornerRadius
-            )
-            let exit = CGPoint(
-                x: current.x + outgoing.dx / outgoingLength * cornerRadius,
-                y: current.y + outgoing.dy / outgoingLength * cornerRadius
-            )
-            if index == 0 {
-                path.move(to: entry)
-            } else {
-                path.addLine(to: entry)
-            }
-            path.addQuadCurve(to: exit, control: current)
-        }
-        path.closeSubpath()
     }
 }
 
