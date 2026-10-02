@@ -173,29 +173,6 @@ struct SectionTitleView: View {
 /// Leaf host for the ring: the ONLY view whose body reads voiceLevel,
 /// so per-buffer level writes stop invalidating the root shell
 /// (audit 22, P1).
-/// The brand mark with its glow (Lucas 2026-09: every Morphe mark
-/// glows). A soft brandBlue bloom under the glass-box helmet — reusable
-/// anywhere the mark appears outside the ring (the ring builds its own
-/// richer glow stack).
-struct GlowingMorpheMark: View {
-    var size: CGFloat
-
-    var body: some View {
-        // The glass-box helmet renders full color (rebrand 2026-10-01) —
-        // a soft brand-blue halo behind it carries the glow on any canvas.
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
-                .fill(MorpheTheme.brandBlue.opacity(0.5))
-                .blur(radius: size * 0.2)
-            Image("LaunchMark")
-                .resizable()
-                .scaledToFit()
-                .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
-        }
-        .frame(width: size, height: size)
-    }
-}
-
 struct MorpheVoiceRingHost: View {
     @Environment(MorpheAppStore.self) private var store
 

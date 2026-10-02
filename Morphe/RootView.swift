@@ -767,18 +767,30 @@ private struct FloatingAIAgentButton: View {
         } label: {
             Group {
                 if isCompact {
-                    GlowingMorpheMark(size: 24)
-                        .frame(width: 50, height: 50)
-                        .background(buttonBackground.clipShape(Circle()))
+                    // The Morphe AI face (Lucas 2026-10-01): the glass
+                    // bubble with the helmet IS the button — no plate
+                    // behind it, just the lift that keeps it readable
+                    // over any scroll content.
+                    Image("MorpheAIMark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 56, height: 56)
+                        .shadow(color: .black.opacity(0.22), radius: 8, y: 4)
+                        .shadow(color: MorpheTheme.brandBlue.opacity(0.25), radius: 16, y: 0)
+                        .contentShape(Circle())
                 } else {
-                    HStack(spacing: 10) {
-                        GlowingMorpheMark(size: 20)
+                    HStack(spacing: 8) {
+                        Image("MorpheAIMark")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 28, height: 28)
                         Text(label)
                             .font(.subheadline.weight(.bold))
                     }
                     .foregroundStyle(MorpheTheme.textPrimary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
+                    .padding(.leading, 12)
+                    .padding(.trailing, 16)
+                    .padding(.vertical, 12)
                     .background(buttonBackground)
                 }
             }
