@@ -179,9 +179,12 @@ struct SectionTitleView: View {
 /// vanish); on the dark canvas it is the frosted helmet, lit from behind.
 struct MorpheHelmetMark: View {
     var glowRadius: CGFloat = 10
+    /// On the brand-blue field (the launch screen) the icy helmet is the
+    /// mark in both appearances — a blue silhouette would vanish there.
+    var onBrandField: Bool = false
 
     var body: some View {
-        if MorpheTheme.isLight {
+        if MorpheTheme.isLight && !onBrandField {
             Image("HelmetMark")
                 .renderingMode(.template)
                 .resizable()
@@ -191,7 +194,8 @@ struct MorpheHelmetMark: View {
             Image("HelmetMark")
                 .resizable()
                 .scaledToFit()
-                .shadow(color: MorpheTheme.brandBlue.opacity(0.7), radius: glowRadius)
+                .shadow(color: onBrandField ? Color.white.opacity(0.55) : MorpheTheme.brandBlue.opacity(0.7),
+                        radius: glowRadius)
         }
     }
 }

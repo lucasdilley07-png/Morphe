@@ -16,11 +16,11 @@ struct LaunchSequenceView: View {
 
     var body: some View {
         ZStack {
-            // The launch beat lives on the app's own field (Lucas
-            // 2026-09-24): white in light mode, near-black in dark. The
-            // helmet mark is identical in both — it matches the app icon,
-            // and the system splash (LaunchSplash) lands it in this spot.
-            MorpheTheme.ink.ignoresSafeArea()
+            // The launch beat lives on the brand field (Lucas 2026-10-02):
+            // the Spartan blue gradient in BOTH appearances, the icy
+            // helmet lit on it, white type. The system splash (solid
+            // brand blue + the same helmet) hands off into this.
+            MorpheTheme.brandField.ignoresSafeArea()
 
             VStack(spacing: 22) {
                 Spacer()
@@ -30,7 +30,7 @@ struct LaunchSequenceView: View {
                 Text("MORPHE")
                     .scaledFont(size: 28, weight: .bold, design: .monospaced)
                     .tracking(6)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .foregroundStyle(.white)
 
                 // A non-empty placeholder holds the line's height on the
                 // first frame, so the mark never shifts when the message
@@ -38,7 +38,7 @@ struct LaunchSequenceView: View {
                 Text((message.isEmpty ? " " : message).uppercased())
                     .font(MorpheTheme.microLabel(12))
                     .tracking(1.8)
-                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .foregroundStyle(.white.opacity(0.72))
                     .transition(.opacity)
 
                 Spacer()
@@ -73,16 +73,15 @@ struct MorpheLoadingMark: View {
         ZStack {
             // The helmet alone (Lucas 2026-10-02) — the same mark, in the
             // same spot, the system splash (LaunchSplash) just drew.
-            MorpheHelmetMark(glowRadius: size * 0.08)
+            MorpheHelmetMark(glowRadius: size * 0.08, onBrandField: true)
                 .frame(width: size, height: size)
 
-            // The spinner: a quarter-ish arc sweeping a ring around the helmet.
+            // The spinner: a white arc sweeping a ring around the helmet.
             Circle()
                 .trim(from: 0, to: 0.28)
                 .stroke(
                     AngularGradient(
-                        colors: [(MorpheTheme.isLight ? MorpheTheme.brandBlueText : MorpheTheme.launchMark).opacity(0),
-                                 MorpheTheme.isLight ? MorpheTheme.brandBlueText : MorpheTheme.launchMark],
+                        colors: [Color.white.opacity(0), Color.white.opacity(0.9)],
                         center: .center,
                         startAngle: .degrees(0),
                         endAngle: .degrees(100)

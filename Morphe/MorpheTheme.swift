@@ -176,6 +176,18 @@ enum MorpheTheme {
     /// of the user's accent palette — the launch beat must match the icon.
     static var launchMark: Color { brandBlue }
 
+    /// The brand field (Lucas 2026-10-02): the launch screen's blue, the
+    /// same in light and dark. Its midpoint is brandBlue, which is also
+    /// the solid color behind the system splash, so the handoff from
+    /// splash to launch beat reads as the gradient simply arriving.
+    static var brandField: LinearGradient {
+        LinearGradient(
+            colors: [Color(red: 0.200, green: 0.400, blue: 0.900),    // #3366E6
+                     brandBlue,
+                     Color(red: 0.118, green: 0.267, blue: 0.722)],   // #1E44B8
+            startPoint: .top, endPoint: .bottom)
+    }
+
     /// Accent for TEXT and glyphs on themed surfaces. The palette is tuned
     /// for the dark HUD; on the light field #FFD600 reads at ~1.4:1, so
     /// light mode darkens whatever accent is active until it's legible ink.
