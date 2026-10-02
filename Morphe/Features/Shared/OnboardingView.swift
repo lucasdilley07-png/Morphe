@@ -49,16 +49,13 @@ struct LaunchSequenceView: View {
             guard !hasStarted else { return }
             hasStarted = true
 
-            // Returning users open this app daily — they get one quick beat,
-            // not a ceremony. Only a first launch earns the full brand pause.
             message = launchMessage
-            // Returning users wait for NOTHING (speed audit S0-6): store
-            // init already finished before this view rendered, and the
-            // launch fetches are detached. Only the once-ever first run
-            // earns the brand pause.
-            if !store.hasCompletedOnboarding {
-                try? await Task.sleep(for: .milliseconds(650))
-            }
+            // One short brand beat on every cold open (Lucas 2026-10-02:
+            // the blue field and the helmet ARE the opening; a zero-wait
+            // launch showed nothing but the system splash flash). Store
+            // init is already done, so this is the only cost — under a
+            // second, cold starts only, never on a foreground return.
+            try? await Task.sleep(for: .milliseconds(900))
             store.finishLaunchSequence()
         }
     }
