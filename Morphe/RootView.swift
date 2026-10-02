@@ -774,16 +774,19 @@ private struct FloatingAIAgentButton: View {
                     Image("MorpheAIMark")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 56, height: 56)
-                        .shadow(color: .black.opacity(0.22), radius: 8, y: 4)
-                        .shadow(color: MorpheTheme.brandBlue.opacity(0.25), radius: 16, y: 0)
+                        // 30% smaller (Lucas 2026-10-02): 56 → 40pt. The
+                        // tap target stays a full 44pt around it.
+                        .frame(width: 40, height: 40)
+                        .shadow(color: .black.opacity(0.22), radius: 6, y: 3)
+                        .shadow(color: MorpheTheme.brandBlue.opacity(0.25), radius: 12, y: 0)
+                        .frame(width: 44, height: 44)
                         .contentShape(Circle())
                 } else {
                     HStack(spacing: 8) {
                         Image("MorpheAIMark")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 28, height: 28)
+                            .frame(width: 20, height: 20)
                         Text(label)
                             .font(.subheadline.weight(.bold))
                     }
