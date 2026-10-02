@@ -9,7 +9,7 @@ lifted above center by the height of the wordmark block below it, so the
 system splash hands off to the in-app launch beat without a jump.
 
 One appearance: the icy helmet with its white glow on the solid brand
-blue (LaunchBackground), matching MorpheHelmetMark on the brand field.
+blue (LaunchField), matching MorpheHelmetMark on the brand field.
 
 Run:  python3 Tools/make_launch_splash.py
 """
@@ -18,7 +18,7 @@ from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "Morphe/Assets.xcassets/HelmetMark.imageset/HelmetMark.png"
-OUT = ROOT / "Morphe/Assets.xcassets/LaunchSplash.imageset"
+OUT = ROOT / "Morphe/Assets.xcassets/LaunchHelmet.imageset"
 
 MARK_PT = 132          # MorpheLoadingMark(size: 132)
 LIFT_PT = 46           # half the wordmark + message block under the mark
@@ -46,7 +46,7 @@ for old in OUT.glob("*.png"):
     old.unlink()
 images = [{"idiom": "universal", "scale": "1x"}]
 for scale in (2, 3):
-    name = f"LaunchSplash@{scale}x.png"
+    name = f"LaunchHelmet@{scale}x.png"
     render(scale).save(OUT / name, optimize=True)
     images.append({"filename": name, "idiom": "universal", "scale": f"{scale}x"})
 import json

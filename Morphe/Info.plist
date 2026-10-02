@@ -16,9 +16,9 @@
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
-		<string>LaunchBackground</string>
+		<string>LaunchField</string>
 		<key>UIImageName</key>
-		<string>LaunchSplash</string>
+		<string>LaunchHelmet</string>
 		<key>UIImageRespectsSafeAreaInsets</key>
 		<true/>
 	</dict>

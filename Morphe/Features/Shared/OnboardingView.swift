@@ -72,7 +72,7 @@ struct MorpheLoadingMark: View {
     var body: some View {
         ZStack {
             // The helmet alone (Lucas 2026-10-02) — the same mark, in the
-            // same spot, the system splash (LaunchSplash) just drew.
+            // same spot, the system splash (LaunchHelmet) just drew.
             MorpheHelmetMark(glowRadius: size * 0.08, onBrandField: true)
                 .frame(width: size, height: size)
 
