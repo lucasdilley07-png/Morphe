@@ -286,10 +286,10 @@ p { margin: 0; }
 
 <section class="section record" aria-labelledby="record-h">
   <div class="wrap">
-    <p class="micro" id="record-h" style="color: var(--accent-ink)">From the record · today's line</p>
-    <blockquote id="saying">“If.”</blockquote>
-    <p class="who" id="saying-who">The Spartans. Philip of Macedon wrote: if I invade Laconia, I shall turn you out.</p>
-    <p class="src" id="saying-src">Plutarch, On Talkativeness 17</p>
+    <p class="micro" id="record-h" style="color: var(--accent-ink)">The standard</p>
+    <blockquote id="saying">“He who sweats more in training bleeds less in war.”</blockquote>
+    <p class="who" id="saying-who">The line Morphe trains by.</p>
+    <p class="src" id="saying-src">Proverb, often credited to Sparta · not in the ancient record</p>
   </div>
 </section>
 
@@ -413,26 +413,8 @@ p { margin: 0; }
 
 <script>
 (function () {
-  // The record: one line a day, the same rule the app uses — days since
-  // 2026-01-01 walk the eight verified sayings. Every line is verbatim from a
-  // public-domain Loeb translation; the source is the one the app shows.
-  var sayings = [
-    ["If.", "The Spartans. Philip of Macedon wrote: if I invade Laconia, I shall turn you out.", "Plutarch, On Talkativeness 17"],
-    ["Add a step to it.", "A Spartan mother. Her son complained that his sword was short.", "Plutarch, Sayings of Spartan Women 18"],
-    ["Won’t it be nice, then, if we shall have shade in which to fight them?", "Leonidas. Told the Persian arrows would hide the sun.", "Plutarch, Sayings of Spartans, Leonidas 6"],
-    ["These they put on for their own sake, but the shield for the common good of the whole line.", "Demaratus. Asked why losing a shield brought disgrace and losing a helmet did not.", "Plutarch, Sayings of Spartans, Demaratus 2"],
-    ["The Spartans did not ask ‘how many are the enemy,’ but ‘where are they?’", "Agis II. As Plutarch reports his saying.", "Plutarch, Sayings of Spartans, Agis son of Archidamus 3"],
-    ["At every step, my child, remember your valour.", "A Spartan mother. To her lame son, as she walked with him to the battlefield.", "Plutarch, Sayings of Spartan Women 13"],
-    ["A city will be well fortified which is surrounded by brave men and not by bricks.", "Lycurgus. Asked by letter about fortifying the city.", "Plutarch, Life of Lycurgus 19"],
-    ["Either this or upon this.", "A Spartan mother. Handing her son his shield.", "Plutarch, Sayings of Spartan Women 16"]
-  ];
-  var anchor = new Date(2026, 0, 1);
-  var today = new Date();
-  var days = Math.floor((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - anchor) / 86400000);
-  var s = sayings[((days % sayings.length) + sayings.length) % sayings.length];
-  document.getElementById("saying").textContent = "“" + s[0] + "”";
-  document.getElementById("saying-who").textContent = s[1];
-  document.getElementById("saying-src").textContent = s[2];
+  // The standard is a fixed line (Lucas 2026-10-03); the app keeps the
+  // daily rotation through the eight verified sayings in The Code.
 
   // Store. Placeholder line: names, prices and copy are stand-ins until the
   // real products exist. Nothing here makes a health claim.
