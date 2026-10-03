@@ -199,14 +199,15 @@ struct WorkoutView: View {
                         exerciseName: exercise.name,
                         pattern: .infer(exerciseName: exercise.name, libraryPattern: libraryPattern,
                                         muscleGroup: exercise.muscleGroup)
-                    ) { reps in
-                        // Log the camera-counted reps as a set on the active
-                        // exercise at the working weight (bodyweight if none).
+                    ) { reps, rpe in
+                        // Log the camera-counted reps (and the rated RPE) as
+                        // a set on the active exercise at the working weight
+                        // (bodyweight if none).
                         guard reps > 0 else { return }
                         let weight = store.lastSessionWeight(for: exercise.id)
                             ?? store.suggestedWorkingWeight(for: exercise)
                             ?? 0
-                        store.completeTrackedSet(reps: reps, weight: weight)
+                        store.completeTrackedSet(reps: reps, weight: weight, rpe: rpe)
                     }
                     // Explicit like every other cover — FormCheckView reads
                     // the store now (clip telemetry).

@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import Photos
 import Vision
 
 // MARK: - Form Check
@@ -1248,12 +1249,20 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     private(set) var liveCue: String?
     private(set) var lastRepGrade: FormRepGrade?
 
+    /// Front or back camera (Lucas 2026-10-03: the back camera lets a
+    /// partner film, or the phone sit across the room). The pose overlay
+    /// mirrors X only for the front camera, matching the preview.
+    private(set) var cameraPosition: AVCaptureDevice.Position = .front
+    @ObservationIgnored private var mirrorX = true
+
     // Form Clips: a movie output rides the same session. The clip lives in
-    // the temp directory and leaves through the SYSTEM share sheet — it
-    // never touches Morphe's backend, so no Storage bucket and no
-    // moderation surface exist to build (that's full S3, gated on Blaze).
+    // the temp directory until it is saved to the athlete's own photo
+    // library (Lucas 2026-10-03: recording saves to the camera roll) —
+    // it never touches Morphe's backend.
     private let movieOutput = AVCaptureMovieFileOutput()
     private(set) var isRecording = false
+    enum ClipSaveState { case idle, saving, saved, failed }
+    private(set) var clipSaveState: ClipSaveState = .idle
     private(set) var recordingSeconds = 0
     private(set) var finishedClipURL: URL?
     private var recordingTimer: Timer?
@@ -1308,8 +1317,7 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         sessionQueue.async { [weak self] in
             guard let self else { return }
 
-            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
-                  let input = try? AVCaptureDeviceInput(device: device),
+            guard let input = Self.cameraInput(position: self.cameraPosition),
                   self.session.canAddInput(input)
             else {
                 DispatchQueue.main.async { self.availability = .unavailable }
@@ -1335,9 +1343,10 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
                     if clipConnection.isVideoRotationAngleSupported(90) {
                         clipConnection.videoRotationAngle = 90
                     }
-                    // Mirror to match what the athlete sees in the preview.
+                    // Mirror to match what the athlete sees in the preview
+                    // (the front camera only).
                     if clipConnection.isVideoMirroringSupported {
-                        clipConnection.isVideoMirrored = true
+                        clipConnection.isVideoMirrored = self.cameraPosition == .front
                     }
                 }
             }
@@ -1348,6 +1357,52 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
             DispatchQueue.main.async {
                 self.availability = .authorized
                 self.isRunning = true
+            }
+        }
+    }
+
+    private static func cameraInput(position: AVCaptureDevice.Position) -> AVCaptureDeviceInput? {
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position) else { return nil }
+        return try? AVCaptureDeviceInput(device: device)
+    }
+
+    /// Front ↔ back. The build is re-read afterwards: distance and view
+    /// change with the camera.
+    func switchCamera() {
+        guard isConfigured, !isRecording else { return }
+        let next: AVCaptureDevice.Position = cameraPosition == .front ? .back : .front
+        sessionQueue.async { [weak self] in
+            guard let self, let input = Self.cameraInput(position: next) else { return }
+            self.session.beginConfiguration()
+            for old in self.session.inputs { self.session.removeInput(old) }
+            guard self.session.canAddInput(input) else {
+                // Put the old camera back rather than leave a black screen.
+                if let back = Self.cameraInput(position: self.cameraPosition), self.session.canAddInput(back) {
+                    self.session.addInput(back)
+                }
+                self.session.commitConfiguration()
+                return
+            }
+            self.session.addInput(input)
+            for output in self.session.outputs {
+                guard let connection = output.connection(with: .video) else { continue }
+                if connection.isVideoRotationAngleSupported(90) { connection.videoRotationAngle = 90 }
+                if output === self.movieOutput, connection.isVideoMirroringSupported {
+                    connection.isVideoMirrored = next == .front
+                }
+            }
+            self.session.commitConfiguration()
+            self.mirrorX = next == .front
+            self.videoQueue.async {
+                self.calibrator.reset()
+                self.detector.calibration = nil
+                self.detector.reset()
+                self.smoothed = [:]
+            }
+            DispatchQueue.main.async {
+                self.cameraPosition = next
+                self.calibrationState = .waiting
+                Haptics.impact(.light)
             }
         }
     }
@@ -1472,8 +1527,9 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         // Vision: normalized, bottom-left origin. Convert to top-left and
         // mirror X so the overlay lines up with the mirrored front preview.
         var raw: PoseJoints = [:]
+        let mirror = mirrorX
         for (name, point) in points where point.confidence > Self.confidenceFloor {
-            raw[name] = CGPoint(x: 1 - point.location.x, y: 1 - point.location.y)
+            raw[name] = CGPoint(x: mirror ? 1 - point.location.x : point.location.x, y: 1 - point.location.y)
         }
         guard raw.count >= 5 else { lostPerson(at: frameTime); return }
         framesWithoutPerson = 0
@@ -1585,7 +1641,34 @@ extension FormCheckSession: AVCaptureFileOutputRecordingDelegate {
             self.isRecording = false
             self.recordingTimer?.invalidate()
             self.recordingTimer = nil
-            self.finishedClipURL = error == nil ? outputFileURL : nil
+            self.finishedClipURL = nil
+            guard error == nil else { self.clipSaveState = .failed; return }
+            self.saveClipToPhotos(url: outputFileURL)
+        }
+    }
+
+    /// The clip goes to the athlete's own camera roll and nowhere else;
+    /// the temp file is removed either way.
+    private func saveClipToPhotos(url: URL) {
+        clipSaveState = .saving
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { [weak self] status in
+            guard status == .authorized || status == .limited else {
+                DispatchQueue.main.async { self?.clipSaveState = .failed; try? FileManager.default.removeItem(at: url) }
+                return
+            }
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
+            } completionHandler: { success, _ in
+                DispatchQueue.main.async {
+                    self?.clipSaveState = success ? .saved : .failed
+                    if success { Haptics.success() }
+                    try? FileManager.default.removeItem(at: url)
+                    // The label returns to "Record" after the confirmation.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        if self?.clipSaveState != .saving { self?.clipSaveState = .idle }
+                    }
+                }
+            }
         }
     }
 }
@@ -1782,9 +1865,9 @@ struct FormCheckView: View {
     @State private var flashGrade: FormRepGrade?
     @State private var flashToken = 0
 
-    /// Called with the rep count when the user submits the set, so the live
-    /// workout can log the camera-counted reps.
-    var onFinish: (Int) -> Void = { _ in }
+    /// Called with the rep count and the rated RPE when the user submits
+    /// the set, so the live workout can log the camera-counted reps.
+    var onFinish: (Int, Int?) -> Void = { _, _ in }
 
     private struct SummaryPayload: Identifiable {
         let id = UUID()
@@ -1795,7 +1878,7 @@ struct FormCheckView: View {
     }
 
     init(exerciseName: String = "Squat", pattern: FormMovementPattern = .squat,
-         onFinish: @escaping (Int) -> Void = { _ in }) {
+         onFinish: @escaping (Int, Int?) -> Void = { _, _ in }) {
         _session = State(initialValue: FormCheckSession(exerciseName: exerciseName, pattern: pattern))
         self.onFinish = onFinish
     }
@@ -1828,19 +1911,8 @@ struct FormCheckView: View {
             session.stopClipRecording()
             session.stop()
         }
-        // The finished clip hands straight to the system share sheet —
-        // Photos, Messages, IG, wherever. Dismissing cleans the temp file.
-        .sheet(isPresented: Binding(
-            get: { session.finishedClipURL != nil },
-            set: { if !$0 { session.clearFinishedClip() } }
-        )) {
-            if let url = session.finishedClipURL {
-                DataExportShareSheet(url: url) {
-                    store.noteFormClipCaptured()
-                    session.clearFinishedClip()
-                }
-                .presentationDetents([.medium, .large])
-            }
+        .onChange(of: session.clipSaveState) { _, state in
+            if state == .saved { store.noteFormClipCaptured() }
         }
         .sheet(item: $summaryPayload) { payload in
             FormSummarySheet(
@@ -1848,10 +1920,10 @@ struct FormCheckView: View {
                 bestEver: payload.bestEver,
                 exerciseName: payload.exerciseName,
                 metrics: payload.metrics
-            ) {
+            ) { rpe in
                 let reps = payload.summary.reps
                 summaryPayload = nil
-                onFinish(reps)
+                onFinish(reps, rpe)
                 dismiss()
             }
         }
@@ -1929,15 +2001,32 @@ struct FormCheckView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.headline).foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(RoundedRectangle(cornerRadius: MorpheTheme.radius).fill(.black.opacity(0.5)))
+            HStack(spacing: 8) {
+                // Front ↔ back camera.
+                Button {
+                    session.switchCamera()
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath.camera")
+                        .font(.headline).foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(.black.opacity(0.55)))
+                }
+                .disabled(session.isRecording)
+                .opacity(session.isRecording ? 0.5 : 1)
+                .accessibilityLabel(session.cameraPosition == .front ? "Switch to the back camera" : "Switch to the front camera")
+
+                // The way out: always here, always this size.
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.headline.weight(.bold)).foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(.black.opacity(0.55)))
+                        .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
+                }
+                .accessibilityLabel("Close Form Check")
             }
-            .accessibilityLabel("Close Form Check")
         }
     }
 
@@ -1947,6 +2036,16 @@ struct FormCheckView: View {
         case .waiting: return nil
         case .reading(let p): return "READING YOUR BUILD · \(Int(p * 100))%"
         case .ready(let view): return "LOCKED · \(view == .front ? "FRONT" : "SIDE") VIEW"
+        }
+    }
+
+    private var recordLabel: String {
+        if session.isRecording { return "0:\(String(format: "%02d", session.recordingSeconds))" }
+        switch session.clipSaveState {
+        case .idle: return "Record"
+        case .saving: return "Saving…"
+        case .saved: return "Saved"
+        case .failed: return "Not saved"
         }
     }
 
@@ -2023,9 +2122,9 @@ struct FormCheckView: View {
                     Button("Reset") { session.resetReps() }
                         .buttonStyle(SecondaryCTAButtonStyle())
 
-                    // Form Clips: record ≤30s with the overlay running,
-                    // then share through the SYSTEM sheet — the clip never
-                    // touches Morphe's backend.
+                    // Record ≤30s with the overlay running; the clip saves
+                    // straight to the camera roll and never touches
+                    // Morphe's backend.
                     Button {
                         session.toggleClipRecording()
                         Haptics.impact(session.isRecording ? .light : .medium)
@@ -2034,16 +2133,19 @@ struct FormCheckView: View {
                             Circle()
                                 .fill(session.isRecording ? MorpheTheme.danger : .white)
                                 .frame(width: 8, height: 8)
-                            Text(session.isRecording ? "0:\(String(format: "%02d", session.recordingSeconds))" : "Clip")
+                            Text(recordLabel)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
+                    .disabled(session.clipSaveState == .saving)
                     .accessibilityLabel(session.isRecording
                         ? "Stop recording, \(session.recordingSeconds) seconds"
-                        : "Record a form clip")
+                        : "Record a clip to your camera roll")
 
                     Button("Finish") {
                         let result = session.finishSet()
@@ -2093,10 +2195,20 @@ private struct FormSummarySheet: View {
     let bestEver: Double?
     var exerciseName: String = "Squat"
     var metrics: [FormRepMetrics] = []
-    let onClose: () -> Void
+    /// Done hands back the rated RPE (nil when the athlete skipped it).
+    let onClose: (Int?) -> Void
+    @State private var rpe: Int?
 
     private var spec: FormPatternSpec { summary.pattern.spec }
     private var bestLabel: String { spec.restsExtended ? "Deepest" : "Fullest" }
+
+    /// The set's overall form grade: the median of the per-rep grades.
+    private var setGrade: FormRepGrade? {
+        guard spec.countsReps, !metrics.isEmpty else { return nil }
+        let order: [FormRepGrade] = [.poor, .good, .great, .excellent]
+        let ranks = metrics.map { order.firstIndex(of: FormAnalyzer.grade($0)) ?? 0 }.sorted()
+        return order[ranks[ranks.count / 2]]
+    }
 
     #if DEBUG
     @State private var aiText: String?
@@ -2115,11 +2227,24 @@ private struct FormSummarySheet: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
-                    SectionTitleView(title: "Set Review", subtitle: "What the front camera measured this set.")
+                    SectionTitleView(title: "Set Review", subtitle: "What the camera measured this set.")
 
                     GlassCard {
                         VStack(alignment: .leading, spacing: 10) {
                             if spec.countsReps {
+                                if let grade = setGrade {
+                                    HStack(spacing: 10) {
+                                        Text("FORM")
+                                            .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                                            .foregroundStyle(MorpheTheme.textMuted)
+                                        Text(grade.rawValue.uppercased())
+                                            .font(MorpheTheme.microLabel(11)).tracking(1.6)
+                                            .foregroundStyle(.black)
+                                            .padding(.horizontal, 10).padding(.vertical, 6)
+                                            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(grade.color))
+                                        Spacer()
+                                    }
+                                }
                                 HStack(spacing: 8) {
                                     MetricPill(label: "Reps", value: "\(summary.reps)")
                                     MetricPill(label: "Avg \(spec.angleName)", value: summary.reps > 0 ? "\(Int(summary.avgPeakAngle))°" : "—")
@@ -2171,6 +2296,36 @@ private struct FormSummarySheet: View {
                         }
                     }
 
+                    // How hard was it? Rides into the logged set with the reps.
+                    if spec.countsReps, summary.reps > 0 {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("RPE")
+                                    .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                Text("How hard was that set? 6 is easy with reps left; 9 means one rep was left; 10 is all-out.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(5...10, id: \.self) { level in
+                                            Button("\(level)") {
+                                                rpe = rpe == level ? nil : level
+                                                Haptics.selection()
+                                            }
+                                            .buttonStyle(FilterChipStyle(isSelected: rpe == level, selectedColor: MorpheTheme.accent))
+                                            .accessibilityLabel("RPE \(level)\(rpe == level ? ", selected" : "")")
+                                        }
+                                    }
+                                }
+                                Text(rpe == nil ? "Optional — skip it and the set still logs." : "Logs with the set.")
+                                    .font(.caption2)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                        }
+                    }
+
                     #if DEBUG
                     if spec.countsReps { aiReviewSection }
                     #endif
@@ -2192,7 +2347,9 @@ private struct FormSummarySheet: View {
             .background(PremiumBackground())
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { onClose() }.foregroundStyle(MorpheTheme.textPrimary)
+                    Button(summary.reps > 0 ? "Log set" : "Done") { onClose(rpe) }
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
             }
         }
