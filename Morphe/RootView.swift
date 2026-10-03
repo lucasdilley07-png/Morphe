@@ -934,17 +934,11 @@ private struct MorpheAIAgentSheet: View {
                 .accessibilityLabel("New chat")
             }
             ToolbarItem(placement: .principal) {
-                HStack(spacing: 8) {
-                    MorpheFrequencyRing(
-                        level: store.aiReplyInFlight ? 0.55 : 0.15,
-                        speaking: false)
-                        .frame(width: 26, height: 26)
-                    Text("MORPHE")
-                        .font(MorpheTheme.microLabel(11))
-                        .tracking(2)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                }
-                    .font(.headline)
+                // The wordmark alone, centered (Lucas 2026-10-03): the
+                // helmet left the chat header; the AI bubble is the door.
+                Text("MORPHE")
+                    .font(MorpheTheme.microLabel(12))
+                    .tracking(2.4)
                     .foregroundStyle(MorpheTheme.textPrimary)
             }
             ToolbarItem(placement: .topBarTrailing) {
