@@ -1554,7 +1554,7 @@ struct ProfileView: View {
                             TermsGateView(readOnly: true)
                         }
 
-                    Link("Privacy Policy", destination: URL(string: "https://lucasdilley07-png.github.io/Morphe/")!)
+                    Link("Privacy Policy", destination: URL(string: "https://lucasdilley07-png.github.io/Morphe/privacy.html")!)
                         .foregroundStyle(MorpheTheme.accentText)
                         .frame(minHeight: 32)
 

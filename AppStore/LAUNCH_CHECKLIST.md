@@ -5,17 +5,17 @@ What's ready in this repo, and the exact steps that need your Apple/GitHub accou
 ## ✅ Done (in the repo)
 - `AppStore/metadata.md` — app name, subtitle, keywords, description, what's-new, and the honest App Privacy declaration (data IS collected: email, name, user id, health & fitness, user content).
 - `AppStore/screenshots/` — 4 screenshots at 1320×2868 (the App Store 6.9" iPhone size): Today, Train, Progress, Learn.
-- `PRIVACY_POLICY.md` and `docs/index.html` — the privacy policy (markdown + a ready-to-host web page).
+- `PRIVACY_POLICY.md` and `docs/privacy.html` — the privacy policy (markdown + a ready-to-host web page). `docs/index.html` is the marketing site (2026-10-03).
 - The app compiles cleanly in **Release** configuration (verified), so it's archive-ready.
 - `PrivacyInfo.xcprivacy` privacy manifest is bundled; a 1024px app icon (no alpha) is set.
 
 ## 1. Host the privacy policy → get a URL  (needs your GitHub, ~5 min)
 App Store Connect requires a public Privacy Policy URL.
-1. `PRIVACY_POLICY.md` is current (2026-07-26, no placeholders) — regenerate `docs/index.html`
+1. `PRIVACY_POLICY.md` is current (2026-07-26, no placeholders) — regenerate `docs/privacy.html`
    from it before hosting so the web copy matches.
 2. Create a GitHub repo and push this project.
 3. Repo → **Settings → Pages** → Source: **Deploy from a branch**, Branch: `main`, Folder: `/docs` → Save.
-4. After a minute your URL is `https://<your-username>.github.io/<repo>/` — use it as the Privacy Policy URL.
+4. After a minute your URL is `https://<your-username>.github.io/<repo>/privacy.html` — use it as the Privacy Policy URL (the root is the website).
    (Any static host or even a public Notion page works too.)
 
 ## 2. Apple Developer + signing  (needs your Apple ID, one-time)
