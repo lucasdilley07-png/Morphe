@@ -1112,8 +1112,10 @@ struct MorpheDayPopup: View {
         // greeting comes after the opening, not over it.
         if store.shouldShowDayPopup, store.launchSettled {
             ZStack {
-                // Dimmed scrim — tap to dismiss.
-                MorpheTheme.ink.opacity(0.88).ignoresSafeArea()
+                // Dimmed scrim — tap to dismiss. Black in both appearances
+                // (Lucas 2026-10-02): a popup darkens the page a little; it
+                // never whites it out, so the helmet stays white on it.
+                Color.black.opacity(0.5).ignoresSafeArea()
                     .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             store.dismissDayPopupForSession()

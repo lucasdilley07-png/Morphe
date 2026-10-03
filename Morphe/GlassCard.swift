@@ -174,29 +174,23 @@ struct SectionTitleView: View {
 /// so per-buffer level writes stop invalidating the root shell
 /// (audit 22, P1).
 /// The Spartan helmet on its own — Morphe's in-app face (Lucas
-/// 2026-10-02: the glass tile is the home-screen icon only). On the light
-/// field it is a brand-blue silhouette (an icy helmet on white would
-/// vanish); on the dark canvas it is the frosted helmet, lit from behind.
+/// 2026-10-02: the glass tile is the home-screen icon only). ALWAYS the
+/// frosted white helmet, lit from behind — never a blue silhouette. The
+/// surfaces it sits on darken under it instead (popup scrims, the ring's
+/// backing disc on a light field), so the helmet is the same in every
+/// appearance.
 struct MorpheHelmetMark: View {
     var glowRadius: CGFloat = 10
-    /// On the brand-blue field (the launch screen) the icy helmet is the
-    /// mark in both appearances — a blue silhouette would vanish there.
+    /// On the brand-blue field (the launch screen) the glow is white; on
+    /// the app's own surfaces it is brand blue.
     var onBrandField: Bool = false
 
     var body: some View {
-        if MorpheTheme.isLight && !onBrandField {
-            Image("HelmetMark")
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(MorpheTheme.brandBlue)
-        } else {
-            Image("HelmetMark")
-                .resizable()
-                .scaledToFit()
-                .shadow(color: onBrandField ? Color.white.opacity(0.55) : MorpheTheme.brandBlue.opacity(0.7),
-                        radius: glowRadius)
-        }
+        Image("HelmetMark")
+            .resizable()
+            .scaledToFit()
+            .shadow(color: onBrandField ? Color.white.opacity(0.55) : MorpheTheme.brandBlue.opacity(0.7),
+                    radius: glowRadius)
     }
 }
 
@@ -262,10 +256,22 @@ struct MorpheFrequencyRing: View {
             GeometryReader { proxy in
                 let side = min(proxy.size.width, proxy.size.height)
                 // The helmet alone at the ring's center (Lucas 2026-10-02:
-                // no glass tile when the app opens).
-                MorpheHelmetMark(glowRadius: side * 0.05)
-                    .frame(width: side * 0.42, height: side * 0.42)
-                    .frame(width: proxy.size.width, height: proxy.size.height)
+                // no glass tile when the app opens). On the light field a
+                // deep-blue glass disc sits behind it — the white helmet
+                // stays white; the ground under it darkens.
+                ZStack {
+                    if MorpheTheme.isLight {
+                        Circle()
+                            .fill(RadialGradient(
+                                colors: [Color(red: 0.10, green: 0.23, blue: 0.64),
+                                         Color(red: 0.04, green: 0.10, blue: 0.32)],
+                                center: .center, startRadius: 0, endRadius: side * 0.27))
+                            .frame(width: side * 0.54, height: side * 0.54)
+                    }
+                    MorpheHelmetMark(glowRadius: side * 0.05)
+                        .frame(width: side * 0.42, height: side * 0.42)
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height)
             }
         }
         .accessibilityHidden(true)
