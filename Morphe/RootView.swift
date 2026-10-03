@@ -361,13 +361,13 @@ struct RootView: View {
         .overlay {
             if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking
                 || store.heyMorphe.state == .thinking {
-                // Hey Morphe dims the stage (Lucas 2026-09; 50% since
-                // 2026-10-02 so the white helmet reads on the light field):
+                // Hey Morphe dims the stage (Lucas 2026-09; 60% since
+                // 2026-10-03 so the white helmet reads on the light field):
                 // the app recedes under the ring while the exchange is
                 // live. Black in both appearances — a dim, not a theme
                 // surface. Taps still pass through; the exchange is
                 // hands-free.
-                Color.black.opacity(0.5)
+                Color.black.opacity(0.6)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
                     .transition(.opacity)

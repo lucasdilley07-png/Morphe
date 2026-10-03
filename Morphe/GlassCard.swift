@@ -256,22 +256,12 @@ struct MorpheFrequencyRing: View {
             GeometryReader { proxy in
                 let side = min(proxy.size.width, proxy.size.height)
                 // The helmet alone at the ring's center (Lucas 2026-10-02:
-                // no glass tile when the app opens). On the light field a
-                // deep-blue glass disc sits behind it — the white helmet
-                // stays white; the ground under it darkens.
-                ZStack {
-                    if MorpheTheme.isLight {
-                        Circle()
-                            .fill(RadialGradient(
-                                colors: [Color(red: 0.10, green: 0.23, blue: 0.64),
-                                         Color(red: 0.04, green: 0.10, blue: 0.32)],
-                                center: .center, startRadius: 0, endRadius: side * 0.27))
-                            .frame(width: side * 0.54, height: side * 0.54)
-                    }
-                    MorpheHelmetMark(glowRadius: side * 0.05)
-                        .frame(width: side * 0.42, height: side * 0.42)
-                }
-                .frame(width: proxy.size.width, height: proxy.size.height)
+                // no glass tile when the app opens; 2026-10-03: no disc
+                // behind it in light mode either — only the ribbons and
+                // the helmet, over the popup's darkened page).
+                MorpheHelmetMark(glowRadius: side * 0.05)
+                    .frame(width: side * 0.42, height: side * 0.42)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
             }
         }
         .accessibilityHidden(true)
@@ -297,14 +287,14 @@ struct MorpheFrequencyRing: View {
             Gradient(colors: [glowTint.opacity(0.10 + level * 0.14), .clear]),
             center: center, startRadius: 0, endRadius: glowRadius))
 
-        // Light appearance flips the palette (audit 22, P1: white
-        // ribbons at 0.3 alpha on a white field were invisible) — deeper
-        // golds and near-black replace yellow-on-dark and white.
+        // Light appearance: blue and white ribbons (Lucas 2026-10-03), the
+        // same family as dark — the ring lives over a darkened page when a
+        // popup is up, so white reads there.
         let groups: [(waves: Double, direction: Double, tint: Color)] = MorpheTheme.isLight
             ? [
-                (3, 1, MorpheTheme.brandBlueText),
-                (4, -1, Color(red: 0.10, green: 0.22, blue: 0.56)),
-                (5, 1, Color.black.opacity(0.65))
+                (3, 1, MorpheTheme.brandBlue),
+                (4, -1, Color(red: 0.478, green: 0.635, blue: 1.0)),
+                (5, 1, Color.white.opacity(0.9))
             ]
             : [
                 (3, 1, MorpheTheme.brandBlue),
