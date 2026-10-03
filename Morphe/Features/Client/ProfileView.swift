@@ -806,7 +806,7 @@ struct ProfileView: View {
     /// Shared keyword strings (audit 15, P2: "auto" couldn't find "Auto
     /// rest timer"; the feed-identity rows were unfindable by their names).
     private static let makeItYoursKeywords =
-        "personalization character persona sound effects pack customize voice accent communication style delivery"
+        "personalization character persona sound effects pack customize voice accent communication style delivery guide tour replay tutorial walkthrough"
     private static let howYouTrainKeywords =
         "training days week injuries limits auto rest timer effort rpe rir weight unit kg lb pounds kilograms"
     private static let whoCanSeeYouKeywords =
@@ -990,6 +990,38 @@ struct ProfileView: View {
                     Text("How Morphe talks in chat and voice — delivery changes, the numbers never do.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    // The guide, on demand: the same eight-stop tour a new
+                    // account gets, every stop still optional.
+                    Button {
+                        store.replayGuide()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "map")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.accentText)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Replay the guide")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Text("The two-minute tour of Form Check, Morphe AI, Train Together and the rest.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Replay the guide")
+                    .accessibilityHint("Closes Profile and opens the tour")
                 }
             }
 

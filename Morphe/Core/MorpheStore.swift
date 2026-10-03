@@ -10637,6 +10637,18 @@ final class MorpheAppStore {
         }
     }
 
+    /// Profile → "Replay the guide" (Lucas 2026-10-03). The profile sheet
+    /// and the guide are both presented from the root, and two sheets
+    /// can't co-present — so the profile closes first and the guide rises
+    /// once it is gone.
+    func replayGuide() {
+        showClientProfile = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            self.showWelcomeExperience = true
+        }
+    }
+
     func dismissWelcomeExperience() {
         showWelcomeExperience = false
         // The welcome landed — the once-ever debt is settled (audit 13, P2).
