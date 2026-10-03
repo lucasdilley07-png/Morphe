@@ -191,9 +191,14 @@ struct WorkoutView: View {
             EmptyView().fullScreenCover(isPresented: $showFormCheck) {
                 // Match Form Check to the exercise the user is actually on.
                 if let exercise = store.activeWorkoutExercise {
+                    // The library's own movement pattern decides how the
+                    // camera reads the exercise (squat, hinge, press…).
+                    let libraryPattern = MorpheDemoContent.exerciseDatabase
+                        .first { $0.id == exercise.exerciseLibraryID }?.movementPattern
                     FormCheckView(
                         exerciseName: exercise.name,
-                        movement: .infer(exerciseName: exercise.name, muscleGroup: exercise.muscleGroup)
+                        pattern: .infer(exerciseName: exercise.name, libraryPattern: libraryPattern,
+                                        muscleGroup: exercise.muscleGroup)
                     ) { reps in
                         // Log the camera-counted reps as a set on the active
                         // exercise at the working weight (bodyweight if none).

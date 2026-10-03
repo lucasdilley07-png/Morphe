@@ -260,7 +260,11 @@ struct CaptureView: View {
                 if let exercise = store.activeWorkoutExercise, store.isWorkoutSessionActive {
                     FormCheckView(
                         exerciseName: exercise.name,
-                        movement: .infer(exerciseName: exercise.name, muscleGroup: exercise.muscleGroup)
+                        pattern: .infer(
+                            exerciseName: exercise.name,
+                            libraryPattern: MorpheDemoContent.exerciseDatabase
+                                .first { $0.id == exercise.exerciseLibraryID }?.movementPattern,
+                            muscleGroup: exercise.muscleGroup)
                     )
                     .environment(store)
                 } else {

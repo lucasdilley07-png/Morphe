@@ -3811,69 +3811,133 @@ final class CleanupRegressionTests: XCTestCase {
 /// Simulator.
 final class FormAnalyzerTests: XCTestCase {
 
-    private func rep(angle: CGFloat, valgus: CGFloat? = 1.0, descent: Double = 2.0) -> FormRepMetrics {
-        FormRepMetrics(minKneeAngle: angle, valgusRatio: valgus, descentSeconds: descent, ascentSeconds: 1.5)
+    private func rep(_ pattern: FormMovementPattern = .squat, peak: CGFloat, rest: CGFloat = 175,
+                     valgus: CGFloat? = 1.0, descent: Double = 2.0, lean: CGFloat? = nil,
+                     swing: CGFloat? = nil, hipLine: CGFloat? = nil, asym: CGFloat? = nil,
+                     knee: CGFloat? = nil, landing: CGFloat? = nil) -> FormRepMetrics {
+        FormRepMetrics(pattern: pattern, peakAngle: peak, restAngle: rest, descentSeconds: descent, ascentSeconds: 1.5,
+                       asymmetry: asym, valgusRatio: valgus, torsoLean: lean, torsoSwing: swing,
+                       hipLineDeviation: hipLine, secondaryAngle: knee, landingKneeAngle: landing)
     }
 
-    func testCleanSetPraisesDepthAndFlagsNothingElse() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88), count: 5), movement: .squat)
+    // MARK: Cues
+
+    func testCleanSquatSetPraisesDepthAndFlagsNothingElse() {
+        let s = FormAnalyzer.analyze(Array(repeating: rep(peak: 88), count: 5), pattern: .squat)
         XCTAssertEqual(s.reps, 5)
-        XCTAssertEqual(Int(s.bestMinKneeAngle), 88)
-        XCTAssertTrue(s.cues.contains { $0.category == .depth && $0.tone == .good })
+        XCTAssertEqual(Int(s.bestPeakAngle), 88)
+        XCTAssertTrue(s.cues.contains { $0.category == .range && $0.tone == .good })
         XCTAssertFalse(s.cues.contains { $0.category == .knees })
         XCTAssertFalse(s.cues.contains { $0.category == .tempo })
     }
 
     func testShallowRepsSuggestGoingLower() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 125), count: 5), movement: .squat)
-        XCTAssertTrue(s.cues.contains { $0.category == .depth && $0.tone == .suggestion })
+        let s = FormAnalyzer.analyze(Array(repeating: rep(peak: 125), count: 5), pattern: .squat)
+        XCTAssertTrue(s.cues.contains { $0.category == .range && $0.tone == .suggestion })
     }
 
     func testCavingKneesLeadTheCues() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, valgus: 0.8), count: 5), movement: .squat)
+        let s = FormAnalyzer.analyze(Array(repeating: rep(peak: 88, valgus: 0.8), count: 5), pattern: .squat)
         XCTAssertEqual(s.cues.first?.category, .knees, "the injury-relevant cue must lead")
     }
 
     func testFastDescentSuggestsControl() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, descent: 0.3), count: 5), movement: .squat)
+        let s = FormAnalyzer.analyze(Array(repeating: rep(peak: 88, descent: 0.3), count: 5), pattern: .squat)
         XCTAssertTrue(s.cues.contains { $0.category == .tempo })
     }
 
-    func testUnmeasuredValgusIsNeverFlagged() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 88, valgus: nil), count: 5), movement: .squat)
+    func testUnmeasuredSignalsAreNeverFlagged() {
+        let s = FormAnalyzer.analyze(Array(repeating: rep(peak: 88, valgus: nil), count: 5), pattern: .squat)
         XCTAssertFalse(s.cues.contains { $0.category == .knees }, "can't flag what the camera couldn't measure")
+        let p = FormAnalyzer.analyze(Array(repeating: rep(.push, peak: 90, valgus: nil), count: 5), pattern: .push)
+        XCTAssertFalse(p.cues.contains { $0.category == .hips })
+    }
+
+    func testASingleBadRepDoesNotTriggerACue() {
+        var set = Array(repeating: rep(peak: 88, valgus: 1.0), count: 5)
+        set[2].valgusRatio = 0.7
+        let s = FormAnalyzer.analyze(set, pattern: .squat)
+        XCTAssertFalse(s.cues.contains { $0.category == .knees }, "cues need a consistent signal, not one frame")
     }
 
     func testCuesCapAtThreeKneesFirst() {
-        let s = FormAnalyzer.analyze(Array(repeating: rep(angle: 125, valgus: 0.8, descent: 0.3), count: 5), movement: .squat)
+        let s = FormAnalyzer.analyze(Array(repeating: rep(peak: 125, valgus: 0.8, descent: 0.3, lean: 60), count: 5), pattern: .squat)
         XCTAssertLessThanOrEqual(s.cues.count, 3)
         XCTAssertEqual(s.cues.first?.category, .knees)
-        XCTAssertTrue(s.cues.contains { $0.category == .depth && $0.tone == .suggestion })
-        XCTAssertTrue(s.cues.contains { $0.category == .tempo })
+        XCTAssertTrue(s.cues.contains { $0.category == .back })
     }
 
     func testEmptySetHasNoCues() {
-        let s = FormAnalyzer.analyze([], movement: .squat)
+        let s = FormAnalyzer.analyze([], pattern: .squat)
         XCTAssertEqual(s.reps, 0)
         XCTAssertTrue(s.cues.isEmpty)
     }
 
-    func testLiveCueReflectsTheWorstIssue() {
-        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 88, valgus: 0.7), repNumber: 3, movement: .squat).contains("caved"))
-        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 130), repNumber: 2, movement: .squat).contains("above parallel"))
-        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 88), repNumber: 1, movement: .squat).contains("clean"))
+    func testPatternSpecificReads() {
+        // Hinge: knees bending hard means it became a squat.
+        let hinge = FormAnalyzer.analyze(Array(repeating: rep(.hinge, peak: 95, valgus: nil, knee: 100), count: 4), pattern: .hinge)
+        XCTAssertTrue(hinge.cues.contains { $0.category == .back && $0.message.contains("hips back") })
+        // Push: hips off the line lead.
+        let push = FormAnalyzer.analyze(Array(repeating: rep(.push, peak: 90, valgus: nil, hipLine: 25), count: 4), pattern: .push)
+        XCTAssertEqual(push.cues.first?.category, .hips)
+        // Press: an OPENING pattern — 170° is full, 140° is short.
+        let press = FormAnalyzer.analyze(Array(repeating: rep(.press, peak: 170, rest: 70, valgus: nil), count: 4), pattern: .press)
+        XCTAssertTrue(press.cues.contains { $0.category == .range && $0.tone == .good })
+        let shortPress = FormAnalyzer.analyze(Array(repeating: rep(.press, peak: 140, rest: 70, valgus: nil), count: 4), pattern: .press)
+        XCTAssertTrue(shortPress.cues.contains { $0.category == .range && $0.tone == .suggestion && $0.message.contains("lockout") })
+        // Curl: swinging the torso is the control cue.
+        let curl = FormAnalyzer.analyze(Array(repeating: rep(.curl, peak: 50, valgus: nil, swing: 20), count: 4), pattern: .curl)
+        XCTAssertTrue(curl.cues.contains { $0.category == .control })
+        // Jump: stiff landings.
+        let jump = FormAnalyzer.analyze(Array(repeating: rep(.jump, peak: 110, valgus: nil, landing: 165), count: 4), pattern: .jump)
+        XCTAssertTrue(jump.cues.contains { $0.category == .landing && $0.tone == .suggestion })
+        // Lockout: not standing all the way up between squats.
+        let lockout = FormAnalyzer.analyze(Array(repeating: rep(peak: 90, rest: 150), count: 4), pattern: .squat)
+        XCTAssertTrue(lockout.cues.contains { $0.category == .lockout })
     }
 
-    func testHistoryRoundTripAndDeepestBest() {
+    func testLiveCueReflectsTheWorstIssue() {
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(peak: 88, valgus: 0.7), repNumber: 3).contains("caved"))
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(peak: 130), repNumber: 2).contains("above parallel"))
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(peak: 88), repNumber: 1).contains("clean"))
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(.press, peak: 140, rest: 70, valgus: nil), repNumber: 1).contains("lockout"))
+        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(.push, peak: 90, valgus: nil, hipLine: 25), repNumber: 1).contains("hips"))
+    }
+
+    func testRepGrading() {
+        XCTAssertEqual(FormAnalyzer.grade(rep(peak: 88, valgus: 0.95, descent: 1.5)), .excellent)
+        XCTAssertEqual(FormAnalyzer.grade(rep(peak: 130, valgus: 0.70, descent: 0.3)), .poor)
+        XCTAssertTrue([.good, .great].contains(FormAnalyzer.grade(rep(peak: 105, valgus: 0.87, descent: 1.0))))
+        XCTAssertTrue([.great, .excellent].contains(FormAnalyzer.grade(rep(.push, peak: 88, valgus: nil, descent: 1.2, hipLine: 4))))
+        XCTAssertEqual(FormAnalyzer.grade(rep(.press, peak: 172, rest: 70, valgus: nil, lean: 5)), .great)
+    }
+
+    // MARK: Persistence
+
+    func testHistoryRoundTripAndBestPerPattern() {
         let store = FormCheckFilePersistence(directoryName: "MorpheTests-\(#function)")
         defer { store.clear() }
         XCTAssertTrue(store.load().isEmpty)
-        store.append(FormCheckResult(date: 1, exercise: "Squat", reps: 5, avgMinKneeAngle: 95, bestMinKneeAngle: 90, cues: ["a"]))
-        store.append(FormCheckResult(date: 2, exercise: "Squat", reps: 6, avgMinKneeAngle: 88, bestMinKneeAngle: 82, cues: []))
+        store.append(FormCheckResult(date: 1, exercise: "Squat", pattern: .squat, reps: 5, avgMinKneeAngle: 95, bestMinKneeAngle: 90, cues: ["a"]))
+        store.append(FormCheckResult(date: 2, exercise: "Squat", pattern: .squat, reps: 6, avgMinKneeAngle: 88, bestMinKneeAngle: 82, cues: []))
+        store.append(FormCheckResult(date: 3, exercise: "Overhead Press", pattern: .press, reps: 6, avgMinKneeAngle: 160, bestMinKneeAngle: 172, cues: []))
+        store.append(FormCheckResult(date: 4, exercise: "Plank", pattern: .hold, reps: 0, avgMinKneeAngle: 0, bestMinKneeAngle: 0, holdSeconds: 61, cues: []))
         let all = store.load()
-        XCTAssertEqual(all.count, 2)
-        XCTAssertEqual(all.first?.reps, 6, "newest first")
-        XCTAssertEqual(store.bestDepthAngle(), 82, "smallest angle = deepest rep")
+        XCTAssertEqual(all.count, 4)
+        XCTAssertEqual(all.first?.exercise, "Plank", "newest first")
+        XCTAssertEqual(store.bestPeakAngle(for: .squat), 82, "smallest angle = deepest squat")
+        XCTAssertEqual(store.bestPeakAngle(for: .press), 172, "largest angle = fullest press — never compared to squats")
+        XCTAssertEqual(store.bestHold(for: "Plank"), 61)
+    }
+
+    func testPrePatternHistoryDecodesAsSquat() throws {
+        let legacy = """
+        {"schemaVersion":1,"results":[{"id":"6B2C4B6A-1E2C-4E0A-9C1E-0000000000AA","date":1,"exercise":"Squat","reps":5,"avgMinKneeAngle":95,"bestMinKneeAngle":90,"cues":[]}]}
+        """
+        struct Wrapper: Decodable { var results: [FormCheckResult] }
+        let decoded = try JSONDecoder().decode(Wrapper.self, from: Data(legacy.utf8))
+        XCTAssertEqual(decoded.results.first?.pattern, FormMovementPattern.squat.rawValue)
+        XCTAssertEqual(decoded.results.first?.holdSeconds, 0)
     }
 
     func testEveryCatalogWorkoutResolvesToATemplate() {
@@ -3888,34 +3952,301 @@ final class FormAnalyzerTests: XCTestCase {
         XCTAssertEqual(resolved.count, catalog.count, "every catalog workout must resolve")
     }
 
-    func testMovementInference() {
-        XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Push-Up", muscleGroup: .chest), .pushup)
-        XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Overhead Press", muscleGroup: .shoulders), .pushup)
-        XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Chest Fly", muscleGroup: .chest), .pushup)
-        XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Back Squat", muscleGroup: .legs), .squat)
-        XCTAssertEqual(FormCheckMovement.infer(exerciseName: "Walking Lunge", muscleGroup: .legs), .squat)
+    // MARK: Movement library
+
+    func testPatternInferenceAcrossTheWholeLibrary() {
+        func pattern(_ id: String) -> FormMovementPattern {
+            let e = MorpheDemoContent.exerciseDatabase.first { $0.id == id }!
+            return .infer(exerciseName: e.name, libraryPattern: e.movementPattern, muscleGroup: e.muscleGroup)
+        }
+        XCTAssertEqual(pattern("barbell-back-squat"), .squat)
+        XCTAssertEqual(pattern("goblet-squat"), .squat)
+        XCTAssertEqual(pattern("dumbbell-thruster"), .squat)
+        XCTAssertEqual(pattern("romanian-deadlift"), .hinge)
+        XCTAssertEqual(pattern("kettlebell-swing"), .hinge)
+        XCTAssertEqual(pattern("bulgarian-split-squat"), .lunge)
+        XCTAssertEqual(pattern("walking-lunge"), .lunge)
+        XCTAssertEqual(pattern("step-up"), .lunge)
+        XCTAssertEqual(pattern("glute-bridge"), .bridge)
+        XCTAssertEqual(pattern("hip-thrust"), .bridge)
+        XCTAssertEqual(pattern("push-up"), .push)
+        XCTAssertEqual(pattern("barbell-bench-press"), .push)
+        XCTAssertEqual(pattern("dip"), .push)
+        XCTAssertEqual(pattern("overhead-press"), .press)
+        XCTAssertEqual(pattern("shoulder-press"), .press)
+        XCTAssertEqual(pattern("push-press"), .press)
+        XCTAssertEqual(pattern("pull-up"), .pull)
+        XCTAssertEqual(pattern("dumbbell-row"), .pull)
+        XCTAssertEqual(pattern("lat-pulldown"), .pull)
+        XCTAssertEqual(pattern("bicep-curl"), .curl)
+        XCTAssertEqual(pattern("hammer-curl"), .curl)
+        XCTAssertNotEqual(pattern("nordic-hamstring-curl"), .curl, "a hamstring curl is a knee movement")
+        XCTAssertEqual(pattern("tricep-pushdown"), .armExtension)
+        XCTAssertEqual(pattern("skullcrusher"), .armExtension)
+        XCTAssertEqual(pattern("lateral-raise"), .raise)
+        XCTAssertEqual(pattern("jump-squat"), .jump)
+        XCTAssertEqual(pattern("bibasis"), .jump)
+        XCTAssertEqual(pattern("burpee"), .jump)
+        XCTAssertEqual(pattern("plank"), .hold)
+        XCTAssertEqual(pattern("wall-sit"), .hold)
+        XCTAssertEqual(pattern("treadmill-walk"), .untracked)
+        XCTAssertEqual(pattern("farmer-carry"), .untracked)
+        XCTAssertEqual(pattern("standing-hamstring-stretch"), .untracked)
+        // Nothing in the library crashes the resolver, and every pattern has a spec.
+        for e in MorpheDemoContent.exerciseDatabase {
+            let p = FormMovementPattern.infer(exerciseName: e.name, libraryPattern: e.movementPattern, muscleGroup: e.muscleGroup)
+            XCTAssertNotNil(FormPatternSpec.table[p], "\(e.name) → \(p) has no spec")
+        }
+        for p in FormMovementPattern.allCases { XCTAssertEqual(p.spec.pattern, p) }
     }
 
-    func testRepGrading() {
-        // Deep, controlled, knees stacked -> excellent.
-        XCTAssertEqual(FormAnalyzer.grade(rep(angle: 88, valgus: 0.95, descent: 1.5), movement: .squat), .excellent)
-        // Shallow, caved, dropping fast -> poor.
-        XCTAssertEqual(FormAnalyzer.grade(rep(angle: 130, valgus: 0.70, descent: 0.3), movement: .squat), .poor)
-        // Solid but not perfect -> good/great.
-        XCTAssertTrue([.good, .great].contains(FormAnalyzer.grade(rep(angle: 100, valgus: 0.87, descent: 1.0), movement: .squat)))
-        // Push-up deep + controlled, valgus not measured -> great/excellent.
-        XCTAssertTrue([.great, .excellent].contains(FormAnalyzer.grade(rep(angle: 88, valgus: nil, descent: 1.2), movement: .pushup)))
+    // MARK: Synthetic motion through the detector
+
+    /// A standing athlete, facing the camera, whose knee angle is driven by
+    /// `knee` — the pose is built from the angle so the detector reads real
+    /// geometry, not a bare number. The feet stay planted and the hips DROP
+    /// as the knees bend (thigh and shin fold symmetrically), so the hip-drop
+    /// depth estimate and the 2D knee angle describe the same squat.
+    private func standingPose(knee: CGFloat, hipY standingHipY: CGFloat = 0.55, hipLift: CGFloat = 0) -> PoseJoints {
+        let rad = knee * .pi / 180
+        let thigh: CGFloat = 0.18
+        let half = (CGFloat.pi - rad) / 2
+        let kneeDrop = thigh * cos(half), kneeForward = thigh * sin(half)
+        let ankleY = standingHipY + 2 * thigh          // planted feet
+        let hipY = ankleY - 2 * kneeDrop - hipLift      // hips fall with the bend, rise in flight
+        func leg(_ x: CGFloat) -> (hip: CGPoint, knee: CGPoint, ankle: CGPoint) {
+            let hip = CGPoint(x: x, y: hipY)
+            let kneeP = CGPoint(x: x + kneeForward, y: hipY + kneeDrop)
+            let ankle = CGPoint(x: x, y: hipY + 2 * kneeDrop)
+            return (hip, kneeP, ankle)
+        }
+        let l = leg(0.44), r = leg(0.56)
+        return [
+            .neck: CGPoint(x: 0.5, y: hipY - 0.30), .root: CGPoint(x: 0.5, y: hipY),
+            .leftShoulder: CGPoint(x: 0.42, y: hipY - 0.28), .rightShoulder: CGPoint(x: 0.58, y: hipY - 0.28),
+            .leftElbow: CGPoint(x: 0.40, y: hipY - 0.14), .rightElbow: CGPoint(x: 0.60, y: hipY - 0.14),
+            .leftWrist: CGPoint(x: 0.40, y: hipY), .rightWrist: CGPoint(x: 0.60, y: hipY),
+            .leftHip: l.hip, .leftKnee: l.knee, .leftAnkle: l.ankle,
+            .rightHip: r.hip, .rightKnee: r.knee, .rightAnkle: r.ankle
+        ]
     }
 
-    func testPushupCuesUsePushLanguageAndSkipKnees() {
-        // Shallow push-ups; the valgus value must be ignored for this movement.
-        let m = Array(repeating: rep(angle: 130, valgus: 0.7), count: 5)
-        let s = FormAnalyzer.analyze(m, movement: .pushup)
-        XCTAssertFalse(s.cues.contains { $0.category == .knees }, "push-ups never get a knee cue")
-        let depth = s.cues.first { $0.category == .depth }
-        XCTAssertEqual(depth?.tone, .suggestion)
-        XCTAssertTrue(depth?.message.contains("lower") ?? false)
-        XCTAssertTrue(FormAnalyzer.liveCue(for: rep(angle: 130), repNumber: 1, movement: .pushup).contains("shallow"))
+    /// Smooth reps: rest → peak → rest, `seconds` each, at 30 fps.
+    private func drive(_ detector: inout RepDetector, from rest: CGFloat, to peak: CGFloat, reps: Int,
+                       seconds: Double = 2.0, pose: (CGFloat) -> PoseJoints) -> [FormRepMetrics] {
+        var out: [FormRepMetrics] = []
+        var t = 0.0
+        let dt = 1.0 / 30
+        for _ in 0..<reps {
+            let frames = Int(seconds / dt)
+            for i in 0..<frames {
+                let phase = Double(i) / Double(frames)             // 0 → 1
+                let s = CGFloat(0.5 - 0.5 * cos(phase * 2 * .pi))   // 0 → 1 → 0
+                let angle = rest + (peak - rest) * s
+                if let rep = detector.ingest(PoseFrame(joints: pose(angle), time: t)) { out.append(rep) }
+                t += dt
+            }
+        }
+        // Settle at rest so the last rep banks.
+        for _ in 0..<15 {
+            if let rep = detector.ingest(PoseFrame(joints: pose(rest), time: t)) { out.append(rep) }
+            t += dt
+        }
+        return out
+    }
+
+    func testFiveSquatsCountAsFive() {
+        var d = RepDetector(spec: FormMovementPattern.squat.spec)
+        let reps = drive(&d, from: 175, to: 85, reps: 5) { self.standingPose(knee: $0) }
+        XCTAssertEqual(reps.count, 5)
+        for r in reps {
+            XCTAssertLessThan(r.peakAngle, 95, "the turning point is the real bottom")
+            XCTAssertGreaterThan(r.restAngle, 165)
+            XCTAssertGreaterThan(r.descentSeconds, 0.5)
+            XCTAssertNil(r.valgusRatio, "knee tracking waits for a calibrated front view — never a guess")
+            XCTAssertNotNil(r.asymmetry)
+        }
+    }
+
+    func testJitterAndHalfRepsDoNotCount() {
+        var d = RepDetector(spec: FormMovementPattern.squat.spec)
+        // Standing still with a few degrees of noise.
+        var t = 0.0
+        for i in 0..<120 {
+            let noise = CGFloat((i % 3) - 1) * 4
+            XCTAssertNil(d.ingest(PoseFrame(joints: standingPose(knee: 172 + noise), time: t)))
+            t += 1.0 / 30
+        }
+        // A knee bend that never reaches the turn line is a false start.
+        let shallow = drive(&d, from: 175, to: 135, reps: 3) { self.standingPose(knee: $0) }
+        XCTAssertTrue(shallow.isEmpty, "a quarter bend is not a squat")
+        // A rep faster than the minimum duration is noise too.
+        let twitch = drive(&d, from: 175, to: 85, reps: 2, seconds: 0.3) { self.standingPose(knee: $0) }
+        XCTAssertTrue(twitch.isEmpty)
+    }
+
+    func testAnOpeningPatternCountsOnExtension() {
+        // Press: elbow rests bent (~70°) and opens to ~170°. The forearm is
+        // placed by rotating the upper-arm line through the interior angle,
+        // so the detector reads real geometry at exactly that angle.
+        func place(from a: CGPoint, pivot b: CGPoint, angle: CGFloat, length: CGFloat) -> CGPoint {
+            let ux = (a.x - b.x), uy = (a.y - b.y)
+            let mag = hypot(ux, uy)
+            let rad = angle * .pi / 180
+            let c = cos(rad), s = sin(rad)
+            // Rotate the unit vector b→a by the interior angle.
+            let rx = (ux * c - uy * s) / mag, ry = (ux * s + uy * c) / mag
+            return CGPoint(x: b.x + rx * length, y: b.y + ry * length)
+        }
+        func pressPose(elbow: CGFloat) -> PoseJoints {
+            func arm(_ sx: CGFloat, _ dir: CGFloat) -> (CGPoint, CGPoint, CGPoint) {
+                let shoulder = CGPoint(x: sx, y: 0.40)
+                let elbowP = CGPoint(x: sx + dir * 0.06, y: 0.46)
+                return (shoulder, elbowP, place(from: shoulder, pivot: elbowP, angle: dir > 0 ? -elbow : elbow, length: 0.14))
+            }
+            let l = arm(0.42, -1), r = arm(0.58, 1)
+            return [.neck: CGPoint(x: 0.5, y: 0.38), .root: CGPoint(x: 0.5, y: 0.68),
+                    .leftHip: CGPoint(x: 0.45, y: 0.68), .rightHip: CGPoint(x: 0.55, y: 0.68),
+                    .leftShoulder: l.0, .leftElbow: l.1, .leftWrist: l.2,
+                    .rightShoulder: r.0, .rightElbow: r.1, .rightWrist: r.2]
+        }
+        // Sanity: the built pose reads back the angle it was built from.
+        XCTAssertEqual(PoseMath.angle(pressPose(elbow: 120), .leftShoulder, .leftElbow, .leftWrist) ?? 0, 120, accuracy: 0.5)
+        XCTAssertEqual(PoseMath.angle(pressPose(elbow: 120), .rightShoulder, .rightElbow, .rightWrist) ?? 0, 120, accuracy: 0.5)
+        var d = RepDetector(spec: FormMovementPattern.press.spec)
+        let reps = drive(&d, from: 70, to: 172, reps: 4) { pressPose(elbow: $0) }
+        XCTAssertEqual(reps.count, 4)
+        XCTAssertTrue(reps.allSatisfy { $0.peakAngle > 160 }, "the peak of an opening pattern is the LARGEST angle")
+        XCTAssertTrue(reps.allSatisfy { FormMovementPattern.press.spec.isFull($0.peakAngle) })
+    }
+
+    func testCalibrationReadsTheBuildFromStillFramesAndTellsFrontFromSide() {
+        var cal = BodyCalibrator()
+        let still = standingPose(knee: 175)
+        for _ in 0..<(BodyCalibrator.framesNeeded - 1) { cal.ingest(still, posture: .standingFull) }
+        XCTAssertNil(cal.calibration, "needs the full run of still frames")
+        cal.ingest(still, posture: .standingFull)
+        let c = try! XCTUnwrap(cal.calibration)
+        XCTAssertEqual(c.viewAngle, .front)
+        XCTAssertGreaterThan(c.torsoLength, 0.2)
+        XCTAssertNotNil(c.legLength)
+        XCTAssertEqual(c.standingHipY ?? 0, 0.55, accuracy: 0.002)
+        // Movement resets the still run.
+        var moving = BodyCalibrator()
+        for i in 0..<30 { moving.ingest(standingPose(knee: 175, hipLift: CGFloat(i % 2) * 0.03), posture: .standingFull) }
+        XCTAssertNil(moving.calibration, "a moving athlete is not read")
+        // Side-on: the shoulders collapse toward each other.
+        XCTAssertEqual(BodyCalibration.viewAngle(shoulderWidth: 0.05, torsoLength: 0.3), .side)
+        XCTAssertEqual(BodyCalibration.viewAngle(shoulderWidth: 0.16, torsoLength: 0.3), .front)
+    }
+
+    func testFramingJudgesPostureNotJustHeight() {
+        let spec = FormMovementPattern.squat.spec
+        var full = standingPose(knee: 175)
+        XCTAssertEqual(FramingState.judge(full, posture: .standingFull, spec: spec), .good)
+        full[.leftAnkle] = nil; full[.rightAnkle] = nil
+        XCTAssertEqual(FramingState.judge(full, posture: .standingFull, spec: spec), .feetCut, "standing patterns need the feet")
+        XCTAssertEqual(FramingState.judge([:], posture: .standingFull, spec: spec), .noPerson)
+        // Upper-body patterns are framed on the shoulders and arms, not the feet.
+        var upper = standingPose(knee: 175)
+        upper[.leftAnkle] = nil; upper[.rightAnkle] = nil; upper[.leftKnee] = nil; upper[.rightKnee] = nil
+        XCTAssertEqual(FramingState.judge(upper, posture: .standingUpper, spec: FormMovementPattern.press.spec), .good)
+    }
+
+    func testFrontViewDepthIsReadFromTheHipDropAgainstTheAthletesLeg() {
+        // Calibrate on the standing pose, then squat: the detector should now
+        // read depth from the hip drop and still land on the same knee angle.
+        var cal = BodyCalibrator()
+        for _ in 0..<BodyCalibrator.framesNeeded { cal.ingest(standingPose(knee: 176), posture: .standingFull) }
+        let c = try! XCTUnwrap(cal.calibration)
+        XCTAssertEqual(c.viewAngle, .front)
+        let estimate = PoseMath.frontViewKneeAngle(standingPose(knee: 90), calibration: c) ?? 0
+        XCTAssertEqual(estimate, 90, accuracy: 6, "a hip dropped 29% of the leg is a parallel squat")
+        var d = RepDetector(spec: FormMovementPattern.squat.spec, calibration: c)
+        let reps = drive(&d, from: 176, to: 85, reps: 5) { self.standingPose(knee: $0) }
+        XCTAssertEqual(reps.count, 5)
+        for r in reps { XCTAssertEqual(r.peakAngle, 85, accuracy: 8) }
+        // Knee tracking stays measured from the front with both feet planted…
+        XCTAssertTrue(reps.allSatisfy { $0.valgusRatio != nil })
+        // …and the torso lean estimate is near upright for an upright pose.
+        XCTAssertLessThan(reps.compactMap(\.torsoLean).max() ?? 0, 20)
+    }
+
+    func testJumpsBankOnTheLandingNotOnTheKnee() {
+        var cal = BodyCalibrator()
+        for _ in 0..<BodyCalibrator.framesNeeded { cal.ingest(standingPose(knee: 176), posture: .standingFull) }
+        var d = RepDetector(spec: FormMovementPattern.jump.spec, calibration: cal.calibration)
+        var t = 0.0
+        let dt = 1.0 / 30
+        var banked: [FormRepMetrics] = []
+        func feed(_ pose: PoseJoints) { if let r = d.ingest(PoseFrame(joints: pose, time: t)) { banked.append(r) }; t += dt }
+        for _ in 0..<4 {
+            // Load: dip to ~125°, then extend fast…
+            for i in 0..<12 { feed(standingPose(knee: 176 - CGFloat(i) * 4.5)) }
+            for i in 0..<6 { feed(standingPose(knee: 122 + CGFloat(i) * 9)) }
+            // …fly with straight legs for ~0.4s, hips well above standing…
+            for _ in 0..<12 { feed(standingPose(knee: 176, hipLift: 0.08)) }
+            // …land and absorb.
+            for i in 0..<12 { feed(standingPose(knee: 176 - CGFloat(min(i, 6)) * 5)) }
+            for _ in 0..<10 { feed(standingPose(knee: 176)) }
+        }
+        XCTAssertEqual(banked.count, 4, "a straight-legged flight is still a jump")
+        for r in banked {
+            XCTAssertGreaterThan(r.airtimeSeconds ?? 0, 0.3)
+            XCTAssertLessThan(r.peakAngle, 135, "the loading dip is the rep's angle")
+            XCTAssertLessThan(r.landingKneeAngle ?? 180, 160, "the absorb-dip is read as the landing")
+        }
+        // A knee bend with no flight is not a jump.
+        var still = RepDetector(spec: FormMovementPattern.jump.spec, calibration: cal.calibration)
+        let bends = drive(&still, from: 176, to: 120, reps: 3) { self.standingPose(knee: $0) }
+        XCTAssertTrue(bends.isEmpty)
+    }
+
+    func testOneArmWorkCountsTheWorkingArm() {
+        // Alternating curls: the resting arm stays straight the whole time.
+        func curlPose(elbow: CGFloat) -> PoseJoints {
+            func place(from a: CGPoint, pivot b: CGPoint, angle: CGFloat, length: CGFloat) -> CGPoint {
+                let ux = (a.x - b.x), uy = (a.y - b.y), mag = hypot(ux, uy), rad = angle * .pi / 180
+                return CGPoint(x: b.x + (ux * cos(rad) - uy * sin(rad)) / mag * length,
+                               y: b.y + (ux * sin(rad) + uy * cos(rad)) / mag * length)
+            }
+            let ls = CGPoint(x: 0.42, y: 0.40), le = CGPoint(x: 0.41, y: 0.54)
+            let rs = CGPoint(x: 0.58, y: 0.40), re = CGPoint(x: 0.59, y: 0.54)
+            return [.neck: CGPoint(x: 0.5, y: 0.38), .root: CGPoint(x: 0.5, y: 0.68),
+                    .leftHip: CGPoint(x: 0.45, y: 0.68), .rightHip: CGPoint(x: 0.55, y: 0.68),
+                    .leftShoulder: ls, .leftElbow: le, .leftWrist: place(from: ls, pivot: le, angle: elbow, length: 0.13),
+                    .rightShoulder: rs, .rightElbow: re, .rightWrist: place(from: rs, pivot: re, angle: -176, length: 0.13)]
+        }
+        XCTAssertEqual(PoseMath.angle(curlPose(elbow: 60), .leftShoulder, .leftElbow, .leftWrist) ?? 0, 60, accuracy: 0.5)
+        var d = RepDetector(spec: FormMovementPattern.curl.spec)
+        let reps = drive(&d, from: 176, to: 50, reps: 4) { curlPose(elbow: $0) }
+        XCTAssertEqual(reps.count, 4, "the moving arm is the rep, not the mean of both")
+    }
+
+    func testStraightArmAndFixedElbowWorkIsNotCountedAsReps() {
+        func pattern(_ id: String) -> FormMovementPattern {
+            let e = MorpheDemoContent.exerciseDatabase.first { $0.id == id }!
+            return .infer(exerciseName: e.name, libraryPattern: e.movementPattern, muscleGroup: e.muscleGroup)
+        }
+        XCTAssertEqual(pattern("band-pull-apart"), .untracked)
+        XCTAssertEqual(pattern("straight-arm-pulldown"), .untracked)
+        XCTAssertEqual(pattern("dumbbell-chest-fly"), .untracked)
+        XCTAssertEqual(pattern("rear-delt-fly"), .untracked)
+        XCTAssertEqual(pattern("hanging-knee-raise"), .untracked)
+        XCTAssertEqual(pattern("incline-push-up"), .push, "an incline PUSH-UP is a push-up")
+        XCTAssertEqual(pattern("incline-dumbbell-press"), .press)
+        XCTAssertEqual(pattern("wall-ball-shot"), .untracked)
+        XCTAssertEqual(pattern("pallof-press"), .untracked)
+        XCTAssertEqual(pattern("boxer-slip-and-roll"), .untracked)
+    }
+
+    func testPoseMathReadsAnglesAndAlignment() {
+        let straight = PoseMath.angle(CGPoint(x: 0, y: 0), CGPoint(x: 0, y: 1), CGPoint(x: 0, y: 2))
+        XCTAssertEqual(straight ?? 0, 180, accuracy: 0.01)
+        let right = PoseMath.angle(CGPoint(x: 0, y: 0), CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 1))
+        XCTAssertEqual(right ?? 0, 90, accuracy: 0.01)
+        XCTAssertEqual(PoseMath.torsoLean(standingPose(knee: 175)) ?? 99, 0, accuracy: 0.01, "upright athlete")
+        XCTAssertEqual(PoseMath.kneeSpreadRatio(standingPose(knee: 175)) ?? 0, 1, accuracy: 0.01, "knees over ankles")
     }
 }
 
