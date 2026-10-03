@@ -5198,9 +5198,19 @@ final class MorpheAppStore {
         )
     }
 
+    /// True once the launch beat has fully faded out — the welcome popup
+    /// waits for this (Lucas 2026-10-02: it used to mount under the
+    /// loading screen and be there the instant it cleared).
+    private(set) var launchSettled = false
+
     func finishLaunchSequence() {
         withAnimation(.easeInOut(duration: 0.3)) {
             isShowingLaunchSequence = false
+        }
+        Task { [weak self] in
+            // The 0.3s fade, then a breath on the page before the greeting.
+            try? await Task.sleep(for: .milliseconds(650))
+            self?.launchSettled = true
         }
         // A profile lives on this device: its palette is settled from here.
         if hasCompletedOnboarding { settleRebrandMigration() }

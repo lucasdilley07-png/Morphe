@@ -1108,7 +1108,9 @@ struct MorpheDayPopup: View {
 
     var body: some View {
         let _ = store.morpheAskRefresh
-        if store.shouldShowDayPopup {
+        // Never during or straight out of the loading screen — the
+        // greeting comes after the opening, not over it.
+        if store.shouldShowDayPopup, store.launchSettled {
             ZStack {
                 // Dimmed scrim — tap to dismiss.
                 MorpheTheme.ink.opacity(0.88).ignoresSafeArea()

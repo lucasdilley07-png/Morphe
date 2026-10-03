@@ -53,9 +53,9 @@ struct LaunchSequenceView: View {
             // One short brand beat on every cold open (Lucas 2026-10-02:
             // the blue field and the helmet ARE the opening; a zero-wait
             // launch showed nothing but the system splash flash). Store
-            // init is already done, so this is the only cost — under a
-            // second, cold starts only, never on a foreground return.
-            try? await Task.sleep(for: .milliseconds(900))
+            // init is already done, so this is the only cost — 0.6s, cold
+            // starts only, never on a foreground return.
+            try? await Task.sleep(for: .milliseconds(600))
             store.finishLaunchSequence()
         }
     }
