@@ -240,6 +240,10 @@ struct RootView: View {
         }
         .sheet(isPresented: $store.showClientProfile, onDismiss: {
             store.closeClientProfile()
+            // "Replay the guide" closes the profile and raises the tour
+            // here, where the dismissal is real — ahead of the other
+            // queued opens, which keep waiting (audit 30).
+            if store.consumePendingGuideReplay() { return }
             // "See your history, records, and charts" queued a progress
             // open — two sheets can't co-present, so it raises here.
             store.consumePendingProgressOpen()
@@ -336,10 +340,18 @@ struct RootView: View {
             .background(PremiumBackground())
             .preferredColorScheme(store.selectedAppearance)
         }
-        .sheet(isPresented: $store.showWelcomeExperience) {
+        .sheet(isPresented: Binding(
+            // Never over the launch beat (audit 30): a welcome debt carried
+            // across a relaunch waits for the field to clear.
+            get: { store.showWelcomeExperience && store.launchSettled },
+            set: { if !$0 { store.dismissWelcomeExperience() } }
+        ), onDismiss: {
+            store.consumePendingTourExit()
+        }) {
             WelcomeExperienceView()
                 .environment(store)
                 .preferredColorScheme(store.selectedAppearance)
+                .presentationCornerRadius(28)
         }
         .sessionWorkGateDialog()
         .alert("Save more workouts to switch", isPresented: $store.showSwitchNeedsSavedWorkouts) {
@@ -492,7 +504,7 @@ private struct PartnerSessionPostSheet: View {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack(alignment: .top, spacing: 12) {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("🔥 \(store.clientProfile.name)")
+                                Text(store.clientProfile.name)
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(MorpheTheme.textPrimary)
                                 Text("with \(draft.partnerAvatar) \(draft.partnerName)")
@@ -3226,6 +3238,7 @@ private struct SearchResultRow: View {
 private struct WelcomeExperienceView: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var page: Int
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var bioDraft = ""
@@ -3261,7 +3274,7 @@ private struct WelcomeExperienceView: View {
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut(duration: 0.25), value: page)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: page)
 
                 footer
             }
@@ -3306,15 +3319,16 @@ private struct WelcomeExperienceView: View {
                     .frame(width: 72, height: 72)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
+                    .accessibilityHidden(true)
                 kicker("Welcome")
                 title("Welcome to Morphe, \(store.clientProfile.name).")
-                body("Two minutes, eight stops, every one of them optional. Skip anything; nothing here is required.")
+                body("Two minutes, nine stops, every one of them optional. Skip anything; nothing here is required.")
                 GlassCard(.quiet) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        rule("01", "Real scores only", "Every stat comes from sets you logged.")
-                        rule("02", "No ads. No trackers.", "Your numbers are yours.")
-                        rule("03", "Safety stays free", "Your data, your export, always.")
-                        rule("04", "Nothing fake", "If Morphe shows it, you did it.")
+                    VStack(alignment: .leading, spacing: 12) {
+                        rule("Real scores only", "Every stat comes from sets you logged.")
+                        rule("No ads. No trackers.", "Your numbers are yours.")
+                        rule("Safety stays free", "Your data, your export, always.")
+                        rule("Nothing fake", "If Morphe shows it, you did it.")
                     }
                 }
             }
@@ -3322,7 +3336,7 @@ private struct WelcomeExperienceView: View {
             VStack(alignment: .leading, spacing: 16) {
                 kicker("Profile")
                 title("Put a face on it.")
-                body("A photo and one line about your training. Your training partners and your coach see this; nobody else does.")
+                body("A photo and one line about your training. It lives on your profile and in your backup. Nobody else sees it yet.")
                 GlassCard {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack(spacing: 14) {
@@ -3356,6 +3370,10 @@ private struct WelcomeExperienceView: View {
                         TextField("One line about your training…", text: $bioDraft, axis: .vertical)
                             .textFieldStyle(MorpheFieldStyle())
                             .lineLimit(2...4)
+                            .onChange(of: bioDraft) { _, value in
+                                // The store caps at 220; the field says so instead of silently cutting.
+                                if value.count > 220 { bioDraft = String(value.prefix(220)) }
+                            }
                         HStack {
                             Text("\(bioDraft.count)/220")
                                 .font(.caption2)
@@ -3370,7 +3388,7 @@ private struct WelcomeExperienceView: View {
             VStack(alignment: .leading, spacing: 16) {
                 kicker("Train")
                 title("Your first workout is ready.")
-                body("Today holds \(store.currentWorkout.name). Open Train to run it set by set, or browse Discover for 150 ready workouts and your own builder.")
+                body("Today holds \(store.currentWorkout.name). Open Train to run it set by set, or browse Discover for 190+ ready workouts and your own builder.")
                 GlassCard {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(store.currentWorkout.name)
@@ -3383,7 +3401,7 @@ private struct WelcomeExperienceView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Button("Browse Discover instead") { leave { store.selectedClientTab = .discover } }
+                Button("Browse Discover instead") { leave(.discover) }
                     .buttonStyle(SecondaryCTAButtonStyle())
             }
         case .partner:
@@ -3409,13 +3427,14 @@ private struct WelcomeExperienceView: View {
                     .scaledToFit()
                     .frame(width: 64, height: 64)
                     .shadow(color: MorpheTheme.brandBlue.opacity(0.25), radius: 12)
+                    .accessibilityHidden(true)
                 kicker("Morphe AI")
                 title("Talk to it. Out loud.")
-                body("Say \u{201C}Hey Morphe\u{201D} with the app open, or tap the bubble at the bottom right. Ask what's next, log a set by voice, ask why today's plan changed. It answers from your own logs, in a laconic register, and never invents a number.")
+                body("Tap the bubble at the bottom right, or turn on Hey Morphe in Profile and say it with the app open. Ask what's next, log a set by voice, ask about your readiness. It answers from your own logs, in a laconic register, and never invents a number.")
                 GlassCard(.quiet) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        TourExchange(you: "Hey Morphe, log 3 by 10 at 135.", morphe: "Logged. Set 2 of 4. Rest 90 seconds.")
-                        TourExchange(you: "Why is today lighter?", morphe: "You slept five hours. Quality day, not a max day.")
+                    VStack(alignment: .leading, spacing: 12) {
+                        TourExchange(you: "Log 3 by 10 at 135.", morphe: "Logged 3×10 at 135 lb on Bench Press. It's in the console.")
+                        TourExchange(you: "How's my readiness?", morphe: "Recovery is low. Keep today light and protect tomorrow.")
                     }
                 }
             }
@@ -3424,9 +3443,9 @@ private struct WelcomeExperienceView: View {
                 TourCameraMock()
                 kicker("Form Check")
                 title("The camera counts your reps.")
-                body("Prop the phone up, step into the green frame, and Morphe reads your build, counts every rep across twelve movement patterns, and tells you what it measured: depth, tempo, symmetry, knees. Video never leaves your phone.")
+                body("Prop the phone up, step into the green frame, and Morphe reads your build, counts reps across eleven movement patterns, times holds, and tells you what it measured: range, tempo, symmetry, knees. Video never leaves your phone.")
                 GlassCard(.quiet) {
-                    rule("→", "Where", "Train → the camera button next to the exercise you're on.")
+                    rule("Where", "Train → the camera button next to the exercise you're on.")
                 }
             }
         case .together:
@@ -3436,8 +3455,9 @@ private struct WelcomeExperienceView: View {
                 body("Start a live session and a training partner runs the same workout with you in real time, set for set. Weekly boards, code-joinable challenges, and one-tap Respect on a partner's week. Real scores only, opt-in always.")
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 8) {
-                        rule("A", "Live sessions", "Network → Train Together → share the code.")
-                        rule("B", "The board", "Network → Board, computed from logged sets, nothing else.")
+                        rule("Live sessions", "Train → Train Together → share the code.")
+                        rule("The board", "Network → Board, computed from logged sets, nothing else.")
+                        rule("Challenges", "Profile → Progress → Challenges.")
                     }
                 }
             }
@@ -3445,11 +3465,11 @@ private struct WelcomeExperienceView: View {
             VStack(alignment: .leading, spacing: 16) {
                 kicker("Progress")
                 title("A score you earned.")
-                body("Streaks with honest outs, PRs from real logged sets, trends from your own history, and levels on Sparta's own ladder: Pais, Paidiskos, Hēbōn, Equal. Each day a quick check-in reads sleep, energy, and soreness, and Morphe adjusts the day around it.")
+                body("Streaks with honest outs, PRs from real logged sets, trends from your own history, and levels on Sparta's own ladder: Pais, Paidiskos, Hēbōn, Equal. A quick daily check-in reads sleep, energy, soreness and mood, and Morphe adjusts the day around it.")
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 8) {
-                        rule("A", "Daily check-in", "Today → the greeting asks; answer in one tap.")
-                        rule("B", "The Code", "Learn → the record Morphe stands on, every line with its source.")
+                        rule("Daily check-in", "Today → Check In: sleep, energy, soreness, mood.")
+                        rule("The Code", "Learn → the record Morphe stands on, every line with its source.")
                     }
                 }
             }
@@ -3471,7 +3491,7 @@ private struct WelcomeExperienceView: View {
                     Capsule()
                         .fill(p == current ? MorpheTheme.accent : MorpheTheme.stroke)
                         .frame(width: p == current ? 20 : 6, height: 6)
-                        .animation(.easeInOut(duration: 0.2), value: page)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: page)
                 }
             }
             .accessibilityElement(children: .ignore)
@@ -3520,11 +3540,11 @@ private struct WelcomeExperienceView: View {
             if !clean.isEmpty, clean != store.profileCustomBio { store.updateProfileBio(clean) }
             advance()
         case .workout:
-            leave { store.selectedClientTab = .train }
+            leave(.train)
         case .partner:
-            leave { store.openCommunity(.forYou) }
+            leave(.community)
         case .ai:
-            leave { store.openAIAgent() }
+            leave(.ai)
         case .done:
             finish()
         }
@@ -3535,10 +3555,11 @@ private struct WelcomeExperienceView: View {
         page += 1
     }
 
-    /// Leave the tour INTO the thing it just introduced.
-    private func leave(_ go: @escaping () -> Void) {
+    /// Leave the tour INTO the thing it just introduced: the exit is
+    /// queued on the store and fired by the sheet's onDismiss.
+    private func leave(_ exit: MorpheAppStore.TourExit) {
+        store.pendingTourExit = exit
         finish()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { go() }
     }
 
     private func finish() {
@@ -3550,8 +3571,8 @@ private struct WelcomeExperienceView: View {
 
     private func kicker(_ text: String) -> some View {
         Text(text.uppercased())
-            .font(MorpheTheme.microLabel(10))
-            .tracking(1.6)
+            .font(MorpheTheme.microLabel())
+            .tracking(1.4)
             .foregroundStyle(MorpheTheme.accentText)
     }
 
@@ -3569,23 +3590,17 @@ private struct WelcomeExperienceView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func rule(_ index: String, _ heading: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(index)
-                .font(MorpheTheme.microLabel(11))
-                .tracking(1.2)
-                .foregroundStyle(MorpheTheme.accentText)
-                .frame(width: 22, alignment: .leading)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(heading)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+    private func rule(_ heading: String, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(heading)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textPrimary)
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -3629,9 +3644,9 @@ private struct TourCameraMock: View {
                 Spacer()
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("7").font(.system(size: 28, weight: .bold, design: .monospaced)).foregroundStyle(.white)
-                    Text("REPS").font(MorpheTheme.microLabel(10)).tracking(1.6).foregroundStyle(.white.opacity(0.7))
+                    Text("REPS").font(MorpheTheme.microLabel()).tracking(1.4).foregroundStyle(.white.opacity(0.7))
                     Spacer()
-                    Text("FRAMED").font(MorpheTheme.microLabel(9)).tracking(1.4)
+                    Text("FRAMED").font(MorpheTheme.microLabel()).tracking(1.4)
                         .foregroundStyle(.black)
                         .padding(.horizontal, 8).padding(.vertical, 5)
                         .background(RoundedRectangle(cornerRadius: 6).fill(Self.green))

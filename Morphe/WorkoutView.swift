@@ -189,33 +189,7 @@ struct WorkoutView: View {
         )
         .background(
             EmptyView().fullScreenCover(isPresented: $showFormCheck) {
-                // Match Form Check to the exercise the user is actually on.
-                if let exercise = store.activeWorkoutExercise {
-                    // The library's own movement pattern decides how the
-                    // camera reads the exercise (squat, hinge, press…).
-                    let libraryPattern = MorpheDemoContent.exerciseDatabase
-                        .first { $0.id == exercise.exerciseLibraryID }?.movementPattern
-                    FormCheckView(
-                        exerciseName: exercise.name,
-                        pattern: .infer(exerciseName: exercise.name, libraryPattern: libraryPattern,
-                                        muscleGroup: exercise.muscleGroup)
-                    ) { reps, rpe in
-                        // Log the camera-counted reps (and the rated RPE) as
-                        // a set on the active exercise at the working weight
-                        // (bodyweight if none).
-                        guard reps > 0 else { return }
-                        let weight = store.lastSessionWeight(for: exercise.id)
-                            ?? store.suggestedWorkingWeight(for: exercise)
-                            ?? 0
-                        store.completeTrackedSet(reps: reps, weight: weight, rpe: rpe)
-                    }
-                    // Explicit like every other cover — FormCheckView reads
-                    // the store now (clip telemetry).
-                    .environment(store)
-                } else {
-                    FormCheckView()
-                        .environment(store)
-                }
+                formCheckCover
             }
         )
         .background(
@@ -224,6 +198,41 @@ struct WorkoutView: View {
                     .environment(store)
             }
         )
+    }
+
+    /// Form Check, matched to the exercise the user is actually on. Split
+    /// out of `body` — inline, the closure tipped the type checker over.
+    @ViewBuilder
+    private var formCheckCover: some View {
+        if let exercise = store.activeWorkoutExercise {
+            // The library's own movement pattern decides how the camera
+            // reads the exercise (squat, hinge, press…).
+            let libraryPattern = MorpheDemoContent.exerciseDatabase
+                .first { $0.id == exercise.exerciseLibraryID }?.movementPattern
+            let pattern = FormMovementPattern.infer(
+                exerciseName: exercise.name, libraryPattern: libraryPattern, muscleGroup: exercise.muscleGroup)
+            FormCheckView(exerciseName: exercise.name, pattern: pattern, canLog: true) { reps, rpe in
+                logCameraSet(reps: reps, rpe: rpe, on: exercise)
+            }
+            // Explicit like every other cover — FormCheckView reads the
+            // store now (clip telemetry).
+            .environment(store)
+        } else {
+            FormCheckView()
+                .environment(store)
+        }
+    }
+
+    /// Log the camera-counted reps (and the rated RPE) as a set on the
+    /// active exercise at the working weight (bodyweight if none).
+    /// Explicit work on camera logs even past the planned set count, like
+    /// voice logging does (audit 30).
+    private func logCameraSet(reps: Int, rpe: Int?, on exercise: WorkoutExercise) {
+        guard reps > 0 else { return }
+        let weight = store.lastSessionWeight(for: exercise.id)
+            ?? store.suggestedWorkingWeight(for: exercise)
+            ?? 0
+        _ = store.completeTrackedSet(reps: reps, weight: weight, rpe: rpe, allowExtra: true)
     }
 
     private var activeWorkoutMode: some View {

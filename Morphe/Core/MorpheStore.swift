@@ -3259,17 +3259,17 @@ final class MorpheAppStore {
 
         switch selectedClientTab {
         case .today:
-            return "Adjust the day, lower the friction, and keep momentum moving."
+            return "Adjust today. Log by voice. Ask anything about your plan."
         case .train:
-            return "Get form help, swaps, and pain-safe suggestions without breaking workout flow."
+            return "Swaps, form help, and what's next. Mid-session, without leaving it."
         case .discover:
-            return "Find the right workout across 18 training types and start it in one tap."
+            return "Pick the workout. Start it in one tap."
         case .community:
-            return "Stay connected to your partners and support loop."
+            return "Your partners, your coach, the board."
         case .hub:
-            return "Turn scores, reports, and trends into one clear next step."
+            return "Your score, your trends, one next step."
         case .more:
-            return "Use Morphe's tools, library, and learning without digging through the app."
+            return "The library, the lessons, The Code."
         }
     }
 
@@ -5212,8 +5212,9 @@ final class MorpheAppStore {
             try? await Task.sleep(for: .milliseconds(650))
             self?.launchSettled = true
         }
-        // A profile lives on this device: its palette is settled from here.
-        if hasCompletedOnboarding { settleRebrandMigration() }
+        // A profile lives on this device AND is signed in (a signed-out
+        // Gold-era device must not toast over the sign-in wall): settled.
+        if hasCompletedOnboarding, authUser != nil || !FeatureFlags.accountsEnabled { settleRebrandMigration() }
     }
 
     // MARK: Rebrand migration (Spartan, 2026-10-01)
@@ -8323,8 +8324,14 @@ final class MorpheAppStore {
         var isWarmup = false
     }
 
+    /// "3 by 10" is how people SAY a set; the parsers read "3x10". Spoken or
+    /// typed, the word form becomes the symbol form first (audit 30).
+    nonisolated static func normalizedSetPhrase(_ text: String) -> String {
+        text.replacingOccurrences(of: #"(\d)\s+by\s+(\d)"#, with: "$1x$2", options: .regularExpression)
+    }
+
     nonisolated static func parseLiveSetUtterance(_ raw: String) -> LiveSetUtterance? {
-        var text = raw.lowercased()
+        var text = normalizedSetPhrase(raw.lowercased())
         guard !text.isEmpty else { return nil }
         // The recognizer writes "warm up"/"warm-up" as often as "warmup" —
         // normalize BEFORE the delta scan or its "up" gets consumed as a
@@ -8432,7 +8439,8 @@ final class MorpheAppStore {
         return result
     }
 
-    static func parseSetCommand(_ text: String) -> (sets: Int, reps: Int, weight: Double?)? {
+    static func parseSetCommand(_ raw: String) -> (sets: Int, reps: Int, weight: Double?)? {
+        let text = normalizedSetPhrase(raw)
         let pattern = #"(?:log|did|add)\s+(\d{1,2})\s*[x×]\s*(\d{1,3})(?:\s*(?:at|@)\s*(\d{1,4}(?:\.\d+)?))?"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
@@ -10642,10 +10650,38 @@ final class MorpheAppStore {
     /// can't co-present — so the profile closes first and the guide rises
     /// once it is gone.
     func replayGuide() {
+        pendingGuideReplay = true
         showClientProfile = false
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(450))
-            self.showWelcomeExperience = true
+    }
+
+    /// Set by replayGuide; the profile sheet's onDismiss raises the guide
+    /// from here, once the profile is actually gone (a timer guessed at the
+    /// dismissal and could be swallowed by another sheet — audit 30).
+    private(set) var pendingGuideReplay = false
+
+    /// True when the profile's onDismiss raised the guide — the other
+    /// queued opens then wait for their next door.
+    @discardableResult
+    func consumePendingGuideReplay() -> Bool {
+        guard pendingGuideReplay else { return false }
+        pendingGuideReplay = false
+        showWelcomeExperience = true
+        return true
+    }
+
+    /// Where the tour sends the athlete when it closes — consumed by the
+    /// welcome sheet's onDismiss so the hand-off never races the dismissal.
+    enum TourExit { case train, discover, community, ai }
+    var pendingTourExit: TourExit?
+
+    func consumePendingTourExit() {
+        guard let exit = pendingTourExit else { return }
+        pendingTourExit = nil
+        switch exit {
+        case .train: selectedClientTab = .train
+        case .discover: selectedClientTab = .discover
+        case .community: openCommunity(FeatureFlags.socialFeedEnabled ? .forYou : .contact)
+        case .ai: openAIAgent()
         }
     }
 

@@ -191,6 +191,7 @@ struct MorpheHelmetMark: View {
             .scaledToFit()
             .shadow(color: onBrandField ? Color.white.opacity(0.55) : MorpheTheme.brandBlue.opacity(0.7),
                     radius: glowRadius)
+            .accessibilityHidden(true)
     }
 }
 
@@ -1836,7 +1837,7 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                         // new users guess what Discover/Network/Learn were
                         // (audit BLOCKER). Mono micro-labels keep the HUD.
                         Text(item.title.uppercased())
-                            .font(MorpheTheme.microLabel(8))
+                            .font(MorpheTheme.microLabel(10))
                             .tracking(0.8)
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)

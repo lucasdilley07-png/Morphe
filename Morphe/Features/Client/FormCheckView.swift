@@ -763,7 +763,7 @@ enum FramingState: Equatable {
         switch self {
         case .noPerson: return Color.white.opacity(0.35)
         case .tooClose: return Color(red: 0.92, green: 0.26, blue: 0.28)
-        case .tooFar, .feetCut: return Color(red: 0.98, green: 0.78, blue: 0.22)
+        case .tooFar, .feetCut: return MorpheTheme.warning
         case .good:     return Color(red: 0.30, green: 0.85, blue: 0.45)
         }
     }
@@ -835,7 +835,7 @@ enum FormRepGrade: String {
     var color: Color {
         switch self {
         case .poor:      return Color(red: 0.92, green: 0.26, blue: 0.28)
-        case .good:      return Color(red: 0.98, green: 0.78, blue: 0.22)
+        case .good:      return MorpheTheme.warning
         case .great:     return Color(red: 0.45, green: 0.85, blue: 0.48)
         case .excellent: return Color(red: 0.24, green: 0.95, blue: 0.55)
         }
@@ -894,7 +894,7 @@ enum FormAnalyzer {
                 cues.append(FormCue(category: .knees, tone: .suggestion,
                     message: pattern == .jump
                         ? "Knees drifted inward on \(caved) landing\(caved == 1 ? "" : "s") — land with the knees over the feet."
-                        : "Push your knees out — they drifted inward on \(reps(caved)), often as you tire."))
+                        : "Push your knees out — they drifted inward on \(reps(caved))."))
             }
         }
         switch pattern {
@@ -1263,6 +1263,8 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     private(set) var isRecording = false
     enum ClipSaveState { case idle, saving, saved, failed }
     private(set) var clipSaveState: ClipSaveState = .idle
+    /// Why a save failed, when the athlete can do something about it.
+    private(set) var clipSaveMessage: String?
     private(set) var recordingSeconds = 0
     private(set) var finishedClipURL: URL?
     private var recordingTimer: Timer?
@@ -1370,14 +1372,15 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     /// change with the camera.
     func switchCamera() {
         guard isConfigured, !isRecording else { return }
-        let next: AVCaptureDevice.Position = cameraPosition == .front ? .back : .front
+        let current = cameraPosition
+        let next: AVCaptureDevice.Position = current == .front ? .back : .front
         sessionQueue.async { [weak self] in
             guard let self, let input = Self.cameraInput(position: next) else { return }
             self.session.beginConfiguration()
             for old in self.session.inputs { self.session.removeInput(old) }
             guard self.session.canAddInput(input) else {
                 // Put the old camera back rather than leave a black screen.
-                if let back = Self.cameraInput(position: self.cameraPosition), self.session.canAddInput(back) {
+                if let back = Self.cameraInput(position: current), self.session.canAddInput(back) {
                     self.session.addInput(back)
                 }
                 self.session.commitConfiguration()
@@ -1392,8 +1395,9 @@ final class FormCheckSession: NSObject, AVCaptureVideoDataOutputSampleBufferDele
                 }
             }
             self.session.commitConfiguration()
-            self.mirrorX = next == .front
             self.videoQueue.async {
+                // Every pipeline write happens on the video queue.
+                self.mirrorX = next == .front
                 self.calibrator.reset()
                 self.detector.calibration = nil
                 self.detector.reset()
@@ -1642,7 +1646,15 @@ extension FormCheckSession: AVCaptureFileOutputRecordingDelegate {
             self.recordingTimer?.invalidate()
             self.recordingTimer = nil
             self.finishedClipURL = nil
-            guard error == nil else { self.clipSaveState = .failed; return }
+            // An interruption can end a recording that is still a complete,
+            // playable file — AVFoundation says so in the error's userInfo.
+            let finished = ((error as NSError?)?.userInfo[AVErrorRecordingSuccessfullyFinishedKey] as? Bool) ?? (error == nil)
+            guard finished else {
+                self.clipSaveState = .failed
+                self.clipSaveMessage = "The clip didn't finish recording."
+                try? FileManager.default.removeItem(at: outputFileURL)
+                return
+            }
             self.saveClipToPhotos(url: outputFileURL)
         }
     }
@@ -1651,9 +1663,14 @@ extension FormCheckSession: AVCaptureFileOutputRecordingDelegate {
     /// the temp file is removed either way.
     private func saveClipToPhotos(url: URL) {
         clipSaveState = .saving
+        clipSaveMessage = nil
         PHPhotoLibrary.requestAuthorization(for: .addOnly) { [weak self] status in
             guard status == .authorized || status == .limited else {
-                DispatchQueue.main.async { self?.clipSaveState = .failed; try? FileManager.default.removeItem(at: url) }
+                DispatchQueue.main.async {
+                    self?.clipSaveState = .failed
+                    self?.clipSaveMessage = "Photos access is off. Allow Add Only in Settings → Morphe → Photos."
+                    try? FileManager.default.removeItem(at: url)
+                }
                 return
             }
             PHPhotoLibrary.shared().performChanges {
@@ -1868,6 +1885,11 @@ struct FormCheckView: View {
     /// Called with the rep count and the rated RPE when the user submits
     /// the set, so the live workout can log the camera-counted reps.
     var onFinish: (Int, Int?) -> Void = { _, _ in }
+    /// True only when a live session will log the set — the review's
+    /// button says "Log set" then, "Done" otherwise.
+    var canLog: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private struct SummaryPayload: Identifiable {
         let id = UUID()
@@ -1878,8 +1900,9 @@ struct FormCheckView: View {
     }
 
     init(exerciseName: String = "Squat", pattern: FormMovementPattern = .squat,
-         onFinish: @escaping (Int, Int?) -> Void = { _, _ in }) {
+         canLog: Bool = false, onFinish: @escaping (Int, Int?) -> Void = { _, _ in }) {
         _session = State(initialValue: FormCheckSession(exerciseName: exerciseName, pattern: pattern))
+        self.canLog = canLog
         self.onFinish = onFinish
     }
 
@@ -1900,7 +1923,7 @@ struct FormCheckView: View {
             case .unavailable:
                 messageState(
                     title: "Needs a real device",
-                    detail: "Form Check uses the front camera, which the Simulator doesn't have. Run Morphe on an iPhone to try it."
+                    detail: "Form Check needs a camera, and the Simulator has none. Run Morphe on an iPhone to try it."
                 )
             case .unknown:
                 ProgressView().tint(.white)
@@ -1914,18 +1937,34 @@ struct FormCheckView: View {
         .onChange(of: session.clipSaveState) { _, state in
             if state == .saved { store.noteFormClipCaptured() }
         }
-        .sheet(item: $summaryPayload) { payload in
+        .sheet(item: $summaryPayload, onDismiss: {
+            // Swiped the review away instead of logging: the camera comes
+            // back for another set (finishSet stopped it — audit 30, P1).
+            if summaryPayload == nil { session.start() }
+        }) { payload in
             FormSummarySheet(
                 summary: payload.summary,
                 bestEver: payload.bestEver,
                 exerciseName: payload.exerciseName,
-                metrics: payload.metrics
+                metrics: payload.metrics,
+                canLog: canLog
             ) { rpe in
                 let reps = payload.summary.reps
                 summaryPayload = nil
                 onFinish(reps, rpe)
                 dismiss()
             }
+            .presentationCornerRadius(28)
+        }
+        // VoiceOver hears what the screen shows: each rep's grade and the
+        // framing state (audit 30).
+        .onChange(of: session.repCount) { _, count in
+            guard count > 0 else { return }
+            let grade = session.lastRepGrade?.rawValue ?? ""
+            AccessibilityNotification.Announcement("Rep \(count), \(grade)").post()
+        }
+        .onChange(of: session.framing) { _, framing in
+            AccessibilityNotification.Announcement(framing.label.capitalized).post()
         }
     }
 
@@ -1941,7 +1980,7 @@ struct FormCheckView: View {
                 // this frames, counts, and reads angles — it does not
                 // diagnose form.
                 Text(spec.countsReps
-                     ? "Reads joint angles, range and tempo. A training aid, not a form diagnosis."
+                     ? "Reads range, tempo and alignment from joint angles. A training aid, not a diagnosis."
                      : (spec.pattern == .hold ? "Times how long you hold still. A training aid, not a form diagnosis."
                                               : "The camera can't read this movement yet — timing the set."))
                     .font(.caption.weight(.semibold))
@@ -1963,8 +2002,8 @@ struct FormCheckView: View {
                             RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                                 .fill(flashGrade.color.opacity(0.92))
                         )
-                        .transition(.scale(scale: 0.6).combined(with: .opacity))
-                        .padding(.top, 10)
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.6).combined(with: .opacity))
+                        .padding(.top, 12)
                 }
 
                 Spacer()
@@ -1974,13 +2013,13 @@ struct FormCheckView: View {
         }
         .onChange(of: session.repCount) { _, _ in
             guard let grade = session.lastRepGrade else { return }
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) { flashGrade = grade }
+            withAnimation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.6)) { flashGrade = grade }
             flashToken += 1
             let token = flashToken
             Task {
                 try? await Task.sleep(for: .seconds(1.1))
                 if token == flashToken {
-                    withAnimation(.easeOut(duration: 0.3)) { flashGrade = nil }
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.3)) { flashGrade = nil }
                 }
             }
         }
@@ -2079,6 +2118,7 @@ struct FormCheckView: View {
                 if spec.countsReps, let calibrationLabel {
                     Text(calibrationLabel)
                         .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                        .monospacedDigit()
                         .foregroundStyle(.white.opacity(0.9))
                         .padding(.horizontal, 12).padding(.vertical, 8)
                         .background(RoundedRectangle(cornerRadius: MorpheTheme.radius).fill(Color.black.opacity(0.55)))
@@ -2092,9 +2132,11 @@ struct FormCheckView: View {
                         .foregroundStyle(.white)
                         .contentTransition(.numericText())
                         .monospacedDigit()
+                        .accessibilityLabel("\(counterValue) \(counterLabel.lowercased())")
                     Text(counterLabel)
                         .font(MorpheTheme.microLabel(12)).tracking(2)
                         .foregroundStyle(.white.opacity(0.7))
+                        .accessibilityHidden(true)
                     Spacer()
                     // The live primary angle — the number the rep is read from.
                     if spec.countsReps, let angle = session.liveAngle {
@@ -2105,9 +2147,11 @@ struct FormCheckView: View {
                                 .monospacedDigit()
                                 .contentTransition(.numericText())
                             Text(spec.angleName.uppercased())
-                                .font(MorpheTheme.microLabel(9)).tracking(1.4)
+                                .font(MorpheTheme.microLabel(10)).tracking(1.4)
                                 .foregroundStyle(.white.opacity(0.6))
                         }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(spec.angleName) angle \(Int(angle)) degrees")
                     }
                 }
 
@@ -2118,7 +2162,10 @@ struct FormCheckView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                HStack(spacing: 10) {
+                // Three actions side by side, stacked once the type is large
+                // enough that the labels would be crushed (audit 30).
+                let stackActions = dynamicTypeSize.isAccessibilitySize
+                AnyLayout(stackActions ? AnyLayout(VStackLayout(spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))) {
                     Button("Reset") { session.resetReps() }
                         .buttonStyle(SecondaryCTAButtonStyle())
 
@@ -2136,6 +2183,7 @@ struct FormCheckView: View {
                             Text(recordLabel)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
+                                .monospacedDigit()
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
@@ -2146,6 +2194,7 @@ struct FormCheckView: View {
                     .accessibilityLabel(session.isRecording
                         ? "Stop recording, \(session.recordingSeconds) seconds"
                         : "Record a clip to your camera roll")
+                    .accessibilityHint("Clips stop on their own at 30 seconds")
 
                     Button("Finish") {
                         let result = session.finishSet()
@@ -2161,14 +2210,23 @@ struct FormCheckView: View {
                     .disabled(spec.countsReps ? session.repCount == 0 : session.elapsedSeconds < 1)
                     .opacity((spec.countsReps ? session.repCount == 0 : session.elapsedSeconds < 1) ? 0.5 : 1)
                 }
+
+                if let message = session.clipSaveMessage {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.9))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                // Inside the plate, where it stays readable over any wall.
+                Text("Morphe reads what the camera can see — joint angles, range, tempo and alignment. It can't see the load, your spine, or pain. A training aid, not a physical therapist.")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
             .padding(16)
             .background(RoundedRectangle(cornerRadius: MorpheTheme.radius).fill(.black.opacity(0.55)))
-
-            Text("Morphe reads what the front camera can see — joint angles, range, tempo and alignment. It can't see the load, your spine, or pain. A training aid, not a physical therapist.")
-                .font(.caption2)
-                .foregroundStyle(.white.opacity(0.6))
-                .multilineTextAlignment(.center)
         }
     }
 
@@ -2195,6 +2253,9 @@ private struct FormSummarySheet: View {
     let bestEver: Double?
     var exerciseName: String = "Squat"
     var metrics: [FormRepMetrics] = []
+    /// Whether a live session will log this set (changes the button and
+    /// the RPE copy; outside a session the review is just a review).
+    var canLog: Bool = false
     /// Done hands back the rated RPE (nil when the athlete skipped it).
     let onClose: (Int?) -> Void
     @State private var rpe: Int?
@@ -2233,12 +2294,12 @@ private struct FormSummarySheet: View {
                         VStack(alignment: .leading, spacing: 10) {
                             if spec.countsReps {
                                 if let grade = setGrade {
-                                    HStack(spacing: 10) {
-                                        Text("FORM")
-                                            .font(MorpheTheme.microLabel(10)).tracking(1.4)
+                                    HStack(spacing: 12) {
+                                        Text("SET")
+                                            .font(MorpheTheme.microLabel()).tracking(1.4)
                                             .foregroundStyle(MorpheTheme.textMuted)
                                         Text(grade.rawValue.uppercased())
-                                            .font(MorpheTheme.microLabel(11)).tracking(1.6)
+                                            .font(MorpheTheme.microLabel()).tracking(1.4)
                                             .foregroundStyle(.black)
                                             .padding(.horizontal, 10).padding(.vertical, 6)
                                             .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(grade.color))
@@ -2286,7 +2347,10 @@ private struct FormSummarySheet: View {
                             GlassCard {
                                 HStack(alignment: .top, spacing: 10) {
                                     Image(systemName: cue.tone == .good ? "checkmark.circle.fill" : "arrow.up.forward.circle.fill")
-                                        .foregroundStyle(cue.tone == .good ? Color(red: 0.30, green: 0.85, blue: 0.45) : MorpheTheme.accentText)
+                                        .foregroundStyle(cue.tone == .good
+                                            ? (MorpheTheme.isLight ? Color(red: 0.13, green: 0.62, blue: 0.33) : Color(red: 0.30, green: 0.85, blue: 0.45))
+                                            : MorpheTheme.accentText)
+                                        .accessibilityHidden(true)
                                     Text(cue.message)
                                         .font(.subheadline)
                                         .foregroundStyle(MorpheTheme.textPrimary)
@@ -2315,11 +2379,14 @@ private struct FormSummarySheet: View {
                                                 Haptics.selection()
                                             }
                                             .buttonStyle(FilterChipStyle(isSelected: rpe == level, selectedColor: MorpheTheme.accent))
+                                            .frame(minHeight: 44)
                                             .accessibilityLabel("RPE \(level)\(rpe == level ? ", selected" : "")")
                                         }
                                     }
                                 }
-                                Text(rpe == nil ? "Optional — skip it and the set still logs." : "Logs with the set.")
+                                Text(canLog
+                                     ? (rpe == nil ? "Optional — skip it and the set still logs." : "Logs with the set.")
+                                     : "Optional. Outside a live session nothing is logged.")
                                     .font(.caption2)
                                     .foregroundStyle(MorpheTheme.textMuted)
                             }
@@ -2347,7 +2414,7 @@ private struct FormSummarySheet: View {
             .background(PremiumBackground())
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(summary.reps > 0 ? "Log set" : "Done") { onClose(rpe) }
+                    Button(canLog && summary.reps > 0 ? "Log set" : "Done") { onClose(rpe) }
                         .font(.body.weight(.semibold))
                         .foregroundStyle(MorpheTheme.accentText)
                 }

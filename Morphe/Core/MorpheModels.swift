@@ -587,7 +587,7 @@ extension CoachingTone {
         case .competitive: return "Noted — competitors log everything."
         case .calm: return "Thanks for checking in."
         case .educational: return "Good data point."
-        case .highEnergy: return "Let's go!"
+        case .highEnergy: return "Let's go."
         case .beginnerFriendly: return "Nice and simple."
         }
     }
@@ -600,7 +600,7 @@ extension CoachingTone {
         case .competitive: return "Workout logged — stay ahead."
         case .calm: return "Workout logged. Breathe — good work."
         case .educational: return "Workout logged — every log sharpens your plan."
-        case .highEnergy: return "Workout logged — that's how it's done!"
+        case .highEnergy: return "Workout logged. That's how it's done."
         case .beginnerFriendly: return "Workout logged — one clear step at a time."
         }
     }
@@ -1210,7 +1210,7 @@ enum SpartanLore {
             context: "Told the Persian arrows would hide the sun. Herodotus gives the reply to Dienekes (7.226).",
             source: "Plutarch, Sayings of Spartans, Leonidas 6"),
         LaconicSaying(
-            text: "These they put on for their own sake, but the shield for the common good of the whole line.",
+            text: "Because these they put on for their own sake, but the shield for the common good of the whole line.",
             speaker: "Demaratus",
             context: "Asked why losing a shield brought disgrace and losing a helmet or breastplate did not.",
             source: "Plutarch, Sayings of Spartans, Demaratus 2"),

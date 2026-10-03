@@ -38,7 +38,7 @@ struct LaunchSequenceView: View {
                 Text((message.isEmpty ? " " : message).uppercased())
                     .font(MorpheTheme.microLabel(12))
                     .tracking(1.8)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(.white.opacity(0.9))
                     .transition(.opacity)
 
                 Spacer()

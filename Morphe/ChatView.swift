@@ -1406,7 +1406,7 @@ private struct LeaderboardCard: View {
 
 /// The verification blue — a universal trust signal, deliberately outside
 /// the yellow palette (same constant as the leaderboard/profile seals).
-private let feedVerifiedSealBlue = Color(red: 0.25, green: 0.56, blue: 0.96)
+private var feedVerifiedSealBlue: Color { MorpheTheme.brandBlueText }
 
                 // Photo posts ship as base64 inside post docs (rules-capped);
                 // Firebase Storage upgrades the pipeline post-Blaze.

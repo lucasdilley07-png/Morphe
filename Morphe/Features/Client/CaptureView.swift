@@ -352,7 +352,7 @@ struct CaptureView: View {
                                 .font(MorpheTheme.microLabel(10))
                                 .tracking(1.2)
                         }
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(.white)  // over live video, on the black scrim (audit 30)
                         .padding(.horizontal, 12)
                         .frame(height: 44)
                         .background(Capsule().fill(.black.opacity(0.45)))

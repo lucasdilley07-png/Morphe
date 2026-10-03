@@ -32,14 +32,24 @@ TRAIN SMARTER — THE HOUSE RULES
 • Nothing fake — no invented streaks, no padded progress
 
 BUILD YOUR OWN WORKOUTS
-• Create custom workouts from a library of 50+ exercises
+• Create custom workouts from a library of 190+ exercises, or start one of 190+ ready workouts
 • Add your own exercises when something's missing
 • Set your target sets and reps
 
 LOG WHAT MATTERS
-• Track weight, sets, and reps for every exercise
+• Track weight, sets, reps, and RPE for every exercise
+• Log a set by voice: "log 3 by 10 at 135"
 • Switch between lb and kg
-• A rest timer and in-session tracker keep you moving
+• A rest timer in the Dynamic Island keeps you moving
+
+FORM CHECK
+• The camera counts your reps on your device, across eleven movement patterns, and times holds
+• It reads your build first, then range, tempo, symmetry, and alignment — a training aid, not a diagnosis
+• Video never leaves your phone; record a clip to your own camera roll if you want one
+
+MORPHE AI
+• Ask what's next, why today's plan changed, or how your readiness looks — answered from your own logs, never invented
+• Hey Morphe: hands-free with the app open, once you turn it on
 
 SEE REAL PROGRESS
 • Your Morphe Score, streak, and trends are computed from your actual workouts
@@ -54,9 +64,8 @@ CHECK YOUR RECOVERY
 • Morphe adjusts the day around how you actually feel
 
 TRAIN TOGETHER
-• Follow athletes, share sessions as real stat cards, and react and comment
-• Post story-ready cards of your session, a new PR, or your streak — every number on them is a logged fact
-• Weekly leaderboards and code-joinable challenges — opt-in, real scores only
+• Weekly boards and code-joinable challenges — opt-in, real scores only
+• (Feed, posts, reactions and comments ship when FeatureFlags.socialFeedEnabled is on — leave these out of the listing until then)
 • Live buddy sessions: train the same workout together in real time
 • Coaches: manage your roster, message clients, and see consented live progress
 

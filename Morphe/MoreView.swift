@@ -333,8 +333,9 @@ struct MoreView: View {
         Group {
             // The record's line for today (docs/SPARTAN-LORE.md) — the
             // door to The Code. One saying a day, never reshuffled.
-            RecordLineCard(saying: SpartanLore.saying()) {
-                openedSaying = SpartanLore.saying()
+            let todaysLine = SpartanLore.saying()
+            RecordLineCard(saying: todaysLine) {
+                openedSaying = todaysLine
             }
             .sheet(item: $openedSaying) { saying in
                 SpartanCodeSheet(saying: saying)
@@ -379,6 +380,7 @@ struct MoreView: View {
                     .environment(store)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
+                    .presentationCornerRadius(28)
                     .background(PremiumBackground())
             }
 
@@ -486,11 +488,12 @@ private struct QuizCallingCard: View {
                                    startPoint: .topLeading, endPoint: .bottomTrailing), .white)
         case 1:
             return (LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.12),
-                                            Color(red: 0.16, green: 0.15, blue: 0.10)],
+                                            Color(red: 0.16, green: 0.16, blue: 0.18)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing), .white)
         case 2:
-            return (LinearGradient(colors: [Color(red: 0.55, green: 0.38, blue: 0.05),
-                                            Color(red: 0.35, green: 0.24, blue: 0.02)],
+            // Deep blue, not the gold-era bronze (audit 30).
+            return (LinearGradient(colors: [MorpheTheme.brandBlueDeep,
+                                            Color(red: 0.102, green: 0.153, blue: 0.40)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing), .white)
         default:
             return (LinearGradient(colors: [Color(red: 0.20, green: 0.20, blue: 0.24),
@@ -541,7 +544,7 @@ private struct QuizCallingCard: View {
                 Spacer(minLength: 10)
 
                 Text(footer)
-                    .font(MorpheTheme.microLabel(8))
+                    .font(MorpheTheme.microLabel(10))
                     .tracking(1.2)
                     .opacity(0.8)
             }
@@ -616,7 +619,7 @@ private struct QuizSheet: View {
                 if let answeredIndex {
                     // "Correct/Not quite" in words, not just color.
                     Text(answeredIndex == quiz.correctIndex
-                         ? "Correct! \(quiz.explanation)"
+                         ? "Correct. \(quiz.explanation)"
                          : "Not quite. \(quiz.explanation)")
                         .font(.subheadline)
                         .foregroundStyle(answeredIndex == quiz.correctIndex ? MorpheTheme.accentText : MorpheTheme.textSecondary)
@@ -893,7 +896,7 @@ struct SpartanCodeContent: View {
                         ladderRow(rung)
                     }
                 }
-                Text("The three stages are Xenophon\u{2019}s. The ages on the rungs, twenty and thirty, are the standard modern reconstruction. Levels come only from logged work.")
+                Text("The three stages are Xenophon\u{2019}s. The ages behind the last two, twenty and thirty, are the standard modern reconstruction. Levels come only from logged work.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

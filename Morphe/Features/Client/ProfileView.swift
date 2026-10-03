@@ -24,6 +24,7 @@ struct ProfileView: View {
     /// True while the unsaved-changes ask was raised BY the Progress row —
     /// save/discard then continues into Progress instead of just closing.
     @State private var progressAfterResolve = false
+    @State private var replayAfterResolve = false
     @State private var showDeleteAccountConfirm = false
     @State private var isDeletingAccount = false
     /// The generated export file, presented in the system share sheet.
@@ -138,8 +139,22 @@ struct ProfileView: View {
         if progressAfterResolve {
             progressAfterResolve = false
             store.openProgress()
+        } else if replayAfterResolve {
+            replayAfterResolve = false
+            store.replayGuide()
         } else {
             store.closeClientProfile()
+        }
+    }
+
+    /// Replaying the guide closes the profile — an unsaved draft gets the
+    /// same save/discard ask Done gives it (audit 30).
+    private func requestReplayGuide() {
+        if hasUnsavedEdits {
+            replayAfterResolve = true
+            showUnsavedPrompt = true
+        } else {
+            store.replayGuide()
         }
     }
 
@@ -502,7 +517,7 @@ struct ProfileView: View {
                                 // deliberately outside the yellow palette.
                                 Image(systemName: "checkmark.seal.fill")
                                     .font(.subheadline)
-                                    .foregroundStyle(Color(red: 0.25, green: 0.56, blue: 0.96))
+                                    .foregroundStyle(MorpheTheme.brandBlueText)
                                     .accessibilityLabel("Verified")
                             }
                         }
@@ -996,9 +1011,9 @@ struct ProfileView: View {
                     // The guide, on demand: the same eight-stop tour a new
                     // account gets, every stop still optional.
                     Button {
-                        store.replayGuide()
+                        requestReplayGuide()
                     } label: {
-                        HStack(spacing: 10) {
+                        HStack(spacing: 12) {
                             Image(systemName: "map")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(MorpheTheme.accentText)

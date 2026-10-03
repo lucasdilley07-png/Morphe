@@ -137,12 +137,14 @@ final class KeyboardSwipeDismisser: NSObject, UIGestureRecognizerDelegate {
     }
 
     /// A drag that starts inside a text field is a caret move or a text
-    /// selection, never a dismissal.
+    /// selection, never a dismissal. A drag inside a scroll view that chose
+    /// the follow-the-finger mode (the chats) is that mode's to handle.
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         guard keyboardVisible else { return false }
         var view = touch.view
         while let current = view {
             if current is UITextField || current is UITextView { return false }
+            if let scroll = current as? UIScrollView, scroll.keyboardDismissMode == .interactive { return false }
             view = current.superview
         }
         return true
