@@ -3235,8 +3235,10 @@ private struct WelcomeExperienceView: View {
         _page = State(initialValue: startPage)
     }
 
+    /// The showcase first (Lucas 2026-10-03: lead with the most important
+    /// and coolest things Morphe does), then the first actions, then done.
     private enum Page: Int, CaseIterable {
-        case welcome, profile, workout, partner, ai, formCheck, done
+        case welcome, formCheck, ai, together, progress, workout, partner, profile, done
     }
 
     private var pages: [Page] { Page.allCases }
@@ -3306,7 +3308,7 @@ private struct WelcomeExperienceView: View {
                     .padding(.vertical, 8)
                 kicker("Welcome")
                 title("Welcome to Morphe, \(store.clientProfile.name).")
-                body("Two minutes, six stops, every one of them optional. Skip anything; nothing here is required.")
+                body("Two minutes, eight stops, every one of them optional. Skip anything; nothing here is required.")
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 10) {
                         rule("01", "Real scores only", "Every stat comes from sets you logged.")
@@ -3408,18 +3410,46 @@ private struct WelcomeExperienceView: View {
                     .frame(width: 64, height: 64)
                     .shadow(color: MorpheTheme.brandBlue.opacity(0.25), radius: 12)
                 kicker("Morphe AI")
-                title("Your guardian is one tap away.")
-                body("The bubble at the bottom right. Ask what's next, log a set by voice (\u{201C}log 3 by 10 at 135\u{201D}), or say \u{201C}Hey Morphe\u{201D} with the app open. It answers from your own logs and never invents a number.")
+                title("Talk to it. Out loud.")
+                body("Say \u{201C}Hey Morphe\u{201D} with the app open, or tap the bubble at the bottom right. Ask what's next, log a set by voice, ask why today's plan changed. It answers from your own logs, in a laconic register, and never invents a number.")
+                GlassCard(.quiet) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        TourExchange(you: "Hey Morphe, log 3 by 10 at 135.", morphe: "Logged. Set 2 of 4. Rest 90 seconds.")
+                        TourExchange(you: "Why is today lighter?", morphe: "You slept five hours. Quality day, not a max day.")
+                    }
+                }
             }
         case .formCheck:
             VStack(alignment: .leading, spacing: 16) {
-                kicker("Form Check and check-ins")
-                title("The camera counts. The check-in adjusts.")
-                body("Inside a session, Form Check uses the front camera to read your build, count reps, and tell you what it measured. Video never leaves your phone. Each day, a quick check-in reads sleep, energy, and soreness, and Morphe adjusts the day around it.")
+                TourCameraMock()
+                kicker("Form Check")
+                title("The camera counts your reps.")
+                body("Prop the phone up, step into the green frame, and Morphe reads your build, counts every rep across twelve movement patterns, and tells you what it measured: depth, tempo, symmetry, knees. Video never leaves your phone.")
+                GlassCard(.quiet) {
+                    rule("→", "Where", "Train → the camera button next to the exercise you're on.")
+                }
+            }
+        case .together:
+            VStack(alignment: .leading, spacing: 16) {
+                kicker("Train Together")
+                title("Hold the line with someone.")
+                body("Start a live session and a training partner runs the same workout with you in real time, set for set. Weekly boards, code-joinable challenges, and one-tap Respect on a partner's week. Real scores only, opt-in always.")
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 8) {
-                        rule("A", "Form Check", "Train → the camera button next to the exercise you're on.")
-                        rule("B", "Daily check-in", "Today → the greeting asks; answer in one tap.")
+                        rule("A", "Live sessions", "Network → Train Together → share the code.")
+                        rule("B", "The board", "Network → Board, computed from logged sets, nothing else.")
+                    }
+                }
+            }
+        case .progress:
+            VStack(alignment: .leading, spacing: 16) {
+                kicker("Progress")
+                title("A score you earned.")
+                body("Streaks with honest outs, PRs from real logged sets, trends from your own history, and levels on Sparta's own ladder: Pais, Paidiskos, Hēbōn, Equal. Each day a quick check-in reads sleep, energy, and soreness, and Morphe adjusts the day around it.")
+                GlassCard(.quiet) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        rule("A", "Daily check-in", "Today → the greeting asks; answer in one tap.")
+                        rule("B", "The Code", "Learn → the record Morphe stands on, every line with its source.")
                     }
                 }
             }
@@ -3472,18 +3502,18 @@ private struct WelcomeExperienceView: View {
     private var primaryLabel: String {
         switch current {
         case .welcome: return "Take the tour"
-        case .profile: return bioDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Continue" : "Save and continue"
+        case .formCheck, .together, .progress: return "Next"
+        case .ai: return "Ask Morphe"
         case .workout: return "Open Train"
         case .partner: return "Find people"
-        case .ai: return "Ask Morphe"
-        case .formCheck: return "Got it"
+        case .profile: return bioDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Continue" : "Save and continue"
         case .done: return "Start training"
         }
     }
 
     private func primaryAction() {
         switch current {
-        case .welcome, .formCheck:
+        case .welcome, .formCheck, .together, .progress:
             advance()
         case .profile:
             let clean = bioDraft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -3559,6 +3589,83 @@ private struct WelcomeExperienceView: View {
     }
 }
 
+
+/// A still of what Form Check looks like: the green frame, a skeleton, the
+/// rep counter. Drawn, not photographed — there is no camera on this page.
+private struct TourCameraMock: View {
+    private static let green = Color(red: 0.30, green: 0.85, blue: 0.45)
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(Color(red: 0.07, green: 0.07, blue: 0.09))
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Self.green, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                .padding(.horizontal, 26)
+                .padding(.vertical, 12)
+            Canvas { ctx, size in
+                let pts: [CGPoint] = [
+                    CGPoint(x: 0.50, y: 0.20), CGPoint(x: 0.50, y: 0.30), // head, neck
+                    CGPoint(x: 0.40, y: 0.32), CGPoint(x: 0.60, y: 0.32), // shoulders
+                    CGPoint(x: 0.36, y: 0.46), CGPoint(x: 0.64, y: 0.46), // elbows
+                    CGPoint(x: 0.38, y: 0.58), CGPoint(x: 0.62, y: 0.58), // wrists
+                    CGPoint(x: 0.50, y: 0.56),                             // root
+                    CGPoint(x: 0.44, y: 0.57), CGPoint(x: 0.56, y: 0.57), // hips
+                    CGPoint(x: 0.42, y: 0.72), CGPoint(x: 0.58, y: 0.72), // knees
+                    CGPoint(x: 0.42, y: 0.86), CGPoint(x: 0.58, y: 0.86)  // ankles
+                ]
+                let bones = [(1,2),(1,3),(2,4),(4,6),(3,5),(5,7),(1,8),(8,9),(8,10),(9,11),(11,13),(10,12),(12,14)]
+                func p(_ i: Int) -> CGPoint { CGPoint(x: pts[i].x * size.width, y: pts[i].y * size.height) }
+                var path = Path()
+                for (a, b) in bones { path.move(to: p(a)); path.addLine(to: p(b)) }
+                ctx.stroke(path, with: .color(Self.green.opacity(0.9)), lineWidth: 3)
+                for i in pts.indices {
+                    let primary = [9, 10, 11, 12, 13, 14].contains(i)
+                    let r: CGFloat = primary ? 6 : 4
+                    let rect = CGRect(x: p(i).x - r, y: p(i).y - r, width: 2 * r, height: 2 * r)
+                    ctx.fill(Path(ellipseIn: rect), with: .color(primary ? .white : Self.green))
+                }
+            }
+            VStack {
+                Spacer()
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("7").font(.system(size: 28, weight: .bold, design: .monospaced)).foregroundStyle(.white)
+                    Text("REPS").font(MorpheTheme.microLabel(10)).tracking(1.6).foregroundStyle(.white.opacity(0.7))
+                    Spacer()
+                    Text("FRAMED").font(MorpheTheme.microLabel(9)).tracking(1.4)
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 8).padding(.vertical, 5)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Self.green))
+                }
+                .padding(14)
+            }
+        }
+        .aspectRatio(16 / 11, contentMode: .fit)
+        .accessibilityHidden(true)
+    }
+}
+
+/// One example exchange with Morphe, as it reads in the chat.
+private struct TourExchange: View {
+    let you: String
+    let morphe: String
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 6) {
+            Text(you)
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.onFill(MorpheTheme.brandBlue))
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MorpheTheme.brandBlue))
+            Text(morphe)
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MorpheTheme.panelStrong))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("You: \(you). Morphe: \(morphe)")
+    }
+}
 
 /// Hosts the store's session-work gate as a confirmation dialog. Attached
 /// ONCE, at the root — sheet-hosted callers dismiss before queuing so the
