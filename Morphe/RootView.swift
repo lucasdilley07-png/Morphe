@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import Speech
 import AVFoundation
 import UIKit
@@ -3216,96 +3217,348 @@ private struct SearchResultRow: View {
     }
 }
 
+/// The tour (Lucas 2026-10-03): a short, fully optional sequence right
+/// after the account exists. Each page introduces one part of Morphe and
+/// offers the first real action — a photo and a bio, the first workout, a
+/// training partner, the AI — with Skip on every page and a skip-the-tour
+/// door on the first. Nothing here is required; the rest of the app grows
+/// from the work logged afterwards.
 private struct WelcomeExperienceView: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @State private var page: Int
+    @State private var photoPickerItem: PhotosPickerItem?
+    @State private var bioDraft = ""
 
+    /// `startPage` exists for previews and render tests only.
+    init(startPage: Int = 0) {
+        _page = State(initialValue: startPage)
+    }
+
+    private enum Page: Int, CaseIterable {
+        case welcome, profile, workout, partner, ai, formCheck, done
+    }
+
+    private var pages: [Page] { Page.allCases }
+    private var current: Page { Page(rawValue: page) ?? .welcome }
 
     var body: some View {
         NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    ProfileBannerView(banner: store.profileShowcase.banner, theme: store.profileShowcase.theme)
-
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 14) {
-                            HStack(spacing: 12) {
-                                MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 84)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Welcome to Morphe, \(store.clientProfile.name)")
-                                        .font(.title3.weight(.bold))
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                    Text("Your profile is live and your first plan is ready.")
-                                        .foregroundStyle(MorpheTheme.textSecondary)
-                                }
+            VStack(spacing: 0) {
+                TabView(selection: $page) {
+                    ForEach(pages, id: \.rawValue) { p in
+                        ScrollView(showsIndicators: false) {
+                            VStack(alignment: .leading, spacing: 20) {
+                                pageContent(p)
                             }
-
-                            Text(store.clientProfile.welcomeMessage)
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-
-                            HStack(spacing: 8) {
-                                MetricPill(label: "Primary Sport", value: store.clientProfile.sportMode.rawValue)
-                                MetricPill(label: "Primary Goal", value: store.clientProfile.goal)
-                            }
-
-                            WrapStack(spacing: 8) {
-                                ForEach(store.clientProfile.selectedSports) { sport in
-                                    WelcomeTag(text: sport.shortTitle, color: MorpheTheme.color(for: sport))
-                                }
-                                ForEach(store.clientProfile.selectedTrainingStyles) { style in
-                                    WelcomeTag(text: style.rawValue, color: MorpheTheme.warning)
-                                }
-                                ForEach(store.clientProfile.selectedGoals, id: \.self) { goal in
-                                    WelcomeTag(text: goal, color: MorpheTheme.accentAlt)
-                                }
-                            }
+                            .padding(.horizontal, 24)
+                            .padding(.top, 8)
+                            .padding(.bottom, 24)
                         }
+                        .tag(p.rawValue)
                     }
-
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("What happens next")
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            // Names the tabs that actually exist, and promises
-                            // only what tier 0 shows: one workout to start.
-                            Text("Today has your first workout ready. Open Train when you're ready to move — and everything else in Morphe grows from the workouts you log.")
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                            Text("You can update your name and weight unit anytime from your profile.")
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                        }
-                    }
-
-                    Button("Start Training") {
-                        store.dismissWelcomeExperience()
-                        dismiss()
-                    }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 }
-                .padding(20)
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .animation(.easeInOut(duration: 0.25), value: page)
+
+                footer
             }
             .background(PremiumBackground())
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("THE TOUR")
+                        .font(MorpheTheme.microLabel(11))
+                        .tracking(2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if current != .done {
+                        Button("Skip tour") { finish() }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                }
+            }
+        }
+        .interactiveDismissDisabled(false)
+        .onChange(of: photoPickerItem) {
+            guard let item = photoPickerItem else { return }
+            Task {
+                if let raw = try? await item.loadTransferable(type: Data.self),
+                   let jpeg = ProfileView.processedProfilePhoto(raw) {
+                    store.updateProfilePhoto(jpeg)
+                }
+                photoPickerItem = nil
+            }
+        }
+    }
+
+    // MARK: Pages
+
+    @ViewBuilder
+    private func pageContent(_ p: Page) -> some View {
+        switch p {
+        case .welcome:
+            VStack(alignment: .leading, spacing: 16) {
+                MorpheHelmetMark(glowRadius: 12)
+                    .frame(width: 72, height: 72)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                kicker("Welcome")
+                title("Welcome to Morphe, \(store.clientProfile.name).")
+                body("Two minutes, six stops, every one of them optional. Skip anything; nothing here is required.")
+                GlassCard(.quiet) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        rule("01", "Real scores only", "Every stat comes from sets you logged.")
+                        rule("02", "No ads. No trackers.", "Your numbers are yours.")
+                        rule("03", "Safety stays free", "Your data, your export, always.")
+                        rule("04", "Nothing fake", "If Morphe shows it, you did it.")
+                    }
+                }
+            }
+        case .profile:
+            VStack(alignment: .leading, spacing: 16) {
+                kicker("Profile")
+                title("Put a face on it.")
+                body("A photo and one line about your training. Your training partners and your coach see this; nobody else does.")
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(spacing: 14) {
+                            PhotosPicker(selection: $photoPickerItem, matching: .images) {
+                                ZStack {
+                                    if let data = store.profilePhotoData, let image = UIImage(data: data) {
+                                        Image(uiImage: image).resizable().scaledToFill()
+                                    } else {
+                                        Circle().fill(MorpheTheme.accent.opacity(0.18))
+                                        Image(systemName: "camera.fill")
+                                            .font(.title3.weight(.semibold))
+                                            .foregroundStyle(MorpheTheme.accentText)
+                                    }
+                                }
+                                .frame(width: 72, height: 72)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1.5))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(store.profilePhotoData == nil ? "Add profile photo" : "Change profile photo")
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(store.profilePhotoData == nil ? "Add a photo" : "Photo added")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Text("Tap the circle. Change it anytime in Profile.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                        }
+                        Rectangle().fill(MorpheTheme.strokeSubtle).frame(height: 1)
+                        TextField("One line about your training…", text: $bioDraft, axis: .vertical)
+                            .textFieldStyle(MorpheFieldStyle())
+                            .lineLimit(2...4)
+                        HStack {
+                            Text("\(bioDraft.count)/220")
+                                .font(.caption2)
+                                .foregroundStyle(bioDraft.count > 220 ? MorpheTheme.danger : MorpheTheme.textMuted)
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .onAppear { if bioDraft.isEmpty { bioDraft = store.profileCustomBio } }
+        case .workout:
+            VStack(alignment: .leading, spacing: 16) {
+                kicker("Train")
+                title("Your first workout is ready.")
+                body("Today holds \(store.currentWorkout.name). Open Train to run it set by set, or browse Discover for 150 ready workouts and your own builder.")
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(store.currentWorkout.name)
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text("\(store.currentWorkout.exercises.count) exercises · log every set with the check, and the rest timer runs itself.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Button("Browse Discover instead") { leave { store.selectedClientTab = .discover } }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+            }
+        case .partner:
+            VStack(alignment: .leading, spacing: 16) {
+                kicker("Together")
+                title("Add a training partner.")
+                body("Follow people by @username, train the same workout live, and hold each other to the week. Or send your invite link and they land connected to you.")
+                ShareLink(item: store.networkInviteMessage) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "square.and.arrow.up")
+                        Text("Share your invite link")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 48)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+            }
+        case .ai:
+            VStack(alignment: .leading, spacing: 16) {
+                Image("MorpheAIMark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 64, height: 64)
+                    .shadow(color: MorpheTheme.brandBlue.opacity(0.25), radius: 12)
+                kicker("Morphe AI")
+                title("Your guardian is one tap away.")
+                body("The bubble at the bottom right. Ask what's next, log a set by voice (\u{201C}log 3 by 10 at 135\u{201D}), or say \u{201C}Hey Morphe\u{201D} with the app open. It answers from your own logs and never invents a number.")
+            }
+        case .formCheck:
+            VStack(alignment: .leading, spacing: 16) {
+                kicker("Form Check and check-ins")
+                title("The camera counts. The check-in adjusts.")
+                body("Inside a session, Form Check uses the front camera to read your build, count reps, and tell you what it measured. Video never leaves your phone. Each day, a quick check-in reads sleep, energy, and soreness, and Morphe adjusts the day around it.")
+                GlassCard(.quiet) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        rule("A", "Form Check", "Train → the camera button next to the exercise you're on.")
+                        rule("B", "Daily check-in", "Today → the greeting asks; answer in one tap.")
+                    }
+                }
+            }
+        case .done:
+            VStack(alignment: .leading, spacing: 16) {
+                kicker("Set")
+                title("You're set.")
+                body("The rest of Morphe grows from the work you log: streaks with honest outs, PRs from real sets, levels on Sparta's own ladder. Everything from this tour lives in Profile and Train whenever you want it.")
+            }
+        }
+    }
+
+    // MARK: Footer
+
+    private var footer: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 6) {
+                ForEach(pages, id: \.rawValue) { p in
+                    Capsule()
+                        .fill(p == current ? MorpheTheme.accent : MorpheTheme.stroke)
+                        .frame(width: p == current ? 20 : 6, height: 6)
+                        .animation(.easeInOut(duration: 0.2), value: page)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Step \(page + 1) of \(pages.count)")
+
+            Button(primaryLabel) { primaryAction() }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandBlue))
+
+            if current != .done, current != .welcome {
+                Button("Skip") { advance() }
+                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(minHeight: 44)
+            } else if current == .welcome {
+                Button("Skip the tour") { finish() }
+                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(minHeight: 44)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+    }
+
+    private var primaryLabel: String {
+        switch current {
+        case .welcome: return "Take the tour"
+        case .profile: return bioDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Continue" : "Save and continue"
+        case .workout: return "Open Train"
+        case .partner: return "Find people"
+        case .ai: return "Ask Morphe"
+        case .formCheck: return "Got it"
+        case .done: return "Start training"
+        }
+    }
+
+    private func primaryAction() {
+        switch current {
+        case .welcome, .formCheck:
+            advance()
+        case .profile:
+            let clean = bioDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !clean.isEmpty, clean != store.profileCustomBio { store.updateProfileBio(clean) }
+            advance()
+        case .workout:
+            leave { store.selectedClientTab = .train }
+        case .partner:
+            leave { store.openCommunity(.forYou) }
+        case .ai:
+            leave { store.openAIAgent() }
+        case .done:
+            finish()
+        }
+    }
+
+    private func advance() {
+        guard page + 1 < pages.count else { finish(); return }
+        page += 1
+    }
+
+    /// Leave the tour INTO the thing it just introduced.
+    private func leave(_ go: @escaping () -> Void) {
+        finish()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { go() }
+    }
+
+    private func finish() {
+        store.dismissWelcomeExperience()
+        dismiss()
+    }
+
+    // MARK: Type
+
+    private func kicker(_ text: String) -> some View {
+        Text(text.uppercased())
+            .font(MorpheTheme.microLabel(10))
+            .tracking(1.6)
+            .foregroundStyle(MorpheTheme.accentText)
+    }
+
+    private func title(_ text: String) -> some View {
+        Text(text)
+            .font(.title2.weight(.bold))
+            .foregroundStyle(MorpheTheme.textPrimary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func body(_ text: String) -> some View {
+        Text(text)
+            .font(.subheadline)
+            .foregroundStyle(MorpheTheme.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func rule(_ index: String, _ heading: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(index)
+                .font(MorpheTheme.microLabel(11))
+                .tracking(1.2)
+                .foregroundStyle(MorpheTheme.accentText)
+                .frame(width: 22, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(heading)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
 
-private struct WelcomeTag: View {
-    let text: String
-    let color: Color
-
-    var body: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(MorpheTheme.onFill(color))  // the ink follows the fill (audit 29)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                    .fill(color)
-            )
-    }
-}
 
 /// Hosts the store's session-work gate as a confirmation dialog. Attached
 /// ONCE, at the root — sheet-hosted callers dismiss before queuing so the

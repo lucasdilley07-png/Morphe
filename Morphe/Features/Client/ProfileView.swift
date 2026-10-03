@@ -704,7 +704,8 @@ struct ProfileView: View {
 
     /// Downscales to 512px max and compresses — a profile photo that rides in
     /// the cloud snapshot must stay far under Firestore's document limit.
-    private static func processedProfilePhoto(_ raw: Data) -> Data? {
+    /// Shared with the tour (RootView) — one photo pipeline.
+    static func processedProfilePhoto(_ raw: Data) -> Data? {
         guard let image = UIImage(data: raw) else { return nil }
         let maxSide: CGFloat = 512
         let scale = min(1, maxSide / max(image.size.width, image.size.height))
