@@ -944,7 +944,9 @@ struct WorkoutView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 6)
+            // Starts under the floating icon row like every other tab
+            // (Lucas 2026-10-03: the landing sat 54pt higher than Today).
+            .padding(.top, MorpheTheme.Spacing.pageTopTrain)
             .padding(.bottom, 120)
         }
         .onAppear { revealLibraryIfRequested(proxy) }
