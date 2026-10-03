@@ -4295,10 +4295,10 @@ enum MorpheDemoContent {
             rewardXP: 10
         ),
         MiniQuiz(
-            question: "What did Talos, the bronze guardian of Crete, do every day?",
-            options: ["Slept until attacked", "Circled the island three times", "Forged weapons", "Trained the army"],
-            correctIndex: 1,
-            explanation: "He ran the island's shore three times a day (Apollodorus, Library 1.9.26). The watch that never skips is the one that works.",
+            question: "A Spartan mess, where every citizen ate, held about how many men?",
+            options: ["About fifteen", "Fifty", "Three hundred", "Seven"],
+            correctIndex: 0,
+            explanation: "Companies of about fifteen, each man bringing a fixed share every month (Plutarch, Lycurgus 12). Train with people who carry their share.",
             rewardXP: 10
         ),
         MiniQuiz(

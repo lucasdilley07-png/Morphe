@@ -7554,7 +7554,7 @@ final class SpartanLoreTests: XCTestCase {
     }
 
     func testLoreIntentIsPhrasesNotSubstrings() {
-        for lore in ["who is talos", "tell me a spartan saying", "give me a saying",
+        for lore in ["tell me a spartan saying", "give me a saying",
                      "what's my agoge rank", "a laconic quote please", "who are you"] {
             XCTAssertTrue(MorpheAppStore.isLoreQuestion(lore), "\(lore) asks for the lore")
         }
@@ -7619,7 +7619,8 @@ final class SpartanLoreTests: XCTestCase {
         let store = makeStore()
         store.setStyleChoice(communicationStyle: "direct")
         let everyTurn = store.intelligenceSystemPrompt(spoken: false, userText: "how was my week")
-        XCTAssertTrue(everyTurn.contains("Talos"))
+        XCTAssertTrue(everyTurn.contains("Spartan training guardian"))
+        XCTAssertFalse(everyTurn.contains("Talos"), "the lineage left the brand (Lucas 2026-10-03)")
         XCTAssertTrue(everyTurn.contains("laconic"))
         XCTAssertTrue(everyTurn.contains("never invent or 'adapt' an ancient quote"))
         XCTAssertFalse(everyTurn.contains(SpartanLore.sayings[1].source),

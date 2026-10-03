@@ -1250,13 +1250,7 @@ enum SpartanLore {
 
     /// Short reads: what the record says, then what it means under a bar.
     /// The first sentence(s) are the record; the last is Morphe's reading.
-    static let guardian = LoreEntry(
-        title: "The guardian",
-        body: "Talos was a man of bronze who guarded Crete, circling the island three times every day. One vein ran through him from neck to ankle, sealed by a single nail. He is among the oldest machine guardians ever imagined, and the line Morphe stands in: a constant watch, one source of truth.",
-        source: "Apollonius, Argonautica 4.1638–88 · Apollodorus, Library 1.9.26")
-
     static let entries: [LoreEntry] = [
-        guardian,
         LoreEntry(
             title: "They marched to flutes",
             body: "At Mantinea the other army came on in haste and fury. The Spartans advanced slowly to pipe-players, so the line would arrive unbroken. Pace is not weakness. A set done at a held tempo beats a rushed one.",

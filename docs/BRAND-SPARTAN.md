@@ -1,17 +1,18 @@
 # MORPHE — the Spartan identity (ratified 2026-10-01)
 
-Same name. New blood. Three sources fused into one brand: hardcore spartan
-principles, Apple/glass design craft, and one of the oldest
-machine-guardian stories ever told.
+Same name. New blood. Two sources fused into one brand: hardcore spartan
+principles and Apple/glass design craft. (The Talos lineage was part of
+the first draft and was retired 2026-10-03: the AI is a Spartan guardian,
+not a mythological machine.)
 
 ## The idea in one breath
 
 Sparta didn't sell motivation; it built discipline and let the results
 speak. Morphe is the same product: nothing invented, nothing padded,
-every number earned. The AI is the guardian in the line of **Talos** —
-the bronze sentinel who circled his island every day without fail, one
-vein of truth running through him. Morphe circles your training the same
-way: tireless, laconic, honest to the nail.
+every number earned. The AI is a **Spartan guardian**: disciplined,
+direct, tireless, honest to the last digit. A warrior standard with no
+theatrics — it watches your training the way a good training partner
+holds the line: laconic, constant, never flattering.
 
 ## Palette — white and blue
 
@@ -62,21 +63,16 @@ ethic; the rebrand names it. The AI speaks like a guardian, not a hype man.
 
 ## Pitch frame
 
-"Morphe is the Spartan in your pocket: an AI guardian — in the direct
-line of Talos, one of the first machine guardians ever imagined — that
-trains you with total honesty. White-and-blue Apple-glass design, a laconic voice, and a
-single law older than Sparta itself: every number is earned."
+"Morphe is the Spartan in your pocket: an AI guardian that trains you
+with total honesty. White-and-blue Apple-glass design, a laconic voice,
+and one law: every number is earned."
 Differentiators unchanged and now sharper: the only tracker you can talk
 to · every stat earned · it learns you. The theme gives the pitch a
 story the feature list never had.
 
-(Corrected 2026-10-01: "the first machine ever imagined" overclaimed —
-Homer's automata are older on the page. See `SPARTAN-LORE.md` §2.)
-
 ## The record under the brand
 
-`docs/SPARTAN-LORE.md` is the sourced research: Talos, the verified
-sayings, the agoge ladder, the idea bank, and the risks (the "molon labe"
+`docs/SPARTAN-LORE.md` is the sourced research: the verified sayings, the agoge ladder, the idea bank, and the risks (the "molon labe"
 association, Spartan Race's SPARTAN trademarks, and where the popular
 picture of Sparta is wrong). Law: no ancient quote ships without its
 citation, and the app says plainly what it leaves behind (helotry).
@@ -84,7 +80,7 @@ citation, and the app says plainly what it leaves behind (helotry).
 ## Phase map
 
 1. **SHIPPED 2026-10-01**: token flip to blue (all targets), helmet mark
-   in code + regenerated AppIcon/LaunchMark, Talos/laconic system prompt,
+   in code + regenerated AppIcon/LaunchMark, Spartan/laconic system prompt,
    this doc.
 2. Per-screen UI pass in the spartan language (glass controls, concentric
    geometry per iOS 26).

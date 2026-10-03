@@ -26,10 +26,10 @@ pitch use; they are the parts that go stale.
 | **Agoge rank** on the level card + level-up banner | Levels 1–10 Pais, 11–19 Paidiskos, 20–29 Hēbōn, 30+ Homoios | stages: Xenophon, *Lac. Pol.* 2–4; ages: modern reconstruction |
 | **Laconic** communication style | "Direct" renamed (same id, no migration). The register now lives in the style, so "Encouraging" is honored | — |
 | **AI lore guardrail** (Claude prompt) | Short law on every turn (never quote from memory, never invent or "adapt", never glorify helotry, never "molon labe"); the 8 cited sayings are sent only on a turn that asks for lore | §3, §6 |
-| **Built-in brain** | "Who is Talos", "who are you", "my rank", "a Spartan saying" answer from the record with no API key | §2, §3 |
+| **Built-in brain** | "who are you", "my rank", "a Spartan saying" answer from the record with no API key | §3 |
 | **Comeback card** | One line: Sparta withheld its honors from the reckless return | Herodotus 9.71 |
 | **Bibasis** exercise + **The Thousand** badge | The Spartan counted jump in the library; badge at 1,000 lifetime logged reps | Pollux 4.102; Aristophanes, *Lysistrata* 82 |
-| **Four lore quizzes** | Mantinea pipes, "add a step", Talos' circuits, Aristodemus | Thuc. 5.70; Plut.; Apollod. 1.9.26; Hdt. 9.71 |
+| **Four lore quizzes** | Mantinea pipes, "add a step", the mess of fifteen, Aristodemus | Thuc. 5.70; Plut. Lyc. 12; Hdt. 9.71 |
 | **Rebrand backlog** | Dedicated launch splash; Gold→Spartan Blue migration carried in the profile snapshot (`paletteEpoch`); watch icon; contrast fixes across every palette | audit 28 + 29 |
 
 Code: `SpartanLore`, `AgogeRank`, `LaconicSaying` in `Core/MorpheModels.swift`;
@@ -37,7 +37,11 @@ Code: `SpartanLore`, `AgogeRank`, `LaconicSaying` in `Core/MorpheModels.swift`;
 
 ---
 
-## 2. Talos — the guardian
+## 2. Talos — RETIRED from the brand (2026-10-03)
+
+Lucas removed the Talos lineage: the AI is a Spartan guardian, not a
+mythological machine. The research below stays as a record; nothing in
+the app, the site, or the pitch references Talos any more.
 
 - A man of bronze who guarded Crete. Both Apollodorus and Apollonius have
   him go round the island **three times every day**; a **single vein** ran

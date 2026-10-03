@@ -8724,8 +8724,8 @@ final class MorpheAppStore {
     }
 
     /// The never-invent law applied to the lore (docs/SPARTAN-LORE.md).
-    /// Always on, and short: who Talos is and what may never be done.
-    static let loreGuardrail = "Lore law: Talos was the man of bronze who guarded Crete, circling it three times a day (Apollodorus 1.9.26). Never quote an ancient source from memory, and never invent or 'adapt' an ancient quote. Never glorify Sparta's slavery of the helots; Morphe takes discipline, brevity, and the shield line, nothing else. Never use the phrase 'molon labe'. Do not bring up history unasked."
+    /// Always on, and short: what may never be done with the lore.
+    static let loreGuardrail = "Lore law: Morphe is the athlete's guardian, not a mythological figure or machine; never claim a lineage. Never quote an ancient source from memory, and never invent or 'adapt' an ancient quote. Never glorify Sparta's slavery of the helots; Morphe takes discipline, brevity, and the shield line, nothing else. Never use the phrase 'molon labe'. Do not bring up history unasked."
 
     /// The record itself — sent only on a turn that asks for it (audit
     /// 29: 300 tokens on every request was the wrong trade).
@@ -8743,13 +8743,12 @@ final class MorpheAppStore {
         loreIntent(in: lowercasedPrompt) != nil
     }
 
-    private enum LoreIntent { case talos, identity, rank, saying }
+    private enum LoreIntent { case identity, rank, saying }
 
     private static func loreIntent(in prompt: String) -> LoreIntent? {
         func hasWord(_ word: String) -> Bool {
             prompt.range(of: "\\b\(word)\\b", options: .regularExpression) != nil
         }
-        if hasWord("talos") { return .talos }
         if prompt.contains("who are you") { return .identity }
         if hasWord("agoge") || prompt.contains("my agoge rank") { return .rank }
         let namesSparta = hasWord("spartan") || hasWord("spartans") || hasWord("sparta") || hasWord("laconic")
@@ -8767,10 +8766,8 @@ final class MorpheAppStore {
     /// a quote must never be heard without where it comes from.
     private func loreReply(to lowercasedPrompt: String) -> String? {
         switch Self.loreIntent(in: lowercasedPrompt) {
-        case .talos:
-            return "\(SpartanLore.guardian.body) Source: \(SpartanLore.guardian.source)."
         case .identity:
-            return "Morphe. A training guardian in the line of Talos, the man of bronze who circled Crete three times a day. I watch your training the same way: every number from your own logs, nothing invented."
+            return "Morphe. Your Spartan training guardian. Every number from your own logs, nothing invented. One standard: the work gets done and the record tells the truth."
         case .rank:
             let rank = AgogeRank.rank(forLevel: currentLevelNumber)
             let ahead = rank.next.map { " Next: \($0.title) at level \($0.firstLevel)." } ?? " There is no rank above it."
@@ -8791,7 +8788,7 @@ final class MorpheAppStore {
         // The register itself lives in the communication style below (the
         // default is Laconic) so a user's Encouraging choice is honored;
         // the identity carries only who Morphe is and the honesty laws.
-        lines.append("You are Morphe, a Spartan training guardian inside the Morphe iOS app \u{2014} in the line of Talos, the bronze sentinel: tireless, constant, honest to the last digit. Brand: TRAIN SMARTER. Rules: never flatter, never inflate, never invent logged numbers. If you don't know a number, say so.")
+        lines.append("You are Morphe, the Spartan training guardian inside the Morphe iOS app: disciplined, direct, tireless, honest to the last digit. A warrior standard with no theatrics. Brand: TRAIN SMARTER. Rules: never flatter, never inflate, never invent logged numbers. If you don't know a number, say so.")
         lines.append(Self.loreGuardrail)
         if let userText, Self.isLoreQuestion(userText.lowercased()) {
             lines.append(Self.loreRecord)

@@ -163,7 +163,7 @@ enum MorpheTheme {
 
     /// MORPHE Spartan blue (#2957D9) — the brand since the 2026-10-01
     /// rebrand (docs/BRAND-SPARTAN.md): white and blue, helmet mark,
-    /// Talos-guardian AI. Single-accent by default: `.spartan` (the
+    /// Spartan-guardian AI. Single-accent by default: `.spartan` (the
     /// default palette) resolves to this brand pair. The gold era survives
     /// as the user-selectable legacy "Gold" palette only.
     static let brandBlue = Color(red: 0.161, green: 0.341, blue: 0.851)    // #2957D9
