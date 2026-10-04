@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import AVFoundation
+import AudioToolbox
 
 enum MorpheTheme {
     // MORPHE telemetry palette — flat black + #FFD600 yellow. HUD language:
@@ -495,6 +496,14 @@ enum Haptics {
         let generator = UISelectionFeedbackGenerator()
         generator.prepare()
         generator.selectionChanged()
+    }
+
+    /// "Hey Morphe" heard (Lucas 2026-10-04): a real vibration, not a
+    /// tick — the phone is in a pocket or on the floor mid-set, and the
+    /// buzz is the only confirmation that reaches the athlete.
+    static func wake() {
+        impact(.heavy)
+        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
     }
 
     /// The PR signature (Apple benchmark A1): heavy strike, then success —

@@ -1222,9 +1222,51 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     private func claimStageForActiveCapture() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playAndRecord, mode: .default,
-                                 options: [.defaultToSpeaker, .allowBluetoothA2DP])
+                                 options: Self.routeOptions())
+        Self.allowHapticsWhileRecording()
         try? session.setActive(true, options: .notifyOthersOnDeactivation)
         sessionOwned = true
+    }
+
+    /// Hear the user through their headset (Lucas 2026-10-04: "has a hard
+    /// time picking up when connected to bluetooth"). The old sessions
+    /// carried only .allowBluetoothA2DP, which is OUTPUT-only — with
+    /// AirPods in, Morphe still listened through the phone's own mic,
+    /// wherever the phone was lying. The hands-free profile brings the
+    /// headset mic in; the cost is honest and stated in Settings: other
+    /// apps' music plays in call quality while Morphe listens.
+    static var headsetMicEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: "morphe.heymorphe.headsetmic") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "morphe.heymorphe.headsetmic") }
+    }
+
+    /// The route half of every session this engine configures — the
+    /// mixing/ducking half is the caller's.
+    private static func routeOptions(_ extra: AVAudioSession.CategoryOptions = []) -> AVAudioSession.CategoryOptions {
+        var options: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .allowBluetoothA2DP]
+        options.formUnion(extra)
+        if headsetMicEnabled {
+            options.insert(.allowBluetoothHFP)
+            // AirPods' high-quality link where the hardware has it
+            // (iOS 26); hands-free stays the fallback.
+            if #available(iOS 26.0, *) {
+                options.insert(.bluetoothHighQualityRecording)
+            }
+        }
+        return options
+    }
+
+    /// iOS MUTES haptics and system sounds while a session records unless
+    /// asked not to — the wake haptic never landed (Lucas 2026-10-04).
+    /// Set after every category change.
+    private static func allowHapticsWhileRecording() {
+        try? AVAudioSession.sharedInstance().setAllowHapticsAndSystemSoundsDuringRecording(true)
+    }
+
+    /// Re-applies the route after the Settings switch flips.
+    func headsetMicPreferenceChanged() {
+        guard state == .passive else { return }
+        beginListening()
     }
 
     /// Kills the speaking decay timer and zeroes the ring — safe to call
@@ -1308,11 +1350,20 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// read every 5s, zero courtesy risk, killed on stop()/arm.
     private var quietPollTimer: Timer?
 
-    private let audioEngine = AVAudioEngine()
+    /// Rebuilt after every listen pass (2026-10-04): an engine keeps the
+    /// input format of the route it first saw, so one AirPods connect
+    /// left the tap reading a format the hardware no longer produced.
+    private var audioEngine = AVAudioEngine()
     private var recognizer: SFSpeechRecognizer?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private let synthesizer = AVSpeechSynthesizer()
+    private var routeChangeObserver: NSObjectProtocol?
+    private var engineConfigObserver: NSObjectProtocol?
+    private var routeRecoveryWork: DispatchWorkItem?
+    /// What was already heard when a route change forced a mid-capture
+    /// rebuild — the new stream's transcript continues after it.
+    private var capturePrefix = ""
     /// The best installed en-GB male voice wins (premium > enhanced >
     /// compact — "Daniel" ships on every iPhone; an enhanced or premium
     /// download upgrades Morphe automatically). Falls back to the
@@ -1352,8 +1403,13 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// The optional possessive eats the recognizer's retro-corrected
     /// "Hey Murphy's what's…" form (audit 14, P2: the bare \b left a stray
     /// "s " prefix that defeated the question detector downstream).
+    /// Wider door (Lucas 2026-10-04, "easier to activate"): the opener may
+    /// be hey / hi / okay / yo (and the "hay" the recognizer writes for a
+    /// clipped "hey"), and the name table carries the spellings the
+    /// on-device recognizer reaches for with a word it was never taught. The
+    /// name alone still never wakes — "the murphy bed" stays furniture.
     private static let wakePattern = try! NSRegularExpression(
-        pattern: "\\bhey[,!.]?\\s+(morpheus|morphee|morphie|morphine|morphy|morphe|morph|murphy|murph|more\\s+fee|morfe)(?:'s|\u{2019}s)?\\b[,!.]?",
+        pattern: "\\b(?:hey|hay|hi|okay|ok|yo)[,!.]?\\s+(?:there[,!.]?\\s+)?(morpheus|morphine|morphin|morphee|morphie|morphia|morphea|morphy|morphe|morpha|morph|murphey|murphie|murphy|murfy|murph|more\\s+fee|mor\\s+fee|morfee|morfie|morfy|morfe)(?:'s|\u{2019}s)?\\b[,!.]?",
         options: [.caseInsensitive])
 
     /// Vocabulary bias for the recognition request: the wake name plus the
@@ -1384,6 +1440,25 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                   self.waitingForQuiet else { return }
             self.waitingForQuiet = false
             self.start()
+        }
+        // A headset connecting or dropping changes the mic under a live
+        // tap (2026-10-04): nothing rebuilt it, so the wake went deaf
+        // until the next foreground — "only works sometimes".
+        routeChangeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                  let reason = AVAudioSession.RouteChangeReason(rawValue: raw),
+                  reason == .newDeviceAvailable || reason == .oldDeviceUnavailable else { return }
+            self?.scheduleRouteRecovery(deviceChanged: true)
+        }
+        // The system stops an engine whose hardware format changed and
+        // says so only here.
+        engineConfigObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let self, (note.object as? AVAudioEngine) === self.audioEngine else { return }
+            self.scheduleRouteRecovery(deviceChanged: false)
         }
         // Phone calls / Siri / other apps taking the session (audit 12,
         // P1-4): tear down on interruption, resume when it ends.
@@ -1445,6 +1520,124 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         if let quietHintObserver {
             NotificationCenter.default.removeObserver(quietHintObserver)
         }
+        if let routeChangeObserver {
+            NotificationCenter.default.removeObserver(routeChangeObserver)
+        }
+        if let engineConfigObserver {
+            NotificationCenter.default.removeObserver(engineConfigObserver)
+        }
+    }
+
+    /// Debounced (a route change arrives as a burst) and state-aware:
+    /// passive re-arms on the new mic; a capture in flight keeps what it
+    /// heard and continues on a fresh stream; an answer in flight gets
+    /// its barge-in mic back.
+    private func scheduleRouteRecovery(deviceChanged: Bool) {
+        guard state == .passive || state == .active || state == .speaking else { return }
+        routeRecoveryWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            let engineDead = !self.didInstallTap || !self.audioEngine.isRunning
+            switch self.state {
+            case .passive:
+                guard deviceChanged || engineDead else { return }
+                self.restartAttempts = 0
+                self.beginListening()
+            case .active:
+                guard engineDead else { return }
+                self.resumeActiveCapture()
+            case .speaking:
+                guard engineDead else { return }
+                self.tearDownRecognition()
+                self.armBargeInRecognition()
+            default:
+                break
+            }
+        }
+        routeRecoveryWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work)
+    }
+
+    /// The mic died under a capture (the stage claim or a headset
+    /// reshuffled the route). The wake already happened — keep the words
+    /// heard so far and take the rest as a whole stream, full routing.
+    private func resumeActiveCapture() {
+        let heard = liveTranscript
+        tearDownRecognition()
+        guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable,
+              recognizer.supportsOnDeviceRecognition else {
+            liveTranscript = heard
+            fireCommand()
+            return
+        }
+        self.recognizer = recognizer
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        request.requiresOnDeviceRecognition = true
+        request.contextualStrings = Self.contextualVocabulary
+        self.request = request
+        do {
+            try installMicTap(feeding: request)
+        } catch {
+            liveTranscript = heard
+            fireCommand()
+            return
+        }
+        capturePrefix = heard
+        if !activeIsFollowUp {
+            activeIsFollowUp = true
+            directCaptureSession = true
+        }
+        // Exempt from the ambient ceiling — this capture was earned.
+        isBargeCapture = true
+        followUpCaptureStart = Date()
+        var startedTask: SFSpeechRecognitionTask?
+        startedTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            DispatchQueue.main.async {
+                guard let self, self.task === startedTask else { return }
+                self.handle(result: result, error: error)
+            }
+        }
+        task = startedTask
+        armCommandTimer(after: heard.isEmpty ? 2.5 : 1.8)
+    }
+
+    /// One tap for every stream. Refuses a route that has no input format
+    /// yet (mid-switch the node reports 0 Hz, and installing a tap on
+    /// that crashes) — the caller's retry lands after the route settles.
+    private func installMicTap(feeding request: SFSpeechAudioBufferRecognitionRequest,
+                               voiceProcessing: Bool = false) throws {
+        let node = audioEngine.inputNode
+        if voiceProcessing {
+            // Hardware echo cancellation (audit 24, P1: .voiceChat mode
+            // alone doesn't enable it for AVAudioEngine input) — best
+            // effort; the text echo guard stays as the second line.
+            try? node.setVoiceProcessingEnabled(true)
+        }
+        let format = node.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            throw NSError(domain: "HeyMorphe", code: 1)
+        }
+        node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            request.append(buffer)
+            // Mic energy for the frequency ring. This ONE tap serves
+            // both passive wake-listening and active capture (the
+            // passive→active transition never reinstalls it) — the
+            // ring only mounts during active, so the main-thread hop
+            // is gated on levelTapLive (audit 22, P2: 46 hops/sec for
+            // an unmounted view). RMS math itself is a few adds.
+            if self?.levelTapLive == true, let channel = buffer.floatChannelData?[0] {
+                let count = Int(buffer.frameLength)
+                var sum: Float = 0
+                for i in 0..<count { sum += channel[i] * channel[i] }
+                let rms = count > 0 ? sqrtf(sum / Float(count)) : 0
+                let level = HeyMorpheEngine.normalizedLevel(rms: rms)
+                DispatchQueue.main.async { self?.ingestMicLevel(level) }
+            }
+        }
+        didInstallTap = true
+        audioEngine.prepare()
+        try audioEngine.start()
     }
 
     /// Parks the engine behind someone else's audio WITH the full session
@@ -1641,7 +1834,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         // Morphe talks WITHOUT hearing itself.
         try? AVAudioSession.sharedInstance().setCategory(
             .playAndRecord, mode: .voiceChat,
-            options: [.duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+            options: Self.routeOptions(.duckOthers))
+        Self.allowHapticsWhileRecording()
         armBargeInRecognition()
     }
 
@@ -1932,18 +2126,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         request.contextualStrings = Self.contextualVocabulary
         self.request = request
         do {
-            let node = audioEngine.inputNode
-            // Hardware echo cancellation (audit 24, P1: .voiceChat mode
-            // alone doesn't enable it for AVAudioEngine input) — best
-            // effort; the text echo guard stays as the second line.
-            try? node.setVoiceProcessingEnabled(true)
-            let format = node.outputFormat(forBus: 0)
-            node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-                request.append(buffer)
-            }
-            didInstallTap = true
-            audioEngine.prepare()
-            try audioEngine.start()
+            try installMicTap(feeding: request, voiceProcessing: true)
         } catch { return }
         var startedTask: SFSpeechRecognitionTask?
         startedTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
@@ -1969,7 +2152,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)
             didInstallTap = false
+            // Next pass reads the route as it is THEN, not as this
+            // engine first saw it.
+            audioEngine = AVAudioEngine()
         }
+        routeRecoveryWork?.cancel()
+        routeRecoveryWork = nil
         request?.endAudio()
         task?.cancel()
         task = nil
@@ -1990,7 +2178,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
         sessionOwned = false
         try? session.setCategory(.playAndRecord, mode: .default,
-                                 options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+                                 options: Self.routeOptions(.mixWithOthers))
     }
 
     private func beginListening() {
@@ -2001,6 +2189,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         // and resumes when the exchange ends (restoreMixSession).
         tearDownRecognition()
         liveTranscript = ""
+        capturePrefix = ""
         // No recognizer for this locale at all — that's permanent, not a
         // glitch; say so instead of six pointless restarts (audit 13).
         guard let recognizer = SFSpeechRecognizer() else {
@@ -2046,31 +2235,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
             // WAITING for a wake word must not quiet the user's playlist
             // for the whole workout. speak() ducks for its own duration.
             try session.setCategory(.playAndRecord, mode: .default,
-                                    options: [.mixWithOthers, .defaultToSpeaker, .allowBluetoothA2DP])
+                                    options: Self.routeOptions(.mixWithOthers))
+            Self.allowHapticsWhileRecording()
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             sessionOwned = true
-            let node = audioEngine.inputNode
-            let format = node.outputFormat(forBus: 0)
-            node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-                request.append(buffer)
-                // Mic energy for the frequency ring. This ONE tap serves
-                // both passive wake-listening and active capture (the
-                // passive→active transition never reinstalls it) — the
-                // ring only mounts during active, so the main-thread hop
-                // is gated on levelTapLive (audit 22, P2: 46 hops/sec for
-                // an unmounted view). RMS math itself is a few adds.
-                if self?.levelTapLive == true, let channel = buffer.floatChannelData?[0] {
-                    let count = Int(buffer.frameLength)
-                    var sum: Float = 0
-                    for i in 0..<count { sum += channel[i] * channel[i] }
-                    let rms = count > 0 ? sqrtf(sum / Float(count)) : 0
-                    let level = HeyMorpheEngine.normalizedLevel(rms: rms)
-                    DispatchQueue.main.async { self?.ingestMicLevel(level) }
-                }
-            }
-            didInstallTap = true
-            audioEngine.prepare()
-            try audioEngine.start()
+            try installMicTap(feeding: request)
             // NOT the place to reset restartAttempts (audit 13, P1): the
             // engine starting proves nothing about the recognizer — a
             // task-level failure loop would reset its own backoff every
@@ -2165,6 +2334,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                 if let command = Self.commandAfterWake(in: text) {
                     activeIsFollowUp = false
                     followUpCaptureStart = nil
+                    capturePrefix = ""
                     liveTranscript = command
                     onWake?()
                     armCommandTimer(after: command.isEmpty ? 2.5 : 1.4)
@@ -2187,9 +2357,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     restoreMixSession()
                     state = .passive
                     beginListening()
-                } else if text != liveTranscript {
-                    liveTranscript = text
-                    armCommandTimer(after: 1.4)
+                } else {
+                    let full = capturePrefix.isEmpty ? text : capturePrefix + " " + text
+                    if full != liveTranscript {
+                        liveTranscript = full
+                        armCommandTimer(after: 1.4)
+                    }
                 }
             case .active:
                 // Re-locate the wake phrase EVERY partial (audit 12, P1-9):
@@ -2310,6 +2483,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         directCaptureSession = false
         activeIsFollowUp = false
         liveTranscript = ""
+        capturePrefix = ""
         if command.isEmpty || Self.isCancelPhrase(command) {
             // Woke then silence, or an explicit retraction ("never mind")
             // — back to scanning, no charge, no spoken reply (a misfire
@@ -2358,8 +2532,20 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         // A listen pass that survived 30s was healthy — its end is the
         // recognizer's routine ~1min stream cap, not a failure loop. Only
         // rapid-fire failures may climb toward the ceiling (audit 13, P1).
-        if let began = listenStartedAt, Date().timeIntervalSince(began) > 30 {
+        // 2026-10-04: the bar was 30s, but the on-device recognizer ends
+        // a pass after a few seconds of SILENCE ("no speech detected") —
+        // a quiet room read as six straight failures, the engine stood
+        // down, and Hey Morphe was dead until the next foreground. Any
+        // pass that ran 4s was a working mic: recycle at once, no charge,
+        // so the deaf gap between passes is a blink instead of a backoff.
+        if let began = listenStartedAt, Date().timeIntervalSince(began) > 4 {
             restartAttempts = 0
+            listenStartedAt = nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self, self.state == .passive, self.task == nil else { return }
+                self.beginListening()
+            }
+            return
         }
         listenStartedAt = nil
         restartAttempts += 1

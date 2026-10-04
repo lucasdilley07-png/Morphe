@@ -9689,6 +9689,15 @@ final class MorpheAppStore {
         }
     }
 
+    /// Hear "Hey Morphe" through a connected headset's mic (2026-10-04).
+    var heyMorpheHeadsetMic = HeyMorpheEngine.headsetMicEnabled
+
+    func setHeyMorpheHeadsetMic(_ enabled: Bool) {
+        heyMorpheHeadsetMic = enabled
+        HeyMorpheEngine.headsetMicEnabled = enabled
+        heyMorphe.headsetMicPreferenceChanged()
+    }
+
     func startVoiceIfEnabled() {
         // Only inside the real app shell (audit 13, P1): the scene-phase
         // restart used to arm the mic on the auth wall and the terms gate.
@@ -9698,7 +9707,7 @@ final class MorpheAppStore {
             // The gym is eyes-free (Siri audit): every wake gets a felt
             // AND heard confirmation — haptic plus a soft two-note cue in
             // the same Milestone voice as the rest of the app.
-            Haptics.impact(.light)
+            Haptics.wake()
             SoundEffects.play(.wake)
         }
         heyMorphe.onCommand = { [weak self] command, isFollowUp in

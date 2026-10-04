@@ -1066,6 +1066,26 @@ final class WorkoutSessionTests: XCTestCase {
                        "open train")
     }
 
+    /// 2026-10-04 ("easier to activate"): more openers and more spellings
+    /// wake it; the bare name and ordinary sentences still don't.
+    func testWakePhraseAcceptsWiderOpenersWithoutWakingOnChatter() {
+        for heard in ["Okay Morphe open train", "ok murphy open train",
+                      "Hi Morphie, open train", "yo morph open train",
+                      "hay Murphey open train", "Hey there Morphe open train",
+                      "hey morfy open train", "hey more fee open train",
+                      "hey Morphia open train"] {
+            XCTAssertEqual(HeyMorpheEngine.commandAfterWake(in: heard), "open train", heard)
+        }
+        // A wake buried in a running stream still hands over only what follows.
+        XCTAssertEqual(HeyMorpheEngine.commandAfterWake(in: "two more reps okay Morphe skip rest"),
+                       "skip rest")
+        for chatter in ["Morphe open train", "murphy said hi", "okay more weight",
+                        "hey more plates", "hi morphology class", "they morph okay",
+                        "yo that was heavy", "ok morning session"] {
+            XCTAssertNil(HeyMorpheEngine.commandAfterWake(in: chatter), chatter)
+        }
+    }
+
     /// Rebuild wave (2026-08): the retraction classifier — the engine
     /// drops these before onCommand ever fires.
     func testCancelPhraseClassifier() {

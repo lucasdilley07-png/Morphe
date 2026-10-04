@@ -1321,6 +1321,17 @@ struct ProfileView: View {
                             set: { store.setHeyMorphe(enabled: $0) }
                         )
                     )
+                    if store.heyMorpheEnabled {
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+                        preferenceToggleRow(
+                            title: "Listen through headphones",
+                            caption: "With AirPods or a Bluetooth headset connected, Morphe hears you through their microphone instead of the phone's. The trade: music from other apps plays in call quality while Morphe listens. Off keeps music at full quality and listens through the phone.",
+                            isOn: Binding(
+                                get: { store.heyMorpheHeadsetMic },
+                                set: { store.setHeyMorpheHeadsetMic($0) }
+                            )
+                        )
+                    }
 
             }
 
