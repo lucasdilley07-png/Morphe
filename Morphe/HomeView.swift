@@ -106,6 +106,12 @@ struct HomeView: View {
                     text: "This is Today — your next session, your streak, and your plan all live here. I'll point things out as you go."
                 )
 
+                // Showing up, counted (Lucas 2026-10-04): days in a row the
+                // app was opened — its own number, not the training streak.
+                if store.dailyStreakDays >= 1 {
+                    DailyStreakRow(days: store.dailyStreakDays, best: store.dailyStreakBest)
+                }
+
                 // Jarvis beat: the app asks, you answer, the day reshapes.
                 MorpheAsksCard()
 
@@ -365,6 +371,7 @@ struct HomeView: View {
             await store.refreshAppointments()
         }
         .animation(.easeInOut(duration: 0.25), value: store.isWorkoutLoggedToday)
+        .onAppear { store.recordAppOpen() }
         .sheet(isPresented: $showLayoutEditor) {
             HomeLayoutEditorSheet()
                 .environment(store)
@@ -2074,5 +2081,49 @@ private struct FirstWeekCard: View {
                 }
             }
         }
+    }
+}
+
+/// The daily streak: consecutive days Morphe was opened. One line, one
+/// number — the count ticks with a numeric transition and never jitters.
+private struct DailyStreakRow: View {
+    let days: Int
+    let best: Int
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "flame.fill")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(MorpheTheme.accentText)
+                .accessibilityHidden(true)
+            Text("\(days)")
+                .font(.title3.weight(.bold))
+                .monospacedDigit()
+                .contentTransition(.numericText(value: Double(days)))
+                .foregroundStyle(MorpheTheme.textPrimary)
+            Text(days == 1 ? "DAY SHOWN UP" : "DAYS IN A ROW")
+                .font(.caption.weight(.bold))
+                .tracking(1.2)
+                .foregroundStyle(MorpheTheme.textSecondary)
+            Spacer(minLength: 8)
+            if best > days {
+                Text("BEST \(best)")
+                    .font(.caption.weight(.semibold))
+                    .monospacedDigit()
+                    .tracking(1.2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 44)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .stroke(MorpheTheme.strokeSubtle, lineWidth: 1)
+        )
+        .animation(.easeOut(duration: 0.2), value: days)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(days == 1
+            ? "Daily streak: day one. Open Morphe tomorrow to build it."
+            : "Daily streak: \(days) days in a row" + (best > days ? ", best \(best)" : ""))
     }
 }

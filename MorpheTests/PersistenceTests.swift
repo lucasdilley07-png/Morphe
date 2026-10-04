@@ -1086,6 +1086,24 @@ final class WorkoutSessionTests: XCTestCase {
         }
     }
 
+    /// 2026-10-04: the daily (open-the-app) streak rule.
+    @MainActor
+    func testDailyStreakHoldsAddsAndBreaks() {
+        typealias S = MorpheAppStore
+        XCTAssertEqual(S.advancedDailyStreak(count: 0, lastDay: "", today: "2026-10-04"), 1,
+                       "first open ever is day one")
+        XCTAssertEqual(S.advancedDailyStreak(count: 3, lastDay: "2026-10-04", today: "2026-10-04"), 3,
+                       "a second open the same day changes nothing")
+        XCTAssertEqual(S.advancedDailyStreak(count: 3, lastDay: "2026-10-03", today: "2026-10-04"), 4,
+                       "the next calendar day adds one")
+        XCTAssertEqual(S.advancedDailyStreak(count: 9, lastDay: "2026-10-02", today: "2026-10-04"), 1,
+                       "a missed day starts over")
+        XCTAssertEqual(S.advancedDailyStreak(count: 5, lastDay: "2026-09-30", today: "2026-10-01"), 6,
+                       "month boundaries are still consecutive days")
+        XCTAssertEqual(S.advancedDailyStreak(count: 5, lastDay: "2026-10-05", today: "2026-10-04"), 1,
+                       "a clock set backwards never mints days")
+    }
+
     /// Rebuild wave (2026-08): the retraction classifier — the engine
     /// drops these before onCommand ever fires.
     func testCancelPhraseClassifier() {

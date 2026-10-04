@@ -1054,6 +1054,10 @@ final class MorpheAppStore {
             persistTrainingPreferences()
             if remindersEnabled {
                 refreshDailyTrainingReminder()
+                refreshStreakRiskReminder()
+                refreshWeeklyRecapReminder()
+                refreshDailyStreakReminder()
+                syncAppointmentReminders()
             } else {
                 UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
             }
@@ -13195,6 +13199,10 @@ final class MorpheAppStore {
         guard let uid = authUser?.id else { return }
         if let fetched = await appointmentService.fetchAll(uid: uid) {
             appointments = fetched.sorted { $0.date < $1.date }
+            // A schedule that arrived from the cloud (new phone, reinstall)
+            // rings here too — reminders used to exist only on the device
+            // that created the appointment.
+            syncAppointmentReminders()
         }
     }
 
@@ -13203,7 +13211,10 @@ final class MorpheAppStore {
     // source of truth either way. Tests/previews (NoOp service) never touch
     // the system notification center.
     private var appointmentRemindersEnabled: Bool {
-        !(appointmentService is NoOpAppointmentService)
+        // The master switch too (2026-10-04): with only the service check,
+        // the next log re-armed the streak and recap reminders the user
+        // had just turned off.
+        remindersEnabled && !(appointmentService is NoOpAppointmentService)
     }
 
     /// Schedules a local notification 60 minutes before the appointment
@@ -13240,6 +13251,8 @@ final class MorpheAppStore {
                     self.refreshStreakRiskReminder()
                     self.refreshWeeklyRecapReminder()
                     self.refreshDailyTrainingReminder()
+                    self.refreshDailyStreakReminder()
+                    self.syncAppointmentReminders()
                 }
             }
         }
@@ -13250,10 +13263,18 @@ final class MorpheAppStore {
     /// today 5pm if nothing's logged yet (and it's early enough),
     /// otherwise tomorrow 5pm. Never repeats blindly, so a logged day
     /// never gets a nag. Off switch rides the existing reminder prefs.
+    ///
+    /// 2026-10-04: every scheduled workout in the next week gets its own
+    /// 5pm ring, so the schedule still speaks when the app isn't opened
+    /// for a few days. Only the first names the session — later days'
+    /// workouts aren't decided until the plan advances.
     func refreshDailyTrainingReminder() {
         let id = "morphe.daily.training"
+        let ids = [id] + (1..<7).map { "\(id).\($0)" }
+        // Tests/previews never touch the system notification center.
+        guard !(appointmentService is NoOpAppointmentService) else { return }
         let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [id])
+        center.removePendingNotificationRequests(withIdentifiers: ids)
         guard remindersEnabled, hasCompletedOnboarding, !currentWorkout.name.isEmpty else { return }
         center.getNotificationSettings { [weak self] settings in
             guard settings.authorizationStatus == .authorized
@@ -13266,54 +13287,101 @@ final class MorpheAppStore {
                 if isWorkoutLoggedToday || target <= .now {
                     target = calendar.date(byAdding: .day, value: 1, to: target) ?? target
                 }
-                // Planned rest days never get a training nag — advance to
-                // the next picked day (bounded walk; empty set = every day).
+                // Planned rest days never get a training nag — only picked
+                // days ring (bounded walk; empty set = every day).
+                var scheduled = 0
                 var hops = 0
-                while plannedRestDay(on: target, calendar: calendar), hops < 7 {
+                while scheduled < ids.count, hops < 14 {
+                    if !plannedRestDay(on: target, calendar: calendar) {
+                        let content = UNMutableNotificationContent()
+                        if scheduled == 0 {
+                            content.title = "Today's session: \(self.currentWorkout.name)"
+                            content.body = "One tap to start — the streak takes care of itself."
+                        } else {
+                            content.title = "A workout is on today's schedule"
+                            content.body = "Open Morphe and start the session."
+                        }
+                        content.sound = .default
+                        let trigger = UNCalendarNotificationTrigger(
+                            dateMatching: calendar.dateComponents(
+                                [.year, .month, .day, .hour, .minute], from: target),
+                            repeats: false)
+                        center.add(UNNotificationRequest(
+                            identifier: ids[scheduled], content: content, trigger: trigger))
+                        scheduled += 1
+                    }
                     target = calendar.date(byAdding: .day, value: 1, to: target) ?? target
                     hops += 1
                 }
-                let content = UNMutableNotificationContent()
-                content.title = "Today's session: \(self.currentWorkout.name)"
-                content.body = "One tap to start — the streak takes care of itself."
-                content.sound = .default
-                let trigger = UNCalendarNotificationTrigger(
-                    dateMatching: calendar.dateComponents(
-                        [.year, .month, .day, .hour, .minute], from: target),
-                    repeats: false)
-                center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
             }
         }
     }
 
     private func scheduleAppointmentReminder(_ appointment: Appointment) {
-        guard appointmentRemindersEnabled else { return }
-        let fireDate = appointment.date.addingTimeInterval(-60 * 60)
-        guard fireDate > .now else { return }   // less than an hour out: no ghost ring
-
+        guard appointmentRemindersEnabled, appointment.isScheduled,
+              appointment.date > .now else { return }
         let center = UNUserNotificationCenter.current()
         // Safe to call every time — after the first prompt it just reports
         // the existing decision.
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }   // denied: silent, the list is the truth
+            Self.addAppointmentRequests(for: appointment, to: center)
+        }
+    }
+
+    /// Two rings per appointment (Lucas 2026-10-04): an hour out, and at
+    /// the start. Anything already in the past is skipped — no ghost ring.
+    /// Identifiers derive from the appointment id, so re-adding replaces.
+    nonisolated private static func addAppointmentRequests(
+        for appointment: Appointment, to center: UNUserNotificationCenter
+    ) {
+        let kind = appointment.kind.title.lowercased()
+        let rings: [(id: String, date: Date, body: String)] = [
+            (appointment.id,
+             appointment.date.addingTimeInterval(-60 * 60),
+             appointment.withName.isEmpty ? "In 1 hour — \(kind)." : "In 1 hour with \(appointment.withName)."),
+            (appointment.id + ".start",
+             appointment.date,
+             appointment.withName.isEmpty ? "Starting now — \(kind)." : "Starting now with \(appointment.withName).")
+        ]
+        for ring in rings where ring.date > .now {
             let content = UNMutableNotificationContent()
             content.title = appointment.title
-            content.body = appointment.withName.isEmpty
-                ? "In 1 hour — \(appointment.kind.title.lowercased())."
-                : "In 1 hour with \(appointment.withName)."
+            content.body = ring.body
             content.sound = .default
             let trigger = UNCalendarNotificationTrigger(
                 dateMatching: Calendar.current.dateComponents(
-                    [.year, .month, .day, .hour, .minute], from: fireDate),
+                    [.year, .month, .day, .hour, .minute], from: ring.date),
                 repeats: false
             )
-            center.add(UNNotificationRequest(identifier: appointment.id, content: content, trigger: trigger))
+            center.add(UNNotificationRequest(identifier: ring.id, content: content, trigger: trigger))
+        }
+    }
+
+    /// Re-arms every upcoming appointment without a permission prompt —
+    /// launch, cloud refresh, and the reminders switch coming back on.
+    /// Capped at the next 20 (iOS keeps 64 pending requests per app).
+    private func syncAppointmentReminders() {
+        guard appointmentRemindersEnabled else { return }
+        let upcoming = appointments
+            .filter { $0.isScheduled && $0.date > .now }
+            .sorted { $0.date < $1.date }
+            .prefix(20)
+        guard !upcoming.isEmpty else { return }
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else { return }
+            for appointment in upcoming {
+                Self.addAppointmentRequests(for: appointment, to: center)
+            }
         }
     }
 
     private func cancelAppointmentReminder(id: String) {
-        guard appointmentRemindersEnabled else { return }
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+        guard !(appointmentService is NoOpAppointmentService) else { return }
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: [id, id + ".start"])
     }
 
     /// Shared app-group defaults the home/lock-screen widgets read. The
@@ -13409,6 +13477,83 @@ final class MorpheAppStore {
     /// share, not just opened the sheet).
     func noteShareCardShared(_ kind: ShareCardKind = .session) {
         track(kind.rawValue)
+    }
+
+    // MARK: - Daily streak (showing up)
+    //
+    // Lucas 2026-10-04: a streak for opening the app every day — separate
+    // from the TRAINING streak, which is schedule-aware and only moves on
+    // logged sessions. This one counts calendar days Morphe was opened,
+    // and breaks on the first day it wasn't. Per profile, on this device
+    // (UserDefaults — it does not travel to a new phone yet).
+
+    private var dailyStreakCountKey: String { "morphe.dailystreak.count.\(clientProfile.id.uuidString)" }
+    private var dailyStreakLastDayKey: String { "morphe.dailystreak.lastDay.\(clientProfile.id.uuidString)" }
+    private var dailyStreakBestKey: String { "morphe.dailystreak.best.\(clientProfile.id.uuidString)" }
+    private static let dailyStreakNotificationID = "morphe.dailystreak.risk"
+
+    /// Consecutive calendar days the app was opened, today included.
+    private(set) var dailyStreakDays = 0
+    private(set) var dailyStreakBest = 0
+
+    /// The whole rule, pure so the tests can pin it: same day holds,
+    /// the day after adds one, anything else starts over at 1.
+    static func advancedDailyStreak(count: Int, lastDay: String, today: String) -> Int {
+        if lastDay == today { return max(count, 1) }
+        if let todayDate = date(fromDayKey: today),
+           let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: todayDate),
+           dayKey(for: yesterday) == lastDay {
+            return max(count, 0) + 1
+        }
+        return 1
+    }
+
+    /// Called on every arrival in the app shell (Today appearing, each
+    /// return to the foreground). Idempotent within a day.
+    func recordAppOpen(now: Date = .now) {
+        guard hasCompletedOnboarding else { return }
+        let defaults = UserDefaults.standard
+        let today = Self.dayKey(for: now)
+        let count = Self.advancedDailyStreak(
+            count: defaults.integer(forKey: dailyStreakCountKey),
+            lastDay: defaults.string(forKey: dailyStreakLastDayKey) ?? "",
+            today: today)
+        let best = max(defaults.integer(forKey: dailyStreakBestKey), count)
+        defaults.set(count, forKey: dailyStreakCountKey)
+        defaults.set(today, forKey: dailyStreakLastDayKey)
+        defaults.set(best, forKey: dailyStreakBestKey)
+        if dailyStreakDays != count { dailyStreakDays = count }
+        if dailyStreakBest != best { dailyStreakBest = best }
+        refreshDailyStreakReminder(now: now)
+    }
+
+    /// One ring at 8pm TOMORROW: every open pushes it a day out, so it can
+    /// only fire on an evening the streak would truly end at midnight.
+    /// A 1-day streak isn't a loss worth a push (same bar as training).
+    private func refreshDailyStreakReminder(now: Date = .now) {
+        guard !(appointmentService is NoOpAppointmentService) else { return }
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.dailyStreakNotificationID])
+        let streak = dailyStreakDays
+        guard remindersEnabled, streak >= 2 else { return }
+        let calendar = Calendar.current
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
+              let fireDate = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: tomorrow)
+        else { return }
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Your \(streak)-day streak ends at midnight"
+            content.body = "Open Morphe before the day closes and it holds."
+            content.sound = .default
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: calendar.dateComponents(
+                    [.year, .month, .day, .hour, .minute], from: fireDate),
+                repeats: false)
+            center.add(UNNotificationRequest(
+                identifier: Self.dailyStreakNotificationID, content: content, trigger: trigger))
+        }
     }
 
     private static let streakRiskNotificationID = "morphe.streak.risk"

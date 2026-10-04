@@ -57,6 +57,8 @@ struct MorpheApp: App {
                         // The wrist logger's session link (market audit 2026-08).
                         WatchBridge.shared.activate(store: store)
                         store.handleDayRolloverIfNeeded()
+                        // Showing up counts (daily streak, 2026-10-04).
+                        store.recordAppOpen()
                         // The day popup greets every open (Lucas 2026-08-18).
                         store.reopenDayPopup()
                         // "Hey Morphe" listens only while the app is open.
