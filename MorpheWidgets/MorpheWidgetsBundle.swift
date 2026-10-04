@@ -372,26 +372,30 @@ private struct SessionLockScreenCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
+            // Exercise and set number lead the card (Lucas 2026-10-04):
+            // the two facts a lifter checks between sets.
+            VStack(alignment: .leading, spacing: 2) {
+                Text(context.state.exerciseName)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                HStack(spacing: 6) {
+                    Text(context.state.workoutComplete
+                         ? "ALL SETS DONE"
+                         : "SET \(min(context.state.setsDone + 1, context.state.setsTarget)) OF \(context.state.setsTarget)")
+                        .font(.caption.weight(.bold))
+                        .tracking(1.1)
+                        .monospacedDigit()
+                        .foregroundStyle(morpheGold)
                     Text(context.attributes.workoutName.uppercased())
                         .font(.caption2.weight(.semibold))
                         .tracking(1.1)
                         .foregroundStyle(.secondary)
-                    Text(context.state.exerciseName)
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(.white)
                         .lineLimit(1)
                 }
-                Spacer(minLength: 0)
-                if context.state.restEndDate == nil {
-                    Text(context.state.workoutComplete
-                         ? "DONE"
-                         : "SET \(min(context.state.setsDone + 1, context.state.setsTarget)) OF \(context.state.setsTarget)")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(morpheGold)
-                }
             }
+            .accessibilityElement(children: .combine)
 
             if let end = context.state.restEndDate {
                 HStack(spacing: 12) {
@@ -427,38 +431,59 @@ private struct SessionLockScreenCard: View {
 private struct SessionButtonsRow: View {
     let context: ActivityViewContext<WorkoutSessionAttributes>
 
-    private var logLabel: String {
+    /// "10 × 35 lb" — what the Log Set button commits.
+    private var prescription: String {
         let weight = context.state.suggestedWeight
-        guard weight > 0 else { return "Log \(context.state.suggestedReps) reps" }
+        guard weight > 0 else { return "\(context.state.suggestedReps) reps" }
         let rounded = weight.truncatingRemainder(dividingBy: 1) == 0
             ? String(Int(weight)) : String(format: "%.1f", weight)
-        return "Log \(context.state.suggestedReps) \u{00D7} \(rounded) \(context.state.unit)"
+        return "\(context.state.suggestedReps) \u{00D7} \(rounded) \(context.state.unit)"
     }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             if context.state.workoutComplete {
                 Text("Every set logged \u{2014} finish in the app.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
             } else {
+                // Two full-width buttons that say what they do (Lucas
+                // 2026-10-04) — thumb-sized with the phone locked.
                 Button(intent: LogSetIntent()) {
-                    Text(logLabel)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                    VStack(spacing: 1) {
+                        Text("Log Set")
+                            .font(.subheadline.weight(.bold))
+                        Text(prescription)
+                            .font(.caption2.weight(.semibold))
+                            .monospacedDigit()
+                            .opacity(0.75)
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .frame(maxWidth: .infinity, minHeight: 36)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(morpheGold)
                 .foregroundStyle(.black)
+                .accessibilityLabel("Log set, \(prescription)")
 
                 Button(intent: StartRestIntent()) {
-                    Text("Rest").font(.subheadline.weight(.semibold))
+                    VStack(spacing: 1) {
+                        Text("Start Rest")
+                            .font(.subheadline.weight(.bold))
+                        Text("Timer")
+                            .font(.caption2.weight(.semibold))
+                            .opacity(0.75)
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .frame(maxWidth: .infinity, minHeight: 36)
                 }
                 .buttonStyle(.bordered)
                 .tint(morpheGold)
+                .accessibilityLabel("Start rest timer")
             }
-            Spacer(minLength: 0)
             Button(intent: SessionMicIntent()) {
                 Image(systemName: "mic.fill")
                     .font(.subheadline.weight(.semibold))

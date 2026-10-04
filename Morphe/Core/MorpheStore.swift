@@ -10010,14 +10010,23 @@ final class MorpheAppStore {
         let weight = lastSessionWeight(for: exercise.id)
             ?? suggestedWorkingWeight(for: exercise)
             ?? 0
-        if completeTrackedSet(reps: reps, weight: weight) {
-            _ = hopToSupersetPartnerIfNeeded(after: exercise)
+        guard completeTrackedSet(reps: reps, weight: weight) else { return }
+        // Same post-log behavior as every other logging surface
+        // (2026-10-04): superset halves hop with no rest; otherwise the
+        // rest starts on its own when the setting allows, so one tap on
+        // the lock screen logs the set AND starts the clock.
+        if hopToSupersetPartnerIfNeeded(after: exercise) { return }
+        if autoRestTimerEnabled, !isTrackedWorkoutComplete {
+            startLockScreenRest(seconds: exercise.restSeconds ?? 180)
         }
     }
 
     func lockScreenStartRest() {
         guard isWorkoutSessionActive, let exercise = activeWorkoutExercise else { return }
-        let seconds = exercise.restSeconds ?? 180
+        startLockScreenRest(seconds: exercise.restSeconds ?? 180)
+    }
+
+    private func startLockScreenRest(seconds: Int) {
         // The in-app bar catches up through the voice-rest tokens on
         // foreground; the card's countdown starts immediately.
         requestVoiceRest(seconds: seconds)
