@@ -1142,6 +1142,10 @@ struct MorpheDayPopup: View {
                     .scrollBounceBehavior(.basedOnSize)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                // Optical center (Lucas 2026-10-04): the ring's open top
+                // and the taller bottom safe area made true center read
+                // low — the block rides 28pt higher.
+                .padding(.bottom, 56)
 
                 // The X floats top-right, out of the centered flow.
                 VStack {
