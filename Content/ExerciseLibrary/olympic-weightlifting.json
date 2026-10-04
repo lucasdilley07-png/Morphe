@@ -1,0 +1,911 @@
+{
+  "discipline": "Olympic Weightlifting",
+  "exercises": [
+    {
+      "id": "snatch",
+      "name": "Snatch",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, quads, hamstrings, traps, shoulders, upper back",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set the feet about hip width with toes turned out, take a wide grip, and start with the bar over the balls of the feet and the shoulders above the bar.",
+        "Push through the whole foot and keep the same back angle until the bar passes the knees.",
+        "Extend the hips and legs hard while the bar stays close to the body.",
+        "Pull the elbows up and out, move the feet to your squat stance, and drop under the bar.",
+        "Lock the bar overhead in a full squat, then stand up under control."
+      ],
+      "formCue": "Bar close, finish tall, punch up.",
+      "commonMistakes": "Bending the arms early, or letting the bar swing away from the body.",
+      "beginnerModification": "Start with a dowel or empty bar and learn the power snatch from the hang first.",
+      "alternatives": [
+        "Power Snatch",
+        "Hang Power Snatch",
+        "Dumbbell Snatch"
+      ],
+      "whyThisMatters": "It is the first competition lift and trains speed, power, and mobility in one movement.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/58/Snatch/"
+      }
+    },
+    {
+      "id": "power-snatch",
+      "name": "Power Snatch",
+      "variationOf": "snatch",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, quads, hamstrings, traps, shoulders",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set up as for the snatch with a wide grip, the bar over the balls of the feet, and the shoulders above the bar.",
+        "Push through the whole foot and hold your back angle until the bar passes the knees.",
+        "Extend the hips hard with the bar close, then pull the elbows up and out.",
+        "Move the feet out and receive the bar locked out overhead in a partial squat with the thighs above parallel.",
+        "Stand up under control."
+      ],
+      "formCue": "Finish the pull, then punch and stop high.",
+      "commonMistakes": "Cutting the leg drive short to rush under the bar, or pressing the bar out with soft elbows.",
+      "beginnerModification": "Use a dowel or empty bar from the hang at mid-thigh.",
+      "alternatives": [
+        "Hang Power Snatch",
+        "Snatch",
+        "Dumbbell Snatch"
+      ],
+      "whyThisMatters": "Catching high demands a strong, fast pull and is easier to learn than the full snatch.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/61/Power-Snatch/"
+      }
+    },
+    {
+      "id": "hang-snatch",
+      "name": "Hang Snatch",
+      "variationOf": "snatch",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, quads, traps, shoulders",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Deadlift the bar to standing with a snatch grip.",
+        "Lower it under control to the hang position you are training, balanced over the whole foot.",
+        "Push through the floor, then extend the hips hard with the bar close to the body.",
+        "Pull the elbows up and out, move the feet, and drop into a full squat under the bar.",
+        "Lock the bar overhead firmly and stand."
+      ],
+      "formCue": "Shoulders over the bar, then finish tall.",
+      "commonMistakes": "Swinging the bar out from the hips, or pulling with the arms before the legs finish.",
+      "beginnerModification": "Use the hang power snatch with an empty bar.",
+      "alternatives": [
+        "Hang Power Snatch",
+        "Snatch",
+        "Power Snatch"
+      ],
+      "whyThisMatters": "Starting from the hang isolates the final extension and the pull under the bar.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/63/Hang-Snatch/"
+      }
+    },
+    {
+      "id": "hang-power-snatch",
+      "name": "Hang Power Snatch",
+      "variationOf": "power-snatch",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, traps, shoulders",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Deadlift the bar to standing with a snatch grip.",
+        "Lower it under control to the hang position, with the shoulders over the bar.",
+        "Push through the floor and extend the hips hard.",
+        "Pull the elbows up and out and receive the bar locked out overhead above a parallel squat.",
+        "Stand up and lower the bar under control."
+      ],
+      "formCue": "Legs first, arms last.",
+      "commonMistakes": "Using the arms to lift the bar, or catching with bent elbows.",
+      "beginnerModification": "Practice with a dowel, starting from mid-thigh.",
+      "alternatives": [
+        "Power Snatch",
+        "Dumbbell Snatch",
+        "Hang Power Clean"
+      ],
+      "whyThisMatters": "It is the simplest way to learn the snatch extension and overhead catch.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/62/Hang-Power-Snatch/"
+      }
+    },
+    {
+      "id": "muscle-snatch",
+      "name": "Muscle Snatch",
+      "variationOf": "snatch",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Pull",
+      "musclesWorked": "Shoulders, traps, upper back, glutes",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Start as for the snatch and push through the whole foot until the bar is above the knees.",
+        "Extend the hips with the bar close, then shrug and pull the elbows up and out.",
+        "Keep the legs straight and turn the bar over as the elbows reach shoulder height.",
+        "Punch straight up to lockout with the bar over the back of the neck."
+      ],
+      "formCue": "Elbows high, then turn it over and punch.",
+      "commonMistakes": "Dropping the elbows before the turnover, or bending the knees again to get under the bar.",
+      "beginnerModification": "Use a dowel or empty bar and start from the hang.",
+      "alternatives": [
+        "Hang Power Snatch",
+        "Snatch Push Press",
+        "Power Snatch"
+      ],
+      "whyThisMatters": "It teaches and strengthens the upper-body turnover of the snatch.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/96/Muscle-Snatch/"
+      }
+    },
+    {
+      "id": "tall-snatch",
+      "name": "Tall Snatch",
+      "variationOf": "snatch",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Squat",
+      "musclesWorked": "Shoulders, traps, quads, glutes",
+      "equipment": "Barbell or PVC pipe",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand tall with a snatch grip, the bar at arm's length, and the feet in your pulling stance.",
+        "Lift the feet and pull the elbows up and out at the same moment.",
+        "Turn the bar over and punch up as you drop into a squat, aiming to lock out as the feet land.",
+        "Hold the bottom with the bar secure overhead, then stand."
+      ],
+      "formCue": "Pull yourself down, fast.",
+      "commonMistakes": "Dipping the knees or leaning to get the bar moving first, or pressing the bar out slowly.",
+      "beginnerModification": "Use a PVC pipe and receive in a partial squat.",
+      "alternatives": [
+        "Snatch Balance",
+        "Hang Snatch",
+        "PVC Overhead Squat"
+      ],
+      "whyThisMatters": "It isolates the pull under the bar and builds speed and confidence in the catch.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/217/Tall-Snatch/"
+      }
+    },
+    {
+      "id": "block-snatch",
+      "name": "Block Snatch",
+      "variationOf": "snatch",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, quads, traps, shoulders",
+      "equipment": "Barbell, bumper plates, lifting blocks",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set the bar on blocks and take the same position you would pass through in a snatch at that height.",
+        "Balance over the whole foot, then push hard with the legs with the bar close.",
+        "Extend the hips fully once the bar passes the knees.",
+        "Pull the elbows up and out, move the feet, and receive the bar overhead in a squat.",
+        "Stand, then return the bar to the blocks."
+      ],
+      "formCue": "Set your position, then go.",
+      "commonMistakes": "Starting with the shoulders behind the bar, or rushing the pull because there is no run-up.",
+      "beginnerModification": "Use the hang snatch from the same height with a lighter load.",
+      "alternatives": [
+        "Hang Snatch",
+        "Snatch",
+        "Hang Power Snatch"
+      ],
+      "whyThisMatters": "With no stretch or momentum to help, it builds a fast, strong start from a fixed position.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/207/Block-Snatch/"
+      }
+    },
+    {
+      "id": "snatch-pull",
+      "name": "Snatch Pull",
+      "variationOf": "snatch",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, quads, traps, upper back",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the snatch start position with the heels about hip width, the bar over the balls of the feet, and the shoulders above the bar.",
+        "Push through the whole foot and keep the bar close to the legs past the knees.",
+        "Open the hips and drive up with the legs as hard as you can.",
+        "Shrug and let the elbows bend slightly to keep the bar against the body, then return it to the floor."
+      ],
+      "formCue": "Legs all the way, bar against the body.",
+      "commonMistakes": "Pulling with the arms early, or letting the bar drift away from the body at the top.",
+      "beginnerModification": "Start with the snatch deadlift to learn the positions at slow speed.",
+      "alternatives": [
+        "Snatch Deadlift",
+        "Snatch High Pull",
+        "Clean Pull"
+      ],
+      "whyThisMatters": "It builds the strength and timing of the snatch extension with loads at or above the full lift.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/97/Snatch-Pull/"
+      }
+    },
+    {
+      "id": "snatch-high-pull",
+      "name": "Snatch High Pull",
+      "variationOf": "snatch-pull",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Traps, upper back, shoulders, glutes, hamstrings",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the snatch start position and push with the legs through the whole foot.",
+        "Keep the bar close until mid-thigh, then open the hips and drive up hard.",
+        "After the legs finish, shrug and pull the elbows up and out with the bar against the body.",
+        "Stay tall with the trunk vertical at the top, then lower the bar."
+      ],
+      "formCue": "Elbows up and out, stay tall.",
+      "commonMistakes": "Leaning forward to meet the bar, or pulling with the arms before the legs finish.",
+      "beginnerModification": "Use a light bar from the hang at mid-thigh.",
+      "alternatives": [
+        "Snatch Pull",
+        "Muscle Snatch",
+        "Hang Power Snatch"
+      ],
+      "whyThisMatters": "It links the leg drive to the arm action that starts the pull under the bar.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/99/Snatch-High-Pull/"
+      }
+    },
+    {
+      "id": "snatch-deadlift",
+      "name": "Snatch Deadlift",
+      "variationOf": "conventional-deadlift",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, quads, upper back, grip",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Take a snatch-width grip with the heels about hip width, the bar over the balls of the feet, and the shoulders above the bar.",
+        "Set the back flat and push through the whole foot.",
+        "Keep the bar close and hold the same back angle until the bar reaches the thigh.",
+        "Extend the hips to stand tall, then lower the bar."
+      ],
+      "formCue": "Same back angle to the knees.",
+      "commonMistakes": "Letting the hips rise faster than the shoulders, or losing the flat upper back with the wide grip.",
+      "beginnerModification": "Use straps and a lighter load, or pull from low blocks.",
+      "alternatives": [
+        "Conventional Deadlift",
+        "Snatch Pull",
+        "Clean Deadlift"
+      ],
+      "whyThisMatters": "It builds strength and posture in the exact positions of the snatch pull.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/187/Snatch-Deadlift/"
+      }
+    },
+    {
+      "id": "overhead-squat",
+      "name": "Overhead Squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, shoulders, upper back, trunk",
+      "equipment": "Barbell",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Hold the bar overhead with a snatch grip, elbows locked, shoulder blades squeezed together, and the bar over the base of the neck.",
+        "Set the feet in your squat stance and brace the trunk.",
+        "Squat to full depth at a controlled speed, balanced over the whole foot.",
+        "Keep pushing up into the bar as you stand."
+      ],
+      "formCue": "Push up on the bar the whole time.",
+      "commonMistakes": "Letting the bar drift forward of the base of the neck, or the elbows softening at the bottom.",
+      "beginnerModification": "Use the PVC overhead squat and only go as deep as you can hold the bar in place.",
+      "alternatives": [
+        "PVC Overhead Squat",
+        "Front Squat",
+        "Goblet Squat"
+      ],
+      "whyThisMatters": "It builds the strength, balance, and mobility needed to receive a snatch.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/79/Overhead-Squat/"
+      }
+    },
+    {
+      "id": "pvc-overhead-squat",
+      "name": "PVC Overhead Squat",
+      "variationOf": "overhead-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, shoulders, upper back",
+      "equipment": "PVC pipe or dowel",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Hold a PVC pipe overhead with a wide grip and locked elbows, over the base of the neck.",
+        "Squeeze the shoulder blades together and set your squat stance.",
+        "Squat slowly as deep as you can while the pipe stays in place and the weight stays over the whole foot.",
+        "Push up into the pipe and stand."
+      ],
+      "formCue": "Reach up into the pipe as you sit.",
+      "commonMistakes": "Letting the pipe drift forward, or rising onto the toes.",
+      "beginnerModification": "Squat to a box, or widen the grip until the position holds.",
+      "alternatives": [
+        "Overhead Squat",
+        "Goblet Squat",
+        "Bodyweight Squat"
+      ],
+      "whyThisMatters": "Daily practice with no load is the simplest way to build the snatch receiving position.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/79/Overhead-Squat/"
+      }
+    },
+    {
+      "id": "snatch-balance",
+      "name": "Snatch Balance",
+      "variationOf": "overhead-squat",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Squat",
+      "musclesWorked": "Shoulders, triceps, quads, glutes, trunk",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand with the bar behind the neck, a snatch grip, the shoulder blades set tight, and the feet in your pulling stance.",
+        "Dip at the knees with the trunk upright and drive up just enough to unweight the bar.",
+        "Punch the arms up hard as you move the feet out and drop into an overhead squat.",
+        "Hold the bottom until the bar is steady, then stand."
+      ],
+      "formCue": "Punch under, do not push the bar up.",
+      "commonMistakes": "Driving the bar high and pressing it out, instead of moving fast under it.",
+      "beginnerModification": "Use the pressing snatch balance with an empty bar.",
+      "alternatives": [
+        "Pressing Snatch Balance",
+        "Overhead Squat",
+        "Tall Snatch"
+      ],
+      "whyThisMatters": "It builds speed, timing, and confidence for the catch of the snatch.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/80/Snatch-Balance/"
+      }
+    },
+    {
+      "id": "pressing-snatch-balance",
+      "name": "Pressing Snatch Balance",
+      "variationOf": "snatch-balance",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Squat",
+      "musclesWorked": "Shoulders, triceps, upper back, quads",
+      "equipment": "Barbell or PVC pipe",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with the bar behind the neck, a snatch grip, and the feet in your squat stance.",
+        "Start pressing the bar and squatting down at the same time, at a controlled speed.",
+        "Time it so the elbows lock just as you reach the bottom of the squat.",
+        "Make sure the bar is steady overhead, then stand."
+      ],
+      "formCue": "Press yourself down under the bar.",
+      "commonMistakes": "Pressing the bar up first and then squatting, or stopping short of full depth.",
+      "beginnerModification": "Use a PVC pipe and squat only as deep as you can keep the bar over the base of the neck.",
+      "alternatives": [
+        "PVC Overhead Squat",
+        "Snatch Balance",
+        "Overhead Squat"
+      ],
+      "whyThisMatters": "It teaches the receiving position and overhead mobility at slow speed.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/81/Pressing-Snatch-Balance/"
+      }
+    },
+    {
+      "id": "snatch-push-press",
+      "name": "Snatch Push Press",
+      "variationOf": "push-press",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, triceps, upper back, quads",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand with the bar behind the neck, a snatch grip, and the shoulder blades set tight.",
+        "Dip at the knees with the trunk upright and drive hard through the floor.",
+        "As the bar leaves the shoulders, press fast into a firm lockout.",
+        "Hold a moment overhead, then lower the bar to the shoulders and reset."
+      ],
+      "formCue": "Dip straight, drive, lock it hard.",
+      "commonMistakes": "Leaning forward in the dip, or finishing with soft elbows.",
+      "beginnerModification": "Use an empty bar or PVC pipe.",
+      "alternatives": [
+        "Push Press",
+        "Overhead Barbell Press",
+        "Muscle Snatch"
+      ],
+      "whyThisMatters": "It builds the overhead strength and stability that holds a snatch in place.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/89/Snatch-Push-Press/"
+      }
+    },
+    {
+      "id": "press-in-snatch",
+      "name": "Press in Snatch",
+      "variationOf": "overhead-squat",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, triceps, upper back, trunk",
+      "equipment": "Barbell or PVC pipe",
+      "difficulty": "Advanced",
+      "instructions": [
+        "With a snatch grip and the bar behind the neck, sit into the bottom of a squat.",
+        "Press the bar to full lockout without any help from the legs.",
+        "Keep the shoulder blades squeezed and the chest up while the bar is overhead.",
+        "Lower the bar under control to the upper back and repeat."
+      ],
+      "formCue": "Stay down, chest up, press.",
+      "commonMistakes": "Rising out of the squat to help the press, or letting the bar drop onto the neck.",
+      "beginnerModification": "Use a PVC pipe, or do the pressing snatch balance.",
+      "alternatives": [
+        "Pressing Snatch Balance",
+        "PVC Overhead Squat",
+        "Snatch Push Press"
+      ],
+      "whyThisMatters": "It builds mobility, stability, and strength in the snatch receiving position.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/95/Press-In-Snatch-Sots-Press/"
+      }
+    },
+    {
+      "id": "pvc-pass-through",
+      "name": "PVC Pass-Through",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Shoulders, chest, upper back",
+      "equipment": "PVC pipe or dowel",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Hold a PVC pipe in front of the hips with a wide overhand grip and straight arms.",
+        "Raise the pipe in a wide arc up and over the head without bending the elbows.",
+        "Continue the arc until the pipe rests behind the hips, then bring it back the same way.",
+        "Narrow the grip a little at a time only while the movement stays smooth and comfortable."
+      ],
+      "formCue": "Arms long, slow arc.",
+      "commonMistakes": "Bending the elbows to get through, or forcing a grip that is too narrow.",
+      "beginnerModification": "Take a wider grip, or use a band so the hands can move apart.",
+      "alternatives": [
+        "Wall Slide",
+        "Arm Swings & Circles",
+        "Band Pull-Apart"
+      ],
+      "whyThisMatters": "It warms up the shoulders for the snatch and every overhead position.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/article/1682/Flexibility-for-the-Overhead-Squat/"
+      }
+    },
+    {
+      "id": "clean",
+      "name": "Clean",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, quads, hamstrings, traps, upper back",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set the feet about hip width with toes turned out, grip just outside the legs, and start with the bar over the balls of the feet.",
+        "Push through the whole foot and hold your back angle until the bar passes the knees.",
+        "Extend the hips hard with the bar close, brushing the upper thigh.",
+        "Pull the elbows up, move the feet out, and whip the elbows around to rack the bar on the shoulders in a full squat.",
+        "Drive straight up out of the squat and stand."
+      ],
+      "formCue": "Bar close, fast elbows.",
+      "commonMistakes": "Letting the bar crash onto the shoulders with slow elbows, or jumping forward to chase a bar that swung out.",
+      "beginnerModification": "Learn the hang power clean first, then add the front squat.",
+      "alternatives": [
+        "Power Clean",
+        "Hang Power Clean",
+        "Front Squat"
+      ],
+      "whyThisMatters": "It is the first half of the clean and jerk and builds total-body power.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/59/Clean/"
+      }
+    },
+    {
+      "id": "power-clean",
+      "name": "Power Clean",
+      "variationOf": "clean",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, quads, traps, upper back",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set up with the feet about hip width, the bar over the balls of the feet, the shoulders above the bar, and the back flat.",
+        "Push through the whole foot and hold your back angle until the bar passes the knees.",
+        "Extend the hips hard with the bar close to the body.",
+        "Pull the elbows up, move the feet out, and whip the elbows around to rack the bar with the thighs above parallel.",
+        "Stand up fully."
+      ],
+      "formCue": "Finish the legs, then fast elbows.",
+      "commonMistakes": "Pulling with the arms early, or catching with the elbows low and the bar in the hands.",
+      "beginnerModification": "Use the hang power clean with an empty bar.",
+      "alternatives": [
+        "Hang Power Clean",
+        "Clean",
+        "Kettlebell Swing"
+      ],
+      "whyThisMatters": "It is the most widely used lift for building power from the floor.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/67/Power-Clean/"
+      }
+    },
+    {
+      "id": "hang-clean",
+      "name": "Hang Clean",
+      "variationOf": "clean",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, quads, traps, upper back",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Deadlift the bar to standing with a clean grip.",
+        "Lower it under control to the hang position you are training, balanced over the whole foot.",
+        "Push with the legs, then extend the hips hard with the bar close.",
+        "Pull the elbows up, move the feet, and rack the bar on the shoulders as you sit into a full squat.",
+        "Drive up out of the bottom right away and stand."
+      ],
+      "formCue": "Extend, then pull under and sit.",
+      "commonMistakes": "Catching high and then riding the bar down, instead of pulling under into the squat.",
+      "beginnerModification": "Use the hang power clean followed by a separate front squat.",
+      "alternatives": [
+        "Hang Power Clean",
+        "Clean",
+        "Front Squat"
+      ],
+      "whyThisMatters": "Starting from the hang trains the final extension and a fast pull under the bar.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/68/Hang-Clean/"
+      }
+    },
+    {
+      "id": "muscle-clean",
+      "name": "Muscle Clean",
+      "variationOf": "clean",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Pull",
+      "musclesWorked": "Traps, shoulders, upper back, glutes",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Start as for the clean and push through the whole foot until the bar is above the knees.",
+        "Extend the hips with the bar close to the body.",
+        "Keep the legs straight and pushing into the floor as you shrug and pull the elbows up and out.",
+        "Bring the elbows around and set the bar smoothly on the shoulders without bending the knees again."
+      ],
+      "formCue": "Elbows high, then around.",
+      "commonMistakes": "Dipping under the bar, or letting the bar loop away from the body.",
+      "beginnerModification": "Use an empty bar from the hang.",
+      "alternatives": [
+        "Hang Power Clean",
+        "Power Clean",
+        "Clean Pull"
+      ],
+      "whyThisMatters": "It teaches the arm path of the clean turnover and strengthens it.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/149/Muscle-Clean/"
+      }
+    },
+    {
+      "id": "tall-clean",
+      "name": "Tall Clean",
+      "variationOf": "clean",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, traps, upper back",
+      "equipment": "Barbell",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand tall with a clean grip, the bar at arm's length, and the feet in your pulling stance.",
+        "Lift the feet and pull the elbows up and out at the same moment.",
+        "Bring the elbows around fast and rack the bar as you drop into a squat.",
+        "Sit into the bottom smoothly, then stand right away."
+      ],
+      "formCue": "Pull down and whip the elbows.",
+      "commonMistakes": "Dipping or swinging the bar to start it moving, or receiving with the elbows low.",
+      "beginnerModification": "Use an empty bar and receive in a partial squat.",
+      "alternatives": [
+        "Hang Clean",
+        "Front Squat",
+        "Muscle Clean"
+      ],
+      "whyThisMatters": "It isolates the pull under the bar and builds a quick, precise turnover.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/150/Tall-Clean/"
+      }
+    },
+    {
+      "id": "block-clean",
+      "name": "Block Clean",
+      "variationOf": "clean",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, quads, traps, upper back",
+      "equipment": "Barbell, bumper plates, lifting blocks",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set the bar on blocks and take the same position you would pass through in a clean at that height.",
+        "Push through the floor and hold your back angle until the bar passes the knees.",
+        "Extend the hips hard with the bar close, brushing the upper thigh.",
+        "Pull the elbows high, move into your squat stance, and whip the elbows around to rack the bar.",
+        "Drive up out of the squat, then return the bar to the blocks."
+      ],
+      "formCue": "Tight start, full finish.",
+      "commonMistakes": "Starting loose because the bar is already raised, or cutting the extension short.",
+      "beginnerModification": "Use the hang clean from the same height with a lighter load.",
+      "alternatives": [
+        "Hang Clean",
+        "Clean",
+        "Hang Power Clean"
+      ],
+      "whyThisMatters": "With no momentum from the floor, it builds speed and force in the top of the pull.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/379/Block-Clean/"
+      }
+    },
+    {
+      "id": "clean-pull",
+      "name": "Clean Pull",
+      "variationOf": "clean",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, quads, traps, spinal erectors",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the clean start position with the heels about hip width, the bar over the balls of the feet, the shoulders above the bar, and the back flat.",
+        "Push through the whole foot and keep the bar close with the same back angle past the knees.",
+        "At mid-thigh, open the hips and drive up as hard as you can.",
+        "Shrug with slightly bent elbows to keep the bar tight to the body, then return to flat feet as the bar comes down."
+      ],
+      "formCue": "Push the floor, finish tall, shrug.",
+      "commonMistakes": "Yanking the bar off the floor, or bending the arms before the legs have finished.",
+      "beginnerModification": "Start with the clean deadlift to learn the positions slowly.",
+      "alternatives": [
+        "Clean Deadlift",
+        "Snatch Pull",
+        "Conventional Deadlift"
+      ],
+      "whyThisMatters": "It builds pulling strength and timing for the clean with loads at or above the full lift.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/98/Clean-Pull/"
+      }
+    },
+    {
+      "id": "clean-deadlift",
+      "name": "Clean Deadlift",
+      "variationOf": "conventional-deadlift",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, quads, hamstrings, spinal erectors",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the clean start position with the heels about hip width, the bar over the balls of the feet, and the shoulders above the bar.",
+        "Push through the whole foot with the chest up and the bar close to the legs.",
+        "Hold the same back angle until the bar passes the knees.",
+        "Extend the hips and legs to stand tall, then lower the bar under control."
+      ],
+      "formCue": "Chest up, knees back, bar close.",
+      "commonMistakes": "Letting the hips shoot up first, or pulling it like a powerlifting deadlift with the shoulders behind the bar.",
+      "beginnerModification": "Pull from low blocks with a light load until the start position is comfortable.",
+      "alternatives": [
+        "Conventional Deadlift",
+        "Clean Pull",
+        "Snatch Deadlift"
+      ],
+      "whyThisMatters": "It strengthens the exact posture and bar path of the first part of the clean.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/176/Clean-Deadlift/"
+      }
+    },
+    {
+      "id": "clean-and-jerk",
+      "name": "Clean and Jerk",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, quads, hamstrings, traps, shoulders, triceps",
+      "equipment": "Barbell, bumper plates",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Clean the bar from the floor to the shoulders and stand up fully.",
+        "Reset the grip and breath, with the bar resting on the shoulders and the trunk upright.",
+        "Dip by bending only the knees, a short distance, then drive straight up hard.",
+        "Punch the bar overhead as the feet move into a split and the elbows lock.",
+        "Hold the bar steady, bring the feet back in line, and then lower it."
+      ],
+      "formCue": "Stand tall, reset, then dip and drive straight.",
+      "commonMistakes": "Rushing the jerk before the clean is settled, or dipping forward onto the toes.",
+      "beginnerModification": "Train the power clean and push press as separate lifts first.",
+      "alternatives": [
+        "Power Clean",
+        "Push Press",
+        "Split Jerk"
+      ],
+      "whyThisMatters": "It is the second competition lift and puts the most weight overhead of any movement.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/76/Clean-Jerk/"
+      }
+    },
+    {
+      "id": "split-jerk",
+      "name": "Split Jerk",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Quads, glutes, shoulders, triceps, upper back",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand with the heels about hip width and the bar racked on the shoulders, elbows down and slightly in front of the bar.",
+        "Dip by bending only the knees with the trunk vertical, a short distance, and brake hard.",
+        "Drive straight up with the legs and push the bar up and slightly back.",
+        "Move the feet quickly into a split as you punch the elbows to lockout.",
+        "Hold the bar steady, then step the front foot back and the rear foot in."
+      ],
+      "formCue": "Dip straight, drive, punch and split.",
+      "commonMistakes": "Dipping forward so the bar goes out front, or a short, narrow split that leaves no base.",
+      "beginnerModification": "Practice the footwork with a PVC pipe, then use the jerk balance.",
+      "alternatives": [
+        "Push Jerk",
+        "Jerk Balance",
+        "Push Press"
+      ],
+      "whyThisMatters": "The split gives the widest base for receiving heavy weights overhead.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/60/Split-Jerk/"
+      }
+    },
+    {
+      "id": "push-jerk",
+      "name": "Push Jerk",
+      "variationOf": "split-jerk",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Quads, glutes, shoulders, triceps",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Rack the bar between the throat and the top of the shoulders, with the elbows slightly in front of the bar.",
+        "Dip by bending only the knees with the trunk vertical, then drive up hard.",
+        "As the legs finish, push the bar up and slightly back and punch the elbows to lockout.",
+        "Bend the knees again to receive the bar in a partial squat with the feet staying on the floor, then stand."
+      ],
+      "formCue": "Drive, then push yourself under.",
+      "commonMistakes": "Pressing the bar out slowly instead of dropping under it, or dipping with the chest forward.",
+      "beginnerModification": "Use the push press until the dip and drive are consistent.",
+      "alternatives": [
+        "Push Press",
+        "Power Jerk",
+        "Split Jerk"
+      ],
+      "whyThisMatters": "Feet that stay planted teach a balanced, complete leg drive.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/405/Push-Jerk/"
+      }
+    },
+    {
+      "id": "power-jerk",
+      "name": "Power Jerk",
+      "variationOf": "split-jerk",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Quads, glutes, shoulders, triceps",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand with the heels about hip width and the bar racked on the shoulders, elbows down and slightly forward.",
+        "Dip by bending only the knees with the trunk vertical, and brake hard.",
+        "Drive up hard with the legs and push the bar overhead.",
+        "Move the feet quickly out to your squat stance and punch the elbows to lockout in a partial squat.",
+        "Steady the bar, then stand."
+      ],
+      "formCue": "Straight dip, hard drive, fast feet.",
+      "commonMistakes": "Jumping forward or back, or catching with soft elbows.",
+      "beginnerModification": "Use the push jerk, where the feet stay on the floor.",
+      "alternatives": [
+        "Push Jerk",
+        "Push Press",
+        "Split Jerk"
+      ],
+      "whyThisMatters": "It demands a high, straight drive and is a simple way to train the jerk.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/72/Power-Jerk/"
+      }
+    },
+    {
+      "id": "jerk-dip-squat",
+      "name": "Jerk Dip Squat",
+      "variationOf": "front-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, trunk, upper back",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand in your jerk stance with the bar in the jerk rack position and brace as you would for a jerk.",
+        "Dip by bending the knees at a controlled speed with the trunk upright.",
+        "Keep tension in the legs and stay balanced over the whole foot.",
+        "Change direction smoothly and stand back up without an explosive drive."
+      ],
+      "formCue": "Straight down, straight up.",
+      "commonMistakes": "Letting the chest tip forward, or the weight shifting to the toes.",
+      "beginnerModification": "Use an empty bar and hold a short pause at the bottom of the dip.",
+      "alternatives": [
+        "Front Squat",
+        "Push Press",
+        "Push Jerk"
+      ],
+      "whyThisMatters": "It strengthens the dip position so the bar travels straight in the jerk.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/194/Jerk-Dip-Squat/"
+      }
+    },
+    {
+      "id": "jerk-balance",
+      "name": "Jerk Balance",
+      "variationOf": "split-jerk",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Split stance",
+      "musclesWorked": "Shoulders, triceps, quads, glutes",
+      "equipment": "Barbell or PVC pipe, squat rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Rack the bar on the shoulders and stand in a short split, about one foot-length shorter than your full split.",
+        "Balance the weight evenly between both feet.",
+        "Dip straight down and drive straight up.",
+        "Step the front foot forward into the full split as you punch the bar to lockout, keeping the trunk upright.",
+        "Steady the bar, then recover the feet."
+      ],
+      "formCue": "Step through, do not dive the chest.",
+      "commonMistakes": "Leaning the chest forward, or putting most of the weight on the front leg.",
+      "beginnerModification": "Use a PVC pipe or empty bar.",
+      "alternatives": [
+        "Split Jerk",
+        "Push Jerk",
+        "Push Press"
+      ],
+      "whyThisMatters": "It teaches you to move under the bar into a balanced split.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/193/Jerk-Balance/"
+      }
+    }
+  ]
+}

@@ -1,0 +1,410 @@
+{
+  "discipline": "Barre & Low-Impact",
+  "exercises": [
+    {
+      "id": "plie-first-position",
+      "name": "First Position Plié",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, inner thighs, calves",
+      "equipment": "Barre, chair back, or countertop",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand side-on to your support with heels together and toes turned out only as far as your hips allow.",
+        "Rest one hand lightly on the support and stand tall through the spine.",
+        "Bend your knees out over your toes, keeping your heels down and your torso upright.",
+        "Lower as far as you can with the heels on the floor, then press down and straighten slowly."
+      ],
+      "formCue": "Knees over toes, tall spine, heels down.",
+      "commonMistakes": "Forcing the feet wider than the hips can turn so the knees roll inward, or tipping the chest forward.",
+      "beginnerModification": "Use a smaller turnout and a shallower bend, with both hands on the support.",
+      "alternatives": [
+        "Bodyweight Squat",
+        "Second Position Plié"
+      ],
+      "whyThisMatters": "It is the basic barre knee bend and it trains the hips, knees, and feet to line up.",
+      "source": {
+        "name": "American Ballet Theatre",
+        "url": "https://www.abt.org/explore/learn/ballet-dictionary/"
+      }
+    },
+    {
+      "id": "plie-second-position",
+      "name": "Second Position Plié",
+      "variationOf": "plie-first-position",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Inner thighs, glutes, quads",
+      "equipment": "Barre, chair back, or countertop",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with your feet wider than your hips and toes turned out, one hand resting on your support.",
+        "Lengthen your spine and keep your shoulders over your hips.",
+        "Bend your knees out over your toes and lower your hips straight down.",
+        "Stop when your thighs approach level or your form starts to change.",
+        "Press through your whole foot to rise and squeeze your inner thighs at the top."
+      ],
+      "formCue": "Hips drop straight down between the heels.",
+      "commonMistakes": "Letting the knees fall in front of the toes line, or sticking the hips back and leaning forward.",
+      "beginnerModification": "Take a narrower stance and a smaller bend, holding the support with both hands.",
+      "alternatives": [
+        "Sumo Deadlift",
+        "Bodyweight Squat",
+        "First Position Plié"
+      ],
+      "whyThisMatters": "The wide turned-out stance loads the inner thighs and glutes with little impact.",
+      "source": {
+        "name": "American Ballet Theatre",
+        "url": "https://www.abt.org/explore/learn/ballet-dictionary/"
+      }
+    },
+    {
+      "id": "releve",
+      "name": "Relevé",
+      "variationOf": "calf-raise",
+      "muscleGroup": "Legs",
+      "movementPattern": "Raise",
+      "musclesWorked": "Calves, feet, ankles",
+      "equipment": "Barre, chair back, or countertop",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with feet parallel or heels together and one hand on your support.",
+        "Press through the balls of your feet and rise smoothly onto them.",
+        "Keep your ankles straight, with the weight over the big and second toes.",
+        "Pause at the top, then lower your heels slowly to the floor."
+      ],
+      "formCue": "Rise straight up, ankles stay in line.",
+      "commonMistakes": "Rolling out toward the little toes, or dropping down fast.",
+      "beginnerModification": "Hold the support with both hands and rise only part way.",
+      "alternatives": [
+        "Standing Calf Raise",
+        "Plié Pulse"
+      ],
+      "whyThisMatters": "It strengthens the calves and ankles and sharpens balance on the forefoot.",
+      "source": {
+        "name": "American Ballet Theatre",
+        "url": "https://www.abt.org/explore/learn/ballet-dictionary/"
+      }
+    },
+    {
+      "id": "plie-pulse",
+      "name": "Plié Pulse",
+      "variationOf": "plie-second-position",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, inner thighs",
+      "equipment": "Barre, chair back, or countertop",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set up in a wide turned-out stance with one hand on your support.",
+        "Lower into your plié and hold near the bottom.",
+        "Pulse up and down a few centimetres, staying low and keeping the knees over the toes.",
+        "Keep your torso upright and your breathing steady.",
+        "Finish the set, then press slowly to standing."
+      ],
+      "formCue": "Small range, stay low, stay tall.",
+      "commonMistakes": "Bouncing with a big range, or letting the knees drift inward as the legs tire.",
+      "beginnerModification": "Hold the low position without pulsing, or stay higher in the bend.",
+      "alternatives": [
+        "Second Position Plié",
+        "Wall Sit",
+        "Jump Squat"
+      ],
+      "whyThisMatters": "Small pulses under tension build muscular endurance without any impact.",
+      "source": {
+        "name": "American Council on Exercise (ACE)",
+        "url": "https://www.acefitness.org/continuing-education/certified/december-2019/7432/hitting-the-barre-understanding-the-popular-group-fitness-trend/"
+      }
+    },
+    {
+      "id": "tendu",
+      "name": "Tendu",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Feet, calves, hip stabilisers, inner thighs",
+      "equipment": "Barre, chair back, or countertop",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with heels together and one hand on your support.",
+        "Slide one foot along the floor to the front, side, or back until only the toes touch.",
+        "Keep both knees straight and your hips level and still.",
+        "Draw the foot back along the floor to the start, pressing through the ball of the foot.",
+        "Repeat in each direction, then switch legs."
+      ],
+      "formCue": "Brush the floor out and back, hips quiet.",
+      "commonMistakes": "Lifting the foot instead of sliding it, or shifting the hips toward the working leg.",
+      "beginnerModification": "Work in parallel rather than turned out, and hold the support with both hands.",
+      "alternatives": [
+        "Standing Side Leg Lift",
+        "Single-Leg Circle"
+      ],
+      "whyThisMatters": "It strengthens the feet and arches and teaches you to balance on one leg while the other moves.",
+      "source": {
+        "name": "American Ballet Theatre",
+        "url": "https://www.abt.org/explore/learn/ballet-dictionary/"
+      }
+    },
+    {
+      "id": "arabesque-lift",
+      "name": "Arabesque Lift",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, lower back",
+      "equipment": "Barre, chair back, or countertop",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Face your support and hold it with both hands, standing tall.",
+        "Slide one leg straight back until the toes rest on the floor behind you.",
+        "Lift the leg a small way without tipping your chest forward or arching your back.",
+        "Pause, lower to tap the toes, and repeat.",
+        "Finish all reps, then switch legs."
+      ],
+      "formCue": "Lift from the glute, keep the chest up.",
+      "commonMistakes": "Arching the lower back or opening the hip to the side to lift higher.",
+      "beginnerModification": "Lift only a few centimetres and bend the standing knee slightly.",
+      "alternatives": [
+        "Donkey Kick",
+        "Single-Leg Glute Bridge",
+        "Bird Dog"
+      ],
+      "whyThisMatters": "It strengthens the glutes and trains balance on the standing leg.",
+      "source": {
+        "name": "NHS",
+        "url": "https://www.nhs.uk/live-well/exercise/strength-and-flexibility-exercises/strength-exercises/"
+      }
+    },
+    {
+      "id": "standing-side-leg-lift",
+      "name": "Standing Side Leg Lift",
+      "muscleGroup": "Legs",
+      "movementPattern": "Raise",
+      "musclesWorked": "Outer hips, glutes",
+      "equipment": "Barre, chair back, or countertop",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand side-on to your support and rest one hand on it.",
+        "Stand tall with both hips facing forward.",
+        "Lift the outside leg out to the side with the toes pointing forward.",
+        "Go only as high as you can without leaning, then lower slowly.",
+        "Complete the reps and repeat on the other leg."
+      ],
+      "formCue": "Body stays tall as the leg goes out.",
+      "commonMistakes": "Leaning away from the lifting leg, or turning the toes up so the hip flexors take over.",
+      "beginnerModification": "Lift lower and hold the support with both hands.",
+      "alternatives": [
+        "Lateral Lunge",
+        "Side-Lying Leg Lift",
+        "Clamshell"
+      ],
+      "whyThisMatters": "It strengthens the outer hip muscles that steady the pelvis when you walk and balance.",
+      "source": {
+        "name": "NHS",
+        "url": "https://www.nhs.uk/live-well/exercise/strength-and-flexibility-exercises/strength-exercises/"
+      }
+    },
+    {
+      "id": "curtsy-lunge-pulse",
+      "name": "Curtsy Lunge Pulse",
+      "variationOf": "reverse-lunge",
+      "muscleGroup": "Legs",
+      "movementPattern": "Split stance",
+      "musclesWorked": "Glutes, outer hips, quads",
+      "equipment": "Barre, chair back, or countertop",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand tall and step one foot back and across behind the other leg.",
+        "Bend both knees and lower with your chest upright and front knee over the front heel.",
+        "Stay low and pulse up and down a few centimetres.",
+        "Push through the front foot to return to standing.",
+        "Finish the set and switch sides."
+      ],
+      "formCue": "Chest up, front knee over the heel.",
+      "commonMistakes": "Twisting the hips and letting the front knee collapse inward.",
+      "beginnerModification": "Skip the pulses, take a smaller step, and hold a support for balance.",
+      "alternatives": [
+        "Reverse Lunge",
+        "Lateral Lunge"
+      ],
+      "whyThisMatters": "The crossed stance puts extra work into the glutes and outer hip of the front leg.",
+      "source": {
+        "name": "American Council on Exercise (ACE)",
+        "url": "https://www.acefitness.org/resources/pros/expert-articles/6355/8-butt-toning-moves/"
+      }
+    },
+    {
+      "id": "clamshell",
+      "name": "Clamshell",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Gluteus medius, deep hip rotators",
+      "equipment": "Mat, mini band optional",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Lie on your side with hips and knees bent, feet together, and head resting on your lower arm.",
+        "Stack your hips one over the other.",
+        "Keep your feet touching and lift the top knee without letting your hips roll back.",
+        "Pause, then lower the knee slowly.",
+        "Finish the reps and turn over for the other side."
+      ],
+      "formCue": "Feet together, hips stacked, knee opens.",
+      "commonMistakes": "Rolling the top hip backward, or opening so far that the pelvis moves.",
+      "beginnerModification": "Lie with your back against a wall to stop the hips rolling, and use a smaller range.",
+      "alternatives": [
+        "Fire Hydrant",
+        "Side-Lying Leg Lift",
+        "Lateral Lunge"
+      ],
+      "whyThisMatters": "It targets the outer hip muscles that keep the knee and pelvis steady.",
+      "source": {
+        "name": "American Council on Exercise (ACE)",
+        "url": "https://www.acefitness.org/resources/pros/expert-articles/6936/6-glute-medius-exercises-for-strength-stability/"
+      }
+    },
+    {
+      "id": "side-lying-leg-lift",
+      "name": "Side-Lying Leg Lift",
+      "muscleGroup": "Legs",
+      "movementPattern": "Raise",
+      "musclesWorked": "Gluteus medius, outer hips",
+      "equipment": "Mat",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Lie on your side with the bottom knee bent for balance and the top leg straight in line with your body.",
+        "Stack your hips and shoulders.",
+        "Lift the top leg just high enough to feel the outer hip working, toes pointing forward.",
+        "Lower slowly without resting between reps.",
+        "Complete the set and switch sides."
+      ],
+      "formCue": "Lead with the heel, hips stacked.",
+      "commonMistakes": "Rolling the hips back, or lifting so high that the waist does the work.",
+      "beginnerModification": "Lie with your back against a wall and use a smaller lift.",
+      "alternatives": [
+        "Clamshell",
+        "Standing Side Leg Lift",
+        "Side Kick Series"
+      ],
+      "whyThisMatters": "It isolates the outer hip with no load on the spine or knees.",
+      "source": {
+        "name": "American Council on Exercise (ACE)",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/38/side-lying-hip-abduction/"
+      }
+    },
+    {
+      "id": "fire-hydrant",
+      "name": "Fire Hydrant",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Gluteus medius, outer hips, core",
+      "equipment": "Mat",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Start on hands and knees with hands under shoulders and knees under hips.",
+        "Brace your trunk and keep your back flat.",
+        "Keep the knee bent and lift one leg out to the side.",
+        "Pause briefly without letting your trunk rotate, then lower with control.",
+        "Finish the reps and switch sides."
+      ],
+      "formCue": "Leg moves, trunk stays square to the floor.",
+      "commonMistakes": "Leaning away from the lifting leg, or letting the back sag or twist.",
+      "beginnerModification": "Lift the knee only a little, or do the Clamshell instead.",
+      "alternatives": [
+        "Clamshell",
+        "Bird Dog",
+        "Donkey Kick"
+      ],
+      "whyThisMatters": "It strengthens the outer hips while the core works to keep the trunk still.",
+      "source": {
+        "name": "American Council on Exercise (ACE)",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/109/dirty-dog/"
+      }
+    },
+    {
+      "id": "donkey-kick",
+      "name": "Donkey Kick",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, core",
+      "equipment": "Mat",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Start on hands and knees with hands under shoulders and knees under hips.",
+        "Brace your trunk so your back stays flat.",
+        "Keep the knee bent and lift one leg, pressing the sole of the foot toward the ceiling.",
+        "Stop before your lower back starts to arch.",
+        "Lower with control, finish the reps, then switch legs."
+      ],
+      "formCue": "Squeeze the glute, keep the back flat.",
+      "commonMistakes": "Kicking too high and arching the lower back.",
+      "beginnerModification": "Use a smaller range, or rest on your forearms.",
+      "alternatives": [
+        "Glute Bridge",
+        "Bird Dog",
+        "Arabesque Lift"
+      ],
+      "whyThisMatters": "It works the glutes on their own with the spine held steady.",
+      "source": {
+        "name": "American Council on Exercise (ACE)",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/270/quadruped-bent-knee-hip-extensions/"
+      }
+    },
+    {
+      "id": "seated-march",
+      "name": "Seated March",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Hip flexors, quads, core",
+      "equipment": "Sturdy chair",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit upright away from the back of the chair with feet flat on the floor.",
+        "Hold the sides of the seat lightly.",
+        "Lift one knee as high as is comfortable, keeping the knee bent.",
+        "Lower the foot with control and lift the other knee.",
+        "Keep alternating at a steady rhythm, sitting tall."
+      ],
+      "formCue": "Sit tall, lift the knee, place the foot down softly.",
+      "commonMistakes": "Leaning back as the knee lifts, or dropping the foot down hard.",
+      "beginnerModification": "Lift the heel only, or march more slowly.",
+      "alternatives": [
+        "Marching in Place",
+        "High Knees",
+        "Treadmill Walk"
+      ],
+      "whyThisMatters": "It raises the heart rate and works the hips with no balance demand.",
+      "source": {
+        "name": "NHS",
+        "url": "https://www.nhs.uk/live-well/exercise/strength-and-flexibility-exercises/sitting-exercises/"
+      }
+    },
+    {
+      "id": "seated-knee-extension",
+      "name": "Seated Knee Extension",
+      "variationOf": "leg-extension",
+      "muscleGroup": "Legs",
+      "movementPattern": "Raise",
+      "musclesWorked": "Quads",
+      "equipment": "Sturdy chair",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit tall near the front of a sturdy chair with both feet flat on the floor.",
+        "Slowly straighten one knee until the leg is level with the floor.",
+        "Hold for a moment with the thigh still on the seat.",
+        "Lower the foot slowly to the floor.",
+        "Finish the reps on one leg, then switch."
+      ],
+      "formCue": "Straighten slowly, pause, lower slowly.",
+      "commonMistakes": "Swinging the leg up, or slumping back as the leg lifts.",
+      "beginnerModification": "Straighten only part way, or slide the heel along the floor.",
+      "alternatives": [
+        "Leg Extension",
+        "Sit-to-Stand",
+        "Wall Sit"
+      ],
+      "whyThisMatters": "It strengthens the front of the thigh from a fully supported seat.",
+      "source": {
+        "name": "Cleveland Clinic",
+        "url": "https://health.clevelandclinic.org/chair-exercises-for-seniors"
+      }
+    }
+  ]
+}

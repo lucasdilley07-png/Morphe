@@ -1,0 +1,534 @@
+{
+  "version": 2,
+  "category": "Recovery & Longevity",
+  "workouts": [
+    {
+      "slug": "v3-recovery-easy-walk-circuit",
+      "name": "Easy Walk and Move Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Low-impact circuit",
+      "level": "Beginner",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A gentle, joint-friendly session for days when you want to move without pounding. Keep a pace at which you can still talk; add a round when it feels easy.",
+      "exercises": [
+        {
+          "libraryID": "marching-in-place",
+          "sets": 1,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "sit-to-stand",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "low-step-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "supported-heel-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "sideways-walk",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "diaphragmatic-breathing",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-recovery-balance-strength-older-adults",
+      "name": "Balance and Strength for Older Adults",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Balance and strength",
+      "level": "Beginner",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A steady session to build leg strength and balance for daily life. Stay close to a sturdy support, move slowly, and aim to do it twice a week; progress by using less hand support.",
+      "exercises": [
+        {
+          "libraryID": "marching-in-place",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "sit-to-stand",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "supported-mini-squat",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "supported-heel-raise",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "standing-toe-raise",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "tandem-stance",
+          "sets": 2,
+          "durationSeconds": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "single-leg-stand",
+          "sets": 3,
+          "durationSeconds": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "heel-to-toe-walk",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-recovery-shoulder-care",
+      "name": "Shoulder Care",
+      "goal": "strengthBuilding",
+      "focus": "Pull",
+      "trainingType": "Shoulder accessory",
+      "level": "Beginner",
+      "durationMinutes": 20,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Light band work for the rotator cuff and upper back. Use a band that lets you finish every rep smoothly; add reps before moving to a thicker band.",
+      "exercises": [
+        {
+          "libraryID": "shoulder-pendulum",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "band-external-rotation",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 5
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "band-pull-apart",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 5
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "band-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "wall-slide",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "cross-body-shoulder-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "v3-recovery-desk-reset",
+      "name": "Desk Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 10,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A ten-minute break for anyone who sits most of the day. Nothing here should feel like a strain; do it once mid-morning and once mid-afternoon.",
+      "exercises": [
+        {
+          "libraryID": "neck-rotation",
+          "sets": 1,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "neck-side-stretch",
+          "sets": 2,
+          "durationSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "supported-mini-squat",
+          "sets": 1,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "box-breathing",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-recovery-foam-roll-reset",
+      "name": "Full-Body Foam Roll",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Self-massage",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A slow pass over the areas that get stiff from training. Keep pressure firm but comfortable and breathe normally; one side per set.",
+      "exercises": [
+        {
+          "libraryID": "foam-roll-calves",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "foam-roll-quads",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "foam-roll-adductors",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "foam-roll-outer-thigh",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "foam-roll-glutes",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "foam-roll-upper-back",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "foam-roll-lats",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "diaphragmatic-breathing",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-recovery-evening-downshift",
+      "name": "Evening Downshift",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Breathing and stretching",
+      "level": "Recovery",
+      "durationMinutes": 15,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A quiet routine for the end of the day. Hold each stretch gently and let the breathing slow you down.",
+      "exercises": [
+        {
+          "libraryID": "diaphragmatic-breathing",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "neck-side-stretch",
+          "sets": 2,
+          "durationSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "box-breathing",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-recovery-foot-ankle-care",
+      "name": "Foot and Ankle Care",
+      "goal": "recovery",
+      "focus": "Legs",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 15,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Easy work for feet, ankles and shins. Good after long days standing or as a warm-up before a walk.",
+      "exercises": [
+        {
+          "libraryID": "foot-arch-roll",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "ankle-alphabet",
+          "sets": 2,
+          "reps": 1,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "supported-heel-raise",
+          "sets": 2,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "standing-toe-raise",
+          "sets": 2,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "heel-walk",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "standing-calf-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ]
+}

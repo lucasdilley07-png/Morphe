@@ -4009,6 +4009,52 @@ final class FormAnalyzerTests: XCTestCase {
         XCTAssertEqual(resolved.count, catalog.count, "every catalog workout must resolve")
     }
 
+    /// Technique Library wave (2026-10-04): the data-authored exercises
+    /// load, stay unique, and every one names the source it was checked
+    /// against. 500 is the floor Lucas set for the library.
+    func testTechniqueLibraryLoadsUniqueAndSourced() {
+        let core = MorpheDemoContent.coreExerciseDatabase
+        let library = MorpheDemoContent.exerciseDatabase
+        XCTAssertGreaterThanOrEqual(library.count, 500, "the library floor")
+        XCTAssertEqual(Set(library.map(\.id)).count, library.count, "ids stay unique")
+        XCTAssertEqual(Set(library.map(\.name)).count, library.count, "names stay unique — swaps resolve by name")
+        let added = library.dropFirst(core.count)
+        XCTAssertFalse(added.isEmpty)
+        for exercise in added {
+            XCTAssertFalse(exercise.discipline.isEmpty, exercise.id)
+            XCTAssertFalse(exercise.sourceName.isEmpty, exercise.id)
+            XCTAssertEqual(URL(string: exercise.sourceURL)?.scheme, "https", exercise.id)
+            XCTAssertTrue((3...5).contains(exercise.instructions.count), exercise.id)
+            XCTAssertFalse(exercise.formCue.isEmpty || exercise.commonMistakes.isEmpty
+                           || exercise.beginnerModification.isEmpty, exercise.id)
+            if let base = exercise.variationOf {
+                XCTAssertTrue(library.contains { $0.id == base }, "\(exercise.id) varies an unknown \(base)")
+            }
+            for name in exercise.alternatives {
+                XCTAssertTrue(library.contains { $0.name == name }, "\(exercise.id): swap \(name) must exist")
+            }
+        }
+    }
+
+    @MainActor
+    func testTechniqueLibraryFiltersNarrowTogether() {
+        let library = MorpheDemoContent.exerciseDatabase
+        let store = MorpheAppStore()
+        let styles = TechniqueLibraryView.styleIndex(library: library, workouts: store.discoverWorkouts)
+        let all = TechniqueLibraryView.filtered(library, styles: styles, query: "", style: nil, muscle: nil)
+        XCTAssertEqual(all.count, library.count)
+        let legs = TechniqueLibraryView.filtered(library, styles: styles, query: "", style: nil, muscle: .legs)
+        XCTAssertTrue(!legs.isEmpty && legs.allSatisfy { $0.muscleGroup == .legs })
+        let olympic = TechniqueLibraryView.filtered(
+            library, styles: styles, query: "", style: "Olympic Weightlifting", muscle: nil)
+        XCTAssertTrue(!olympic.isEmpty && olympic.allSatisfy { styles[$0.id] == "Olympic Weightlifting" })
+        XCTAssertTrue(olympic.contains { $0.id == "snatch" || $0.discipline == "Olympic Weightlifting" })
+        let squat = TechniqueLibraryView.filtered(library, styles: styles, query: "  SQUAT ", style: nil, muscle: nil)
+        XCTAssertTrue(squat.contains { $0.id == "goblet-squat" }, "search is case- and space-blind")
+        XCTAssertEqual(styles["barbell-back-squat"], "Strength & Powerlifting",
+                       "an original entry takes the style that programs it most")
+    }
+
     // MARK: Movement library
 
     func testPatternInferenceAcrossTheWholeLibrary() {

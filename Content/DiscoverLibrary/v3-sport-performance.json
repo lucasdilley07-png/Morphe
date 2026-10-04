@@ -1,0 +1,469 @@
+{
+  "version": 2,
+  "category": "Sport Performance",
+  "workouts": [
+    {
+      "slug": "v3-sport-agility-day",
+      "name": "Agility Day: Ladders, Cones and Reaction",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Agility training",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Footwork first, then cone patterns, then reacting to a partner. Keep every rep sharp and stop a drill when your feet get sloppy; add a round before adding speed.",
+      "exercises": [
+        {
+          "libraryID": "running-hip-out",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "agility-ladder-icky-shuffle",
+          "sets": 4,
+          "reps": 2,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "agility-ladder-lateral-shuffle",
+          "sets": 4,
+          "reps": 2,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "l-drill",
+          "sets": 4,
+          "reps": 1,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "pro-agility-shuttle",
+          "sets": 4,
+          "reps": 1,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "plant-and-cut",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "partner-mirror-drill",
+          "sets": 5,
+          "durationSeconds": 10,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "ball-drop-reaction",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-sport-speed-day",
+      "name": "Speed Day: Acceleration",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Speed training",
+      "level": "Advanced",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "For field and court athletes who want a faster first 20 metres. Rest fully between sprints so every rep is fast; progress by adding one rep, not by cutting rest.",
+      "exercises": [
+        {
+          "libraryID": "forward-hurdle-run",
+          "sets": 3,
+          "reps": 2,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "wall-acceleration-drill",
+          "sets": 3,
+          "durationSeconds": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "falling-start",
+          "sets": 4,
+          "reps": 1,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "resisted-sled-sprint",
+          "sets": 5,
+          "reps": 1,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "flying-sprint",
+          "sets": 4,
+          "reps": 1,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "sprint-and-stop",
+          "sets": 3,
+          "reps": 2,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-sport-plyo-day",
+      "name": "Plyo Day: Jump and Rebound",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Plyometrics",
+      "level": "Advanced",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "Low total contacts, high quality. Start with a landing primer, then go from short rebounds to bigger jumps; add contacts only when every landing is quiet.",
+      "exercises": [
+        {
+          "libraryID": "snap-down",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "pogo-hop",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "hurdle-hop",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "alternate-leg-push-off",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "depth-jump",
+          "sets": 4,
+          "reps": 4,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "alternating-bound",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "single-leg-hop-and-stick",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-sport-rotational-power",
+      "name": "Rotational Power",
+      "goal": "strengthBuilding",
+      "focus": "Core",
+      "trainingType": "Power training",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "For throwing, striking and swinging sports. Throws are fast and light, cable work is controlled; raise ball speed before ball weight.",
+      "exercises": [
+        {
+          "libraryID": "half-kneeling-medicine-ball-hay-baler",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 4
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "medicine-ball-rotational-throw",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "lateral-bound-to-shot-put-throw",
+          "sets": 3,
+          "reps": 4,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "medicine-ball-scoop-toss",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "landmine-rotation",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "kneeling-wood-chop",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "kneeling-hay-baler",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "pallof-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-sport-in-season-maintenance",
+      "name": "In-Season Maintenance",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Strength and power",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "One short session a week to hold strength and power during the competitive season without adding fatigue. Keep two reps in reserve on everything.",
+      "exercises": [
+        {
+          "libraryID": "squat-with-toe-raise",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "box-jump",
+          "sets": 3,
+          "reps": 3,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "trap-bar-deadlift",
+          "sets": 3,
+          "reps": 4,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "single-leg-squat-touchdown",
+          "sets": 2,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "anti-rotation-reverse-lunge",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "copenhagen-plank",
+          "sets": 2,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "nordic-hamstring-curl",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-sport-landing-mechanics-beginners",
+      "name": "Landing Mechanics for Beginners",
+      "goal": "recovery",
+      "focus": "Legs",
+      "trainingType": "Movement skill",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Learn to land before you learn to jump. Every rep ends in a quiet, balanced hold with knees over toes; move to the next drill only when the current one looks the same every time.",
+      "exercises": [
+        {
+          "libraryID": "squat-with-toe-raise",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "snap-down",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "drop-landing",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "single-leg-hop-and-stick",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "sprint-and-stop",
+          "sets": 2,
+          "reps": 3,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "standing-calf-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ]
+}

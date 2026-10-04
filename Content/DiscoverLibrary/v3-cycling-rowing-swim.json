@@ -1,0 +1,529 @@
+{
+  "version": 2,
+  "category": "Cycling, Rowing & Swim",
+  "workouts": [
+    {
+      "slug": "v3-crs-bike-cadence-builder",
+      "name": "Bike: Cadence Builder",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Indoor cycling",
+      "level": "Beginner",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "A first structured ride: leg-speed work, cadence changes and two short climbs. Keep the hips still on the saddle and add a climb when it feels comfortable.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "bike-spin-ups",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "bike-cadence-change-drill",
+          "sets": 3,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bike-seated-climb",
+          "sets": 2,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "standing-quad-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        }
+      ]
+    },
+    {
+      "slug": "v3-crs-erg-technique-negative-split",
+      "name": "Erg: Technique and Negative Split",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Indoor rowing",
+      "level": "Beginner",
+      "durationMinutes": 34,
+      "equipmentProfile": "Full Gym",
+      "notes": "Three short drills to set the stroke sequence, then a 16-minute row that gets a little faster every four minutes. Push harder with the legs to speed up; do not rush the slide.",
+      "exercises": [
+        {
+          "libraryID": "rowing-machine",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "rowing-legs-only-drill",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "rowing-arms-body-drill",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "rowing-pause-drill",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "rowing-negative-split",
+          "sets": 1,
+          "durationSeconds": 960,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-crs-pool-drill-and-kick",
+      "name": "Pool: Drill and Kick Starter",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Swimming",
+      "level": "Beginner",
+      "durationMinutes": 33,
+      "equipmentProfile": "Full Gym",
+      "notes": "A pool session for newer swimmers built from short repeats with rest at the wall. Treat each timed repeat as one or two lengths and swim them smoothly, not fast.",
+      "exercises": [
+        {
+          "libraryID": "freestyle-breathing-drill",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "swim-kick-set",
+          "sets": 6,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "freestyle-catch-up-drill",
+          "sets": 6,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "backstroke",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "breaststroke",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-crs-bike-climb-strength",
+      "name": "Bike: Climb Strength",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Indoor cycling",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "Heavy-gear seated climbs to build leg strength on the bike, finished with short standing efforts. Raise the resistance over the weeks while the cadence target stays the same.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "bike-spin-ups",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "bike-low-cadence-climb",
+          "sets": 3,
+          "durationSeconds": 360,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 240
+        },
+        {
+          "libraryID": "bike-standing-climb",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-crs-bike-sprint-power",
+      "name": "Bike: Sprint Power",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Indoor cycling",
+      "level": "Advanced",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "Eight full-effort sprints with long recoveries, for riders who want top-end power. If a sprint is clearly weaker than the first, rest longer or stop there.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "bike-spin-ups",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bike-sprint-interval",
+          "sets": 8,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 160
+        },
+        {
+          "libraryID": "bike-seated-climb",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-crs-erg-rate-ladder",
+      "name": "Erg: Rate Ladder",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Indoor rowing",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "Step the stroke rate up every three minutes while the stroke stays long, then settle into steady rowing. Add a step or lengthen the steady piece to progress.",
+      "exercises": [
+        {
+          "libraryID": "rowing-machine",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "rowing-rhythm-drill",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "rowing-rate-ladder",
+          "sets": 5,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "rowing-steady-state",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-crs-bike-sweet-spot",
+      "name": "Bike: Sweet-Spot 2 x 15",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Indoor cycling",
+      "level": "Advanced",
+      "durationMinutes": 58,
+      "equipmentProfile": "Full Gym",
+      "notes": "Two long efforts just under threshold, the classic time-efficient indoor ride. Build the intervals toward 20 minutes each before you raise the effort.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "bike-spin-ups",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "bike-sweet-spot-interval",
+          "sets": 2,
+          "durationSeconds": 900,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 300
+        },
+        {
+          "libraryID": "bike-cadence-change-drill",
+          "sets": 1,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-crs-pool-pull-and-kick",
+      "name": "Pool: Pull and Kick Endurance",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Swimming",
+      "level": "Moderate",
+      "durationMinutes": 42,
+      "equipmentProfile": "Full Gym",
+      "notes": "Pull-buoy repeats for the upper body and kick repeats for the legs, with drills to keep the stroke tidy. Shorten the rests as the weeks go on.",
+      "exercises": [
+        {
+          "libraryID": "freestyle-catch-up-drill",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "pull-buoy-set",
+          "sets": 6,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "swim-kick-set",
+          "sets": 6,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "one-arm-freestyle-drill",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "backstroke",
+          "sets": 4,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-crs-pool-easy-reset",
+      "name": "Pool: Easy Swim Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Swimming",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Full Gym",
+      "notes": "Gentle lengths of mixed strokes to loosen up after hard training. Nothing here should make you breathe hard.",
+      "exercises": [
+        {
+          "libraryID": "freestyle-breathing-drill",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "backstroke",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "breaststroke",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "swim-kick-set",
+          "sets": 4,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,496 @@
+{
+  "discipline": "Dance & Aerobics",
+  "exercises": [
+    {
+      "id": "basic-step",
+      "name": "Basic Step",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, calves, hip flexors",
+      "equipment": "Aerobic step platform",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand close to the platform, within about a foot of it, facing the long side.",
+        "Step up with the lead foot and place the whole foot on the platform.",
+        "Step up with the other foot so both feet are on top.",
+        "Step down with the lead foot and then the other, letting each heel reach the floor."
+      ],
+      "formCue": "Up, up, down, down.",
+      "commonMistakes": "Letting the heel hang off the back edge, or stepping down far away from the platform.",
+      "beginnerModification": "Use the lowest platform height, or march the same pattern on the floor.",
+      "alternatives": [
+        "Step-Up",
+        "Treadmill Walk"
+      ],
+      "whyThisMatters": "The four-count basic is the base pattern for every other step move.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-one-step-two-step/"
+      }
+    },
+    {
+      "id": "v-step-on-step",
+      "name": "V-Step on the Step",
+      "variationOf": "basic-step",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, hip abductors, quads, calves",
+      "equipment": "Aerobic step platform",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand behind the centre of the platform with your feet together.",
+        "Step the lead foot up to the far corner on its own side.",
+        "Step the other foot up to the opposite corner so your feet are wide on top.",
+        "Step the lead foot back down to the centre and bring the other foot down beside it."
+      ],
+      "formCue": "Out, out, in, in.",
+      "commonMistakes": "Landing with only the toes on the platform, or letting the knees drop inward in the wide position.",
+      "beginnerModification": "Do the same wide-then-narrow pattern on the floor first.",
+      "alternatives": [
+        "Basic Step",
+        "V-Step"
+      ],
+      "whyThisMatters": "The wide placement brings the outer hips into ordinary stepping.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/step-solutions/"
+      }
+    },
+    {
+      "id": "over-the-top",
+      "name": "Over the Top",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, calves, hip abductors",
+      "equipment": "Aerobic step platform",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand side-on to the platform with the near foot beside it.",
+        "Step the near foot up onto the middle of the platform.",
+        "Bring the other foot up, then step the first foot down on the far side.",
+        "Bring the trailing foot down beside it and repeat in the other direction."
+      ],
+      "formCue": "Up and over, land close.",
+      "commonMistakes": "Jumping across and landing far from the platform, or twisting the knee of the planted foot.",
+      "beginnerModification": "Step up and return to the same side until the sideways step feels secure.",
+      "alternatives": [
+        "Basic Step",
+        "Lateral Shuffle"
+      ],
+      "whyThisMatters": "Travelling across the platform adds lateral work to step training.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-step-with-variations/"
+      }
+    },
+    {
+      "id": "step-knee-lift",
+      "name": "Step Knee Lift",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, hip flexors, core, calves",
+      "equipment": "Aerobic step platform",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand close to the platform and step the lead foot up with the whole foot on top.",
+        "Lift the other knee to about hip height while standing tall on the platform leg.",
+        "Lower that foot back to the floor.",
+        "Step the lead foot down, then repeat with the other foot leading."
+      ],
+      "formCue": "Stand tall, then lift.",
+      "commonMistakes": "Leaning back to raise the knee, or pushing off hard from the floor instead of standing up through the top leg.",
+      "beginnerModification": "Replace the knee lift with a light toe tap on the platform.",
+      "alternatives": [
+        "Step-Up",
+        "High Knees"
+      ],
+      "whyThisMatters": "It adds a single-leg balance moment to each step cycle.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-one-step-two-step/"
+      }
+    },
+    {
+      "id": "repeater-knee",
+      "name": "Repeater Knee",
+      "variationOf": "step-knee-lift",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, quads, hip flexors, calves, core",
+      "equipment": "Aerobic step platform",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Step the lead foot onto the platform near one corner and keep it there.",
+        "Lift the other knee, then tap that foot lightly back on the floor.",
+        "Repeat the knee lift three times in a row, keeping your weight over the platform leg.",
+        "Step down, then start the next set with the other foot leading."
+      ],
+      "formCue": "Weight stays on top.",
+      "commonMistakes": "Bouncing off the floor foot between lifts, or letting the platform knee cave inward.",
+      "beginnerModification": "Do a single knee lift each time instead of three.",
+      "alternatives": [
+        "Step Knee Lift",
+        "Step-Up"
+      ],
+      "whyThisMatters": "Holding one leg on the platform for several counts builds leg endurance.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/step-solutions/"
+      }
+    },
+    {
+      "id": "aerobic-march",
+      "name": "Aerobic March",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Hip flexors, quads, calves, shoulders",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with your feet under your hips.",
+        "March on the spot with one foot meeting the floor on each beat.",
+        "Swing your arms naturally in opposition to your legs.",
+        "Vary it by travelling forward, back, or to the side, or by lifting the knees higher."
+      ],
+      "formCue": "One foot per beat.",
+      "commonMistakes": "Slumping through the trunk, or stamping heavily instead of placing the feet.",
+      "beginnerModification": "Keep the knees low and march at half tempo.",
+      "alternatives": [
+        "Treadmill Walk",
+        "Step Touch"
+      ],
+      "whyThisMatters": "The march is the low-impact base that most aerobic routines are built on.",
+      "source": {
+        "name": "City College of San Francisco, Physical Education (aerobic exercise handout)",
+        "url": "https://fog.ccsf.edu/~tkobayas/9a/handouts/2008-act03c-aerobics.pdf"
+      }
+    },
+    {
+      "id": "v-step",
+      "name": "V-Step",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, hip abductors, quads, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with your feet together.",
+        "Step the lead foot forward and out on a diagonal.",
+        "Step the other foot forward and out so your feet are wide.",
+        "Step the lead foot back to the start and bring the other foot in beside it."
+      ],
+      "formCue": "Out, out, in, in.",
+      "commonMistakes": "Turning the pattern into a narrow shuffle, or locking the knees in the wide position.",
+      "beginnerModification": "Make the V smaller and slow the tempo.",
+      "alternatives": [
+        "Step Touch",
+        "Grapevine Step"
+      ],
+      "whyThisMatters": "It adds forward and sideways travel to a simple walking pattern.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-3-2-1-dance-1/"
+      }
+    },
+    {
+      "id": "mambo-step",
+      "name": "Mambo",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, calves, hips",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with your feet together and knees soft.",
+        "Step the lead foot forward and shift your weight onto it.",
+        "Shift your weight back onto the rear foot.",
+        "Step the lead foot back behind you, shift onto it, then return your weight to the other foot and repeat."
+      ],
+      "formCue": "Rock forward, rock back.",
+      "commonMistakes": "Taking steps so long that the trunk tips, or keeping the hips stiff.",
+      "beginnerModification": "Take smaller steps and leave the arms at your sides.",
+      "alternatives": [
+        "Step Touch",
+        "Aerobic March"
+      ],
+      "whyThisMatters": "The mambo teaches smooth weight transfer between the front and back foot.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-dance-inspired-cardio-0/"
+      }
+    },
+    {
+      "id": "rock-step-cha-cha",
+      "name": "Rock-Step Cha-Cha",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Calves, quads, glutes, hips",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand with your feet together.",
+        "Step one foot back and rock your weight onto it.",
+        "Transfer your weight forward onto the front foot again.",
+        "Take three small quick steps on the spot, then repeat starting with the other foot."
+      ],
+      "formCue": "Rock, replace, quick-quick-quick.",
+      "commonMistakes": "Making the three quick steps too large, or losing the beat between the rock and the triple step.",
+      "beginnerModification": "Replace the three quick steps with two marches.",
+      "alternatives": [
+        "Mambo",
+        "Step Touch"
+      ],
+      "whyThisMatters": "Mixing slow and quick steps builds rhythm and light footwork.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-3-2-1-dance-1/"
+      }
+    },
+    {
+      "id": "box-step",
+      "name": "Box Step",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, hip adductors, quads, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with your feet hip-width apart.",
+        "Step the lead foot across in front of the other foot.",
+        "Step the other foot straight back.",
+        "Step the lead foot out to the side, then bring the feet together to finish the square."
+      ],
+      "formCue": "Across, back, side, together.",
+      "commonMistakes": "Twisting the knee of the planted foot on the cross step, or rushing so the square collapses.",
+      "beginnerModification": "Walk through the four placements slowly without music first.",
+      "alternatives": [
+        "Grapevine Step",
+        "Step Touch"
+      ],
+      "whyThisMatters": "The four-point pattern trains coordination and changes of direction.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-3-2-1-dance-1/"
+      }
+    },
+    {
+      "id": "chasse-step",
+      "name": "Chasse Step",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Calves, hip abductors, adductors, quads",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with knees soft.",
+        "Step one foot out to the side.",
+        "Bring the other foot in to meet it with a quick closing step.",
+        "Step the first foot out to the side again, then repeat in the other direction."
+      ],
+      "formCue": "Side, close, side.",
+      "commonMistakes": "Crossing the feet, or bouncing high instead of gliding.",
+      "beginnerModification": "Do a plain step touch until the three-step rhythm feels comfortable.",
+      "alternatives": [
+        "Step Touch",
+        "Lateral Shuffle"
+      ],
+      "whyThisMatters": "A quick three-step travel raises the heart rate without jumping.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-dance-inspired-cardio-0/"
+      }
+    },
+    {
+      "id": "pivot-turn",
+      "name": "Pivot Turn",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Calves, hip rotators, core",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand with your feet together.",
+        "Step one foot forward and place your weight on the balls of both feet.",
+        "Turn 180 degrees toward the back foot, rotating on the balls of the feet.",
+        "Shift your weight onto the new front foot, then repeat to return to the start."
+      ],
+      "formCue": "Step, turn on the balls of the feet.",
+      "commonMistakes": "Turning with the heels planted, which twists the knees, or looking down and losing balance.",
+      "beginnerModification": "Swap the turn for a four-count march until you are ready to add it.",
+      "alternatives": [
+        "Aerobic March",
+        "Mambo"
+      ],
+      "whyThisMatters": "Turning adds a change of direction and a balance challenge to simple choreography.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-dance-inspired-cardio-0/"
+      }
+    },
+    {
+      "id": "low-impact-jack",
+      "name": "Low-Impact Jack",
+      "variationOf": "jumping-jack",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Shoulders, hip abductors, calves, quads",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with your feet together and arms at your sides.",
+        "Tap one foot out to the side while raising both arms out and overhead.",
+        "Bring the foot back in as the arms lower.",
+        "Repeat on the other side and keep alternating at a steady pace."
+      ],
+      "formCue": "Tap out, arms up.",
+      "commonMistakes": "Shrugging the shoulders toward the ears, or leaning away from the tapping foot.",
+      "beginnerModification": "Raise the arms only to shoulder height.",
+      "alternatives": [
+        "Jumping Jack",
+        "Step Touch"
+      ],
+      "whyThisMatters": "It keeps the pattern of a jumping jack while one foot stays on the floor.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/how-to-make-hiit-a-hit-for-everyone/"
+      }
+    },
+    {
+      "id": "step-curl",
+      "name": "Step Curl",
+      "variationOf": "step-touch",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Hamstrings, glutes, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with your feet a little wider than your hips.",
+        "Step onto one foot and shift your weight over it.",
+        "Bend the other knee to bring that heel toward your glute.",
+        "Set the foot down wide and repeat on the other side."
+      ],
+      "formCue": "Shift, then curl the heel up.",
+      "commonMistakes": "Tipping the chest forward, or swinging the leg instead of bending the knee.",
+      "beginnerModification": "Tap the toe behind you instead of curling the heel up.",
+      "alternatives": [
+        "Step Touch",
+        "Butt Kick"
+      ],
+      "whyThisMatters": "It works the back of the legs inside a low-impact side-to-side pattern.",
+      "source": {
+        "name": "City College of San Francisco, Physical Education (aerobic exercise handout)",
+        "url": "https://fog.ccsf.edu/~tkobayas/9a/handouts/2008-act03c-aerobics.pdf"
+      }
+    },
+    {
+      "id": "alternating-knee-lift",
+      "name": "Alternating Knee Lift",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Hip flexors, quads, core, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with your feet hip-width apart.",
+        "Step onto one foot and lift the other knee to about hip height.",
+        "Lower that foot and step onto it.",
+        "Lift the opposite knee and continue alternating in time."
+      ],
+      "formCue": "Tall spine, knee to hip height.",
+      "commonMistakes": "Leaning back as the knee rises, or dropping the chest toward the knee.",
+      "beginnerModification": "Lift the knee lower, or tap the toe in front instead.",
+      "alternatives": [
+        "High Knees",
+        "Aerobic March"
+      ],
+      "whyThisMatters": "Knee lifts raise the heart rate while one foot always stays grounded.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-dance-inspired-cardio-0/"
+      }
+    },
+    {
+      "id": "cross-step-touch",
+      "name": "Cross-Step Touch",
+      "variationOf": "step-touch",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, hip adductors, quads, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with your feet together and knees soft.",
+        "Step to the side with one foot.",
+        "Cross the other foot in front and touch the toe to the floor.",
+        "Step that foot back out to its own side and cross-touch with the first foot."
+      ],
+      "formCue": "Step wide, touch across.",
+      "commonMistakes": "Putting weight on the crossing foot, or twisting the knees instead of turning from the hips.",
+      "beginnerModification": "Touch the foot beside the standing foot instead of crossing.",
+      "alternatives": [
+        "Step Touch",
+        "Grapevine Step"
+      ],
+      "whyThisMatters": "The crossing touch adds hip movement and coordination to a basic side step.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-cardio-hip-hop-yoga-0/"
+      }
+    },
+    {
+      "id": "dance-hip-circles",
+      "name": "Dance Hip Circles",
+      "muscleGroup": "Core",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Obliques, glutes, hip rotators, lower back",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with your feet a little wider than your hips and knees soft.",
+        "Push your hips to one side, then to the back, the other side, and the front.",
+        "Join the four points into one smooth circle.",
+        "Complete several circles, then reverse the direction."
+      ],
+      "formCue": "Knees soft, circle from the hips.",
+      "commonMistakes": "Locking the knees, or swaying the shoulders instead of moving the hips.",
+      "beginnerModification": "Do only the side-to-side shifts before linking the full circle.",
+      "alternatives": [
+        "Dance Squat Groove",
+        "Arm Wave Reach"
+      ],
+      "whyThisMatters": "Controlled hip circles loosen the hips and trunk for dance work.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-cardio-hip-hop-yoga-0/"
+      }
+    },
+    {
+      "id": "side-to-side-rock",
+      "name": "Side-to-Side Rock",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Calves, hip abductors, glutes",
+      "equipment": "None",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand with your feet wider than your hips and knees soft.",
+        "Shift your weight onto one foot and let the other heel lift.",
+        "Shift smoothly across to the other foot.",
+        "Keep rocking at a slow, even tempo while letting your breathing settle."
+      ],
+      "formCue": "Slow shift, easy breath.",
+      "commonMistakes": "Stopping suddenly after hard work instead of slowing down gradually, or locking the knees.",
+      "beginnerModification": "Narrow the stance and make the shift smaller.",
+      "alternatives": [
+        "Step Touch",
+        "Arm Wave Reach"
+      ],
+      "whyThisMatters": "Simple rhythmic movement brings the heart rate down gradually before stretching.",
+      "source": {
+        "name": "IDEA Health & Fitness Association",
+        "url": "https://www.ideafit.com/sample-class-dance-inspired-cardio-0/"
+      }
+    }
+  ]
+}

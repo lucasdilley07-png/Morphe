@@ -46,21 +46,98 @@ struct CatalogWorkout: Codable, Identifiable, Hashable {
     var exercises: [CatalogExercise]
 }
 
+/// One exercise document in the bundled catalog (Technique Library wave,
+/// 2026-10-04): the library grows as data. Authored per discipline in
+/// Content/ExerciseLibrary and merged by Tools/build_catalog_v2.py. Every
+/// document names the coaching source its technique was checked against.
+struct CatalogExerciseDoc: Codable, Hashable {
+    struct Source: Codable, Hashable {
+        var name: String
+        var url: String
+    }
+
+    var id: String
+    var name: String
+    var discipline: String
+    var variationOf: String?
+    var muscleGroup: String        // MuscleGroup rawValue
+    var movementPattern: String
+    var musclesWorked: String
+    var equipment: String
+    var difficulty: String         // DemoDifficulty rawValue
+    var instructions: [String]
+    var formCue: String
+    var commonMistakes: String
+    var beginnerModification: String
+    var alternatives: [String]
+    var whyThisMatters: String
+    var source: Source
+
+    /// Nil when an enum value doesn't decode — a malformed document is
+    /// dropped rather than shown wrong.
+    var reference: ExerciseReference? {
+        guard let muscle = MuscleGroup(rawValue: muscleGroup),
+              let level = DemoDifficulty(rawValue: difficulty) else { return nil }
+        return ExerciseReference(
+            id: id,
+            name: name,
+            muscleGroup: muscle,
+            movementPattern: movementPattern,
+            musclesWorked: musclesWorked,
+            equipment: equipment,
+            difficulty: level,
+            videoPlaceholder: "",
+            instructions: instructions,
+            formCue: formCue,
+            commonMistakes: commonMistakes,
+            beginnerModification: beginnerModification,
+            alternatives: alternatives,
+            whyThisMatters: whyThisMatters,
+            discipline: discipline,
+            variationOf: variationOf,
+            sourceName: source.name,
+            sourceURL: source.url
+        )
+    }
+}
+
 struct WorkoutCatalogFile: Codable {
     var version: Int
     var workouts: [CatalogWorkout]
+    /// Absent in pre-library catalogs.
+    var exercises: [CatalogExerciseDoc]?
 }
 
 enum WorkoutCatalog {
     /// Loads the bundled catalog; returns an empty list (never crashes) if the
     /// resource is missing or unreadable.
     static func loadBundled() -> [CatalogWorkout] {
-        guard let url = Bundle.main.url(forResource: "MorpheCatalog", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
-              let file = try? JSONDecoder().decode(WorkoutCatalogFile.self, from: data)
-        else { return [] }
-        return file.workouts
+        bundledFile?.workouts ?? []
     }
+
+    /// The data-authored exercises, mapped onto the runtime shape. Ids and
+    /// names already taken by the original library are skipped, so library
+    /// ids stay unique whatever the content files say.
+    static func loadBundledExercises(excluding core: [ExerciseReference]) -> [ExerciseReference] {
+        var ids = Set(core.map(\.id))
+        var names = Set(core.map(\.name))
+        var result: [ExerciseReference] = []
+        for doc in bundledFile?.exercises ?? [] {
+            guard let reference = doc.reference,
+                  ids.insert(reference.id).inserted,
+                  names.insert(reference.name).inserted else { continue }
+            result.append(reference)
+        }
+        return result
+    }
+
+    /// Decoded once — workouts and exercises share the one bundled file.
+    private static let bundledFile: WorkoutCatalogFile? = {
+        guard let url = Bundle.main.url(forResource: "MorpheCatalog", withExtension: "json"),
+              let data = try? Data(contentsOf: url)
+        else { return nil }
+        return try? JSONDecoder().decode(WorkoutCatalogFile.self, from: data)
+    }()
 
     /// O(1) exercise resolve via a prebuilt id index (speed audit S1-3):
     /// the linear scan ran ~61k string comparisons synchronously before

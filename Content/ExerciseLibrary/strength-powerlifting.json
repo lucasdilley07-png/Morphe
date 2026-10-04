@@ -1,0 +1,557 @@
+{
+  "discipline": "Strength & Powerlifting",
+  "exercises": [
+    {
+      "id": "high-bar-back-squat",
+      "name": "High-Bar Back Squat",
+      "variationOf": "barbell-back-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, adductors, spinal erectors",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the bar on top of the traps, grip as narrow as is comfortable, and pull the shoulder blades together.",
+        "Unrack, step back into your stance, take a big breath into the belly, and brace all the way around the trunk.",
+        "Bend the knees and hips together and sit straight down, keeping the torso fairly upright and the weight over the middle of the foot.",
+        "Go as deep as you can hold position, then drive up with the chest and hips rising at the same speed."
+      ],
+      "formCue": "Sit down between your heels, chest tall.",
+      "commonMistakes": "Letting the hips shoot up first out of the bottom, or losing the brace and folding forward.",
+      "beginnerModification": "Squat to a box at parallel height with an empty bar, or use a goblet squat until the upright position feels natural.",
+      "alternatives": [
+        "Barbell Back Squat",
+        "Front Squat",
+        "Goblet Squat"
+      ],
+      "whyThisMatters": "The upright, deep position builds the quads and carries straight over to front squats and the Olympic lifts.",
+      "source": {
+        "name": "Stronger By Science",
+        "url": "https://www.strongerbyscience.com/how-to-squat/"
+      }
+    },
+    {
+      "id": "low-bar-back-squat",
+      "name": "Low-Bar Back Squat",
+      "variationOf": "barbell-back-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Glutes, quads, hamstrings, adductors, spinal erectors",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the bar a few centimetres below the top of the traps, across the rear shoulders, and squeeze the upper back tight to make a shelf.",
+        "Unrack, take two short steps back, breathe in, and brace hard.",
+        "Push the hips back as the knees bend and let the torso lean forward enough to keep the bar over the middle of the foot.",
+        "Lower until the hip crease drops just below the top of the knee.",
+        "Drive the hips and shoulders up together until you stand fully locked out."
+      ],
+      "formCue": "Bar over midfoot, the whole way down and up.",
+      "commonMistakes": "Bar rolling down the back because the upper back is loose, or cutting depth as the load gets heavy.",
+      "beginnerModification": "Learn the bar position with an empty bar and squat to a box set just below parallel.",
+      "alternatives": [
+        "Barbell Back Squat",
+        "High-Bar Back Squat",
+        "Box Squat"
+      ],
+      "whyThisMatters": "It is the bar position most powerlifters use because it lets the hips do more of the work.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/GluteusMaximus/BBSquat"
+      }
+    },
+    {
+      "id": "pause-squat",
+      "name": "Pause Squat",
+      "variationOf": "barbell-back-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, adductors, trunk",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set up and descend exactly as you would for your normal back squat.",
+        "Stop dead at the bottom and hold for two to three seconds with the trunk braced hard.",
+        "Stay still during the hold with no bouncing or rocking.",
+        "Drive straight up as fast as you can and stand fully before the next rep."
+      ],
+      "formCue": "Stay tight in the hole, then explode.",
+      "commonMistakes": "Cutting the pause short, or relaxing the trunk at the bottom and losing position.",
+      "beginnerModification": "Use a lighter load with a one-second pause, or pause a goblet squat first.",
+      "alternatives": [
+        "Barbell Back Squat",
+        "Pin Squat",
+        "Box Squat"
+      ],
+      "whyThisMatters": "Removing the bounce builds strength and control in the hardest part of the squat.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/317/Pause-Back-Squat/"
+      }
+    },
+    {
+      "id": "pin-squat",
+      "name": "Pin Squat",
+      "variationOf": "barbell-back-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, adductors, spinal erectors",
+      "equipment": "Barbell, power rack with safety pins",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set the rack pins at the squat depth you want to train.",
+        "Lower under control until the bar settles completely on the pins.",
+        "Keep your position over the middle of the foot and brace the trunk again while the pins hold the weight.",
+        "Drive the bar off the pins and accelerate all the way to standing.",
+        "Let every rep come to a full stop on the pins before the next one."
+      ],
+      "formCue": "Dead stop, get tight, then drive.",
+      "commonMistakes": "Bouncing the bar off the pins, or relaxing so much on the pins that your position is lost.",
+      "beginnerModification": "Set the pins a little higher and use a light load until you can settle and restart without shifting.",
+      "alternatives": [
+        "Pause Squat",
+        "Box Squat",
+        "Barbell Back Squat"
+      ],
+      "whyThisMatters": "Starting from a dead stop teaches you to produce force with no rebound at your weakest depth.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/444/Pin-Back-Squat/"
+      }
+    },
+    {
+      "id": "box-squat",
+      "name": "Box Squat",
+      "variationOf": "barbell-back-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Glutes, hamstrings, quads, adductors",
+      "equipment": "Barbell, squat rack, box or bench",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Place a sturdy box behind you at about parallel height and unrack the bar on your upper back.",
+        "Sit the hips back and down under control, keeping the shins close to vertical.",
+        "Settle onto the box lightly while staying braced, without dropping or rocking.",
+        "Drive through the whole foot and stand up until hips and knees are locked."
+      ],
+      "formCue": "Sit back softly, stay tight on the box.",
+      "commonMistakes": "Crashing onto the box, or relaxing the trunk while seated and rocking forward to get up.",
+      "beginnerModification": "Use a higher box and a goblet hold, then lower the box as control improves.",
+      "alternatives": [
+        "Barbell Back Squat",
+        "Pause Squat",
+        "Goblet Squat"
+      ],
+      "whyThisMatters": "The box gives the same depth every rep and loads the hips hard from a controlled stop.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/GluteusMaximus/BBBoxSquat"
+      }
+    },
+    {
+      "id": "safety-bar-squat",
+      "name": "Safety Bar Squat",
+      "variationOf": "barbell-back-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, upper back, spinal erectors",
+      "equipment": "Safety squat bar, squat rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Duck under the bar so the pad sits across the shoulders with the yoke around the neck, and hold the handles.",
+        "Unrack, step back, set your stance, and brace.",
+        "Bend the hips and knees and squat until the thighs are just past parallel, keeping the chest up against the forward pull of the bar.",
+        "Drive back up by extending the hips and knees until you are standing tall."
+      ],
+      "formCue": "Chest up, do not let the bar fold you.",
+      "commonMistakes": "Letting the upper back round forward, or pulling the handles down so the bar tips.",
+      "beginnerModification": "Start light and squat to a box until you can hold the upright position.",
+      "alternatives": [
+        "Barbell Back Squat",
+        "Front Squat",
+        "High-Bar Back Squat"
+      ],
+      "whyThisMatters": "It trains the squat hard while asking far less of the shoulders, elbows, and wrists.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Quadriceps/SBSquat"
+      }
+    },
+    {
+      "id": "zercher-squat",
+      "name": "Zercher Squat",
+      "variationOf": "front-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, upper back, trunk",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set the bar in the rack just below elbow height and hook it in the crooks of your elbows.",
+        "Keep the elbows close together, pull the bar into your body, stand it up, and step back.",
+        "Brace and squat down between the knees as deep as you can with a straight back.",
+        "Drive up through the whole foot, keeping the chest tall and the bar tight to the body."
+      ],
+      "formCue": "Hug the bar in and stay tall.",
+      "commonMistakes": "Letting the back round as the bar pulls forward, or going heavy before the elbows have adapted.",
+      "beginnerModification": "Use a goblet squat, or wrap the bar in a pad and start with light loads.",
+      "alternatives": [
+        "Front Squat",
+        "Goblet Squat",
+        "Safety Bar Squat"
+      ],
+      "whyThisMatters": "The front-loaded position builds the trunk and upper back along with the legs.",
+      "source": {
+        "name": "StrengthLog",
+        "url": "https://www.strengthlog.com/zercher-squat/"
+      }
+    },
+    {
+      "id": "one-and-a-quarter-squat",
+      "name": "One-and-a-Quarter Squat",
+      "variationOf": "barbell-back-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, adductors",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Squat down under control to your full depth.",
+        "Without bouncing, rise only to just below parallel while keeping the legs and glutes tight.",
+        "Sink back to the bottom again.",
+        "Stand all the way up to finish one rep."
+      ],
+      "formCue": "Down, quarter up, down, stand.",
+      "commonMistakes": "Bouncing out of the bottom, or coming up too high on the quarter rep.",
+      "beginnerModification": "Do the same pattern with a goblet squat or an empty bar.",
+      "alternatives": [
+        "Pause Squat",
+        "Barbell Back Squat",
+        "Front Squat"
+      ],
+      "whyThisMatters": "The extra trip through the bottom builds leg strength and control where squats are usually lost.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/168/1-14-Back-Squat/"
+      }
+    },
+    {
+      "id": "paused-bench-press",
+      "name": "Paused Bench Press",
+      "variationOf": "barbell-bench-press",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Chest, front delts, triceps",
+      "equipment": "Barbell, bench",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie back, pinch the shoulder blades together and down, set a slight arch, and plant the feet.",
+        "Unrack and lower the bar under control to the lower chest.",
+        "Hold the bar still on the chest for a full second while staying tight.",
+        "Press up and slightly back toward the shoulders until the elbows lock."
+      ],
+      "formCue": "Touch, stay tight, press.",
+      "commonMistakes": "Relaxing on the chest so the bar sinks, or lifting the hips off the bench to start the press.",
+      "beginnerModification": "Use a lighter load with a short count, or pause a dumbbell bench press.",
+      "alternatives": [
+        "Barbell Bench Press",
+        "Close-Grip Bench Press",
+        "Dumbbell Bench Press"
+      ],
+      "whyThisMatters": "A motionless pause is how the bench is judged in competition and it builds honest strength off the chest.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/PectoralSternal/BBBenchPressPowerLift"
+      }
+    },
+    {
+      "id": "larsen-press",
+      "name": "Larsen Press",
+      "variationOf": "barbell-bench-press",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Chest, front delts, triceps, trunk",
+      "equipment": "Barbell, bench",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set up as you would for your normal bench press with the shoulder blades pinched back and down.",
+        "Unrack the bar, then straighten the legs and hold the feet just off the floor.",
+        "Lower the bar under control to the lower chest.",
+        "Press back to lockout while the legs stay off the floor and the body stays still on the bench."
+      ],
+      "formCue": "Legs out, upper back locked into the bench.",
+      "commonMistakes": "Wobbling on the bench because the upper back is loose, or loading it like a normal bench press.",
+      "beginnerModification": "Bench with the knees bent and feet resting on the bench before taking the legs out straight.",
+      "alternatives": [
+        "Barbell Bench Press",
+        "Floor Press",
+        "Paused Bench Press"
+      ],
+      "whyThisMatters": "Taking leg drive away makes the chest, shoulders, and triceps do all the pressing.",
+      "source": {
+        "name": "PowerliftingTechnique.com",
+        "url": "https://powerliftingtechnique.com/larsen-press/"
+      }
+    },
+    {
+      "id": "floor-press",
+      "name": "Floor Press",
+      "variationOf": "barbell-bench-press",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Triceps, chest, front delts",
+      "equipment": "Barbell, rack with low hooks",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie on the floor under a bar set low in the rack, knees bent, and take an overhand grip.",
+        "Unrack and hold the bar over the lower chest with the arms straight.",
+        "Lower until the backs of the upper arms rest fully on the floor.",
+        "Pause briefly, then press back up to lockout."
+      ],
+      "formCue": "Arms settle on the floor, then press.",
+      "commonMistakes": "Slamming the elbows into the floor, or bouncing off it to start the press.",
+      "beginnerModification": "Use dumbbells on the floor so each arm can settle at its own pace.",
+      "alternatives": [
+        "Close-Grip Bench Press",
+        "Barbell Bench Press",
+        "Board Press"
+      ],
+      "whyThisMatters": "The shortened range builds lockout strength with little stress at the bottom of the press.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/PectoralSternal/BBFloorPress"
+      }
+    },
+    {
+      "id": "incline-barbell-bench-press",
+      "name": "Incline Barbell Bench Press",
+      "variationOf": "barbell-bench-press",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Upper chest, front delts, triceps",
+      "equipment": "Barbell, incline bench",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the bench to a low incline, lie back, and grip the bar slightly wider than the shoulders.",
+        "Unrack and bring the bar over the upper chest with the arms straight.",
+        "Lower under control to the upper chest.",
+        "Press up until the arms are fully extended."
+      ],
+      "formCue": "Bar to the upper chest, elbows under the bar.",
+      "commonMistakes": "Setting the bench too steep so it turns into a shoulder press, or bouncing the bar off the chest.",
+      "beginnerModification": "Use the incline dumbbell press with a light load.",
+      "alternatives": [
+        "Incline Dumbbell Press",
+        "Barbell Bench Press",
+        "Overhead Barbell Press"
+      ],
+      "whyThisMatters": "It builds the upper chest and shoulders and supports both the bench press and the overhead press.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/PectoralClavicular/BBInclineBenchPress"
+      }
+    },
+    {
+      "id": "board-press",
+      "name": "Board Press",
+      "variationOf": "barbell-bench-press",
+      "muscleGroup": "Arms",
+      "movementPattern": "Push",
+      "musclesWorked": "Triceps, chest, front delts",
+      "equipment": "Barbell, bench, pressing board",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Lie on the bench and have a partner hold a board on your chest, or strap one in place.",
+        "Take your bench grip and unrack the bar.",
+        "Lower under control until the bar touches the board while the upper body stays tight.",
+        "Press back to lockout with a controlled, fast drive."
+      ],
+      "formCue": "Touch the board, do not sink into it.",
+      "commonMistakes": "Letting the bar crash into the board, or relaxing so the board shifts.",
+      "beginnerModification": "Use the floor press, which shortens the range without a partner.",
+      "alternatives": [
+        "Floor Press",
+        "Close-Grip Bench Press",
+        "Barbell Bench Press"
+      ],
+      "whyThisMatters": "The shortened range lets you train the top half of the press with heavier loads.",
+      "source": {
+        "name": "StrengthLog",
+        "url": "https://www.strengthlog.com/board-press/"
+      }
+    },
+    {
+      "id": "deficit-deadlift",
+      "name": "Deficit Deadlift",
+      "variationOf": "conventional-deadlift",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, quads, spinal erectors",
+      "equipment": "Barbell, plate or low platform",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand on a plate or low platform with the loaded bar over the middle of the feet.",
+        "Bend down and grip the bar, set the back flat, and pull the slack out of the bar.",
+        "Push the floor away and lift by extending the knees and hips together.",
+        "Stand fully upright, then lower the bar under control along the legs."
+      ],
+      "formCue": "Stay over the bar and push the floor away.",
+      "commonMistakes": "Using a platform so tall the lower back rounds, or letting the hips rise before the bar moves.",
+      "beginnerModification": "Pull from the floor, or use a very small deficit with a light load.",
+      "alternatives": [
+        "Conventional Deadlift",
+        "Pause Deadlift",
+        "Trap Bar Deadlift"
+      ],
+      "whyThisMatters": "The longer pull builds strength in the first part of the lift off the floor.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/GluteusMaximus/BBDeficitDeadlift"
+      }
+    },
+    {
+      "id": "pause-deadlift",
+      "name": "Pause Deadlift",
+      "variationOf": "conventional-deadlift",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, spinal erectors, lats",
+      "equipment": "Barbell",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set up with the bar over the middle of the foot, grip it, breathe in, and brace.",
+        "Lift the bar a few centimetres off the floor and stop.",
+        "Hold that position for one to three seconds with the bar close and the back flat.",
+        "Finish the pull to a full stand, then lower the bar under control."
+      ],
+      "formCue": "Hold your position, bar against the legs.",
+      "commonMistakes": "Letting the bar drift forward during the hold, or pausing so briefly it does not count.",
+      "beginnerModification": "Use a light load and a one-second pause until you can hold still.",
+      "alternatives": [
+        "Conventional Deadlift",
+        "Deficit Deadlift",
+        "Romanian Deadlift"
+      ],
+      "whyThisMatters": "The hold teaches a strong, balanced position at the point where many deadlifts go wrong.",
+      "source": {
+        "name": "StrengthLog",
+        "url": "https://www.strengthlog.com/pause-deadlift/"
+      }
+    },
+    {
+      "id": "stiff-leg-deadlift",
+      "name": "Stiff-Leg Deadlift",
+      "variationOf": "romanian-deadlift",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Hamstrings, glutes, spinal erectors",
+      "equipment": "Barbell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand tall holding the bar with an overhand grip, feet about hip width.",
+        "Keep the knees nearly straight and the back flat, and bend at the hips to lower the bar.",
+        "Stop when the hamstrings are tight and before the lower back starts to round.",
+        "Extend the hips to stand back up."
+      ],
+      "formCue": "Hips back, back flat, feel the hamstrings.",
+      "commonMistakes": "Rounding the lower back to reach further, or bending the knees until it becomes a regular deadlift.",
+      "beginnerModification": "Use the Romanian deadlift with a soft knee bend and a shorter range.",
+      "alternatives": [
+        "Romanian Deadlift",
+        "Good Morning",
+        "Single-Leg Romanian Deadlift"
+      ],
+      "whyThisMatters": "It loads the hamstrings at long length, which supports every pull from the floor.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Hamstrings/BBStrBackStrLegDeadlift"
+      }
+    },
+    {
+      "id": "good-morning",
+      "name": "Good Morning",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Spinal erectors, glutes, hamstrings",
+      "equipment": "Barbell, squat rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the bar on your back as you would for a back squat and brace the trunk.",
+        "Unlock the knees slightly and push the hips back, lowering the chest under control.",
+        "Keep the back flat and the weight over the whole foot as far down as you can hold position.",
+        "Drive the hips forward to stand back up."
+      ],
+      "formCue": "Hips back, back stays set.",
+      "commonMistakes": "Letting the back soften at the bottom, or turning it into a squat by bending the knees too much.",
+      "beginnerModification": "Practice the hinge with a dowel or empty bar, or use a back extension.",
+      "alternatives": [
+        "Romanian Deadlift",
+        "Back Extension",
+        "Stiff-Leg Deadlift"
+      ],
+      "whyThisMatters": "It builds the back and hip strength that keeps squats and pulls from folding forward.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/183/Good-Morning/"
+      }
+    },
+    {
+      "id": "seated-good-morning",
+      "name": "Seated Good Morning",
+      "variationOf": "good-morning",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Spinal erectors, glutes, adductors",
+      "equipment": "Barbell, bench",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Straddle a bench with the bar on your back as for a back squat, knees bent and feet flat in front of you.",
+        "Set the back tight and flat.",
+        "Bend forward at the hips as far as you can without the back softening.",
+        "Return to upright by extending the hips, keeping the back set the whole time."
+      ],
+      "formCue": "Long spine, fold at the hips.",
+      "commonMistakes": "Rounding the back to get lower, or loading it like a squat.",
+      "beginnerModification": "Use an empty bar or a dowel and a shorter range.",
+      "alternatives": [
+        "Good Morning",
+        "Back Extension",
+        "Romanian Deadlift"
+      ],
+      "whyThisMatters": "It trains the back to hold its position with light loads and little stress on the legs.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/184/Seated-Good-Morning/"
+      }
+    },
+    {
+      "id": "pendlay-row",
+      "name": "Pendlay Row",
+      "variationOf": "bent-over-row",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, mid and upper back, rear delts, biceps",
+      "equipment": "Barbell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand over the bar, hinge at the hips with the knees bent until the trunk is close to horizontal, and take a shoulder-width overhand grip.",
+        "Brace the trunk the way you would for a pull from the floor.",
+        "Row the bar to the abdomen and squeeze the shoulder blades together at the top.",
+        "Lower the bar until it rests on the floor, then reset before the next rep."
+      ],
+      "formCue": "Chest down, pull to the belt, back to the floor.",
+      "commonMistakes": "Standing up with each rep so the hips do the work, or not letting the bar settle on the floor.",
+      "beginnerModification": "Lower the load, or use a chest-supported row to learn the pull without holding the hinge.",
+      "alternatives": [
+        "Bent-Over Barbell Row",
+        "Chest-Supported Row",
+        "Dumbbell Row"
+      ],
+      "whyThisMatters": "Each rep starts from a dead stop, so the upper back does the work instead of momentum.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://www.catalystathletics.com/exercise/867/Pendlay-Row"
+      }
+    }
+  ]
+}

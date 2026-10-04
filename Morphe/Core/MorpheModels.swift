@@ -825,6 +825,15 @@ struct ExerciseReference: Identifiable, Hashable {
     var beginnerModification: String
     var alternatives: [String]
     var whyThisMatters: String
+    // Technique Library wave (2026-10-04) — carried by the bundled JSON
+    // exercises; the original Swift-authored entries leave them empty.
+    /// The training style this entry was written for ("Olympic Weightlifting").
+    var discipline: String = ""
+    /// Library id of the base movement this is a variation of.
+    var variationOf: String? = nil
+    /// The coaching source the technique was checked against, and its page.
+    var sourceName: String = ""
+    var sourceURL: String = ""
 }
 
 /// One line in the workout builder: a chosen exercise with target sets/reps.

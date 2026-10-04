@@ -1,0 +1,605 @@
+{
+  "discipline": "Cycling, Rowing & Swim",
+  "exercises": [
+    {
+      "id": "bike-seated-climb",
+      "name": "Seated Climb",
+      "variationOf": "stationary-bike",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, quads, hamstrings, calves",
+      "equipment": "Stationary bike or road bike",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Add resistance or pick a gear that slows your cadence but still lets the pedals turn smoothly.",
+        "Stay in the saddle with the hands relaxed on the bars and the elbows slightly bent.",
+        "Keep the upper body still and the head up while the legs drive an even, round pedal stroke.",
+        "Hold a steady cadence, shifting to an easier gear before it turns into a grind."
+      ],
+      "formCue": "Still shoulders, smooth circles.",
+      "commonMistakes": "Rocking the upper body and gripping the bars hard, or grinding a gear that is too big.",
+      "beginnerModification": "Use less resistance and keep each climb to 2 or 3 minutes.",
+      "alternatives": [
+        "Stationary Bike",
+        "Standing Climb",
+        "Incline Treadmill Walk"
+      ],
+      "whyThisMatters": "Seated climbing is the efficient way to hold power for long efforts.",
+      "source": {
+        "name": "British Cycling",
+        "url": "https://www.britishcycling.org.uk/knowledge/article/izn20140626-Tackling-Long-Climbs-0"
+      }
+    },
+    {
+      "id": "bike-standing-climb",
+      "name": "Standing Climb",
+      "variationOf": "bike-seated-climb",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, calves, core, arms",
+      "equipment": "Stationary bike or road bike",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Add a gear or a little resistance just before you leave the saddle.",
+        "Rise smoothly and keep the hips back over the saddle rather than far forward over the bars.",
+        "Let the bike move slightly under you while the pedal stroke stays smooth.",
+        "Sit back down, ease the resistance and return to a steady seated cadence."
+      ],
+      "formCue": "Add a gear, then stand.",
+      "commonMistakes": "Standing in a gear that is too light so the legs spin out, or throwing the body weight over the front wheel.",
+      "beginnerModification": "Stand for 10 to 15 seconds at a time with moderate resistance.",
+      "alternatives": [
+        "Seated Climb",
+        "Stair Climber",
+        "Stationary Bike"
+      ],
+      "whyThisMatters": "Standing gives a short burst of extra force for steep sections and a break for the seated muscles.",
+      "source": {
+        "name": "British Cycling",
+        "url": "https://www.britishcycling.org.uk/knowledge/skills/sportives-ridesmart/article/izn20140625-Road-Tackling-Steep-Climbs-0"
+      }
+    },
+    {
+      "id": "bike-low-cadence-climb",
+      "name": "Low-Cadence Climb",
+      "variationOf": "bike-seated-climb",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, quads, hamstrings",
+      "equipment": "Stationary bike or road bike",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Warm up for at least 10 minutes at an easy spin.",
+        "Choose a resistance that drops your cadence about 10 rpm below your normal climbing rhythm.",
+        "Stay seated and push through the whole pedal circle for about 8 minutes with steady breathing.",
+        "Spin easily for several minutes and repeat up to three times."
+      ],
+      "formCue": "Heavy gear, smooth pressure.",
+      "commonMistakes": "Rocking the hips and pulling on the bars to force the gear over, or doing it without a proper warm-up.",
+      "beginnerModification": "Shorten each effort to 3 or 4 minutes and drop the cadence only slightly.",
+      "alternatives": [
+        "Seated Climb",
+        "Leg Press",
+        "Stationary Bike"
+      ],
+      "whyThisMatters": "Pushing a bigger gear builds the leg strength that makes normal climbing gears feel lighter.",
+      "source": {
+        "name": "USA Cycling",
+        "url": "https://usacycling.org/article/cycling-uphill-cadence-gearing-and-power"
+      }
+    },
+    {
+      "id": "bike-spin-ups",
+      "name": "Spin-Ups",
+      "variationOf": "stationary-bike",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Hip flexors, hamstrings, quads, calves",
+      "equipment": "Stationary bike",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set a light resistance and pedal at a comfortable cadence.",
+        "Over about 30 seconds, raise the cadence steadily until it is as fast as you can hold without bouncing.",
+        "Hold that leg speed briefly with the hips still on the saddle.",
+        "Let the cadence come back down and spin easily for 1 to 2 minutes before the next one."
+      ],
+      "formCue": "Fast legs, quiet hips.",
+      "commonMistakes": "Bouncing on the saddle, or adding resistance so it becomes a strength effort.",
+      "beginnerModification": "Stop the build as soon as the hips start to bounce and hold just below that cadence.",
+      "alternatives": [
+        "Stationary Bike",
+        "Cadence Change Drill",
+        "Jump Rope"
+      ],
+      "whyThisMatters": "High leg speed at low load smooths the pedal stroke and coordination.",
+      "source": {
+        "name": "British Cycling",
+        "url": "https://www.britishcycling.org.uk/knowledge/training-plans/supporting-documents/article/izn20140529-Indoor-Training-Sessions-0"
+      }
+    },
+    {
+      "id": "bike-cadence-change-drill",
+      "name": "Cadence Change Drill",
+      "variationOf": "stationary-bike",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "Stationary bike",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit with the sit bones on the widest part of the saddle and set a moderate resistance.",
+        "Pedal for 1 minute at 80 rpm, 1 minute at 90 rpm and 1 minute at 100 rpm.",
+        "Change the order of the three cadences on the next block without changing resistance.",
+        "Spin easily for 60 seconds between blocks."
+      ],
+      "formCue": "Full circles at every speed.",
+      "commonMistakes": "Stamping on the downstroke only, or easing the resistance right off to hit the faster cadences.",
+      "beginnerModification": "Use two cadences, 80 and 90 rpm, and a lighter resistance.",
+      "alternatives": [
+        "Spin-Ups",
+        "Stationary Bike"
+      ],
+      "whyThisMatters": "Switching leg speed on demand teaches control of the pedal stroke across the range.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/continuing-education/certified/july-2018/7028/branch-out-with-cardio-equipment/"
+      }
+    },
+    {
+      "id": "bike-sweet-spot-interval",
+      "name": "Sweet-Spot Interval",
+      "variationOf": "stationary-bike",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "Stationary bike or indoor trainer",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Warm up for 10 to 15 minutes, building gradually from easy to moderate.",
+        "Settle at an effort just below threshold, hard but steady, with breathing deep and controlled.",
+        "Hold that effort and a steady cadence for the full interval, building toward 20 minutes.",
+        "Spin easily for 5 minutes, repeat once, then cool down."
+      ],
+      "formCue": "Hard, but you could go longer.",
+      "commonMistakes": "Starting above the target and fading, or letting the effort drift down to an easy ride.",
+      "beginnerModification": "Ride intervals of 8 to 10 minutes and add time over several weeks.",
+      "alternatives": [
+        "Tempo Run",
+        "Seated Climb",
+        "Rowing Steady State"
+      ],
+      "whyThisMatters": "Long efforts just under threshold give a lot of aerobic training for a manageable recovery cost.",
+      "source": {
+        "name": "British Cycling",
+        "url": "https://www.britishcycling.org.uk/knowledge/training/understand-training/article/izn20191023-Beginner-Best-bang-for-you-buck-indoor-trainer-sessions-0"
+      }
+    },
+    {
+      "id": "bike-sprint-interval",
+      "name": "Bike Sprint Interval",
+      "variationOf": "stationary-bike",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "Stationary bike or indoor trainer",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Warm up thoroughly, including two or three short hard efforts.",
+        "From a steady roll, add resistance and sprint at full effort for 15 to 30 seconds with cadence above 90 rpm.",
+        "Keep the upper body firm and the pedal stroke as smooth as you can at speed.",
+        "Spin very easily until you are ready to match the quality of the first sprint, then go again."
+      ],
+      "formCue": "Every sprint at full quality.",
+      "commonMistakes": "Cutting the recovery so the sprints become medium efforts, or sprinting cold.",
+      "beginnerModification": "Sprint seated for 10 seconds with long, easy recoveries.",
+      "alternatives": [
+        "Air Bike Sprint",
+        "Sprint Intervals",
+        "Stationary Bike"
+      ],
+      "whyThisMatters": "Short all-out efforts build top-end power and the ability to repeat it.",
+      "source": {
+        "name": "British Cycling",
+        "url": "https://www.britishcycling.org.uk/knowledge/training-plans/supporting-documents/article/izn20140529-Indoor-Training-Sessions-0"
+      }
+    },
+    {
+      "id": "rowing-arms-body-drill",
+      "name": "Arms-and-Body Rowing Drill",
+      "variationOf": "rowing-machine",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, upper back, biceps, core",
+      "equipment": "Rowing machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit tall at the finish position with the legs straight and the handle drawn in below the ribs.",
+        "Keeping the legs flat, extend the arms first and then swing the body forward from the hips.",
+        "Swing the body back and then draw the arms in, in that order.",
+        "Row this way for a minute or two, then add the legs and row full strokes with the same sequence."
+      ],
+      "formCue": "Arms away, then body over.",
+      "commonMistakes": "Bending the knees before the hands have passed them, or pulling with the arms before the body swings.",
+      "beginnerModification": "Start with arms only, then add the body swing once that is smooth.",
+      "alternatives": [
+        "Rowing Machine",
+        "Seated Cable Row",
+        "Rowing Pause Drill"
+      ],
+      "whyThisMatters": "Isolating the upper half of the stroke fixes the order of movement on the recovery.",
+      "source": {
+        "name": "Concept2",
+        "url": "https://www.concept2.com/training/rowing-drills"
+      }
+    },
+    {
+      "id": "rowing-legs-only-drill",
+      "name": "Legs-Only Rowing Drill",
+      "variationOf": "rowing-machine",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, hamstrings, core",
+      "equipment": "Rowing machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit at the catch with shins near vertical, arms straight and the body leaning forward from the hips.",
+        "Push with the legs while the arms stay straight and the body keeps its forward angle.",
+        "Stop when the legs are almost flat, without leaning back or bending the arms.",
+        "Slide forward under control and repeat, then build back to full strokes."
+      ],
+      "formCue": "Legs push, arms hang.",
+      "commonMistakes": "Letting the seat shoot back ahead of the handle, or opening the back early.",
+      "beginnerModification": "Use a low damper setting and move slowly through each push.",
+      "alternatives": [
+        "Rowing Machine",
+        "Leg Press",
+        "Arms-and-Body Rowing Drill"
+      ],
+      "whyThisMatters": "It teaches the legs to start the drive, which is where most of the stroke's power comes from.",
+      "source": {
+        "name": "Concept2",
+        "url": "https://www.concept2.com/training/rowing-drills"
+      }
+    },
+    {
+      "id": "rowing-pause-drill",
+      "name": "Rowing Pause Drill",
+      "variationOf": "rowing-machine",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Legs, lats, upper back, core",
+      "equipment": "Rowing machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Row full strokes at a low stroke rate.",
+        "On each recovery, stop for a second once the arms are straight and the body has swung forward, before the knees bend.",
+        "Check that the hands are past the knees, then slide forward to the catch and take the next stroke.",
+        "After a few minutes, remove the pause and keep the same order of movement."
+      ],
+      "formCue": "Pause, check, then slide.",
+      "commonMistakes": "Rushing through the pause, or sliding forward before the hands have cleared the knees.",
+      "beginnerModification": "Pause on every second or third stroke instead of every stroke.",
+      "alternatives": [
+        "Rowing Machine",
+        "Arms-and-Body Rowing Drill",
+        "Legs-Only Rowing Drill"
+      ],
+      "whyThisMatters": "A deliberate stop makes you feel the correct sequence before blending it into one motion.",
+      "source": {
+        "name": "Concept2",
+        "url": "https://www.concept2.com/training/rowing-drills"
+      }
+    },
+    {
+      "id": "rowing-rhythm-drill",
+      "name": "Rowing Rhythm Count",
+      "variationOf": "rowing-machine",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Legs, back, core, arms",
+      "equipment": "Rowing machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Row at a low stroke rate with light to moderate pressure.",
+        "Count one as you drive back quickly with the legs, body and arms.",
+        "Count two, three and four as you move forward slowly through the recovery.",
+        "Keep the count going so the drive stays quick and the recovery stays unhurried."
+      ],
+      "formCue": "Quick drive, slow slide.",
+      "commonMistakes": "Rushing forward on the slide so the drive and recovery take the same time.",
+      "beginnerModification": "Say the count out loud and row with very light pressure.",
+      "alternatives": [
+        "Rowing Machine",
+        "Rowing Pause Drill",
+        "Rowing Steady State"
+      ],
+      "whyThisMatters": "A slower recovery gives a moment of rest every stroke, which is what makes long rows sustainable.",
+      "source": {
+        "name": "Concept2",
+        "url": "https://www.concept2.com/training/rowing-drills"
+      }
+    },
+    {
+      "id": "rowing-steady-state",
+      "name": "Rowing Steady State",
+      "variationOf": "rowing-machine",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, lats, upper back, core",
+      "equipment": "Rowing machine",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Warm up with 5 minutes of easy rowing.",
+        "Settle at a stroke rate in the mid 20s and an effort you could hold a conversation through.",
+        "Keep the same split and rate for the whole piece, with legs, then body, then arms on each drive.",
+        "Finish with a few minutes of light rowing."
+      ],
+      "formCue": "Same rate, same split.",
+      "commonMistakes": "Letting the stroke rate climb as you tire while each stroke gets shorter and weaker.",
+      "beginnerModification": "Break the session into 5-minute blocks with a minute of easy paddling between them.",
+      "alternatives": [
+        "Rowing Machine",
+        "Long Slow Run",
+        "Stationary Bike"
+      ],
+      "whyThisMatters": "Long, even rowing builds aerobic fitness and gives hundreds of strokes of technique practice.",
+      "source": {
+        "name": "Concept2",
+        "url": "https://www.concept2.com/blog/rowing-stroke-rate-explained"
+      }
+    },
+    {
+      "id": "rowing-rate-ladder",
+      "name": "Rowing Rate Ladder",
+      "variationOf": "rowing-machine",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, lats, upper back, core",
+      "equipment": "Rowing machine",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Warm up, then start rowing at a low stroke rate with firm pressure.",
+        "After a set time, such as 2 to 3 minutes, raise the rate by two strokes per minute.",
+        "Keep stepping the rate up at each change while holding the same stroke length and sequence.",
+        "Come back down the same steps, then row lightly to cool down."
+      ],
+      "formCue": "Rate goes up, length stays.",
+      "commonMistakes": "Shortening the stroke to hit the higher rates, or speeding up the slide instead of the drive.",
+      "beginnerModification": "Use only three steps and keep the top rate within a comfortable range.",
+      "alternatives": [
+        "Rowing Steady State",
+        "Rowing Machine",
+        "Fartlek Run"
+      ],
+      "whyThisMatters": "Changing rate on command teaches you to hold good strokes as the tempo rises.",
+      "source": {
+        "name": "Concept2",
+        "url": "https://www.concept2.com/blog/rowing-stroke-rate-explained"
+      }
+    },
+    {
+      "id": "rowing-negative-split",
+      "name": "Negative-Split Row",
+      "variationOf": "rowing-machine",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, lats, upper back, core",
+      "equipment": "Rowing machine",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Row easily for a few minutes and note the 500-metre split you can hold comfortably.",
+        "Divide the piece into equal blocks and row the first block at that comfortable split.",
+        "Make each following block slightly faster, pushing harder with the legs rather than rushing the slide.",
+        "Row the last block at a strong effort, then paddle lightly to recover."
+      ],
+      "formCue": "Finish faster than you started.",
+      "commonMistakes": "Going out too fast so later blocks slow down, or raising the stroke rate without adding leg drive.",
+      "beginnerModification": "Use only two blocks, the second a little quicker than the first.",
+      "alternatives": [
+        "Rowing Steady State",
+        "Rowing Rate Ladder",
+        "Tempo Run"
+      ],
+      "whyThisMatters": "Building pace through a piece teaches pacing control and a strong finish.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/continuing-education/certified/july-2018/7028/branch-out-with-cardio-equipment/"
+      }
+    },
+    {
+      "id": "freestyle-catch-up-drill",
+      "name": "Freestyle Catch-Up Drill",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, shoulders, triceps, core",
+      "equipment": "Pool",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Push off and swim freestyle with a steady kick.",
+        "Leave the leading arm stretched out in front of its shoulder while the other arm takes a full stroke.",
+        "Bring the recovering hand forward to meet the leading hand before the next arm starts its pull.",
+        "Keep the hands in line with the shoulders rather than crossing the centre line."
+      ],
+      "formCue": "One arm waits for the other.",
+      "commonMistakes": "Letting the hands cross in front of the head, or letting the kick stop while the arm waits.",
+      "beginnerModification": "Hold a kickboard out front and swap hands on the board with each stroke.",
+      "alternatives": [
+        "One-Arm Freestyle Drill",
+        "Pull Buoy Set",
+        "Lat Pulldown"
+      ],
+      "whyThisMatters": "Slowing the stroke down fixes hand entry and timing at the front of the stroke.",
+      "source": {
+        "name": "U.S. Masters Swimming",
+        "url": "https://www.usms.org/fitness-and-training/articles-and-videos/articles/reboot-of-classic-drills-that-will-help-your-freestyle-and-backstroke"
+      }
+    },
+    {
+      "id": "one-arm-freestyle-drill",
+      "name": "One-Arm Freestyle Drill",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, shoulders, obliques, core",
+      "equipment": "Pool",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Push off with one arm resting by the side and the other ready to stroke.",
+        "Swim freestyle with the working arm only, keeping a steady kick.",
+        "Breathe on every stroke toward the side of the resting arm.",
+        "Rotate the body to both sides, then switch arms on the next length."
+      ],
+      "formCue": "Rotate both ways, even with one arm.",
+      "commonMistakes": "Swimming flat with no body rotation, or lifting the head forward to breathe.",
+      "beginnerModification": "Wear fins so the kick holds the body position while you learn the rotation.",
+      "alternatives": [
+        "Freestyle Catch-Up Drill",
+        "Freestyle Breathing Drill",
+        "Dumbbell Row"
+      ],
+      "whyThisMatters": "It exposes a flat body position and trains rotation and breath timing.",
+      "source": {
+        "name": "U.S. Masters Swimming",
+        "url": "https://www.usms.org/fitness-and-training/articles-and-videos/articles/reboot-of-classic-drills-that-will-help-your-freestyle-and-backstroke"
+      }
+    },
+    {
+      "id": "swim-kick-set",
+      "name": "Swim Kick Set",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Hip flexors, glutes, quads, hamstrings, core",
+      "equipment": "Pool (fins or board optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Push off in a long line on the front, side or back with the arms still.",
+        "Kick from the hips with a small, quick flutter, letting the knees and ankles stay loose.",
+        "Point the toes backward and keep the kick narrow.",
+        "Kick one length, rest briefly and repeat, changing between side, front and back."
+      ],
+      "formCue": "Small kick, from the hips.",
+      "commonMistakes": "Kicking from the knees with big bends, or arching the back to hold the head up on a board.",
+      "beginnerModification": "Kick on the back with fins so breathing is easy and the body stays level.",
+      "alternatives": [
+        "Flutter Kick",
+        "Freestyle Catch-Up Drill",
+        "Backstroke"
+      ],
+      "whyThisMatters": "A narrow hip-driven kick holds the body level, which makes every stroke easier.",
+      "source": {
+        "name": "U.S. Masters Swimming",
+        "url": "https://www.usms.org/fitness-and-training/articles-and-videos/articles/kick-your-kick-into-shape"
+      }
+    },
+    {
+      "id": "pull-buoy-set",
+      "name": "Pull Buoy Set",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, shoulders, triceps, forearms",
+      "equipment": "Pool, pull buoy",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Place a pull buoy between the thighs and push off with the legs still.",
+        "After each hand enters, let the hand drop down and in while the elbow bends and points out to the side.",
+        "Press straight back against the water, speeding the hand up through the pull.",
+        "Finish just past the hip and bring the arm forward relaxed."
+      ],
+      "formCue": "Elbow high, press straight back.",
+      "commonMistakes": "Pressing down on the water with a straight arm, or dropping the elbow at the start of the pull.",
+      "beginnerModification": "Swim short repeats of one length with plenty of rest and an easy stroke rate.",
+      "alternatives": [
+        "Freestyle Catch-Up Drill",
+        "Straight-Arm Pulldown",
+        "Lat Pulldown"
+      ],
+      "whyThisMatters": "With the legs supported, all attention can go to how the arms hold and move water.",
+      "source": {
+        "name": "U.S. Masters Swimming",
+        "url": "https://www.usms.org/fitness-and-training/guides/freestyle/pull"
+      }
+    },
+    {
+      "id": "freestyle-breathing-drill",
+      "name": "Freestyle Breathing Drill",
+      "muscleGroup": "Core",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Obliques, neck rotators, shoulders, diaphragm",
+      "equipment": "Pool",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand in shallow water and practise bobs, breathing out steadily underwater and in quickly at the surface.",
+        "Push off and swim easy freestyle, breathing out through the nose and mouth the whole time the face is down.",
+        "To breathe, turn the head with the body's rotation and keep one goggle in the water.",
+        "Take a quick breath, return the face to the water and carry on the stroke without a pause."
+      ],
+      "formCue": "Breathe out under, turn to breathe in.",
+      "commonMistakes": "Lifting the head forward, which sinks the hips, or holding the breath underwater.",
+      "beginnerModification": "Kick on the side with the bottom arm extended and practise turning the face in and out of the water.",
+      "alternatives": [
+        "One-Arm Freestyle Drill",
+        "Swim Kick Set"
+      ],
+      "whyThisMatters": "Calm, low breathing keeps the body level and lets you swim further for less effort.",
+      "source": {
+        "name": "U.S. Masters Swimming",
+        "url": "https://www.usms.org/fitness-and-training/guides/freestyle/breathing"
+      }
+    },
+    {
+      "id": "backstroke",
+      "name": "Backstroke",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, shoulders, triceps, core, hip flexors",
+      "equipment": "Pool",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Lie on the back near the surface with the head still, ears in the water and hips high.",
+        "Kick from the hips with the legs close together, ankles loose and knees only slightly bent.",
+        "Lift one arm out thumb first, keep it straight overhead and enter the water little finger first.",
+        "Catch the water, push through to the thigh and breathe in a steady rhythm with the arm cycle."
+      ],
+      "formCue": "Head still, hips up.",
+      "commonMistakes": "Carrying the head too high so the hips sink, or pulling hard the instant the hand enters.",
+      "beginnerModification": "Kick on the back with arms by the sides, then add one arm at a time.",
+      "alternatives": [
+        "Swim Kick Set",
+        "Freestyle Catch-Up Drill",
+        "Rowing Machine"
+      ],
+      "whyThisMatters": "It works the back of the shoulders and lets you breathe freely, which balances a lot of freestyle.",
+      "source": {
+        "name": "Swim England",
+        "url": "https://www.swimming.org/masters/improving-your-backstroke-technique/"
+      }
+    },
+    {
+      "id": "breaststroke",
+      "name": "Breaststroke",
+      "muscleGroup": "Chest",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Chest, lats, adductors, glutes, quads",
+      "equipment": "Pool",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Start in a long glide, face down, with the body close to level and arms extended.",
+        "Sweep the hands out and down with the elbows high, then in toward the chest as the shoulders rise and you breathe in.",
+        "Draw the heels toward the seat, turn the feet out and kick round and back until the legs come together.",
+        "Reach the arms forward and glide in a straight line, breathing out, before the next stroke."
+      ],
+      "formCue": "Pull, kick, glide.",
+      "commonMistakes": "Pulling the hands too wide and too far back, or kicking while the arms are still pulling.",
+      "beginnerModification": "Practise the kick on its own with a board, then add one pull to every two kicks.",
+      "alternatives": [
+        "Backstroke",
+        "Swim Kick Set",
+        "Pull Buoy Set"
+      ],
+      "whyThisMatters": "The glide makes it a sustainable stroke, and the legs do most of the work.",
+      "source": {
+        "name": "Swim England",
+        "url": "https://www.swimming.org/masters/improving-your-breaststroke-technique/"
+      }
+    }
+  ]
+}

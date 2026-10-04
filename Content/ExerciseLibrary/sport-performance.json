@@ -1,0 +1,721 @@
+{
+  "discipline": "Sport Performance",
+  "exercises": [
+    {
+      "id": "agility-ladder-icky-shuffle",
+      "name": "Agility Ladder Icky Shuffle",
+      "variationOf": "agility-ladder-quick-feet",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Calves, quads, glutes, hip stabilisers",
+      "equipment": "Agility ladder",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand to the left of the first square in an athletic stance with hips and knees slightly bent.",
+        "Step the right foot into the square, then the left foot in beside it.",
+        "Step the right foot out to the right of the ladder, then bring the left foot forward into the next square.",
+        "Follow with the right foot in, step the left foot out to the left, and keep the in-in-out rhythm zig-zagging up the ladder."
+      ],
+      "formCue": "In, in, out. Stay on the balls of your feet.",
+      "commonMistakes": "Staring at the feet and standing tall, or rushing the pattern before the rhythm is clean.",
+      "beginnerModification": "Walk the pattern slowly and say the steps out loud until it is automatic, then add speed.",
+      "alternatives": [
+        "Agility Ladder Quick Feet",
+        "Lateral Shuffle"
+      ],
+      "whyThisMatters": "It trains fast, coordinated weight shifts from side to side while still moving forward.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/172/multidirectional-ladder-drill/"
+      }
+    },
+    {
+      "id": "agility-ladder-lateral-shuffle",
+      "name": "Agility Ladder Lateral Shuffle",
+      "variationOf": "agility-ladder-quick-feet",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Glutes, hip abductors, quads, calves",
+      "equipment": "Agility ladder",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand side-on at one end of the ladder with both feet in the first square, knees soft and chest over toes.",
+        "Shift your weight to the trailing leg and step the lead foot into the next square.",
+        "Bring the trailing foot in to join it without crossing your feet.",
+        "Travel the full ladder, then return leading with the other foot."
+      ],
+      "formCue": "Hips low, feet quick, never cross.",
+      "commonMistakes": "Bobbing up and down with each step, or letting the feet click together and cross.",
+      "beginnerModification": "Slow to a walk and use one foot contact per square before adding the second.",
+      "alternatives": [
+        "Lateral Shuffle",
+        "Agility Ladder Quick Feet"
+      ],
+      "whyThisMatters": "Quick lateral steps from a low stance are the base of defending and changing direction.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/170/agility-ladder-lateral-shuffle/"
+      }
+    },
+    {
+      "id": "l-drill",
+      "name": "L-Drill",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Quads, glutes, hamstrings, calves, hip stabilisers",
+      "equipment": "3 cones",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set three cones in an L shape with about 5 yards between each cone.",
+        "Sprint from the first cone to the second, touch the line, and sprint back to the first.",
+        "Sprint back to the second cone, round it tightly, and weave around the inside of the third cone.",
+        "Round the third cone, come back around the second, and finish through the first cone."
+      ],
+      "formCue": "Short choppy steps into the cone, lean, then go.",
+      "commonMistakes": "Standing up tall at the cones and taking wide looping turns.",
+      "beginnerModification": "Jog the route at half speed until the path is memorised, then build pace.",
+      "alternatives": [
+        "Pro Agility Shuttle",
+        "T-Drill"
+      ],
+      "whyThisMatters": "It rehearses braking, tight turning and re-accelerating in one short effort.",
+      "source": {
+        "name": "NSCA, Developing Agility and Quickness (Human Kinetics excerpt)",
+        "url": "https://us.humankinetics.com/blogs/excerpt/three-cone-drills"
+      }
+    },
+    {
+      "id": "falling-start",
+      "name": "Falling Start",
+      "muscleGroup": "Legs",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Glutes, quads, hamstrings, calves",
+      "equipment": "None (10-20 m of clear ground)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with feet under your hips and eyes straight ahead.",
+        "Keep your body in one straight line and let yourself tip forward from the ankles.",
+        "At the point where you must step, drive one knee forward hard and punch the opposite arm.",
+        "Push the ground back behind you and accelerate for 10 to 20 metres, rising gradually."
+      ],
+      "formCue": "Fall as a plank, then drive.",
+      "commonMistakes": "Bending at the waist instead of leaning as one line, or stepping out too early.",
+      "beginnerModification": "Start from a staggered stance with a smaller lean and run at three-quarter speed.",
+      "alternatives": [
+        "Wall Acceleration Drill",
+        "Sprint Intervals"
+      ],
+      "whyThisMatters": "It teaches the forward body lean and first-step drive that acceleration depends on.",
+      "source": {
+        "name": "Human Kinetics, Three Drills for Developing Starts and Initial Acceleration",
+        "url": "https://us.humankinetics.com/blogs/excerpt/three-drills-for-developing-starts-and-initial-acceleration-for-running"
+      }
+    },
+    {
+      "id": "resisted-sled-sprint",
+      "name": "Resisted Sled Sprint",
+      "muscleGroup": "Legs",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Glutes, quads, hamstrings, calves",
+      "equipment": "Sled with harness or belt",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Attach the harness to a lightly loaded sled and walk forward until the strap is tight.",
+        "Set a staggered stance with a forward lean from the ankles.",
+        "Drive out and sprint 10 to 20 metres, pushing the ground back with each step.",
+        "Keep the same lean and arm action you would use in an unloaded start, then walk back and rest fully."
+      ],
+      "formCue": "Lean and push. Same shape as a free sprint.",
+      "commonMistakes": "Loading the sled so heavy that the stride turns into a grind and posture breaks.",
+      "beginnerModification": "Use a very light sled or sprint up a gentle slope instead.",
+      "alternatives": [
+        "Sled Push",
+        "Hill Sprint",
+        "Falling Start"
+      ],
+      "whyThisMatters": "A light towing load builds the horizontal push used in the first steps of a sprint.",
+      "source": {
+        "name": "NSCA Coach, Sled Resisted Sprint Training",
+        "url": "https://www.nsca.com/education/articles/nsca-coach/ice-hockey-strength-and-conditioning-considerations/"
+      }
+    },
+    {
+      "id": "sprint-and-stop",
+      "name": "Sprint and Stop",
+      "muscleGroup": "Legs",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "2 cones",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Place two cones 10 to 15 metres apart.",
+        "Accelerate from the first cone at a controlled, fast pace.",
+        "As you near the second cone, lower your hips and shorten your steps, bending at the ankles, knees and hips on each contact.",
+        "Come to a balanced stop at the cone in an athletic stance and hold for two seconds."
+      ],
+      "formCue": "Sink the hips, chop the steps, own the stop.",
+      "commonMistakes": "Braking with stiff, upright legs or leaning back on the heels.",
+      "beginnerModification": "Run at half speed and allow more steps to slow down.",
+      "alternatives": [
+        "Pro Agility Shuttle",
+        "Lateral Shuffle"
+      ],
+      "whyThisMatters": "Being able to brake under control comes before every cut and change of direction.",
+      "source": {
+        "name": "NSCA, Effective Deceleration Technique for Court and Field Sports",
+        "url": "https://www.nsca.com/education/articles/kinetic-select/effective-deceleration-technique-for-court-and-field-sports/"
+      }
+    },
+    {
+      "id": "snap-down",
+      "name": "Snap-Down",
+      "muscleGroup": "Legs",
+      "movementPattern": "Jump",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall on your toes with both arms reaching overhead.",
+        "Pull your arms down fast and let your feet leave the floor slightly.",
+        "Land on both feet at once with hips back, knees bent and chest over your knees.",
+        "Hold the landing position for two seconds, then stand and reset."
+      ],
+      "formCue": "Snap down and freeze.",
+      "commonMistakes": "Knees caving inward or landing stiff and loud.",
+      "beginnerModification": "Skip the hop and simply drop quickly from tall into the landing position.",
+      "alternatives": [
+        "Bodyweight Squat",
+        "Jump Squat"
+      ],
+      "whyThisMatters": "It teaches the landing position at low impact before any real jumping.",
+      "source": {
+        "name": "NSCA, Plyometric Implementation: Jump Landing Positions",
+        "url": "https://nsca.com/education/videos/plyometric-implementation-setup-and-execution-of-jump-landing-positions-to-decrease-likelihood-of-injuries"
+      }
+    },
+    {
+      "id": "drop-landing",
+      "name": "Drop Landing",
+      "variationOf": "depth-jump",
+      "muscleGroup": "Legs",
+      "movementPattern": "Jump",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "Low box or step",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand on a low box, about 15 to 30 cm high.",
+        "Step off the edge without jumping up.",
+        "Land on both feet together, hips back, knees bent and in line with your toes.",
+        "Hold the landing for two seconds before stepping back up."
+      ],
+      "formCue": "Step off, land quiet, stick it.",
+      "commonMistakes": "Jumping up off the box, or letting the knees collapse inward on contact.",
+      "beginnerModification": "Use a lower step, or go back to the snap-down.",
+      "alternatives": [
+        "Snap-Down",
+        "Depth Jump"
+      ],
+      "whyThisMatters": "It builds the ability to absorb force from a height before rebound jumps are added.",
+      "source": {
+        "name": "NSCA, Plyometric Implementation: Jump Landing Positions",
+        "url": "https://nsca.com/education/videos/plyometric-implementation-setup-and-execution-of-jump-landing-positions-to-decrease-likelihood-of-injuries"
+      }
+    },
+    {
+      "id": "single-leg-hop-and-stick",
+      "name": "Single-Leg Hop and Stick",
+      "muscleGroup": "Legs",
+      "movementPattern": "Jump",
+      "musclesWorked": "Glutes, quads, calves, hip stabilisers",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Balance on one leg with a soft knee.",
+        "Hop forward a short distance and land on the same leg.",
+        "Absorb the landing with hip and knee bent, knee over the middle of the foot.",
+        "Hold still for two seconds, then reset and repeat before switching legs."
+      ],
+      "formCue": "Small hop, quiet landing, hold.",
+      "commonMistakes": "Hopping too far, wobbling at the knee, or letting the hip drop on landing.",
+      "beginnerModification": "Hop from two feet and land on one, or shorten the hop to a few centimetres.",
+      "alternatives": [
+        "Snap-Down",
+        "Skater Jump"
+      ],
+      "whyThisMatters": "Most sport landings and cuts happen on one leg, so control has to be trained on one leg.",
+      "source": {
+        "name": "NSCA, Plyometric Implementation: Jump Landing Positions",
+        "url": "https://nsca.com/education/videos/plyometric-implementation-setup-and-execution-of-jump-landing-positions-to-decrease-likelihood-of-injuries"
+      }
+    },
+    {
+      "id": "hurdle-hop",
+      "name": "Hurdle Hop",
+      "muscleGroup": "Legs",
+      "movementPattern": "Jump",
+      "musclesWorked": "Calves, quads, glutes",
+      "equipment": "4-6 low hurdles or cones",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Line up low hurdles about a metre apart and stand facing the first one.",
+        "Jump off both feet over the first hurdle, pulling the toes up in the air.",
+        "Land on both feet at the same time and rebound straight into the next jump.",
+        "Keep ground contacts short and the torso tall through the full row, then walk back."
+      ],
+      "formCue": "Both feet together. Bounce, do not sink.",
+      "commonMistakes": "Sinking deep into each landing, or landing one foot after the other.",
+      "beginnerModification": "Use mini hurdles or lines on the floor and pause to reset between jumps.",
+      "alternatives": [
+        "Pogo Hop",
+        "Tuck Jump",
+        "Skater Jump"
+      ],
+      "whyThisMatters": "Repeated rebounds train the quick, springy ground contact used in sprinting and jumping.",
+      "source": {
+        "name": "ISBS Conference Proceedings, Kinetic Analysis of Horizontal Plyometric Exercise Intensity",
+        "url": "https://ojs.ub.uni-konstanz.de/cpa/article/view/6046"
+      }
+    },
+    {
+      "id": "alternate-leg-push-off",
+      "name": "Alternate Leg Push-Off",
+      "muscleGroup": "Legs",
+      "movementPattern": "Jump",
+      "musclesWorked": "Quads, glutes, calves",
+      "equipment": "Low box or sturdy step",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Place one foot flat on a low box with the other foot on the floor.",
+        "Drive through the box foot and swing your arms to jump straight up.",
+        "Switch legs in the air so the other foot lands on the box.",
+        "Land softly with hips back and knees bent, then go again."
+      ],
+      "formCue": "Drive up through the box foot.",
+      "commonMistakes": "Pushing mostly off the floor foot, or landing heavily with a locked knee.",
+      "beginnerModification": "Pause and reset between jumps, or use a lower step.",
+      "alternatives": [
+        "Split Squat Jump",
+        "Step-Up",
+        "Box Jump"
+      ],
+      "whyThisMatters": "It develops single-leg drive in the same alternating rhythm as running.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/246/alternate-leg-push-off/"
+      }
+    },
+    {
+      "id": "forward-hurdle-run",
+      "name": "Forward Hurdle Run",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Hip flexors, glutes, calves, core",
+      "equipment": "4-8 mini hurdles",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Line up mini hurdles roughly a stride apart and start in a staggered stance.",
+        "Run through with one foot landing between each pair of hurdles.",
+        "Lift each knee to about hip height and swing the opposite arm from the shoulder.",
+        "Stay tall with your trunk braced until you are past the last hurdle."
+      ],
+      "formCue": "Knee up, toe up, stay tall.",
+      "commonMistakes": "Leaning back or looking down, which shortens the knee lift.",
+      "beginnerModification": "Walk or march over the hurdles first.",
+      "alternatives": [
+        "High Knees",
+        "A-Skip"
+      ],
+      "whyThisMatters": "It grooves knee lift, rhythm and upright posture for faster running.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/221/forward-hurdle-run/"
+      }
+    },
+    {
+      "id": "lateral-bound-to-shot-put-throw",
+      "name": "Lateral Bound to Shot-Put Throw",
+      "variationOf": "medicine-ball-rotational-throw",
+      "muscleGroup": "Core",
+      "movementPattern": "Rotation",
+      "musclesWorked": "Glutes, obliques, chest, shoulders",
+      "equipment": "Medicine ball and solid wall",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand side-on to a wall, a few metres away, holding a light medicine ball at your chest.",
+        "Bound sideways away from the wall and land on the outside leg, loading the hip.",
+        "Push back off that leg, rotate your hips and trunk toward the wall.",
+        "Finish by punching the ball from the back shoulder into the wall, then collect it and reset."
+      ],
+      "formCue": "Load the hip, turn, then throw.",
+      "commonMistakes": "Throwing with the arm only, or losing balance on the landing before the throw.",
+      "beginnerModification": "Remove the bound and throw from a split stance.",
+      "alternatives": [
+        "Medicine Ball Rotational Throw",
+        "Skater Jump"
+      ],
+      "whyThisMatters": "It links a sideways push off the ground to a rotational throw, as in striking and throwing sports.",
+      "source": {
+        "name": "NSCA, Strength Training for Lacrosse (Human Kinetics excerpt)",
+        "url": "https://us.humankinetics.com/blogs/excerpt/lateral-bound-into-rotational-shot-put-throw"
+      }
+    },
+    {
+      "id": "plant-and-cut",
+      "name": "Plant and Cut",
+      "muscleGroup": "Legs",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Glutes, quads, hip stabilisers, calves",
+      "equipment": "None (open space)",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Jog four or five steps in a straight line.",
+        "Plant on the outside foot with the knee bent and in line with the toes.",
+        "Push off that foot to change direction diagonally.",
+        "Accelerate for five to seven quick steps, slow down, and repeat off the other foot."
+      ],
+      "formCue": "Plant under the hip, knee over toes, go.",
+      "commonMistakes": "Letting the planted knee buckle inward, or cutting with an upright trunk.",
+      "beginnerModification": "Walk into the plant and make the angle of the cut shallow.",
+      "alternatives": [
+        "Lateral Shuffle",
+        "Pro Agility Shuttle"
+      ],
+      "whyThisMatters": "It rehearses the cutting step with good knee position at a controlled speed.",
+      "source": {
+        "name": "FIFA 11+ injury-prevention programme (Lifemark summary)",
+        "url": "https://www.lifemark.ca/resources/useful-exercises-revolutionary-fifa-11-warm-program"
+      }
+    },
+    {
+      "id": "quick-forward-backward-run",
+      "name": "Quick Forward-Backward Run",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "Cones",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set a line of cones about 5 metres apart.",
+        "Run forward quickly two cones.",
+        "Run backward one cone with hips and knees slightly bent and small quick steps.",
+        "Keep repeating two forward, one back until the end of the line, then jog back."
+      ],
+      "formCue": "Small fast steps, hips low going back.",
+      "commonMistakes": "Standing upright and leaning back while backpedalling.",
+      "beginnerModification": "Do it at a jog and shorten the cone spacing.",
+      "alternatives": [
+        "Lateral Shuffle",
+        "Sprint and Stop"
+      ],
+      "whyThisMatters": "It trains quick transitions between forward running and backpedalling.",
+      "source": {
+        "name": "FIFA 11+ injury-prevention programme (Lifemark summary)",
+        "url": "https://www.lifemark.ca/resources/useful-exercises-revolutionary-fifa-11-warm-program"
+      }
+    },
+    {
+      "id": "squat-with-toe-raise",
+      "name": "Squat with Toe Raise",
+      "variationOf": "bodyweight-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with feet hip-width apart and hands on your hips.",
+        "Sit back slowly until your knees are bent to about 90 degrees, keeping them in line with your toes.",
+        "Stand up a little faster than you went down.",
+        "Once your legs are straight, rise onto your toes, then lower the heels and repeat."
+      ],
+      "formCue": "Slow down, knees out, finish tall on the toes.",
+      "commonMistakes": "Knees drifting inward on the way down.",
+      "beginnerModification": "Squat to a shallower depth and hold a support for the toe raise.",
+      "alternatives": [
+        "Bodyweight Squat",
+        "Standing Calf Raise"
+      ],
+      "whyThisMatters": "It pairs knee-control practice with calf strength in one simple warm-up move.",
+      "source": {
+        "name": "FIFA 11+ injury-prevention programme (Lifemark summary)",
+        "url": "https://www.lifemark.ca/resources/useful-exercises-revolutionary-fifa-11-warm-program"
+      }
+    },
+    {
+      "id": "running-hip-out",
+      "name": "Running Hip Out",
+      "muscleGroup": "Legs",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Hip flexors, glutes, hip rotators",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Jog easily in a straight line.",
+        "Every few steps, pause and lift one knee forward to hip height.",
+        "Rotate that knee out to the side, then put the foot down.",
+        "Jog on and repeat with the other leg."
+      ],
+      "formCue": "Knee up, open the gate.",
+      "commonMistakes": "Twisting the trunk instead of moving at the hip.",
+      "beginnerModification": "Do it walking with a hand on a wall for balance.",
+      "alternatives": [
+        "High Knees",
+        "Carioca"
+      ],
+      "whyThisMatters": "It opens the hips and wakes up single-leg balance before faster running.",
+      "source": {
+        "name": "FIFA 11+ injury-prevention programme (Lifemark summary)",
+        "url": "https://www.lifemark.ca/resources/useful-exercises-revolutionary-fifa-11-warm-program"
+      }
+    },
+    {
+      "id": "running-hip-in",
+      "name": "Running Hip In",
+      "muscleGroup": "Legs",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Hip flexors, adductors, hip rotators",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Jog easily in a straight line.",
+        "Every few steps, pause and lift one knee out to the side at hip height.",
+        "Rotate that knee inward to the front, then put the foot down.",
+        "Jog on and repeat with the other leg."
+      ],
+      "formCue": "Knee out, close the gate.",
+      "commonMistakes": "Leaning the body away from the lifted leg.",
+      "beginnerModification": "Do it walking with a hand on a wall for balance.",
+      "alternatives": [
+        "Running Hip Out",
+        "High Knees"
+      ],
+      "whyThisMatters": "It prepares the inner hip and groin for cutting and kicking.",
+      "source": {
+        "name": "FIFA 11+ injury-prevention programme (Lifemark summary)",
+        "url": "https://www.lifemark.ca/resources/useful-exercises-revolutionary-fifa-11-warm-program"
+      }
+    },
+    {
+      "id": "partner-mirror-drill",
+      "name": "Partner Mirror Drill",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Glutes, quads, calves, hip abductors",
+      "equipment": "2 cones and a partner",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set two cones about 5 metres apart and face your partner between them.",
+        "One athlete leads, shuffling left and right between the cones and changing direction at random.",
+        "The other athlete mirrors every move, staying square and directly opposite.",
+        "Work for about 10 seconds, rest, then swap roles."
+      ],
+      "formCue": "Watch the hips, stay low, stay square.",
+      "commonMistakes": "Crossing the feet or guessing instead of reacting.",
+      "beginnerModification": "Have the leader move at half speed with clearer changes of direction.",
+      "alternatives": [
+        "Lateral Shuffle",
+        "Pro Agility Shuttle"
+      ],
+      "whyThisMatters": "Reacting to another person is closer to real sport than any pre-planned cone pattern.",
+      "source": {
+        "name": "National Association of Speed and Explosion",
+        "url": "https://www.naseinc.com/blog/influence-of-cognitive-factors-on-reactive-agility-performance/"
+      }
+    },
+    {
+      "id": "ball-drop-reaction",
+      "name": "Ball Drop Reaction",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Quads, glutes, calves",
+      "equipment": "Tennis ball and a partner",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand in an athletic stance a few metres from a partner who holds a tennis ball at shoulder height.",
+        "The partner drops the ball without warning.",
+        "Sprint and catch the ball before it bounces a second time.",
+        "Walk back and reset, and increase the distance as you get faster."
+      ],
+      "formCue": "Eyes on the ball, first step low.",
+      "commonMistakes": "Standing tall while waiting, or reaching with the hands instead of moving the feet.",
+      "beginnerModification": "Start closer to the partner.",
+      "alternatives": [
+        "Falling Start",
+        "Sprint Intervals"
+      ],
+      "whyThisMatters": "It trains a fast first step in response to something you see, not a planned start.",
+      "source": {
+        "name": "NSCA, 5 Reaction Drills to Build Quickness",
+        "url": "https://www.nsca.com/education/articles/kinetic-select/5-reaction-drills-to-build-quickness/"
+      }
+    },
+    {
+      "id": "single-leg-squat-touchdown",
+      "name": "Single-Leg Squat Touchdown",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, hip stabilisers, ankle stabilisers",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand on one leg with the other foot hovering just in front or to the side.",
+        "Brace your trunk and sit back into a single-leg squat.",
+        "Lower until the toes of the free leg lightly touch the floor.",
+        "Drive through the standing foot to return to the top, and finish all reps before switching."
+      ],
+      "formCue": "Touch like the floor is hot. Weight stays on the standing leg.",
+      "commonMistakes": "Standing knee collapsing inward, or putting real weight through the touching foot.",
+      "beginnerModification": "Hold a support with one hand and squat to a shallower depth.",
+      "alternatives": [
+        "Bulgarian Split Squat",
+        "Lateral Step-Down",
+        "Reverse Lunge"
+      ],
+      "whyThisMatters": "It builds single-leg strength and knee control without needing any load.",
+      "source": {
+        "name": "NASM Exercise Library",
+        "url": "https://www.nasm.org/resource-center/exercise-library/single-leg-squat-touchdown"
+      }
+    },
+    {
+      "id": "kneeling-wood-chop",
+      "name": "Kneeling Wood Chop",
+      "variationOf": "cable-woodchop",
+      "muscleGroup": "Core",
+      "movementPattern": "Rotation",
+      "musclesWorked": "Obliques, abdominals, shoulders, lats",
+      "equipment": "Cable machine or band with high anchor",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set a cable at its highest position and kneel side-on to it with the inside leg forward and the outside knee down.",
+        "Grip the rope with both hands, reaching up toward the anchor.",
+        "Pull the rope diagonally across your body down to the outside hip.",
+        "Keep the torso tall and hips still, pause, and return under control."
+      ],
+      "formCue": "Tall spine, hips quiet, arms draw the line.",
+      "commonMistakes": "Bending or twisting from the lower back, or letting the hips swing.",
+      "beginnerModification": "Use a light band and shorten the range.",
+      "alternatives": [
+        "Cable Woodchop",
+        "Pallof Press"
+      ],
+      "whyThisMatters": "The kneeling stance takes the legs out so the trunk has to control the diagonal pull.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/340/kneeling-wood-chop/"
+      }
+    },
+    {
+      "id": "kneeling-hay-baler",
+      "name": "Kneeling Hay Baler",
+      "variationOf": "cable-woodchop",
+      "muscleGroup": "Core",
+      "movementPattern": "Rotation",
+      "musclesWorked": "Obliques, abdominals, shoulders",
+      "equipment": "Cable machine or band with low anchor",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set a cable at its lowest position and kneel side-on to it with the outside leg forward and the inside knee down.",
+        "Grip the rope with both hands beside the inside hip.",
+        "Pull the rope up to your chest, then press it up and across in front of the far shoulder.",
+        "Pause for a second at the top with your torso still, then lower slowly."
+      ],
+      "formCue": "Pull to the chest, press across, body stays still.",
+      "commonMistakes": "Leaning away from the machine or shrugging the load up with the arms only.",
+      "beginnerModification": "Use a lighter load, or the medicine-ball version.",
+      "alternatives": [
+        "Cable Woodchop",
+        "Kneeling Wood Chop",
+        "Pallof Press"
+      ],
+      "whyThisMatters": "A low-to-high diagonal pull trains the trunk to pass force upward, as in throwing and swinging.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/341/kneeling-hay-baler/"
+      }
+    },
+    {
+      "id": "half-kneeling-medicine-ball-hay-baler",
+      "name": "Half-Kneeling Medicine Ball Hay Baler",
+      "muscleGroup": "Core",
+      "movementPattern": "Rotation",
+      "musclesWorked": "Obliques, abdominals, shoulders",
+      "equipment": "Medicine ball",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Kneel with one foot forward and the other knee on the floor.",
+        "Hold a medicine ball in both hands beside the hip of the back leg.",
+        "Turn your trunk and shoulders to sweep the ball across your body and over the opposite shoulder.",
+        "Lower it back along the same path, and finish all reps before switching sides."
+      ],
+      "formCue": "Eyes follow the ball. Hips face forward.",
+      "commonMistakes": "Swinging the arms without turning the trunk, or wobbling at the hips.",
+      "beginnerModification": "Use a lighter ball or no ball at all.",
+      "alternatives": [
+        "Russian Twist",
+        "Kneeling Hay Baler"
+      ],
+      "whyThisMatters": "It is a simple entry to diagonal trunk rotation with a stable base.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://acefitness.org/resources/everyone/exercise-library/97/half-kneeling-hay-baler"
+      }
+    },
+    {
+      "id": "lateral-lunge-wood-chop",
+      "name": "Lateral Lunge Wood Chop",
+      "variationOf": "cable-woodchop",
+      "muscleGroup": "Core",
+      "movementPattern": "Rotation",
+      "musclesWorked": "Obliques, glutes, adductors, quads, shoulders",
+      "equipment": "Cable machine or band at shoulder height",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set a cable at shoulder height and stand side-on to it holding the handle in both hands near the inside shoulder.",
+        "Step sideways away from the machine into a lateral lunge.",
+        "As the foot lands, keep your arms long and rotate to bring the handle down toward the lunging leg.",
+        "Push off that foot and rotate back to the start."
+      ],
+      "formCue": "Step, sit, chop. One smooth move.",
+      "commonMistakes": "Rounding the back to reach down, or letting the lunging knee cave in.",
+      "beginnerModification": "Learn the lateral lunge and the standing chop separately first.",
+      "alternatives": [
+        "Lateral Lunge",
+        "Cable Woodchop"
+      ],
+      "whyThisMatters": "It ties a sideways step to trunk rotation, the way cutting and reaching happen in sport.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/347/lateral-lunge-wood-chop/"
+      }
+    },
+    {
+      "id": "anti-rotation-reverse-lunge",
+      "name": "Anti-Rotation Reverse Lunge",
+      "variationOf": "pallof-press",
+      "muscleGroup": "Core",
+      "movementPattern": "Split stance",
+      "musclesWorked": "Obliques, abdominals, glutes, quads",
+      "equipment": "Cable machine or band at chest height",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set a cable at chest height and stand side-on to it with feet hip-width apart.",
+        "Hold the handle in both hands and press your arms straight out in front of your chest.",
+        "Step the leg nearest the machine back into a lunge, lowering the knee toward the floor.",
+        "Keep the hands in front of your breastbone the whole time, then push through the front foot to stand."
+      ],
+      "formCue": "Hands stay on the centre line.",
+      "commonMistakes": "Letting the cable turn the shoulders, or leaning toward the machine.",
+      "beginnerModification": "Hold the press-out standing still first, then add a shallow lunge.",
+      "alternatives": [
+        "Pallof Press",
+        "Reverse Lunge"
+      ],
+      "whyThisMatters": "It trains the trunk to resist twisting while the legs move, which is how the core works in running and cutting.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/348/anti-rotation-reverse-lunge/"
+      }
+    }
+  ]
+}

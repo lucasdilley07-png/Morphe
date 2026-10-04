@@ -1,0 +1,688 @@
+{
+  "version": 2,
+  "category": "Boxing & Combat Conditioning",
+  "workouts": [
+    {
+      "slug": "v3-boxing-fundamentals-rounds",
+      "name": "Boxing Fundamentals Rounds",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Boxing",
+      "level": "Beginner",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "For a first month of boxing fitness: stance, footwork, and the two straight punches, worked in short timed rounds. Add 30 seconds to the punching rounds once you can finish each one with your hands still up.",
+      "exercises": [
+        {
+          "libraryID": "boxing-stance-hold",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "step-drag-footwork",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "boxing-jab",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "boxing-cross",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "jab-cross-combo",
+          "sets": 3,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 2,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-boxing-kickboxing-rounds",
+      "name": "Kickboxing Shadow Rounds",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Kickboxing",
+      "level": "Moderate",
+      "durationMinutes": 44,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Timed shadow rounds that mix hands, kicks, and knees to keep the heart rate up without a bag. Keep kicks at a height you control and build speed only after the hip turn is clean.",
+      "exercises": [
+        {
+          "libraryID": "jab-cross-hook-combo",
+          "sets": 3,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "teep",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "roundhouse-kick",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "straight-knee-strike",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "kick-check",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "switch-kick",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 2,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-boxing-heavy-bag-intervals",
+      "name": "Heavy Bag Interval Rounds",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Boxing",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "A bag session built on three-minute rounds with one minute of rest, plus short body-shot and low-kick bursts. Wrap your hands, keep moving your feet between combinations, and progress by adding a fifth bag round.",
+      "exercises": [
+        {
+          "libraryID": "jump-rope",
+          "sets": 2,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "jab-cross-combo",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "heavy-bag-rounds",
+          "sets": 4,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "lead-hook-to-the-body",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "low-kick",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-boxing-grappling-movement-circuit",
+      "name": "Grappling Movement Conditioning",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Grappling conditioning",
+      "level": "Moderate",
+      "durationMinutes": 33,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Solo mat drills run as a circuit: level changes, floor escapes, and getting back to your feet. No partner or contact needed; add a set to each drill when the full circuit feels steady.",
+      "exercises": [
+        {
+          "libraryID": "wrestling-stance-motion",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "sprawl",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "penetration-step",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "technical-stand-up",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "hip-escape",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "bridge-and-roll",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "sit-through",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "bear-crawl",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-boxing-fighter-strength-base",
+      "name": "Fighter Strength Base",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 57,
+      "equipmentProfile": "Full Gym",
+      "notes": "Heavy basics that support striking and grappling work: a hinge, a press, a pull, rotation, and a carry. Add load to the deadlift and push press when all sets move cleanly.",
+      "exercises": [
+        {
+          "libraryID": "trap-bar-deadlift",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "push-press",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "medicine-ball-rotational-throw",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "landmine-rotation",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "neck-isometric-hold",
+          "sets": 3,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-boxing-defense-and-counter-rounds",
+      "name": "Defense and Counter Rounds",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Boxing",
+      "level": "Moderate",
+      "durationMinutes": 47,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Shadow rounds built around moving the feet, legs, and trunk: side steps, pivots, ducks, slips, and a simple counter. The constant level changes make this harder on the legs than it looks.",
+      "exercises": [
+        {
+          "libraryID": "boxing-side-step",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "boxing-pivot",
+          "sets": 2,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "shadow-parry-drill",
+          "sets": 2,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "boxing-duck",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "boxer-slip-and-roll",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "pull-counter",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "shadow-boxing",
+          "sets": 3,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-boxing-speed-and-timing-bags",
+      "name": "Speed and Timing Bag Rounds",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Boxing",
+      "level": "Moderate",
+      "durationMinutes": 54,
+      "equipmentProfile": "Full Gym",
+      "notes": "A bag-room session for rhythm and accuracy: rope, speed bag, double-end bag, then uppercuts and heavy bag rounds. Hit light and stay accurate; raise the pace before you raise the power.",
+      "exercises": [
+        {
+          "libraryID": "jump-rope-boxer-step",
+          "sets": 2,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "speed-bag-rhythm",
+          "sets": 3,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "double-end-bag-rounds",
+          "sets": 3,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "lead-uppercut",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "rear-uppercut",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "heavy-bag-rounds",
+          "sets": 3,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "russian-twist",
+          "sets": 3,
+          "reps": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-boxing-muay-thai-shadow-rounds",
+      "name": "Muay Thai Shadow Rounds",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Kickboxing",
+      "level": "Moderate",
+      "durationMinutes": 38,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Solo shadow rounds covering the push kick, round kick, knees, and elbows, with core work to finish. Everything is thrown in the air, so keep it controlled and finish each strike in balance.",
+      "exercises": [
+        {
+          "libraryID": "teep",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "roundhouse-kick",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "straight-knee-strike",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "shadow-elbow-strike",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "double-jab-cross",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "rear-hook",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-boxing-footwork-and-mobility-reset",
+      "name": "Footwork and Mobility Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 19,
+      "equipmentProfile": "Bodyweight",
+      "notes": "An easy day between hard sessions: relaxed stance and footwork practice followed by hip, trunk, and shoulder stretches. Keep the effort low and the breathing slow.",
+      "exercises": [
+        {
+          "libraryID": "boxing-stance-hold",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "step-drag-footwork",
+          "sets": 2,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "cross-body-shoulder-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ]
+}

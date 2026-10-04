@@ -1,0 +1,1331 @@
+{
+  "discipline": "Bodybuilding & Hypertrophy",
+  "exercises": [
+    {
+      "id": "incline-barbell-press",
+      "name": "Incline Barbell Press",
+      "variationOf": "barbell-bench-press",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Upper chest, front delts, triceps",
+      "equipment": "Barbell, incline bench, rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie back on a bench set to roughly 30 to 45 degrees and take a grip a little wider than your shoulders.",
+        "Unrack the bar and hold it over your upper chest with your shoulder blades pulled back and down.",
+        "Lower the bar under control to your upper chest with your forearms vertical.",
+        "Press back up until your arms are straight without letting your shoulders roll forward."
+      ],
+      "formCue": "Shoulder blades pinned, bar to the collarbone line.",
+      "commonMistakes": "Setting the bench too steep so it becomes a shoulder press, and bouncing the bar off the chest.",
+      "beginnerModification": "Use the incline machine press or light dumbbells until the bar path feels steady.",
+      "alternatives": [
+        "Incline Dumbbell Press",
+        "Incline Machine Press"
+      ],
+      "whyThisMatters": "It loads the upper chest harder than a flat press does.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/PectoralClavicular/BBInclineBenchPress"
+      }
+    },
+    {
+      "id": "decline-barbell-press",
+      "name": "Decline Barbell Press",
+      "variationOf": "barbell-bench-press",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Lower and mid chest, triceps, front delts",
+      "equipment": "Barbell, decline bench, rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Hook your feet under the leg brace and lie back on the decline bench.",
+        "Grip the bar a little wider than your shoulders and unrack it over your chest.",
+        "Lower the bar under control to your lower chest.",
+        "Press back up until your arms are straight, then re-rack with a spotter's help if the load is heavy."
+      ],
+      "formCue": "Feet locked in, bar to the lower chest.",
+      "commonMistakes": "Lowering the bar toward the neck and unracking heavy loads without a spotter.",
+      "beginnerModification": "Start with the decline machine press or a light bar and a spotter.",
+      "alternatives": [
+        "Decline Machine Press",
+        "Triceps Dip"
+      ],
+      "whyThisMatters": "It lets you press heavy through the lower chest with less shoulder strain for many lifters.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/PectoralSternal/BBDeclineBenchPress"
+      }
+    },
+    {
+      "id": "incline-machine-press",
+      "name": "Incline Machine Press",
+      "variationOf": "machine-chest-press",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Upper chest, front delts, triceps",
+      "equipment": "Incline chest press machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set the seat so the handles sit just below your upper chest.",
+        "Grip the handles with your elbows out to the sides and your back flat on the pad.",
+        "Press the handles up and away until your arms are straight.",
+        "Return slowly until you feel a light stretch across the chest, then repeat."
+      ],
+      "formCue": "Chest up, press on the machine's line.",
+      "commonMistakes": "Seat set too low so the shoulders take over, and letting the stack slam between reps.",
+      "beginnerModification": "Drop the weight and pause for a second at the stretch on every rep.",
+      "alternatives": [
+        "Incline Dumbbell Press",
+        "Incline Barbell Press"
+      ],
+      "whyThisMatters": "A fixed path lets you push the upper chest hard without balancing a bar.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/PectoralClavicular/LVInclineChestPress"
+      }
+    },
+    {
+      "id": "decline-machine-press",
+      "name": "Decline Machine Press",
+      "variationOf": "machine-chest-press",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Lower and mid chest, triceps, front delts",
+      "equipment": "Decline chest press machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set the seat so the handles line up with your lower chest.",
+        "Sit tall with your back on the pad and grip the handles.",
+        "Press the handles forward and down until your arms are straight.",
+        "Return slowly until your chest is lightly stretched, then repeat."
+      ],
+      "formCue": "Shoulders down, drive through the palms.",
+      "commonMistakes": "Shrugging the shoulders forward at lockout and cutting the range short.",
+      "beginnerModification": "Use a lighter load and a three-second lowering phase.",
+      "alternatives": [
+        "Machine Chest Press",
+        "Decline Barbell Press"
+      ],
+      "whyThisMatters": "It trains the lower chest hard with a stable, easy setup.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/PectoralSternal/LVDeclineChestPressPL"
+      }
+    },
+    {
+      "id": "pec-deck-fly",
+      "name": "Pec Deck Fly",
+      "muscleGroup": "Chest",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Chest, front delts",
+      "equipment": "Pec deck machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set the seat so your upper arms are level with your shoulders when you hold the pads or handles.",
+        "Sit with your back on the pad and your elbows slightly bent.",
+        "Bring your arms together in front of your chest in a wide hugging arc.",
+        "Open back slowly until you feel a comfortable stretch across the chest, then repeat."
+      ],
+      "formCue": "Hug a barrel, squeeze the chest.",
+      "commonMistakes": "Letting the arms swing too far back and turning the fly into a press by bending the elbows.",
+      "beginnerModification": "Shorten the range and use a load you can pause at the squeeze.",
+      "alternatives": [
+        "Dumbbell Chest Fly",
+        "Cable Crossover"
+      ],
+      "whyThisMatters": "It isolates the chest without the triceps giving out first.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/PectoralSternal/LVSeatedFlyGripless"
+      }
+    },
+    {
+      "id": "low-to-high-cable-fly",
+      "name": "Low-to-High Cable Fly",
+      "variationOf": "cable-crossover",
+      "muscleGroup": "Chest",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Upper chest, front delts",
+      "equipment": "Cable station, two handles",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set both pulleys low and stand between them with a handle in each hand.",
+        "Take a small step forward and keep a slight bend in your elbows.",
+        "Sweep your hands up and in until they meet in front of your upper chest.",
+        "Lower along the same arc under control and repeat."
+      ],
+      "formCue": "Scoop up and in, elbows soft.",
+      "commonMistakes": "Bending the elbows to curl the weight and shrugging the shoulders at the top.",
+      "beginnerModification": "Work one arm at a time with a light load.",
+      "alternatives": [
+        "Cable Crossover",
+        "Incline Dumbbell Press"
+      ],
+      "whyThisMatters": "The upward arc keeps tension on the upper chest through the whole rep.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/PectoralClavicular/CBStandingInclineFly"
+      }
+    },
+    {
+      "id": "high-to-low-cable-fly",
+      "name": "High-to-Low Cable Fly",
+      "variationOf": "cable-crossover",
+      "muscleGroup": "Chest",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Lower and mid chest, front delts",
+      "equipment": "Cable station, two handles",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set both pulleys high and stand between them with a handle in each hand.",
+        "Step forward into a split stance and lean your torso slightly forward.",
+        "With a slight elbow bend, bring your hands down and together in front of your hips.",
+        "Let your arms travel back up slowly until your chest is stretched, then repeat."
+      ],
+      "formCue": "Hands meet at the hips, chest tall.",
+      "commonMistakes": "Pressing the handles down with bent elbows and rounding the shoulders forward.",
+      "beginnerModification": "Reduce the load and pause where the hands meet.",
+      "alternatives": [
+        "Cable Crossover",
+        "Pec Deck Fly"
+      ],
+      "whyThisMatters": "The downward arc lines up with the lower chest fibres.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/PectoralSternal/CBStandingFly"
+      }
+    },
+    {
+      "id": "t-bar-row",
+      "name": "T-Bar Row",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, mid back, rear delts, biceps",
+      "equipment": "T-bar row station or landmine with handle",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand over the bar with your knees slightly bent and hinge forward with a flat back.",
+        "Grip the handles and lift the weight clear of the floor.",
+        "Pull the handles to your torso, driving your elbows back.",
+        "Lower until your arms are straight and your shoulders stretch forward, keeping your back flat."
+      ],
+      "formCue": "Flat back, elbows to the hips.",
+      "commonMistakes": "Standing up with each rep and rounding the lower back as the set gets hard.",
+      "beginnerModification": "Use the chest-supported version so your lower back is not the limit.",
+      "alternatives": [
+        "Bent-Over Barbell Row",
+        "Chest-Supported Row"
+      ],
+      "whyThisMatters": "It lets you row heavy on a fixed arc and build back thickness.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/BackGeneral/LVTBarRow"
+      }
+    },
+    {
+      "id": "single-arm-cable-row",
+      "name": "Single-Arm Cable Row",
+      "variationOf": "seated-cable-row",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, mid back, rear delts, biceps",
+      "equipment": "Cable row station, single handle",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit at the cable row with your knees slightly bent and hold the handle in one hand.",
+        "Let the shoulder reach forward while your torso stays tall.",
+        "Pull the handle to the side of your waist and draw the shoulder blade back.",
+        "Return until the arm is straight, finish the reps, then switch sides."
+      ],
+      "formCue": "Elbow to the back pocket.",
+      "commonMistakes": "Twisting the whole torso to move the weight and shrugging the shoulder up.",
+      "beginnerModification": "Lower the load and hold the squeeze for one second on every rep.",
+      "alternatives": [
+        "Seated Cable Row",
+        "Dumbbell Row"
+      ],
+      "whyThisMatters": "Training one side at a time gives a longer range and shows up side-to-side gaps.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/BackGeneral/CBOneArmRow"
+      }
+    },
+    {
+      "id": "wide-grip-lat-pulldown",
+      "name": "Wide-Grip Lat Pulldown",
+      "variationOf": "lat-pulldown",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, teres major, rear delts, biceps",
+      "equipment": "Lat pulldown machine, long bar",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Grip the bar well outside shoulder width with palms facing away and lock your thighs under the pad.",
+        "Start with arms straight and your chest lifted.",
+        "Pull the bar to your upper chest, driving your elbows down and out.",
+        "Let the bar rise until your arms are straight and your lats are stretched."
+      ],
+      "formCue": "Chest to the bar, elbows down.",
+      "commonMistakes": "Leaning far back to swing the weight and pulling the bar behind the neck.",
+      "beginnerModification": "Use a lighter load and a slightly narrower grip.",
+      "alternatives": [
+        "Lat Pulldown",
+        "Pull-Up"
+      ],
+      "whyThisMatters": "The wide grip builds the outer lats that give the back its width.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/LatissimusDorsi/CBFrontPulldown"
+      }
+    },
+    {
+      "id": "close-grip-lat-pulldown",
+      "name": "Close-Grip Lat Pulldown",
+      "variationOf": "lat-pulldown",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, lower traps, biceps, brachialis",
+      "equipment": "Lat pulldown machine, close parallel handle",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Attach a close parallel-grip handle and lock your thighs under the pad.",
+        "Start with your arms straight overhead and your chest lifted.",
+        "Pull the handle to your upper chest, keeping your elbows close to your sides.",
+        "Return slowly until your arms are straight and your lats are stretched."
+      ],
+      "formCue": "Elbows brush the ribs.",
+      "commonMistakes": "Rocking back for momentum and stopping short of a full stretch at the top.",
+      "beginnerModification": "Lower the weight and count two seconds on the way up.",
+      "alternatives": [
+        "Lat Pulldown",
+        "Chin-Up"
+      ],
+      "whyThisMatters": "The close grip gives a long range of motion for the lats.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/LatissimusDorsi/CBCloseGripPulldown"
+      }
+    },
+    {
+      "id": "neutral-grip-lat-pulldown",
+      "name": "Neutral-Grip Lat Pulldown",
+      "variationOf": "lat-pulldown",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, teres major, biceps, brachialis",
+      "equipment": "Lat pulldown machine, wide parallel-grip bar",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Attach a bar with parallel handles and grip it with your palms facing each other.",
+        "Lock your thighs under the pad and start with your arms straight.",
+        "Pull the bar to your upper chest with your elbows tracking down in front of your sides.",
+        "Return under control to a full stretch."
+      ],
+      "formCue": "Palms in, chest up.",
+      "commonMistakes": "Shrugging at the top and using body swing to finish the rep.",
+      "beginnerModification": "Use a load you can pause at the chest for one second.",
+      "alternatives": [
+        "Lat Pulldown",
+        "Close-Grip Lat Pulldown"
+      ],
+      "whyThisMatters": "A palms-in grip is often the most comfortable way to load the lats.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/LatissimusDorsi/CBFrontPulldownProLatBar"
+      }
+    },
+    {
+      "id": "seated-machine-row",
+      "name": "Seated Machine Row",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Mid back, lats, rear delts, biceps",
+      "equipment": "Seated row machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set the seat so the handles are level with your lower chest and the chest pad lets you just reach them.",
+        "Sit tall with your chest on the pad and grip the handles.",
+        "Pull back until your elbows pass your torso and your shoulder blades squeeze together.",
+        "Return until your arms are straight and your shoulders reach forward."
+      ],
+      "formCue": "Chest on the pad, squeeze the blades.",
+      "commonMistakes": "Pulling the chest off the pad and cutting the stretch short.",
+      "beginnerModification": "Lower the weight and pause at the squeeze.",
+      "alternatives": [
+        "Seated Cable Row",
+        "Chest-Supported Row"
+      ],
+      "whyThisMatters": "The chest pad removes the lower back from the lift so the upper back does the work.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/BackGeneral/LVSeatedRow"
+      }
+    },
+    {
+      "id": "machine-pullover",
+      "name": "Machine Pullover",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, teres major, rear delts, long head of triceps",
+      "equipment": "Pullover machine",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the seat so your shoulders line up with the machine's pivot and fasten the belt if there is one.",
+        "Place your elbows on the pads and hold the bar lightly.",
+        "Drive your elbows forward and down until they reach your sides.",
+        "Let the arms travel back overhead slowly to a comfortable stretch."
+      ],
+      "formCue": "Push with the elbows, not the hands.",
+      "commonMistakes": "Pulling with the hands and arching the lower back at the stretch.",
+      "beginnerModification": "Shorten the overhead range and use a light load.",
+      "alternatives": [
+        "Straight-Arm Pulldown",
+        "Dumbbell Pullover"
+      ],
+      "whyThisMatters": "It works the lats through a long range without the biceps limiting the set.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/LatissimusDorsi/LVPullover"
+      }
+    },
+    {
+      "id": "rack-pull",
+      "name": "Rack Pull",
+      "variationOf": "conventional-deadlift",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Spinal erectors, traps, glutes, hamstrings, grip",
+      "equipment": "Barbell, power rack with pins",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the rack pins so the bar rests around knee height.",
+        "Stand with the bar against your legs, hinge to grip it and set a flat back.",
+        "Stand up by driving your hips forward until you are fully upright.",
+        "Lower the bar to the pins under control and reset before the next rep."
+      ],
+      "formCue": "Flat back, hips through.",
+      "commonMistakes": "Loading far more than you can hold with a flat back and dropping the bar onto the pins.",
+      "beginnerModification": "Raise the pins slightly and use a load you could also lift from the floor.",
+      "alternatives": [
+        "Conventional Deadlift",
+        "Romanian Deadlift"
+      ],
+      "whyThisMatters": "The short range lets you load the upper back and traps heavily.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/ErectorSpinae/BBRackPull"
+      }
+    },
+    {
+      "id": "reverse-grip-barbell-row",
+      "name": "Reverse-Grip Barbell Row",
+      "variationOf": "bent-over-row",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, mid back, rear delts, biceps",
+      "equipment": "Barbell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Hold the bar with a shoulder-width underhand grip.",
+        "Bend your knees slightly and hinge forward with a flat back.",
+        "Pull the bar to your waist with your elbows close to your sides.",
+        "Lower until your arms are straight without letting your back round."
+      ],
+      "formCue": "Palms up, bar to the belt.",
+      "commonMistakes": "Jerking the torso upright and curling the bar with the wrists.",
+      "beginnerModification": "Use the chest-supported row or a lighter bar.",
+      "alternatives": [
+        "Bent-Over Barbell Row",
+        "Chest-Supported Row"
+      ],
+      "whyThisMatters": "The underhand grip keeps the elbows tight and brings in more lats and biceps.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/BackGeneral/BBUnderhandBentOverRow"
+      }
+    },
+    {
+      "id": "machine-shoulder-press",
+      "name": "Machine Shoulder Press",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Front and side delts, triceps, upper traps",
+      "equipment": "Shoulder press machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set the seat so the handles start at about shoulder height.",
+        "Sit with your back on the pad and grip the handles.",
+        "Press up until your arms are straight overhead.",
+        "Lower slowly until your hands are back at shoulder level."
+      ],
+      "formCue": "Ribs down, press to the ceiling.",
+      "commonMistakes": "Arching the lower back off the pad and stopping the lowering phase early.",
+      "beginnerModification": "Use a light load and a seat height that feels easy on the shoulders.",
+      "alternatives": [
+        "Seated Dumbbell Press",
+        "Shoulder Press"
+      ],
+      "whyThisMatters": "A guided path lets you train the delts close to failure safely.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/DeltoidAnterior/LVShoulderPress"
+      }
+    },
+    {
+      "id": "machine-lateral-raise",
+      "name": "Machine Lateral Raise",
+      "variationOf": "lateral-raise",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Raise",
+      "musclesWorked": "Side delts, supraspinatus, upper traps",
+      "equipment": "Lateral raise machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set the seat so your shoulders line up with the machine's pivots.",
+        "Sit with your arms bent and the pads against the outside of your arms.",
+        "Raise your arms out to the sides until your upper arms are level with the floor.",
+        "Lower slowly and stop just before the weight rests."
+      ],
+      "formCue": "Lead with the elbows.",
+      "commonMistakes": "Shrugging the shoulders up and bouncing out of the bottom.",
+      "beginnerModification": "Use a lighter load and a two-second pause at the top.",
+      "alternatives": [
+        "Lateral Raise",
+        "Cable Lateral Raise"
+      ],
+      "whyThisMatters": "The machine keeps even tension on the side delts through the whole range.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/DeltoidLateral/LVLateralRaise2"
+      }
+    },
+    {
+      "id": "reverse-pec-deck",
+      "name": "Reverse Pec Deck",
+      "variationOf": "rear-delt-fly",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Pull",
+      "musclesWorked": "Rear delts, mid traps, rhomboids",
+      "equipment": "Pec deck machine set for reverse fly",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit facing the pad and set the seat so your arms are level with your shoulders.",
+        "Hold the handles with your chest against the pad and your elbows slightly bent.",
+        "Sweep your arms out and back until they are in line with your shoulders.",
+        "Return slowly without letting the weight rest."
+      ],
+      "formCue": "Wide arms, elbows high.",
+      "commonMistakes": "Using too much weight and turning it into a row by bending the elbows.",
+      "beginnerModification": "Go lighter and stop the arc at shoulder line.",
+      "alternatives": [
+        "Rear Delt Fly",
+        "Face Pull"
+      ],
+      "whyThisMatters": "It isolates the rear delts, which pressing and rowing often leave behind.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/DeltoidPosterior/LVRearDeltFlyGriplessPecDeck"
+      }
+    },
+    {
+      "id": "upright-row",
+      "name": "Upright Row",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Pull",
+      "musclesWorked": "Side delts, front delts, traps, biceps",
+      "equipment": "Barbell or EZ bar",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand tall holding the bar with an overhand grip a little wider than your shoulders.",
+        "Pull the bar up along your body with your elbows leading.",
+        "Stop when your elbows reach about shoulder height.",
+        "Lower under control until your arms are straight."
+      ],
+      "formCue": "Elbows lead, stop at the shoulders.",
+      "commonMistakes": "Using a narrow grip and pulling the elbows well above shoulder height.",
+      "beginnerModification": "Use a cable or dumbbells with a wider hand position and a shorter range.",
+      "alternatives": [
+        "Lateral Raise",
+        "Dumbbell Shrug"
+      ],
+      "whyThisMatters": "It trains the side delts and traps together with one heavy pull.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/DeltoidLateral/BBWideGripUprightRow"
+      }
+    },
+    {
+      "id": "cable-y-raise",
+      "name": "Cable Y Raise",
+      "variationOf": "cable-lateral-raise",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Raise",
+      "musclesWorked": "Side delts, front delts, lower traps",
+      "equipment": "Cable station, two low pulleys",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set both pulleys low and take the left handle in your right hand and the right handle in your left.",
+        "Step back slightly and stand tall with your elbows a little bent.",
+        "Raise your arms up and out into a Y until your elbows are level with your ears.",
+        "Lower slowly along the same path."
+      ],
+      "formCue": "Reach long, thumbs up.",
+      "commonMistakes": "Leaning back to heave the load and shrugging toward the ears.",
+      "beginnerModification": "Do it one arm at a time with the lightest plate.",
+      "alternatives": [
+        "Cable Lateral Raise",
+        "Front Raise"
+      ],
+      "whyThisMatters": "The cable keeps tension on the delts at the bottom, where dumbbells go slack.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/DeltoidLateral/CBYRaise"
+      }
+    },
+    {
+      "id": "cable-reverse-fly",
+      "name": "Cable Reverse Fly",
+      "variationOf": "rear-delt-fly",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Pull",
+      "musclesWorked": "Rear delts, mid traps, rhomboids",
+      "equipment": "Cable station, two high pulleys",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set both pulleys at about shoulder height and take the left cable in your right hand and the right in your left.",
+        "Step back so your arms are crossed in front of you with elbows slightly bent.",
+        "Pull your arms out and back until they are in line with your shoulders.",
+        "Return slowly until your hands cross again."
+      ],
+      "formCue": "Pull apart, keep the elbows up.",
+      "commonMistakes": "Bending the elbows to row the weight and arching the lower back.",
+      "beginnerModification": "Use the reverse pec deck so the machine guides the arc.",
+      "alternatives": [
+        "Reverse Pec Deck",
+        "Rear Delt Fly"
+      ],
+      "whyThisMatters": "It loads the rear delts with steady tension and no bench needed.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/DeltoidPosterior/CBStandingReverseFly"
+      }
+    },
+    {
+      "id": "incline-dumbbell-curl",
+      "name": "Incline Dumbbell Curl",
+      "variationOf": "bicep-curl",
+      "muscleGroup": "Arms",
+      "movementPattern": "Curl",
+      "musclesWorked": "Biceps, brachialis, brachioradialis",
+      "equipment": "Dumbbells, incline bench",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Sit back on a bench set to about 45 to 60 degrees with a dumbbell in each hand.",
+        "Let your arms hang straight down behind your torso.",
+        "Curl the weights, turning your palms up, until your forearms are vertical.",
+        "Lower slowly to a full hang and repeat."
+      ],
+      "formCue": "Elbows stay back, full hang.",
+      "commonMistakes": "Letting the elbows drift forward and lifting the shoulders off the bench.",
+      "beginnerModification": "Raise the bench angle and use lighter dumbbells.",
+      "alternatives": [
+        "Bicep Curl",
+        "Preacher Curl"
+      ],
+      "whyThisMatters": "The arm-behind-body position trains the biceps in a stretched position.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Biceps/DBInclineCurl"
+      }
+    },
+    {
+      "id": "spider-curl",
+      "name": "Spider Curl",
+      "muscleGroup": "Arms",
+      "movementPattern": "Curl",
+      "musclesWorked": "Brachialis, biceps, brachioradialis",
+      "equipment": "EZ bar or barbell, incline bench",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie chest-down on an incline bench with your shoulders near the top.",
+        "Hold the bar with a shoulder-width underhand grip and let your arms hang straight down.",
+        "Curl the bar up without moving your upper arms.",
+        "Lower until your arms are straight and repeat."
+      ],
+      "formCue": "Upper arms hang still.",
+      "commonMistakes": "Swinging the upper arms back and stopping short of full extension.",
+      "beginnerModification": "Use dumbbells or a lighter bar and slow the lowering phase.",
+      "alternatives": [
+        "Preacher Curl",
+        "Concentration Curl"
+      ],
+      "whyThisMatters": "The bench takes away body swing so the elbow flexors do all the work.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Brachialis/BBProneInclineCurl"
+      }
+    },
+    {
+      "id": "ez-bar-curl",
+      "name": "EZ-Bar Curl",
+      "variationOf": "bicep-curl",
+      "muscleGroup": "Arms",
+      "movementPattern": "Curl",
+      "musclesWorked": "Biceps, brachialis, brachioradialis",
+      "equipment": "EZ curl bar",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall holding the bar on the angled grips with your palms up.",
+        "Keep your elbows at your sides and curl the bar until your forearms are vertical.",
+        "Squeeze briefly at the top.",
+        "Lower until your arms are straight."
+      ],
+      "formCue": "Elbows pinned, no lean.",
+      "commonMistakes": "Leaning back to swing the bar and letting the elbows drift forward.",
+      "beginnerModification": "Stand with your back against a wall and use a lighter bar.",
+      "alternatives": [
+        "Bicep Curl",
+        "Cable Curl"
+      ],
+      "whyThisMatters": "The angled grip lets you load the biceps with less wrist strain than a straight bar.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Biceps/BBCurl"
+      }
+    },
+    {
+      "id": "reverse-curl",
+      "name": "Reverse Curl",
+      "muscleGroup": "Arms",
+      "movementPattern": "Curl",
+      "musclesWorked": "Brachioradialis, brachialis, biceps, wrist extensors",
+      "equipment": "Barbell or EZ bar",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall holding the bar with a shoulder-width overhand grip.",
+        "Keep your elbows at your sides and curl the bar until your forearms are vertical.",
+        "Keep your wrists straight through the lift.",
+        "Lower until your arms are straight."
+      ],
+      "formCue": "Knuckles up, wrists straight.",
+      "commonMistakes": "Letting the wrists bend back and using a load meant for regular curls.",
+      "beginnerModification": "Use an EZ bar and about half your normal curl weight.",
+      "alternatives": [
+        "Hammer Curl",
+        "EZ-Bar Curl"
+      ],
+      "whyThisMatters": "The palms-down grip builds the top of the forearm and the brachialis.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Brachioradialis/BBReverseCurl"
+      }
+    },
+    {
+      "id": "cable-rope-hammer-curl",
+      "name": "Cable Rope Hammer Curl",
+      "variationOf": "hammer-curl",
+      "muscleGroup": "Arms",
+      "movementPattern": "Curl",
+      "musclesWorked": "Brachioradialis, brachialis, biceps",
+      "equipment": "Cable station, rope attachment",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Attach a rope to a low pulley and hold an end in each hand with your palms facing each other.",
+        "Stand tall with your arms straight and your elbows at your sides.",
+        "Curl the rope up until your forearms are vertical.",
+        "Lower until your arms are straight."
+      ],
+      "formCue": "Thumbs up, elbows still.",
+      "commonMistakes": "Stepping too close so the cable goes slack and rocking the torso.",
+      "beginnerModification": "Lower the load and pause at the top.",
+      "alternatives": [
+        "Hammer Curl",
+        "Cable Curl"
+      ],
+      "whyThisMatters": "The cable keeps tension on the arm at the bottom of the curl.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Brachioradialis/CBHammerCurl"
+      }
+    },
+    {
+      "id": "machine-triceps-dip",
+      "name": "Machine Triceps Dip",
+      "variationOf": "dip",
+      "muscleGroup": "Arms",
+      "movementPattern": "Push",
+      "musclesWorked": "Triceps, front delts, chest",
+      "equipment": "Seated dip machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit with your back against the pad and fasten the belt if there is one.",
+        "Grip the handles with your elbows pointing straight back.",
+        "Push the handles down until your arms are straight.",
+        "Let the handles rise slowly until your shoulders feel a light stretch."
+      ],
+      "formCue": "Elbows back, lock it out.",
+      "commonMistakes": "Flaring the elbows wide and letting the shoulders shrug up at the top.",
+      "beginnerModification": "Shorten the top range and use a lighter stack.",
+      "alternatives": [
+        "Triceps Dip",
+        "Tricep Pushdown"
+      ],
+      "whyThisMatters": "It gives the heavy loading of a dip without having to carry your bodyweight.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Triceps/LVTriDip"
+      }
+    },
+    {
+      "id": "tricep-kickback",
+      "name": "Tricep Kickback",
+      "muscleGroup": "Arms",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Triceps",
+      "equipment": "Dumbbell, bench",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Place one knee and the same-side hand on a bench with your back flat.",
+        "Hold a dumbbell in the other hand and lift your upper arm until it is level with the floor.",
+        "Straighten your elbow until the whole arm is in line.",
+        "Bend the elbow back to the start without dropping the upper arm."
+      ],
+      "formCue": "Upper arm stays level.",
+      "commonMistakes": "Swinging the upper arm and using a weight too heavy to lock out.",
+      "beginnerModification": "Use a very light dumbbell and pause at full extension.",
+      "alternatives": [
+        "Tricep Pushdown",
+        "Overhead Tricep Extension"
+      ],
+      "whyThisMatters": "It works the triceps hardest at full lockout with very little load on the joints.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Triceps/DBKickback"
+      }
+    },
+    {
+      "id": "jm-press",
+      "name": "JM Press",
+      "muscleGroup": "Arms",
+      "movementPattern": "Push",
+      "musclesWorked": "Triceps, front delts, chest",
+      "equipment": "Barbell, flat bench, rack",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Lie flat on a bench and unrack the bar with a shoulder-width or slightly narrower grip.",
+        "Lower the bar in a straight line toward your upper chest and neck area while your elbows bend and stay fairly high.",
+        "Stop when your forearms meet your biceps.",
+        "Press the bar back up until your arms are straight."
+      ],
+      "formCue": "Elbows up, fold and press.",
+      "commonMistakes": "Starting too heavy and letting the elbows drop so it turns into a close-grip bench press.",
+      "beginnerModification": "Learn the path with an empty bar or use the close-grip bench press.",
+      "alternatives": [
+        "Close-Grip Bench Press",
+        "Skullcrusher"
+      ],
+      "whyThisMatters": "It blends a press and an extension so the triceps can be loaded heavily.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Triceps/BBJMPress"
+      }
+    },
+    {
+      "id": "wrist-curl",
+      "name": "Wrist Curl",
+      "muscleGroup": "Arms",
+      "movementPattern": "Curl",
+      "musclesWorked": "Wrist flexors, forearms",
+      "equipment": "Barbell or dumbbells, bench",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit and rest your forearms on your thighs with your palms up and your wrists just past your knees.",
+        "Hold the bar with a narrow underhand grip and let it roll down toward your fingers.",
+        "Close your grip and curl your knuckles up as high as you can.",
+        "Lower slowly and repeat."
+      ],
+      "formCue": "Forearms down, move only the wrists.",
+      "commonMistakes": "Lifting the forearms off the thighs and rushing the reps.",
+      "beginnerModification": "Use a light dumbbell one hand at a time.",
+      "alternatives": [
+        "Reverse Wrist Curl",
+        "Farmer Carry"
+      ],
+      "whyThisMatters": "It builds the inner forearm and grip.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/WristFlexors/BBWristCurl"
+      }
+    },
+    {
+      "id": "reverse-wrist-curl",
+      "name": "Reverse Wrist Curl",
+      "muscleGroup": "Arms",
+      "movementPattern": "Curl",
+      "musclesWorked": "Wrist extensors, forearms",
+      "equipment": "Barbell or dumbbells, bench",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit and rest your forearms on your thighs with your palms down and your wrists just past your knees.",
+        "Hold the bar with an overhand grip.",
+        "Raise your knuckles as high as you can.",
+        "Lower until your knuckles point toward the floor and repeat."
+      ],
+      "formCue": "Knuckles to the ceiling.",
+      "commonMistakes": "Going too heavy and letting the forearms lift off the thighs.",
+      "beginnerModification": "Use a very light dumbbell one hand at a time.",
+      "alternatives": [
+        "Wrist Curl",
+        "Reverse Curl"
+      ],
+      "whyThisMatters": "It trains the back of the forearm, which most pulling work misses.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/WristExtensors/BBReverseWristCurl"
+      }
+    },
+    {
+      "id": "hack-squat",
+      "name": "Hack Squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, adductors",
+      "equipment": "Hack squat machine",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie back on the pad with your shoulders under the shoulder pads and your feet about shoulder-width on the platform.",
+        "Straighten your legs and release the safety handles.",
+        "Lower by bending your knees and hips as deep as you can control with your back on the pad.",
+        "Push through your whole foot until your legs are straight, then re-engage the safeties when done."
+      ],
+      "formCue": "Back on the pad, knees over toes.",
+      "commonMistakes": "Letting the knees cave in and the hips lift off the pad at the bottom.",
+      "beginnerModification": "Shorten the depth and use only the sled weight to start.",
+      "alternatives": [
+        "Leg Press",
+        "Barbell Back Squat"
+      ],
+      "whyThisMatters": "The back support lets you load the quads hard without balance being the limit.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Quadriceps/SLHackSquat"
+      }
+    },
+    {
+      "id": "smith-machine-squat",
+      "name": "Smith Machine Squat",
+      "variationOf": "barbell-back-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, adductors",
+      "equipment": "Smith machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set the bar at upper-chest height and place it across the back of your shoulders.",
+        "Stand with your feet under or slightly in front of the bar and rotate it off the hooks.",
+        "Squat by bending your hips and knees until your thighs are about level with the floor.",
+        "Stand up until your legs are straight and rotate the bar back onto the hooks when done."
+      ],
+      "formCue": "Knees follow the toes.",
+      "commonMistakes": "Placing the feet so far forward that the lower back rounds, and letting the knees cave in.",
+      "beginnerModification": "Squat to a bench set at a comfortable depth.",
+      "alternatives": [
+        "Barbell Back Squat",
+        "Hack Squat"
+      ],
+      "whyThisMatters": "The guided bar lets you take the quads close to failure without a spotter.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Quadriceps/SMSquat"
+      }
+    },
+    {
+      "id": "high-foot-leg-press",
+      "name": "High-Foot Leg Press",
+      "variationOf": "leg-press",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Glutes, quads, hamstrings, adductors",
+      "equipment": "Leg press machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit in the leg press and place your feet shoulder-width on the upper part of the platform.",
+        "Straighten your legs and release the safeties.",
+        "Lower the platform until your hips are deeply bent while your lower back stays on the pad.",
+        "Push through your heels until your legs are nearly straight."
+      ],
+      "formCue": "Hips stay down, drive the heels.",
+      "commonMistakes": "Going so deep that the hips roll off the pad and locking the knees hard at the top.",
+      "beginnerModification": "Reduce the depth and the load until your lower back stays flat.",
+      "alternatives": [
+        "Leg Press",
+        "Hip Thrust"
+      ],
+      "whyThisMatters": "Research suggests foot position changes muscle activity only modestly, with a higher placement shifting some work toward the glutes under heavy loads.",
+      "source": {
+        "name": "International Journal of Environmental Research and Public Health (systematic review of leg press EMG)",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7369968/"
+      }
+    },
+    {
+      "id": "single-leg-leg-press",
+      "name": "Single-Leg Leg Press",
+      "variationOf": "leg-press",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, adductors",
+      "equipment": "Leg press machine",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Sit in the leg press and place one foot in the middle of the platform with the other foot on the floor or held clear.",
+        "Straighten the working leg and release the safeties.",
+        "Lower until your knee is deeply bent while your hips stay square on the seat.",
+        "Push back up until the leg is nearly straight, finish the reps, then switch legs."
+      ],
+      "formCue": "Hips square, knee tracks the toes.",
+      "commonMistakes": "Twisting the hips toward the working leg and loading it like a two-leg press.",
+      "beginnerModification": "Start with less than half of your two-leg weight and a shorter range.",
+      "alternatives": [
+        "Leg Press",
+        "Bulgarian Split Squat"
+      ],
+      "whyThisMatters": "It evens out strength between legs with your back fully supported.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Quadriceps/SLSingleLeg45LegPress"
+      }
+    },
+    {
+      "id": "seated-leg-curl",
+      "name": "Seated Leg Curl",
+      "variationOf": "hamstring-curl",
+      "muscleGroup": "Legs",
+      "movementPattern": "Curl",
+      "musclesWorked": "Hamstrings, calves",
+      "equipment": "Seated leg curl machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit with your back on the pad and your knees lined up with the machine's pivot.",
+        "Rest your lower legs on the roller and lock the thigh pad down.",
+        "Pull the roller down and back by bending your knees as far as you can.",
+        "Return slowly until your legs are straight."
+      ],
+      "formCue": "Hips back, curl the heels under.",
+      "commonMistakes": "Letting the hips slide forward and letting the weight snap back up.",
+      "beginnerModification": "Use a light load and a three-second return.",
+      "alternatives": [
+        "Hamstring Curl",
+        "Lying Leg Curl"
+      ],
+      "whyThisMatters": "Curling with the hips bent trains the hamstrings at a long length.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Hamstrings/LVSeatedLegCurl"
+      }
+    },
+    {
+      "id": "lying-leg-curl",
+      "name": "Lying Leg Curl",
+      "variationOf": "hamstring-curl",
+      "muscleGroup": "Legs",
+      "movementPattern": "Curl",
+      "musclesWorked": "Hamstrings, calves",
+      "equipment": "Lying leg curl machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Lie face down with your knees just off the edge of the bench and the roller above your heels.",
+        "Hold the handles and keep your hips pressed into the pad.",
+        "Curl the roller toward the back of your thighs.",
+        "Lower slowly until your legs are straight."
+      ],
+      "formCue": "Hips down, heels to glutes.",
+      "commonMistakes": "Lifting the hips off the pad and using momentum out of the bottom.",
+      "beginnerModification": "Reduce the load and work one leg at a time.",
+      "alternatives": [
+        "Hamstring Curl",
+        "Seated Leg Curl"
+      ],
+      "whyThisMatters": "It isolates knee flexion, which hinges like the Romanian deadlift do not train.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Hamstrings/LVLyingLegCurlPL"
+      }
+    },
+    {
+      "id": "hip-abduction-machine",
+      "name": "Hip Abduction Machine",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Glute medius, glute minimus, upper glutes",
+      "equipment": "Seated hip abduction machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit with your back on the pad and the outside of your thighs against the pads.",
+        "Hold the handles and sit tall.",
+        "Push your legs apart as far as you comfortably can.",
+        "Bring them back together slowly without letting the stack rest."
+      ],
+      "formCue": "Push the knees out, pause.",
+      "commonMistakes": "Bouncing through short reps and rocking the torso for momentum.",
+      "beginnerModification": "Use a light load and hold the open position for two seconds.",
+      "alternatives": [
+        "Lateral Lunge",
+        "Glute Bridge"
+      ],
+      "whyThisMatters": "It strengthens the side glutes that keep the hips and knees steady.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/HipAbductor/LVSeatedHipAbduction"
+      }
+    },
+    {
+      "id": "hip-adduction-machine",
+      "name": "Hip Adduction Machine",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Adductors, inner thighs",
+      "equipment": "Seated hip adduction machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit with your back on the pad and the inside of your thighs against the pads.",
+        "Set the start position to a stretch you find comfortable.",
+        "Squeeze your legs together until the pads meet.",
+        "Open slowly back to the start."
+      ],
+      "formCue": "Squeeze in, open slow.",
+      "commonMistakes": "Setting the start position too wide and letting the pads fly apart.",
+      "beginnerModification": "Use a narrower start position and a light load.",
+      "alternatives": [
+        "Copenhagen Plank",
+        "Lateral Lunge"
+      ],
+      "whyThisMatters": "It builds the inner thigh directly, which squats only train in part.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/HipAdductors/LVSeatedHipAdduction"
+      }
+    },
+    {
+      "id": "seated-calf-raise",
+      "name": "Seated Calf Raise",
+      "variationOf": "calf-raise",
+      "muscleGroup": "Legs",
+      "movementPattern": "Raise",
+      "musclesWorked": "Soleus, calves",
+      "equipment": "Seated calf raise machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit with the balls of your feet on the platform and your heels hanging off.",
+        "Set the pad on your lower thighs and release the safety.",
+        "Lower your heels until your calves are stretched.",
+        "Raise your heels as high as you can, pause, and repeat."
+      ],
+      "formCue": "Full stretch, full squeeze.",
+      "commonMistakes": "Bouncing at the bottom and doing short half reps.",
+      "beginnerModification": "Use a light load and pause for two seconds at the bottom.",
+      "alternatives": [
+        "Standing Calf Raise",
+        "Donkey Calf Raise"
+      ],
+      "whyThisMatters": "With the knees bent the deeper calf muscle, the soleus, does most of the work.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Soleus/LVSeatedCalfRaise"
+      }
+    },
+    {
+      "id": "donkey-calf-raise",
+      "name": "Donkey Calf Raise",
+      "variationOf": "calf-raise",
+      "muscleGroup": "Legs",
+      "movementPattern": "Raise",
+      "musclesWorked": "Calves, soleus",
+      "equipment": "Donkey calf raise machine",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand with the balls of your feet on the block and your heels hanging off.",
+        "Hinge forward, rest your forearms on the support and set the pad on your lower back and hips.",
+        "Straighten your knees and lower your heels until your calves are stretched.",
+        "Raise your heels as high as you can, then lower slowly."
+      ],
+      "formCue": "Legs straight, heels all the way down.",
+      "commonMistakes": "Bending the knees to help and bouncing out of the stretch.",
+      "beginnerModification": "Do the same hinged position with bodyweight only.",
+      "alternatives": [
+        "Standing Calf Raise",
+        "Seated Calf Raise"
+      ],
+      "whyThisMatters": "The bent-over position puts the calves under a deep stretch.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Gastrocnemius/LVDonkeyCalfRaise"
+      }
+    },
+    {
+      "id": "leg-press-calf-raise",
+      "name": "Leg Press Calf Raise",
+      "variationOf": "calf-raise",
+      "muscleGroup": "Legs",
+      "movementPattern": "Raise",
+      "musclesWorked": "Calves, soleus",
+      "equipment": "Leg press machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit in the leg press and straighten your legs with the safeties still engaged where the machine allows.",
+        "Slide your feet down so only the balls of your feet are on the lower edge of the platform.",
+        "Let your heels sink toward you until your calves are stretched.",
+        "Push the platform away by pointing your toes, then lower slowly."
+      ],
+      "formCue": "Push through the big toe.",
+      "commonMistakes": "Unlocking the safeties with the feet barely on the platform and bending the knees to help.",
+      "beginnerModification": "Keep the safeties engaged and use a light load.",
+      "alternatives": [
+        "Standing Calf Raise",
+        "Seated Calf Raise"
+      ],
+      "whyThisMatters": "It loads the calves heavily with no weight on the spine.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Gastrocnemius/SL45CalfPress"
+      }
+    },
+    {
+      "id": "cable-glute-kickback",
+      "name": "Cable Glute Kickback",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Glutes, hamstrings",
+      "equipment": "Cable station, ankle cuff",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Fasten an ankle cuff to a low pulley and attach it to one ankle.",
+        "Face the machine, hold the frame and lean forward slightly with the working knee bent.",
+        "Drive the leg back by straightening your hip and knee.",
+        "Return slowly, finish the reps, then switch legs."
+      ],
+      "formCue": "Squeeze the glute, keep the back still.",
+      "commonMistakes": "Arching the lower back to get the leg higher and swinging the leg.",
+      "beginnerModification": "Do it with no cable from a hands-and-knees position.",
+      "alternatives": [
+        "Glute Bridge",
+        "Hip Thrust"
+      ],
+      "whyThisMatters": "It trains one glute at a time with steady cable tension.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/GluteusMaximus/CBGluteKickback"
+      }
+    },
+    {
+      "id": "forty-five-degree-hip-extension",
+      "name": "45-Degree Hip Extension",
+      "variationOf": "back-extension",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, adductors, spinal erectors",
+      "equipment": "45-degree back extension bench",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set the pad just below your hip crease so you can bend freely at the hips, and hook your heels under the brace.",
+        "Cross your arms over your chest or hold a plate there.",
+        "Lower by bending only at the hips until you feel a mild stretch in your hamstrings.",
+        "Squeeze your glutes to raise your torso until it is in line with your legs, and stop there."
+      ],
+      "formCue": "Hinge at the hips, finish with the glutes.",
+      "commonMistakes": "Arching past a straight line at the top and bouncing out of the bottom.",
+      "beginnerModification": "Use bodyweight and a shorter range.",
+      "alternatives": [
+        "Back Extension",
+        "Hip Thrust"
+      ],
+      "whyThisMatters": "Moving from the hips instead of the spine puts the work on the glutes and hamstrings.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Hamstrings/WT45HipExtension"
+      }
+    },
+    {
+      "id": "cable-crunch",
+      "name": "Cable Crunch",
+      "muscleGroup": "Core",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Rectus abdominis, obliques",
+      "equipment": "Cable station, rope attachment",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Kneel below a high pulley and hold the rope ends beside your head.",
+        "Keep your hips still and above your knees.",
+        "Curl your ribs toward your hips so your elbows travel toward your thighs.",
+        "Return slowly until your torso is tall again."
+      ],
+      "formCue": "Curl the spine, hips stay put.",
+      "commonMistakes": "Sitting the hips back and pulling with the arms.",
+      "beginnerModification": "Use a light load and learn the curl on the floor first.",
+      "alternatives": [
+        "Sit-Up",
+        "Hanging Knee Raise"
+      ],
+      "whyThisMatters": "It lets you add load to the abs the way you would to any other muscle.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/RectusAbdominis/CBKneelingCrunch"
+      }
+    },
+    {
+      "id": "ab-wheel-rollout",
+      "name": "Ab Wheel Rollout",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abs, hip flexors, lats, shoulders",
+      "equipment": "Ab wheel, mat",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Kneel on a mat and hold the wheel under your shoulders with your arms straight.",
+        "Tuck your ribs down and brace your midsection.",
+        "Roll the wheel forward as far as you can without your lower back sagging.",
+        "Pull the wheel back toward your knees to return."
+      ],
+      "formCue": "Ribs down, do not let the back sag.",
+      "commonMistakes": "Letting the lower back arch and rolling out further than you can control.",
+      "beginnerModification": "Roll toward a wall that stops the wheel at a short distance.",
+      "alternatives": [
+        "Plank",
+        "Hollow Hold"
+      ],
+      "whyThisMatters": "It trains the abs to resist the lower back arching under load.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/HipFlexors/BWKneelingWheelRollout"
+      }
+    },
+    {
+      "id": "decline-sit-up",
+      "name": "Decline Sit-Up",
+      "variationOf": "sit-up",
+      "muscleGroup": "Core",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Rectus abdominis, hip flexors, obliques",
+      "equipment": "Decline bench",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Hook your feet under the pads of a decline bench and sit with your hips bent.",
+        "Cross your arms over your chest or hold a plate there.",
+        "Lower your torso under control until your shoulders reach the bench.",
+        "Curl back up by bending at the waist and hips."
+      ],
+      "formCue": "Control the way down.",
+      "commonMistakes": "Throwing the arms or head forward for momentum and dropping fast.",
+      "beginnerModification": "Lower the bench angle or lower only halfway.",
+      "alternatives": [
+        "Sit-Up",
+        "Cable Crunch"
+      ],
+      "whyThisMatters": "The slope adds range and resistance to a plain sit-up.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/RectusAbdominis/WtInclineSitUp"
+      }
+    }
+  ]
+}

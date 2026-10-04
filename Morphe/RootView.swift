@@ -3574,7 +3574,7 @@ private struct WelcomeExperienceView: View {
             VStack(alignment: .leading, spacing: 16) {
                 kicker("Train")
                 title("Your first workout is ready.")
-                body("Today holds \(store.currentWorkout.name). Open Train to run it set by set, or browse Discover for 190+ ready workouts and your own builder.")
+                body("Today holds \(store.currentWorkout.name). Open Train to run it set by set, or browse Discover for 300+ ready workouts, a 590-exercise technique library, and your own builder.")
                 GlassCard {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(store.currentWorkout.name)

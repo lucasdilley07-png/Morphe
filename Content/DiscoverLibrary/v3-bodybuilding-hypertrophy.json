@@ -1,0 +1,1168 @@
+{
+  "version": 2,
+  "category": "Bodybuilding & Hypertrophy",
+  "workouts": [
+    {
+      "slug": "v3-bb-machine-circuit-full-body",
+      "name": "Machine Circuit — Full Body",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Beginner",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "A simple machine loop for people who want to burn energy while learning the gym floor. Move station to station with short rests and add a round before adding weight.",
+      "exercises": [
+        {
+          "libraryID": "smith-machine-squat",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 55
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "machine-chest-press",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 55
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "seated-machine-row",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 55
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "machine-shoulder-press",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 55
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "seated-leg-curl",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 55
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "cable-crunch",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-cable-density-upper-lower",
+      "name": "Cable Density Session",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Circuit training",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "High-rep cable and machine pairs with short rests to keep the heart rate up while every muscle group gets work. Keep the rest honest and the reps smooth.",
+      "exercises": [
+        {
+          "libraryID": "hack-squat",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 55
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "single-arm-cable-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "low-to-high-cable-fly",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "cable-glute-kickback",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "cable-y-raise",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "cable-rope-hammer-curl",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "tricep-pushdown",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-heavy-push",
+      "name": "Heavy Push — Incline Focus",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Strength training",
+      "level": "Advanced",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "For lifters who want a stronger upper chest and lockout. Add load to the incline press when all sets hit five clean reps.",
+      "exercises": [
+        {
+          "libraryID": "incline-barbell-press",
+          "sets": 5,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "machine-shoulder-press",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "decline-barbell-press",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "jm-press",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "machine-triceps-dip",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 120
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-heavy-pull",
+      "name": "Heavy Pull — Thick Back",
+      "goal": "strengthBuilding",
+      "focus": "Pull",
+      "trainingType": "Strength training",
+      "level": "Advanced",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Heavy rows and a short-range pull to build the upper back and traps. Keep a flat back on every rep and add weight in small steps.",
+      "exercises": [
+        {
+          "libraryID": "rack-pull",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 82
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "t-bar-row",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "reverse-grip-barbell-row",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "close-grip-lat-pulldown",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "ez-bar-curl",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-heavy-legs-machine",
+      "name": "Heavy Legs — Machine Strength",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Heavy leg work with the back supported, for lifters who want strong quads and hamstrings without a barbell on the spine. Progress the hack squat first.",
+      "exercises": [
+        {
+          "libraryID": "hack-squat",
+          "sets": 5,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "high-foot-leg-press",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "lying-leg-curl",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "single-leg-leg-press",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "seated-calf-raise",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-push-day",
+      "name": "Push Day — Chest, Delts, Triceps",
+      "goal": "leanOut",
+      "focus": "Push",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "A classic push session: one heavy press, then angles and isolation. Stop each set one or two reps short of failure and add reps before weight.",
+      "exercises": [
+        {
+          "libraryID": "incline-barbell-press",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "machine-chest-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 68
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "high-to-low-cable-fly",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "machine-shoulder-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 68
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "machine-lateral-raise",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "overhead-cable-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "tricep-kickback",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-pull-day",
+      "name": "Pull Day — Back, Rear Delts, Biceps",
+      "goal": "leanOut",
+      "focus": "Pull",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Width first, thickness second, then rear delts and arms. Use a full stretch at the top of every pulldown and at the bottom of every curl.",
+      "exercises": [
+        {
+          "libraryID": "wide-grip-lat-pulldown",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "t-bar-row",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "machine-pullover",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "single-arm-cable-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "reverse-pec-deck",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "incline-dumbbell-curl",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "cable-rope-hammer-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-leg-day",
+      "name": "Leg Day — Quads, Hamstrings, Calves",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 65,
+      "equipmentProfile": "Full Gym",
+      "notes": "Full lower-body volume built around the hack squat and both leg curl positions. Keep every rep deep and controlled.",
+      "exercises": [
+        {
+          "libraryID": "hack-squat",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 68
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "leg-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "seated-leg-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hip-adduction-machine",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "donkey-calf-raise",
+          "sets": 4,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "cable-crunch",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-upper-body",
+      "name": "Upper Day — Machines and Cables",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "The upper half of an upper/lower split. Pair it with the lower day twice a week each and add a rep per set each week.",
+      "exercises": [
+        {
+          "libraryID": "incline-machine-press",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "neutral-grip-lat-pulldown",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "pec-deck-fly",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "seated-machine-row",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "cable-reverse-fly",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "ez-bar-curl",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 68
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "tricep-pushdown",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-lower-body",
+      "name": "Lower Day — Machines and Cables",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "The lower half of an upper/lower split, with quads, hamstrings, hips and calves all covered. Add load when the top rep target feels smooth.",
+      "exercises": [
+        {
+          "libraryID": "smith-machine-squat",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "high-foot-leg-press",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 68
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "lying-leg-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hip-abduction-machine",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "leg-press-calf-raise",
+          "sets": 4,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "decline-sit-up",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-arm-day",
+      "name": "Arm Day — Biceps, Triceps, Forearms",
+      "goal": "leanOut",
+      "focus": "Pull",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "Direct arm volume for lifters whose arms lag behind their chest and back. Alternate a triceps and a biceps movement and keep the rests short.",
+      "exercises": [
+        {
+          "libraryID": "close-grip-bench-press",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "ez-bar-curl",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 68
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "overhead-cable-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "spider-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "machine-triceps-dip",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "reverse-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "wrist-curl",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "reverse-wrist-curl",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-shoulder-day",
+      "name": "Shoulder Day — All Three Heads",
+      "goal": "leanOut",
+      "focus": "Push",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "One press, then side and rear delt volume from several angles. Light weights and strict form build more shoulder than heavy swinging.",
+      "exercises": [
+        {
+          "libraryID": "machine-shoulder-press",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "machine-lateral-raise",
+          "sets": 4,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 62
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "cable-y-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "reverse-pec-deck",
+          "sets": 4,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "upright-row",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 62
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "face-pull",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-glute-focus",
+      "name": "Glute Focus — Hips and Hamstrings",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Hypertrophy training",
+      "level": "Moderate",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "A glute-first lower session: heavy hip extension, then single-leg and isolation work. Pause at lockout on every rep.",
+      "exercises": [
+        {
+          "libraryID": "hip-thrust",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "high-foot-leg-press",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 68
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "forty-five-degree-hip-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "cable-glute-kickback",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "hip-abduction-machine",
+          "sets": 3,
+          "reps": 20,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 55
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "seated-leg-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 75
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-machine-beginner-day",
+      "name": "Machine-Only Beginner Day",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Hypertrophy training",
+      "level": "Beginner",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "A first full-body routine using only machines, so there is nothing to balance and every seat setting can be written down. Run it three days a week and add a little weight when twelve reps feel easy.",
+      "exercises": [
+        {
+          "libraryID": "leg-press",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 62
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "machine-chest-press",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 62
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "lat-pulldown",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 62
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "machine-shoulder-press",
+          "sets": 2,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "seated-leg-curl",
+          "sets": 2,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "seated-machine-row",
+          "sets": 2,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 62
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hip-adduction-machine",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 55
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-bb-pump-recovery-day",
+      "name": "Recovery Pump Day",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "Very light cable and machine work to move blood through sore muscles between hard sessions. Nothing should burn or grind, and every set ends with plenty in reserve.",
+      "exercises": [
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "pec-deck-fly",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "straight-arm-pulldown",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "machine-lateral-raise",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "lying-leg-curl",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "leg-press-calf-raise",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "chest-doorway-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ]
+}

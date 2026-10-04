@@ -1,0 +1,135 @@
+{
+  "version": 2,
+  "category": "Strongman & Odd-Object",
+  "workouts": [
+    {
+      "slug": "v3-sm-gym-starter",
+      "name": "Gym Strongman Starter",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Strongman circuit",
+      "level": "Beginner",
+      "durationMinutes": 30,
+      "equipmentProfile": "Dumbbells",
+      "notes": "A first strongman session for any gym: dumbbells and one sandbag, no special implements. Pick loads you can carry without leaning, and add distance or time before weight.",
+      "exercises": [
+        { "libraryID": "goblet-squat", "sets": 3, "reps": 10, "intensity": { "type": "rpe", "value": 6 }, "restSeconds": 60 },
+        { "libraryID": "farmer-carry", "sets": 4, "durationSeconds": 30, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 60 },
+        { "libraryID": "sandbag-to-shoulder", "sets": 3, "reps": 8, "intensity": { "type": "rpe", "value": 6 }, "restSeconds": 75 },
+        { "libraryID": "sandbag-bear-hug-carry", "sets": 4, "durationSeconds": 30, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 60 },
+        { "libraryID": "suitcase-carry", "sets": 4, "durationSeconds": 20, "intensity": { "type": "rpe", "value": 6 }, "restSeconds": 45 }
+      ]
+    },
+    {
+      "slug": "v3-sm-carry-and-drag-medley",
+      "name": "Carry and Drag Medley",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Strongman conditioning",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "Moderate loads moved for time with short rests: carries, drags and a sled push. Walk tall on every length and stop a set when posture goes, not when grip does.",
+      "exercises": [
+        { "libraryID": "strongman-farmers-walk", "sets": 4, "durationSeconds": 30, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 60 },
+        { "libraryID": "harness-sled-drag", "sets": 4, "durationSeconds": 30, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 75 },
+        { "libraryID": "sandbag-bear-hug-carry", "sets": 4, "durationSeconds": 30, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 60 },
+        { "libraryID": "backward-sled-drag", "sets": 4, "durationSeconds": 30, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 60 },
+        { "libraryID": "sled-push", "sets": 4, "durationSeconds": 20, "intensity": { "type": "maxEffort" }, "restSeconds": 90 }
+      ]
+    },
+    {
+      "slug": "v3-sm-overhead-day",
+      "name": "Overhead Day: Log and Axle",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Strongman strength",
+      "level": "Advanced",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Heavy pressing with the two main strongman overhead implements. Clean every rep of the first lift, then save the grip and back by pressing the log from the rack.",
+      "exercises": [
+        { "libraryID": "band-pull-apart", "sets": 2, "reps": 15, "intensity": { "type": "rpe", "value": 4 }, "restSeconds": 30 },
+        { "libraryID": "log-clean-and-press", "sets": 5, "reps": 3, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 210 },
+        { "libraryID": "axle-clean-and-press", "sets": 4, "reps": 4, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 180 },
+        { "libraryID": "log-press-from-rack", "sets": 3, "reps": 6, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 150 },
+        { "libraryID": "close-grip-bench-press", "sets": 3, "reps": 6, "intensity": { "type": "percent1RM", "value": 75 }, "restSeconds": 150 },
+        { "libraryID": "overhead-carry", "sets": 3, "durationSeconds": 20, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 90 }
+      ]
+    },
+    {
+      "slug": "v3-sm-moving-day",
+      "name": "Moving Day: Yoke and Farmers",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Strongman strength",
+      "level": "Advanced",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Heavy squats first, then short, heavy runs with the yoke and farmer's handles. Add load only when you can cover the distance without setting the implement down.",
+      "exercises": [
+        { "libraryID": "zercher-squat", "sets": 4, "reps": 5, "intensity": { "type": "percent1RM", "value": 78 }, "restSeconds": 180 },
+        { "libraryID": "yoke-walk", "sets": 5, "durationSeconds": 15, "intensity": { "type": "rpe", "value": 9 }, "restSeconds": 210 },
+        { "libraryID": "strongman-farmers-walk", "sets": 4, "durationSeconds": 15, "intensity": { "type": "rpe", "value": 9 }, "restSeconds": 180 },
+        { "libraryID": "zercher-carry", "sets": 3, "durationSeconds": 20, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 150 },
+        { "libraryID": "back-extension", "sets": 3, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 90 }
+      ]
+    },
+    {
+      "slug": "v3-sm-ground-to-shoulder",
+      "name": "Ground to Shoulder: Stones and Tire",
+      "goal": "strengthBuilding",
+      "focus": "Pull",
+      "trainingType": "Strongman strength",
+      "level": "Advanced",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Deadlifts build the pull, then stones, the tire and the sandbag turn it into loading strength. Keep the reps low and crisp, and swap the stone for a sandbag if your gym has none.",
+      "exercises": [
+        { "libraryID": "conventional-deadlift", "sets": 4, "reps": 4, "intensity": { "type": "percent1RM", "value": 82 }, "restSeconds": 210 },
+        { "libraryID": "atlas-stone-over-bar", "sets": 5, "reps": 3, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 180 },
+        { "libraryID": "atlas-stone-to-shoulder", "sets": 3, "reps": 2, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 180 },
+        { "libraryID": "tire-flip", "sets": 4, "reps": 5, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 150 },
+        { "libraryID": "sandbag-over-bar", "sets": 3, "reps": 5, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 150 }
+      ]
+    },
+    {
+      "slug": "v3-sm-odd-object-volume",
+      "name": "Odd-Object Volume",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Strongman hypertrophy",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "Moderate loads for more reps with shorter rests to build muscle and work capacity together. Use a sandbag in place of the keg or stone wherever you need to.",
+      "exercises": [
+        { "libraryID": "zercher-squat", "sets": 4, "reps": 8, "intensity": { "type": "percent1RM", "value": 68 }, "restSeconds": 90 },
+        { "libraryID": "log-press-from-rack", "sets": 4, "reps": 8, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 90 },
+        { "libraryID": "sandbag-over-bar", "sets": 4, "reps": 8, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 90 },
+        { "libraryID": "atlas-stone-platform-load", "sets": 3, "reps": 6, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 90 },
+        { "libraryID": "keg-carry", "sets": 4, "durationSeconds": 30, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 75 },
+        { "libraryID": "bottoms-up-carry", "sets": 3, "durationSeconds": 20, "intensity": { "type": "rpe", "value": 6 }, "restSeconds": 60 }
+      ]
+    },
+    {
+      "slug": "v3-sm-light-carry-reset",
+      "name": "Light Carry Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Easy carries and stretches for the day after heavy implements. Loads stay light enough to breathe through the nose the whole time.",
+      "exercises": [
+        { "libraryID": "cat-cow", "sets": 2, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 20 },
+        { "libraryID": "suitcase-carry", "sets": 2, "durationSeconds": 30, "intensity": { "type": "rpe", "value": 3 }, "restSeconds": 45 },
+        { "libraryID": "farmer-carry", "sets": 2, "durationSeconds": 40, "intensity": { "type": "rpe", "value": 4 }, "restSeconds": 45 },
+        { "libraryID": "hip-flexor-stretch", "sets": 2, "durationSeconds": 40, "intensity": { "type": "bodyweight" }, "restSeconds": 15 },
+        { "libraryID": "thread-the-needle", "sets": 2, "reps": 8, "intensity": { "type": "bodyweight" }, "restSeconds": 20 },
+        { "libraryID": "childs-pose", "sets": 2, "durationSeconds": 60, "intensity": { "type": "bodyweight" }, "restSeconds": 15 }
+      ]
+    }
+  ]
+}

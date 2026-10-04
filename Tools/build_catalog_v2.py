@@ -23,6 +23,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 CONTENT = REPO / "Content" / "DiscoverLibrary"
+EXERCISES = REPO / "Content" / "ExerciseLibrary"
 SERVICES = REPO / "Morphe" / "Core" / "MorpheServices.swift"
 OUTPUT = REPO / "Morphe" / "Resources" / "MorpheCatalog.json"
 NAMESPACE = uuid.UUID("8f4d9a2e-1b3c-4e5f-9a7b-6c8d0e2f4a1b")
@@ -45,6 +46,26 @@ def main() -> int:
     if not known:
         print("error: no exercises extracted from MorpheServices.swift")
         return 1
+
+    # Technique Library (v3): data-authored exercises, one file per
+    # discipline. Run Tools/validate_exercise_library.py first.
+    library_docs = []
+    for f in sorted(EXERCISES.glob("*.json")):
+        data = json.loads(f.read_text())
+        for ex in data["exercises"]:
+            if ex["id"] in known:
+                print(f"error: duplicate exercise id {ex['id']} ({f.name})")
+                return 1
+            known.add(ex["id"])
+            doc = {"id": ex["id"], "name": ex["name"], "discipline": data["discipline"]}
+            if ex.get("variationOf"):
+                doc["variationOf"] = ex["variationOf"]
+            for key in ("muscleGroup", "movementPattern", "musclesWorked", "equipment",
+                        "difficulty", "instructions", "formCue", "commonMistakes",
+                        "beginnerModification", "alternatives", "whyThisMatters"):
+                doc[key] = ex[key]
+            doc["source"] = {"name": ex["source"]["name"], "url": ex["source"]["url"]}
+            library_docs.append(doc)
 
     workouts, errors, slugs = [], [], set()
     files = sorted(CONTENT.glob("*.json"))
@@ -91,8 +112,9 @@ def main() -> int:
             print("  -", e)
         return 1
 
-    OUTPUT.write_text(json.dumps({"version": 2, "workouts": workouts},
+    OUTPUT.write_text(json.dumps({"version": 2, "workouts": workouts, "exercises": library_docs},
                                  indent=2, ensure_ascii=False) + "\n")
+    print(f"wrote {len(library_docs)} library exercises")
     cats = {}
     for w in workouts:
         cats[w["category"]] = cats.get(w["category"], 0) + 1

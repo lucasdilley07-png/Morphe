@@ -1,0 +1,711 @@
+{
+  "discipline": "Recovery & Longevity",
+  "exercises": [
+    {
+      "id": "foam-roll-calves",
+      "name": "Foam Roll Calves",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Gastrocnemius, soleus",
+      "equipment": "Foam roller",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Sit on the floor with the roller under one calf and your hands behind you.",
+        "Lift your hips slightly so your weight rests on the roller.",
+        "Roll slowly from just below the knee toward the ankle, pausing on tender spots.",
+        "Work for one to two minutes, then switch legs."
+      ],
+      "formCue": "Slow and steady. Breathe on the tender spots.",
+      "commonMistakes": "Rolling fast back and forth, or pressing so hard you tense up.",
+      "beginnerModification": "Keep your hips on the floor and both feet relaxed to reduce the pressure.",
+      "alternatives": [
+        "Standing Calf Stretch",
+        "Foam Roll Quads"
+      ],
+      "whyThisMatters": "A couple of minutes of slow rolling can ease the feeling of tight calves before or after training.",
+      "source": {
+        "name": "NASM Exercise Library",
+        "url": "https://www.nasm.org/resource-center/exercise-library/foam-roll-calves"
+      }
+    },
+    {
+      "id": "foam-roll-quads",
+      "name": "Foam Roll Quads",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Quadriceps",
+      "equipment": "Foam roller",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Lie face down on your forearms with the roller under the front of one thigh.",
+        "Keep your trunk braced so your lower back does not sag.",
+        "Roll slowly between the top of the knee and the hip crease.",
+        "Stop on a tender spot for 30 to 45 seconds, then move on and switch legs."
+      ],
+      "formCue": "Firm but tolerable. Never sharp.",
+      "commonMistakes": "Rolling over the kneecap, or holding your breath against the pressure.",
+      "beginnerModification": "Roll both thighs at once to spread your weight.",
+      "alternatives": [
+        "Standing Quad Stretch",
+        "Foam Roll Calves"
+      ],
+      "whyThisMatters": "It is a simple way to ease stiff quads around training.",
+      "source": {
+        "name": "NASM, Foam Rolling and Self-Myofascial Release: The Trainer's Application Guide",
+        "url": "https://www.nasm.org/resource-center/blog/recovery/foam-rolling-and-self-myofascial-release-the-trainer-application-guide"
+      }
+    },
+    {
+      "id": "foam-roll-outer-thigh",
+      "name": "Foam Roll Outer Thigh",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Outer quadriceps, tensor fasciae latae",
+      "equipment": "Foam roller",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Lie on your side with the roller under the outer thigh, just below the hip.",
+        "Cross the top leg over and place that foot on the floor to take some weight.",
+        "Roll slowly along the outer thigh, stopping above the knee.",
+        "Keep the pressure moderate, pause briefly on tender areas, then switch sides."
+      ],
+      "formCue": "Use the top foot to take weight off.",
+      "commonMistakes": "Grinding hard on the side of the knee or the hip bone.",
+      "beginnerModification": "Put more weight through the supporting foot and hand, or use a softer roller.",
+      "alternatives": [
+        "Figure-Four Stretch",
+        "Foam Roll Glutes"
+      ],
+      "whyThisMatters": "Gentle work on the muscles of the outer thigh can make the hip and knee feel freer.",
+      "source": {
+        "name": "NASM, Foam Rolling and Self-Myofascial Release: The Trainer's Application Guide",
+        "url": "https://www.nasm.org/resource-center/blog/recovery/foam-rolling-and-self-myofascial-release-the-trainer-application-guide"
+      }
+    },
+    {
+      "id": "foam-roll-glutes",
+      "name": "Foam Roll Glutes",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Gluteals, piriformis",
+      "equipment": "Foam roller or massage ball",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Sit on the roller with your hands on the floor behind you.",
+        "Cross one ankle over the opposite knee and lean toward the hip of the crossed leg.",
+        "Roll slowly over the back of that hip to find a tender spot.",
+        "Hold there for 30 to 45 seconds while breathing normally, then switch sides."
+      ],
+      "formCue": "Lean in, find the spot, breathe.",
+      "commonMistakes": "Rolling quickly, or pressing into pain that shoots down the leg.",
+      "beginnerModification": "Keep both feet on the floor and do not cross the leg.",
+      "alternatives": [
+        "Figure-Four Stretch",
+        "Pigeon Pose"
+      ],
+      "whyThisMatters": "It gives the back of the hip some relief after long sitting or heavy leg work.",
+      "source": {
+        "name": "NASM, Foam Rolling and Self-Myofascial Release: The Trainer's Application Guide",
+        "url": "https://www.nasm.org/resource-center/blog/recovery/foam-rolling-and-self-myofascial-release-the-trainer-application-guide"
+      }
+    },
+    {
+      "id": "foam-roll-upper-back",
+      "name": "Foam Roll Upper Back",
+      "muscleGroup": "Back",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Thoracic spine muscles, rhomboids, mid traps",
+      "equipment": "Foam roller",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Lie on your back with the roller across your mid back, knees bent and feet flat.",
+        "Support your head with your hands and lift your hips slightly.",
+        "Use your feet to roll slowly between the bottom of the shoulder blades and the top of the shoulders.",
+        "Pause at a stiff segment and gently ease back over the roller as you breathe out."
+      ],
+      "formCue": "Ribs down, roll the upper back only.",
+      "commonMistakes": "Rolling onto the lower back or neck, or flaring the ribs to force the arch.",
+      "beginnerModification": "Keep your hips on the floor and just lean back over the roller without rolling.",
+      "alternatives": [
+        "Thread the Needle",
+        "Cat-Cow"
+      ],
+      "whyThisMatters": "It is a useful reset for an upper back that has been bent over a desk.",
+      "source": {
+        "name": "NASM, Foam Rolling and Self-Myofascial Release: The Trainer's Application Guide",
+        "url": "https://www.nasm.org/resource-center/blog/recovery/foam-rolling-and-self-myofascial-release-the-trainer-application-guide"
+      }
+    },
+    {
+      "id": "foam-roll-lats",
+      "name": "Foam Roll Lats",
+      "muscleGroup": "Back",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Latissimus dorsi",
+      "equipment": "Foam roller",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Lie on your side with the roller just below your armpit and the bottom arm reaching overhead.",
+        "Use your top hand and feet on the floor for support.",
+        "Roll slowly from the armpit toward the lower ribs.",
+        "Pause on tight spots, work for one to two minutes, then switch sides."
+      ],
+      "formCue": "Thumb up, roll slow.",
+      "commonMistakes": "Too much pressure, or rolling onto the ribs at the front.",
+      "beginnerModification": "Do it standing with the roller or a ball against a wall.",
+      "alternatives": [
+        "Child's Pose",
+        "Foam Roll Upper Back"
+      ],
+      "whyThisMatters": "Easing the lats can make reaching overhead feel smoother.",
+      "source": {
+        "name": "NASM Exercise Library",
+        "url": "https://www.nasm.org/resource-center/exercise-library/foam-roll-latissimus-dorsi"
+      }
+    },
+    {
+      "id": "foam-roll-adductors",
+      "name": "Foam Roll Adductors",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Adductors (inner thigh)",
+      "equipment": "Foam roller",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Lie face down on your forearms with one knee bent out to the side.",
+        "Place the roller under the inner thigh of that leg, at a right angle to it.",
+        "Roll slowly between the groin and the inside of the knee.",
+        "Pause on tender spots, work for one to two minutes, then switch legs."
+      ],
+      "formCue": "Small, slow passes.",
+      "commonMistakes": "Rolling too fast or pressing right into the groin crease.",
+      "beginnerModification": "Take more weight on your forearms and the other leg.",
+      "alternatives": [
+        "Lateral Lunge",
+        "Foam Roll Quads"
+      ],
+      "whyThisMatters": "The inner thigh is easy to forget and often feels tight after squats and side-to-side work.",
+      "source": {
+        "name": "NASM Exercise Library",
+        "url": "https://www.nasm.org/resource-center/exercise-library/foam-roll-adductors"
+      }
+    },
+    {
+      "id": "diaphragmatic-breathing",
+      "name": "Diaphragmatic Breathing",
+      "muscleGroup": "Core",
+      "movementPattern": "Breathing",
+      "musclesWorked": "Diaphragm, deep abdominals",
+      "equipment": "None (mat optional)",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Lie on your back with knees bent and your head supported.",
+        "Rest one hand on your upper chest and the other just below your ribs.",
+        "Breathe in slowly through your nose so the lower hand rises while the chest hand stays still.",
+        "Breathe out slowly through pursed lips as your belly falls, and repeat for a few minutes."
+      ],
+      "formCue": "Belly rises, chest stays quiet.",
+      "commonMistakes": "Lifting the chest and shoulders, or forcing big breaths.",
+      "beginnerModification": "Practise for one minute at a time and build up.",
+      "alternatives": [
+        "Box Breathing",
+        "Child's Pose"
+      ],
+      "whyThisMatters": "Slow belly breathing is a simple way to bring effort and heart rate down after training.",
+      "source": {
+        "name": "Cleveland Clinic, Diaphragmatic Breathing",
+        "url": "https://my.clevelandclinic.org/health/articles/9445-diaphragmatic-breathing"
+      }
+    },
+    {
+      "id": "box-breathing",
+      "name": "Box Breathing",
+      "muscleGroup": "Core",
+      "movementPattern": "Breathing",
+      "musclesWorked": "Diaphragm, deep abdominals",
+      "equipment": "None",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Sit or lie comfortably and breathe all the way out.",
+        "Breathe in through your nose for a count of four.",
+        "Hold gently for a count of four.",
+        "Breathe out for a count of four, hold for four, and repeat for three or four rounds."
+      ],
+      "formCue": "Four in, four hold, four out, four hold.",
+      "commonMistakes": "Straining on the holds or counting too slowly for comfort.",
+      "beginnerModification": "Use a count of three, or skip the holds.",
+      "alternatives": [
+        "Diaphragmatic Breathing",
+        "Child's Pose"
+      ],
+      "whyThisMatters": "An even counted breath gives the mind one simple thing to follow while the body settles.",
+      "source": {
+        "name": "Cleveland Clinic, Box Breathing",
+        "url": "https://health.clevelandclinic.org/box-breathing-benefits"
+      }
+    },
+    {
+      "id": "band-external-rotation",
+      "name": "Band External Rotation",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Infraspinatus, teres minor, rear deltoid",
+      "equipment": "Light resistance band",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Anchor a light band at elbow height and stand side-on to it.",
+        "Hold the band in the far hand with the elbow bent to 90 degrees and tucked to your side.",
+        "Rotate the forearm outward, keeping the elbow against your ribs.",
+        "Pause, then return slowly to the start."
+      ],
+      "formCue": "Elbow glued to the ribs.",
+      "commonMistakes": "Letting the elbow drift away from the body, or using a band that is too heavy.",
+      "beginnerModification": "Do it without a band, or lying on your side with a very light weight.",
+      "alternatives": [
+        "Face Pull",
+        "Band Pull-Apart"
+      ],
+      "whyThisMatters": "It strengthens the small rotator cuff muscles that keep the shoulder steady.",
+      "source": {
+        "name": "AAOS OrthoInfo, Rotator Cuff and Shoulder Conditioning Program",
+        "url": "https://www.orthoinfo.org/en/recovery/rotator-cuff-and-shoulder-conditioning-program/"
+      }
+    },
+    {
+      "id": "shoulder-pendulum",
+      "name": "Shoulder Pendulum",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Shoulder joint, rotator cuff (relaxed)",
+      "equipment": "Table or chair for support",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Lean forward with one hand resting on a table.",
+        "Let the other arm hang straight down and relaxed.",
+        "Gently swing the arm forward and back, then side to side.",
+        "Finish with small circles in each direction, then switch arms."
+      ],
+      "formCue": "Let the arm hang heavy.",
+      "commonMistakes": "Rounding the back or using shoulder muscles to drive a big swing.",
+      "beginnerModification": "Make the swings smaller.",
+      "alternatives": [
+        "Arm Swings & Circles",
+        "Cross-Body Shoulder Stretch"
+      ],
+      "whyThisMatters": "It is a gentle way to move the shoulder without loading it.",
+      "source": {
+        "name": "AAOS OrthoInfo, Rotator Cuff and Shoulder Conditioning Program",
+        "url": "https://www.orthoinfo.org/en/recovery/rotator-cuff-and-shoulder-conditioning-program/"
+      }
+    },
+    {
+      "id": "single-leg-stand",
+      "name": "Single-Leg Stand",
+      "muscleGroup": "Legs",
+      "movementPattern": "Balance",
+      "musclesWorked": "Glutes, hip stabilisers, ankle stabilisers",
+      "equipment": "Wall or sturdy chair",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand facing a wall with your fingertips resting on it.",
+        "Lift one foot off the floor, keeping your hips level.",
+        "Keep a slight bend in the standing knee and hold for 5 to 10 seconds.",
+        "Lower the foot and repeat on the other side."
+      ],
+      "formCue": "Hips level, soft knee, eyes forward.",
+      "commonMistakes": "Leaning the trunk to the side or locking the standing knee.",
+      "beginnerModification": "Keep the toes of the lifted foot resting lightly on the floor.",
+      "alternatives": [
+        "Tandem Stance",
+        "Warrior Three"
+      ],
+      "whyThisMatters": "Standing steady on one leg is the base of walking, stairs and catching yourself from a trip.",
+      "source": {
+        "name": "NHS, Balance exercises",
+        "url": "https://www.nhs.uk/live-well/exercise/balance-exercises/"
+      }
+    },
+    {
+      "id": "tandem-stance",
+      "name": "Tandem Stance",
+      "muscleGroup": "Legs",
+      "movementPattern": "Balance",
+      "musclesWorked": "Hip stabilisers, ankle stabilisers, core",
+      "equipment": "Wall or sturdy support",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand tall beside a support.",
+        "Place one foot directly in front of the other so the heel touches the toes.",
+        "Look ahead and hold the position for 10 seconds.",
+        "Switch the front foot and repeat."
+      ],
+      "formCue": "Feet on a tightrope, eyes up.",
+      "commonMistakes": "Looking down at the feet or gripping the support hard.",
+      "beginnerModification": "Leave a small gap between the feet, or stand with them slightly offset.",
+      "alternatives": [
+        "Single-Leg Stand",
+        "Heel-to-Toe Walk"
+      ],
+      "whyThisMatters": "A narrow stance trains side-to-side steadiness with very little risk.",
+      "source": {
+        "name": "Otago Exercise Programme (Royal Orthopaedic Hospital NHS)",
+        "url": "https://roh.nhs.uk/services-information/therapy/otago-strength-and-balance-exercises"
+      }
+    },
+    {
+      "id": "heel-to-toe-walk",
+      "name": "Heel-to-Toe Walk",
+      "muscleGroup": "Legs",
+      "movementPattern": "Balance",
+      "musclesWorked": "Hip stabilisers, ankle stabilisers, core",
+      "equipment": "Wall or rail nearby",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand tall next to a wall.",
+        "Place one heel on the floor directly in front of the toes of the other foot.",
+        "Step the back foot through and place it heel to toe in front.",
+        "Keep looking forward and take at least five steps."
+      ],
+      "formCue": "Look ahead, not at your feet.",
+      "commonMistakes": "Rushing the steps or stepping wide to stay balanced.",
+      "beginnerModification": "Run your fingers along the wall as you walk.",
+      "alternatives": [
+        "Tandem Stance",
+        "Sideways Walk"
+      ],
+      "whyThisMatters": "It trains the narrow-base balance needed for steady walking.",
+      "source": {
+        "name": "NHS, Balance exercises",
+        "url": "https://www.nhs.uk/live-well/exercise/balance-exercises/"
+      }
+    },
+    {
+      "id": "sideways-walk",
+      "name": "Sideways Walk",
+      "muscleGroup": "Legs",
+      "movementPattern": "Balance",
+      "musclesWorked": "Hip abductors, glutes, quads",
+      "equipment": "None",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand with feet together and knees slightly bent.",
+        "Step one foot out to the side in a slow, controlled way.",
+        "Bring the other foot in to join it without dropping your hips.",
+        "Take 10 steps one way, then 10 steps back."
+      ],
+      "formCue": "Slow steps, level hips.",
+      "commonMistakes": "Swaying the trunk or letting the feet turn out.",
+      "beginnerModification": "Do it facing a kitchen counter with your hands resting on it.",
+      "alternatives": [
+        "Lateral Shuffle",
+        "Heel-to-Toe Walk"
+      ],
+      "whyThisMatters": "Controlled side steps strengthen the hips that keep you steady when you move sideways.",
+      "source": {
+        "name": "NHS, Balance exercises",
+        "url": "https://www.nhs.uk/live-well/exercise/balance-exercises/"
+      }
+    },
+    {
+      "id": "sit-to-stand",
+      "name": "Sit-to-Stand",
+      "variationOf": "bodyweight-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes",
+      "equipment": "Sturdy chair",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Sit toward the front of a chair with feet hip-width apart.",
+        "Lean slightly forward, looking straight ahead.",
+        "Stand up slowly using your legs rather than your arms.",
+        "Stand fully upright, then sit back down slowly."
+      ],
+      "formCue": "Nose over toes, then stand.",
+      "commonMistakes": "Dropping back into the chair or pushing mostly with the hands.",
+      "beginnerModification": "Use a higher seat or push lightly on the armrests.",
+      "alternatives": [
+        "Bodyweight Squat",
+        "Wall Sit"
+      ],
+      "whyThisMatters": "Getting out of a chair without help is a basic test of leg strength for daily life.",
+      "source": {
+        "name": "NHS, Strength exercises",
+        "url": "https://www.nhs.uk/live-well/exercise/strength-exercises"
+      }
+    },
+    {
+      "id": "supported-mini-squat",
+      "name": "Supported Mini Squat",
+      "variationOf": "bodyweight-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes",
+      "equipment": "Sturdy chair or counter",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand behind a chair with your hands resting on it and feet hip-width apart.",
+        "Bend your knees a comfortable amount, keeping them over your toes.",
+        "Keep your back straight and heels down.",
+        "Stand back up by squeezing your buttocks, and repeat."
+      ],
+      "formCue": "Small bend, knees over toes.",
+      "commonMistakes": "Leaning forward onto the chair or letting the knees fall inward.",
+      "beginnerModification": "Bend only a few centimetres.",
+      "alternatives": [
+        "Sit-to-Stand",
+        "Bodyweight Squat"
+      ],
+      "whyThisMatters": "A short-range squat builds leg strength with support close at hand.",
+      "source": {
+        "name": "NHS, Strength exercises",
+        "url": "https://www.nhs.uk/live-well/exercise/strength-exercises"
+      }
+    },
+    {
+      "id": "supported-heel-raise",
+      "name": "Supported Heel Raise",
+      "variationOf": "calf-raise",
+      "muscleGroup": "Legs",
+      "movementPattern": "Raise",
+      "musclesWorked": "Calves",
+      "equipment": "Sturdy chair or counter",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand tall with your hands resting on the back of a chair.",
+        "Lift both heels off the floor as far as is comfortable.",
+        "Move slowly and stay upright without leaning forward.",
+        "Lower the heels with control and repeat."
+      ],
+      "formCue": "Rise slow, lower slower.",
+      "commonMistakes": "Bouncing, or rolling out onto the outer edges of the feet.",
+      "beginnerModification": "Do it seated, lifting the heels one at a time.",
+      "alternatives": [
+        "Standing Calf Raise",
+        "Standing Toe Raise"
+      ],
+      "whyThisMatters": "Strong calves help with walking, stairs and balance.",
+      "source": {
+        "name": "NHS, Strength exercises",
+        "url": "https://www.nhs.uk/live-well/exercise/strength-exercises"
+      }
+    },
+    {
+      "id": "low-step-up",
+      "name": "Low Step-Up",
+      "variationOf": "step-up",
+      "muscleGroup": "Legs",
+      "movementPattern": "Split stance",
+      "musclesWorked": "Quads, glutes",
+      "equipment": "Low step with a rail or wall",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand facing a low step with a hand on a rail or wall.",
+        "Step up with one foot and place the whole foot on the step.",
+        "Bring the other foot up to join it.",
+        "Step back down slowly, one foot at a time, and repeat leading with the other leg."
+      ],
+      "formCue": "Whole foot on the step. Slow on the way down.",
+      "commonMistakes": "Pulling up with the arm or dropping down quickly.",
+      "beginnerModification": "Use a lower step and keep a firm hold of the rail.",
+      "alternatives": [
+        "Step-Up",
+        "Sit-to-Stand"
+      ],
+      "whyThisMatters": "It practises stair climbing in a controlled way.",
+      "source": {
+        "name": "NHS, Balance exercises",
+        "url": "https://www.nhs.uk/live-well/exercise/balance-exercises/"
+      }
+    },
+    {
+      "id": "marching-in-place",
+      "name": "Marching in Place",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Hip flexors, quads, calves, shoulders",
+      "equipment": "None",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand tall with elbows bent and hands relaxed.",
+        "March on the spot, lifting each knee to a comfortable height.",
+        "Swing your arms in time with your steps.",
+        "Add a few steps forward and back as you keep the rhythm."
+      ],
+      "formCue": "Tall posture, steady rhythm.",
+      "commonMistakes": "Stamping the feet or slouching.",
+      "beginnerModification": "Hold a support and lift the knees only a little.",
+      "alternatives": [
+        "High Knees",
+        "Treadmill Walk"
+      ],
+      "whyThisMatters": "A few minutes of marching raises body temperature gently before exercise.",
+      "source": {
+        "name": "NHS, How to warm up before exercising",
+        "url": "https://www.nhs.uk/live-well/exercise/how-to-warm-up-before-exercising/"
+      }
+    },
+    {
+      "id": "neck-rotation",
+      "name": "Neck Rotation",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Neck rotators, upper trapezius",
+      "equipment": "Chair",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Sit upright with your shoulders relaxed and down.",
+        "Turn your head slowly toward one shoulder as far as is comfortable.",
+        "Hold for a few seconds and return to the centre.",
+        "Repeat to the other side, three times each way."
+      ],
+      "formCue": "Turn, do not tilt.",
+      "commonMistakes": "Forcing the range or letting the shoulders turn with the head.",
+      "beginnerModification": "Turn through a smaller range.",
+      "alternatives": [
+        "Neck Side Stretch",
+        "Neck Isometric Hold"
+      ],
+      "whyThisMatters": "It keeps the neck moving freely, which helps with tasks like checking over your shoulder.",
+      "source": {
+        "name": "NHS, Flexibility exercises",
+        "url": "https://www.nhs.uk/live-well/exercise/flexibility-exercises/"
+      }
+    },
+    {
+      "id": "neck-side-stretch",
+      "name": "Neck Side Stretch",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Static stretch",
+      "musclesWorked": "Upper trapezius, side neck muscles",
+      "equipment": "Chair",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Sit upright and look straight ahead.",
+        "Hold one shoulder down with the opposite hand.",
+        "Slowly tilt your head away from that shoulder until you feel a gentle stretch.",
+        "Hold for a few seconds, return to the centre, and repeat on the other side."
+      ],
+      "formCue": "Ear toward shoulder, shoulder stays down.",
+      "commonMistakes": "Pulling on the head or letting the held shoulder hike up.",
+      "beginnerModification": "Tilt only a little and skip the shoulder hold.",
+      "alternatives": [
+        "Neck Rotation",
+        "Cross-Body Shoulder Stretch"
+      ],
+      "whyThisMatters": "It eases the side of the neck after long periods of sitting.",
+      "source": {
+        "name": "NHS, Flexibility exercises",
+        "url": "https://www.nhs.uk/live-well/exercise/flexibility-exercises/"
+      }
+    },
+    {
+      "id": "standing-toe-raise",
+      "name": "Standing Toe Raise",
+      "muscleGroup": "Legs",
+      "movementPattern": "Raise",
+      "musclesWorked": "Tibialis anterior (shins)",
+      "equipment": "Sturdy support",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand tall holding a support with feet hip-width apart.",
+        "Rock back gently onto your heels and lift the fronts of both feet.",
+        "Keep your knees soft and your hips over your heels.",
+        "Lower the toes slowly and repeat."
+      ],
+      "formCue": "Toes to shins, hips stay stacked.",
+      "commonMistakes": "Sticking the hips back or leaning on the support.",
+      "beginnerModification": "Do it seated, lifting the toes with heels on the floor.",
+      "alternatives": [
+        "Supported Heel Raise",
+        "Heel Walk"
+      ],
+      "whyThisMatters": "Strong shin muscles lift the toes clear of the ground with each step.",
+      "source": {
+        "name": "Otago Exercise Programme (Royal Orthopaedic Hospital NHS)",
+        "url": "https://roh.nhs.uk/services-information/therapy/otago-strength-and-balance-exercises"
+      }
+    },
+    {
+      "id": "heel-walk",
+      "name": "Heel Walk",
+      "muscleGroup": "Legs",
+      "movementPattern": "Balance",
+      "musclesWorked": "Tibialis anterior, ankle stabilisers",
+      "equipment": "Counter or rail nearby",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand tall beside a counter or rail.",
+        "Lift your toes so your weight is on your heels.",
+        "Walk 10 small steps on your heels, looking ahead.",
+        "Lower your feet, turn around, and walk back the same way."
+      ],
+      "formCue": "Toes up, small steps.",
+      "commonMistakes": "Bending forward at the hips or taking long strides.",
+      "beginnerModification": "Keep a hand on the support the whole way.",
+      "alternatives": [
+        "Standing Toe Raise",
+        "Heel-to-Toe Walk"
+      ],
+      "whyThisMatters": "It combines shin strength with balance in a walking pattern.",
+      "source": {
+        "name": "Otago Exercise Programme (Royal Orthopaedic Hospital NHS)",
+        "url": "https://roh.nhs.uk/services-information/therapy/otago-strength-and-balance-exercises"
+      }
+    },
+    {
+      "id": "ankle-alphabet",
+      "name": "Ankle Alphabet",
+      "muscleGroup": "Legs",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Ankle joint, calf and shin muscles",
+      "equipment": "Chair",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Sit on a chair or bench high enough that one foot can hang free.",
+        "Lead with the big toe and trace the letters of the alphabet in the air.",
+        "Keep the movement small and coming from the ankle, not the knee or hip.",
+        "Finish the alphabet, then switch feet."
+      ],
+      "formCue": "Draw with the big toe. Shin stays still.",
+      "commonMistakes": "Moving the whole leg instead of the ankle.",
+      "beginnerModification": "Trace half the alphabet, or just point and pull the foot ten times.",
+      "alternatives": [
+        "Standing Calf Stretch",
+        "Standing Toe Raise"
+      ],
+      "whyThisMatters": "It takes the ankle through every direction it moves, which helps keep it mobile.",
+      "source": {
+        "name": "AAOS OrthoInfo, Foot and Ankle Conditioning Program",
+        "url": "https://www.orthoinfo.org/en/recovery/foot-and-ankle-conditioning-program/"
+      }
+    },
+    {
+      "id": "foot-arch-roll",
+      "name": "Foot Arch Roll",
+      "muscleGroup": "Legs",
+      "movementPattern": "Accessory",
+      "musclesWorked": "Sole of the foot (plantar muscles)",
+      "equipment": "Golf ball or small massage ball, chair",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Sit on a stable chair with both feet on the floor.",
+        "Place a small ball under the arch of one foot.",
+        "Roll the ball slowly back and forth from heel to ball of the foot for up to two minutes.",
+        "Switch feet."
+      ],
+      "formCue": "Light pressure, slow rolls.",
+      "commonMistakes": "Standing on the ball with full weight.",
+      "beginnerModification": "Use a softer or larger ball.",
+      "alternatives": [
+        "Foam Roll Calves",
+        "Standing Calf Stretch"
+      ],
+      "whyThisMatters": "A short roll under the arch can make the feet feel looser after a long day standing.",
+      "source": {
+        "name": "AAOS OrthoInfo, Foot and Ankle Conditioning Program",
+        "url": "https://www.orthoinfo.org/en/recovery/foot-and-ankle-conditioning-program/"
+      }
+    }
+  ]
+}

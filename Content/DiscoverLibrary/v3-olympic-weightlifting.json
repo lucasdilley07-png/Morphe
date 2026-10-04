@@ -1,0 +1,649 @@
+{
+  "version": 2,
+  "category": "Olympic Weightlifting",
+  "workouts": [
+    {
+      "slug": "v3-oly-barbell-complex-conditioning",
+      "name": "Light Barbell Complex",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Barbell conditioning",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "For lifters who already know the hang positions. Use a light bar you could press for ten, keep every rep crisp, and stop a set when speed drops.",
+      "exercises": [
+        {
+          "libraryID": "pvc-pass-through",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "hang-power-clean",
+          "sets": 5,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 50
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "front-squat",
+          "sets": 5,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 45
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "push-press",
+          "sets": 5,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 55
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "hang-power-snatch",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 50
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "rowing-machine",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-oly-beginner-snatch-technique",
+      "name": "Beginner Snatch Technique",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Olympic weightlifting technique",
+      "level": "Beginner",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "A first snatch session using a PVC pipe and an empty bar. The goal is positions and timing, so add weight only when every rep looks the same.",
+      "exercises": [
+        {
+          "libraryID": "pvc-pass-through",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "pvc-overhead-squat",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "pressing-snatch-balance",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 4
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "muscle-snatch",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 5
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hang-power-snatch",
+          "sets": 5,
+          "reps": 3,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "snatch-deadlift",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-oly-beginner-clean-jerk-technique",
+      "name": "Beginner Clean and Jerk Technique",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Olympic weightlifting technique",
+      "level": "Beginner",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "Teaches the clean from the hang and the jerk from the rack with light loads. Stay light until the elbows are fast and the dip is straight.",
+      "exercises": [
+        {
+          "libraryID": "front-squat",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "muscle-clean",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 5
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hang-power-clean",
+          "sets": 5,
+          "reps": 3,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "clean-deadlift",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "push-press",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "push-jerk",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-oly-snatch-day",
+      "name": "Snatch Day",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Olympic weightlifting",
+      "level": "Advanced",
+      "durationMinutes": 70,
+      "equipmentProfile": "Full Gym",
+      "notes": "A full snatch session for lifters with consistent technique. Work up to the listed sets and add a kilo or two only when no reps are missed.",
+      "exercises": [
+        {
+          "libraryID": "snatch-balance",
+          "sets": 3,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "snatch",
+          "sets": 6,
+          "reps": 2,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 78
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "snatch-pull",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 95
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "overhead-squat",
+          "sets": 3,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "front-squat",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 82
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-oly-clean-and-jerk-day",
+      "name": "Clean and Jerk Day",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Olympic weightlifting",
+      "level": "Advanced",
+      "durationMinutes": 75,
+      "equipmentProfile": "Full Gym",
+      "notes": "Heavy cleans and jerks followed by pulls and squats. Percentages for the pull are based on your best clean.",
+      "exercises": [
+        {
+          "libraryID": "jerk-balance",
+          "sets": 3,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 50
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "clean-and-jerk",
+          "sets": 6,
+          "reps": 1,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "split-jerk",
+          "sets": 4,
+          "reps": 2,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 80
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "clean-pull",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 95
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "barbell-back-squat",
+          "sets": 4,
+          "reps": 4,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 82
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "back-extension",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-oly-power-and-hang-day",
+      "name": "Power and Hang Day",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Olympic weightlifting",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "A lighter, faster day between heavy sessions. Every lift is caught high, so bar speed matters more than load.",
+      "exercises": [
+        {
+          "libraryID": "power-snatch",
+          "sets": 5,
+          "reps": 2,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "power-clean",
+          "sets": 5,
+          "reps": 2,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "power-jerk",
+          "sets": 4,
+          "reps": 2,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "snatch-high-pull",
+          "sets": 3,
+          "reps": 4,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 105
+        },
+        {
+          "libraryID": "jerk-dip-squat",
+          "sets": 3,
+          "reps": 4,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 90
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-oly-positions-and-pulls",
+      "name": "Positions and Pulls",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Olympic weightlifting accessory",
+      "level": "Moderate",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "Moderate loads and more reps to build the legs, back, and shoulders that hold the lifts together. Keep rests tight.",
+      "exercises": [
+        {
+          "libraryID": "hang-clean",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "snatch-push-press",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "clean-pull",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 85
+          },
+          "restSeconds": 105
+        },
+        {
+          "libraryID": "front-squat",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "romanian-deadlift",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 65
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-oly-speed-under-the-bar",
+      "name": "Speed Under the Bar",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Olympic weightlifting technique",
+      "level": "Advanced",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "Drills that take away the pull so the only option is to move fast under the bar. Use light loads and short rests, and stop if the catch gets sloppy.",
+      "exercises": [
+        {
+          "libraryID": "tall-snatch",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "block-snatch",
+          "sets": 4,
+          "reps": 2,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "tall-clean",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "block-clean",
+          "sets": 4,
+          "reps": 2,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "press-in-snatch",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hang-snatch",
+          "sets": 3,
+          "reps": 2,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 68
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-oly-pvc-mobility-reset",
+      "name": "PVC Mobility Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "An easy session with a PVC pipe for rest days. It keeps the overhead and squat positions open without adding fatigue.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "pvc-pass-through",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "wall-slide",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "pvc-overhead-squat",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ]
+}

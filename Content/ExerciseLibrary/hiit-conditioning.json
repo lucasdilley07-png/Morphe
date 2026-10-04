@@ -1,0 +1,427 @@
+{
+  "discipline": "HIIT & Conditioning",
+  "exercises": [
+    {
+      "id": "lateral-cone-jump",
+      "name": "Lateral Cone Jump",
+      "muscleGroup": "Legs",
+      "movementPattern": "Jump",
+      "musclesWorked": "Glutes, quads, calves, hip stabilisers",
+      "equipment": "Low cone or line",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand just beside a low cone with feet hip-width apart, shoulders down and midsection braced.",
+        "Sit the hips back into a short quarter squat with the chest lifted and the back flat.",
+        "Without pausing, jump up and sideways over the cone with both feet leaving and staying level together.",
+        "Land softly on the middle of both feet, let the hips drop back to absorb the landing, then jump back the other way."
+      ],
+      "formCue": "Land quiet, hips back.",
+      "commonMistakes": "Landing stiff-legged with the knees caving in, or rushing reps before each landing is under control.",
+      "beginnerModification": "Hop side to side over a line on the floor and pause to reset between each hop.",
+      "alternatives": [
+        "Skater Jump",
+        "Jump Squat"
+      ],
+      "whyThisMatters": "It trains you to produce and absorb force sideways, which straight-ahead jumping never covers.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/120/lateral-cone-jumps/"
+      }
+    },
+    {
+      "id": "lateral-bound",
+      "name": "Lateral Bound",
+      "variationOf": "skater-jump",
+      "muscleGroup": "Legs",
+      "movementPattern": "Jump",
+      "musclesWorked": "Glutes, hip abductors and adductors, quads, calves",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand with feet close together, knees and hips slightly bent, and lift one foot just off the floor.",
+        "Push off the standing leg and jump as far to the side as you can control.",
+        "Land on the opposite foot with the knee bent and the other foot held off the ground.",
+        "Hold the landing for a moment until you are steady, then bound back the other way."
+      ],
+      "formCue": "Stick the landing before you go again.",
+      "commonMistakes": "Letting the landing knee collapse inward, or bouncing straight out of a landing you never controlled.",
+      "beginnerModification": "Shorten the distance and tap the trailing foot down for balance on each landing.",
+      "alternatives": [
+        "Skater Jump",
+        "Lateral Lunge"
+      ],
+      "whyThisMatters": "Single-leg landings build the hip control that protects knees when you change direction.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/Plyometrics/LateralBound"
+      }
+    },
+    {
+      "id": "battle-rope-alternating-wave",
+      "name": "Battle Rope Alternating Wave",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Shoulders, forearms, upper back, core, legs",
+      "equipment": "Battle rope",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Face the anchor holding one rope end in each hand, feet shoulder-width apart, knees slightly bent and back straight.",
+        "Lean the torso slightly forward from the hips and brace the midsection.",
+        "Raise one hand to about shoulder height while the other drops to waist height, then switch quickly.",
+        "Keep the arms trading places at a steady rhythm so each wave travels the full length of the rope."
+      ],
+      "formCue": "Fast hands, quiet torso.",
+      "commonMistakes": "Standing bolt upright with locked knees, or letting the waves shrink as the arms tire instead of ending the interval.",
+      "beginnerModification": "Step closer to the anchor for more slack, make smaller waves and work in 10 to 15 second bursts.",
+      "alternatives": [
+        "Battle Rope Double Wave",
+        "Jump Rope",
+        "Mountain Climber"
+      ],
+      "whyThisMatters": "It drives the heart rate up hard with almost no impact on the legs.",
+      "source": {
+        "name": "American Council on Exercise (ACE-sponsored research)",
+        "url": "https://www.acefitness.org/continuing-education/certified/november-2019/7397/ace-sponsored-research-muscle-activation-during-battle-rope-exercises/"
+      }
+    },
+    {
+      "id": "battle-rope-double-wave",
+      "name": "Battle Rope Double Wave",
+      "variationOf": "battle-rope-alternating-wave",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Shoulders, lats, core, glutes, quads",
+      "equipment": "Battle rope",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Face the anchor with one rope end in each hand, feet shoulder-width apart, knees soft and back straight.",
+        "Lean slightly forward from the hips and brace the midsection.",
+        "Lift both hands together to about shoulder height, then drive them down to waist height.",
+        "Repeat at a quick, even tempo so both ropes ripple to the anchor side by side."
+      ],
+      "formCue": "Both hands move as one.",
+      "commonMistakes": "Rounding the lower back to chase bigger waves, or shrugging the shoulders up toward the ears.",
+      "beginnerModification": "Use a shorter or thinner rope and keep the waves small and rhythmic.",
+      "alternatives": [
+        "Battle Rope Alternating Wave",
+        "Kettlebell Swing"
+      ],
+      "whyThisMatters": "Moving both arms together loads the trunk and hips more than the alternating version.",
+      "source": {
+        "name": "American Council on Exercise (ACE-sponsored research)",
+        "url": "https://www.acefitness.org/continuing-education/certified/november-2019/7397/ace-sponsored-research-muscle-activation-during-battle-rope-exercises/"
+      }
+    },
+    {
+      "id": "battle-rope-slam",
+      "name": "Battle Rope Slam",
+      "variationOf": "battle-rope-double-wave",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Lats, shoulders, core, glutes, quads",
+      "equipment": "Battle rope",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Face the anchor with a rope end in each hand, feet shoulder-width apart and knees slightly bent.",
+        "Lift both rope ends up to head height or just above, rising tall through the hips.",
+        "Drive both arms down hard and fast so the rope hits the floor in front of you, letting the hips sit back as it lands.",
+        "Stand tall again and repeat with full effort on every rep."
+      ],
+      "formCue": "Tall, then slam it down.",
+      "commonMistakes": "Slamming with the arms only and no hip action, or rounding the back at the bottom of each rep.",
+      "beginnerModification": "Lift the rope only to chest height and slam at about half effort until the rhythm feels natural.",
+      "alternatives": [
+        "Medicine Ball Slam",
+        "Battle Rope Double Wave"
+      ],
+      "whyThisMatters": "A full-body power effort you can repeat at top intensity without a hard landing.",
+      "source": {
+        "name": "American Council on Exercise (ACE-sponsored research)",
+        "url": "https://www.acefitness.org/continuing-education/certified/november-2019/7397/ace-sponsored-research-muscle-activation-during-battle-rope-exercises/"
+      }
+    },
+    {
+      "id": "air-bike-sprint",
+      "name": "Air Bike Sprint",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Quads, glutes, hamstrings, shoulders, arms",
+      "equipment": "Air bike",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the seat so your knee keeps a slight bend at the bottom of the pedal stroke, then pedal easily for a few minutes to warm up.",
+        "Start the interval by pushing and pulling the handles while driving the pedals, building to full effort within a few strokes.",
+        "Hold that effort for the whole interval, usually 10 to 30 seconds, keeping the pedal stroke smooth.",
+        "Spin very lightly through the rest period before the next sprint."
+      ],
+      "formCue": "Push and pull the handles, legs follow.",
+      "commonMistakes": "Going so hard on the first sprint that the remaining rounds collapse, or bouncing in the saddle with a choppy stroke.",
+      "beginnerModification": "Work at a hard but repeatable effort for 15 seconds and rest for 45 seconds.",
+      "alternatives": [
+        "Stationary Bike",
+        "Sprint Intervals",
+        "Rowing Machine"
+      ],
+      "whyThisMatters": "Resistance rises with your effort, so it delivers true sprint work with no impact.",
+      "source": {
+        "name": "Assault Fitness",
+        "url": "https://www.assaultfitness.com/blogs/university/how-to-program-the-assaultbike-in-your-workouts/"
+      }
+    },
+    {
+      "id": "ski-erg-double-pole",
+      "name": "SkiErg Double-Pole",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Lats, triceps, abs, glutes, hamstrings",
+      "equipment": "Ski ergometer",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand facing the machine with feet about shoulder-width apart and take the handles with hands slightly above eye level and elbows bent.",
+        "Start the pull by crunching the trunk forward and driving the handles down, letting the knees bend a comfortable amount.",
+        "Finish with the hands passing beside the thighs and the arms nearly straight.",
+        "Stand back up tall as the arms return along the same narrow path to the start."
+      ],
+      "formCue": "Crunch down, stand up tall.",
+      "commonMistakes": "Dropping into a deep squat on every stroke, or swinging the arms wide on the way back up.",
+      "beginnerModification": "Slow the stroke rate and use a low damper setting while you learn the timing.",
+      "alternatives": [
+        "Rowing Machine",
+        "Battle Rope Slam",
+        "Straight-Arm Pulldown"
+      ],
+      "whyThisMatters": "It trains the pulling muscles and trunk for conditioning while the legs get a break from impact.",
+      "source": {
+        "name": "Concept2",
+        "url": "https://www.concept2.com/blog/skierg-technique"
+      }
+    },
+    {
+      "id": "shuttle-run",
+      "name": "Shuttle Run",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "Open floor with marked lines",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Mark a start line and three or four lines at increasing distances, such as the lines of a basketball court.",
+        "Sprint from the start to the nearest line, touch it with a foot, and sprint back to the start.",
+        "Go straight out to the next line and back, and continue until you have reached the farthest line.",
+        "Walk for 60 to 90 seconds before the next round."
+      ],
+      "formCue": "Sink the hips into every turn.",
+      "commonMistakes": "Standing tall through the turns, or pacing the early lengths so slowly that it stops being a sprint.",
+      "beginnerModification": "Use two lines a short distance apart and run at a strong stride instead of a full sprint.",
+      "alternatives": [
+        "Sprint Intervals",
+        "Pro Agility Shuttle",
+        "Lateral Shuffle"
+      ],
+      "whyThisMatters": "Repeated stops and restarts build conditioning that steady running does not.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/resources/pros/expert-articles/5710/halloween-workout-7-spooky-moves-to-scare-off-weight-gain/"
+      }
+    },
+    {
+      "id": "stair-sprint",
+      "name": "Stair Sprint",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Glutes, quads, calves, hip flexors",
+      "equipment": "Flight of stairs",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Warm up with a few minutes of easy stair walking and light jogging up the steps.",
+        "Run up the flight touching every step, staying on the balls of the feet with the eyes forward.",
+        "Lean slightly forward and pump the arms to drive the knees up.",
+        "Walk back down under control as your recovery, then repeat."
+      ],
+      "formCue": "Eyes up, arms drive.",
+      "commonMistakes": "Running back down the stairs, or staring at the feet and folding at the waist.",
+      "beginnerModification": "Walk briskly up the stairs, or pick a flight that takes about 10 seconds to climb.",
+      "alternatives": [
+        "Hill Sprint",
+        "Step-Up",
+        "Sprint Intervals"
+      ],
+      "whyThisMatters": "Each step is a small single-leg push, so it builds leg power and fitness together.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/resources/everyone/blog/3753/try-this-high-intensity-stair-climbing-workout/"
+      }
+    },
+    {
+      "id": "lateral-stair-run",
+      "name": "Lateral Stair Run",
+      "variationOf": "stair-sprint",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Glutes, hip abductors, quads, calves",
+      "equipment": "Flight of stairs",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand side-on to the bottom of the stairs with knees soft and one hand near the rail.",
+        "Step the top foot up one stair and bring the bottom foot up to join it.",
+        "Keep moving sideways up the flight with quick, light steps and the hips facing the rail.",
+        "Walk down normally, then repeat facing the other way."
+      ],
+      "formCue": "Stay side-on, quick feet.",
+      "commonMistakes": "Crossing the feet before the pattern is learned, or turning the hips to face up the stairs.",
+      "beginnerModification": "Do it at walking speed with a hand on the rail.",
+      "alternatives": [
+        "Lateral Shuffle",
+        "Stair Sprint",
+        "Carioca"
+      ],
+      "whyThisMatters": "It works the outer hips that forward stair running misses.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/resources/everyone/blog/3753/try-this-high-intensity-stair-climbing-workout/"
+      }
+    },
+    {
+      "id": "rotational-jack",
+      "name": "Rotational Jack",
+      "variationOf": "jumping-jack",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, obliques, shoulders",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand tall with feet together and arms by the sides.",
+        "Jump the feet out into a wide squat while turning the trunk and reaching one hand toward the floor and the other toward the ceiling.",
+        "Jump the feet back together and return to standing.",
+        "Repeat, turning and reaching to the other side."
+      ],
+      "formCue": "Sit into the squat, then reach.",
+      "commonMistakes": "Bending from the lower back to touch the floor instead of sitting the hips down.",
+      "beginnerModification": "Step out to the wide squat one foot at a time instead of jumping.",
+      "alternatives": [
+        "Jumping Jack",
+        "Jump Squat"
+      ],
+      "whyThisMatters": "It adds a squat and a twist to the jumping jack, so more muscle works in the same time.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://acefitness.org/education-and-resources/professional/expert-articles/5326/6-exercise-swaps-that-will-kick-up-the-intensity-of-your-workout"
+      }
+    },
+    {
+      "id": "lunge-mountain-climber",
+      "name": "Lunge Mountain Climber",
+      "variationOf": "mountain-climber",
+      "muscleGroup": "Core",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Hip flexors, glutes, shoulders, abs",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Start in a high plank with hands under the shoulders and the body in a straight line.",
+        "Step or jump one foot up to land outside the hand on the same side.",
+        "Switch legs in one movement so the other foot lands outside its hand.",
+        "Keep alternating while the shoulders stay over the wrists."
+      ],
+      "formCue": "Foot to the outside of the hand.",
+      "commonMistakes": "Letting the hips pike up or the shoulders drift behind the hands as the feet switch.",
+      "beginnerModification": "Step each foot forward and back one at a time rather than jumping the switch.",
+      "alternatives": [
+        "Mountain Climber",
+        "World's Greatest Stretch"
+      ],
+      "whyThisMatters": "The longer stride opens the hips while the shoulders and trunk hold the plank.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://acefitness.org/education-and-resources/professional/expert-articles/5326/6-exercise-swaps-that-will-kick-up-the-intensity-of-your-workout"
+      }
+    },
+    {
+      "id": "plank-knee-drive",
+      "name": "Plank Knee Drive",
+      "variationOf": "mountain-climber",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abs, hip flexors, shoulders",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set up in a high plank with hands under the shoulders and feet about hip-width apart.",
+        "Draw one knee toward the chest without letting the hips rise.",
+        "Return the foot to the floor and set the plank again.",
+        "Repeat with the other knee and keep alternating at a controlled pace."
+      ],
+      "formCue": "Hips level, knee to chest.",
+      "commonMistakes": "Bouncing the hips up and down, or rushing until the plank position falls apart.",
+      "beginnerModification": "Place the hands on a bench or step to take load off the shoulders.",
+      "alternatives": [
+        "Mountain Climber",
+        "Plank",
+        "Dead Bug"
+      ],
+      "whyThisMatters": "It teaches the plank position under movement before you add speed.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/resources/pros/expert-articles/5880/a-basic-high-intensity-interval-training-routine-for-beginning-exercisers/"
+      }
+    },
+    {
+      "id": "reverse-lunge-power-knee",
+      "name": "Reverse Lunge Power Knee",
+      "variationOf": "reverse-lunge",
+      "muscleGroup": "Legs",
+      "movementPattern": "Split stance",
+      "musclesWorked": "Glutes, quads, hip flexors, core",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand tall with feet hip-width apart.",
+        "Step one foot back and lower into a lunge with the front foot flat.",
+        "Push through the front foot and drive the back knee forward and up to hip height as you stand.",
+        "Step the same leg straight back into the next rep, and finish all reps before switching sides."
+      ],
+      "formCue": "Drive the knee, stand tall.",
+      "commonMistakes": "Pushing off the back foot instead of the front leg, or leaning the trunk back as the knee comes up.",
+      "beginnerModification": "Pause with both feet together between the lunge and the knee lift.",
+      "alternatives": [
+        "Reverse Lunge",
+        "High Knees",
+        "Step-Up"
+      ],
+      "whyThisMatters": "It joins a strength move to a fast knee drive, which trains the legs the way running uses them.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://acefitness.org/education-and-resources/professional/expert-articles/7378/hiit-in-the-park-with-tabata"
+      }
+    },
+    {
+      "id": "kneeling-ball-slam",
+      "name": "Kneeling Ball Slam",
+      "variationOf": "medicine-ball-slam",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Lats, abs, shoulders, triceps",
+      "equipment": "Slam ball",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Kneel tall on a mat with the knees hip-width apart and hold a slam ball in both hands.",
+        "Reach the ball overhead with arms long and hips fully extended.",
+        "Throw the hips back toward the heels and slam the ball into the floor in front of the knees.",
+        "Collect the ball and rise back to tall kneeling for the next rep."
+      ],
+      "formCue": "Hips back as the ball goes down.",
+      "commonMistakes": "Slamming with the arms alone, or arching the lower back when reaching overhead.",
+      "beginnerModification": "Use a lighter ball and slow the tempo, resetting fully between reps.",
+      "alternatives": [
+        "Medicine Ball Slam",
+        "Battle Rope Slam"
+      ],
+      "whyThisMatters": "Taking the legs out teaches the hip and trunk action of the slam before you stand up.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/resources/everyone/blog/3801/heavy-slam-ball-workout/"
+      }
+    }
+  ]
+}

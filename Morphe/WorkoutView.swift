@@ -1098,6 +1098,253 @@ struct WorkoutView: View {
     }
 }
 
+// MARK: - Technique Library (2026-10-04)
+
+/// One exercise row: name, what it trains, what it needs.
+struct TechniqueRow: View {
+    let exercise: ExerciseReference
+    /// The base movement's name when this entry is a variation of one.
+    let baseName: String?
+    let onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(exercise.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .multilineTextAlignment(.leading)
+                    Text("\(exercise.musclesWorked) · \(exercise.equipment)")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    if let baseName {
+                        Text("Variation of \(baseName)")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+                Spacer(minLength: 8)
+                Text(exercise.difficulty.rawValue.uppercased())
+                    .font(MorpheTheme.microLabel(10))
+                    .tracking(1.2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panelStrong)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(MorpheTheme.strokeSubtle, lineWidth: 1)
+                    )
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens the form guide")
+    }
+}
+
+/// The whole exercise library, browsable: search, then narrow by training
+/// style and by body area. Every row opens the same form guide the session
+/// screen uses.
+struct TechniqueLibraryView: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var style: String?
+    @State private var muscle: MuscleGroup?
+
+    /// The style an entry belongs to: its own discipline, or — for the
+    /// original entries, which carry none — the catalog category that
+    /// programs it most.
+    static func styleIndex(
+        library: [ExerciseReference], workouts: [WorkoutTemplate]
+    ) -> [String: String] {
+        // Share of each style's sessions that program the exercise — raw
+        // counts would hand everything to the largest category.
+        var sessions: [String: Int] = [:]
+        var uses: [String: [String: Int]] = [:]
+        for workout in workouts where !workout.categoryTag.isEmpty {
+            sessions[workout.categoryTag, default: 0] += 1
+            for id in Set(workout.exercises.map(\.exerciseLibraryID)) {
+                uses[id, default: [:]][workout.categoryTag, default: 0] += 1
+            }
+        }
+        func share(_ entry: (key: String, value: Int)) -> Double {
+            Double(entry.value) / Double(max(sessions[entry.key] ?? 1, 1))
+        }
+        var index: [String: String] = [:]
+        for exercise in library {
+            if !exercise.discipline.isEmpty {
+                index[exercise.id] = exercise.discipline
+            } else if let top = uses[exercise.id]?.max(by: {
+                share($0) == share($1) ? $0.key > $1.key : share($0) < share($1)
+            }) {
+                index[exercise.id] = top.key
+            }
+        }
+        return index
+    }
+
+    /// Pure so the tests can pin it: every filter narrows together.
+    static func filtered(
+        _ library: [ExerciseReference], styles: [String: String],
+        query: String, style: String?, muscle: MuscleGroup?
+    ) -> [ExerciseReference] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return library.filter { exercise in
+            (style == nil || styles[exercise.id] == style)
+                && (muscle == nil || exercise.muscleGroup == muscle)
+                && (q.isEmpty
+                    || "\(exercise.name) \(exercise.musclesWorked) \(exercise.equipment) \(exercise.movementPattern)"
+                        .lowercased().contains(q))
+        }
+        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    var body: some View {
+        let library = store.exerciseDatabase
+        let styles = Self.styleIndex(library: library, workouts: store.discoverWorkouts)
+        let styleNames = Array(Set(styles.values)).sorted()
+        let results = Self.filtered(library, styles: styles, query: query, style: style, muscle: muscle)
+        let names = Dictionary(library.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+
+        return ScrollView(showsIndicators: false) {
+            LazyVStack(alignment: .leading, spacing: 12) {
+                Button {
+                    dismiss()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                            .scaledFont(size: 10, weight: .bold)
+                        Text("DISCOVER")
+                            .font(MorpheTheme.microLabel(10))
+                            .tracking(1.4)
+                    }
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Back to Discover")
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Technique Library")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text("\(results.count) of \(library.count) exercises")
+                        .font(.subheadline)
+                        .monospacedDigit()
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .contentTransition(.numericText())
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    TextField("Search exercises, muscles, gear", text: $query)
+                        .textFieldStyle(.plain)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .autocorrectionDisabled()
+                    if !query.isEmpty {
+                        Button {
+                            query = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                        .accessibilityLabel("Clear search")
+                    }
+                }
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                        .fill(MorpheTheme.panelStrong)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                                .stroke(MorpheTheme.stroke, lineWidth: 1)
+                        )
+                )
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        Button("All styles") { style = nil }
+                            .buttonStyle(FilterChipStyle(isSelected: style == nil))
+                        ForEach(styleNames, id: \.self) { name in
+                            Button(DiscoverCatalogSection.shortCategoryNames[name] ?? name) {
+                                style = style == name ? nil : name
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: style == name))
+                        }
+                    }
+                }
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        Button("Whole body") { muscle = nil }
+                            .buttonStyle(FilterChipStyle(isSelected: muscle == nil))
+                        ForEach(MuscleGroup.allCases) { group in
+                            Button(group.rawValue) {
+                                muscle = muscle == group ? nil : group
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: muscle == group))
+                        }
+                    }
+                }
+
+                if results.isEmpty {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Nothing matches")
+                                .font(.headline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Text("Loosen a filter or clear the search.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                            Button("Clear all") {
+                                query = ""
+                                style = nil
+                                muscle = nil
+                            }
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .frame(width: 140)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    ForEach(results) { exercise in
+                        TechniqueRow(
+                            exercise: exercise,
+                            baseName: exercise.variationOf.flatMap { names[$0] }
+                        ) {
+                            store.selectedExercise = exercise
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 120)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
+        .scrollDismissesKeyboard(.immediately)
+    }
+}
+
 /// Discover as its own destination — the catalog was buried as a collapsed
 /// third section on Train; the flagship content deserves a tab. Starting a
 /// workout here drops straight into the live tracker on Train.
@@ -1116,7 +1363,7 @@ struct DiscoverScreenView: View {
                         title: "Discover",
                         subtitle: store.discoverWorkouts.isEmpty
                             ? "A new workout library is on the way."
-                            : "\(store.discoverWorkouts.count) workouts — pick a style and I'll queue it up.",
+                            : "\(store.discoverWorkouts.count) workouts and \(store.exerciseDatabase.count) exercises. Pick a style.",
                         titleSize: 16
                     )
 
@@ -2919,7 +3166,7 @@ private struct LiveWorkoutSupportToolsCard: View {
 /// (icon + short name + count) grouped under five family headers, with a
 /// featured Legends tile on top. Workout cards and filters only appear after
 /// drilling into a style — the landing itself is nearly wordless.
-private struct DiscoverCatalogSection: View {
+struct DiscoverCatalogSection: View {
     @Environment(MorpheAppStore.self) private var store
     let onStart: (WorkoutTemplate) -> Void
 
@@ -2943,6 +3190,7 @@ private struct DiscoverCatalogSection: View {
     @State private var qrStartMode: QRConnectSheet.Mode = .show
     /// The workout whose exercises/sets/reps breakdown is open.
     @State private var detailTemplate: WorkoutTemplate?
+    @State private var showTechniqueLibrary = false
 
     /// Time filters are ranges, not exact matches — catalog sessions run
     /// odd lengths (15/24/36/38 min), so exact chips would make most
@@ -2957,13 +3205,17 @@ private struct DiscoverCatalogSection: View {
 
     /// The v2 library's 13 categories, grouped into families for the grid.
     private static let families: [(name: String, categories: [String])] = [
-        ("Build", ["Strength & Powerlifting", "Bodybuilding & Hypertrophy", "Calisthenics & Bodyweight", "Kettlebell & Dumbbell"]),
-        ("Condition", ["HIIT & Conditioning", "Functional & CrossFit-Style", "Running & Cardio", "Boxing & Combat Conditioning", "Dance & Aerobics", "Sport Performance"]),
-        ("Restore", ["Yoga, Mobility & Flexibility", "Pilates & Core Control", "Recovery & Longevity"])
+        ("Build", ["Strength & Powerlifting", "Olympic Weightlifting", "Bodybuilding & Hypertrophy", "Calisthenics & Bodyweight", "Kettlebell & Dumbbell", "Strongman & Odd-Object"]),
+        ("Condition", ["HIIT & Conditioning", "Functional & CrossFit-Style", "Running & Cardio", "Cycling, Rowing & Swim", "Boxing & Combat Conditioning", "Dance & Aerobics", "Sport Performance"]),
+        ("Restore", ["Yoga, Mobility & Flexibility", "Pilates & Core Control", "Barre & Low-Impact", "Recovery & Longevity"])
     ]
 
     /// Tile-length names for the category tags.
-    private static let shortCategoryNames: [String: String] = [
+    static let shortCategoryNames: [String: String] = [
+        "Olympic Weightlifting": "Olympic Lifting",
+        "Strongman & Odd-Object": "Strongman",
+        "Cycling, Rowing & Swim": "Bike, Row & Swim",
+        "Barre & Low-Impact": "Barre & Low-Impact",
         "Strength & Powerlifting": "Powerlifting",
         "Bodybuilding & Hypertrophy": "Bodybuilding",
         "Calisthenics & Bodyweight": "Calisthenics",
@@ -2982,6 +3234,10 @@ private struct DiscoverCatalogSection: View {
     /// One pictogram per category — the tile reads by icon first. The newer
     /// activity glyphs get a runtime fallback for OS builds that lack them.
     private static let categorySymbols: [String: String] = [
+        "Olympic Weightlifting": "figure.strengthtraining.traditional",
+        "Strongman & Odd-Object": availableSymbol("figure.strengthtraining.functional", fallback: "scalemass.fill"),
+        "Cycling, Rowing & Swim": availableSymbol("figure.outdoor.cycle", "figure.indoor.cycle", fallback: "bicycle"),
+        "Barre & Low-Impact": availableSymbol("figure.barre", fallback: "figure.cooldown"),
         "Strength & Powerlifting": "dumbbell.fill",
         "Bodybuilding & Hypertrophy": "figure.strengthtraining.traditional",
         "Calisthenics & Bodyweight": "figure.gymnastics",
@@ -3035,12 +3291,13 @@ private struct DiscoverCatalogSection: View {
             .count
     }
 
-    /// The three newest categories in the catalog. Hardcoded because catalog
-    /// documents don't carry publish dates yet — these three genuinely ARE the
-    /// newest additions. Becomes date-driven once the catalog carries a
-    /// publishedAt field.
+    /// The newest categories in the catalog. Hardcoded because catalog
+    /// documents don't carry publish dates yet — these four genuinely ARE
+    /// the newest additions (Technique Library wave, 2026-10-04). Becomes
+    /// date-driven once the catalog carries a publishedAt field.
     private static let newestCategories: Set<String> = [
-        "Pilates & Core Control", "Dance & Aerobics", "Sport Performance"
+        "Olympic Weightlifting", "Strongman & Odd-Object",
+        "Cycling, Rowing & Swim", "Barre & Low-Impact"
     ]
 
     private var newThisWeekPicks: [WorkoutTemplate] {
@@ -3088,6 +3345,10 @@ private struct DiscoverCatalogSection: View {
                 }
                 .background(PremiumBackground().ignoresSafeArea())
                 .toolbar(.hidden, for: .navigationBar)
+            }
+            .navigationDestination(isPresented: $showTechniqueLibrary) {
+                TechniqueLibraryView()
+                    .environment(store)
             }
             .sheet(isPresented: $showQRConnect) {
                 QRConnectSheet(mode: qrStartMode)
@@ -3162,7 +3423,7 @@ private struct DiscoverCatalogSection: View {
             Image(systemName: "magnifyingglass")
                 .font(.subheadline)
                 .foregroundStyle(MorpheTheme.textMuted)
-            TextField("Search workouts, coaches, posts", text: $searchQuery)
+            TextField("Search workouts, exercises, people", text: $searchQuery)
                 .textFieldStyle(.plain)
                 .foregroundStyle(MorpheTheme.textPrimary)
                 .autocorrectionDisabled()
@@ -3188,13 +3449,43 @@ private struct DiscoverCatalogSection: View {
         )
     }
 
+    /// Exercises by name, muscles, gear, or style — the Technique Library
+    /// answers the same search box.
+    private var exerciseResults: [ExerciseReference] {
+        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard q.count >= 2 else { return [] }
+        return store.exerciseDatabase.filter {
+            "\($0.name) \($0.musclesWorked) \($0.equipment) \($0.discipline)".lowercased().contains(q)
+        }
+    }
+
     @ViewBuilder
     private var searchResultsList: some View {
         let workouts = searchResults
         let people = peopleResults
         let posts = postResults
+        let exercises = exerciseResults
 
-        if workouts.isEmpty && people.isEmpty && posts.isEmpty {
+        if !exercises.isEmpty {
+            sectionHeader(title: "Exercises", count: exercises.count)
+            LazyVStack(spacing: 8) {
+                ForEach(exercises.prefix(12)) { exercise in
+                    TechniqueRow(exercise: exercise, baseName: nil) {
+                        store.selectedExercise = exercise
+                    }
+                }
+            }
+            if exercises.count > 12 {
+                Button("See all \(exercises.count) in the Technique Library") {
+                    showTechniqueLibrary = true
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.accentText)
+                .frame(minHeight: 44)
+            }
+        }
+
+        if workouts.isEmpty && people.isEmpty && posts.isEmpty && exercises.isEmpty {
             GlassCard {
                 Text("Nothing matches \"\(searchQuery)\" — try a workout style like strength or boxing, a coach's name, or a post topic.")
                     .font(.subheadline)
@@ -3373,6 +3664,7 @@ private struct DiscoverCatalogSection: View {
                     }
                 }
             } else {
+            techniqueLibraryCard
             newThisWeekSection
             mostDoneSection
             ForEach(Self.families, id: \.name) { family in
@@ -3400,6 +3692,51 @@ private struct DiscoverCatalogSection: View {
             connectCard
             }
         }
+    }
+
+    /// The door to the exercise library: every movement's setup, cue,
+    /// common fault, easier version, and the source it was checked against.
+    private var techniqueLibraryCard: some View {
+        Button {
+            showTechniqueLibrary = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "list.bullet.clipboard")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(width: 32)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Technique Library")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text("\(store.exerciseDatabase.count) exercises and variations. How to set up, what to feel, what goes wrong.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .accessibilityHidden(true)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panelStrong)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                            .stroke(MorpheTheme.stroke, lineWidth: 1)
+                    )
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens the exercise library")
     }
 
     // MARK: - New & trending shelves

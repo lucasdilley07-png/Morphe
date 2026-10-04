@@ -1,0 +1,434 @@
+{
+  "discipline": "Strongman & Odd-Object",
+  "exercises": [
+    {
+      "id": "yoke-walk",
+      "name": "Yoke Walk",
+      "muscleGroup": "Legs",
+      "movementPattern": "Loaded carry",
+      "musclesWorked": "Quads, glutes, trunk, upper back, calves",
+      "equipment": "Yoke",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set the crossbar just below shoulder height and stand under it with the bar across the upper traps, as in a high-bar squat.",
+        "Press the hands out against the uprights, take a big breath and brace.",
+        "Stand the yoke up with a narrow to medium stance and let it settle before you move.",
+        "Walk with short, quick steps, eyes forward and the feet close to the midline.",
+        "Stop, bend the knees and set the yoke down under control."
+      ],
+      "formCue": "Short fast steps, eyes on the finish.",
+      "commonMistakes": "Taking long strides so the yoke swings, or looking down and folding forward under the bar.",
+      "beginnerModification": "Start with the empty frame or a load you could squat for many reps and cover a short distance.",
+      "alternatives": [
+        "Farmer Carry",
+        "Front Rack Carry",
+        "Barbell Back Squat"
+      ],
+      "whyThisMatters": "It trains the trunk and hips to stay rigid under a heavy load while moving.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Other/SBYokeCarry"
+      }
+    },
+    {
+      "id": "strongman-farmers-walk",
+      "name": "Farmer's Walk (Handles)",
+      "variationOf": "farmer-carry",
+      "muscleGroup": "Back",
+      "movementPattern": "Loaded carry",
+      "musclesWorked": "Grip, traps, upper back, trunk, glutes",
+      "equipment": "Farmer's walk handles",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand between the two loaded handles and squat down to grip both in the middle.",
+        "Lift both at the same time with the legs, keeping a flat back, and stand tall with arms straight.",
+        "Walk with short, quick steps, chest up and shoulders back.",
+        "Finish the full distance, then lower both handles together by bending the knees."
+      ],
+      "formCue": "Stand tall, quick feet, crush the handles.",
+      "commonMistakes": "Leaning far forward to chase speed, or shrugging the shoulders up so they tire early.",
+      "beginnerModification": "Use dumbbells or kettlebells and a shorter distance.",
+      "alternatives": [
+        "Farmer Carry",
+        "Suitcase Carry",
+        "Trap Bar Deadlift"
+      ],
+      "whyThisMatters": "Long handles let you carry far more than dumbbells, which builds grip and back endurance fast.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Other/SBFarmersWalk"
+      }
+    },
+    {
+      "id": "zercher-carry",
+      "name": "Zercher Carry",
+      "muscleGroup": "Core",
+      "movementPattern": "Loaded carry",
+      "musclesWorked": "Abs, obliques, upper back, biceps, glutes",
+      "equipment": "Barbell or sandbag",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Take the bar from a rack set at waist height into the crooks of the elbows.",
+        "Clasp the hands or make fists in front of the chest and keep the elbows close to the ribs.",
+        "Stand tall, brace and walk slowly with an upright torso.",
+        "Return the bar to the rack or lower it to blocks under control."
+      ],
+      "formCue": "Elbows in, chest tall, slow steps.",
+      "commonMistakes": "Letting the upper back round over the bar, or rushing so the load swings.",
+      "beginnerModification": "Hug a light sandbag or medicine ball in the same position.",
+      "alternatives": [
+        "Front Rack Carry",
+        "Farmer Carry",
+        "Sandbag Bear Hug Carry"
+      ],
+      "whyThisMatters": "A load held in front makes the trunk and upper back fight to stay upright with every step.",
+      "source": {
+        "name": "NSCA Coach",
+        "url": "https://www.nsca.com/contentassets/927868f8d4bb45f2ac4429631d558d83/coach-7.3.6-increase-hip-and-trunk-stability-with-loaded-carries-for-injury-prevention-rehabilitation-and-performance.pdf"
+      }
+    },
+    {
+      "id": "bottoms-up-carry",
+      "name": "Bottoms-Up Carry",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Loaded carry",
+      "musclesWorked": "Forearms, rotator cuff, shoulders, trunk",
+      "equipment": "Kettlebell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Hold a light kettlebell by the handle with the bell pointing up.",
+        "Keep the upper arm level with the floor in front of you and the wrist straight.",
+        "Squeeze the handle and walk slowly with the torso upright.",
+        "Switch hands after each length."
+      ],
+      "formCue": "Straight wrist, crush the handle.",
+      "commonMistakes": "Going too heavy so the bell tips, or letting the wrist bend back.",
+      "beginnerModification": "Hold the position standing still before you walk with it.",
+      "alternatives": [
+        "Overhead Carry",
+        "Suitcase Carry",
+        "Front Rack Carry"
+      ],
+      "whyThisMatters": "The unstable bell makes the grip and the small shoulder muscles steady the load.",
+      "source": {
+        "name": "NSCA Coach",
+        "url": "https://www.nsca.com/contentassets/927868f8d4bb45f2ac4429631d558d83/coach-7.3.6-increase-hip-and-trunk-stability-with-loaded-carries-for-injury-prevention-rehabilitation-and-performance.pdf"
+      }
+    },
+    {
+      "id": "sandbag-bear-hug-carry",
+      "name": "Sandbag Bear Hug Carry",
+      "muscleGroup": "Core",
+      "movementPattern": "Loaded carry",
+      "musclesWorked": "Upper back, biceps, abs, glutes, quads",
+      "equipment": "Sandbag",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Straddle the bag with a wide stance and grab around its body, not the handles.",
+        "Pull it up to the lap, then re-grip and stand with the bag high on the chest.",
+        "Wrap both arms around it and squeeze it into the torso.",
+        "Walk with steady steps and short breaths, then lower the bag to the floor with bent knees."
+      ],
+      "formCue": "Bag high, squeeze it tight.",
+      "commonMistakes": "Letting the bag slide down to the belly, or leaning back too far to prop it up.",
+      "beginnerModification": "Use a lighter bag and shorter distances, resting the bag on a bench between trips.",
+      "alternatives": [
+        "Farmer Carry",
+        "Front Rack Carry",
+        "Sandbag to Shoulder"
+      ],
+      "whyThisMatters": "A shifting load you have to hug teaches bracing and breathing under pressure.",
+      "source": {
+        "name": "Fitness Volt Strongman Training Guides",
+        "url": "https://fitnessvolt.com/strongman/training/sandbag-loading/"
+      }
+    },
+    {
+      "id": "sandbag-over-bar",
+      "name": "Sandbag Over Bar",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, upper back, biceps, quads",
+      "equipment": "Sandbag, loading bar or platform",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand close to the bar with the bag between wide feet and grip around the body of the bag.",
+        "Lift it to the lap with a flat back and sit it on the thighs.",
+        "Re-grip over the top of the bag and pull it high on the chest.",
+        "Drive the hips and legs up fast and roll the bag over the bar.",
+        "Walk around and repeat from the other side."
+      ],
+      "formCue": "Lap it, hug it high, hips through.",
+      "commonMistakes": "Standing too far from the bar, or trying to lift the bag slowly with the arms.",
+      "beginnerModification": "Use a light bag and a waist-high target such as a box.",
+      "alternatives": [
+        "Sandbag to Shoulder",
+        "Medicine Ball Clean",
+        "Conventional Deadlift"
+      ],
+      "whyThisMatters": "It trains a full pick from the floor to chest height with an object that will not stay still.",
+      "source": {
+        "name": "Fitness Volt Strongman Training Guides",
+        "url": "https://fitnessvolt.com/strongman/training/sandbag-loading/"
+      }
+    },
+    {
+      "id": "atlas-stone-over-bar",
+      "name": "Atlas Stone Over Bar",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, spinal erectors, upper back, biceps, forearms",
+      "equipment": "Atlas stone, loading bar",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Straddle the stone with feet about shoulder-width apart and reach the hands as far under it as you can.",
+        "Squeeze the stone with the arms and stand until you can sit it on the lap.",
+        "Sit back with the stone on the thighs and re-grip over the top, chest pressed against it.",
+        "Drive the hips up and forward and roll the stone up the chest.",
+        "Push it over the bar and step back as it drops."
+      ],
+      "formCue": "Squeeze, lap, hips through.",
+      "commonMistakes": "Trying to curl the stone up with the arms, or standing too far from the bar.",
+      "beginnerModification": "Practise the same lift with a sandbag or a light stone and a low bar.",
+      "alternatives": [
+        "Sandbag to Shoulder",
+        "Sandbag Over Bar",
+        "Conventional Deadlift"
+      ],
+      "whyThisMatters": "It is the classic strongman test of picking an awkward object off the ground and getting it high.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Other/ASLiftBar"
+      }
+    },
+    {
+      "id": "atlas-stone-to-shoulder",
+      "name": "Atlas Stone to Shoulder",
+      "variationOf": "atlas-stone-over-bar",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, spinal erectors, upper back, biceps",
+      "equipment": "Atlas stone",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Straddle the stone, squeeze it between the forearms and lift it to the lap.",
+        "Sit back, re-grip with the arms over the top and pull the stone into the chest.",
+        "Stand up fast, extending the hips and knees and rolling the stone up the torso.",
+        "Roll it onto one shoulder and stand tall with it under control.",
+        "Drop it forward onto a mat and step clear."
+      ],
+      "formCue": "Lap, stand fast, roll to the shoulder.",
+      "commonMistakes": "Stalling at the chest because the hips did not drive, or losing balance with the stone on the shoulder.",
+      "beginnerModification": "Use a sandbag to shoulder until the lap and hip drive are consistent.",
+      "alternatives": [
+        "Sandbag to Shoulder",
+        "Atlas Stone Over Bar",
+        "Medicine Ball Clean"
+      ],
+      "whyThisMatters": "Finishing on the shoulder demands a stronger, higher hip drive than loading over a bar.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Other/ASLiftShoulder"
+      }
+    },
+    {
+      "id": "atlas-stone-platform-load",
+      "name": "Atlas Stone Platform Load",
+      "variationOf": "atlas-stone-over-bar",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, spinal erectors, upper back, forearms",
+      "equipment": "Atlas stone, platform",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand a foot or so from the platform with the stone between the feet.",
+        "Wrap the arms around the stone and lift it to the lap with the chest up.",
+        "Squeeze the knees in to hold the stone, lean back slightly and re-grip over the top.",
+        "Extend the hips hard, roll the stone up the body and place it on the platform."
+      ],
+      "formCue": "Roll it up your body, do not press it.",
+      "commonMistakes": "Rounding hard through the lift without bracing, or trying to press the stone up with the arms.",
+      "beginnerModification": "Use a light stone or sandbag and a platform at waist height.",
+      "alternatives": [
+        "Atlas Stone Over Bar",
+        "Sandbag Over Bar",
+        "Sandbag to Shoulder"
+      ],
+      "whyThisMatters": "Placing the stone on a platform adds control at the top, the way stones are loaded in competition.",
+      "source": {
+        "name": "Fitness Volt Strongman Training Guides",
+        "url": "https://fitnessvolt.com/strongman/training/atlas-stones/"
+      }
+    },
+    {
+      "id": "log-clean-and-press",
+      "name": "Log Clean and Press",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, triceps, upper back, glutes, quads, trunk",
+      "equipment": "Strongman log",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand close to the log with feet about hip-width apart and grip the neutral handles.",
+        "Pull the log to the lap with a flat back and sit down with it on the thighs.",
+        "Drive the hips through and roll the log up the body to the top of the chest with the elbows high.",
+        "Dip the knees a little, drive with the legs and press the log overhead.",
+        "Lock the elbows with the head through, then lower to the chest and down to the lap."
+      ],
+      "formCue": "Roll it high, dip, drive, head through.",
+      "commonMistakes": "Pressing before the legs finish their drive, or leaning far back under the log.",
+      "beginnerModification": "Learn with an empty log, or press it from a rack before adding the clean.",
+      "alternatives": [
+        "Push Press",
+        "Overhead Barbell Press",
+        "Log Press (From Rack)"
+      ],
+      "whyThisMatters": "The thick, neutral-grip log builds overhead strength from the ground up in one lift.",
+      "source": {
+        "name": "Sports Medicine - Open (systematic review of strongman exercises)",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6901656"
+      }
+    },
+    {
+      "id": "log-press-from-rack",
+      "name": "Log Press (From Rack)",
+      "variationOf": "log-clean-and-press",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, triceps, upper chest, quads, trunk",
+      "equipment": "Strongman log, rack",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Take the log from a rack so it rests on the upper chest with the elbows up and a neutral grip.",
+        "Brace and dip the knees a few centimetres with the torso upright.",
+        "Drive up with the legs and press the log overhead in one motion.",
+        "Finish with the elbows locked, the shoulders shrugged up and the head through, then lower to the chest."
+      ],
+      "formCue": "Short dip, hard drive, lock it out.",
+      "commonMistakes": "Dipping forward onto the toes, or resting the log too low so the elbows drop.",
+      "beginnerModification": "Press it strictly with no leg drive at a light load.",
+      "alternatives": [
+        "Push Press",
+        "Overhead Barbell Press",
+        "Landmine Press"
+      ],
+      "whyThisMatters": "Skipping the clean lets you train the press itself with more volume.",
+      "source": {
+        "name": "Fitness Volt Strongman Training Guides",
+        "url": "https://fitnessvolt.com/strongman/training/log-press/"
+      }
+    },
+    {
+      "id": "axle-clean-and-press",
+      "name": "Axle Clean and Press",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, triceps, forearms, upper back, glutes, quads",
+      "equipment": "Axle bar",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Grip the thick bar a little wider than shoulder width with the feet about hip-width apart.",
+        "Pull from the floor with a flat back and drive the hips to bring the bar to the shoulders.",
+        "Settle the bar across the front of the shoulders and re-set a full grip.",
+        "Dip slightly, drive with the legs and press to a full lockout with the head through."
+      ],
+      "formCue": "Reset your grip, then dip and drive.",
+      "commonMistakes": "Gripping too narrow on the thick bar, or pressing with the bar drifting forward.",
+      "beginnerModification": "Use a standard barbell, or press the axle from a rack to skip the clean.",
+      "alternatives": [
+        "Push Press",
+        "Hang Power Clean",
+        "Overhead Barbell Press"
+      ],
+      "whyThisMatters": "The thick bar does not spin, so it builds grip and a strong, honest pull to the shoulders.",
+      "source": {
+        "name": "Fitness Volt Strongman Training Guides",
+        "url": "https://fitnessvolt.com/strongman/training/axle-press/"
+      }
+    },
+    {
+      "id": "tire-flip",
+      "name": "Tire Flip",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, quads, back, chest, shoulders",
+      "equipment": "Large tire",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Crouch close to the tire with feet about hip-width apart, the chest and shoulders against it and the hands under the edge.",
+        "Keep the back flat and the arms long, and drive forward and up through the legs.",
+        "As the tire passes the hips, step in and turn the hands over to a pushing position.",
+        "Push the tire over with both arms and follow it forward."
+      ],
+      "formCue": "Chest on the tire, drive through it, not up.",
+      "commonMistakes": "Standing too far away and lifting it like a deadlift with a round back, or curling it with the arms.",
+      "beginnerModification": "Use a lighter tire, or train the same pattern with a sled push and a trap bar deadlift.",
+      "alternatives": [
+        "Sled Push",
+        "Trap Bar Deadlift",
+        "Conventional Deadlift"
+      ],
+      "whyThisMatters": "It trains the hips, knees and ankles to extend together while pushing forward.",
+      "source": {
+        "name": "NSCA",
+        "url": "https://www.nsca.com/education/articles/kinetic-select/strongman-training/"
+      }
+    },
+    {
+      "id": "harness-sled-drag",
+      "name": "Harness Sled Drag",
+      "muscleGroup": "Legs",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Glutes, hamstrings, quads, calves, trunk",
+      "equipment": "Sled, harness",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Attach the sled to a chest or waist harness and walk forward until the strap is tight.",
+        "Lean forward from the ankles with a straight line from head to back heel.",
+        "Drive each foot back into the ground with powerful, full steps.",
+        "Keep the trunk braced and the lean steady until the distance is done."
+      ],
+      "formCue": "Lean in, push the ground behind you.",
+      "commonMistakes": "Bending at the waist instead of leaning as one piece, or taking short, choppy steps that stall the sled.",
+      "beginnerModification": "Load the sled lightly and walk it rather than driving hard.",
+      "alternatives": [
+        "Sled Push",
+        "Backward Sled Drag",
+        "Hill Sprint"
+      ],
+      "whyThisMatters": "A heavy forward drag builds horizontal leg drive with very little impact.",
+      "source": {
+        "name": "Sports Medicine - Open (systematic review of strongman exercises)",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6901656"
+      }
+    },
+    {
+      "id": "keg-carry",
+      "name": "Keg Carry",
+      "muscleGroup": "Core",
+      "movementPattern": "Loaded carry",
+      "musclesWorked": "Upper back, biceps, abs, glutes, quads",
+      "equipment": "Keg",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Tip the keg, grip the rim at one end and the base at the other, and lift it to the lap.",
+        "Stand and hug it high against the chest, or roll it onto one shoulder.",
+        "Brace and walk with quick, even steps, keeping the torso upright.",
+        "Lower it back to the lap and then to the floor with bent knees."
+      ],
+      "formCue": "Keep it high and close.",
+      "commonMistakes": "Letting the keg slip low so the back rounds, or twisting to one side under a shouldered keg.",
+      "beginnerModification": "Carry an empty or lightly filled keg, or use a sandbag.",
+      "alternatives": [
+        "Sandbag Bear Hug Carry",
+        "Front Rack Carry",
+        "Farmer Carry"
+      ],
+      "whyThisMatters": "A rigid, bulky load that you cannot grip well forces the whole trunk to hold it in place.",
+      "source": {
+        "name": "Sports Medicine - Open (systematic review of strongman exercises)",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6901656"
+      }
+    }
+  ]
+}

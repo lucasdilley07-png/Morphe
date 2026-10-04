@@ -1,0 +1,136 @@
+{
+  "version": 2,
+  "category": "Functional & CrossFit-Style",
+  "workouts": [
+    {
+      "slug": "v3-fx-first-rounds",
+      "name": "First Rounds: Beginner Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Functional circuit",
+      "level": "Beginner",
+      "durationMinutes": 25,
+      "equipmentProfile": "Full Gym",
+      "notes": "A first functional circuit for new trainees: squat, pull, step, clean and skip. Run it as four rounds with short rests and add a round before you add speed.",
+      "exercises": [
+        { "libraryID": "air-squat", "sets": 4, "reps": 15, "intensity": { "type": "bodyweight" }, "restSeconds": 30 },
+        { "libraryID": "ring-row", "sets": 4, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 30 },
+        { "libraryID": "box-step-over", "sets": 4, "reps": 12, "intensity": { "type": "bodyweight" }, "restSeconds": 30 },
+        { "libraryID": "medicine-ball-clean", "sets": 4, "reps": 10, "intensity": { "type": "rpe", "value": 6 }, "restSeconds": 30 },
+        { "libraryID": "single-under", "sets": 4, "durationSeconds": 45, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 60 }
+      ]
+    },
+    {
+      "slug": "v3-fx-bar-and-box-engine",
+      "name": "Bar and Box Engine",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Functional conditioning",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "Five rounds of light thrusters, burpees and pulling at a pace you can hold from the first round to the last. Go up in load only when every thruster still reaches full depth and full lockout.",
+      "exercises": [
+        { "libraryID": "barbell-thruster", "sets": 5, "reps": 10, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 30 },
+        { "libraryID": "bar-facing-burpee", "sets": 5, "reps": 8, "intensity": { "type": "bodyweight" }, "restSeconds": 30 },
+        { "libraryID": "sumo-deadlift-high-pull", "sets": 5, "reps": 12, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 30 },
+        { "libraryID": "burpee-box-jump-over", "sets": 5, "reps": 6, "intensity": { "type": "bodyweight" }, "restSeconds": 30 },
+        { "libraryID": "double-under", "sets": 5, "durationSeconds": 30, "intensity": { "type": "maxEffort" }, "restSeconds": 75 }
+      ]
+    },
+    {
+      "slug": "v3-fx-strict-gymnastics-strength",
+      "name": "Strict Gymnastics Strength",
+      "goal": "strengthBuilding",
+      "focus": "Pull",
+      "trainingType": "Gymnastics strength",
+      "level": "Advanced",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "Strict pulling, pressing and trunk work with full rests, for trainees who already own several strict pull-ups and dips. Add reps before you add any swing.",
+      "exercises": [
+        { "libraryID": "scapular-pull-up", "sets": 2, "reps": 8, "intensity": { "type": "bodyweight" }, "restSeconds": 60 },
+        { "libraryID": "chest-to-bar-pull-up", "sets": 5, "reps": 4, "intensity": { "type": "bodyweight" }, "restSeconds": 150 },
+        { "libraryID": "strict-handstand-push-up", "sets": 5, "reps": 4, "intensity": { "type": "bodyweight" }, "restSeconds": 150 },
+        { "libraryID": "ring-dip", "sets": 4, "reps": 5, "intensity": { "type": "bodyweight" }, "restSeconds": 150 },
+        { "libraryID": "rope-climb", "sets": 4, "reps": 1, "intensity": { "type": "bodyweight" }, "restSeconds": 150 },
+        { "libraryID": "strict-toes-to-bar", "sets": 4, "reps": 6, "intensity": { "type": "bodyweight" }, "restSeconds": 120 }
+      ]
+    },
+    {
+      "slug": "v3-fx-squat-and-press-strength",
+      "name": "Squat and Press Strength",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Strength training",
+      "level": "Moderate",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "Heavy front squats and push presses build the two halves of the thruster, then heavier thrusters put them together. Add load when all sets move at the same speed.",
+      "exercises": [
+        { "libraryID": "air-squat", "sets": 2, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 30 },
+        { "libraryID": "front-squat", "sets": 5, "reps": 4, "intensity": { "type": "percent1RM", "value": 82 }, "restSeconds": 180 },
+        { "libraryID": "push-press", "sets": 5, "reps": 4, "intensity": { "type": "percent1RM", "value": 80 }, "restSeconds": 180 },
+        { "libraryID": "barbell-thruster", "sets": 4, "reps": 5, "intensity": { "type": "rpe", "value": 8 }, "restSeconds": 150 },
+        { "libraryID": "ghd-hip-extension", "sets": 3, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 90 }
+      ]
+    },
+    {
+      "slug": "v3-fx-kipping-skill-and-volume",
+      "name": "Kipping Skill and Volume",
+      "goal": "leanOut",
+      "focus": "Pull",
+      "trainingType": "Gymnastics conditioning",
+      "level": "Advanced",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "Bar gymnastics in moderate sets with short rests, for trainees with solid strict pull-ups. Stop each set while the swing is still tidy, and keep the GHD sit-up volume low until you are used to it.",
+      "exercises": [
+        { "libraryID": "kipping-pull-up", "sets": 4, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 75 },
+        { "libraryID": "toes-to-bar", "sets": 4, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 75 },
+        { "libraryID": "kipping-handstand-push-up", "sets": 4, "reps": 8, "intensity": { "type": "bodyweight" }, "restSeconds": 90 },
+        { "libraryID": "kipping-bar-muscle-up", "sets": 4, "reps": 3, "intensity": { "type": "bodyweight" }, "restSeconds": 90 },
+        { "libraryID": "overhead-walking-lunge", "sets": 3, "reps": 16, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 75 },
+        { "libraryID": "ghd-sit-up", "sets": 3, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 75 }
+      ]
+    },
+    {
+      "slug": "v3-fx-engine-builder",
+      "name": "Engine Builder: Lunge, Pull, Skip",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Functional conditioning",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "Moderate loads, moderate reps and short rests keep muscle working while the heart rate stays high. Scale knees-to-elbows to hanging knee raises if grip fails first.",
+      "exercises": [
+        { "libraryID": "overhead-walking-lunge", "sets": 4, "reps": 12, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 60 },
+        { "libraryID": "ring-row", "sets": 4, "reps": 12, "intensity": { "type": "bodyweight" }, "restSeconds": 60 },
+        { "libraryID": "wall-ball-shot", "sets": 4, "reps": 15, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 60 },
+        { "libraryID": "knees-to-elbows", "sets": 4, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 60 },
+        { "libraryID": "wall-walk", "sets": 4, "reps": 3, "intensity": { "type": "bodyweight" }, "restSeconds": 75 },
+        { "libraryID": "single-under", "sets": 4, "durationSeconds": 60, "intensity": { "type": "rpe", "value": 7 }, "restSeconds": 60 }
+      ]
+    },
+    {
+      "slug": "v3-fx-easy-skill-flush",
+      "name": "Easy Skill Flush",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Full Gym",
+      "notes": "An easy day between hard sessions: slow squats, light pulls and stretches that open the hips and shoulders. Nothing here should feel like work.",
+      "exercises": [
+        { "libraryID": "cat-cow", "sets": 2, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 20 },
+        { "libraryID": "air-squat", "sets": 2, "reps": 10, "intensity": { "type": "bodyweight" }, "restSeconds": 30 },
+        { "libraryID": "ring-row", "sets": 2, "reps": 8, "intensity": { "type": "bodyweight" }, "restSeconds": 30 },
+        { "libraryID": "worlds-greatest-stretch", "sets": 2, "reps": 5, "intensity": { "type": "bodyweight" }, "restSeconds": 20 },
+        { "libraryID": "downward-dog", "sets": 2, "durationSeconds": 40, "intensity": { "type": "bodyweight" }, "restSeconds": 20 },
+        { "libraryID": "childs-pose", "sets": 2, "durationSeconds": 60, "intensity": { "type": "bodyweight" }, "restSeconds": 15 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,779 @@
+{
+  "discipline": "Calisthenics & Bodyweight",
+  "exercises": [
+    {
+      "id": "archer-push-up",
+      "name": "Archer Push-Up",
+      "variationOf": "push-up",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Chest, triceps, front delts, core",
+      "equipment": "None",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set up in a push-up position with the hands well outside shoulder width and the body in one line.",
+        "Lower toward one hand, bending that elbow while the other arm stays long out to the side.",
+        "Stop when the chest is just above the floor and the hips are still square.",
+        "Press back to the middle through the bent arm and repeat to the other side."
+      ],
+      "formCue": "Load the bent arm, keep the hips level.",
+      "commonMistakes": "Twisting or shifting the hips to cheat the load, and rushing the change of sides.",
+      "beginnerModification": "Use regular push-ups until they are solid, then try archers with the hands on a bench.",
+      "alternatives": [
+        "Push-Up",
+        "Diamond Push-Up",
+        "Decline Push-Up"
+      ],
+      "whyThisMatters": "It puts most of your weight on one arm, which is the bridge between two-arm and one-arm pressing.",
+      "source": {
+        "name": "NASM Exercise Library",
+        "url": "https://www.nasm.org/resource-center/exercise-library/archer-push-up"
+      }
+    },
+    {
+      "id": "one-arm-push-up",
+      "name": "One-Arm Push-Up",
+      "variationOf": "push-up",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Chest, triceps, front delts, lats, obliques, glutes",
+      "equipment": "None",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Take a push-up position with the feet wider than the hips and one hand under the shoulder, the other off the floor.",
+        "Tighten everything from grip to glutes to quads before you move.",
+        "Lower under control with the shoulder packed down and the trunk turning as little as possible.",
+        "Press the floor away to a straight arm without letting the plank break."
+      ],
+      "formCue": "Whole body tight, then lower.",
+      "commonMistakes": "Letting the hips sag or rotate, shrugging the working shoulder, and the feet rolling inward.",
+      "beginnerModification": "Raise the working hand on a bar or bench and lower the height over weeks.",
+      "alternatives": [
+        "Elevated One-Arm Push-Up",
+        "Archer Push-Up",
+        "Push-Up"
+      ],
+      "whyThisMatters": "It builds heavy pressing strength and cross-body trunk control with no equipment.",
+      "source": {
+        "name": "StrongFirst",
+        "url": "https://www.strongfirst.com/four-progressions-to-conquer-the-one-arm-pushup/"
+      }
+    },
+    {
+      "id": "elevated-one-arm-push-up",
+      "name": "Elevated One-Arm Push-Up",
+      "variationOf": "one-arm-push-up",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Chest, triceps, front delts, obliques",
+      "equipment": "Bar in a rack, bench or sturdy box",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Place one hand on a fixed bar or bench and walk the feet back into a wide-stance plank.",
+        "Put the free hand behind the back or along the thigh and tense the whole body.",
+        "Lower the chest toward the hand with the shoulders as level as you can keep them.",
+        "Press back to a straight arm, then finish all reps before switching sides."
+      ],
+      "formCue": "Same tension as the floor version, just a kinder angle.",
+      "commonMistakes": "Picking a height that is too low and twisting to finish the rep.",
+      "beginnerModification": "Start with the hand at hip height and only lower it when every rep stays square.",
+      "alternatives": [
+        "Incline Push-Up",
+        "Archer Push-Up",
+        "Push-Up"
+      ],
+      "whyThisMatters": "It lets you practise the exact one-arm pattern at a load you can own.",
+      "source": {
+        "name": "StrongFirst",
+        "url": "https://www.strongfirst.com/four-progressions-to-conquer-the-one-arm-pushup/"
+      }
+    },
+    {
+      "id": "planche-lean",
+      "name": "Planche Lean",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Brace",
+      "musclesWorked": "Front delts, serratus, biceps tendon area, wrists, core",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Start in a straight-arm plank with the fingers forward or turned slightly out.",
+        "Lock the elbows with the elbow pits facing forward and press the shoulders down away from the ears.",
+        "Lean forward until the shoulders travel past the wrists and hold.",
+        "Rock back to the plank before the elbows bend or the hips drop."
+      ],
+      "formCue": "Arms locked, lean from the ankles.",
+      "commonMistakes": "Bending the elbows as the lean gets hard, and skipping wrist preparation.",
+      "beginnerModification": "Lean only a few centimetres and build time before adding distance.",
+      "alternatives": [
+        "Plank",
+        "Pike Push-Up",
+        "Frog Stand"
+      ],
+      "whyThisMatters": "It builds the straight-arm shoulder strength every planche step depends on.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/planche/"
+      }
+    },
+    {
+      "id": "frog-stand",
+      "name": "Frog Stand",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Balance",
+      "musclesWorked": "Shoulders, wrists, triceps, core",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Squat down and plant the hands shoulder width apart with the elbows bent out to make a shelf.",
+        "Rest the knees on the arms just above the elbows.",
+        "Tip forward slowly until the toes get light, then let them leave the floor.",
+        "Look slightly ahead, breathe evenly and hold, then tip back onto the feet."
+      ],
+      "formCue": "Tip forward slowly, eyes ahead of the hands.",
+      "commonMistakes": "Jumping into the balance instead of leaning into it, and holding the breath.",
+      "beginnerModification": "Keep the toes on the floor, or rest the forehead on a folded towel while you find the lean.",
+      "alternatives": [
+        "Plank",
+        "Planche Lean",
+        "Wall Handstand Hold"
+      ],
+      "whyThisMatters": "It teaches the wrists and shoulders to carry your full weight before harder hand balances.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/crow-pose/"
+      }
+    },
+    {
+      "id": "tuck-planche",
+      "name": "Tuck Planche",
+      "variationOf": "planche-lean",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Brace",
+      "musclesWorked": "Front delts, serratus, chest, core, wrists",
+      "equipment": "None or parallettes",
+      "difficulty": "Advanced",
+      "instructions": [
+        "From a frog stand or a seated start on parallettes, lock the arms straight.",
+        "Lean the shoulders ahead of the hands and press the floor away to round the upper back.",
+        "Pull the knees to the chest and lift the feet and knees clear of the arms.",
+        "Hold with the hips near shoulder height, then set the feet down with control."
+      ],
+      "formCue": "Lean, lock, push the floor away.",
+      "commonMistakes": "Bent elbows, and rushing here before the wrists and shoulders are ready.",
+      "beginnerModification": "Hold the frog stand, then take one knee off the arm at a time.",
+      "alternatives": [
+        "Frog Stand",
+        "Planche Lean",
+        "Plank"
+      ],
+      "whyThisMatters": "It is the first real planche hold and a strong test of straight-arm pressing.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/planche/"
+      }
+    },
+    {
+      "id": "ring-push-up",
+      "name": "Ring Push-Up",
+      "variationOf": "push-up",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Chest, triceps, front delts, core",
+      "equipment": "Gymnastic rings",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the rings low and take a plank with a hand in each ring, arms straight.",
+        "Keep the body in one line from head to heels.",
+        "Lower the chest between the rings while keeping them close to the ribs.",
+        "Press to full lockout without letting the rings swing or drift apart."
+      ],
+      "formCue": "Quiet rings, straight body.",
+      "commonMistakes": "Rings drifting wide and hips sagging as the set goes on.",
+      "beginnerModification": "Raise the rings so the body is more upright, or use regular push-ups.",
+      "alternatives": [
+        "Push-Up",
+        "Incline Push-Up",
+        "Decline Push-Up"
+      ],
+      "whyThisMatters": "The unstable handles make the shoulders and trunk work harder than the floor version.",
+      "source": {
+        "name": "CrossFit",
+        "url": "https://www.crossfit.com/essentials/crossfit-ring-training-part-2"
+      }
+    },
+    {
+      "id": "feet-elevated-inverted-row",
+      "name": "Feet-Elevated Inverted Row",
+      "variationOf": "inverted-row",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Mid back, lats, rear delts, biceps",
+      "equipment": "Fixed bar and bench or box",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie under a fixed bar, take a wide overhand grip and rest the heels on a bench.",
+        "Hang with straight arms and a straight body.",
+        "Pull the chest to the bar and draw the shoulders back at the top.",
+        "Lower until the arms are straight."
+      ],
+      "formCue": "Chest high, body stiff.",
+      "commonMistakes": "Hips dropping and the chin reaching for the bar instead of the chest.",
+      "beginnerModification": "Put the feet on the floor, or bend the knees.",
+      "alternatives": [
+        "Inverted Row",
+        "Ring Row",
+        "Bent-Over Barbell Row"
+      ],
+      "whyThisMatters": "Raising the feet makes the row close to a full bodyweight horizontal pull.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/BackGeneral/BWSupineRowFeetElevated"
+      }
+    },
+    {
+      "id": "wide-grip-pull-up",
+      "name": "Wide-Grip Pull-Up",
+      "variationOf": "pull-up",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, teres major, rear delts, biceps, forearms",
+      "equipment": "Pull-up bar",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Grip the bar overhand, hands clearly wider than the shoulders.",
+        "Hang with the arms and shoulders fully extended.",
+        "Pull until the chin is over the bar.",
+        "Lower all the way to a straight-arm hang."
+      ],
+      "formCue": "Elbows down to the ribs.",
+      "commonMistakes": "Going so wide that the range gets short, and stopping before a full hang.",
+      "beginnerModification": "Use a band, or do slow lowering reps with this grip.",
+      "alternatives": [
+        "Pull-Up",
+        "Lat Pulldown",
+        "Negative Pull-Up"
+      ],
+      "whyThisMatters": "It shifts more of the pull to the lats and upper back.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/LatissimusDorsi/BWPullup"
+      }
+    },
+    {
+      "id": "neutral-grip-pull-up",
+      "name": "Neutral-Grip Pull-Up",
+      "variationOf": "pull-up",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, brachialis, biceps, mid back",
+      "equipment": "Parallel pull-up handles",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Take the parallel handles with the palms facing each other.",
+        "Hang with the arms and shoulders fully extended.",
+        "Pull until the neck reaches the height of the hands.",
+        "Lower to a full hang under control."
+      ],
+      "formCue": "Chest up, elbows to the hips.",
+      "commonMistakes": "Kicking the legs and stopping short at the bottom.",
+      "beginnerModification": "Use a band or a foot on a box to take some weight.",
+      "alternatives": [
+        "Chin-Up",
+        "Pull-Up",
+        "Lat Pulldown"
+      ],
+      "whyThisMatters": "The palms-in grip is often the most comfortable way to pull heavy for elbows and shoulders.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/LatissimusDorsi/BWPullupN"
+      }
+    },
+    {
+      "id": "l-pull-up",
+      "name": "L Pull-Up",
+      "variationOf": "pull-up",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, biceps, abs, hip flexors",
+      "equipment": "Pull-up bar",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Hang from the bar with an overhand grip.",
+        "Lift the straight legs until they are level with the hips and hold them there.",
+        "Pull the chin over the bar without letting the legs drop or swing.",
+        "Lower to a full hang with the legs still held in the L."
+      ],
+      "formCue": "Legs frozen, pull strict.",
+      "commonMistakes": "Legs dropping as you pull, and using a swing to start the rep.",
+      "beginnerModification": "Hold a tucked-knee position during the pull-up.",
+      "alternatives": [
+        "Pull-Up",
+        "Hanging Knee Raise",
+        "Hanging Leg Raise"
+      ],
+      "whyThisMatters": "Holding the L removes all momentum and trains the trunk while you pull.",
+      "source": {
+        "name": "CrossFit",
+        "url": "https://www.crossfit.com/essentials/the-l-pull-up"
+      }
+    },
+    {
+      "id": "ring-support-hold",
+      "name": "Ring Support Hold",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Brace",
+      "musclesWorked": "Triceps, chest, shoulders, core",
+      "equipment": "Gymnastic rings",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Grip the rings and press or jump to straight arms above them.",
+        "Lock the elbows and pull the shoulders down away from the ears.",
+        "Turn the rings out slightly so the palms face forward.",
+        "Hold the rings still against the sides, then step down before the arms bend."
+      ],
+      "formCue": "Arms locked, rings still.",
+      "commonMistakes": "Bent elbows, shrugged shoulders and rings shaking away from the body.",
+      "beginnerModification": "Keep the toes on a box to take some weight.",
+      "alternatives": [
+        "Plank",
+        "Triceps Dip",
+        "Bench Dip"
+      ],
+      "whyThisMatters": "A steady support is the base for every dip and muscle-up on rings.",
+      "source": {
+        "name": "CrossFit",
+        "url": "https://www.crossfit.com/essentials/crossfit-ring-training-part-2"
+      }
+    },
+    {
+      "id": "false-grip-hang",
+      "name": "False Grip Hang",
+      "muscleGroup": "Arms",
+      "movementPattern": "Brace",
+      "musclesWorked": "Forearms, wrists, lats",
+      "equipment": "Gymnastic rings",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the rings so the heel of each hand sits on top of the ring, wrist bent over it.",
+        "Wrap the fingers and let the ring rest across the base of the palm.",
+        "Hang with the wrists still bent, feet on the floor at first if needed.",
+        "Come down before the grip slips back into the fingers."
+      ],
+      "formCue": "Wrist over the ring.",
+      "commonMistakes": "Letting the ring slide into the fingers, and holding too long too soon.",
+      "beginnerModification": "Keep the feet on the floor in a ring-row position and hold the grip there.",
+      "alternatives": [
+        "Scapular Pull-Up",
+        "Ring Row",
+        "Farmer Carry"
+      ],
+      "whyThisMatters": "This grip is what lets you move from the pull to the dip in a strict muscle-up.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/muscle-up/"
+      }
+    },
+    {
+      "id": "strict-ring-muscle-up",
+      "name": "Strict Ring Muscle-Up",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, biceps, chest, triceps, shoulders",
+      "equipment": "Gymnastic rings",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Hang from the rings in a false grip.",
+        "Pull smoothly and as high as you can, bringing the rings to the chest.",
+        "Lean the chest forward over the hands and bring the elbows back to move above the rings.",
+        "Press out of the dip to locked arms with the rings turned slightly out."
+      ],
+      "formCue": "Pull high, lean through, press.",
+      "commonMistakes": "Losing the false grip, and trying it before strict pull-ups and dips are solid.",
+      "beginnerModification": "Practise the transition with the feet on the floor under low rings.",
+      "alternatives": [
+        "Pull-Up",
+        "Ring Dip",
+        "False Grip Hang"
+      ],
+      "whyThisMatters": "It links a pull and a press into one skill that gets you on top of the rings.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/muscle-up/"
+      }
+    },
+    {
+      "id": "pistol-squat",
+      "name": "Pistol Squat",
+      "variationOf": "bodyweight-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, hip flexors, ankles, core",
+      "equipment": "None",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand on one leg with the other leg held out in front and the arms forward for balance.",
+        "Sit back slightly and bend the standing knee, letting it track over the toes with the heel down.",
+        "Lower until the hip crease is below the knee.",
+        "Drive through the whole foot to stand without the free leg touching the floor."
+      ],
+      "formCue": "Heel down, knee over toes.",
+      "commonMistakes": "Rocking onto the toes, the knee caving in, and the free foot touching down.",
+      "beginnerModification": "Squat to a box, hold a support, or let the free heel rest lightly on the floor.",
+      "alternatives": [
+        "Box Pistol Squat",
+        "Bulgarian Split Squat",
+        "Shrimp Squat"
+      ],
+      "whyThisMatters": "It builds single-leg strength, balance and ankle range together.",
+      "source": {
+        "name": "CrossFit",
+        "url": "https://www.crossfit.com/essentials/the-single-leg-squat"
+      }
+    },
+    {
+      "id": "box-pistol-squat",
+      "name": "Box Pistol Squat",
+      "variationOf": "pistol-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, core",
+      "equipment": "Box or bench",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand on one leg in front of a box or bench with the other leg held forward.",
+        "Sit back and down under control until you touch the box.",
+        "Keep the standing knee in line with the foot.",
+        "Stand up on the same leg without rocking for momentum."
+      ],
+      "formCue": "Touch the box, do not drop onto it.",
+      "commonMistakes": "Falling the last few centimetres and bouncing back up.",
+      "beginnerModification": "Use a higher box and lower it over time.",
+      "alternatives": [
+        "Step-Up",
+        "Bulgarian Split Squat",
+        "Lateral Step-Down"
+      ],
+      "whyThisMatters": "The box sets a depth you can control while single-leg strength catches up.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Quadriceps/BWSingleLegBoxSquat"
+      }
+    },
+    {
+      "id": "assisted-pistol-squat",
+      "name": "Assisted Pistol Squat",
+      "variationOf": "pistol-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, core",
+      "equipment": "Rack upright, post or rings",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Hold a rack upright or other fixed support at chest height.",
+        "Stand on one leg with the other leg held in front.",
+        "Lower as deep as you can control, using the hands only as much as needed.",
+        "Stand up through the whole foot, keeping the pull from the arms light."
+      ],
+      "formCue": "Legs do the work, hands just guide.",
+      "commonMistakes": "Hauling yourself up with the arms and letting the heel lift.",
+      "beginnerModification": "Shorten the depth and add range as control improves.",
+      "alternatives": [
+        "Bodyweight Squat",
+        "Step-Up",
+        "Reverse Lunge"
+      ],
+      "whyThisMatters": "It lets you practise the full pistol path before you have the strength to do it free.",
+      "source": {
+        "name": "CrossFit",
+        "url": "https://www.crossfit.com/essentials/the-single-leg-squat"
+      }
+    },
+    {
+      "id": "shrimp-squat",
+      "name": "Shrimp Squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, core",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand on one leg and bend the other knee so that foot is behind you.",
+        "Reach the arms forward and keep the weight over the middle of the standing foot.",
+        "Lower slowly until the back knee touches the floor softly behind the standing heel.",
+        "Stand back up without pushing off the back foot."
+      ],
+      "formCue": "Weight on the midfoot, knee kisses the floor.",
+      "commonMistakes": "Dropping the back knee hard and pushing off the rear toes.",
+      "beginnerModification": "Lower the knee to a pad or stack of mats to shorten the range.",
+      "alternatives": [
+        "Reverse Lunge",
+        "Bulgarian Split Squat",
+        "Pistol Squat"
+      ],
+      "whyThisMatters": "It builds one-leg strength and scales more easily than the pistol.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/unilateral-leg-training/"
+      }
+    },
+    {
+      "id": "l-sit",
+      "name": "L-Sit",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abs, hip flexors, quads, triceps, shoulders",
+      "equipment": "Floor, parallettes or dip bars",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Sit with the legs straight and the hands flat beside the hips, or grip parallettes.",
+        "Press down hard and push the shoulders away from the ears.",
+        "Lift the hips and both straight legs off the floor.",
+        "Hold with the knees locked and chest tall, then lower with control."
+      ],
+      "formCue": "Push down, shoulders low, knees locked.",
+      "commonMistakes": "Shrugged shoulders, a rounded back and bent knees.",
+      "beginnerModification": "Hold a tuck with the knees bent, or keep one foot on the floor.",
+      "alternatives": [
+        "Tuck L-Sit",
+        "Hollow Hold",
+        "Hanging Knee Raise"
+      ],
+      "whyThisMatters": "It trains the trunk and hip flexors hard while the arms support the body.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/l-sit/"
+      }
+    },
+    {
+      "id": "tuck-l-sit",
+      "name": "Tuck L-Sit",
+      "variationOf": "l-sit",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abs, hip flexors, triceps, shoulders",
+      "equipment": "Floor, parallettes or dip bars",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Sit between the hands or parallettes with the knees bent.",
+        "Press down and push the shoulders away from the ears until the hips lift.",
+        "Pull the knees toward the chest so both feet leave the floor.",
+        "Hold with a tall chest, then set the feet down."
+      ],
+      "formCue": "Press tall, knees in.",
+      "commonMistakes": "Sinking into the shoulders and leaning back to lift the feet.",
+      "beginnerModification": "Lift one foot at a time while the other stays down.",
+      "alternatives": [
+        "Hollow Hold",
+        "Hanging Knee Raise",
+        "Plank"
+      ],
+      "whyThisMatters": "It builds the support strength and compression needed for the full L-sit.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/l-sit/"
+      }
+    },
+    {
+      "id": "tuck-front-lever",
+      "name": "Tuck Front Lever",
+      "muscleGroup": "Back",
+      "movementPattern": "Brace",
+      "musclesWorked": "Lats, rear delts, abs, grip",
+      "equipment": "Pull-up bar or rings",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Hang from a bar or rings with straight arms.",
+        "Pull the knees tight to the chest and lean back, pressing the hands down toward the hips.",
+        "Raise the hips until the back is roughly level with the floor.",
+        "Hold with the arms locked, or lower slowly into the position from above, then return to the hang."
+      ],
+      "formCue": "Straight arms, push the bar to the hips.",
+      "commonMistakes": "Bending the elbows and letting the hips hang low.",
+      "beginnerModification": "Do slow lowering reps from an inverted tuck before holding.",
+      "alternatives": [
+        "Hanging Knee Raise",
+        "Straight-Arm Pulldown",
+        "Scapular Pull-Up"
+      ],
+      "whyThisMatters": "It is the first front lever step and builds straight-arm pulling strength.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/levers/"
+      }
+    },
+    {
+      "id": "advanced-tuck-front-lever",
+      "name": "Advanced Tuck Front Lever",
+      "variationOf": "tuck-front-lever",
+      "muscleGroup": "Back",
+      "movementPattern": "Brace",
+      "musclesWorked": "Lats, rear delts, abs, grip",
+      "equipment": "Pull-up bar or rings",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Start in a tuck front lever with the arms straight.",
+        "Open the hips so the knees move away from the chest and the back flattens.",
+        "Keep the hips level with the shoulders.",
+        "Hold for a short time, then tuck back in and lower to the hang."
+      ],
+      "formCue": "Flat back, hips at shoulder height.",
+      "commonMistakes": "Opening the tuck further than you can hold, so the hips drop.",
+      "beginnerModification": "Go back to the tight tuck or use slow lowering reps.",
+      "alternatives": [
+        "Tuck Front Lever",
+        "Hanging Leg Raise",
+        "Straight-Arm Pulldown"
+      ],
+      "whyThisMatters": "Moving the knees away lengthens the lever and loads the lats more.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/levers/"
+      }
+    },
+    {
+      "id": "tuck-back-lever",
+      "name": "Tuck Back Lever",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Brace",
+      "musclesWorked": "Shoulders, chest, biceps, lower back, glutes",
+      "equipment": "Gymnastic rings or bar",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Hang from the rings, tuck the knees and roll backward between the arms until inverted.",
+        "Keep the knees tucked and the arms straight.",
+        "Lower the hips slowly behind you until the back is level with the floor, chest facing down.",
+        "Hold briefly, then pull back to the inverted tuck and roll out."
+      ],
+      "formCue": "Lower slowly, arms long.",
+      "commonMistakes": "Dropping in fast, and forcing the range when the shoulders are not ready.",
+      "beginnerModification": "Work on shoulder extension flexibility and lower only part of the way.",
+      "alternatives": [
+        "Tuck Front Lever",
+        "Ring Support Hold",
+        "Superman Hold"
+      ],
+      "whyThisMatters": "It strengthens the shoulders in extension and the muscles along the back of the body.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/levers/"
+      }
+    },
+    {
+      "id": "chest-to-wall-handstand",
+      "name": "Chest-to-Wall Handstand",
+      "variationOf": "wall-handstand-hold",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Brace",
+      "musclesWorked": "Shoulders, traps, triceps, core",
+      "equipment": "Wall",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Start in a plank with the feet against a wall.",
+        "Walk the feet up the wall and the hands in until you are near vertical, chest facing the wall.",
+        "Stack wrists, shoulders and hips, push tall through the shoulders and keep the body tight.",
+        "Hold while breathing steadily, then walk back down before you tire."
+      ],
+      "formCue": "Push tall, stack the joints.",
+      "commonMistakes": "Arching the back and walking in closer than you can safely exit from.",
+      "beginnerModification": "Stop at a shallower angle with the hands further from the wall.",
+      "alternatives": [
+        "Wall Handstand Hold",
+        "Pike Push-Up",
+        "Downward Dog"
+      ],
+      "whyThisMatters": "Facing the wall teaches a straight handstand line and builds time upside down.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/handstand/"
+      }
+    },
+    {
+      "id": "handstand-kick-up",
+      "name": "Handstand Kick-Up",
+      "variationOf": "wall-handstand-hold",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Balance",
+      "musclesWorked": "Shoulders, triceps, core, hip flexors",
+      "equipment": "Wall",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand facing a wall, place the hands shoulder width apart a short distance from it and lock the arms.",
+        "Step into a short lunge and swing the back leg up while the front leg pushes off lightly.",
+        "Let the lead heel touch the wall softly, with the legs still split.",
+        "Bring the legs together, hold, then step down one leg at a time."
+      ],
+      "formCue": "Kick soft enough to barely touch.",
+      "commonMistakes": "Kicking too hard and bending the arms on the way up.",
+      "beginnerModification": "Practise small kicks that only reach halfway.",
+      "alternatives": [
+        "Wall Handstand Hold",
+        "Chest-to-Wall Handstand",
+        "Pike Push-Up"
+      ],
+      "whyThisMatters": "A controlled entry is what makes handstand practice repeatable and safe.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/freestanding-handstand/"
+      }
+    },
+    {
+      "id": "freestanding-handstand",
+      "name": "Freestanding Handstand",
+      "variationOf": "wall-handstand-hold",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Balance",
+      "musclesWorked": "Shoulders, traps, forearms, core",
+      "equipment": "Open floor",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Kick up gently in clear space with the arms locked and hands shoulder width apart.",
+        "Pause with the legs split, then close them into one straight line.",
+        "Balance by pressing through the fingers when you tip over and through the heel of the hand when you fall back.",
+        "Step down, or turn out sideways like a cartwheel if you overbalance."
+      ],
+      "formCue": "Fingers are the brakes.",
+      "commonMistakes": "Kicking too hard, and practising before you have a safe way to bail.",
+      "beginnerModification": "Work near a wall and float the heels off it for a second at a time.",
+      "alternatives": [
+        "Wall Handstand Hold",
+        "Chest-to-Wall Handstand",
+        "Handstand Kick-Up"
+      ],
+      "whyThisMatters": "It develops shoulder strength, balance and body awareness in one skill.",
+      "source": {
+        "name": "GMB Fitness",
+        "url": "https://gmb.io/freestanding-handstand/"
+      }
+    },
+    {
+      "id": "hanging-leg-raise",
+      "name": "Hanging Leg Raise",
+      "variationOf": "hanging-knee-raise",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Hip flexors, abs, grip",
+      "equipment": "Pull-up bar",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Hang from a high bar with an overhand grip a little wider than the shoulders.",
+        "Keep the knees straight and the body still.",
+        "Raise the legs by bending at the hips until they are at least level with the hips.",
+        "Lower them slowly to the hang without swinging."
+      ],
+      "formCue": "Lift slow, lower slower.",
+      "commonMistakes": "Swinging to throw the legs up and dropping them on the way down.",
+      "beginnerModification": "Bend the knees and do hanging knee raises.",
+      "alternatives": [
+        "Hanging Knee Raise",
+        "V-Up",
+        "Hollow Hold"
+      ],
+      "whyThisMatters": "It strengthens the abs and hip flexors through a long range while training grip.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/HipFlexors/BWHangingStraightLegRaise"
+      }
+    }
+  ]
+}

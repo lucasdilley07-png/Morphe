@@ -1,0 +1,65 @@
+{
+  "reviewed": 194,
+  "findings": [
+    {
+      "id": "cable-lateral-raise",
+      "field": "formCue",
+      "current": "Lead with the elbow, pour the pinky up.",
+      "problem": "Tipping the pinky up turns the arm further inward at the top of the raise, the position linked to shoulder impingement. The source cues the opposite: a slight outward turn as the arm nears shoulder height.",
+      "corrected": "Lead with the elbow and keep the thumb level with or slightly above the pinky.",
+      "severity": "safety",
+      "sourceName": "ACE Exercise Library: Lateral Raise",
+      "sourceURL": "https://www.acefitness.org/resources/everyone/exercise-library/26/lateral-raise/"
+    },
+    {
+      "id": "swimming-exercise",
+      "field": "whyThisMatters",
+      "current": "Trains the entire back line ... with zero equipment and zero spinal compression.",
+      "problem": "The 'zero spinal compression' claim is false. Measured at L4-5, active trunk extension produced the highest joint forces of the extensor exercises tested, and adding the opposite arm to a leg lift raised compression further.",
+      "corrected": "Trains the whole back line, the muscles that hold you upright, with no equipment. Keep the lift low; if your lower back complains, switch to the bird dog.",
+      "severity": "wrong",
+      "sourceName": "Callaghan, Gunning, McGill 1998, Physical Therapy: lumbar spine load and muscle activity during extensor exercises (Europe PMC record)",
+      "sourceURL": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:9442191&resultType=core&format=json"
+    },
+    {
+      "id": "arnold-press",
+      "field": "whyThisMatters",
+      "current": "The rotation hits all three shoulder heads in one move.",
+      "problem": "Not supported. The ACE-sponsored EMG study found no single exercise best for all three deltoid heads; presses lead for the front head, while the rear head needs rows or rear raises.",
+      "corrected": "The rotation adds range to a press that mainly trains the front and side of the shoulder. Pair it with a rear delt move.",
+      "severity": "wrong",
+      "sourceName": "ACE ProSource: Dynamite Delts, ACE research identifies top shoulder exercises",
+      "sourceURL": "https://www.acefitness.org/continuing-education/prosource/september-2014/4972/dynamite-delts-ace-research-identifies-top-shoulder-exercises/"
+    },
+    {
+      "id": "downward-dog",
+      "field": "muscleGroup",
+      "current": ".core",
+      "problem": "Mislabeled. The entry's own musclesWorked lists hamstrings, calves, shoulders and lats, and the source files the pose under arms, back, hips and legs, not abs.",
+      "corrected": ".back",
+      "severity": "wrong",
+      "sourceName": "ACE Exercise Library: Downward-facing Dog",
+      "sourceURL": "https://www.acefitness.org/resources/everyone/exercise-library/18/downward-facing-dog/"
+    },
+    {
+      "id": "back-extension",
+      "field": "beginnerModification",
+      "current": "Superman holds on the floor.",
+      "problem": "A superman is not an easier step down: lifting trunk, arms and legs together is the highest-load version of floor extension work. The lower-load starting point is a single leg lift, then opposite arm and leg.",
+      "corrected": "Bird dog, or lying face down and lifting one leg at a time.",
+      "severity": "weak",
+      "sourceName": "Callaghan, Gunning, McGill 1998, Physical Therapy: lumbar spine load and muscle activity during extensor exercises (Europe PMC record)",
+      "sourceURL": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:9442191&resultType=core&format=json"
+    },
+    {
+      "id": "calf-raise",
+      "field": "equipment",
+      "current": "None or dumbbells",
+      "problem": "The steps tell the user to stand on an edge and drop the heels below it, so the lift as written needs a step or platform. Only the beginner version is done flat on the floor.",
+      "corrected": "Step or sturdy edge; dumbbells optional",
+      "severity": "weak",
+      "sourceName": "ACE Exercise Library: Calf Raise",
+      "sourceURL": "https://www.acefitness.org/resources/everyone/exercise-library/294/calf-raise/"
+    }
+  ]
+}

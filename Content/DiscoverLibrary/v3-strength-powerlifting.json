@@ -1,0 +1,549 @@
+{
+  "version": 2,
+  "category": "Strength & Powerlifting",
+  "workouts": [
+    {
+      "slug": "v3-strength-barbell-density-circuit",
+      "name": "Barbell Density Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Strength circuit",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Full Gym",
+      "notes": "For lifters who want to burn more without leaving the barbell. Keep loads moderate, move with purpose between lifts, and add a set before adding weight.",
+      "exercises": [
+        {
+          "libraryID": "high-bar-back-squat",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "pendlay-row",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "incline-barbell-bench-press",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "stiff-leg-deadlift",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 55
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 4,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-strength-squat-builder",
+      "name": "Squat Builder: Low Bar and Pauses",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Powerlifting",
+      "level": "Moderate",
+      "durationMinutes": 70,
+      "equipmentProfile": "Full Gym",
+      "notes": "A squat-focused day for lifters chasing a bigger competition squat. Add 2.5 kg to the low-bar sets when all five sets of four move cleanly.",
+      "exercises": [
+        {
+          "libraryID": "low-bar-back-squat",
+          "sets": 5,
+          "reps": 4,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 82
+          },
+          "restSeconds": 210
+        },
+        {
+          "libraryID": "pause-squat",
+          "sets": 3,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "good-morning",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 40
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "leg-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "hanging-knee-raise",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-strength-bench-builder",
+      "name": "Bench Builder: Pause and Lockout",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Powerlifting",
+      "level": "Moderate",
+      "durationMinutes": 65,
+      "equipmentProfile": "Full Gym",
+      "notes": "Builds a competition-style bench with a real pause, then trains the lockout. Progress the paused sets first and keep the accessories smooth.",
+      "exercises": [
+        {
+          "libraryID": "paused-bench-press",
+          "sets": 5,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 82
+          },
+          "restSeconds": 210
+        },
+        {
+          "libraryID": "larsen-press",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "floor-press",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "pendlay-row",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "tricep-pushdown",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "face-pull",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-strength-deadlift-builder",
+      "name": "Deadlift Builder: Floor Speed and Lockout",
+      "goal": "strengthBuilding",
+      "focus": "Pull",
+      "trainingType": "Powerlifting",
+      "level": "Advanced",
+      "durationMinutes": 70,
+      "equipmentProfile": "Full Gym",
+      "notes": "For lifters whose deadlift stalls off the floor or at the knees. Keep every pause honest and add load only when the bar stays close.",
+      "exercises": [
+        {
+          "libraryID": "conventional-deadlift",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 85
+          },
+          "restSeconds": 240
+        },
+        {
+          "libraryID": "pause-deadlift",
+          "sets": 3,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "rack-pull",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 90
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "pendlay-row",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "back-extension",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-strength-weak-point-day",
+      "name": "Weak Point Day: Dead Stops",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Powerlifting",
+      "level": "Advanced",
+      "durationMinutes": 75,
+      "equipmentProfile": "Full Gym",
+      "notes": "An advanced session that removes the bounce from all three lifts. Use it once a week in place of a regular heavy day and progress slowly.",
+      "exercises": [
+        {
+          "libraryID": "pin-squat",
+          "sets": 4,
+          "reps": 3,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 75
+          },
+          "restSeconds": 210
+        },
+        {
+          "libraryID": "board-press",
+          "sets": 4,
+          "reps": 4,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 88
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "deficit-deadlift",
+          "sets": 3,
+          "reps": 4,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 72
+          },
+          "restSeconds": 210
+        },
+        {
+          "libraryID": "seated-good-morning",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 30
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "chest-supported-row",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-strength-powerlifter-volume",
+      "name": "Powerlifter Volume Day",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Hypertrophy",
+      "level": "Moderate",
+      "durationMinutes": 60,
+      "equipmentProfile": "Full Gym",
+      "notes": "Higher reps on squat, bench, and hinge variations to hold muscle while leaning out. Keep rests short and leave one or two reps in reserve.",
+      "exercises": [
+        {
+          "libraryID": "safety-bar-squat",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 68
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "incline-barbell-bench-press",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 70
+          },
+          "restSeconds": 105
+        },
+        {
+          "libraryID": "stiff-leg-deadlift",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 62
+          },
+          "restSeconds": 105
+        },
+        {
+          "libraryID": "one-and-a-quarter-squat",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "lat-pulldown",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-strength-box-squat-technique",
+      "name": "Technique Day: Box and Hinge",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Strength training",
+      "level": "Beginner",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "A lighter lower-body day for newer lifters to groove depth and the hip hinge. Raise the load only when every rep looks the same.",
+      "exercises": [
+        {
+          "libraryID": "box-squat",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 60
+          },
+          "restSeconds": 105
+        },
+        {
+          "libraryID": "good-morning",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 35
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "zercher-squat",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "percent1RM",
+            "value": 50
+          },
+          "restSeconds": 105
+        },
+        {
+          "libraryID": "walking-lunge",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "side-plank",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-strength-lifter-reset",
+      "name": "Lifter Reset: Hips, Back, Shoulders",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "An easy session for the day after heavy squats or deadlifts. Move slowly, breathe, and stop every stretch short of strain.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "ninety-ninety-hip-switch",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "thread-the-needle",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ]
+}

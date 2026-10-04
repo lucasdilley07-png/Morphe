@@ -1,0 +1,440 @@
+{
+  "version": 2,
+  "category": "Dance & Aerobics",
+  "workouts": [
+    {
+      "slug": "v3-dance-step-aerobics-basics",
+      "name": "Step Aerobics Basics",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Step aerobics",
+      "level": "Beginner",
+      "durationMinutes": 38,
+      "equipmentProfile": "Full Gym",
+      "notes": "A first step class on a low platform: the basic, the V, knee lifts, and travelling over the top. Keep the whole foot on the platform and raise the height only when the patterns are automatic.",
+      "exercises": [
+        {
+          "libraryID": "aerobic-march",
+          "sets": 1,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "basic-step",
+          "sets": 3,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "v-step-on-step",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "step-knee-lift",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "over-the-top",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "repeater-knee",
+          "sets": 2,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "side-to-side-rock",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-dance-low-impact-cardio",
+      "name": "Low-Impact Dance Cardio",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Dance cardio",
+      "level": "Beginner",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Steady cardio with one foot always on the floor, built from marches, step touches, grapevines, and low-impact jacks. Good for beginners and for days when the joints need a break from jumping.",
+      "exercises": [
+        {
+          "libraryID": "aerobic-march",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "step-touch",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "v-step",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "low-impact-jack",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "step-curl",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "alternating-knee-lift",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "side-to-side-rock",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-dance-latin-inspired-blocks",
+      "name": "Latin-Inspired Cardio Blocks",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Dance cardio",
+      "level": "Moderate",
+      "durationMinutes": 42,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Rhythm blocks using the mambo, rock-step cha-cha, box step, and chasse, with a pivot turn once the footwork is settled. Learn each block slowly, then run them back to back.",
+      "exercises": [
+        {
+          "libraryID": "aerobic-march",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "mambo-step",
+          "sets": 3,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "rock-step-cha-cha",
+          "sets": 3,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "box-step",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "chasse-step",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "pivot-turn",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "grapevine-step",
+          "sets": 2,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "dance-hip-circles",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "v3-dance-and-tone-circuit",
+      "name": "Dance and Tone Circuit",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Dance cardio",
+      "level": "Moderate",
+      "durationMinutes": 34,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Dance cardio blocks alternated with bodyweight strength so the legs and trunk keep working while the heart rate stays up. Add a round of the strength moves when the circuit feels comfortable.",
+      "exercises": [
+        {
+          "libraryID": "cross-step-touch",
+          "sets": 3,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "dance-squat-groove",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "side-step-punch",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "glute-bridge",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "split-step-hop",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-dance-cool-down-sway-and-stretch",
+      "name": "Cool-Down Sway and Stretch",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 21,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A gentle finish or rest-day session: slow rhythmic movement to bring the heart rate down, then standing stretches for the legs and hips. Nothing here should feel like effort.",
+      "exercises": [
+        {
+          "libraryID": "side-to-side-rock",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "aerobic-march",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "arm-wave-reach",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "dance-hip-circles",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-calf-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "standing-quad-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ]
+}

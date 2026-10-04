@@ -32,7 +32,7 @@ TRAIN SMARTER — THE HOUSE RULES
 • Nothing fake — no invented streaks, no padded progress
 
 BUILD YOUR OWN WORKOUTS
-• Create custom workouts from a library of 190+ exercises, or start one of 190+ ready workouts
+• Create custom workouts from a library of 590+ exercises, or start one of 300+ ready workouts across 17 training styles
 • Add your own exercises when something's missing
 • Set your target sets and reps
 

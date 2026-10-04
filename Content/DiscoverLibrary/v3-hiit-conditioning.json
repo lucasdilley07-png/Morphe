@@ -1,0 +1,337 @@
+{
+  "version": 2,
+  "category": "HIIT & Conditioning",
+  "workouts": [
+    {
+      "slug": "v3-hiit-rope-and-bike-burner",
+      "name": "Rope and Bike Burner",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Full Gym",
+      "notes": "Short all-out bursts on the ropes and air bike with twice as much rest as work. Keep every interval at the same quality; add a round before you shorten the rest.",
+      "exercises": [
+        {
+          "libraryID": "jumping-jack",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "battle-rope-alternating-wave",
+          "sets": 6,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "air-bike-sprint",
+          "sets": 8,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "battle-rope-slam",
+          "sets": 5,
+          "durationSeconds": 15,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "kneeling-ball-slam",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "plank-knee-drive",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-hiit-stairs-and-floor",
+      "name": "Stairs and Floor Intervals",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Beginner",
+      "durationMinutes": 22,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A no-equipment interval session for anyone with a flight of stairs. Walk down every time; when it feels easy, add a stair sprint rather than running faster.",
+      "exercises": [
+        {
+          "libraryID": "plank-knee-drive",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "rotational-jack",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "reverse-lunge-power-knee",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "stair-sprint",
+          "sets": 6,
+          "durationSeconds": 15,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "lunge-mountain-climber",
+          "sets": 3,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "high-knees",
+          "sets": 3,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 40
+        }
+      ]
+    },
+    {
+      "slug": "v3-hiit-power-bounds-and-slams",
+      "name": "Power Intervals: Bounds and Slams",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Power conditioning",
+      "level": "Advanced",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "Low reps, full rest and maximum intent, for lifters who want to be more explosive. Stop a set when the jumps get shorter or the slams get slower.",
+      "exercises": [
+        {
+          "libraryID": "lateral-bound",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "lateral-cone-jump",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "medicine-ball-slam",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "battle-rope-slam",
+          "sets": 5,
+          "durationSeconds": 10,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "sled-push",
+          "sets": 5,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "ski-erg-double-pole",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-hiit-shuttle-and-ski-circuit",
+      "name": "Shuttle and Ski Mixed Circuit",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "HIIT",
+      "level": "Moderate",
+      "durationMinutes": 32,
+      "equipmentProfile": "Full Gym",
+      "notes": "Mixes hard machine intervals and shuttle runs with a strength move so muscle stays in the picture. Progress by adding one ski interval or one shuttle round.",
+      "exercises": [
+        {
+          "libraryID": "ski-erg-double-pole",
+          "sets": 5,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "shuttle-run",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "battle-rope-double-wave",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-hiit-low-impact-flush",
+      "name": "Low-Impact Flush",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Full Gym",
+      "notes": "For the day after hard intervals. Everything stays easy; the goal is to leave feeling looser than when you arrived.",
+      "exercises": [
+        {
+          "libraryID": "stationary-bike",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "plank-knee-drive",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "worlds-greatest-stretch",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,529 @@
+{
+  "discipline": "Pilates & Core Control",
+  "exercises": [
+    {
+      "id": "rolling-like-a-ball",
+      "name": "Rolling Like a Ball",
+      "muscleGroup": "Core",
+      "movementPattern": "Flow",
+      "musclesWorked": "Abdominals, hip flexors, spinal erectors",
+      "equipment": "Mat",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit near the front of the mat, hug your shins, and open your knees to shoulder width.",
+        "Round your spine, tuck your chin toward your chest, and lift your feet to balance behind your sitting bones.",
+        "Breathe in and roll back as far as your shoulder blades, keeping the same round shape.",
+        "Breathe out and roll up to the balance without letting your feet touch the floor."
+      ],
+      "formCue": "Stay a ball: heels close, chin tucked.",
+      "commonMistakes": "Rolling onto the neck or head, and throwing the legs or head to get back up.",
+      "beginnerModification": "Hold behind the thighs with a looser shape, or just practise the balance without rolling.",
+      "alternatives": [
+        "Roll-Up",
+        "Hollow Hold",
+        "Seal"
+      ],
+      "whyThisMatters": "It trains the abdominals to hold a rounded spine and control momentum.",
+      "source": {
+        "name": "Power Pilates",
+        "url": "https://powerpilates.com/learn/how-to-perform-rolling-like-a-ball-in-pilates"
+      }
+    },
+    {
+      "id": "single-leg-stretch",
+      "name": "Single-Leg Stretch",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abdominals, obliques, hip flexors",
+      "equipment": "Mat",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Lie on your back, hug both knees in, and curl your head and shoulders off the mat.",
+        "Keep one knee in and reach the other leg out to about 45 degrees.",
+        "Place the outside hand on the ankle and the inside hand on the knee of the bent leg.",
+        "Switch legs smoothly, drawing each knee in as the other leg reaches long.",
+        "Keep your lower back on the mat and your trunk still for the whole set."
+      ],
+      "formCue": "Trunk still, legs trade places.",
+      "commonMistakes": "Rocking the torso side to side, or letting the head drop and the neck take the strain.",
+      "beginnerModification": "Reach the straight leg higher toward the ceiling, or rest your head on the mat.",
+      "alternatives": [
+        "Dead Bug",
+        "Bicycle Crunch",
+        "Double-Leg Stretch"
+      ],
+      "whyThisMatters": "It teaches the trunk to stay stable while the legs move.",
+      "source": {
+        "name": "Power Pilates",
+        "url": "https://www.powerpilates.com/learn/how-to-do-a-single-leg-stretch-in-pilates"
+      }
+    },
+    {
+      "id": "double-leg-stretch",
+      "name": "Double-Leg Stretch",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abdominals, hip flexors, shoulders",
+      "equipment": "Mat",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie on your back, hug both knees to your chest, and curl your head and shoulders up.",
+        "Breathe in and reach your arms back by your ears and both legs out on a high diagonal.",
+        "Keep your lower back on the mat and your head and shoulders lifted.",
+        "Breathe out, circle your arms around, and hug your knees back in.",
+        "Repeat without lowering your head between reps."
+      ],
+      "formCue": "Reach long, hug tight, back stays down.",
+      "commonMistakes": "Letting the lower back arch as the legs reach, or dropping the head back with the arms.",
+      "beginnerModification": "Reach the legs straight up instead of out, or move only the arms and then only the legs.",
+      "alternatives": [
+        "Hollow Hold",
+        "Dead Bug",
+        "Single-Leg Stretch"
+      ],
+      "whyThisMatters": "It builds the abdominal strength to hold the trunk steady against long levers.",
+      "source": {
+        "name": "Power Pilates",
+        "url": "https://www.powerpilates.com/learn/how-to-do-a-double-leg-stretch-in-pilates"
+      }
+    },
+    {
+      "id": "single-straight-leg-stretch",
+      "name": "Single Straight-Leg Stretch",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abdominals, hamstrings, hip flexors",
+      "equipment": "Mat",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie on your back, curl your head and shoulders up, and reach both legs toward the ceiling.",
+        "Hold behind the calf or thigh of one leg and lower the other leg toward the mat.",
+        "Draw the top leg toward you with two small pulses.",
+        "Switch legs in a scissor action, keeping both knees as straight as you can.",
+        "Keep your elbows wide and your trunk still throughout."
+      ],
+      "formCue": "Legs scissor, trunk does not rock.",
+      "commonMistakes": "Bouncing the torso with each pulse, or rounding the shoulders forward to reach the leg.",
+      "beginnerModification": "Hold behind the thigh, soften the knees, and keep the lower leg higher off the mat.",
+      "alternatives": [
+        "Single-Leg Stretch",
+        "Flutter Kick",
+        "Dead Bug"
+      ],
+      "whyThisMatters": "It strengthens the abdominals while giving the hamstrings an active stretch.",
+      "source": {
+        "name": "Power Pilates",
+        "url": "https://www.powerpilates.com/learn/how-to-do-the-pilates-scissors"
+      }
+    },
+    {
+      "id": "double-straight-leg-stretch",
+      "name": "Double Straight-Leg Stretch",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Lower abdominals, hip flexors, inner thighs",
+      "equipment": "Mat",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Lie on your back with hands layered behind your head, elbows wide, and head and shoulders curled up.",
+        "Reach both legs straight up and squeeze them together.",
+        "Lower both legs only as far as your lower back stays on the mat.",
+        "Lift the legs back to vertical with a little more emphasis on the way up.",
+        "Keep your chest lifted and neck relaxed for every rep."
+      ],
+      "formCue": "Lower slow, lift with intent, back stays down.",
+      "commonMistakes": "Letting the lower back arch off the mat, or losing the shoulder lift as the legs lower.",
+      "beginnerModification": "Bend the knees slightly, lower only a short way, and place your hands under your hips.",
+      "alternatives": [
+        "Hanging Knee Raise",
+        "Hollow Hold",
+        "Flutter Kick"
+      ],
+      "whyThisMatters": "It loads the lower abdominals hard while the trunk learns to resist arching.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-double-straight-leg-stretch/"
+      }
+    },
+    {
+      "id": "criss-cross",
+      "name": "Criss-Cross",
+      "muscleGroup": "Core",
+      "movementPattern": "Rotation",
+      "musclesWorked": "Obliques, abdominals, hip flexors",
+      "equipment": "Mat",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie on your back with hands behind your head, elbows wide, and knees bent over your hips.",
+        "Curl your head and shoulders up and reach one leg out on a diagonal.",
+        "Rotate your ribcage toward the bent knee, lifting the back of the opposite shoulder off the mat.",
+        "Hold the twist for a beat, then switch sides as you change legs.",
+        "Keep your hips still and your elbows open the whole time."
+      ],
+      "formCue": "Twist the ribs, not the elbows.",
+      "commonMistakes": "Pulling on the neck and flapping the elbows instead of rotating the trunk, or rocking the hips.",
+      "beginnerModification": "Keep both feet on the floor with knees bent and twist the upper body only.",
+      "alternatives": [
+        "Bicycle Crunch",
+        "Russian Twist",
+        "Spine Twist"
+      ],
+      "whyThisMatters": "It builds rotational strength in the obliques with the pelvis held steady.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-criss-cross/"
+      }
+    },
+    {
+      "id": "spine-stretch-forward",
+      "name": "Spine Stretch Forward",
+      "muscleGroup": "Core",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Spinal erectors, hamstrings, abdominals",
+      "equipment": "Mat",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit tall with legs straight, a little wider than your hips, and feet flexed.",
+        "Reach your arms forward at shoulder height.",
+        "Breathe out, nod your chin, and round forward one segment at a time while pulling your stomach back.",
+        "Reach forward as if curving over a big ball, keeping your hips where they are.",
+        "Breathe in and stack your spine back up to tall sitting."
+      ],
+      "formCue": "Round up and over, belly pulls back.",
+      "commonMistakes": "Starting slumped, or hinging flat from the hips instead of rounding the spine.",
+      "beginnerModification": "Sit on a folded blanket or bend your knees so you can start upright.",
+      "alternatives": [
+        "Seated Forward Fold",
+        "Cat-Cow",
+        "Roll-Up"
+      ],
+      "whyThisMatters": "It teaches the spine to move one segment at a time and stretches the back of the body.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-spine-stretch-forward/"
+      }
+    },
+    {
+      "id": "open-leg-rocker",
+      "name": "Open-Leg Rocker",
+      "muscleGroup": "Core",
+      "movementPattern": "Flow",
+      "musclesWorked": "Abdominals, hip flexors, hamstrings, spinal erectors",
+      "equipment": "Mat",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Sit just behind your sitting bones, hold your ankles, and straighten your legs into a V at shoulder width.",
+        "Keep your lower back gently rounded and your chest lifted.",
+        "Tilt your pelvis under to start rolling back and roll only as far as your shoulder blades.",
+        "Roll back up using your abdominals and pause in the balance.",
+        "Keep your arms straight and the shape the same in both directions."
+      ],
+      "formCue": "The pelvis starts the roll, not the head.",
+      "commonMistakes": "Throwing the head back to start, or rolling onto the neck.",
+      "beginnerModification": "Hold behind your calves or thighs with bent knees, or just hold the V balance.",
+      "alternatives": [
+        "Rolling Like a Ball",
+        "Teaser Prep",
+        "Boat Pose"
+      ],
+      "whyThisMatters": "It combines balance, hamstring length, and abdominal control in one rolling movement.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-open-leg-rocker/"
+      }
+    },
+    {
+      "id": "corkscrew",
+      "name": "Corkscrew",
+      "muscleGroup": "Core",
+      "movementPattern": "Rotation",
+      "musclesWorked": "Abdominals, obliques, hip flexors, inner thighs",
+      "equipment": "Mat",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Lie on your back with arms long by your sides, palms pressing down, and both legs straight up and squeezed together.",
+        "Keep your whole spine on the mat and your shoulders wide.",
+        "Circle both legs as one: over to one side, down and around, and up the other side.",
+        "Pause at the top, then reverse the circle.",
+        "Keep the circle small enough that your lower back and hips stay still."
+      ],
+      "formCue": "Legs glued together, small circle, quiet hips.",
+      "commonMistakes": "Making the circle so big that the lower back arches or the hips roll off the mat.",
+      "beginnerModification": "Bend the knees a little, make a plate-sized circle, and put your hands under your hips.",
+      "alternatives": [
+        "Single-Leg Circle",
+        "Double Straight-Leg Stretch",
+        "Supine Twist"
+      ],
+      "whyThisMatters": "It trains the trunk to stay anchored while the legs move through rotation.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-the-corkscrew/"
+      }
+    },
+    {
+      "id": "saw",
+      "name": "Saw",
+      "muscleGroup": "Core",
+      "movementPattern": "Rotation",
+      "musclesWorked": "Obliques, spinal erectors, hamstrings, upper back",
+      "equipment": "Mat",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit tall with legs straight and a little wider than the mat, feet flexed, and arms out to the sides.",
+        "Rotate your trunk to one side while both sitting bones stay down.",
+        "Reach the front hand toward the outside of the opposite foot as the back arm reaches behind you.",
+        "Round forward over the leg and breathe out fully.",
+        "Roll up, untwist to the centre, and repeat to the other side."
+      ],
+      "formCue": "Both hips stay heavy as you twist and reach.",
+      "commonMistakes": "Letting the opposite hip lift or slide forward, or collapsing the chest instead of rotating.",
+      "beginnerModification": "Sit on a folded blanket and bend the knees slightly.",
+      "alternatives": [
+        "Spine Twist",
+        "Spine Stretch Forward",
+        "Thread the Needle"
+      ],
+      "whyThisMatters": "It pairs spinal rotation with a hamstring stretch and trains a full breath out.",
+      "source": {
+        "name": "Power Pilates",
+        "url": "https://www.powerpilates.com/learn/how-to-do-the-saw-in-pilates"
+      }
+    },
+    {
+      "id": "swan-prep",
+      "name": "Swan Prep",
+      "muscleGroup": "Back",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Spinal erectors, glutes, upper back, triceps",
+      "equipment": "Mat",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Lie face down with hands under your shoulders, elbows close to your sides, and legs together.",
+        "Lift your stomach lightly off the mat and press your hip bones down.",
+        "Lift your head and chest using your upper back, with only light pressure in the hands.",
+        "Press into your hands to rise a little higher while your neck stays long.",
+        "Lower slowly, lengthening forward as you go."
+      ],
+      "formCue": "Chest reaches forward and up, belly lifted.",
+      "commonMistakes": "Pushing up with the arms and hinging in the lower back, or throwing the head back.",
+      "beginnerModification": "Keep your forearms on the mat and lift only a few centimetres.",
+      "alternatives": [
+        "Cobra Pose",
+        "Superman Hold",
+        "Swimming"
+      ],
+      "whyThisMatters": "It builds upper-back extension strength to balance all the forward-rounding work.",
+      "source": {
+        "name": "Power Pilates",
+        "url": "https://www.powerpilates.com/learn/how-to-do-the-swan-in-pilates"
+      }
+    },
+    {
+      "id": "single-leg-kick",
+      "name": "Single-Leg Kick",
+      "muscleGroup": "Legs",
+      "movementPattern": "Curl",
+      "musclesWorked": "Hamstrings, glutes, upper back, triceps",
+      "equipment": "Mat",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Lie face down and prop yourself on your forearms with elbows under your shoulders.",
+        "Press your elbows down, lift your chest, and pull your stomach up off the mat.",
+        "Kick one heel toward your seat with two quick pulses.",
+        "Straighten that leg to the mat and kick the other heel.",
+        "Keep your hips and trunk completely still as the legs alternate."
+      ],
+      "formCue": "Chest proud, hips pinned, heel to seat.",
+      "commonMistakes": "Sinking between the shoulders, or letting the hips rock with each kick.",
+      "beginnerModification": "Rest your forehead on stacked hands and kick once per side.",
+      "alternatives": [
+        "Hamstring Curl",
+        "Swimming",
+        "Superman Hold"
+      ],
+      "whyThisMatters": "It strengthens the hamstrings and upper back while opening the front of the thighs.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-single-leg-kicks/"
+      }
+    },
+    {
+      "id": "double-leg-kick",
+      "name": "Double-Leg Kick",
+      "muscleGroup": "Back",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Spinal erectors, glutes, hamstrings, rear shoulders",
+      "equipment": "Mat",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie face down with one cheek on the mat and hands clasped high on your back, elbows relaxed down.",
+        "Kick both heels toward your seat three times.",
+        "Straighten your legs to the mat as you reach your clasped hands toward your heels and lift your chest.",
+        "Keep your stomach lifted and your neck long at the top.",
+        "Lower, turn your head to the other cheek, and repeat."
+      ],
+      "formCue": "Reach the hands to the heels and let the chest follow.",
+      "commonMistakes": "Letting the stomach sag so the lower back pinches, or craning the neck up.",
+      "beginnerModification": "Keep the hands by your hips instead of clasped, and lift the chest only slightly.",
+      "alternatives": [
+        "Superman Hold",
+        "Swan Prep",
+        "Back Extension"
+      ],
+      "whyThisMatters": "It opens the chest and shoulders while strengthening the whole back line.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-double-leg-kicks/"
+      }
+    },
+    {
+      "id": "teaser",
+      "name": "Teaser",
+      "variationOf": "teaser-prep",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abdominals, hip flexors, quads, spinal erectors",
+      "equipment": "Mat",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Lie on your back with your legs together on a 45 degree diagonal and arms reaching overhead.",
+        "Bring your arms forward, lift your head, and roll up one segment at a time.",
+        "Finish in a V with your fingers reaching toward your toes and your chest open.",
+        "Hold for a breath with your legs still.",
+        "Roll down slowly through the lower back first, keeping the legs where they are."
+      ],
+      "formCue": "Legs stay still, the spine does the moving.",
+      "commonMistakes": "Jerking up with momentum, letting the legs drop, or hinging with a stiff arched back.",
+      "beginnerModification": "Use Teaser Prep with the knees bent and feet on the floor, or one leg extended.",
+      "alternatives": [
+        "Teaser Prep",
+        "V-Up",
+        "Boat Pose"
+      ],
+      "whyThisMatters": "It is the benchmark of Pilates control: strength, balance, and spinal articulation together.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-teaser-1-2-3/"
+      }
+    },
+    {
+      "id": "leg-pull-back",
+      "name": "Leg Pull Back",
+      "variationOf": "leg-pull-front",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Glutes, hamstrings, rear shoulders, triceps, core",
+      "equipment": "Mat",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Sit with legs straight and hands on the mat behind your hips, fingers pointing forward or out.",
+        "Press down through your hands and heels and lift your hips until your body is one straight line.",
+        "Keep your hips level and kick one straight leg up toward the ceiling.",
+        "Lower it with control and switch legs.",
+        "Finish the set, then lower your hips slowly to the mat."
+      ],
+      "formCue": "Hips stay high and level as the leg lifts.",
+      "commonMistakes": "Letting the hips drop as the leg kicks, or sinking into the shoulders and wrists.",
+      "beginnerModification": "Hold the reverse plank without the kicks, or bend the knees into a tabletop.",
+      "alternatives": [
+        "Leg Pull Front",
+        "Glute Bridge",
+        "Crab Walk"
+      ],
+      "whyThisMatters": "It strengthens the back of the body and opens the chest and shoulders.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-leg-pull-back/"
+      }
+    },
+    {
+      "id": "seal",
+      "name": "Seal",
+      "muscleGroup": "Core",
+      "movementPattern": "Flow",
+      "musclesWorked": "Abdominals, hip flexors, spinal erectors",
+      "equipment": "Mat",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Sit with knees bent and open and heels together.",
+        "Thread your hands between your legs and hold the outsides of your ankles.",
+        "Lift your feet and balance just behind your sitting bones with a rounded spine.",
+        "Roll back to your shoulder blades, then roll up and find the balance again.",
+        "Add three small foot claps at the back and at the front once the roll is smooth."
+      ],
+      "formCue": "Round and roll, pause in the balance.",
+      "commonMistakes": "Rolling onto the neck, or using a kick of the legs to get back up.",
+      "beginnerModification": "Leave out the claps and hold behind the thighs.",
+      "alternatives": [
+        "Rolling Like a Ball",
+        "Open-Leg Rocker"
+      ],
+      "whyThisMatters": "It loosens the back at the end of a mat session and keeps the balance sharp.",
+      "source": {
+        "name": "Power Pilates",
+        "url": "https://www.powerpilates.com/learn/how-to-do-the-seal-in-pilates"
+      }
+    },
+    {
+      "id": "pilates-side-bend",
+      "name": "Pilates Side Bend",
+      "variationOf": "side-plank",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Obliques, shoulders, outer hips, inner thighs",
+      "equipment": "Mat",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Sit on one hip with knees bent, top foot just in front of the bottom foot, and your bottom hand on the mat under your shoulder.",
+        "Press into your hand and feet and lift your hips as you straighten your legs.",
+        "Reach your top arm overhead so your body makes a long arc.",
+        "Keep the supporting shoulder away from your ear and your chest open.",
+        "Lower your hips with control to just above the mat and repeat before switching sides."
+      ],
+      "formCue": "Push the floor away and lift from the underside of the waist.",
+      "commonMistakes": "Sinking into the wrist and shoulder, or letting the top shoulder roll forward.",
+      "beginnerModification": "Keep the bottom knee on the mat, or work from the forearm.",
+      "alternatives": [
+        "Side Plank",
+        "Copenhagen Plank",
+        "Side Kick Series"
+      ],
+      "whyThisMatters": "It builds side-body and shoulder strength with control through a full range.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-side-bend/"
+      }
+    },
+    {
+      "id": "neck-pull",
+      "name": "Neck Pull",
+      "variationOf": "roll-up",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abdominals, hip flexors, spinal erectors, hamstrings",
+      "equipment": "Mat",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Lie on your back with legs straight and hip-width apart, feet flexed, and hands layered behind your head.",
+        "Keep your elbows wide, curl your head and chest up, and roll forward over your legs.",
+        "Stack your spine up to sit tall, pressing your head lightly back into your hands.",
+        "Lean back in one straight line as far as you can control.",
+        "Round your lower back and roll down to the mat one segment at a time."
+      ],
+      "formCue": "Elbows wide, legs heavy, no tugging on the head.",
+      "commonMistakes": "Yanking on the neck to get up, or letting the feet lift off the mat.",
+      "beginnerModification": "Bend the knees slightly, or do a Roll-Up with the arms reaching forward.",
+      "alternatives": [
+        "Roll-Up",
+        "Sit-Up",
+        "Teaser Prep"
+      ],
+      "whyThisMatters": "It is a harder Roll-Up that demands full abdominal control with no help from the arms.",
+      "source": {
+        "name": "Pilatesology",
+        "url": "https://pilatesology.com/pilatesology-encyclopedia-neck-pull/"
+      }
+    }
+  ]
+}

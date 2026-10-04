@@ -1,0 +1,551 @@
+{
+  "version": 2,
+  "category": "Calisthenics & Bodyweight",
+  "workouts": [
+    {
+      "slug": "v3-cali-density-circuit",
+      "name": "Bodyweight Density Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Calisthenics circuit",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "For anyone with a bar and floor space who wants a lot of work in a short time. Move through the list as a circuit; add a round or trim the rests as it gets easier.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 4,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "push-up",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "inverted-row",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "reverse-lunge",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "hanging-knee-raise",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "mountain-climber",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-cali-rings-and-legs-circuit",
+      "name": "Rings and Legs Circuit",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Calisthenics circuit",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Full Gym",
+      "notes": "A rings-based circuit that keeps the heart rate up while practising clean pulling and pushing. Make the ring angles harder before adding rounds.",
+      "exercises": [
+        {
+          "libraryID": "ring-row",
+          "sets": 4,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "ring-push-up",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "assisted-pistol-squat",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "jump-squat",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "tuck-l-sit",
+          "sets": 4,
+          "durationSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "burpee",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        }
+      ]
+    },
+    {
+      "slug": "v3-cali-pull-strength-levers",
+      "name": "Pull Strength: Pull-Ups and Front Lever",
+      "goal": "strengthBuilding",
+      "focus": "Pull",
+      "trainingType": "Calisthenics strength",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Full Gym",
+      "notes": "For people with solid strict pull-ups who want harder variations and a first front lever. Add reps to the pull-ups and seconds to the lever before moving to the next progression.",
+      "exercises": [
+        {
+          "libraryID": "scapular-pull-up",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "wide-grip-pull-up",
+          "sets": 5,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "l-pull-up",
+          "sets": 4,
+          "reps": 4,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "tuck-front-lever",
+          "sets": 5,
+          "durationSeconds": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "feet-elevated-inverted-row",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "hanging-leg-raise",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-cali-push-strength-one-arm",
+      "name": "Push Strength: One-Arm Push-Up Path",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Calisthenics strength",
+      "level": "Advanced",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "A pressing day built around the one-arm push-up progression. Lower the hand height on the elevated version only when every rep stays square; reps are per side.",
+      "exercises": [
+        {
+          "libraryID": "planche-lean",
+          "sets": 3,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "elevated-one-arm-push-up",
+          "sets": 5,
+          "reps": 4,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "archer-push-up",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "ring-dip",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "pike-push-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "ring-support-hold",
+          "sets": 3,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-cali-single-leg-strength",
+      "name": "Single-Leg Strength: Pistol and Shrimp",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Calisthenics strength",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Builds toward a free pistol squat with no weights. Reps are per leg; lower the box over the weeks and keep every rep controlled.",
+      "exercises": [
+        {
+          "libraryID": "bodyweight-squat",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "box-pistol-squat",
+          "sets": 5,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "shrimp-squat",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "nordic-hamstring-curl",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "calf-raise",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-cali-skill-handstand",
+      "name": "Skill Session: Handstand Progression",
+      "goal": "strengthBuilding",
+      "focus": "Push",
+      "trainingType": "Skill practice",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A handstand practice session that goes from wall holds to free balance attempts. Stay fresh: stop each set before form slips and skip the freestanding work until wall holds and kick-ups feel safe.",
+      "exercises": [
+        {
+          "libraryID": "frog-stand",
+          "sets": 3,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "chest-to-wall-handstand",
+          "sets": 5,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "handstand-kick-up",
+          "sets": 5,
+          "reps": 3,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "freestanding-handstand",
+          "sets": 6,
+          "durationSeconds": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hollow-hold",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "pike-push-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-cali-skill-muscle-up",
+      "name": "Skill Session: Ring Muscle-Up Builder",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Skill practice",
+      "level": "Advanced",
+      "durationMinutes": 50,
+      "equipmentProfile": "Full Gym",
+      "notes": "For people with at least five strict pull-ups and five dips. If the full muscle-up is not there yet, swap it for the transition drill with the feet on the floor.",
+      "exercises": [
+        {
+          "libraryID": "false-grip-hang",
+          "sets": 4,
+          "durationSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "pull-up",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "ring-dip",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "strict-ring-muscle-up",
+          "sets": 5,
+          "reps": 2,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "tuck-back-lever",
+          "sets": 4,
+          "durationSeconds": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "ring-support-hold",
+          "sets": 3,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-cali-upper-volume",
+      "name": "Calisthenics Volume: Upper Body",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Calisthenics hypertrophy",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Full Gym",
+      "notes": "Higher reps and short rests to hold muscle while leaning out. When you hit the top of the rep range on every set, move to a harder variation.",
+      "exercises": [
+        {
+          "libraryID": "neutral-grip-pull-up",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "ring-push-up",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "feet-elevated-inverted-row",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "dip",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "archer-push-up",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "l-sit",
+          "sets": 4,
+          "durationSeconds": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "hanging-leg-raise",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,399 @@
+{
+  "version": 2,
+  "category": "Running & Cardio",
+  "workouts": [
+    {
+      "slug": "v3-run-first-run-walk",
+      "name": "First Run: Run-Walk",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Running",
+      "level": "Beginner",
+      "durationMinutes": 32,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A starter session for new or returning runners: one minute of easy running, four minutes of walking, four times. Repeat it three days a week and only add running time once it feels comfortable.",
+      "exercises": [
+        {
+          "libraryID": "power-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "run-walk-intervals",
+          "sets": 4,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "standing-calf-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        }
+      ]
+    },
+    {
+      "slug": "v3-run-incline-and-climb",
+      "name": "Incline and Climb",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Cardio machines",
+      "level": "Beginner",
+      "durationMinutes": 42,
+      "equipmentProfile": "Full Gym",
+      "notes": "Low-impact gym cardio that keeps the heart rate up by climbing instead of running. Keep your hands off the rails and raise the incline before the speed.",
+      "exercises": [
+        {
+          "libraryID": "treadmill-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "incline-treadmill-walk",
+          "sets": 3,
+          "durationSeconds": 360,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "stair-climber",
+          "sets": 2,
+          "durationSeconds": 240,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 3
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "elliptical-trainer",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "standing-calf-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        }
+      ]
+    },
+    {
+      "slug": "v3-run-hill-strength",
+      "name": "Hill Strength Session",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Running",
+      "level": "Moderate",
+      "durationMinutes": 48,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Hill repeats are strength work for runners. Run each one hard but even, jog or walk down, and add a repeat every week or two.",
+      "exercises": [
+        {
+          "libraryID": "easy-recovery-run",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "a-skip",
+          "sets": 2,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "b-skip",
+          "sets": 2,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "running-strides",
+          "sets": 4,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "hill-repeats",
+          "sets": 8,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "maxEffort"
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "power-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-run-tempo-and-strides",
+      "name": "Tempo and Strides",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Running",
+      "level": "Moderate",
+      "durationMinutes": 46,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Twenty minutes at a comfortably hard effort, bracketed by drills and strides. If you cannot hold the pace evenly, split the tempo into two blocks with a short jog between.",
+      "exercises": [
+        {
+          "libraryID": "easy-recovery-run",
+          "sets": 1,
+          "durationSeconds": 600,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "ankling-drill",
+          "sets": 2,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "a-skip",
+          "sets": 2,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "tempo-run",
+          "sets": 1,
+          "durationSeconds": 1200,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "running-strides",
+          "sets": 4,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 4
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "power-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-run-long-run-with-cadence",
+      "name": "Long Run with Cadence Work",
+      "goal": "leanOut",
+      "focus": "Conditioning",
+      "trainingType": "Running",
+      "level": "Moderate",
+      "durationMinutes": 62,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The weekly long run at conversation pace, opened with a few minutes of step-rate practice. Extend the long run by a few minutes at a time, not by big jumps.",
+      "exercises": [
+        {
+          "libraryID": "power-walk",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "cadence-drill",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "long-slow-run",
+          "sets": 1,
+          "durationSeconds": 2700,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 2
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "standing-calf-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        }
+      ]
+    },
+    {
+      "slug": "v3-run-recovery-jog-and-mobility",
+      "name": "Recovery Jog and Mobility",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Active recovery",
+      "level": "Recovery",
+      "durationMinutes": 28,
+      "equipmentProfile": "Bodyweight",
+      "notes": "An easy jog and four stretches for the day after a hard run. If the jog does not feel easy, walk it.",
+      "exercises": [
+        {
+          "libraryID": "easy-recovery-run",
+          "sets": 1,
+          "durationSeconds": 1200,
+          "intensity": {
+            "type": "heartRateZone",
+            "value": 1
+          },
+          "restSeconds": 0
+        },
+        {
+          "libraryID": "ankling-drill",
+          "sets": 2,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "standing-calf-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "hip-flexor-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        }
+      ]
+    }
+  ]
+}

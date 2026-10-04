@@ -24,7 +24,12 @@ enum MorpheDemoContent {
         Calendar.current.date(byAdding: .day, value: -count, to: .now) ?? .now
     }
 
-    static let exerciseDatabase: [ExerciseReference] = [
+    /// The whole library: the original Swift-authored entries plus the
+    /// data-authored Technique Library bundled in MorpheCatalog.json.
+    static let exerciseDatabase: [ExerciseReference] =
+        coreExerciseDatabase + WorkoutCatalog.loadBundledExercises(excluding: coreExerciseDatabase)
+
+    static let coreExerciseDatabase: [ExerciseReference] = [
         ExerciseReference(
             id: "goblet-squat",
             name: "Goblet Squat",
@@ -491,7 +496,7 @@ enum MorpheDemoContent {
             muscleGroup: .legs,
             movementPattern: "Accessory",
             musclesWorked: "Calves",
-            equipment: "None or dumbbells",
+            equipment: "Step or sturdy edge; dumbbells optional",
             difficulty: .beginner,
             videoPlaceholder: "Calf raise demo placeholder",
             instructions: [
@@ -623,7 +628,7 @@ enum MorpheDemoContent {
             commonMistakes: "Using too much weight and shrugging.",
             beginnerModification: "Use a band anchored at head height.",
             alternatives: ["Rear Delt Fly", "Lateral Raise"],
-            whyThisMatters: "Face pulls balance the shoulders and undo desk-posture rounding."
+            whyThisMatters: "Face pulls train the rear shoulders and upper back that pressing leaves behind."
         ),
         ExerciseReference(
             id: "barbell-bench-press",
@@ -763,7 +768,7 @@ enum MorpheDemoContent {
             commonMistakes: "Rushing the rotation and using the back.",
             beginnerModification: "Use a standard seated shoulder press.",
             alternatives: ["Shoulder Press", "Overhead Barbell Press"],
-            whyThisMatters: "The rotation hits all three shoulder heads in one move."
+            whyThisMatters: "The rotation adds range to a press that mainly trains the front and side of the shoulder. Pair it with a rear delt move."
         ),
         ExerciseReference(
             id: "hammer-curl",
@@ -903,7 +908,7 @@ enum MorpheDemoContent {
             commonMistakes: "Rounding the back and rushing.",
             beginnerModification: "Keep heels down and skip the weight.",
             alternatives: ["Bicycle Crunch", "Side Plank"],
-            whyThisMatters: "Rotation strength protects the spine and powers sport movements."
+            whyThisMatters: "Trains the trunk to rotate under control, the way sport and daily movement ask it to."
         ),
         ExerciseReference(
             id: "side-plank",
@@ -1360,7 +1365,7 @@ enum MorpheDemoContent {
             commonMistakes: "Arching the low back and calling it a stretch.",
             beginnerModification: "Pad the knee and reduce the forward shift.",
             alternatives: ["World's Greatest Stretch", "Reverse Lunge"],
-            whyThisMatters: "Sitting shortens hip flexors; opening them protects the low back."
+            whyThisMatters: "Long hours of sitting leave the hip flexors stiff; this opens the front of the hip."
         ),
         ExerciseReference(
             id: "standing-hamstring-stretch",
@@ -1400,7 +1405,7 @@ enum MorpheDemoContent {
             commonMistakes: "Cranking into pain instead of easing into a stretch.",
             beginnerModification: "Lower the elbow and reduce the step-through.",
             alternatives: ["Face Pull", "Thread the Needle"],
-            whyThisMatters: "A open chest balances all the pressing and desk time your shoulders absorb."
+            whyThisMatters: "An open chest balances all the pressing and desk time your shoulders absorb."
         ),
         ExerciseReference(
             id: "childs-pose",
@@ -1500,7 +1505,7 @@ enum MorpheDemoContent {
             commonMistakes: "Going 100% on the first rep and dying by the third.",
             beginnerModification: "Fast strides at ~80% effort instead of all-out sprints.",
             alternatives: ["High Knees", "Stationary Bike"],
-            whyThisMatters: "Top-end speed work — the highest-intensity conditioning there is, in tiny doses."
+            whyThisMatters: "Short, hard efforts with incomplete rest — high-intensity conditioning in small doses."
         ),
         ExerciseReference(
             id: "arm-swing-circles",
@@ -1696,7 +1701,7 @@ enum MorpheDemoContent {
                 "Raise the arm out to shoulder height.",
                 "Lower slowly against the cable."
             ],
-            formCue: "Lead with the elbow, pour the pinky up.",
+            formCue: "Lead with the elbow and keep the thumb level with or slightly above the pinky.",
             commonMistakes: "Shrugging the trap into the lift.",
             beginnerModification: "Dumbbell lateral raises first.",
             alternatives: ["Lateral Raise", "Rear Delt Fly"],
@@ -1898,7 +1903,7 @@ enum MorpheDemoContent {
             ],
             formCue: "Squeeze the glutes to lift — don't whip the spine.",
             commonMistakes: "Hyperextending past a straight line.",
-            beginnerModification: "Superman holds on the floor.",
+            beginnerModification: "Bird dog, or lying face down and lifting one leg at a time.",
             alternatives: ["Romanian Deadlift", "Glute Bridge"],
             whyThisMatters: "A strong lower back quietly supports every big lift you do."
         ),
@@ -2005,7 +2010,7 @@ enum MorpheDemoContent {
         ExerciseReference(
             id: "wall-sit",
             name: "Wall Sit",
-            muscleGroup: .conditioning,
+            muscleGroup: .legs,
             movementPattern: "Isometric",
             musclesWorked: "Quads and glutes",
             equipment: "Wall",
@@ -2256,7 +2261,7 @@ enum MorpheDemoContent {
             commonMistakes: "Cranking the head and neck up to look forward, and bending the knees to fake a higher leg lift.",
             beginnerModification: "Slow it down to single alternating lifts — opposite arm and leg raise, hold one beat, switch.",
             alternatives: ["bird-dog", "back-extension"],
-            whyThisMatters: "Trains the entire back line — the muscles that hold you upright — with zero equipment and zero spinal compression."
+            whyThisMatters: "Trains the whole back line, the muscles that hold you upright, with no equipment. Keep the lift low; if your lower back complains, switch to the bird dog."
         ),
         ExerciseReference(
             id: "teaser-prep",
@@ -2513,7 +2518,7 @@ enum MorpheDemoContent {
         ExerciseReference(
             id: "downward-dog",
             name: "Downward Dog",
-            muscleGroup: .core,
+            muscleGroup: .back,
             movementPattern: "Hinge + overhead reach",
             musclesWorked: "Hamstrings, calves, shoulders, lats",
             equipment: "None (mat optional)",
@@ -2715,10 +2720,10 @@ enum MorpheDemoContent {
                 "Breathe slowly for the full hold, then switch sides."
             ],
             formCue: "Square your hips — don't tip onto the front-leg side.",
-            commonMistakes: "Collapsing onto one hip so the stretch disappears, and forcing the front shin parallel before the hips are ready.",
+            commonMistakes: "Collapsing onto one hip so the stretch disappears, and forcing the front shin parallel before the hips are ready. Ease out if the front knee feels any strain.",
             beginnerModification: "Do it on your back instead: figure-four position with the ankle over the opposite knee.",
             alternatives: ["Kneeling Hip Flexor Stretch", "World's Greatest Stretch"],
-            whyThisMatters: "The deepest common glute and hip-rotation stretch — direct relief for squat-day hips and desk-bound glutes."
+            whyThisMatters: "A deep glute and hip-rotation stretch for squat-day hips and long days of sitting."
         ),
         ExerciseReference(
             id: "pull-up-negative",
@@ -2781,7 +2786,7 @@ enum MorpheDemoContent {
             commonMistakes: "Bending the elbows and turning it into a mini pull-up, or rushing the reps so the shoulder blades never actually move.",
             beginnerModification: "Keep your feet on a box and press lightly through them to take some bodyweight off the hang.",
             alternatives: ["Inverted Row", "Lat Pulldown"],
-            whyThisMatters: "It teaches the shoulder-blade motion that starts every strong pull-up and bulletproofs the shoulders for hanging work."
+            whyThisMatters: "It teaches the shoulder-blade motion that starts every strong pull-up and builds strength for hanging work."
         ),
         ExerciseReference(
             id: "standing-quad-stretch",
@@ -2987,7 +2992,7 @@ enum MorpheDemoContent {
             commonMistakes: "Overstriding, and jogging the downhill instead of recovering.",
             beginnerModification: "Fast uphill march or stride on a gentler slope.",
             alternatives: ["Sprint Intervals", "Sled Push"],
-            whyThisMatters: "The hill forces good sprint posture and cuts impact — the safest way to sprint hard."
+            whyThisMatters: "The hill encourages a forward lean and a short, driving stride, at lower top speed than flat sprinting."
         ),
         ExerciseReference(
             id: "carioca",

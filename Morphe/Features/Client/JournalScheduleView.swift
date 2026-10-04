@@ -43,6 +43,25 @@ struct ExerciseDetailView: View {
 
                             MetricPill(label: "Difficulty", value: exercise.difficulty.rawValue)
 
+                            if let baseID = exercise.variationOf,
+                               let base = store.exerciseDatabase.first(where: { $0.id == baseID }) {
+                                Button {
+                                    store.selectedExercise = base
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Text("Variation of \(base.name)")
+                                            .font(.subheadline.weight(.semibold))
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.weight(.bold))
+                                    }
+                                    .foregroundStyle(MorpheTheme.accentText)
+                                    .frame(minHeight: 44, alignment: .leading)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityHint("Opens the base movement's form guide")
+                            }
+
                             if !exercise.whyThisMatters.isEmpty {
                                 Text(exercise.whyThisMatters)
                                     .font(.subheadline)
@@ -100,6 +119,42 @@ struct ExerciseDetailView: View {
                                 .foregroundStyle(MorpheTheme.textPrimary)
                             Text(exercise.beginnerModification)
                                 .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                    }
+
+                    // Where the technique was checked (Technique Library,
+                    // 2026-10-04). The words are Morphe's; the source is
+                    // the reference they were held against.
+                    if !exercise.sourceName.isEmpty {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Reference")
+                                    .font(.headline)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                if let url = URL(string: exercise.sourceURL) {
+                                    Link(destination: url) {
+                                        HStack(spacing: 6) {
+                                            Text(exercise.sourceName)
+                                                .font(.subheadline.weight(.semibold))
+                                                .multilineTextAlignment(.leading)
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.caption.weight(.bold))
+                                        }
+                                        .foregroundStyle(MorpheTheme.accentText)
+                                        .frame(minHeight: 44, alignment: .leading)
+                                    }
+                                    .accessibilityHint("Opens the source in your browser")
+                                } else {
+                                    Text(exercise.sourceName)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                }
+                                Text("Morphe's own wording, written with this coaching reference. A training aid, not medical advice.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
 

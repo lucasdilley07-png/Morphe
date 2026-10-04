@@ -1,0 +1,428 @@
+{
+  "discipline": "Running & Cardio",
+  "exercises": [
+    {
+      "id": "b-skip",
+      "name": "B-Skip",
+      "variationOf": "a-skip",
+      "muscleGroup": "Legs",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Hamstrings, hip flexors, glutes, calves",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand tall with the chest up and eyes forward.",
+        "Skip off one foot while lifting the opposite knee to hip height, as in an A-skip.",
+        "Extend the lifted leg forward, then sweep it down and back so the foot lands under the hips.",
+        "Alternate legs and travel forward for 20 to 30 metres with relaxed, opposite arm swing."
+      ],
+      "formCue": "Knee up, reach, paw back.",
+      "commonMistakes": "Leaning back as the leg extends, or kicking straight out from the floor without lifting the knee first.",
+      "beginnerModification": "Walk through the pattern as a march before adding the skip.",
+      "alternatives": [
+        "A-Skip",
+        "High Knees",
+        "Butt Kick"
+      ],
+      "whyThisMatters": "It rehearses pulling the foot back under the body, which is the answer to overstriding.",
+      "source": {
+        "name": "Hospital for Special Surgery",
+        "url": "https://news.hss.edu/a-complete-guide-to-running-form-drills-for-better-performance/"
+      }
+    },
+    {
+      "id": "ankling-drill",
+      "name": "Ankling Drill",
+      "muscleGroup": "Legs",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Calves, feet, ankles",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with feet hip-width apart.",
+        "Take very short steps forward, rolling each foot down from the toe so the heel barely touches the ground.",
+        "Keep the knees low and the steps quick and springy.",
+        "Learn the pattern slowly, then raise the step rate over 10 to 20 metres."
+      ],
+      "formCue": "Small steps, springy ankles.",
+      "commonMistakes": "Lifting the knees high, or letting the heels drop heavily on each step.",
+      "beginnerModification": "Do it at walking speed until the foot action feels smooth.",
+      "alternatives": [
+        "Pogo Hop",
+        "A-Skip",
+        "Jump Rope"
+      ],
+      "whyThisMatters": "It trains the foot and ankle to load and release quickly, which every running step needs.",
+      "source": {
+        "name": "World Athletics",
+        "url": "https://worldathletics.org/personal-best/performance/jereem-richards-games-drills-develop-speed"
+      }
+    },
+    {
+      "id": "running-strides",
+      "name": "Strides",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Glutes, hamstrings, quads, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "After an easy run, find a flat stretch of roughly 80 to 100 metres.",
+        "Build speed smoothly over the first third until you are running fast but relaxed, well short of an all-out sprint.",
+        "Hold that speed with tall posture and quick steps, then ease down gradually.",
+        "Walk or jog easily for 60 to 90 seconds and repeat 4 to 8 times."
+      ],
+      "formCue": "Fast and relaxed, never straining.",
+      "commonMistakes": "Turning them into flat-out sprints, or reaching the foot out in front to lengthen the step.",
+      "beginnerModification": "Run 4 shorter strides at a comfortably quick pace with a full walk back.",
+      "alternatives": [
+        "Sprint Intervals",
+        "Flying Sprint",
+        "A-Skip"
+      ],
+      "whyThisMatters": "A few short accelerations keep fast running mechanics sharp without adding fatigue.",
+      "source": {
+        "name": "RunnersConnect",
+        "url": "https://runnersconnect.net/how-to-do-strides/"
+      }
+    },
+    {
+      "id": "hill-repeats",
+      "name": "Hill Repeats",
+      "variationOf": "hill-sprint",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Glutes, quads, calves, hamstrings",
+      "equipment": "Hill",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Warm up with at least 10 minutes of easy running and find a steady hill.",
+        "Run up the hill at a hard, controlled effort, judging it by feel rather than pace.",
+        "Keep the steps short and the trunk tall, with a slight lean from the ankles.",
+        "Jog or walk slowly back down to recover, then repeat."
+      ],
+      "formCue": "Short steps, tall chest.",
+      "commonMistakes": "Sprinting the first repeat and fading on the rest, or bending at the waist as the hill bites.",
+      "beginnerModification": "Use a gentle slope, shorten each effort to 30 seconds and walk down.",
+      "alternatives": [
+        "Hill Sprint",
+        "Stair Sprint",
+        "Sprint Intervals"
+      ],
+      "whyThisMatters": "Hills build running strength and fitness at lower speed and lower impact than flat sprints.",
+      "source": {
+        "name": "World Athletics",
+        "url": "https://worldathletics.org/personal-best/performance/hill-running-training-variety-speed-sessions"
+      }
+    },
+    {
+      "id": "tempo-run",
+      "name": "Tempo Run",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Jog easily for 10 minutes to warm up.",
+        "Raise the pace to comfortably hard, an effort where you can say a few words but not hold a conversation.",
+        "Hold that effort evenly for 20 to 30 minutes.",
+        "Finish with 5 to 10 minutes of easy jogging."
+      ],
+      "formCue": "Comfortably hard, and even.",
+      "commonMistakes": "Starting too fast and slowing through the second half, or running it like a race.",
+      "beginnerModification": "Split the hard running into blocks of 5 to 10 minutes with 2 minutes of easy jogging between them.",
+      "alternatives": [
+        "Fartlek Run",
+        "Long Slow Run",
+        "Rowing Machine"
+      ],
+      "whyThisMatters": "Sustained work near threshold raises the pace you can hold before fatigue builds.",
+      "source": {
+        "name": "NSCA",
+        "url": "https://www.nsca.com/education/articles/kinetic-select/aerobic-endurance-training-strategies/"
+      }
+    },
+    {
+      "id": "fartlek-run",
+      "name": "Fartlek Run",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Warm up with 10 minutes of easy running.",
+        "Pick a landmark or a time and run faster until you reach it.",
+        "Drop back to an easy jog until your breathing settles.",
+        "Keep mixing faster and easier stretches of different lengths by feel, then cool down with easy running."
+      ],
+      "formCue": "Surge, settle, repeat.",
+      "commonMistakes": "Making every surge an all-out sprint, or stopping to walk instead of jogging between efforts.",
+      "beginnerModification": "Alternate 1 minute a little quicker with 2 minutes very easy.",
+      "alternatives": [
+        "Tempo Run",
+        "Sprint Intervals",
+        "Run-Walk Intervals"
+      ],
+      "whyThisMatters": "Unstructured pace changes train you to shift speed and recover while still moving.",
+      "source": {
+        "name": "NSCA",
+        "url": "https://www.nsca.com/education/articles/ptq/fartlek-training-with-personal-training-clients/"
+      }
+    },
+    {
+      "id": "long-slow-run",
+      "name": "Long Slow Run",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Plan a route or time that is longer than any other run in your week.",
+        "Start at an easy pace where you can talk in full sentences.",
+        "Hold that easy effort the whole way and let pace drop on hills.",
+        "Finish feeling you could have continued, then walk for a few minutes."
+      ],
+      "formCue": "Slow enough to chat.",
+      "commonMistakes": "Running it at a medium-hard effort, or extending the distance by a big jump from one week to the next.",
+      "beginnerModification": "Add walk breaks every few minutes and keep the total time modest.",
+      "alternatives": [
+        "Easy Recovery Run",
+        "Run-Walk Intervals",
+        "Treadmill Walk"
+      ],
+      "whyThisMatters": "Time on feet at low intensity builds the aerobic base everything else sits on.",
+      "source": {
+        "name": "NSCA",
+        "url": "https://www.nsca.com/education/articles/kinetic-select/sample-5k-training-plan-for-runners/"
+      }
+    },
+    {
+      "id": "cadence-drill",
+      "name": "Cadence Drill",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Calves, quads, glutes, hip flexors",
+      "equipment": "Metronome app or watch (optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "During an easy run, count your steps for one minute to find your usual step rate.",
+        "Set a metronome about 5 percent faster than that number.",
+        "Run for 1 minute matching your steps to the beat, keeping the same speed by taking shorter, lighter steps.",
+        "Jog normally for 1 to 2 minutes and repeat several times."
+      ],
+      "formCue": "Quicker feet, same speed.",
+      "commonMistakes": "Speeding up instead of shortening the step, or jumping to a much higher rate in one go.",
+      "beginnerModification": "Hold the faster rhythm for 30 seconds at a time.",
+      "alternatives": [
+        "Strides",
+        "Ankling Drill",
+        "High Knees"
+      ],
+      "whyThisMatters": "A slightly quicker step rate shortens the stride and softens each landing.",
+      "source": {
+        "name": "American College of Sports Medicine",
+        "url": "https://acsm.org/distance-running-form-tips/"
+      }
+    },
+    {
+      "id": "easy-recovery-run",
+      "name": "Easy Recovery Run",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "None",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Start at a gentle jog, slower than feels necessary.",
+        "Keep the effort low enough to breathe through the nose or talk freely.",
+        "Stay relaxed and tall with short, light steps for about 20 to 30 minutes.",
+        "Take a walk break if your form starts to get heavy or sloppy."
+      ],
+      "formCue": "Easy means easy.",
+      "commonMistakes": "Letting the pace creep up into a moderate run, which turns a recovery day into another training day.",
+      "beginnerModification": "Alternate a few minutes of jogging with a minute of walking.",
+      "alternatives": [
+        "Treadmill Walk",
+        "Power Walk",
+        "Stationary Bike"
+      ],
+      "whyThisMatters": "Gentle running between hard days keeps the habit and the blood flow without adding stress.",
+      "source": {
+        "name": "NSCA",
+        "url": "https://www.nsca.com/education/articles/kinetic-select/training-program-considerations-for-endurance-runners/"
+      }
+    },
+    {
+      "id": "run-walk-intervals",
+      "name": "Run-Walk Intervals",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Walk briskly for 5 minutes to warm up.",
+        "Run at an easy pace for 1 minute.",
+        "Walk for 4 minutes to recover.",
+        "Repeat the run and walk four times, then walk for 5 minutes to cool down."
+      ],
+      "formCue": "Easy run, real walk.",
+      "commonMistakes": "Running the minute too fast, or adding running time before the current session feels comfortable.",
+      "beginnerModification": "Shorten the run to 30 seconds and keep the walks the same.",
+      "alternatives": [
+        "Power Walk",
+        "Treadmill Walk",
+        "Easy Recovery Run"
+      ],
+      "whyThisMatters": "Walk breaks let you build up to running a little at a time instead of all at once.",
+      "source": {
+        "name": "Hospital for Special Surgery",
+        "url": "https://hss.edu/article_how-to-get-into-running.asp"
+      }
+    },
+    {
+      "id": "track-repeats",
+      "name": "Track Repeats",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Sprint",
+      "musclesWorked": "Quads, glutes, hamstrings, calves",
+      "equipment": "Track or measured path",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Warm up with 10 to 15 minutes of easy running and a few strides.",
+        "Run a set distance, such as 400 metres, at a hard pace you can repeat.",
+        "Jog or walk for about as long as the hard effort took.",
+        "Repeat for the planned number of efforts, aiming for the same time on each, then cool down."
+      ],
+      "formCue": "Same pace, first rep to last.",
+      "commonMistakes": "Running the first repeats too fast and falling apart, or cutting the recovery short.",
+      "beginnerModification": "Halve the distance of each repeat and walk the full recovery.",
+      "alternatives": [
+        "Sprint Intervals",
+        "Hill Repeats",
+        "Tempo Run"
+      ],
+      "whyThisMatters": "Hard, measured efforts with planned rest let you spend more total time near top aerobic effort.",
+      "source": {
+        "name": "NSCA",
+        "url": "https://www.nsca.com/education/articles/kinetic-select/interval-workouts/"
+      }
+    },
+    {
+      "id": "incline-treadmill-walk",
+      "name": "Incline Treadmill Walk",
+      "variationOf": "treadmill-walk",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, hamstrings, calves, quads",
+      "equipment": "Treadmill",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Start the belt flat at a comfortable walk for a few minutes.",
+        "Raise the incline to a moderate grade and set a speed you can hold without gripping the rails.",
+        "Walk tall with the arms swinging freely and the whole foot pushing through each step.",
+        "Lower the incline and walk flat for a few minutes to finish."
+      ],
+      "formCue": "Hands off the rails.",
+      "commonMistakes": "Holding the handles and leaning back, which takes the work away from the legs.",
+      "beginnerModification": "Use a lower incline and slower speed, and rest a hand lightly on the rail only for balance.",
+      "alternatives": [
+        "Treadmill Walk",
+        "Stair Climber",
+        "Step-Up"
+      ],
+      "whyThisMatters": "The grade raises the heart rate and works the hips hard at walking speed.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/resources/everyone/blog/4822/treadmill-interval-workout-try-this-fat-blasting-workout/"
+      }
+    },
+    {
+      "id": "elliptical-trainer",
+      "name": "Elliptical Trainer",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, hamstrings, chest, back",
+      "equipment": "Elliptical machine",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Step onto the pedals, hold the moving handles and start striding at a low resistance.",
+        "Stand upright with the shoulders over the hips.",
+        "Push and pull the handles in time with the legs so the stride feels like a smooth run.",
+        "Raise the resistance until the effort matches the session, and slow gradually before stepping off."
+      ],
+      "formCue": "Stand tall, full strides.",
+      "commonMistakes": "Slouching over the console, or letting momentum carry the pedals at a resistance that is too low.",
+      "beginnerModification": "Hold the fixed handles and keep the resistance light for short sessions.",
+      "alternatives": [
+        "Stationary Bike",
+        "Treadmill Walk",
+        "Rowing Machine"
+      ],
+      "whyThisMatters": "It gives a running-style effort for arms and legs with very little impact.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/about-ace/press-room/in-the-news/8156/best-cardio-machines-to-meet-your-fitness-goals-consumer-reports/"
+      }
+    },
+    {
+      "id": "stair-climber",
+      "name": "Stair Climber",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, quads, calves, hamstrings",
+      "equipment": "Stair climber or stepmill",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Step on, start at a slow speed and find a steady rhythm.",
+        "Stand upright with the hands resting lightly on the rails for balance only.",
+        "Place the whole foot on each step and lift the feet clear as the steps turn.",
+        "Raise the speed gradually and build the length of the session over several weeks."
+      ],
+      "formCue": "Light hands, tall body.",
+      "commonMistakes": "Leaning heavily on the rails or hunching over them, which takes load off the legs.",
+      "beginnerModification": "Use a slow speed for a few minutes at a time with flat walking between bouts.",
+      "alternatives": [
+        "Incline Treadmill Walk",
+        "Step-Up",
+        "Stair Sprint"
+      ],
+      "whyThisMatters": "Steady climbing is demanding cardio that also builds hip and thigh endurance.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/about-ace/press-room/in-the-news/8156/best-cardio-machines-to-meet-your-fitness-goals-consumer-reports/"
+      }
+    },
+    {
+      "id": "power-walk",
+      "name": "Power Walk",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, calves, hamstrings, shoulders",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with the eyes on the horizon, chest lifted and midsection lightly braced.",
+        "Bend the elbows to roughly a right angle and swing the arms forward and back from the shoulders.",
+        "Land on the heel and roll through to push off the toes.",
+        "Pick up speed by taking quicker steps rather than longer ones."
+      ],
+      "formCue": "Tall posture, quick steps.",
+      "commonMistakes": "Overreaching with the front foot, or looking down and rounding the shoulders.",
+      "beginnerModification": "Alternate a few minutes of brisk walking with a few minutes at a normal pace.",
+      "alternatives": [
+        "Treadmill Walk",
+        "Incline Treadmill Walk",
+        "Run-Walk Intervals"
+      ],
+      "whyThisMatters": "Brisk walking with good form is cardio almost anyone can do daily and recover from.",
+      "source": {
+        "name": "American Council on Exercise",
+        "url": "https://www.acefitness.org/resources/everyone/blog/3476/9-tips-to-perfect-your-walking-form/"
+      }
+    }
+  ]
+}

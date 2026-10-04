@@ -1,0 +1,524 @@
+{
+  "version": 2,
+  "category": "Kettlebell & Dumbbell",
+  "workouts": [
+    {
+      "slug": "v3-kbdb-single-bell-flow",
+      "name": "Single Kettlebell Fat-Loss Session",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Kettlebell circuit",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Dumbbells",
+      "notes": "One kettlebell and steady effort. Reps are per side where the bell is in one hand; add a round before adding weight.",
+      "exercises": [
+        {
+          "libraryID": "kettlebell-halo",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 4
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "single-arm-kettlebell-swing",
+          "sets": 5,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "kettlebell-clean-and-press",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "goblet-squat",
+          "sets": 4,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "kettlebell-figure-eight",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "suitcase-carry",
+          "sets": 4,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-kbdb-man-maker-conditioning",
+      "name": "Dumbbell Man-Maker Conditioning",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Dumbbell conditioning",
+      "level": "Advanced",
+      "durationMinutes": 35,
+      "equipmentProfile": "Dumbbells",
+      "notes": "A hard dumbbell session for people who already own the push-up, row and thruster. Pick a weight you can press cleanly when tired and keep the rests honest.",
+      "exercises": [
+        {
+          "libraryID": "dumbbell-clean",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "renegade-row",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "dumbbell-thruster",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "man-maker",
+          "sets": 5,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "dumbbell-split-squat",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-kbdb-clean-press-squat",
+      "name": "Kettlebell Strength: Clean, Press, Squat",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Kettlebell strength",
+      "level": "Advanced",
+      "durationMinutes": 55,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Heavy, low-rep kettlebell work with long rests. Use bells that leave one or two reps in reserve and move up a size when all sets are crisp.",
+      "exercises": [
+        {
+          "libraryID": "kettlebell-clean",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "kettlebell-overhead-press",
+          "sets": 5,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "double-kettlebell-front-squat",
+          "sets": 5,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 180
+        },
+        {
+          "libraryID": "single-arm-kettlebell-row",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "kettlebell-suitcase-deadlift",
+          "sets": 4,
+          "reps": 6,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "front-rack-carry",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-kbdb-snatch-and-jerk",
+      "name": "Kettlebell Power: Snatch and Jerk",
+      "goal": "strengthBuilding",
+      "focus": "Full Body",
+      "trainingType": "Kettlebell power",
+      "level": "Advanced",
+      "durationMinutes": 50,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Explosive overhead work for experienced kettlebell users. Keep every rep fast; end the set when the bell slows down.",
+      "exercises": [
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "kettlebell-snatch",
+          "sets": 6,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 120
+        },
+        {
+          "libraryID": "double-kettlebell-push-press",
+          "sets": 4,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "double-kettlebell-jerk",
+          "sets": 4,
+          "reps": 4,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 150
+        },
+        {
+          "libraryID": "kettlebell-high-windmill",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "kettlebell-bottoms-up-press",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 6
+          },
+          "restSeconds": 90
+        }
+      ]
+    },
+    {
+      "slug": "v3-kbdb-dumbbell-lean-out",
+      "name": "Dumbbell Lean-Out: Full Body",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Dumbbell hypertrophy",
+      "level": "Moderate",
+      "durationMinutes": 50,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Moderate reps and short rests with only dumbbells and floor space. Add weight when you reach the top of the rep range on every set.",
+      "exercises": [
+        {
+          "libraryID": "dumbbell-floor-press",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "dumbbell-romanian-deadlift",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "dumbbell-split-squat",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "dumbbell-row",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "arnold-z-press",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "zottman-curl",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "kettlebell-pull-over-crunch",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-kbdb-double-bell-lean-out",
+      "name": "Double Kettlebell Lean-Out",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Kettlebell hypertrophy",
+      "level": "Moderate",
+      "durationMinutes": 45,
+      "equipmentProfile": "Dumbbells",
+      "notes": "Two matching kettlebells, big movements and moderate rests. Good for holding muscle on a cut; add reps before going up a bell size.",
+      "exercises": [
+        {
+          "libraryID": "double-kettlebell-front-squat",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "double-kettlebell-row",
+          "sets": 4,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "double-kettlebell-push-press",
+          "sets": 4,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 8
+          },
+          "restSeconds": 90
+        },
+        {
+          "libraryID": "kettlebell-swing",
+          "sets": 4,
+          "reps": 15,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "renegade-row",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 75
+        },
+        {
+          "libraryID": "farmer-carry",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "rpe",
+            "value": 7
+          },
+          "restSeconds": 60
+        }
+      ]
+    },
+    {
+      "slug": "v3-kbdb-kettlebell-reset",
+      "name": "Light Kettlebell Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility and light strength",
+      "level": "Recovery",
+      "durationMinutes": 25,
+      "equipmentProfile": "Dumbbells",
+      "notes": "An easy day with a light bell to keep the shoulders and hips moving between hard sessions. Nothing here should feel like effort.",
+      "exercises": [
+        {
+          "libraryID": "kettlebell-halo",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "rpe",
+            "value": 3
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "half-turkish-get-up",
+          "sets": 3,
+          "reps": 3,
+          "intensity": {
+            "type": "rpe",
+            "value": 4
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "kettlebell-low-windmill",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "rpe",
+            "value": 3
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "kettlebell-deadlift",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "rpe",
+            "value": 4
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "ninety-ninety-hip-switch",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    }
+  ]
+}

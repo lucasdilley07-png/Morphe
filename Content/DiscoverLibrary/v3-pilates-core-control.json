@@ -1,0 +1,413 @@
+{
+  "version": 2,
+  "category": "Pilates & Core Control",
+  "workouts": [
+    {
+      "slug": "v3-pilates-flow-circuit",
+      "name": "Mat Flow Circuit",
+      "goal": "weightLoss",
+      "focus": "Core",
+      "trainingType": "Mat Pilates",
+      "level": "Moderate",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The classic abdominal series run back to back with very little rest, so the work stays continuous. Move with control and keep the transitions tight. Add a second lap of the first five moves when it gets easy.",
+      "exercises": [
+        {
+          "libraryID": "pilates-hundred",
+          "sets": 1,
+          "reps": 100,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "roll-up",
+          "sets": 2,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "rolling-like-a-ball",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "single-leg-stretch",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "double-leg-stretch",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "single-straight-leg-stretch",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "criss-cross",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "swimming-exercise",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "v3-pilates-advanced-control",
+      "name": "Advanced Control Mat",
+      "goal": "strengthBuilding",
+      "focus": "Core",
+      "trainingType": "Mat Pilates",
+      "level": "Advanced",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "notes": "The hard end of the mat work: long levers, full roll-ups, and bodyweight supports. Quality over quantity, so stop a set when your lower back lifts or you start to jerk. Earn this session with the foundations one first.",
+      "exercises": [
+        {
+          "libraryID": "pilates-hundred",
+          "sets": 1,
+          "reps": 100,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "neck-pull",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "double-straight-leg-stretch",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "corkscrew",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "open-leg-rocker",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "teaser",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "leg-pull-back",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "pilates-side-bend",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-pilates-back-line",
+      "name": "Back Line and Posture",
+      "goal": "leanOut",
+      "focus": "Pull",
+      "trainingType": "Mat Pilates",
+      "level": "Moderate",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Balances all the forward-curling work with back extension, glutes, and shoulder support. Keep the stomach lifted on every face-down move. Kicks and side work are per side.",
+      "exercises": [
+        {
+          "libraryID": "swan-prep",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "single-leg-kick",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "double-leg-kick",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "swimming-exercise",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "shoulder-bridge",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "leg-pull-front",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 40
+        },
+        {
+          "libraryID": "side-kick-series",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-pilates-foundations",
+      "name": "Mat Foundations",
+      "goal": "leanOut",
+      "focus": "Core",
+      "trainingType": "Mat Pilates",
+      "level": "Beginner",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A first Pilates session built from the beginner mat moves. Learn to keep the lower back anchored and the breath steady. Add reps slowly before moving to the flow circuit.",
+      "exercises": [
+        {
+          "libraryID": "pilates-hundred",
+          "sets": 1,
+          "reps": 50,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "roll-up",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "single-leg-circle",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "rolling-like-a-ball",
+          "sets": 2,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "single-leg-stretch",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "spine-stretch-forward",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "saw",
+          "sets": 2,
+          "reps": 4,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "seal",
+          "sets": 2,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "v3-pilates-spine-release",
+      "name": "Spine Release",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mat Pilates",
+      "level": "Recovery",
+      "durationMinutes": 15,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Gentle spinal movement in every direction: rounding, twisting, and light extension. Keep the effort low and let the breath set the pace.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "spine-stretch-forward",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "saw",
+          "sets": 2,
+          "reps": 4,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "spine-twist",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "swan-prep",
+          "sets": 2,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "seal",
+          "sets": 2,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ]
+}

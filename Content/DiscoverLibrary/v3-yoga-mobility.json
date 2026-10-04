@@ -1,0 +1,498 @@
+{
+  "version": 2,
+  "category": "Yoga, Mobility & Flexibility",
+  "workouts": [
+    {
+      "slug": "v3-yoga-power-flow",
+      "name": "Power Flow: Sun Salutation Builder",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Vinyasa yoga",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A continuous flow that keeps the heart rate up with no jumping. Each Sun Salutation set is three rounds; hold standing poses on each side. Add a round per week as it gets easier.",
+      "exercises": [
+        {
+          "libraryID": "sun-salutation-a",
+          "sets": 4,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "chair-pose",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "warrior-one",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "warrior-two",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "extended-side-angle",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "chaturanga",
+          "sets": 3,
+          "reps": 6,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "boat-pose",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "corpse-pose",
+          "sets": 1,
+          "durationSeconds": 180,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-yoga-standing-strength",
+      "name": "Standing Strength Series",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Hatha yoga",
+      "level": "Moderate",
+      "durationMinutes": 35,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Long holds in the big standing poses build leg and hip strength you can feel. Do every hold on both sides and sink a little deeper before you add time.",
+      "exercises": [
+        {
+          "libraryID": "mountain-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "sun-salutation-a",
+          "sets": 2,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "warrior-one",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "crescent-lunge",
+          "sets": 3,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "triangle-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "half-moon-pose",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "garland-pose",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "bridge-pose",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-yoga-balance-core",
+      "name": "Balance and Core Flow",
+      "goal": "leanOut",
+      "focus": "Core",
+      "trainingType": "Vinyasa yoga",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Single-leg balances and core holds that tighten up control without equipment. Balance holds are per side. Progress by lengthening holds before adding sets.",
+      "exercises": [
+        {
+          "libraryID": "sun-salutation-a",
+          "sets": 2,
+          "durationSeconds": 150,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "tree-pose",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "eagle-pose",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "warrior-three",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "half-moon-pose",
+          "sets": 2,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "boat-pose",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "chaturanga",
+          "sets": 3,
+          "reps": 5,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "upward-facing-dog",
+          "sets": 3,
+          "durationSeconds": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        }
+      ]
+    },
+    {
+      "slug": "v3-yoga-hip-reset",
+      "name": "Hip and Hamstring Reset",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A slow lower-body session for the day after heavy legs or a long day of sitting. Stretch holds are per side. Breathe out slowly and never push into pain.",
+      "exercises": [
+        {
+          "libraryID": "hip-controlled-articular-rotation",
+          "sets": 2,
+          "reps": 4,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "ninety-ninety-hip-switch",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "low-lunge",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "half-splits",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "lizard-pose",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "pigeon-pose",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "bound-angle-pose",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "happy-baby",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 0
+        }
+      ]
+    },
+    {
+      "slug": "v3-yoga-desk-undo",
+      "name": "Desk Undo: Shoulders, Spine, and Ankles",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Mobility",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Opens the upper back, shoulders, and ankles that stiffen with desk work. Good as a warm-up before lifting or on its own. Move slowly and stay in a pain-free range.",
+      "exercises": [
+        {
+          "libraryID": "cat-cow",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "thoracic-extension-foam-roller",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "shoulder-controlled-articular-rotation",
+          "sets": 2,
+          "reps": 4,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "wall-slide",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "ankle-dorsiflexion-wall-drill",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "garland-pose",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "standing-forward-fold",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        }
+      ]
+    },
+    {
+      "slug": "v3-yoga-evening-wind-down",
+      "name": "Evening Wind-Down",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Restorative yoga",
+      "level": "Recovery",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A floor-based session to settle down before bed. Nothing here should feel like effort. Stay longer in any pose that feels good.",
+      "exercises": [
+        {
+          "libraryID": "childs-pose",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "seated-forward-fold",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "bound-angle-pose",
+          "sets": 1,
+          "durationSeconds": 120,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "supine-twist",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "happy-baby",
+          "sets": 1,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "legs-up-the-wall",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        },
+        {
+          "libraryID": "corpse-pose",
+          "sets": 1,
+          "durationSeconds": 300,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ]
+}

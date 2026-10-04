@@ -1,0 +1,529 @@
+{
+  "version": 2,
+  "category": "Barre & Low-Impact",
+  "workouts": [
+    {
+      "slug": "v3-barre-low-impact-burn",
+      "name": "Low-Impact Barre Burn",
+      "goal": "weightLoss",
+      "focus": "Full Body",
+      "trainingType": "Barre",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Marching intervals between standing barre sets keep the heart rate up with one foot always on the floor. Use a chair back or counter as your barre. Shorten the rests as your fitness improves.",
+      "exercises": [
+        {
+          "libraryID": "marching-in-place",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "plie-second-position",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plie-pulse",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "curtsy-lunge-pulse",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "marching-in-place",
+          "sets": 3,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "releve",
+          "sets": 3,
+          "reps": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "standing-side-leg-lift",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "wall-push-up",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-barre-march-intervals",
+      "name": "Marching Intervals",
+      "goal": "weightLoss",
+      "focus": "Conditioning",
+      "trainingType": "Low-impact cardio",
+      "level": "Beginner",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Simple walking-pace intervals for anyone who wants cardio without jumping. March briskly for the work blocks and ease off between them. Add one round each week.",
+      "exercises": [
+        {
+          "libraryID": "marching-in-place",
+          "sets": 4,
+          "durationSeconds": 90,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "step-touch",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "supported-mini-squat",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "marching-in-place",
+          "sets": 4,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "releve",
+          "sets": 2,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        }
+      ]
+    },
+    {
+      "slug": "v3-barre-chair-strength",
+      "name": "Chair Strength Basics",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Chair-based strength",
+      "level": "Beginner",
+      "durationMinutes": 20,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A beginner session done from, or holding, a sturdy chair. Move slowly, especially on the way down. When ten reps feel easy, add a set before adding speed.",
+      "exercises": [
+        {
+          "libraryID": "seated-march",
+          "sets": 2,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "sit-to-stand",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 60
+        },
+        {
+          "libraryID": "seated-knee-extension",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "supported-mini-squat",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "supported-heel-raise",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "wall-push-up",
+          "sets": 3,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-barre-standing-legs",
+      "name": "Standing Barre Legs",
+      "goal": "strengthBuilding",
+      "focus": "Legs",
+      "trainingType": "Barre",
+      "level": "Moderate",
+      "durationMinutes": 30,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Higher-rep leg and hip work at the barre with slow lowers. Single-leg moves are per side. Progress by sinking lower in the plié and slowing the tempo.",
+      "exercises": [
+        {
+          "libraryID": "plie-first-position",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plie-second-position",
+          "sets": 4,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "plie-pulse",
+          "sets": 3,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "curtsy-lunge-pulse",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "arabesque-lift",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "standing-side-leg-lift",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "releve",
+          "sets": 3,
+          "reps": 20,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "wall-sit",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        }
+      ]
+    },
+    {
+      "slug": "v3-barre-floor-seat",
+      "name": "Floor Seat Series",
+      "goal": "leanOut",
+      "focus": "Legs",
+      "trainingType": "Barre",
+      "level": "Beginner",
+      "durationMinutes": 25,
+      "equipmentProfile": "Bodyweight",
+      "notes": "Mat-based glute and outer-hip work with short rests. All reps are per side. Add a mini band above the knees once the sets feel easy.",
+      "exercises": [
+        {
+          "libraryID": "glute-bridge",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "clamshell",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "side-lying-leg-lift",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "fire-hydrant",
+          "sets": 3,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "donkey-kick",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "single-leg-glute-bridge",
+          "sets": 2,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "figure-four-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        }
+      ]
+    },
+    {
+      "slug": "v3-barre-full-body",
+      "name": "Full Barre Class",
+      "goal": "leanOut",
+      "focus": "Full Body",
+      "trainingType": "Barre",
+      "level": "Moderate",
+      "durationMinutes": 40,
+      "equipmentProfile": "Bodyweight",
+      "notes": "A complete class: warm-up at the barre, thighs, seat, arms, core, and a stretch to finish. Keep the ranges small and the posture tall. Leg work is per side.",
+      "exercises": [
+        {
+          "libraryID": "tendu",
+          "sets": 2,
+          "reps": 12,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "plie-second-position",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "plie-pulse",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "arabesque-lift",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "incline-push-up",
+          "sets": 3,
+          "reps": 10,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 45
+        },
+        {
+          "libraryID": "donkey-kick",
+          "sets": 3,
+          "reps": 15,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "plank",
+          "sets": 3,
+          "durationSeconds": 30,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 30
+        },
+        {
+          "libraryID": "standing-hamstring-stretch",
+          "sets": 2,
+          "durationSeconds": 40,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 10
+        }
+      ]
+    },
+    {
+      "slug": "v3-barre-chair-gentle",
+      "name": "Gentle Chair Session",
+      "goal": "recovery",
+      "focus": "Recovery",
+      "trainingType": "Chair-based mobility",
+      "level": "Recovery",
+      "durationMinutes": 15,
+      "equipmentProfile": "Bodyweight",
+      "notes": "An easy seated and supported session for rest days or getting started. Sit tall on a sturdy chair without wheels. Everything should feel comfortable.",
+      "exercises": [
+        {
+          "libraryID": "seated-march",
+          "sets": 2,
+          "durationSeconds": 45,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "seated-knee-extension",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "neck-rotation",
+          "sets": 2,
+          "reps": 3,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "tendu",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 15
+        },
+        {
+          "libraryID": "supported-heel-raise",
+          "sets": 2,
+          "reps": 8,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 20
+        },
+        {
+          "libraryID": "mountain-pose",
+          "sets": 1,
+          "durationSeconds": 60,
+          "intensity": {
+            "type": "bodyweight"
+          },
+          "restSeconds": 0
+        }
+      ]
+    }
+  ]
+}

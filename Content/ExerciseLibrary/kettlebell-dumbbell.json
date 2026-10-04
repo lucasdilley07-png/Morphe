@@ -1,0 +1,777 @@
+{
+  "discipline": "Kettlebell & Dumbbell",
+  "exercises": [
+    {
+      "id": "kettlebell-clean",
+      "name": "Kettlebell Clean",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, upper back, forearms, core",
+      "equipment": "Kettlebell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the bell in front of you, hinge and hike it back between the legs like a swing.",
+        "Drive the hips and keep the elbow close to the ribs so the bell travels up, not out.",
+        "Loosen the grip and slide the hand around the handle so the bell rolls onto the forearm.",
+        "Finish in the rack with the wrist straight and forearm vertical, then drop it back into the next hike."
+      ],
+      "formCue": "Elbow glued to the ribs, bell goes up.",
+      "commonMistakes": "Casting the bell away from the body so it bangs the forearm, and gripping too hard to let it roll.",
+      "beginnerModification": "Practise low swings and a two-hand clean before going to one hand.",
+      "alternatives": [
+        "Kettlebell Goblet Clean",
+        "Kettlebell Swing",
+        "Hang Power Clean"
+      ],
+      "whyThisMatters": "A clean rack is the starting point for kettlebell presses, squats and carries.",
+      "source": {
+        "name": "StrongFirst",
+        "url": "https://www.strongfirst.com/an-olympic-weightlifting-approach-to-coaching-the-kettlebell-clean/"
+      }
+    },
+    {
+      "id": "kettlebell-clean-and-press",
+      "name": "Kettlebell Clean and Press",
+      "variationOf": "kettlebell-clean",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, triceps, glutes, hamstrings, core",
+      "equipment": "Kettlebell",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand hip width apart with one bell and swing it back between the legs with a flat back.",
+        "Drive the hips, pull the bell up close and drop the elbow to the ribs to catch it at the shoulder.",
+        "Pause in the rack, then press the bell overhead to a straight arm.",
+        "Pull the elbow back down to the rack and let the bell swing back for the next rep."
+      ],
+      "formCue": "Clean it quiet, then press.",
+      "commonMistakes": "Pressing from a loose rack and leaning back to finish.",
+      "beginnerModification": "Split it up: do sets of cleans, then sets of presses.",
+      "alternatives": [
+        "Kettlebell Clean",
+        "Kettlebell Overhead Press",
+        "Dumbbell Thruster"
+      ],
+      "whyThisMatters": "It trains a hip-driven pull and an overhead press in one repeatable rep.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/383/clean-and-press/"
+      }
+    },
+    {
+      "id": "kettlebell-snatch",
+      "name": "Kettlebell Snatch",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, upper back, shoulders, grip",
+      "equipment": "Kettlebell",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Hinge with a slight knee bend and swing the bell back until the forearm meets the inner thigh.",
+        "Extend the hips and legs hard with the arm still straight.",
+        "Shrug and pull the bell close to the body, and near head height punch the hand through the handle.",
+        "Finish with the arm locked overhead and the bell resting softly on the forearm, hips and knees straight."
+      ],
+      "formCue": "Hips first, then punch through.",
+      "commonMistakes": "Bending the arm early, letting the bell swing wide, and catching with a bent elbow.",
+      "beginnerModification": "Build it from deadlifts, swings and the clean and press before snatching.",
+      "alternatives": [
+        "Dumbbell Snatch",
+        "Kettlebell Swing",
+        "Kettlebell Clean and Press"
+      ],
+      "whyThisMatters": "It takes a load from low to overhead in one move, building power and conditioning.",
+      "source": {
+        "name": "CrossFit",
+        "url": "https://www.crossfit.com/essentials/the-kettlebell-snatch"
+      }
+    },
+    {
+      "id": "kettlebell-overhead-press",
+      "name": "Kettlebell Overhead Press",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, triceps, upper back, core",
+      "equipment": "Kettlebell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand hip width apart with the bell racked at the shoulder, resting on the forearm, elbow near the ribs.",
+        "Brace the trunk and squeeze the handle.",
+        "Press the arm straight overhead.",
+        "Pull the elbow back down to the ribs to return to the rack."
+      ],
+      "formCue": "Straight wrist, elbow under the bell.",
+      "commonMistakes": "Letting the wrist bend back and leaning away from the bell.",
+      "beginnerModification": "Use a lighter bell, or press from a half-kneeling position.",
+      "alternatives": [
+        "Shoulder Press",
+        "Landmine Press",
+        "Arnold Press"
+      ],
+      "whyThisMatters": "One-arm pressing builds shoulder strength while the trunk resists the offset load.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/395/single-arm-overhead-press/"
+      }
+    },
+    {
+      "id": "kettlebell-bottoms-up-press",
+      "name": "Kettlebell Bottoms-Up Press",
+      "variationOf": "kettlebell-overhead-press",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, rotator cuff, forearms, core",
+      "equipment": "Light kettlebell",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Hold a light bell upside down by the handle at shoulder height, base pointing at the ceiling.",
+        "Stand with the same-side foot slightly forward and crush the handle.",
+        "Press the arm straight overhead while keeping the bell balanced.",
+        "Pull the elbow back to the ribs under control."
+      ],
+      "formCue": "Crush the handle, move slowly.",
+      "commonMistakes": "Going too heavy and letting the bell tip onto the forearm.",
+      "beginnerModification": "Just hold the bottoms-up position at shoulder height, or walk with it.",
+      "alternatives": [
+        "Kettlebell Overhead Press",
+        "Landmine Press",
+        "Shoulder Press"
+      ],
+      "whyThisMatters": "The unstable bell forces a strong grip and a straight, stacked pressing path.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/396/bottom-up-press/"
+      }
+    },
+    {
+      "id": "double-kettlebell-push-press",
+      "name": "Double Kettlebell Push Press",
+      "variationOf": "push-press",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, triceps, quads, glutes, core",
+      "equipment": "Two kettlebells",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Bring two bells to the shoulders with the elbows close to the ribs and the wrists firm.",
+        "Stand tall with the feet shoulder width apart.",
+        "Dip a little at the knees and hips, then drive hard through the floor.",
+        "Use that drive to punch both arms straight overhead, then pull the elbows down to the rack."
+      ],
+      "formCue": "Short dip, fast drive.",
+      "commonMistakes": "Dipping forward onto the toes and pressing before the legs finish.",
+      "beginnerModification": "Use one bell at a time, or a strict press with lighter bells.",
+      "alternatives": [
+        "Push Press",
+        "Kettlebell Overhead Press",
+        "Dumbbell Thruster"
+      ],
+      "whyThisMatters": "Leg drive lets you move more weight overhead than a strict press.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/384/double-push-press/"
+      }
+    },
+    {
+      "id": "double-kettlebell-jerk",
+      "name": "Double Kettlebell Jerk",
+      "variationOf": "push-press",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, triceps, quads, glutes, core",
+      "equipment": "Two kettlebells",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Rack two bells at the shoulders with the elbows close to the ribs and the wrists firm.",
+        "Dip slightly at the knees and hips with a tall back.",
+        "Drive up hard, then split the feet front and back as you punch both arms straight.",
+        "Stand up with the feet back under the hips, then pull the elbows down to the rack."
+      ],
+      "formCue": "Drive up, drop under, lock out.",
+      "commonMistakes": "Pressing the bells out slowly instead of getting under them, and a short unstable split.",
+      "beginnerModification": "Learn the double push press first and practise the footwork with no weight.",
+      "alternatives": [
+        "Double Kettlebell Push Press",
+        "Push Press",
+        "Kettlebell Overhead Press"
+      ],
+      "whyThisMatters": "It trains power and timing by getting the body under a heavy overhead load.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/385/push-jerk/"
+      }
+    },
+    {
+      "id": "single-arm-kettlebell-swing",
+      "name": "Single-Arm Kettlebell Swing",
+      "variationOf": "kettlebell-swing",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, lats, grip, obliques",
+      "equipment": "Kettlebell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand shoulder width apart and hold the bell in one hand, palm down, with a firm grip.",
+        "Keep the back flat and sink into the hips to send the bell back between the legs.",
+        "Snap the hips forward to float the bell to about chest height, letting the free arm move with it.",
+        "Let the bell fall back between the legs and hinge again."
+      ],
+      "formCue": "Hips throw it, the arm just guides.",
+      "commonMistakes": "Lifting with the shoulder and letting the trunk twist toward the bell.",
+      "beginnerModification": "Own the two-hand swing first, then use a lighter bell.",
+      "alternatives": [
+        "Kettlebell Swing",
+        "Kettlebell Deadlift",
+        "Dumbbell Snatch"
+      ],
+      "whyThisMatters": "One hand on the bell adds grip work and makes the trunk resist rotation.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/392/single-arm-swing/"
+      }
+    },
+    {
+      "id": "kettlebell-high-windmill",
+      "name": "Kettlebell High Windmill",
+      "muscleGroup": "Core",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Obliques, glutes, hamstrings, shoulders",
+      "equipment": "Kettlebell",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand with the feet wider than the shoulders and press one bell straight overhead.",
+        "Keep that arm vertical and your eyes on the bell.",
+        "Sink back into the hip under the bell and let the free hand slide down the inside of the opposite leg.",
+        "Push the hips forward to stand tall again with the arm still locked."
+      ],
+      "formCue": "Hip back, eyes on the bell.",
+      "commonMistakes": "Bending sideways through the spine instead of hinging, and a soft overhead elbow.",
+      "beginnerModification": "Start with the low windmill or use no weight.",
+      "alternatives": [
+        "Kettlebell Low Windmill",
+        "Kettlebell Turkish Get-Up",
+        "Side Plank"
+      ],
+      "whyThisMatters": "It builds shoulder stability overhead while the hips and trunk move underneath.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://acefitness.org/resources/everyone/exercise-library/386/high-windmill"
+      }
+    },
+    {
+      "id": "kettlebell-low-windmill",
+      "name": "Kettlebell Low Windmill",
+      "variationOf": "kettlebell-high-windmill",
+      "muscleGroup": "Core",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Obliques, glutes, hamstrings",
+      "equipment": "Kettlebell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand with the feet wider than the shoulders, bell hanging in one hand in front of the thigh.",
+        "Reach the other arm straight overhead and look at that hand.",
+        "Sink back into the hips and lower the bell down the inside of the leg.",
+        "Drive through the legs and push the hips forward to stand."
+      ],
+      "formCue": "Sit into the hip, top arm stays vertical.",
+      "commonMistakes": "Rounding the back to reach lower.",
+      "beginnerModification": "Do it with no weight and a shorter range.",
+      "alternatives": [
+        "Kettlebell Deadlift",
+        "Kettlebell High Windmill",
+        "Side Plank"
+      ],
+      "whyThisMatters": "It teaches the windmill hinge with the load held low, where it is easier to control.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/387/low-windmill/"
+      }
+    },
+    {
+      "id": "double-kettlebell-front-squat",
+      "name": "Double Kettlebell Front Squat",
+      "variationOf": "front-squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, upper back, core",
+      "equipment": "Two kettlebells",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Clean two bells to the rack in front of the shoulders and set the feet in your squat stance.",
+        "Brace and keep the elbows in and the chest tall.",
+        "Bend the knees and hips and lower until the thighs are just past parallel.",
+        "Drive up to full hip and knee extension."
+      ],
+      "formCue": "Tall chest, bells stay close.",
+      "commonMistakes": "Elbows flaring so the bells pull you forward, and the upper back rounding.",
+      "beginnerModification": "Use one bell held as a goblet squat.",
+      "alternatives": [
+        "Goblet Squat",
+        "Front Squat",
+        "Dumbbell Thruster"
+      ],
+      "whyThisMatters": "The front-loaded bells train the legs and demand a strong, upright trunk.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/Kettlebell/KBFrontSquat"
+      }
+    },
+    {
+      "id": "kettlebell-figure-eight",
+      "name": "Kettlebell Figure Eight",
+      "muscleGroup": "Core",
+      "movementPattern": "Rotation",
+      "musclesWorked": "Core, glutes, quads, grip, shoulders",
+      "equipment": "Kettlebell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand wider than shoulder width and sit into a squat with a flat back, bell in one hand.",
+        "Pass the bell between the legs from front to back into the other hand.",
+        "Bring it around the outside of that leg to the front.",
+        "Pass it back through to the first hand and keep tracing the eight."
+      ],
+      "formCue": "Stay low, back flat.",
+      "commonMistakes": "Rounding the back and standing up between passes.",
+      "beginnerModification": "Use a light bell and move slowly.",
+      "alternatives": [
+        "Kettlebell Halo",
+        "Kettlebell Deadlift",
+        "Russian Twist"
+      ],
+      "whyThisMatters": "It builds grip, coordination and trunk control while the legs hold a squat.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/382/figure-eight/"
+      }
+    },
+    {
+      "id": "half-turkish-get-up",
+      "name": "Half Turkish Get-Up",
+      "variationOf": "kettlebell-turkish-get-up",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Core, shoulders, glutes",
+      "equipment": "Kettlebell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie on your back with the bell pressed above one shoulder, that knee bent and the other leg out at an angle.",
+        "Keep your eyes on the bell and roll up onto the opposite elbow, then onto the hand.",
+        "Push through the planted foot to lift the hips off the floor.",
+        "Pause, then reverse each step back to the floor."
+      ],
+      "formCue": "Eyes on the bell, arm vertical.",
+      "commonMistakes": "Rushing the steps and letting the overhead arm drift.",
+      "beginnerModification": "Practise with no weight, or balance a shoe on the fist.",
+      "alternatives": [
+        "Kettlebell Turkish Get-Up",
+        "Glute Bridge",
+        "Side Plank"
+      ],
+      "whyThisMatters": "It trains the first half of the get-up, where shoulder stability and trunk strength are learned.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/381/half-turkish-get-up/"
+      }
+    },
+    {
+      "id": "kettlebell-pull-over-crunch",
+      "name": "Kettlebell Pull-Over Crunch",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abs, lats, triceps",
+      "equipment": "Kettlebell",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie on your back with the knees bent and feet flat, holding the bell by the sides of the handle past your head.",
+        "With the arms long, pull the bell over until it is above the chest.",
+        "Crunch up, lifting the shoulder blades off the floor.",
+        "Lower the back down, then return the bell overhead."
+      ],
+      "formCue": "Ribs down as the bell goes back.",
+      "commonMistakes": "Arching the lower back when the bell is overhead.",
+      "beginnerModification": "Use a light bell, or do the pull-over without the crunch.",
+      "alternatives": [
+        "Dumbbell Pullover",
+        "Sit-Up",
+        "Dead Bug"
+      ],
+      "whyThisMatters": "It works the abs and lats together and teaches rib control with the arms overhead.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/380/pull-over-crunch/"
+      }
+    },
+    {
+      "id": "kettlebell-single-arm-overhead-squat",
+      "name": "Kettlebell Single-Arm Overhead Squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Quads, glutes, shoulders, upper back, core",
+      "equipment": "Kettlebell",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Press one bell overhead and lock the arm, feet about shoulder width apart.",
+        "Keep your eyes on the bell.",
+        "Push the hips back and squat, letting the free arm reach toward the floor as the trunk turns slightly toward the bell side.",
+        "Drive through both feet to stand with the arm still locked."
+      ],
+      "formCue": "Locked arm, eyes up.",
+      "commonMistakes": "Letting the overhead arm bend or drift forward.",
+      "beginnerModification": "Use no weight, or squat with the bell in the rack.",
+      "alternatives": [
+        "Goblet Squat",
+        "Overhead Carry",
+        "Kettlebell High Windmill"
+      ],
+      "whyThisMatters": "It tests shoulder stability, hip mobility and trunk control together.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/393/single-arm-overhead-squat/"
+      }
+    },
+    {
+      "id": "single-arm-kettlebell-row",
+      "name": "Single-Arm Kettlebell Row",
+      "variationOf": "dumbbell-row",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, mid back, rear delts, biceps",
+      "equipment": "Kettlebell and a chair or bench",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand in a split stance with the bell by the back foot and the free hand on a chair or bench.",
+        "Hinge at the hips with a flat back and grip the bell.",
+        "Pull the elbow up and back, keeping it close to the ribs and the chest still.",
+        "Lower the bell under control until the arm is straight."
+      ],
+      "formCue": "Elbow to the hip, chest still.",
+      "commonMistakes": "Rounding the back and yanking the bell with a twist of the trunk.",
+      "beginnerModification": "Use a lighter bell and a higher support.",
+      "alternatives": [
+        "Dumbbell Row",
+        "Band Row",
+        "Seated Cable Row"
+      ],
+      "whyThisMatters": "It builds the back one side at a time and shows up left-right differences.",
+      "source": {
+        "name": "Nuffield Health",
+        "url": "https://nuffieldhealth.com/article/how-to-kettlebell-row"
+      }
+    },
+    {
+      "id": "double-kettlebell-row",
+      "name": "Double Kettlebell Row",
+      "variationOf": "bent-over-row",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, mid back, rear delts, lower back, hamstrings",
+      "equipment": "Two kettlebells",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand hip width apart with two bells between the feet.",
+        "Hinge at the hips with a flat back and soft knees, and grip both handles.",
+        "Hold the hinge and pull both elbows back.",
+        "Lower the bells with control without standing up."
+      ],
+      "formCue": "Hold the hinge, row to the hips.",
+      "commonMistakes": "Rounding the back and bouncing the torso to move the weight.",
+      "beginnerModification": "Row one bell at a time with a hand on a support.",
+      "alternatives": [
+        "Bent-Over Barbell Row",
+        "Dumbbell Row",
+        "Chest-Supported Row"
+      ],
+      "whyThisMatters": "It trains the upper back while the hips and lower back hold a hinge.",
+      "source": {
+        "name": "Nuffield Health",
+        "url": "https://nuffieldhealth.com/article/how-to-kettlebell-row"
+      }
+    },
+    {
+      "id": "kettlebell-suitcase-deadlift",
+      "name": "Kettlebell Suitcase Deadlift",
+      "variationOf": "kettlebell-deadlift",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, obliques, grip",
+      "equipment": "Kettlebell",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand shoulder width apart with the bell on the floor outside one foot.",
+        "Hinge at the hips with a flat back, bend the knees and grip the handle.",
+        "Push through the feet and stand tall without leaning toward or away from the bell.",
+        "Hinge back down the same way and set the bell on the floor."
+      ],
+      "formCue": "Shoulders level, stand tall.",
+      "commonMistakes": "Leaning to the side as you lift.",
+      "beginnerModification": "Raise the bell on a low step to shorten the reach.",
+      "alternatives": [
+        "Kettlebell Deadlift",
+        "Suitcase Carry",
+        "Trap Bar Deadlift"
+      ],
+      "whyThisMatters": "The one-sided load makes the trunk work to keep you upright while you hinge.",
+      "source": {
+        "name": "The Prehab Guys",
+        "url": "https://theprehabguys.com/vimeo-video/suitcase-deadlift-kettlebell/"
+      }
+    },
+    {
+      "id": "american-kettlebell-swing",
+      "name": "American Kettlebell Swing",
+      "variationOf": "kettlebell-swing",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, shoulders, core",
+      "equipment": "Kettlebell",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Set up as for a two-hand swing and hike the bell back between the legs.",
+        "Drive the hips and legs so their force carries the bell upward.",
+        "Let the bell travel all the way overhead with the arms straight and the trunk held rigid.",
+        "Guide it back down the same path into the next hinge."
+      ],
+      "formCue": "Hips drive, midline stays tight.",
+      "commonMistakes": "Arching the lower back at the top and pulling with the arms.",
+      "beginnerModification": "Use the chest-height swing until the overhead position is comfortable.",
+      "alternatives": [
+        "Kettlebell Swing",
+        "Kettlebell Snatch",
+        "Dumbbell Snatch"
+      ],
+      "whyThisMatters": "The longer path means more work per rep than the chest-height swing.",
+      "source": {
+        "name": "CrossFit",
+        "url": "https://www.crossfit.com/essentials/the-kettlebell-swing"
+      }
+    },
+    {
+      "id": "dumbbell-clean",
+      "name": "Dumbbell Clean",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, quads, hamstrings, traps, upper back",
+      "equipment": "Dumbbells",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Squat down to dumbbells beside the ankles, palms facing in, shoulders over the weights and back tight.",
+        "Stand by extending the hips and knees, keeping the dumbbells close.",
+        "As they pass the knees, finish the leg drive and shrug hard.",
+        "Pull the elbows under and catch the dumbbells at the shoulders with the knees slightly bent, then stand."
+      ],
+      "formCue": "Legs first, then elbows through.",
+      "commonMistakes": "Curling the weights up with the arms and letting them drift away from the body.",
+      "beginnerModification": "Start from the hang with the dumbbells at mid-thigh.",
+      "alternatives": [
+        "Hang Power Clean",
+        "Kettlebell Clean",
+        "Dumbbell Snatch"
+      ],
+      "whyThisMatters": "It trains fast hip and leg extension with simple equipment.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/OlympicLifts/DBClean"
+      }
+    },
+    {
+      "id": "dumbbell-romanian-deadlift",
+      "name": "Dumbbell Romanian Deadlift",
+      "variationOf": "romanian-deadlift",
+      "muscleGroup": "Legs",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Hamstrings, glutes, lower back, grip",
+      "equipment": "Dumbbells",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with the dumbbells in front of the thighs, knees slightly bent and back straight.",
+        "Push the hips back and slide the weights down close to the legs.",
+        "Stop when you feel a strong stretch in the back of the legs and the back is still flat.",
+        "Push through the heels and bring the hips forward to stand."
+      ],
+      "formCue": "Hips back, weights close.",
+      "commonMistakes": "Rounding the back to reach lower and turning it into a squat.",
+      "beginnerModification": "Shorten the range or use lighter dumbbells.",
+      "alternatives": [
+        "Romanian Deadlift",
+        "Single-Leg Romanian Deadlift",
+        "Kettlebell Deadlift"
+      ],
+      "whyThisMatters": "It builds the hamstrings and glutes and grooves a clean hip hinge.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/317/romanian-deadlift/"
+      }
+    },
+    {
+      "id": "dumbbell-split-squat",
+      "name": "Dumbbell Split Squat",
+      "muscleGroup": "Legs",
+      "movementPattern": "Split stance",
+      "musclesWorked": "Glutes, quads, adductors",
+      "equipment": "Dumbbells",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand in a long split stance with a dumbbell in each hand at the sides.",
+        "Lower by bending the front knee and hip, letting the back heel rise.",
+        "Stop when the back knee is just above the floor.",
+        "Push through the front foot to stand, and finish all reps before switching legs."
+      ],
+      "formCue": "Straight down, straight up.",
+      "commonMistakes": "A stance that is too short and the front knee caving in.",
+      "beginnerModification": "Do it with no weight and hold a support for balance.",
+      "alternatives": [
+        "Bulgarian Split Squat",
+        "Reverse Lunge",
+        "Walking Lunge"
+      ],
+      "whyThisMatters": "It loads one leg at a time with a stable base, good for strength and balance.",
+      "source": {
+        "name": "ExRx.net",
+        "url": "https://exrx.net/WeightExercises/GluteusMaximus/DBSplitSquat"
+      }
+    },
+    {
+      "id": "renegade-row",
+      "name": "Renegade Row",
+      "muscleGroup": "Back",
+      "movementPattern": "Pull",
+      "musclesWorked": "Lats, mid back, core, shoulders, triceps",
+      "equipment": "Dumbbells",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Take a push-up position with each hand on a dumbbell under the shoulder and the feet about shoulder width apart.",
+        "Press into both dumbbells and keep the body straight.",
+        "Row one dumbbell toward the chest with the elbow close to the ribs while the feet press into the floor.",
+        "Lower it slowly, then row the other side."
+      ],
+      "formCue": "Hips square to the floor.",
+      "commonMistakes": "Hips rotating open on each row and the lower back sagging.",
+      "beginnerModification": "Widen the feet, drop to the knees, or use lighter dumbbells.",
+      "alternatives": [
+        "Dumbbell Row",
+        "Plank",
+        "Bird Dog"
+      ],
+      "whyThisMatters": "It trains the back and the trunk at once by making you resist rotation.",
+      "source": {
+        "name": "ACE Exercise Library",
+        "url": "https://www.acefitness.org/resources/everyone/exercise-library/355/renegade-row/"
+      }
+    },
+    {
+      "id": "man-maker",
+      "name": "Man-Maker",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Chest, back, shoulders, quads, glutes, core",
+      "equipment": "Dumbbells",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Start in a high plank gripping two dumbbells, feet hip width or wider, and do one push-up.",
+        "Row one dumbbell, then the other, without rocking the hips.",
+        "Step or jump the feet up to a squat stance and clean the dumbbells to the shoulders.",
+        "Squat, stand and press overhead, then lower the weights to the floor and return to the plank."
+      ],
+      "formCue": "Smooth, not rushed.",
+      "commonMistakes": "Twisting during the rows and losing the back position when picking the weights up.",
+      "beginnerModification": "Use light dumbbells, step instead of jumping, or drop the push-up.",
+      "alternatives": [
+        "Dumbbell Thruster",
+        "Burpee",
+        "Renegade Row"
+      ],
+      "whyThisMatters": "It strings a push, a pull, a squat and a press into one demanding conditioning rep.",
+      "source": {
+        "name": "Experience Life (Life Time)",
+        "url": "https://experiencelife.lifetime.life/article/how-to-do-the-man-maker-exercise/"
+      }
+    },
+    {
+      "id": "dumbbell-floor-press",
+      "name": "Dumbbell Floor Press",
+      "variationOf": "dumbbell-bench-press",
+      "muscleGroup": "Chest",
+      "movementPattern": "Push",
+      "musclesWorked": "Chest, triceps, front delts",
+      "equipment": "Dumbbells",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit on the floor with the dumbbells in the hip crease, then lie back and bring them to the chest.",
+        "Press them to straight arms and set the feet flat with the knees bent.",
+        "Lower slowly until the upper arms rest lightly on the floor.",
+        "Press back up to straight arms."
+      ],
+      "formCue": "Soft touch on the floor, then press.",
+      "commonMistakes": "Dropping the elbows onto the floor and bouncing out of the bottom.",
+      "beginnerModification": "Use lighter dumbbells or press one arm at a time.",
+      "alternatives": [
+        "Dumbbell Bench Press",
+        "Push-Up",
+        "Machine Chest Press"
+      ],
+      "whyThisMatters": "It lets you press without a bench, and the floor limits how far the shoulders travel.",
+      "source": {
+        "name": "StrengthLog",
+        "url": "https://www.strengthlog.com/dumbbell-floor-press/"
+      }
+    },
+    {
+      "id": "arnold-z-press",
+      "name": "Arnold Z Press",
+      "variationOf": "arnold-press",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Press",
+      "musclesWorked": "Shoulders, triceps, upper back, core",
+      "equipment": "Dumbbells",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Sit on the floor with the legs straight out and the torso upright.",
+        "Hold the dumbbells at shoulder height with the palms facing you.",
+        "Press overhead while turning the palms to face forward, and lock out fully.",
+        "Lower under control, turning the palms back toward you."
+      ],
+      "formCue": "Sit tall, no leaning back.",
+      "commonMistakes": "Leaning back as the weights go up and rounding the lower back.",
+      "beginnerModification": "Sit on a low pad, bend the knees slightly, or use lighter dumbbells.",
+      "alternatives": [
+        "Arnold Press",
+        "Seated Dumbbell Press",
+        "Shoulder Press"
+      ],
+      "whyThisMatters": "With no back support and no leg drive, the shoulders and trunk do all the work.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://catalystathletics.com/exercise/800/Arnold-Z-Press/"
+      }
+    },
+    {
+      "id": "zottman-curl",
+      "name": "Zottman Curl",
+      "variationOf": "bicep-curl",
+      "muscleGroup": "Arms",
+      "movementPattern": "Curl",
+      "musclesWorked": "Biceps, brachialis, forearms",
+      "equipment": "Dumbbells",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with a dumbbell in each hand, arms straight and palms facing forward.",
+        "Curl the weights up with the palms up and the elbows at your sides.",
+        "At the top, turn the palms to face down.",
+        "Lower slowly with the palms down, then turn them forward again at the bottom."
+      ],
+      "formCue": "Palms up to lift, palms down to lower.",
+      "commonMistakes": "Swinging the weights and rushing the lowering half.",
+      "beginnerModification": "Go lighter, or curl one arm at a time.",
+      "alternatives": [
+        "Bicep Curl",
+        "Hammer Curl",
+        "Concentration Curl"
+      ],
+      "whyThisMatters": "It works the biceps on the way up and the forearms on the way down.",
+      "source": {
+        "name": "Catalyst Athletics",
+        "url": "https://catalystathletics.com/exercise/915/Zottman-Curl/"
+      }
+    }
+  ]
+}

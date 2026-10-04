@@ -1,0 +1,775 @@
+{
+  "discipline": "Yoga, Mobility & Flexibility",
+  "exercises": [
+    {
+      "id": "mountain-pose",
+      "name": "Mountain Pose",
+      "muscleGroup": "Core",
+      "movementPattern": "Balance",
+      "musclesWorked": "Feet, calves, quads, glutes, deep core, postural muscles",
+      "equipment": "None (mat optional)",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Stand with your big toes close and heels slightly apart, or feet hip-width if that feels steadier.",
+        "Lift and spread your toes, set them down, and balance your weight evenly across both feet.",
+        "Firm your thighs without locking the knees and stack hips over ankles and shoulders over hips.",
+        "Let your arms hang with palms forward, level your chin, and breathe slowly for the full hold."
+      ],
+      "formCue": "Ears over shoulders, shoulders over hips, hips over ankles.",
+      "commonMistakes": "Locking the knees back and letting the ribs flare forward so the lower back arches.",
+      "beginnerModification": "Stand with feet hip-width apart, or with your back lightly against a wall to feel the stacked line.",
+      "alternatives": [
+        "Chair Pose",
+        "Tree Pose"
+      ],
+      "whyThisMatters": "It teaches the stacked, balanced stance every other standing pose is built from.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/mountain-pose/"
+      }
+    },
+    {
+      "id": "standing-forward-fold",
+      "name": "Standing Forward Fold",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static stretch",
+      "musclesWorked": "Hamstrings, calves, glutes, lower back",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with hands on your hips and feet hip-width apart.",
+        "Hinge forward from the hips, keeping the front of your torso long as you lower.",
+        "Rest your hands on the floor, on blocks, or on your shins and let your head hang heavy.",
+        "Keep a soft bend in the knees and shift a little weight toward the balls of your feet.",
+        "Come up by bending the knees and rising with a long back."
+      ],
+      "formCue": "Fold from the hips, not the waist.",
+      "commonMistakes": "Rounding hard through the lower back to reach the floor, or locking the knees and pulling on the hamstrings.",
+      "beginnerModification": "Bend the knees generously and rest your hands on blocks or a chair seat.",
+      "alternatives": [
+        "Standing Hamstring Stretch",
+        "Downward Dog",
+        "Half Lift"
+      ],
+      "whyThisMatters": "It lengthens the whole back of the body and is the linking position in most flows.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/standing-forward-bend-2/"
+      }
+    },
+    {
+      "id": "half-lift",
+      "name": "Half Lift",
+      "variationOf": "standing-forward-fold",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Spinal erectors, hamstrings, glutes",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Start in a standing forward fold with feet hip-width apart.",
+        "Place your fingertips on the floor, on blocks, or on your shins.",
+        "Breathe in and lift your chest until your back is flat and roughly level with the floor.",
+        "Reach the crown of your head forward, keep the back of your neck long, then fold again on the breath out."
+      ],
+      "formCue": "Flat back, long neck, chest forward.",
+      "commonMistakes": "Rounding the upper back, or cranking the head up and pinching the neck.",
+      "beginnerModification": "Bend the knees slightly and put your hands on your shins or thighs so the back can flatten.",
+      "alternatives": [
+        "Standing Forward Fold",
+        "Standing Hamstring Stretch"
+      ],
+      "whyThisMatters": "It trains a clean hip hinge with a long spine, which carries into every forward bend and lift.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/standing-half-forward-bend/"
+      }
+    },
+    {
+      "id": "chaturanga",
+      "name": "Chaturanga (Plank to Low Plank)",
+      "muscleGroup": "Arms",
+      "movementPattern": "Push",
+      "musclesWorked": "Triceps, chest, front shoulders, core",
+      "equipment": "None (mat optional)",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set a strong plank with shoulders over wrists and legs firm.",
+        "Shift forward a little so your shoulders move just ahead of your wrists.",
+        "Bend your elbows straight back along your ribs and lower in one piece.",
+        "Stop when your upper arms are about level with the floor and elbows sit over wrists.",
+        "Hold for a breath, then press back up or move on to your next pose."
+      ],
+      "formCue": "Elbows hug the ribs, body moves as one board.",
+      "commonMistakes": "Dropping the shoulders below elbow height, or letting the hips sag or pike.",
+      "beginnerModification": "Lower your knees to the floor first and keep the same straight line from knees to head.",
+      "alternatives": [
+        "Push-Up",
+        "Incline Push-Up",
+        "Plank"
+      ],
+      "whyThisMatters": "It builds the pressing strength and shoulder control that keep flowing sequences safe.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/four-limbed-staff-pose/"
+      }
+    },
+    {
+      "id": "upward-facing-dog",
+      "name": "Upward-Facing Dog",
+      "muscleGroup": "Back",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Spinal erectors, glutes, triceps, chest, hip flexors",
+      "equipment": "None (mat optional)",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Lie face down with legs hip-width apart and hands on the floor beside your lower ribs.",
+        "Press the tops of your feet into the floor so your thighs switch on.",
+        "Breathe in, straighten your arms, and lift your chest and thighs off the floor.",
+        "Stack wrists under shoulders, draw your shoulders back, and keep your neck in line with your upper back.",
+        "Hold for a few breaths, then lower down or lift the hips to Downward Dog."
+      ],
+      "formCue": "Thighs off the floor, chest pulls forward and up.",
+      "commonMistakes": "Hanging in the shoulders with them up by the ears, or sagging into the lower back with relaxed legs.",
+      "beginnerModification": "Keep the thighs and hips on the floor and bend the elbows for Cobra Pose.",
+      "alternatives": [
+        "Cobra Pose",
+        "Superman Hold"
+      ],
+      "whyThisMatters": "It opens the chest and front of the hips while strengthening the arms and back.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/types/backbends/upward-facing-dog-2/"
+      }
+    },
+    {
+      "id": "warrior-one",
+      "name": "Warrior One",
+      "muscleGroup": "Legs",
+      "movementPattern": "Split stance",
+      "musclesWorked": "Quads, glutes, hip flexors, calves, shoulders",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Step one foot forward between your hands and bend that knee over the ankle.",
+        "Turn your back heel down so the back foot angles about 45 degrees.",
+        "Press the back thigh straight and firm the outer edge of the back foot into the floor.",
+        "Rise up, turn your chest toward the front, and reach both arms overhead.",
+        "Hold for five to ten breaths, then switch sides."
+      ],
+      "formCue": "Back leg strong, front knee tracks over the ankle.",
+      "commonMistakes": "Letting the front knee cave inward, or dumping into the lower back as the arms go up.",
+      "beginnerModification": "Shorten the stance, take the feet wider side to side, and keep hands on hips.",
+      "alternatives": [
+        "Crescent Lunge",
+        "Warrior Two"
+      ],
+      "whyThisMatters": "It builds leg strength and opens the hip of the back leg in one hold.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/warrior-i-pose/"
+      }
+    },
+    {
+      "id": "triangle-pose",
+      "name": "Triangle Pose",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static stretch",
+      "musclesWorked": "Hamstrings, inner thighs, obliques, glutes, shoulders",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with feet wide, front foot turned out and back foot turned slightly in.",
+        "Reach your arms out level with your shoulders and keep both legs straight but not locked.",
+        "Reach forward over the front leg, then tip from the hip and lower your front hand to your shin, a block, or the floor.",
+        "Stack the top arm over the bottom arm and open your chest to the side.",
+        "Hold for five breaths, press through the feet to rise, and switch sides."
+      ],
+      "formCue": "Long on both sides of the waist.",
+      "commonMistakes": "Collapsing the bottom side of the torso to reach the floor, or locking the front knee.",
+      "beginnerModification": "Rest your bottom hand on a block or high on the shin and keep a small bend in the front knee.",
+      "alternatives": [
+        "Warrior Two",
+        "Extended Side Angle"
+      ],
+      "whyThisMatters": "It stretches the hamstrings and inner thighs while teaching the legs to hold a steady base.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/extended-triangle-pose/"
+      }
+    },
+    {
+      "id": "extended-side-angle",
+      "name": "Extended Side Angle",
+      "muscleGroup": "Legs",
+      "movementPattern": "Split stance",
+      "musclesWorked": "Quads, glutes, inner thighs, obliques, shoulders",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Start in a wide stance with the front foot turned out and arms reaching out to the sides.",
+        "Bend the front knee toward 90 degrees, keeping it over the ankle.",
+        "Lean over the front leg and place your forearm on the thigh or your hand outside the front foot.",
+        "Sweep the top arm over your ear so your body makes one line from back heel to fingertips.",
+        "Hold for 30 to 60 seconds, then rise and change sides."
+      ],
+      "formCue": "One long line from back heel to top fingertips.",
+      "commonMistakes": "Letting the front knee drift inward, or sinking all the weight onto the bottom arm.",
+      "beginnerModification": "Rest the forearm lightly on the front thigh, or put the bottom hand on a block.",
+      "alternatives": [
+        "Warrior Two",
+        "Triangle Pose"
+      ],
+      "whyThisMatters": "It strengthens the legs while lengthening the whole side of the body.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/extended-side-angle-pose-2/"
+      }
+    },
+    {
+      "id": "half-moon-pose",
+      "name": "Half Moon Pose",
+      "muscleGroup": "Legs",
+      "movementPattern": "Balance",
+      "musclesWorked": "Glutes, outer hips, hamstrings, ankles, obliques",
+      "equipment": "None (mat optional), block optional",
+      "difficulty": "Moderate",
+      "instructions": [
+        "From Triangle Pose, bend the front knee and look down at the floor.",
+        "Place your bottom hand a little ahead of the front foot, under the shoulder, on the floor or a block.",
+        "Shift your weight onto the front leg and lift the back leg until it is level with your hip.",
+        "Straighten the standing leg without locking it and turn your chest open to the side.",
+        "Reach the top arm up, hold for a few breaths, then step back down with control."
+      ],
+      "formCue": "Flex the lifted foot and push it into an imaginary wall.",
+      "commonMistakes": "Locking the standing knee, or letting the top hip roll forward so the chest faces the floor.",
+      "beginnerModification": "Use a tall block under the bottom hand and practise with your back near a wall.",
+      "alternatives": [
+        "Warrior Three",
+        "Triangle Pose"
+      ],
+      "whyThisMatters": "It trains single-leg balance and outer-hip strength at the same time.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/half-moon-pose-3/"
+      }
+    },
+    {
+      "id": "tree-pose",
+      "name": "Tree Pose",
+      "muscleGroup": "Legs",
+      "movementPattern": "Balance",
+      "musclesWorked": "Glutes, outer hips, calves, feet, deep core",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand in Mountain Pose and shift your weight onto one foot.",
+        "Place the sole of the other foot on the inner calf or inner thigh of the standing leg, never on the knee.",
+        "Press foot and leg into each other and keep your hips level and facing forward.",
+        "Bring your hands together at your chest, or reach them overhead once you are steady.",
+        "Fix your eyes on one point, hold, then change sides."
+      ],
+      "formCue": "Foot into leg, leg into foot.",
+      "commonMistakes": "Resting the foot against the side of the knee, or hiking the hip of the lifted leg.",
+      "beginnerModification": "Keep the toes of the lifted foot on the floor with the heel on the ankle, or stand next to a wall.",
+      "alternatives": [
+        "Mountain Pose",
+        "Warrior Three"
+      ],
+      "whyThisMatters": "It builds ankle and hip stability and the focus needed for every balance.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/tree-pose-2/"
+      }
+    },
+    {
+      "id": "eagle-pose",
+      "name": "Eagle Pose",
+      "muscleGroup": "Legs",
+      "movementPattern": "Balance",
+      "musclesWorked": "Quads, glutes, outer hips, upper back, shoulders",
+      "equipment": "None (mat optional)",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand tall, bend both knees, and shift your weight onto one leg.",
+        "Cross the other thigh over the standing thigh and hook the foot behind the calf if you can.",
+        "Reach your arms forward, cross one elbow over the other, and wrap the forearms so the palms meet.",
+        "Lift your elbows to shoulder height, sit a little lower, and keep your chest upright.",
+        "Hold for about five breaths, unwind, and repeat on the other side."
+      ],
+      "formCue": "Sit low, lift the elbows, squeeze everything to the midline.",
+      "commonMistakes": "Standing up tall out of the squat, or tipping the chest forward to stay balanced.",
+      "beginnerModification": "Cross the legs and rest the top toes on the floor like a kickstand, and hold opposite shoulders with the arms.",
+      "alternatives": [
+        "Chair Pose",
+        "Tree Pose"
+      ],
+      "whyThisMatters": "It challenges balance while stretching the upper back and outer hips.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/eagle-pose/"
+      }
+    },
+    {
+      "id": "bridge-pose",
+      "name": "Bridge Pose",
+      "variationOf": "glute-bridge",
+      "muscleGroup": "Back",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, spinal erectors, chest, hip flexors",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Lie on your back with knees bent and feet hip-width apart, close to your hips.",
+        "Rest your arms by your sides with palms down.",
+        "Breathe in, press through your feet, and lift your hips.",
+        "Keep your thighs parallel, and if it is comfortable, clasp your hands under you and roll the shoulders in.",
+        "Hold for several breaths, then lower your spine slowly to the floor."
+      ],
+      "formCue": "Press the heels down and keep the knees pointing straight ahead.",
+      "commonMistakes": "Letting the knees splay out, or flattening and pressing the back of the neck into the floor.",
+      "beginnerModification": "Lift only part way, or rest your hips on a block for a supported version.",
+      "alternatives": [
+        "Glute Bridge",
+        "Shoulder Bridge"
+      ],
+      "whyThisMatters": "It opens the chest and hips while strengthening the whole back of the body.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/bridge-pose/"
+      }
+    },
+    {
+      "id": "boat-pose",
+      "name": "Boat Pose",
+      "muscleGroup": "Core",
+      "movementPattern": "Brace",
+      "musclesWorked": "Abdominals, hip flexors, spinal erectors, quads",
+      "equipment": "None (mat optional)",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Sit with knees bent, feet on the floor, and hands behind your thighs.",
+        "Lean back a little with a long spine until you balance just behind your sitting bones.",
+        "Lift your feet so your shins are level with the floor.",
+        "Reach your arms forward beside your legs, and straighten the legs only if your back stays long.",
+        "Hold for 10 to 20 seconds, building toward a minute, then lower with control."
+      ],
+      "formCue": "Chest lifted, lower back long.",
+      "commonMistakes": "Rounding the lower back and sinking the chest once the legs go up.",
+      "beginnerModification": "Keep the knees bent and hold the backs of your thighs, or keep the toes on the floor.",
+      "alternatives": [
+        "Hollow Hold",
+        "V-Up",
+        "Teaser Prep"
+      ],
+      "whyThisMatters": "It builds deep abdominal and hip flexor strength with an upright spine.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/full-boat-pose-2/"
+      }
+    },
+    {
+      "id": "low-lunge",
+      "name": "Low Lunge",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static stretch",
+      "musclesWorked": "Hip flexors, quads, glutes, groin",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "From Downward Dog or hands and knees, step one foot forward between your hands.",
+        "Lower the back knee to the floor and rest the top of the back foot down.",
+        "Keep the front knee over the ankle and slide the back knee away until you feel the front of that hip stretch.",
+        "Lift your chest and reach your arms overhead, or keep hands on your hips.",
+        "Hold for up to a minute, then switch sides."
+      ],
+      "formCue": "Tailbone down, front of the back hip opens.",
+      "commonMistakes": "Arching the lower back to lift the chest, or letting the front knee slide far past the toes.",
+      "beginnerModification": "Pad the back knee with a folded blanket and keep your hands on blocks or on the front thigh.",
+      "alternatives": [
+        "Kneeling Hip Flexor Stretch",
+        "Crescent Lunge"
+      ],
+      "whyThisMatters": "It opens the hip flexors and quads that tighten up from sitting.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/low-lunge/"
+      }
+    },
+    {
+      "id": "lizard-pose",
+      "name": "Lizard Pose",
+      "variationOf": "low-lunge",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static stretch",
+      "musclesWorked": "Hip flexors, inner thighs, hamstrings, glutes",
+      "equipment": "None (mat optional), blocks optional",
+      "difficulty": "Moderate",
+      "instructions": [
+        "From a low lunge, walk the front foot toward the outer edge of the mat.",
+        "Bring both hands to the floor inside the front foot.",
+        "Stay on your hands, or lower your forearms to the floor or to blocks.",
+        "Keep the back knee down for an easier hold, or lift it and press the heel back for more load.",
+        "Keep your chest reaching forward, hold for five slow breaths, then change sides."
+      ],
+      "formCue": "Chest forward, hips level.",
+      "commonMistakes": "Rounding the upper back to get the elbows down, or letting the front knee collapse inward.",
+      "beginnerModification": "Keep the back knee on a pad and stay up on your hands or on blocks.",
+      "alternatives": [
+        "Low Lunge",
+        "World's Greatest Stretch",
+        "Pigeon Pose"
+      ],
+      "whyThisMatters": "It reaches the deep hip and inner-thigh range that lunges and squats depend on.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/yoga-sequence-deep-hip-opening/"
+      }
+    },
+    {
+      "id": "half-splits",
+      "name": "Half Splits",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static stretch",
+      "musclesWorked": "Hamstrings, calves, glutes",
+      "equipment": "None (mat optional), blocks optional",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Start in a low lunge with the back knee on the floor and hands framing the front foot.",
+        "Shift your hips back until they sit over the back knee.",
+        "Straighten the front leg and flex the foot so the toes point up.",
+        "Keep your hips square and walk your hands forward with a long spine.",
+        "Hold for five to ten breaths, then switch legs."
+      ],
+      "formCue": "Lead with the chest, not the forehead.",
+      "commonMistakes": "Rounding the spine to chase the shin, or letting the hips drift back past the knee.",
+      "beginnerModification": "Put blocks under your hands and keep a small bend in the front knee.",
+      "alternatives": [
+        "Standing Hamstring Stretch",
+        "Seated Forward Fold"
+      ],
+      "whyThisMatters": "It isolates one hamstring at a time without loading the lower back.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/practice/yoga-sequences/two-fit-moms-prep-poses-hanumanasana/"
+      }
+    },
+    {
+      "id": "seated-forward-fold",
+      "name": "Seated Forward Fold",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static stretch",
+      "musclesWorked": "Hamstrings, calves, spinal erectors",
+      "equipment": "None (mat optional), strap optional",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit with both legs straight in front of you and your feet flexed.",
+        "Breathe in and sit tall through the crown of your head.",
+        "Breathe out and hinge forward from the hips, keeping the spine long.",
+        "Walk your hands forward as far as is comfortable, holding your shins, feet, or a strap.",
+        "Lengthen a little on each breath in, ease forward on each breath out, and hold for one to three minutes."
+      ],
+      "formCue": "Reach the chest toward the toes, not the head toward the knees.",
+      "commonMistakes": "Pulling hard with the arms and rounding the back to get lower.",
+      "beginnerModification": "Sit on a folded blanket, bend the knees, and loop a strap around the feet.",
+      "alternatives": [
+        "Standing Hamstring Stretch",
+        "Half Splits",
+        "Spine Stretch Forward"
+      ],
+      "whyThisMatters": "It gives the hamstrings and back a long, calm stretch that suits the end of a session.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/types/forward-bends/seated-forward-bend/"
+      }
+    },
+    {
+      "id": "bound-angle-pose",
+      "name": "Bound Angle Pose",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static stretch",
+      "musclesWorked": "Inner thighs, groin, outer hips, spinal erectors",
+      "equipment": "None (mat optional)",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Sit tall, bend your knees, and bring the soles of your feet together.",
+        "Draw your heels toward your pelvis only as far as is comfortable.",
+        "Hold your ankles or feet and let your knees fall out to the sides.",
+        "Lift through your chest and keep your pelvis upright rather than slumped.",
+        "Stay for one to five minutes, then lift the knees with your hands and stretch the legs out."
+      ],
+      "formCue": "Sit tall and let the thighs release on their own.",
+      "commonMistakes": "Pushing the knees down with the hands or elbows, or slumping through the lower back.",
+      "beginnerModification": "Sit on a folded blanket and rest blocks or cushions under each thigh.",
+      "alternatives": [
+        "Figure-Four Stretch",
+        "Pigeon Pose",
+        "90/90 Hip Switch"
+      ],
+      "whyThisMatters": "It opens the inner thighs and hips while training an upright seated posture.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/types/seated-twists/bound-angle-pose-2/"
+      }
+    },
+    {
+      "id": "happy-baby",
+      "name": "Happy Baby",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static stretch",
+      "musclesWorked": "Inner thighs, glutes, hamstrings, lower back",
+      "equipment": "None (mat optional)",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Lie on your back and draw both knees toward your chest.",
+        "Hold the outer edges of your feet, or your shins or the backs of your thighs.",
+        "Open your knees a little wider than your torso and bring them toward your armpits.",
+        "Stack each ankle over its knee so the shins point straight up.",
+        "Press your feet gently up into your hands as you draw down, and hold for several slow breaths."
+      ],
+      "formCue": "Tailbone heavy, shoulders soft.",
+      "commonMistakes": "Lifting the head and shoulders, or curling the tailbone far off the floor to reach the feet.",
+      "beginnerModification": "Hold behind the thighs, or do one leg at a time with the other foot on the floor.",
+      "alternatives": [
+        "Figure-Four Stretch",
+        "Supine Twist",
+        "Child's Pose"
+      ],
+      "whyThisMatters": "It releases the inner hips and lower back with no load on the spine.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/happy-baby-pose/"
+      }
+    },
+    {
+      "id": "legs-up-the-wall",
+      "name": "Legs Up the Wall",
+      "muscleGroup": "Legs",
+      "movementPattern": "Static stretch",
+      "musclesWorked": "Hamstrings, calves, lower back (passive)",
+      "equipment": "Wall, mat optional",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Sit sideways next to a wall with one hip close to it.",
+        "Lower onto your side, roll onto your back, and swing your legs up the wall.",
+        "Shuffle your hips toward the wall until your legs rest comfortably; they do not have to touch it.",
+        "Rest your arms by your sides with palms up and let your legs relax.",
+        "Breathe slowly for five to ten minutes, then bend your knees, roll to one side, and pause before sitting up."
+      ],
+      "formCue": "Let the wall hold your legs.",
+      "commonMistakes": "Forcing the hips tight to the wall so the hamstrings pull and the lower back lifts.",
+      "beginnerModification": "Move your hips further from the wall, bend the knees, or rest your calves on a chair seat instead.",
+      "alternatives": [
+        "Corpse Pose",
+        "Happy Baby",
+        "Child's Pose"
+      ],
+      "whyThisMatters": "It is a simple, fully supported position for winding down after training.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/legs-up-the-wall-pose-2/"
+      }
+    },
+    {
+      "id": "corpse-pose",
+      "name": "Corpse Pose",
+      "muscleGroup": "Core",
+      "movementPattern": "Breathing",
+      "musclesWorked": "Whole body (relaxation)",
+      "equipment": "None (mat optional)",
+      "difficulty": "Recovery",
+      "instructions": [
+        "Lie on your back with legs straight and feet hip-width apart or wider, letting the feet fall out.",
+        "Rest your arms a little away from your sides with the palms up.",
+        "Lengthen the back of your neck and let your body feel heavy on the floor.",
+        "Soften your jaw and face, close your eyes, and let your breath slow down on its own.",
+        "Stay for at least five minutes, then roll to one side before you sit up."
+      ],
+      "formCue": "Nothing to hold, nothing to fix.",
+      "commonMistakes": "Skipping it, or lying there while planning the rest of the day.",
+      "beginnerModification": "Put a rolled blanket under your knees and a thin cushion under your head.",
+      "alternatives": [
+        "Legs Up the Wall",
+        "Child's Pose"
+      ],
+      "whyThisMatters": "It gives the body time to settle so the work of the session can sink in.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/corpse-pose-2/"
+      }
+    },
+    {
+      "id": "garland-pose",
+      "name": "Garland Pose (Deep Squat Hold)",
+      "muscleGroup": "Legs",
+      "movementPattern": "Squat",
+      "musclesWorked": "Ankles, calves, inner thighs, glutes, lower back",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand with feet a little wider than your hips and toes turned out slightly.",
+        "Bend your knees and lower your hips all the way down between your heels.",
+        "Bring your palms together and press your elbows gently against your inner knees.",
+        "Lift your chest and lengthen your spine while the knees track over the toes.",
+        "Hold for 30 to 60 seconds, then press through the feet to stand."
+      ],
+      "formCue": "Heels heavy, chest tall.",
+      "commonMistakes": "Letting the heels float with no support, or collapsing the chest and rounding the back.",
+      "beginnerModification": "Put a folded blanket under your heels, sit on a low block, or hold a door frame for balance.",
+      "alternatives": [
+        "Bodyweight Squat",
+        "Goblet Squat",
+        "Bound Angle Pose"
+      ],
+      "whyThisMatters": "It restores the ankle and hip range that a comfortable full squat needs.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/garland-pose/"
+      }
+    },
+    {
+      "id": "sun-salutation-a",
+      "name": "Sun Salutation A",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Flow",
+      "musclesWorked": "Shoulders, chest, triceps, core, hamstrings, hip flexors",
+      "equipment": "None (mat optional)",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand in Mountain Pose, breathe in and sweep your arms overhead, then breathe out and fold forward.",
+        "Breathe in to a Half Lift, then breathe out, step back to plank, and lower through Chaturanga.",
+        "Breathe in to Upward-Facing Dog, then breathe out and lift your hips to Downward Dog.",
+        "Hold Downward Dog for three to five breaths, then step or walk your feet to your hands.",
+        "Breathe in to a Half Lift, breathe out to fold, then rise with arms overhead and return to Mountain Pose."
+      ],
+      "formCue": "One breath, one movement.",
+      "commonMistakes": "Rushing ahead of the breath, and letting the hips sag in the plank and lowering phase.",
+      "beginnerModification": "Drop the knees for the lowering phase and swap Upward-Facing Dog for Cobra Pose.",
+      "alternatives": [
+        "Downward Dog",
+        "World's Greatest Stretch",
+        "Cat-Cow"
+      ],
+      "whyThisMatters": "It warms the whole body and links breath to movement in under a minute per round.",
+      "source": {
+        "name": "Yoga Journal",
+        "url": "https://www.yogajournal.com/poses/surya-namaskar/"
+      }
+    },
+    {
+      "id": "hip-controlled-articular-rotation",
+      "name": "Hip Controlled Articular Rotation",
+      "muscleGroup": "Legs",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Hip flexors, glutes, deep hip rotators, obliques",
+      "equipment": "None (wall or chair for support)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall beside a wall or chair, hold it lightly, and brace your trunk so the pelvis stays still.",
+        "Lift one knee straight up in front of you as high as you can without leaning back.",
+        "Open the knee out to the side, then turn the thigh inward so the foot swings out and back behind you.",
+        "Lower the knee under your hip, then reverse the whole circle back to the start.",
+        "Move slowly enough that each circle takes several seconds, and stay inside a pain-free range."
+      ],
+      "formCue": "Biggest circle you can make with nothing else moving.",
+      "commonMistakes": "Swinging the leg with momentum, or tilting and twisting the pelvis to fake a bigger circle.",
+      "beginnerModification": "Do it on hands and knees, where the floor steadies the trunk, and make a smaller circle.",
+      "alternatives": [
+        "90/90 Hip Switch",
+        "World's Greatest Stretch",
+        "Fire Hydrant"
+      ],
+      "whyThisMatters": "It takes the hip through its full active range so you keep the motion you already own.",
+      "source": {
+        "name": "American Council on Exercise (ACE)",
+        "url": "https://www.acefitness.org/continuing-education/certified/october-2024/8725/controlled-articular-rotations-shifting-mobility-into-high-gear/"
+      }
+    },
+    {
+      "id": "shoulder-controlled-articular-rotation",
+      "name": "Shoulder Controlled Articular Rotation",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Rotator cuff, deltoids, upper back, serratus",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand tall with ribs down, one arm straight by your side, and the other hand in a light fist.",
+        "Raise the working arm forward and up, thumb leading, until it is beside your ear.",
+        "At the top, turn the arm inward so the palm faces out and continue reaching back and down behind you.",
+        "Finish with the back of the hand near your hip, then reverse the path to the start.",
+        "Move slowly, keep the torso still, and stay inside a pain-free range."
+      ],
+      "formCue": "Slow circle, quiet ribs.",
+      "commonMistakes": "Arching the back or leaning the torso to get the arm further, and rushing through the stiff part.",
+      "beginnerModification": "Stand side-on to a wall an arm's length away and trace a smaller circle beside it.",
+      "alternatives": [
+        "Arm Swings & Circles",
+        "Wall Slide",
+        "Thread the Needle"
+      ],
+      "whyThisMatters": "It works the shoulder through its full active range before pressing, pulling, or hanging.",
+      "source": {
+        "name": "American Council on Exercise (ACE)",
+        "url": "https://www.acefitness.org/continuing-education/certified/october-2024/8725/controlled-articular-rotations-shifting-mobility-into-high-gear/"
+      }
+    },
+    {
+      "id": "ankle-dorsiflexion-wall-drill",
+      "name": "Knee-to-Wall Ankle Drill",
+      "muscleGroup": "Legs",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Calves, soleus, Achilles tendon, ankle joint",
+      "equipment": "Wall",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Face a wall in a short split stance or half kneel with your front toes a few centimetres from it.",
+        "Keep the front foot pointing straight ahead and the heel flat on the floor.",
+        "Drive the front knee forward over the middle toes until it touches the wall or the heel wants to lift.",
+        "Ease back and repeat for slow reps, moving the foot further from the wall only if the heel stays down.",
+        "Switch sides and compare the two ankles."
+      ],
+      "formCue": "Heel glued down, knee over the middle toes.",
+      "commonMistakes": "Letting the heel peel up, or letting the arch collapse and the knee dive inward.",
+      "beginnerModification": "Start with the toes almost touching the wall and hold the wall for balance.",
+      "alternatives": [
+        "Standing Calf Stretch",
+        "Garland Pose (Deep Squat Hold)"
+      ],
+      "whyThisMatters": "Better ankle bend lets the knees travel forward so squats and lunges sit deeper and feel steadier.",
+      "source": {
+        "name": "Physiopedia",
+        "url": "https://www.physio-pedia.com/Knee_to_Wall_Test"
+      }
+    },
+    {
+      "id": "thoracic-extension-foam-roller",
+      "name": "Foam Roller Thoracic Extension",
+      "muscleGroup": "Back",
+      "movementPattern": "Dynamic stretch",
+      "musclesWorked": "Thoracic spine, chest, lats",
+      "equipment": "Foam roller",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit on the floor with knees bent and place a foam roller across your mid-back, below the shoulder blades.",
+        "Support your head with your hands and keep your elbows pointing forward and up.",
+        "Keep your hips on the floor and your ribs down, then lean back gently over the roller.",
+        "Pause for a breath, curl back up, and repeat a few times.",
+        "Shift the roller a little higher and repeat, staying on the upper and middle back only."
+      ],
+      "formCue": "Hips down, ribs down, bend from the upper back.",
+      "commonMistakes": "Lifting the hips or flaring the ribs so the lower back arches instead of the upper back.",
+      "beginnerModification": "Use a rolled towel instead of a roller and take a smaller range.",
+      "alternatives": [
+        "Cat-Cow",
+        "Thread the Needle",
+        "Wall Slide"
+      ],
+      "whyThisMatters": "It restores upper-back extension, which overhead reaching and good posture both need.",
+      "source": {
+        "name": "National Academy of Sports Medicine (NASM)",
+        "url": "https://www.nasm.org/resource-center/blog/recovery/correcting-upper-crossed-syndrome-a-trainers-assessment-to-program-guide"
+      }
+    }
+  ]
+}

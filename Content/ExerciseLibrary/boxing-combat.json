@@ -1,0 +1,847 @@
+{
+  "discipline": "Boxing & Combat Conditioning",
+  "exercises": [
+    {
+      "id": "boxing-stance-hold",
+      "name": "Boxing Stance & Guard",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Calves, quads, glutes, core, shoulders",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand side-on at roughly 45 degrees with your feet about shoulder-width apart and your weaker-side foot in front.",
+        "Soften both knees, share your weight evenly across both feet, and lift the rear heel slightly off the floor.",
+        "Bring both fists up with the lead hand near eye level and the rear fist beside your chin, elbows tucked toward your ribs.",
+        "Tuck your chin behind the lead shoulder, keep the hands closed but loose, and hold the position while breathing steadily."
+      ],
+      "formCue": "Chin down, rear heel light.",
+      "commonMistakes": "Standing tall and square with the chin lifted, or planting both heels flat so the feet cannot move quickly.",
+      "beginnerModification": "Hold for short blocks in front of a mirror and shake the arms out between holds.",
+      "alternatives": [
+        "Shadow Boxing",
+        "Wall Sit"
+      ],
+      "whyThisMatters": "Every punch, step, and defensive move starts from and returns to this position.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "boxing-jab",
+      "name": "Jab",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Shoulders, triceps, serratus, core, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Set your boxing stance with both hands up and your chin tucked.",
+        "Shift a little weight toward the lead leg and turn the trunk slightly as the lead arm travels straight out from the guard.",
+        "Rotate the fist so the knuckles face up and the palm faces the floor as the arm reaches full length.",
+        "Pull the hand back along the same straight line to your guard while the rear hand stays beside your chin."
+      ],
+      "formCue": "Straight out, straight back.",
+      "commonMistakes": "Drawing the hand back before punching, or letting the rear hand drift away from the chin.",
+      "beginnerModification": "Practise slowly in front of a mirror from a still stance before adding a step.",
+      "alternatives": [
+        "Jab-Cross Combo",
+        "Shadow Boxing"
+      ],
+      "whyThisMatters": "The lead straight punch sets range and rhythm for everything else you throw.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "boxing-cross",
+      "name": "Cross",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Shoulders, chest, triceps, obliques, glutes, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Start in your boxing stance with the lead hand high and the lead elbow covering your ribs.",
+        "Turn the rear foot about a quarter turn on the ball of the foot and rotate the hips and trunk toward the lead side.",
+        "Extend the rear arm straight to the target, turning the palm down just before full reach.",
+        "Bring the hand back along the same path and settle into your stance with the elbow tucked."
+      ],
+      "formCue": "Turn the hip, then the hand.",
+      "commonMistakes": "Throwing with the arm only while the rear heel stays planted, or over-rotating and falling across your front foot.",
+      "beginnerModification": "Rehearse the hip and foot turn with hands on your cheeks before adding the arm.",
+      "alternatives": [
+        "Jab-Cross Combo",
+        "Medicine Ball Rotational Throw"
+      ],
+      "whyThisMatters": "The rear straight teaches you to move force from the floor through the hips into the hand.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "lead-hook",
+      "name": "Lead Hook",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Obliques, shoulders, chest, glutes, calves",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "From your stance, keep the rear hand tight to your chin and load a little weight onto the lead leg.",
+        "Lift the lead elbow to about shoulder height with the arm bent close to 90 degrees.",
+        "Drive off the front foot, lift the lead heel, and rotate the hips and trunk so the bent arm is carried through in an arc.",
+        "Stop the fist at your centre line, then bring it back to the guard by the shortest route."
+      ],
+      "formCue": "Turn the body, the arm just follows.",
+      "commonMistakes": "Pulling the hand back to wind up, or straightening the arm so the punch turns into a wide swing.",
+      "beginnerModification": "Practise the hip turn with the arm already raised and fixed at 90 degrees.",
+      "alternatives": [
+        "Russian Twist",
+        "Shadow Boxing"
+      ],
+      "whyThisMatters": "The hook trains fast trunk rotation around a stable base.",
+      "source": {
+        "name": "England Boxing (Boxing Coaching Handbook Part 1)",
+        "url": "https://www.englandboxing.org/wp-content/uploads/2022/03/EB_Boxing-Coaching-Handbook-Part-1_v8-002.pdf"
+      }
+    },
+    {
+      "id": "rear-hook",
+      "name": "Rear Hook",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Obliques, shoulders, chest, glutes, calves",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "From your stance, keep the lead hand up beside your chin.",
+        "Rotate the trunk toward the lead side and shift weight onto the lead leg as the rear heel lifts.",
+        "Swing the rear arm through with the elbow held near 90 degrees and the knuckles pointing at the target.",
+        "Keep your eyes over the top of the arm, then return the hand to the guard by the shortest path."
+      ],
+      "formCue": "Elbow bent, eyes over the arm.",
+      "commonMistakes": "Letting the arm straighten into a loop, or dropping the lead hand while the rear hand travels.",
+      "beginnerModification": "Slow the punch down and stop at the centre line until you can finish balanced.",
+      "alternatives": [
+        "Lead Hook",
+        "Cable Woodchop"
+      ],
+      "whyThisMatters": "It builds rotation from the rear side and balances the lead hook.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "lead-uppercut",
+      "name": "Lead Uppercut",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Quads, glutes, obliques, shoulders, biceps",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "From your stance, bend the knees a little and turn the upper body slightly toward the lead side.",
+        "Shift weight onto the lead leg while the rear hand stays high and firm against your chin.",
+        "Turn the lead fist so the knuckles point forward and drive it upward with the elbow kept bent.",
+        "Finish around chin height, then retract along the same path into your guard."
+      ],
+      "formCue": "Legs lift the punch.",
+      "commonMistakes": "Dropping the hand low to wind up, or leaning back and lifting the chin as the punch rises.",
+      "beginnerModification": "Practise the small knee dip and rise with both hands glued to your cheeks first.",
+      "alternatives": [
+        "Rear Uppercut",
+        "Shadow Boxing"
+      ],
+      "whyThisMatters": "The uppercut links leg drive to a short, compact arm path.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "rear-uppercut",
+      "name": "Rear Uppercut",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Quads, glutes, obliques, shoulders, biceps",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "From your guard, shift weight onto the rear foot and turn the rear palm to face you.",
+        "Bend the rear knee slightly and lift the rear heel.",
+        "Drive up through the legs and hips and throw a short punch upward with the forearm close to vertical.",
+        "Keep your chin behind the lead shoulder, then bring the hand straight back to the guard."
+      ],
+      "formCue": "Short and up, not across.",
+      "commonMistakes": "Winding up before the punch, or driving the fist across the body instead of upward.",
+      "beginnerModification": "Work it slowly on the spot and stop the fist at chin height.",
+      "alternatives": [
+        "Lead Uppercut",
+        "Dumbbell Thruster"
+      ],
+      "whyThisMatters": "It teaches upward drive from the hips with the guard still intact.",
+      "source": {
+        "name": "England Boxing (Boxing Coaching Handbook Part 1)",
+        "url": "https://www.englandboxing.org/wp-content/uploads/2022/03/EB_Boxing-Coaching-Handbook-Part-1_v8-002.pdf"
+      }
+    },
+    {
+      "id": "jab-to-the-body",
+      "name": "Jab to the Body",
+      "muscleGroup": "Legs",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Quads, glutes, shoulders, triceps, core",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "From your stance, bend the knees until your lead shoulder is level with a target at stomach height.",
+        "Keep the back straight, eyes forward, and the rear hand high.",
+        "Extend the lead arm straight out with a small hip turn, palm turning down at full reach.",
+        "Retract the hand and stand back up into your guard in one motion."
+      ],
+      "formCue": "Bend the knees, not the waist.",
+      "commonMistakes": "Folding at the waist and punching downward, which leaves the head forward and the chin open.",
+      "beginnerModification": "Practise the level change alone as a small squat in stance before adding the punch.",
+      "alternatives": [
+        "Jab",
+        "Bodyweight Squat"
+      ],
+      "whyThisMatters": "Changing level with the legs adds real leg work to every round.",
+      "source": {
+        "name": "England Boxing (Boxing Coaching Handbook Part 1)",
+        "url": "https://www.englandboxing.org/wp-content/uploads/2022/03/EB_Boxing-Coaching-Handbook-Part-1_v8-002.pdf"
+      }
+    },
+    {
+      "id": "lead-hook-to-the-body",
+      "name": "Lead Hook to the Body",
+      "variationOf": "lead-hook",
+      "muscleGroup": "Core",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Obliques, quads, glutes, shoulders",
+      "equipment": "None (heavy bag optional)",
+      "difficulty": "Moderate",
+      "instructions": [
+        "From your stance, bend the knees until your lead shoulder lines up with a target at rib height.",
+        "Keep the rear hand firm against your chin and rotate the trunk slightly toward the lead side.",
+        "Shift weight to the lead leg and swing the lead arm through with the elbow bent near 90 degrees.",
+        "Return the hand by the shortest path and rise back into your stance."
+      ],
+      "formCue": "Sit down first, then turn.",
+      "commonMistakes": "Dropping the hand instead of bending the knees, or letting the rear hand fall away from the chin.",
+      "beginnerModification": "Throw it slowly in the air and pause in the lowered position to check your guard.",
+      "alternatives": [
+        "Lead Hook",
+        "Russian Twist"
+      ],
+      "whyThisMatters": "It combines a level change with rotation, which makes rounds more demanding on legs and trunk.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "jab-cross-hook-combo",
+      "name": "Jab-Cross-Hook Combo",
+      "variationOf": "jab-cross-combo",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Shoulders, chest, obliques, glutes, calves",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Start in your stance and throw a straight jab that snaps back to the guard.",
+        "Follow with the cross, turning the rear foot and hip so weight moves toward the front leg.",
+        "Let that loaded position feed the lead hook, rotating back the other way with the elbow bent.",
+        "Finish balanced in your stance with both hands at your chin before repeating."
+      ],
+      "formCue": "One flow, finish on balance.",
+      "commonMistakes": "Throwing three separate punches with pauses, or over-committing to the cross and stumbling into the hook.",
+      "beginnerModification": "Drill jab-cross until it is smooth, then add the hook at half speed.",
+      "alternatives": [
+        "Jab-Cross Combo",
+        "Shadow Boxing"
+      ],
+      "whyThisMatters": "Short combinations teach each punch to set up the body position for the next.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "double-jab-cross",
+      "name": "Double Jab-Cross",
+      "variationOf": "jab-cross-combo",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Shoulders, triceps, obliques, calves",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "From your stance, throw a jab and bring it only part of the way back.",
+        "Throw a second jab straight away, with a small forward step if you have room.",
+        "Follow with the cross, rotating the rear hip and foot.",
+        "Recover both hands to the guard and reset your feet to shoulder width."
+      ],
+      "formCue": "Quick, quick, turn.",
+      "commonMistakes": "Letting the feet come together on the step, or dropping the jab hand between the two jabs.",
+      "beginnerModification": "Practise on the spot without the step until the rhythm is steady.",
+      "alternatives": [
+        "Jab-Cross Combo",
+        "Jab"
+      ],
+      "whyThisMatters": "Repeating the lead hand builds shoulder endurance and timing for the rear hand.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "boxing-pivot",
+      "name": "Boxing Pivot",
+      "muscleGroup": "Legs",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Calves, quads, glutes, hip rotators, core",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set your stance with your weight centred and both hands up.",
+        "Push off the rear foot and spin on the ball of the lead foot.",
+        "Swing the rear foot around behind you so your stance turns about 45 degrees.",
+        "Land in the same stance width and repeat, then practise turning the other way."
+      ],
+      "formCue": "Front foot spins, back foot swings.",
+      "commonMistakes": "Crossing the legs or tipping weight forward over the lead knee during the turn.",
+      "beginnerModification": "Make smaller turns and pause after each one to check your stance width.",
+      "alternatives": [
+        "Lateral Shuffle",
+        "Shadow Boxing"
+      ],
+      "whyThisMatters": "Pivoting changes your angle without giving up balance.",
+      "source": {
+        "name": "Evolve MMA",
+        "url": "https://evolve-mma.com/blog/3-reasons-why-you-should-add-pivoting-to-your-boxing-game/"
+      }
+    },
+    {
+      "id": "step-drag-footwork",
+      "name": "Step-Drag Footwork",
+      "muscleGroup": "Legs",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Calves, quads, glutes, core",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand in your boxing stance on the balls of your feet.",
+        "To go forward, lift the lead foot slightly, push off the rear foot, and slide the rear foot up once the lead foot lands.",
+        "To go back, lift the rear foot slightly, push off the lead foot, and slide the lead foot back to stance width.",
+        "Keep the feet shoulder-width apart and your weight shared across both legs throughout."
+      ],
+      "formCue": "Feet move as a unit.",
+      "commonMistakes": "Bringing the feet together, crossing them, or moving flat-footed on the heels.",
+      "beginnerModification": "Take small steps along a line on the floor and reset your stance after each one.",
+      "alternatives": [
+        "Lateral Shuffle",
+        "Jump Rope Boxer Step"
+      ],
+      "whyThisMatters": "Keeping your base while moving is what lets you punch from balance.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "boxing-side-step",
+      "name": "Boxing Side Step",
+      "muscleGroup": "Legs",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Calves, glutes, hip abductors, quads",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Start in your boxing stance with the knees soft.",
+        "To move left in an orthodox stance, lift the lead foot slightly and push off the rear foot, then let the rear foot follow.",
+        "To move right, lift the rear foot slightly and push off the lead foot, then let the lead foot follow.",
+        "Finish every step at shoulder width with the guard up."
+      ],
+      "formCue": "Nearest foot goes first.",
+      "commonMistakes": "Taking one oversized step that stretches the stance, or letting the feet click together.",
+      "beginnerModification": "Use short steps and pause in stance between each one.",
+      "alternatives": [
+        "Lateral Shuffle",
+        "Step-Drag Footwork"
+      ],
+      "whyThisMatters": "Lateral steps take you off a straight line while keeping you ready to work.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "pull-counter",
+      "name": "Pull Counter",
+      "muscleGroup": "Core",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Obliques, spinal erectors, glutes, shoulders, calves",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "From your guard, shift weight onto the rear leg and lean the upper body back a few centimetres.",
+        "Keep both hands up and your chin down as you lean.",
+        "Push off the rear foot to bring your weight forward again.",
+        "Throw a straight rear hand as you return, then recover to your balanced stance."
+      ],
+      "formCue": "Small lean, straight back in.",
+      "commonMistakes": "Leaning so far that the head lifts and the base is lost, or dropping the lead hand on the way back.",
+      "beginnerModification": "Practise the weight shift back and forward without the punch.",
+      "alternatives": [
+        "Boxer Slip & Roll",
+        "Cross"
+      ],
+      "whyThisMatters": "It trains quick weight transfer between the back and front leg.",
+      "source": {
+        "name": "England Boxing (Boxing Coaching Handbook Part 1)",
+        "url": "https://www.englandboxing.org/wp-content/uploads/2022/03/EB_Boxing-Coaching-Handbook-Part-1_v8-002.pdf"
+      }
+    },
+    {
+      "id": "shadow-parry-drill",
+      "name": "Shadow Parry Drill",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Shoulders, forearms, obliques",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand in your guard and picture a straight punch coming toward your face.",
+        "Turn the body slightly toward the lead side and make a short inward tap with the rear hand, as if deflecting it at the wrist.",
+        "Keep the elbow in and stop the hand before it crosses your face.",
+        "Return the hand to your chin at once, then answer with a jab."
+      ],
+      "formCue": "Tiny tap, hand comes home.",
+      "commonMistakes": "Reaching out to meet the imaginary punch, or sweeping the hand wide across the face.",
+      "beginnerModification": "Practise the parry alone in a mirror before adding the jab.",
+      "alternatives": [
+        "Boxer Slip & Roll",
+        "Shadow Boxing"
+      ],
+      "whyThisMatters": "Small, economical hand defence keeps the guard in place and frees the other hand.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "boxing-duck",
+      "name": "Duck Under",
+      "muscleGroup": "Legs",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Quads, glutes, calves, core",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand in your guard with your eyes forward.",
+        "Bend both knees down and slightly inward so your head drops straight below its starting height.",
+        "Keep the forearms and elbows covering the body and keep looking ahead.",
+        "Drive back up into your stance with the hands still in place."
+      ],
+      "formCue": "Knees bend, eyes stay up.",
+      "commonMistakes": "Folding at the waist and looking at the floor, or tipping the weight onto the front leg.",
+      "beginnerModification": "Reduce the depth and move slowly until you can stay upright through the trunk.",
+      "alternatives": [
+        "Boxer Slip & Roll",
+        "Bodyweight Squat"
+      ],
+      "whyThisMatters": "Ducking with the legs turns defence practice into steady lower-body work.",
+      "source": {
+        "name": "International Boxing Association (AIBA Coaches Manual)",
+        "url": "https://www.iba.sport/wp-content/uploads/2019/01/AIBA-Coach-Regulations-Manual_WEB_2019_01-1.pdf"
+      }
+    },
+    {
+      "id": "speed-bag-rhythm",
+      "name": "Speed Bag Rhythm",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Shoulders, forearms, upper back",
+      "equipment": "Speed bag",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand square to the bag at about arm's length with the bottom of the bag near eye level.",
+        "Hold both hands up close to the bag and strike with small circles instead of back-and-forth swings.",
+        "Let the bag rebound three times after each strike before you hit it again.",
+        "Work a steady pattern of two strikes with one hand and then two with the other."
+      ],
+      "formCue": "Small circles, count the rebounds.",
+      "commonMistakes": "Holding the hands too far from the bag, or swinging hard and losing the rhythm.",
+      "beginnerModification": "Start with open hands and one strike at a time until the three-rebound count feels natural.",
+      "alternatives": [
+        "Jump Rope Boxer Step",
+        "Arm Swings & Circles"
+      ],
+      "whyThisMatters": "It builds shoulder endurance and hand-eye timing.",
+      "source": {
+        "name": "ExpertBoxing",
+        "url": "https://expertboxing.com/how-to-hit-a-speed-bag"
+      }
+    },
+    {
+      "id": "double-end-bag-rounds",
+      "name": "Double-End Bag Rounds",
+      "muscleGroup": "Conditioning",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Shoulders, core, calves, forearms",
+      "equipment": "Double-end bag",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Set the bag so the ball sits around head height and take your stance at jab range.",
+        "Start with single jabs and time each one as the ball returns to centre.",
+        "Add the cross, then simple two and three punch combinations at a steady rhythm.",
+        "Keep your feet moving and your guard up between combinations for the whole round."
+      ],
+      "formCue": "Light hands, time the return.",
+      "commonMistakes": "Standing flat-footed, or hitting hard so the ball swings out of control.",
+      "beginnerModification": "Work only the jab for the first rounds and shorten the round length.",
+      "alternatives": [
+        "Heavy Bag Rounds",
+        "Shadow Boxing"
+      ],
+      "whyThisMatters": "A moving target trains accuracy and timing more than power.",
+      "source": {
+        "name": "Evolve MMA",
+        "url": "https://evolve-mma.com/blog/20-double-end-bag-drills-to-add-to-your-boxing-training-routine/"
+      }
+    },
+    {
+      "id": "teep",
+      "name": "Teep (Push Kick)",
+      "muscleGroup": "Legs",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Hip flexors, quads, glutes, core, calves",
+      "equipment": "None (heavy bag optional)",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand in your stance with hands up and shift your weight onto the back leg.",
+        "Lift the lead knee toward your chest.",
+        "Push the foot straight forward, driving the hips toward the target and leaning back only slightly.",
+        "Pull the knee back in and set the foot down in your stance."
+      ],
+      "formCue": "Knee up, hips through.",
+      "commonMistakes": "Flicking the lower leg without the hip drive, or dropping the hands as the leg lifts.",
+      "beginnerModification": "Practise the knee lift and balance hold, and kick at knee to waist height only.",
+      "alternatives": [
+        "Front Kick Step",
+        "High Knees"
+      ],
+      "whyThisMatters": "The push kick builds single-leg balance and hip drive.",
+      "source": {
+        "name": "Evolve MMA",
+        "url": "https://evolve-mma.com/blog/the-6-muay-thai-kicks-you-need-to-know-videos/"
+      }
+    },
+    {
+      "id": "roundhouse-kick",
+      "name": "Roundhouse Kick",
+      "muscleGroup": "Legs",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Glutes, hip rotators, obliques, quads, calves",
+      "equipment": "None (heavy bag optional)",
+      "difficulty": "Moderate",
+      "instructions": [
+        "From your stance with fists by your chin, step the base foot slightly out and rise onto the ball of that foot.",
+        "Turn the base foot away from the kick as you lift the kicking knee to point at the target.",
+        "Rotate the hips over and swing the leg through horizontally, meeting a bag with the shin.",
+        "Bring the leg back and return to your stance with the guard up."
+      ],
+      "formCue": "Pivot the base foot, turn the hip over.",
+      "commonMistakes": "Kicking with a flat, unturned base foot, or kicking higher than you can control so the trunk folds.",
+      "beginnerModification": "Kick slowly in the air at knee to hip height while holding a wall or chair for balance.",
+      "alternatives": [
+        "Front Kick Step",
+        "Lateral Lunge"
+      ],
+      "whyThisMatters": "The roundhouse trains hip rotation and balance on one leg.",
+      "source": {
+        "name": "American Council on Exercise (ACE)",
+        "url": "https://www.acefitness.org/resources/everyone/blog/7178/kick-your-way-to-fitness-over-the-holidays-with-this-high-intensity-kickboxing-workout/"
+      }
+    },
+    {
+      "id": "low-kick",
+      "name": "Low Kick",
+      "variationOf": "roundhouse-kick",
+      "muscleGroup": "Legs",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Glutes, hip rotators, obliques, quads, calves",
+      "equipment": "Heavy bag (or shadow)",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand in your stance at a range where your shin can reach the lower part of a heavy bag.",
+        "Step out slightly and pivot on the ball of the base foot.",
+        "Turn the hip and swing the leg through to meet the bag at thigh height with the shin.",
+        "Recover the leg to your stance and reset your guard."
+      ],
+      "formCue": "Same hip turn, lower line.",
+      "commonMistakes": "Reaching with the foot instead of the shin, or leaving the base foot planted flat.",
+      "beginnerModification": "Rehearse in the air at slow speed before working lightly on a bag.",
+      "alternatives": [
+        "Roundhouse Kick",
+        "Heavy Bag Rounds"
+      ],
+      "whyThisMatters": "The low line lets you practise full hip rotation without needing much flexibility.",
+      "source": {
+        "name": "Evolve MMA",
+        "url": "https://evolve-mma.com/blog/the-6-muay-thai-kicks-you-need-to-know-videos/"
+      }
+    },
+    {
+      "id": "switch-kick",
+      "name": "Switch Kick",
+      "variationOf": "roundhouse-kick",
+      "muscleGroup": "Legs",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Calves, glutes, hip rotators, obliques, quads",
+      "equipment": "None (heavy bag optional)",
+      "difficulty": "Advanced",
+      "instructions": [
+        "Stand in your stance with the guard up.",
+        "Step the lead foot back and the rear foot forward in one quick switch, staying close to the floor.",
+        "As the new rear foot lands, pivot on the base foot and throw a roundhouse with the leg that started in front.",
+        "Bring the leg back and return to your original stance."
+      ],
+      "formCue": "Quick switch, stay grounded.",
+      "commonMistakes": "Jumping both feet high in the air at once, which wastes time and upsets balance.",
+      "beginnerModification": "Practise the stance switch alone, then add a slow knee lift before kicking.",
+      "alternatives": [
+        "Roundhouse Kick",
+        "Split Squat Jump"
+      ],
+      "whyThisMatters": "The switch adds quick footwork and coordination to the basic kick.",
+      "source": {
+        "name": "Evolve MMA",
+        "url": "https://evolve-mma.com/blog/the-6-muay-thai-kicks-you-need-to-know-videos/"
+      }
+    },
+    {
+      "id": "straight-knee-strike",
+      "name": "Straight Knee Strike",
+      "muscleGroup": "Legs",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Hip flexors, glutes, core, calves",
+      "equipment": "None (heavy bag optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand in your stance with hands high, or reach both hands forward as if holding a bag.",
+        "Push off the floor with the rear foot and drive that knee forward and up.",
+        "Push the hips forward and rise onto the ball of the standing foot as the knee reaches its peak.",
+        "Set the foot back down in your stance and reset before the next rep."
+      ],
+      "formCue": "Hips forward, knee leads.",
+      "commonMistakes": "Lifting the knee without pushing the hips through, or rounding forward over the knee.",
+      "beginnerModification": "Slow it down and hold a wall for balance while you learn the hip drive.",
+      "alternatives": [
+        "High Knees",
+        "Mountain Climber"
+      ],
+      "whyThisMatters": "Knee strikes work the hip flexors and trunk while challenging single-leg balance.",
+      "source": {
+        "name": "Evolve MMA",
+        "url": "https://evolve-mma.com/blog/the-complete-glossary-of-muay-thai-strikes-moves-and-techniques/"
+      }
+    },
+    {
+      "id": "shadow-elbow-strike",
+      "name": "Shadow Elbow Strike",
+      "muscleGroup": "Shoulders",
+      "movementPattern": "Striking / footwork",
+      "musclesWorked": "Obliques, shoulders, chest, upper back",
+      "equipment": "None",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Stand in your stance with a high guard and no target in front of you.",
+        "Fold one arm so the hand stays near your chest and lift the elbow to shoulder height.",
+        "Rotate from the trunk and hips to carry the elbow across in a short horizontal arc.",
+        "Keep the other hand against your face, return to the guard, and alternate sides and angles."
+      ],
+      "formCue": "Turn from the middle, other hand stays home.",
+      "commonMistakes": "Over-rotating and losing balance, or dropping the guard hand during the turn.",
+      "beginnerModification": "Practise slowly facing a mirror, one angle at a time.",
+      "alternatives": [
+        "Lead Hook",
+        "Shadow Boxing"
+      ],
+      "whyThisMatters": "Elbow shadow work is compact rotation practice for the trunk and shoulders.",
+      "source": {
+        "name": "Evolve MMA",
+        "url": "https://evolve-mma.com/blog/essential-elbow-drills-every-muay-thai-practitioner-should-know/"
+      }
+    },
+    {
+      "id": "kick-check",
+      "name": "Kick Check",
+      "muscleGroup": "Legs",
+      "movementPattern": "Balance",
+      "musclesWorked": "Hip flexors, glutes, calves, core",
+      "equipment": "None",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Stand in your stance with hands up.",
+        "Shift your weight onto the back leg.",
+        "Lift the lead knee up and turn it slightly outward so the shin faces to the side, with the same-side elbow close above the knee.",
+        "Hold for a moment in balance, then set the foot down in your stance."
+      ],
+      "formCue": "Weight back, shin up.",
+      "commonMistakes": "Leaning forward as the leg lifts, or letting the hands drop for balance.",
+      "beginnerModification": "Lift the knee lower and hold a wall lightly with one hand.",
+      "alternatives": [
+        "Straight Knee Strike",
+        "High Knees"
+      ],
+      "whyThisMatters": "The check is a balance drill that strengthens the standing leg and hip.",
+      "source": {
+        "name": "Evolve MMA",
+        "url": "https://evolve-mma.com/blog/10-essential-muay-thai-defense-techniques-to-master/"
+      }
+    },
+    {
+      "id": "technical-stand-up",
+      "name": "Technical Stand-Up",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Glutes, quads, shoulders, triceps, core",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Sit on the floor with one hand posted behind you and the opposite foot flat on the floor.",
+        "Hold the free hand up in front of your face.",
+        "Press through the posted hand and foot to lift your hips, then swing the free leg back underneath you.",
+        "Plant that foot behind you and stand up into a staggered stance, then sit back down and switch sides."
+      ],
+      "formCue": "Hand and opposite foot, hips up.",
+      "commonMistakes": "Trying to stand without lifting the hips first, or placing the back foot too close to the posted hand.",
+      "beginnerModification": "Practise only the hip lift and leg swing before standing all the way up.",
+      "alternatives": [
+        "Kettlebell Turkish Get-Up",
+        "Crab Walk"
+      ],
+      "whyThisMatters": "It is a controlled way to get from the floor to your feet with a stable base.",
+      "source": {
+        "name": "JiuJitsu.com",
+        "url": "https://jiujitsu.com/blogs/jiujitsu/7-bjj-solo-drills/"
+      }
+    },
+    {
+      "id": "bridge-and-roll",
+      "name": "Bridge and Roll",
+      "muscleGroup": "Core",
+      "movementPattern": "Hinge",
+      "musclesWorked": "Glutes, hamstrings, spinal erectors, obliques",
+      "equipment": "Mat",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Lie on your back with your feet flat and your heels close to your hips.",
+        "Drive through your feet to lift your hips high.",
+        "Turn to look over one shoulder and reach the opposite arm across your body as you bridge onto that shoulder.",
+        "Lower back to the start, or roll through to your knees, and repeat on the other side."
+      ],
+      "formCue": "Hips high, then turn.",
+      "commonMistakes": "Turning before the hips are lifted, or pushing through the neck instead of the shoulder.",
+      "beginnerModification": "Do straight glute bridges first, then add a small turn onto the shoulder.",
+      "alternatives": [
+        "Glute Bridge",
+        "Single-Leg Glute Bridge"
+      ],
+      "whyThisMatters": "It builds explosive hip extension with rotation.",
+      "source": {
+        "name": "JiuJitsu.com",
+        "url": "https://jiujitsu.com/blogs/jiujitsu/7-bjj-solo-drills/"
+      }
+    },
+    {
+      "id": "penetration-step",
+      "name": "Penetration Step",
+      "muscleGroup": "Legs",
+      "movementPattern": "Split stance",
+      "musclesWorked": "Quads, glutes, hip flexors, core",
+      "equipment": "Mat",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Start in a low athletic stance with knees bent and back flat.",
+        "Lower your hips to change level while keeping your chest and head up.",
+        "Step forward with the lead leg and let the lead knee glide toward the mat as the hips drive forward.",
+        "Bring the trail leg up and through to return to your stance, then repeat down the mat."
+      ],
+      "formCue": "Level first, then step.",
+      "commonMistakes": "Bending at the waist with the head down, or stepping so far that the trail leg cannot follow.",
+      "beginnerModification": "Use a shorter step and keep the knee off the mat until the level change feels smooth.",
+      "alternatives": [
+        "Walking Lunge",
+        "Sprawl"
+      ],
+      "whyThisMatters": "It trains a fast level change and forward drive from the legs.",
+      "source": {
+        "name": "Evolve MMA",
+        "url": "https://evolve-mma.com/blog/mastering-the-penetration-step-for-better-takedowns-in-mma-and-bjj/"
+      }
+    },
+    {
+      "id": "sit-through",
+      "name": "Sit-Through",
+      "muscleGroup": "Core",
+      "movementPattern": "Crawl",
+      "musclesWorked": "Shoulders, obliques, hip flexors, glutes",
+      "equipment": "Mat",
+      "difficulty": "Moderate",
+      "instructions": [
+        "Start on your hands and feet with knees bent and hovering just off the floor.",
+        "Lift one hand and the opposite foot.",
+        "Thread the lifted leg underneath your body and rotate your hips until that hip faces the floor beside you.",
+        "Bring the leg back to the start and repeat to the other side."
+      ],
+      "formCue": "Hips turn, hand stays strong.",
+      "commonMistakes": "Letting the hips drop to the floor and rest, or rushing so the supporting shoulder collapses.",
+      "beginnerModification": "Start from hands and knees and move slowly through a smaller range.",
+      "alternatives": [
+        "Bear Crawl",
+        "Mountain Climber"
+      ],
+      "whyThisMatters": "It builds shoulder stability and rotational hip mobility under bodyweight.",
+      "source": {
+        "name": "JiuJitsu.com",
+        "url": "https://jiujitsu.com/blogs/jiujitsu/7-bjj-solo-drills/"
+      }
+    },
+    {
+      "id": "wrestling-stance-motion",
+      "name": "Wrestling Stance and Motion",
+      "muscleGroup": "Legs",
+      "movementPattern": "Conditioning",
+      "musclesWorked": "Quads, glutes, calves, core, upper back",
+      "equipment": "None (mat optional)",
+      "difficulty": "Beginner",
+      "instructions": [
+        "Take a staggered or square stance with knees bent, hips low, back flat, and hands in front of you.",
+        "Move in short steps forward, back, and in a circle without crossing your feet.",
+        "Move your feet whenever your hands move so you never reach from a still base.",
+        "Every few steps, drop your hips to change level and rise back to your stance."
+      ],
+      "formCue": "Stay low, feet under you.",
+      "commonMistakes": "Standing up between steps, or crossing the feet while circling.",
+      "beginnerModification": "Work in shorter bursts and hold a higher stance until the legs adapt.",
+      "alternatives": [
+        "Lateral Shuffle",
+        "Wall Sit"
+      ],
+      "whyThisMatters": "Holding a low stance while moving builds leg endurance fast.",
+      "source": {
+        "name": "USA Wrestling (TheMat.com)",
+        "url": "https://www.themat.com/news/2001/may/09/reviewing-the-basic-skills-of--10094"
+      }
+    }
+  ]
+}
