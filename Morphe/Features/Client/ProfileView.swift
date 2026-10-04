@@ -1346,7 +1346,7 @@ struct ProfileView: View {
                     // One master toggle — off cancels everything pending.
                     preferenceToggleRow(
                         title: "Reminders",
-                        caption: "Scheduled workouts at 5pm, appointments an hour before and at the start, a heads-up the evening a streak is about to end, the weekly recap, and board updates. Off silences all of them.",
+                        caption: "Scheduled workouts at 5pm, appointments an hour before and at the start, a heads-up the evening a streak is about to end, the weekly recap, a Spartan saying each Wednesday morning, and board updates. Off silences all of them.",
                         isOn: $store.remindersEnabled
                     )
 

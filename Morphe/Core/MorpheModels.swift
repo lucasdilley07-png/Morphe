@@ -1248,6 +1248,17 @@ enum SpartanLore {
         return sayings[((days % count) + count) % count]
     }
 
+    /// The week's saying for the weekly notification: one per week, in
+    /// order, so eight weeks walk the whole record before any repeats.
+    static func saying(forWeekOf date: Date, calendar: Calendar = .current) -> LaconicSaying {
+        let anchor = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1)) ?? .distantPast
+        let days = calendar.dateComponents(
+            [.day], from: calendar.startOfDay(for: anchor), to: calendar.startOfDay(for: date)).day ?? 0
+        let weeks = Int((Double(days) / 7).rounded(.down))
+        let count = sayings.count
+        return sayings[((weeks % count) + count) % count]
+    }
+
     /// Short reads: what the record says, then what it means under a bar.
     /// The first sentence(s) are the record; the last is Morphe's reading.
     static let entries: [LoreEntry] = [

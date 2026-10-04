@@ -1104,6 +1104,25 @@ final class WorkoutSessionTests: XCTestCase {
                        "a clock set backwards never mints days")
     }
 
+    /// 2026-10-04: the weekly saying push walks the cited record in
+    /// order — a new saying every week, all eight before a repeat, and
+    /// the body carries the citation.
+    @MainActor
+    func testWeeklySayingWalksTheRecordWithItsCitation() {
+        let calendar = Calendar.current
+        let start = calendar.date(from: DateComponents(year: 2026, month: 10, day: 7, hour: 8))!
+        let weeks = (0..<8).map {
+            SpartanLore.saying(forWeekOf: calendar.date(byAdding: .weekOfYear, value: $0, to: start)!)
+        }
+        XCTAssertEqual(Set(weeks.map(\.text)).count, SpartanLore.sayings.count,
+                       "eight consecutive weeks cover every saying once")
+        XCTAssertEqual(SpartanLore.saying(forWeekOf: calendar.date(byAdding: .weekOfYear, value: 8, to: start)!),
+                       weeks[0], "week nine starts the walk again")
+        let body = MorpheAppStore.weeklySayingBody(weeks[0])
+        XCTAssertTrue(body.contains(weeks[0].text) && body.contains(weeks[0].source)
+                      && body.contains(weeks[0].speaker))
+    }
+
     /// Rebuild wave (2026-08): the retraction classifier — the engine
     /// drops these before onCommand ever fires.
     func testCancelPhraseClassifier() {

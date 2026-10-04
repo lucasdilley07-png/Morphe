@@ -1057,6 +1057,7 @@ final class MorpheAppStore {
                 refreshStreakRiskReminder()
                 refreshWeeklyRecapReminder()
                 refreshDailyStreakReminder()
+                refreshWeeklySayingReminders()
                 syncAppointmentReminders()
             } else {
                 UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
@@ -13252,6 +13253,7 @@ final class MorpheAppStore {
                     self.refreshWeeklyRecapReminder()
                     self.refreshDailyTrainingReminder()
                     self.refreshDailyStreakReminder()
+                    self.refreshWeeklySayingReminders()
                     self.syncAppointmentReminders()
                 }
             }
@@ -13360,13 +13362,14 @@ final class MorpheAppStore {
 
     /// Re-arms every upcoming appointment without a permission prompt —
     /// launch, cloud refresh, and the reminders switch coming back on.
-    /// Capped at the next 20 (iOS keeps 64 pending requests per app).
+    /// Capped at the next 15 (iOS keeps 64 pending requests per app, and
+    /// the workout, saying and streak rings share that budget).
     private func syncAppointmentReminders() {
         guard appointmentRemindersEnabled else { return }
         let upcoming = appointments
             .filter { $0.isScheduled && $0.date > .now }
             .sorted { $0.date < $1.date }
-            .prefix(20)
+            .prefix(15)
         guard !upcoming.isEmpty else { return }
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
@@ -13525,6 +13528,54 @@ final class MorpheAppStore {
         if dailyStreakDays != count { dailyStreakDays = count }
         if dailyStreakBest != best { dailyStreakBest = best }
         refreshDailyStreakReminder(now: now)
+        refreshWeeklySayingReminders(now: now)
+    }
+
+    // MARK: Weekly saying (Lucas 2026-10-04)
+    //
+    // One line a week from the record — Wednesday 8am, mid-week, clear of
+    // Monday's board and recap rings. Sourcing law: only the cited,
+    // verbatim sayings in SpartanLore; nothing is written for the push.
+    // Eight weeks are queued on every open, each with its own saying, so
+    // the weeks keep arriving even if the app stays closed.
+
+    private static let weeklySayingNotificationPrefix = "morphe.saying.week."
+    private static let weeklySayingWeeksAhead = 8
+
+    /// The notification body for a saying: the line, who said it, the
+    /// situation, and where it is written down.
+    static func weeklySayingBody(_ saying: LaconicSaying) -> String {
+        "\u{201C}\(saying.text)\u{201D} \u{2014} \(saying.speaker). \(saying.context) (\(saying.source))"
+    }
+
+    private func refreshWeeklySayingReminders(now: Date = .now) {
+        guard !(appointmentService is NoOpAppointmentService) else { return }
+        let center = UNUserNotificationCenter.current()
+        let ids = (0..<Self.weeklySayingWeeksAhead).map { Self.weeklySayingNotificationPrefix + "\($0)" }
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        guard remindersEnabled, hasCompletedOnboarding else { return }
+        let calendar = Calendar.current
+        // Next Wednesday 08:00 strictly after now.
+        guard let first = calendar.nextDate(
+            after: now,
+            matching: DateComponents(hour: 8, minute: 0, weekday: 4),
+            matchingPolicy: .nextTime) else { return }
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else { return }
+            for (offset, id) in ids.enumerated() {
+                guard let fireDate = calendar.date(byAdding: .weekOfYear, value: offset, to: first) else { continue }
+                let content = UNMutableNotificationContent()
+                content.title = "From the record"
+                content.body = Self.weeklySayingBody(SpartanLore.saying(forWeekOf: fireDate, calendar: calendar))
+                content.sound = .default
+                let trigger = UNCalendarNotificationTrigger(
+                    dateMatching: calendar.dateComponents(
+                        [.year, .month, .day, .hour, .minute], from: fireDate),
+                    repeats: false)
+                center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+            }
+        }
     }
 
     /// One ring at 8pm TOMORROW: every open pushes it a day out, so it can
