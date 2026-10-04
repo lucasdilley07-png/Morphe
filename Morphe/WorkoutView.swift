@@ -1161,9 +1161,26 @@ struct TechniqueRow: View {
 struct TechniqueLibraryView: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @State private var query = ""
+    @State private var query: String
     @State private var style: String?
     @State private var muscle: MuscleGroup?
+    /// Built once per visit (audit 31): the style vote walks every
+    /// workout and the sort is localized — neither depends on the query.
+    @State private var sortedLibrary: [ExerciseReference] = []
+    @State private var styles: [String: String] = [:]
+    @State private var names: [String: String] = [:]
+
+    init(initialQuery: String = "") {
+        _query = State(initialValue: initialQuery)
+    }
+
+    /// The one search rule for exercises — Discover's search box and the
+    /// library use it, so the same words find the same rows.
+    static func matches(_ exercise: ExerciseReference, query q: String) -> Bool {
+        q.isEmpty
+            || "\(exercise.name) \(exercise.musclesWorked) \(exercise.equipment) \(exercise.movementPattern) \(exercise.discipline)"
+                .lowercased().contains(q)
+    }
 
     /// The style an entry belongs to: its own discipline, or — for the
     /// original entries, which carry none — the catalog category that
@@ -1206,19 +1223,18 @@ struct TechniqueLibraryView: View {
         return library.filter { exercise in
             (style == nil || styles[exercise.id] == style)
                 && (muscle == nil || exercise.muscleGroup == muscle)
-                && (q.isEmpty
-                    || "\(exercise.name) \(exercise.musclesWorked) \(exercise.equipment) \(exercise.movementPattern)"
-                        .lowercased().contains(q))
+                && matches(exercise, query: q)
         }
-        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    static func sorted(_ library: [ExerciseReference]) -> [ExerciseReference] {
+        library.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     var body: some View {
-        let library = store.exerciseDatabase
-        let styles = Self.styleIndex(library: library, workouts: store.discoverWorkouts)
+        let library = sortedLibrary
         let styleNames = Array(Set(styles.values)).sorted()
         let results = Self.filtered(library, styles: styles, query: query, style: style, muscle: muscle)
-        let names = Dictionary(library.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
 
         return ScrollView(showsIndicators: false) {
             LazyVStack(alignment: .leading, spacing: 12) {
@@ -1342,6 +1358,13 @@ struct TechniqueLibraryView: View {
         .background(PremiumBackground().ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .scrollDismissesKeyboard(.immediately)
+        .onAppear {
+            guard sortedLibrary.isEmpty else { return }
+            let all = store.exerciseDatabase
+            sortedLibrary = Self.sorted(all)
+            styles = Self.styleIndex(library: all, workouts: store.discoverWorkouts)
+            names = Dictionary(all.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+        }
     }
 }
 
@@ -3347,7 +3370,9 @@ struct DiscoverCatalogSection: View {
                 .toolbar(.hidden, for: .navigationBar)
             }
             .navigationDestination(isPresented: $showTechniqueLibrary) {
-                TechniqueLibraryView()
+                // Arrives carrying the search that sent it (audit 31).
+                TechniqueLibraryView(
+                    initialQuery: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines))
                     .environment(store)
             }
             .sheet(isPresented: $showQRConnect) {
@@ -3454,9 +3479,7 @@ struct DiscoverCatalogSection: View {
     private var exerciseResults: [ExerciseReference] {
         let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard q.count >= 2 else { return [] }
-        return store.exerciseDatabase.filter {
-            "\($0.name) \($0.musclesWorked) \($0.equipment) \($0.discipline)".lowercased().contains(q)
-        }
+        return store.exerciseDatabase.filter { TechniqueLibraryView.matches($0, query: q) }
     }
 
     @ViewBuilder

@@ -1364,6 +1364,14 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// What was already heard when a route change forced a mid-capture
     /// rebuild — the new stream's transcript continues after it.
     private var capturePrefix = ""
+    /// True once this engine's input node was read — a failed tap install
+    /// (0 Hz mid-switch) still pins the engine to that dead format, so
+    /// teardown replaces it either way (audit 31).
+    private var inputNodeTouched = false
+    /// A phone call or Siri holds the session — route recovery must not
+    /// re-arm the mic underneath it (audit 31).
+    private var interrupted = false
+    private var resumeRetries = 0
     /// The best installed en-GB male voice wins (premium > enhanced >
     /// compact — "Daniel" ships on every iPhone; an enhanced or premium
     /// download upgrades Morphe automatically). Falls back to the
@@ -1470,6 +1478,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                   let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
             switch type {
             case .began:
+                self.interrupted = true
                 if self.state != .off { self.tearDownRecognition() }
                 // A call mid-capture froze the glow and the new transcript
                 // pill on screen for the whole interruption (audit 17,
@@ -1480,6 +1489,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     self.liveTranscript = ""
                 }
             case .ended:
+                self.interrupted = false
                 // The system says whether resuming is appropriate — a call
                 // that routed audio elsewhere advises against re-grabbing.
                 let optRaw = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
@@ -1533,10 +1543,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// heard and continues on a fresh stream; an answer in flight gets
     /// its barge-in mic back.
     private func scheduleRouteRecovery(deviceChanged: Bool) {
-        guard state == .passive || state == .active || state == .speaking else { return }
+        guard !interrupted,
+              state == .passive || state == .active || state == .speaking else { return }
         routeRecoveryWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
+            guard !self.interrupted else { return }
             let engineDead = !self.didInstallTap || !self.audioEngine.isRunning
             switch self.state {
             case .passive:
@@ -1579,10 +1591,24 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         do {
             try installMicTap(feeding: request)
         } catch {
+            // The route may still be settling: try twice more before
+            // giving the capture up (audit 31 — a bare "Hey Morphe" was
+            // dropped on the first throw).
+            tearDownRecognition()
             liveTranscript = heard
-            fireCommand()
+            if resumeRetries < 2 {
+                resumeRetries += 1
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                    guard let self, self.state == .active, self.task == nil else { return }
+                    self.resumeActiveCapture()
+                }
+            } else {
+                resumeRetries = 0
+                fireCommand()
+            }
             return
         }
+        resumeRetries = 0
         capturePrefix = heard
         if !activeIsFollowUp {
             activeIsFollowUp = true
@@ -1607,6 +1633,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// that crashes) — the caller's retry lands after the route settles.
     private func installMicTap(feeding request: SFSpeechAudioBufferRecognitionRequest,
                                voiceProcessing: Bool = false) throws {
+        inputNodeTouched = true
         let node = audioEngine.inputNode
         if voiceProcessing {
             // Hardware echo cancellation (audit 24, P1: .voiceChat mode
@@ -1715,6 +1742,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
 
     func stop() {
         state = .off
+        interrupted = false
+        resumeRetries = 0
         // A user-level stop is not a pause: the resume hook must not
         // restart a mic the user turned off (audit 13) — and a parked
         // engine must not ghost-arm when the music ends.
@@ -2152,9 +2181,13 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)
             didInstallTap = false
+        }
+        if inputNodeTouched {
             // Next pass reads the route as it is THEN, not as this
-            // engine first saw it.
+            // engine first saw it — including after an install that
+            // threw before the tap went in.
             audioEngine = AVAudioEngine()
+            inputNodeTouched = false
         }
         routeRecoveryWork?.cancel()
         routeRecoveryWork = nil
@@ -2484,6 +2517,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         activeIsFollowUp = false
         liveTranscript = ""
         capturePrefix = ""
+        // Every exit clears the ambient-ceiling exemption (audit 31: an
+        // empty or cancelled capture left it set for the next window).
+        isBargeCapture = false
+        resumeRetries = 0
         if command.isEmpty || Self.isCancelPhrase(command) {
             // Woke then silence, or an explicit retraction ("never mind")
             // — back to scanning, no charge, no spoken reply (a misfire

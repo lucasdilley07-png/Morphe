@@ -1058,6 +1058,7 @@ final class MorpheAppStore {
                 refreshWeeklyRecapReminder()
                 refreshDailyStreakReminder()
                 refreshWeeklySayingReminders()
+                refreshWeeklyBoardReminder()
                 syncAppointmentReminders()
             } else {
                 UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
@@ -1548,6 +1549,11 @@ final class MorpheAppStore {
         // without consent. setHeyMorphe(false) stops the engine, hands the
         // audio session back, and clears the persisted toggle.
         setHeyMorphe(enabled: false)
+        // One account's appointments, streak and sayings must not ring
+        // after sign-out or under the next account (audit 31).
+        if !(appointmentService is NoOpAppointmentService) {
+            UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        }
         voiceExchangeClearTask?.cancel()
         voiceExchangeClearTask = nil
         authService.signOut()
@@ -10027,6 +10033,9 @@ final class MorpheAppStore {
     }
 
     private func startLockScreenRest(seconds: Int) {
+        // Supersets and circuits prescribe 0s — no zero-length rest
+        // (audit 31; the voice path already required rest > 0).
+        guard seconds > 0 else { return }
         // The in-app bar catches up through the voice-rest tokens on
         // foreground; the card's countdown starts immediately.
         requestVoiceRest(seconds: seconds)
@@ -13375,17 +13384,28 @@ final class MorpheAppStore {
     /// the workout, saying and streak rings share that budget).
     private func syncAppointmentReminders() {
         guard appointmentRemindersEnabled else { return }
-        let upcoming = appointments
+        let upcoming = Array(appointments
             .filter { $0.isScheduled && $0.date > .now }
             .sorted { $0.date < $1.date }
-            .prefix(15)
-        guard !upcoming.isEmpty else { return }
+            .prefix(15))
         let center = UNUserNotificationCenter.current()
-        center.getNotificationSettings { settings in
-            guard settings.authorizationStatus == .authorized
-                || settings.authorizationStatus == .provisional else { return }
-            for appointment in upcoming {
-                Self.addAppointmentRequests(for: appointment, to: center)
+        // Reconcile first (audit 31): an appointment cancelled or deleted
+        // on another device must stop ringing here. Every other reminder
+        // id is "morphe."-prefixed; what's left is appointment rings.
+        let keep = Set(upcoming.flatMap { [$0.id, $0.id + ".start"] })
+        center.getPendingNotificationRequests { pending in
+            let stale = pending.map(\.identifier)
+                .filter { !$0.hasPrefix("morphe.") && !keep.contains($0) }
+            if !stale.isEmpty {
+                center.removePendingNotificationRequests(withIdentifiers: stale)
+            }
+            guard !upcoming.isEmpty else { return }
+            center.getNotificationSettings { settings in
+                guard settings.authorizationStatus == .authorized
+                    || settings.authorizationStatus == .provisional else { return }
+                for appointment in upcoming {
+                    Self.addAppointmentRequests(for: appointment, to: center)
+                }
             }
         }
     }
@@ -13504,6 +13524,8 @@ final class MorpheAppStore {
     private var dailyStreakBestKey: String { "morphe.dailystreak.best.\(clientProfile.id.uuidString)" }
     private static let dailyStreakNotificationID = "morphe.dailystreak.risk"
 
+    private var lastRecordedOpenStamp = ""
+
     /// Consecutive calendar days the app was opened, today included.
     private(set) var dailyStreakDays = 0
     private(set) var dailyStreakBest = 0
@@ -13511,7 +13533,10 @@ final class MorpheAppStore {
     /// The whole rule, pure so the tests can pin it: same day holds,
     /// the day after adds one, anything else starts over at 1.
     static func advancedDailyStreak(count: Int, lastDay: String, today: String) -> Int {
-        if lastDay == today { return max(count, 1) }
+        // "yyyy-MM-dd" sorts as a date. A last-open day AFTER today is
+        // westward travel or a clock correction, not a missed day — hold
+        // (audit 31: it reset the streak).
+        if !lastDay.isEmpty, lastDay >= today { return max(count, 1) }
         if let todayDate = date(fromDayKey: today),
            let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: todayDate),
            dayKey(for: yesterday) == lastDay {
@@ -13526,13 +13551,21 @@ final class MorpheAppStore {
         guard hasCompletedOnboarding else { return }
         let defaults = UserDefaults.standard
         let today = Self.dayKey(for: now)
+        // Once per profile per day per process (audit 31): Today
+        // re-appears on every tab tap, and each pass was removing and
+        // re-adding nine notifications.
+        let stamp = "\(clientProfile.id.uuidString)|\(today)"
+        guard stamp != lastRecordedOpenStamp else { return }
+        lastRecordedOpenStamp = stamp
+        let lastDay = defaults.string(forKey: dailyStreakLastDayKey) ?? ""
         let count = Self.advancedDailyStreak(
             count: defaults.integer(forKey: dailyStreakCountKey),
-            lastDay: defaults.string(forKey: dailyStreakLastDayKey) ?? "",
+            lastDay: lastDay,
             today: today)
         let best = max(defaults.integer(forKey: dailyStreakBestKey), count)
         defaults.set(count, forKey: dailyStreakCountKey)
-        defaults.set(today, forKey: dailyStreakLastDayKey)
+        // Never moves backward — see advancedDailyStreak.
+        defaults.set(max(lastDay, today), forKey: dailyStreakLastDayKey)
         defaults.set(best, forKey: dailyStreakBestKey)
         if dailyStreakDays != count { dailyStreakDays = count }
         if dailyStreakBest != best { dailyStreakBest = best }

@@ -1100,8 +1100,8 @@ final class WorkoutSessionTests: XCTestCase {
                        "a missed day starts over")
         XCTAssertEqual(S.advancedDailyStreak(count: 5, lastDay: "2026-09-30", today: "2026-10-01"), 6,
                        "month boundaries are still consecutive days")
-        XCTAssertEqual(S.advancedDailyStreak(count: 5, lastDay: "2026-10-05", today: "2026-10-04"), 1,
-                       "a clock set backwards never mints days")
+        XCTAssertEqual(S.advancedDailyStreak(count: 5, lastDay: "2026-10-05", today: "2026-10-04"), 5,
+                       "flying west or a clock correction holds the streak — it never resets it or mints days")
     }
 
     /// 2026-10-04: the weekly saying push walks the cited record in
@@ -4042,6 +4042,7 @@ final class FormAnalyzerTests: XCTestCase {
         let store = MorpheAppStore()
         let styles = TechniqueLibraryView.styleIndex(library: library, workouts: store.discoverWorkouts)
         let all = TechniqueLibraryView.filtered(library, styles: styles, query: "", style: nil, muscle: nil)
+        XCTAssertTrue(TechniqueLibraryView.matches(library[0], query: ""))
         XCTAssertEqual(all.count, library.count)
         let legs = TechniqueLibraryView.filtered(library, styles: styles, query: "", style: nil, muscle: .legs)
         XCTAssertTrue(!legs.isEmpty && legs.allSatisfy { $0.muscleGroup == .legs })
