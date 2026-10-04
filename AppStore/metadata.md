@@ -17,13 +17,13 @@ Copy/paste these into App Store Connect. Fields are length-limited as noted.
 > carries workout/tracker/gym either way.
 
 ## Promotional text (≤170 chars, editable any time without review)
-Train smarter: real sets, real programs, and stat cards that only state what you logged. No ads, no trackers — your numbers are yours.
+Train smarter. Real sets, a camera that counts your reps on your device, and a score that only states what you logged. No ads, no trackers. (161 chars)
 
 ## Keywords (≤100 chars, comma-separated, no spaces)
 `workout,gym,fitness,tracker,exercise,log,strength,reps,sets,training,lifting,recovery,builder`
 
 ## Description (≤4000 chars)
-Morphe is a fitness app for people who want to build the habit, not chase perfection. Plan your workouts, log every set with real weight and reps, and watch a Morphe Score that reflects what you actually did — not a number someone made up.
+Morphe is the Spartan in your pocket: a training guardian that plans the session, logs real sets, counts real reps through the camera, and never invents a number. Plan your workouts, log every set with real weight and reps, and watch a Morphe Score that reflects what you actually did.
 
 TRAIN SMARTER — THE HOUSE RULES
 • Real scores only — every stat is computed from sets you logged
@@ -78,7 +78,7 @@ YOUR DATA, YOUR CALL
 Built for beginners and anyone rebuilding momentum. Small wins. Real transformation.
 
 ## What's New (release notes, first version)
-First release of Morphe. Build workouts, log real sets, run multi-week programs, and share real progress with a community that trains — with opt-in Apple Health sync, cloud backup, and full data export/deletion built in.
+First release of Morphe. Build workouts, log real sets by hand or by voice, let Form Check count reps on your device, and run multi-week programs — with opt-in Apple Health sync, cloud backup, and full data export and deletion built in.
 
 ---
 
@@ -90,9 +90,9 @@ First release of Morphe. Build workouts, log real sets, run multi-week programs,
 - **Price:** Free
 - **Bundle ID:** com.morpheapp.Morphe
 - **Version:** 1.0
-- **Privacy Policy URL:** _<your hosted policy URL — see docs/ and LAUNCH_CHECKLIST.md>_
-- **Support URL:** _<a page or email you control, e.g. a simple site or mailto>_
-- **Marketing URL:** (optional)
+- **Privacy Policy URL:** https://lucasdilley07-png.github.io/Morphe/privacy.html (live once GitHub Pages is enabled — LAUNCH_CHECKLIST step 1)
+- **Support URL:** https://lucasdilley07-png.github.io/Morphe/support.html
+- **Marketing URL:** https://lucasdilley07-png.github.io/Morphe/
 
 ## App Privacy questionnaire (the "nutrition label")
 Answer: **Data IS collected** — declare it honestly; the bundled `PrivacyInfo.xcprivacy` matches.

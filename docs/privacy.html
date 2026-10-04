@@ -1,161 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Morphe — Privacy Policy</title>
-  <style>
-    :root { --bg:#111111; --card:#1e1e1e; --text:#ffffff; --muted:#b8b8b8; --accent:#ffd600; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; background: var(--bg); color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.6;
-    }
-    .wrap { max-width: 760px; margin: 0 auto; padding: 48px 22px 96px; }
-    .brand { font-weight: 800; letter-spacing: .04em; color: var(--accent); font-size: 14px; }
-    h1 { font-size: 30px; margin: 6px 0 4px; }
-    h2 { font-size: 19px; margin: 34px 0 8px; }
-    h3 { font-size: 16px; margin: 22px 0 6px; }
-    .meta { color: var(--muted); font-size: 14px; }
-    .lead { background: var(--card); border-radius: 12px; padding: 16px 18px; margin: 22px 0; }
-    p, li { color: #ececec; }
-    a { color: var(--accent); }
-    .muted { color: var(--muted); font-size: 14px; }
-    hr { border: none; border-top: 1px solid #2c2c2c; margin: 30px 0; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Morphe Privacy Policy</title>
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root { --bg:#FFFFFF; --bg-elevated:#F6F6F8; --fg:#16181F; --fg-2:rgba(22,24,31,0.66); --hair:rgba(22,24,31,0.12); --accent:#2957D9; --accent-ink:#2957D9; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#121214; --bg-elevated:#1A1A1C; --fg:#F2F3F7; --fg-2:rgba(242,243,247,0.7); --hair:rgba(242,243,247,0.12); --accent-ink:#7AA2FF; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font-family:"Manrope",-apple-system,"Helvetica Neue",Arial,sans-serif; font-size:17px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+.wrap { max-width:720px; margin:0 auto; padding-inline:20px; padding-block:40px 96px; }
+.brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; margin-bottom:32px; }
+.brand img { width:22px; height:30px; }
+.brand span { font-family:"IBM Plex Mono",monospace; font-weight:500; letter-spacing:0.32em; font-size:14px; }
+h1 { font-size:clamp(2rem,1.4rem+2vw,2.6rem); letter-spacing:-0.02em; line-height:1.05; margin:0 0 8px; text-wrap:balance; }
+h2 { font-size:1.35rem; letter-spacing:-0.01em; margin:40px 0 8px; }
+h3 { font-size:1.1rem; margin:24px 0 6px; }
+p, li { color:var(--fg-2); max-width:65ch; }
+p strong, li strong { color:var(--fg); font-weight:700; }
+a { color:var(--accent-ink); }
+ul { padding-left:20px; }
+li { margin-bottom:6px; }
+.foot { margin-top:48px; padding-top:16px; border-top:1px solid var(--hair); font-size:13px; color:var(--fg-2); display:flex; gap:16px; flex-wrap:wrap; }
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="brand">MORPHE</div>
-    <h1>Privacy Policy</h1>
-    <p class="meta">Effective date: July 26, 2026 · Developer: Lucas Dilley ·
-      Contact: <a href="mailto:lucasdilley.07@gmail.com">lucasdilley.07@gmail.com</a></p>
-
-    <div class="lead">
-      <strong>The short version.</strong> Morphe is a fitness tracking and training community
-      app. It uses accounts, so some of your data is stored in the cloud to back it up and
-      power the community features — this page says exactly what, where, and what control you
-      have. No advertising, no analytics trackers, no selling of data, ever.
-    </div>
-
-    <h2>What Morphe collects</h2>
-
-    <h3>Account data</h3>
-    <p>Morphe uses accounts (Firebase Authentication, a Google service). When you sign up we
-      collect your <strong>email address</strong> and store the display name and @username you
-      choose. Your @username is globally unique and visible to other users.</p>
-
-    <h3>Training data you create</h3>
-    <p>Workouts you log (exercises, sets, reps, weights, effort ratings, session notes),
-      body-weight readings, recovery check-ins, nutrition entries, goals, and profile details.
-      This data is stored on your device and backed up to your account in Google Firebase
-      (Firestore) so you can restore it on a new phone.</p>
-
-    <h3>Community content</h3>
-    <p>Posts, comments, reactions, reposts, photos you choose to post from the capture
-      camera, who you follow, who you block, challenge and leaderboard entries (opt-in),
-      Train Together party participation, and private messages — with a connected coach
-      or any member you start a chat with. Posts, comments, and posted photos are visible
-      to other signed-in users; messages are visible only to the two people in the
-      conversation. You can report or block any member from their posts, comments, or
-      the conversation itself; blocking is instant.</p>
-
-    <h3>Coach sharing (optional)</h3>
-    <p>If you turn on "Share with coach," a summary of your real training progress (streak,
-      weekly volume, recent sessions, PRs, and — only on days you check in — your readiness)
-      is shared with the one coach you're linked to. Turning it off deletes the shared summary
-      immediately.</p>
-
-    <h3>Verification selfies (optional)</h3>
-    <p>If you request a verified badge, the selfie you submit is uploaded for human review by
-      the Morphe team and used for no other purpose.</p>
-
-    <h3>Abuse reports</h3>
-    <p>If you report content, we store the report (what was reported, the reason you chose,
-      and a text excerpt) so a human can review it.</p>
-
-    <h3>Product usage signals (first-party)</h3>
-    <p>To understand whether Morphe actually works — do people come back, does the first
-      workout happen — the app records a small set of named milestone events (for example
-      "active today," "first workout logged," "shared a card") tied to your account id and a
-      date. This is our own measurement: <strong>no third-party analytics SDK is involved,
-      nothing is fingerprinted, and no advertising identifiers exist in the app.</strong>
-      These events are deleted with your account.</p>
-
-    <h2>Apple Health (optional, off by default)</h2>
-    <ul>
-      <li><strong>Writing:</strong> with "Sync to Health" on, each workout you log is saved to
-        Apple Health so it counts toward your Activity rings.</li>
-      <li><strong>Reading:</strong> with "Sleep from Health" on, Morphe reads last night's
-        sleep to pre-fill your morning check-in slider.</li>
-    </ul>
-    <p>Health data is used only for the features above. It is <strong>never</strong> used for
-      advertising, never sold, and never shared with third parties. Both toggles live in
-      Profile → Settings and are off until you turn them on.</p>
-
-    <h2>Device permissions</h2>
-    <ul>
-      <li><strong>Camera</strong> — Form Check (movement analysis and rep counting happen
-        entirely on your device; Form Check video never leaves your phone), scanning
-        Morphe connect/party QR codes, and shooting photos or short clips in the
-        capture camera. A photo is uploaded ONLY when you tap Post — it then appears
-        on the community feed, visible to signed-in users. Clips are never uploaded;
-        you can save them to your own photo library.</li>
-      <li><strong>Photo library (add-only)</strong> — saving clips you record, only when
-        you tap Save. Morphe cannot read your library.</li>
-      <li><strong>Microphone &amp; speech recognition</strong> — dictating messages to the
-        in-app assistant (audio is processed for transcription only) and recording
-        audio for clips you capture in video mode.</li>
-      <li><strong>Notifications</strong> — local reminders you control (appointments, daily session, streak risk, comeback, weekly leaderboard and recap). Morphe currently sends no remote push notifications.</li>
-    </ul>
-    <p>Every permission is requested only when the feature needs it, and declining never
-      breaks the rest of the app.</p>
-
-    <h2>What Morphe does NOT do</h2>
-    <ul>
-      <li>No advertising, and no advertising SDKs.</li>
-      <li>No selling or renting of your data — to anyone, ever.</li>
-      <li>No location tracking.</li>
-      <li>No contact-list access.</li>
-      <li>No third-party analytics trackers. The only third-party service Morphe uses is
-        Google Firebase (authentication and database hosting), which processes your data on
-        our behalf under
-        <a href="https://firebase.google.com/support/privacy">Google's terms</a>.</li>
-    </ul>
-
-    <h2>Where your data lives</h2>
-    <p>On your device, and — for account-backed data — in Google Firebase (Firestore),
-      protected by security rules so that only you (and, where you explicitly opted in, your
-      linked coach) can read your data. Community content you publish is readable by
-      signed-in users by design.</p>
-
-    <h2>Your controls</h2>
-    <ul>
-      <li><strong>Export</strong> — Profile → Settings → Export Data produces a single JSON
-        file with every workout you've logged and your weight history.</li>
-      <li><strong>Delete your account</strong> — Profile → Settings → Delete Account
-        permanently removes your sign-in, cloud backup, weight history, and @username, and
-        wipes the app's local data. Posts and comments you shared remain on the feed unless
-        you delete them first (long-press any of yours); after account deletion they are no
-        longer connected to a live account.</li>
-      <li><strong>Delete individual content</strong> — long-press your own posts and comments
-        to delete them at any time.</li>
-      <li><strong>Block and report</strong> — available on every post and comment; blocking is
-        instant and reports are reviewed by a human.</li>
-    </ul>
-
-    <h2>Children</h2>
-    <p>Morphe is not directed at children under 13, and we do not knowingly collect data from
-      them.</p>
-
-    <h2>Changes</h2>
-    <p>If this policy changes, the effective date above changes with it and the current
-      version ships inside the app repository and on this page.</p>
-
-    <hr />
-    <p class="muted">Questions, requests, or complaints:
-      <a href="mailto:lucasdilley.07@gmail.com">lucasdilley.07@gmail.com</a> · Lucas Dilley</p>
-  </div>
+<div class="wrap">
+  <a class="brand" href="index.html" aria-label="Morphe home"><img src="assets/helmet.png" alt=""><span>MORPHE</span></a>
+<h1>Morphe Privacy Policy</h1>
+<p><strong>Effective date:</strong> July 26, 2026 <strong>Developer:</strong> Lucas Dilley <strong>Contact:</strong> <a href="mailto:lucasdilley.07@gmail.com">lucasdilley.07@gmail.com</a></p>
+<p>Morphe is a fitness tracking and training community app. This policy says exactly what Morphe collects, where it goes, and what control you have. Plain language on purpose — if anything here is unclear, email us.</p>
+<h2>What Morphe collects</h2>
+<p><strong>Account data.</strong> Morphe uses accounts (Firebase Authentication, a Google service). When you sign up we collect your <strong>email address</strong> and store the display name and @username you choose. Your @username is globally unique and visible to other users.</p>
+<p><strong>Training data you create.</strong> Workouts you log (exercises, sets, reps, weights, effort ratings, session notes), body-weight readings, recovery check-ins, nutrition entries, goals, and profile details. This data is stored on your device and backed up to your account in Google Firebase (Firestore) so you can restore it on a new phone.</p>
+<p><strong>Community content.</strong> Posts, comments, reactions, reposts, who you follow, who you block, challenge and leaderboard entries (opt-in), Train Together party participation, and photos you choose to post, and private messages (with a connected coach or any member you start a chat with). Posts and comments are visible to other signed-in users; messages are visible only to the two people in the conversation.</p>
+<p><strong>Coach sharing (optional).</strong> If you turn on "Share with coach," a summary of your real training progress (streak, weekly volume, recent sessions, PRs, and — only on days you check in — your readiness) is shared with the one coach you're linked to. Turning it off deletes the shared summary immediately.</p>
+<p><strong>Verification selfies (optional).</strong> If you request a verified badge, the selfie you submit is uploaded for human review by the Morphe team and used for no other purpose.</p>
+<p><strong>Abuse reports.</strong> If you report content, we store the report (what was reported, the reason you chose, and a text excerpt) so a human can review it.</p>
+<p><strong>Product usage signals (first-party).</strong> To understand whether Morphe actually works — do people come back, does the first workout happen — the app records a small set of named milestone events (for example "active today," "first workout logged," "shared a card") tied to your account id and a date. This is our own measurement: <strong>no third-party analytics SDK is involved, nothing is fingerprinted, and no advertising identifiers exist in the app.</strong> These events are deleted with your account.</p>
+<h2>Apple Health (optional, off by default)</h2>
+<ul><li><strong>Writing:</strong> with "Sync to Health" on, each workout you log is saved to Apple Health so it counts toward your Activity rings.</li><li><strong>Reading:</strong> with "Sleep from Health" on, Morphe reads last night's sleep to pre-fill your morning check-in slider.</li></ul>
+<p>Health data is used only for the features above. It is <strong>never</strong> used for advertising, never sold, and never shared with third parties. Both toggles live in Profile → Settings and are off until you turn them on.</p>
+<h2>Device permissions</h2>
+<ul><li><strong>Camera</strong> — Form Check (movement analysis and rep counting happen entirely on your device; Form Check video never leaves your phone), shooting photos or short clips in the capture camera (a photo is uploaded ONLY when you tap Post, and then appears on the community feed; clips are never uploaded), and scanning Morphe connect/party QR codes.</li><li><strong>Photo library (add-only)</strong> — saving clips you record, only when you tap Save. Morphe cannot read your library.</li><li><strong>Microphone &amp; speech recognition</strong> — recording audio for clips you capture in video mode, and dictating messages to the in-app assistant. Audio is processed for transcription only.</li><li><strong>Notifications</strong> — local reminders you control (appointments, daily session, streak risk, comeback, weekly leaderboard and recap). Morphe currently sends no remote push notifications.</li></ul>
+<p>Every permission is requested only when the feature needs it, and declining never breaks the rest of the app.</p>
+<h2>What Morphe does NOT do</h2>
+<ul><li>No advertising, and no advertising SDKs.</li><li>No selling or renting of your data — to anyone, ever.</li><li>No location tracking.</li><li>No contact-list access.</li><li>No third-party analytics trackers. The only third-party service Morphe uses is Google Firebase (authentication and database hosting), which processes your data on our behalf under <a href="https://firebase.google.com/support/privacy">Google's terms</a>.</li></ul>
+<h2>Where your data lives</h2>
+<p>On your device, and — for account-backed data — in Google Firebase (Firestore), protected by security rules so that only you (and, where you explicitly opted in, your linked coach) can read your data. Community content you publish is readable by signed-in users by design.</p>
+<h2>Your controls</h2>
+<ul><li><strong>Export</strong> — Profile → Settings → Export Data produces a single JSON file with every workout you've logged and your weight history.</li><li><strong>Delete your account</strong> — Profile → Settings → Delete Account permanently removes your sign-in, cloud backup, weight history, and @username, and wipes the app's local data. Posts and comments you shared remain on the feed unless you delete them first (long-press any of yours); after account deletion they are no longer connected to a live account.</li><li><strong>Delete individual content</strong> — long-press your own posts and comments to delete them at any time.</li><li><strong>Block and report</strong> — available on every post and comment; blocking is instant and reports are reviewed by a human.</li></ul>
+<h2>Children</h2>
+<p>Morphe is not directed at children under 13, and we do not knowingly collect data from them.</p>
+<h2>Changes</h2>
+<p>If this policy changes, the effective date above changes with it and the current version ships inside the app repository and on the app's website.</p>
+<h2>Contact</h2>
+<p>Questions, requests, or complaints: <strong><a href="mailto:lucasdilley.07@gmail.com">lucasdilley.07@gmail.com</a></strong>.</p>
+  <div class="foot"><a href="index.html">Morphe</a><a href="support.html">Support</a><span>TRAIN SMARTER</span></div>
+</div>
 </body>
 </html>
