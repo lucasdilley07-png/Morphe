@@ -1069,7 +1069,9 @@ final class WorkoutSessionTests: XCTestCase {
     /// 2026-10-04 ("easier to activate"): more openers and more spellings
     /// wake it; the bare name and ordinary sentences still don't.
     func testWakePhraseAcceptsWiderOpenersWithoutWakingOnChatter() {
-        for heard in ["Okay Morphe open train", "ok murphy open train",
+        for heard in ["Hey Murph open train", "hey morphey open train", "hey murf open train",
+                      "hey merph open train", "Hey um Morphe open train", "hei morphi open train",
+                      "Okay Morphe open train", "ok murphy open train",
                       "Hi Morphie, open train", "yo morph open train",
                       "hay Murphey open train", "Hey there Morphe open train",
                       "hey morfy open train", "hey more fee open train",

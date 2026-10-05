@@ -9548,6 +9548,16 @@ final class MorpheAppStore {
     private var voiceReplyGeneration = 0
     private var voiceStreamTask: Task<Void, Never>?
 
+    /// A touch during an exchange ends it (Lucas 2026-10-05): any answer
+    /// still streaming is dropped, nothing is spoken, listening resumes.
+    func cancelVoiceExchange() {
+        voiceReplyGeneration += 1
+        voiceStreamTask?.cancel()
+        voiceStreamTask = nil
+        heyMorphe.cancelExchange()
+        Haptics.selection()
+    }
+
     private func requestIntelligenceVoiceReply(for raw: String) {
         guard let key = MorpheIntelligence.apiKey else {
             presentVoiceExchange(heard: raw, answer: previewAIAgentReply(for: raw))

@@ -390,9 +390,17 @@ struct RootView: View {
                 // live. Black in both appearances — a dim, not a theme
                 // surface. Taps still pass through; the exchange is
                 // hands-free.
+                // Any touch ends the exchange (Lucas 2026-10-05): the dim
+                // takes the touch, cancels the sequence, and the app is
+                // back as it was — the tap itself is spent on leaving.
                 Color.black.opacity(0.6)
                     .ignoresSafeArea()
-                    .allowsHitTesting(false)
+                    .contentShape(Rectangle())
+                    .gesture(DragGesture(minimumDistance: 0).onChanged { _ in
+                        store.cancelVoiceExchange()
+                    })
+                    .accessibilityLabel("Hey Morphe is listening. Tap anywhere to stop.")
+                    .accessibilityAddTraits(.isButton)
                     .transition(.opacity)
                 // The Jarvis wave: centered, non-blocking, moving with the
                 // real audio (Lucas 2026-09). A LEAF view — it reads
@@ -1288,6 +1296,16 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         Self.allowHapticsWhileRecording()
         try? session.setActive(true, options: .notifyOthersOnDeactivation)
         sessionOwned = true
+        stageClaimed = true
+    }
+
+    /// True from a non-mixing stage claim until that session is handed
+    /// back: only then does deactivation need to tell other apps to
+    /// resume. Deactivating a MIXABLE session with that flag made music
+    /// hiccup on every app close (Lucas 2026-10-05).
+    private var stageClaimed = false
+    private var deactivationOptions: AVAudioSession.SetActiveOptions {
+        stageClaimed ? .notifyOthersOnDeactivation : []
     }
 
     /// Hear the user through their headset (Lucas 2026-10-04: "has a hard
@@ -1527,7 +1545,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// on-device recognizer reaches for with a word it was never taught. The
     /// name alone still never wakes — "the murphy bed" stays furniture.
     private static let wakePattern = try! NSRegularExpression(
-        pattern: "\\b(?:hey|hay|hi|okay|ok|yo)[,!.]?\\s+(?:there[,!.]?\\s+)?(morpheus|morphine|morphin|morphee|morphie|morphia|morphea|morphy|morphe|morpha|morph|murphey|murphie|murphy|murfy|murph|more\\s+fee|mor\\s+fee|morfee|morfie|morfy|morfe)(?:'s|\u{2019}s)?\\b[,!.]?",
+        pattern: "\\b(?:hey|hay|hei|hi|okay|ok|yo)[,!.]?\\s+(?:(?:there|yo|um|uh)[,!.]?\\s+)?(morpheus|morphine|morphin|morphee|morphie|morphia|morphea|morphey|morphy|morphi|morphe|morpha|morpe|morph|murphey|murphie|murphy|murfy|murfi|murph|murf|merph|merf|more\\s+fee|more\\s+fi|mor\\s+fee|morfee|morfie|morfy|morfi|morfe)(?:'s|\u{2019}s)?\\b[,!.]?",
         options: [.caseInsensitive])
 
     /// Vocabulary bias for the recognition request: the wake name plus the
@@ -1791,7 +1809,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         if handback {
             SoundEffects.externalAudioOwner = false
             let session = AVAudioSession.sharedInstance()
-            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            try? session.setActive(false, options: deactivationOptions)
+        stageClaimed = false
             try? session.setCategory(.ambient, options: [.mixWithOthers])
             sessionOwned = false
         }
@@ -1825,9 +1844,14 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         // .active restart must not re-arm the wake engine underneath it —
         // resumeAfterExternalAudio is the only door back (audit 13).
         guard state == .off, !externalAudioActive else { return }
-        // Contract change (Lucas 2026-09-21): passive listening arms
-        // OVER other audio with a mixable session — the wake word must
-        // work mid-playlist. Music pauses only on ACTIVATION.
+        // Never over someone else's music (Lucas 2026-10-05: "don't pause
+        // music at all"): bringing a record-capable session up forces a
+        // route renegotiation that dips whatever is playing, mixable or
+        // not. Park, and arm the moment the music stops (hint + poll).
+        if AVAudioSession.sharedInstance().isOtherAudioPlaying {
+            parkForOtherAudio(handback: false)
+            return
+        }
         waitingForQuiet = false
         quietPollTimer?.invalidate()
         quietPollTimer = nil
@@ -1892,7 +1916,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         // backgrounding with the toggle off — interrupts other apps.
         if sessionOwned {
             let session = AVAudioSession.sharedInstance()
-            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            try? session.setActive(false, options: deactivationOptions)
+        stageClaimed = false
             try? session.setCategory(.ambient, options: [.mixWithOthers])
             sessionOwned = false
         }
@@ -2249,6 +2274,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         isBargeCapture = true
         activeIsFollowUp = !viaWake
         followUpCaptureStart = viaWake ? nil : Date()
+        activeSince = viaWake ? Date() : nil
         liveTranscript = text
         onWake?()
         // A wake with a natural pause earns the breath window, same as a
@@ -2322,7 +2348,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         // re-arms its own stream anyway.
         tearDownRecognition()
         let session = AVAudioSession.sharedInstance()
-        try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        try? session.setActive(false, options: deactivationOptions)
+        stageClaimed = false
         sessionOwned = false
         try? session.setCategory(.playAndRecord, mode: .default,
                                  options: routeOptions(.mixWithOthers))
@@ -2337,6 +2364,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         tearDownRecognition()
         liveTranscript = ""
         capturePrefix = ""
+        // A re-arm that would have to bring the session up while another
+        // app plays would dip their music — park instead (see start()).
+        if !sessionOwned, AVAudioSession.sharedInstance().isOtherAudioPlaying {
+            parkForOtherAudio(handback: false)
+            return
+        }
         // No recognizer for this locale at all — that's permanent, not a
         // glitch; say so instead of six pointless restarts (audit 13).
         guard let recognizer = SFSpeechRecognizer() else {
@@ -2442,7 +2475,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         SoundEffects.externalAudioOwner = false
         if sessionOwned {
             let session = AVAudioSession.sharedInstance()
-            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            try? session.setActive(false, options: deactivationOptions)
+        stageClaimed = false
             try? session.setCategory(.ambient, options: [.mixWithOthers])
             sessionOwned = false
         }
@@ -2456,6 +2490,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
             case .passive:
                 if let command = Self.commandAfterWake(in: text) {
                     state = .active
+                    activeSince = Date()
                     claimStageForActiveCapture()
                     activeIsFollowUp = false
                     liveTranscript = command
@@ -2487,6 +2522,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     activeIsFollowUp = false
                     followUpCaptureStart = nil
                     capturePrefix = ""
+                    activeSince = Date()
                     liveTranscript = command
                     onWake?()
                     armCommandTimer(after: command.isEmpty ? 2.5 : 1.4)
@@ -2601,8 +2637,19 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         return command
     }
 
+    /// When the current capture woke. The command never fires inside the
+    /// first 2.5s after the wake (Lucas 2026-10-05: "wait 2–3 seconds
+    /// after activating to listen") — the chime, the breath, the ask.
+    private var activeSince: Date?
+    private static let listenWindow: TimeInterval = 2.5
+
     private func armCommandTimer(after interval: TimeInterval) {
         commandTimer?.invalidate()
+        var interval = interval
+        if let since = activeSince {
+            let remaining = Self.listenWindow - Date().timeIntervalSince(since)
+            if remaining > interval { interval = remaining }
+        }
         // .common mode (audit 12, P2-7): a .default-mode timer pauses
         // while the user scrolls, so commands never fired mid-scroll.
         let timer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
@@ -2610,6 +2657,32 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         }
         commandTimer = timer
         RunLoop.main.add(timer, forMode: .common)
+    }
+
+    /// A touch anywhere during an exchange ends it (Lucas 2026-10-05):
+    /// the stage is released, music comes back, nothing fires, and
+    /// passive listening resumes.
+    func cancelExchange() {
+        switch state {
+        case .active:
+            commandTimer?.invalidate()
+            commandTimer = nil
+            activeSince = nil
+            liveTranscript = ""
+            capturePrefix = ""
+            activeIsFollowUp = false
+            directCaptureSession = false
+            isBargeCapture = false
+            followUpDeadline = nil
+            restoreMixSession()
+            state = .passive
+            beginListening()
+        case .thinking, .speaking:
+            followUpDeadline = nil
+            cancelStreamedSpeech()
+        default:
+            break
+        }
     }
 
     /// Lock-screen mic entry: listening is armed, jump straight to
@@ -2630,6 +2703,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
 
     private func fireCommand() {
         guard state == .active else { return }
+        activeSince = nil
         let command = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
         let wasFollowUp = activeIsFollowUp && !directCaptureSession
         directCaptureSession = false
