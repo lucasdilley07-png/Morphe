@@ -1132,6 +1132,32 @@ final class WorkoutSessionTests: XCTestCase {
                       && body.contains(weeks[0].speaker))
     }
 
+    /// Fuel log (2026-10-04): meals add and come back out, water isn't
+    /// capped at the goal, and junk input is refused.
+    @MainActor
+    func testFuelLogAddsRemovesAndRefusesJunk() {
+        let store = MorpheAppStore()
+        let cal0 = store.nutrition.caloriesConsumed, pro0 = store.nutrition.proteinConsumed
+        let count0 = store.nutrition.meals.count
+        XCTAssertTrue(store.addCustomMeal(name: " Eggs and toast ", calories: 420, protein: 28))
+        XCTAssertEqual(store.nutrition.caloriesConsumed, cal0 + 420)
+        XCTAssertEqual(store.nutrition.proteinConsumed, pro0 + 28)
+        XCTAssertEqual(store.nutrition.meals.last?.name, "Eggs and toast")
+        XCTAssertFalse(store.addCustomMeal(name: "", calories: 100, protein: 10), "a meal needs a name")
+        XCTAssertFalse(store.addCustomMeal(name: "Air", calories: 0, protein: 0), "and at least one number")
+        store.removeMeal(store.nutrition.meals.last!)
+        XCTAssertEqual(store.nutrition.caloriesConsumed, cal0)
+        XCTAssertEqual(store.nutrition.proteinConsumed, pro0)
+        XCTAssertEqual(store.nutrition.meals.count, count0)
+
+        store.nutrition.waterConsumed = store.nutrition.waterGoal
+        store.addWaterCup()
+        XCTAssertEqual(store.nutrition.waterConsumed, store.nutrition.waterGoal + 1, "past the goal still counts")
+        store.nutrition.waterConsumed = 0
+        store.removeWaterCup()
+        XCTAssertEqual(store.nutrition.waterConsumed, 0, "never below zero")
+    }
+
     /// Rebuild wave (2026-08): the retraction classifier — the engine
     /// drops these before onCommand ever fires.
     func testCancelPhraseClassifier() {

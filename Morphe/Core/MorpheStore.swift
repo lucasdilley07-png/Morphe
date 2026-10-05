@@ -7943,15 +7943,47 @@ final class MorpheAppStore {
         nutrition.caloriesConsumed += meal.calories
         nutrition.proteinConsumed += meal.protein
         nutrition.meals.append(MealLogEntry(mealType: "Quick Add", name: meal.title, calories: meal.calories, protein: meal.protein, logged: true))
-        nutrition.nutritionScore = min(nutrition.nutritionScore + 2, 100)
         persistLocalProfile()
-        showToast("Added \(meal.title).")
     }
 
-    func addWaterCup() {
-        nutrition.waterConsumed = min(nutrition.waterConsumed + 1, nutrition.waterGoal)
+    /// A meal typed by the user (Fuel log, 2026-10-04). Numbers are what
+    /// they enter — Morphe never estimates food.
+    @discardableResult
+    func addCustomMeal(name: String, calories: Int, protein: Int) -> Bool {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, calories >= 0, protein >= 0, calories + protein > 0 else {
+            showToast("Give the meal a name and at least one number.")
+            return false
+        }
+        let kcal = min(calories, 5_000)
+        let grams = min(protein, 500)
+        nutrition.caloriesConsumed += kcal
+        nutrition.proteinConsumed += grams
+        nutrition.meals.append(MealLogEntry(
+            mealType: "Meal", name: String(clean.prefix(60)), calories: kcal, protein: grams, logged: true))
         persistLocalProfile()
-        showToast("Water updated.")
+        return true
+    }
+
+    /// Takes a logged meal back out — the totals follow.
+    func removeMeal(_ meal: MealLogEntry) {
+        guard let index = nutrition.meals.firstIndex(where: { $0.id == meal.id }) else { return }
+        let removed = nutrition.meals.remove(at: index)
+        nutrition.caloriesConsumed = max(nutrition.caloriesConsumed - removed.calories, 0)
+        nutrition.proteinConsumed = max(nutrition.proteinConsumed - removed.protein, 0)
+        persistLocalProfile()
+    }
+
+    /// One cup. Not capped at the goal (2026-10-04: a ninth cup on an
+    /// eight-cup goal silently did nothing) — a sanity ceiling only.
+    func addWaterCup() {
+        nutrition.waterConsumed = min(nutrition.waterConsumed + 1, 40)
+        persistLocalProfile()
+    }
+
+    func removeWaterCup() {
+        nutrition.waterConsumed = max(nutrition.waterConsumed - 1, 0)
+        persistLocalProfile()
     }
 
     func setNutritionMode(_ mode: NutritionMode) {

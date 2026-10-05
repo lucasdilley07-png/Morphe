@@ -3300,6 +3300,10 @@ private struct QuickAddSheet: View {
                         store.openMore(.library)
                         dismissQuickAdd()
                     },
+                    QuickAddItem(title: "Food & Water", subtitle: "Log a meal or a cup", systemImage: "fork.knife") {
+                        store.openMore(.nutrition)
+                        dismissQuickAdd()
+                    },
                     QuickAddItem(title: "Join a Board", subtitle: "Face the weekly leaderboard", systemImage: "trophy.fill") {
                         // The BOARD pane owns the opt-in flow — this is
                         // the door, not a silent join.

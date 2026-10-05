@@ -212,6 +212,8 @@ struct MoreView: View {
 
     private var nutritionPanel: some View {
         Group {
+            FuelLogCard()
+
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Nutrition Basics")
@@ -977,5 +979,209 @@ struct SpartanCodeContent: View {
             .font(.caption2)
             .foregroundStyle(MorpheTheme.textMuted)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// MARK: - Fuel log (2026-10-04)
+
+/// Today's food and water, logged by hand: protein, calories, cups.
+/// The store has kept this day (and its history chart) since the nutrition
+/// wave — this card is the door that was missing. Morphe does not estimate
+/// food; every number is the user's.
+struct FuelLogCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var showCustom = false
+    @State private var mealName = ""
+    @State private var mealCalories = ""
+    @State private var mealProtein = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let targets = store.nutritionTargets
+        let day = store.nutrition
+
+        return GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Today's Fuel")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text("Log what you eat and drink. The numbers are yours; Morphe doesn't estimate food.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                VStack(spacing: 12) {
+                    FuelMeter(label: "Protein", value: day.proteinConsumed, target: targets.proteinGrams, unit: "g")
+                    FuelMeter(label: "Calories", value: day.caloriesConsumed, target: targets.calories, unit: "")
+                    HStack(spacing: 12) {
+                        FuelMeter(label: "Water", value: day.waterConsumed, target: targets.waterCups, unit: " cups")
+                        HStack(spacing: 8) {
+                            stepButton("minus", label: "Remove a cup of water", disabled: day.waterConsumed == 0) {
+                                store.removeWaterCup()
+                            }
+                            stepButton("plus", label: "Add a cup of water", disabled: false) {
+                                store.addWaterCup()
+                            }
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("QUICK ADD")
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
+                        ForEach(day.quickMeals) { meal in
+                            Button("\(meal.title) · \(meal.protein)g") {
+                                Haptics.selection()
+                                store.addQuickMeal(meal)
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: false))
+                            .accessibilityLabel("Add \(meal.title), \(meal.calories) calories, \(meal.protein) grams of protein")
+                        }
+                        Button(showCustom ? "Close" : "Your own meal") {
+                            withAnimation(.easeOut(duration: 0.2)) { showCustom.toggle() }
+                            focused = showCustom
+                        }
+                        .buttonStyle(FilterChipStyle(isSelected: showCustom))
+                    }
+                }
+
+                if showCustom {
+                    VStack(spacing: 8) {
+                        TextField("Meal name", text: $mealName)
+                            .textFieldStyle(MorpheFieldStyle())
+                            .focused($focused)
+                        HStack(spacing: 8) {
+                            TextField("Calories", text: $mealCalories)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .keyboardType(.numberPad)
+                            TextField("Protein (g)", text: $mealProtein)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .keyboardType(.numberPad)
+                        }
+                        Button("Add Meal") {
+                            let added = store.addCustomMeal(
+                                name: mealName,
+                                calories: Int(mealCalories) ?? 0,
+                                protein: Int(mealProtein) ?? 0)
+                            if added {
+                                Haptics.success()
+                                mealName = ""; mealCalories = ""; mealProtein = ""
+                                focused = false
+                                withAnimation(.easeIn(duration: 0.16)) { showCustom = false }
+                            }
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    }
+                    .transition(.opacity)
+                }
+
+                if !day.meals.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("LOGGED TODAY")
+                            .font(MorpheTheme.microLabel(10))
+                            .tracking(1.2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        ForEach(day.meals) { meal in
+                            HStack(spacing: 8) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(meal.name)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                        .lineLimit(1)
+                                    Text("\(meal.calories) cal · \(meal.protein)g protein")
+                                        .font(.caption)
+                                        .monospacedDigit()
+                                        .foregroundStyle(MorpheTheme.textSecondary)
+                                }
+                                Spacer(minLength: 8)
+                                Button {
+                                    withAnimation(.easeIn(duration: 0.16)) { store.removeMeal(meal) }
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Remove \(meal.name)")
+                            }
+                        }
+                    }
+                } else {
+                    Text("Nothing logged yet today.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+        }
+    }
+
+    private func stepButton(
+        _ symbol: String, label: String, disabled: Bool, action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            Haptics.selection()
+            action()
+        } label: {
+            Image(systemName: symbol)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(disabled ? MorpheTheme.textMuted : MorpheTheme.textPrimary)
+                .frame(width: 44, height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(MorpheTheme.stroke, lineWidth: 1)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .accessibilityLabel(label)
+    }
+}
+
+/// One line of the fuel log: label, logged of target, and a thin bar.
+private struct FuelMeter: View {
+    let label: String
+    let value: Int
+    let target: Int
+    let unit: String
+
+    private var fraction: Double {
+        target > 0 ? min(Double(value) / Double(target), 1) : 0
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(label)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Spacer(minLength: 8)
+                Text("\(value.formatted()) of \(target.formatted())\(unit)")
+                    .font(.subheadline)
+                    .monospacedDigit()
+                    .contentTransition(.numericText(value: Double(value)))
+                    .foregroundStyle(MorpheTheme.textSecondary)
+            }
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(MorpheTheme.strokeSubtle)
+                    Capsule()
+                        .fill(MorpheTheme.accent)
+                        .frame(width: proxy.size.width * fraction)
+                }
+            }
+            .frame(height: 4)
+            .animation(.easeOut(duration: 0.2), value: value)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(value) of \(target)\(unit)")
     }
 }
