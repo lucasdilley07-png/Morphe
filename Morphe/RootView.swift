@@ -668,24 +668,12 @@ private struct ClientExperienceShell: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .safeAreaInset(edge: .top) {
-            // Icons only — no band, no hairline. The short ink→clear fade
-            // (same scrim the coach header uses) keeps the STATUS BAR
-            // readable and stops content ghosting up between the icons,
-            // without bringing the solid band back.
+            // Icons only — no band, no hairline, no fade (Lucas 2026-10-05:
+            // the ink→clear scrim read as a white header in light mode).
+            // The three squares have opaque faces of their own; the page
+            // tops below are unchanged because the inset keeps its height.
             ClientPinnedHeader()
                 .padding(.horizontal, 16)
-                .background(
-                    LinearGradient(
-                        colors: [
-                            MorpheTheme.ink.opacity(0.96),
-                            MorpheTheme.ink.opacity(0.80),
-                            .clear
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .ignoresSafeArea(edges: .top)
-                )
         }
         .safeAreaInset(edge: .bottom) {
             // Floating glass capsule (b866e53) — inset from the bottom and
