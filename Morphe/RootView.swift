@@ -1844,14 +1844,13 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         // .active restart must not re-arm the wake engine underneath it —
         // resumeAfterExternalAudio is the only door back (audit 13).
         guard state == .off, !externalAudioActive else { return }
-        // Never over someone else's music (Lucas 2026-10-05: "don't pause
-        // music at all"): bringing a record-capable session up forces a
-        // route renegotiation that dips whatever is playing, mixable or
-        // not. Park, and arm the moment the music stops (hint + poll).
-        if AVAudioSession.sharedInstance().isOtherAudioPlaying {
-            parkForOtherAudio(handback: false)
-            return
-        }
+        // Always listening while the app is open (Lucas 2026-10-05) —
+        // over music too, with a MIXABLE session, so the wake word works
+        // mid-playlist. Music pauses only when Morphe is actually
+        // listening to a request (claimStageForActiveCapture) and comes
+        // back when the exchange ends. The one cost iOS can't avoid: the
+        // first time the mic session comes up over playing audio there
+        // can be a brief dip; after that the session stays up.
         waitingForQuiet = false
         quietPollTimer?.invalidate()
         quietPollTimer = nil
@@ -2364,12 +2363,6 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         tearDownRecognition()
         liveTranscript = ""
         capturePrefix = ""
-        // A re-arm that would have to bring the session up while another
-        // app plays would dip their music — park instead (see start()).
-        if !sessionOwned, AVAudioSession.sharedInstance().isOtherAudioPlaying {
-            parkForOtherAudio(handback: false)
-            return
-        }
         // No recognizer for this locale at all — that's permanent, not a
         // glitch; say so instead of six pointless restarts (audit 13).
         guard let recognizer = SFSpeechRecognizer() else {
