@@ -16,9 +16,11 @@ struct CommunityView: View {
 
     var body: some View {
         @Bindable var store = store
+        // The header rides INSIDE each pane's scroll (Lucas 2026-10-05):
+        // the CHATS / BOARD / CALENDAR tabs and the Connect row scroll
+        // away with the page instead of staying pinned. The swipe between
+        // panes is unchanged.
         return VStack(spacing: 0) {
-            networkHeader
-
             // The swipe shell: Chats on the left, the feed on the right —
             // one horizontal gesture between your people and their work.
             // Selection is the SAME store var every deep link already sets,
@@ -153,6 +155,7 @@ struct CommunityView: View {
     private var forYouScreen: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
+                networkHeader.padding(.horizontal, -20)
                 // No page title here — the shell header owns the chrome, so
                 // the feed opens straight onto presence (Trained Today).
                 if store.isRealFeedActive {
@@ -210,6 +213,7 @@ struct CommunityView: View {
     private var boardScreen: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
+                networkHeader.padding(.horizontal, -20)
                 WeeklyBoardCard()
             }
             .padding(.horizontal, 20)
@@ -224,6 +228,7 @@ struct CommunityView: View {
     private var calendarScreen: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
+                networkHeader.padding(.horizontal, -20)
                 HStack {
                     Text("Schedule")
                         .font(.headline)
@@ -287,14 +292,18 @@ struct CommunityView: View {
         // The inbox always mounts now — its search bar is the new-chat door,
         // which has to exist even (especially) with zero conversations. The
         // inbox owns its own refresh and empty state.
-        VStack(spacing: 10) {
-            // Connect lives with the people (Lucas 2026-10-04): show your
-            // Morphe code or scan a training partner's, right above chats.
-            QRConnectRow()
-                .padding(.horizontal, 20)
-            AthleteInboxView(autoOpenOnlyThread: true)
-        }
-        .padding(.top, 6)
+        // The tabs and the Connect row scroll with the inbox (2026-10-05).
+        AthleteInboxView(autoOpenOnlyThread: true, topContent: AnyView(
+            VStack(spacing: 10) {
+                networkHeader
+                // Connect lives with the people (Lucas 2026-10-04): show
+                // your Morphe code or scan a training partner's, right
+                // above chats.
+                QRConnectRow()
+                    .padding(.horizontal, 20)
+            }
+            .padding(.bottom, 10)
+        ))
     }
 
     private var communityHeaderControls: some View {
@@ -3672,6 +3681,9 @@ struct AthleteInboxView: View {
     /// Tab-context nicety: exactly one thread (the usual solo-athlete case)
     /// opens straight into the conversation; back still reveals the list.
     var autoOpenOnlyThread: Bool = false
+    /// Scrolls with the list, above the search field (the Network tabs
+    /// and the Connect row). Hidden while a thread is open.
+    var topContent: AnyView? = nil
     @State private var openedThread: MessageThreadSummary?
     @State private var didAutoOpen = false
     @State private var query = ""
@@ -3750,6 +3762,9 @@ struct AthleteInboxView: View {
     private var threadList: some View {
         ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 0) {
+                if let topContent {
+                    topContent
+                }
                 searchField
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)

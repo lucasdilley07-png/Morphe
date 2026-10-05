@@ -38,29 +38,10 @@ struct MoreView: View {
     ]
 
     var body: some View {
+        // The title and the chips scroll with each page (Lucas
+        // 2026-10-05) — nothing stays pinned; the swipe between the three
+        // panels is unchanged.
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitleView(
-                title: "Learn",
-                subtitle: "Ask me anything about training, recovery, or eating right — short lessons live here too.",
-                titleSize: 16
-            )
-            .padding(.horizontal, 20)
-
-            // Centered chip row (Lucas 2026-08-16): three chips balance on
-            // the page's center line, matching the app-wide symmetry.
-            HStack(spacing: 10) {
-                ForEach(Self.tabs) { feature in
-                    Button(chipTitle(for: feature)) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            store.selectedHubFeature = feature
-                        }
-                    }
-                    .buttonStyle(FilterChipStyle(isSelected: activeFeature == feature))
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 20)
-
             // Swipe between the three panels (Lucas 2026-08-18) — same
             // pager grammar as Network's panes.
             TabView(selection: Binding(
@@ -70,6 +51,7 @@ struct MoreView: View {
                 ForEach(Self.tabs) { feature in
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 16) {
+                            learnHeader
                             panel(for: feature)
                             // Once per tab, on the last page — not three
                             // copies (audit 11, P2-16).
@@ -87,6 +69,31 @@ struct MoreView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
         .padding(.top, MorpheTheme.Spacing.pageTopCompact)
+    }
+
+    /// Title + chip row, repeated at the top of every page's scroll.
+    private var learnHeader: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitleView(
+                title: "Learn",
+                subtitle: "Ask me anything about training, recovery, or eating right — short lessons live here too.",
+                titleSize: 16
+            )
+
+            // Centered chip row (Lucas 2026-08-16): three chips balance on
+            // the page's center line, matching the app-wide symmetry.
+            HStack(spacing: 10) {
+                ForEach(Self.tabs) { feature in
+                    Button(chipTitle(for: feature)) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            store.selectedHubFeature = feature
+                        }
+                    }
+                    .buttonStyle(FilterChipStyle(isSelected: activeFeature == feature))
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
     }
 
     @ViewBuilder
