@@ -2800,6 +2800,15 @@ final class DictationEngine: NSObject {
     private var recognizer: SFSpeechRecognizer?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
+    /// True only while our tap is installed. Touching `inputNode` for a
+    /// removeTap that was never installed instantiates the input unit
+    /// against the live session, which is itself an audio interruption —
+    /// opening the chat and closing it paused the user's music without the
+    /// mic ever being used (Lucas 2026-10-05).
+    private var tapInstalled = false
+    /// True only after WE activated the session — stop() hands back only
+    /// what it took.
+    private var sessionOwned = false
 
     /// Starts dictation, appending to `baseText`. Each partial result calls
     /// `onText` with the full combined string.
@@ -2865,17 +2874,22 @@ final class DictationEngine: NSObject {
             try session.setCategory(.playAndRecord, mode: .default,
                                     options: [.mixWithOthers, .duckOthers, .defaultToSpeaker, .allowBluetoothA2DP])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
+            sessionOwned = true
             let inputNode = audioEngine.inputNode
             let format = inputNode.outputFormat(forBus: 0)
             inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
                 request.append(buffer)
             }
+            tapInstalled = true
             audioEngine.prepare()
             try audioEngine.start()
         } catch {
             // stop() first — its teardown clears notice, so the message
             // must land after it (this ordering was silently wrong before).
             stop()
+            // The wake engine was paused above; a failed grab must not
+            // leave it parked.
+            HeyMorpheEngine.shared.resumeAfterExternalAudio()
             notice = "Couldn't start the microphone."
             return
         }
@@ -2901,6 +2915,11 @@ final class DictationEngine: NSObject {
         // Supersede any permission chain still in flight (audit 14, P1).
         startToken += 1
         tearDown()
+        // Nothing to hand back unless dictation actually took the session:
+        // the chat's onDisappear calls stop() on every close, and
+        // deactivating a session we never owned interrupted other apps.
+        guard sessionOwned else { return }
+        sessionOwned = false
         // Hand the audio session back to the reward sounds' ambient setup,
         // then let Hey Morphe resume if it was the one we paused.
         SoundEffects.externalAudioOwner = false
@@ -2919,8 +2938,11 @@ final class DictationEngine: NSObject {
         // Unconditional for the same reason as the wake engine's teardown
         // (audit 13, P0): a stale tap on the shared input bus is a crash
         // at the next installTap.
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if tapInstalled {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
         request?.endAudio()
         task?.cancel()
         task = nil
