@@ -116,6 +116,14 @@ struct HomeView: View {
                         freezeJustUsed: store.dailyStreakFreezeJustUsed)
                 }
 
+                // "Here's what I've got for you" sits right under the streak
+                // (Lucas 2026-10-05) — above the profile strip and the plan.
+                // Week one keeps its own copy further down, by the checklist.
+                if store.firstWeekSteps == nil,
+                   !store.isPlannedRestDay, !store.isWorkoutLoggedToday {
+                    nextMoveCard
+                }
+
                 // Jarvis beat: the app asks, you answer, the day reshapes.
                 MorpheAsksCard()
 
@@ -237,14 +245,6 @@ struct HomeView: View {
                     showMetrics: store.todayExperienceTier >= 1,
                     hasCheckedIn: store.didCompleteQuickCheckIn
                 )
-
-                // "Here's what I've got for you" rides UNDER the profile
-                // strip once week one is over (Lucas, 2026-08-16) — profile
-                // info first, then the staged session, then the plan tools.
-                if store.firstWeekSteps == nil,
-                   !store.isPlannedRestDay, !store.isWorkoutLoggedToday {
-                    nextMoveCard
-                }
 
                 // A2 (Apple benchmark): last month sets this month's bar —
                 // pure arithmetic on real logs, invisible without a base month.
