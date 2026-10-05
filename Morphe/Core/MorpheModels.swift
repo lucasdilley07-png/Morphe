@@ -1540,6 +1540,11 @@ struct WorkoutLog: Identifiable, Hashable, Codable {
     /// time so the next session can suggest a small progression. Optional:
     /// logs saved before this existed decode with nil (= no bump).
     var sessionFeedback: String?
+    /// Set on sessions brought in from another tracker: the file's own
+    /// date text plus title. Optional — every native log decodes as nil.
+    var importKey: String? = nil
+
+    var isImported: Bool { importKey != nil }
 }
 
 extension WorkoutLog {

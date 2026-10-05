@@ -358,6 +358,8 @@ enum WorkoutImport {
         var date: Date
         var durationMinutes: Int
         var exercises: [Exercise]
+        /// The file's own date text plus title — stable across time zones.
+        var importKey: String = ""
         var setCount: Int { exercises.reduce(0) { $0 + $1.reps.count } }
     }
 
@@ -367,6 +369,16 @@ enum WorkoutImport {
         /// "lb" / "kg" when the file itself says; nil = the user must say.
         var unitInFile: String?
         var sourceApp: String
+        /// The file had more rows than one pass reads.
+        var truncated: Bool = false
+    }
+
+    static let rowLimit = 50_000
+
+    /// Nil for anything a set count can't be: "nan", "inf", "1e30".
+    private static func boundedInt(_ value: Double?, _ range: ClosedRange<Double>) -> Int? {
+        guard let value, value.isFinite, range.contains(value) else { return nil }
+        return Int(value.rounded())
     }
 
     /// RFC-4180-style split: quoted fields, doubled quotes, CR/LF.
@@ -414,13 +426,26 @@ enum WorkoutImport {
         "yyyy-MM-dd'T'HH:mm:ssXXXXX", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd"
     ]
 
-    static func date(from text: String) -> Date? {
-        let trimmed = text.trimmingCharacters(in: .whitespaces)
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .current
-        for format in dateFormats {
+    /// One formatter per format per parse — building one per row made a
+    /// long history crawl (audit 32).
+    private static func makeFormatters() -> [DateFormatter] {
+        dateFormats.map { format in
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = .current
             formatter.dateFormat = format
+            return formatter
+        }
+    }
+
+    static func date(from text: String) -> Date? {
+        date(from: text, using: makeFormatters())
+    }
+
+    private static func date(from text: String, using formatters: [DateFormatter]) -> Date? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        for formatter in formatters {
             if let date = formatter.date(from: trimmed) { return date }
         }
         return nil
@@ -444,7 +469,9 @@ enum WorkoutImport {
             }
             return total > 0 ? total : nil
         }
-        if let seconds = Double(trimmed) { return max(Int((seconds / 60).rounded()), 1) }
+        if let seconds = Double(trimmed), seconds.isFinite, (0...86_400).contains(seconds) {
+            return max(Int((seconds / 60).rounded()), 1)
+        }
         return nil
     }
 
@@ -470,6 +497,12 @@ enum WorkoutImport {
         let durationCol = column(["duration"])
         let endCol = column(["endtime"])
         let hevy = headers.contains("exercisetitle")
+        // One of the two apps' own signatures, or it isn't their file
+        // (audit 32: any CSV with a date, a name and reps was accepted).
+        let strongSignature = headers.contains("exercisename") && headers.contains("setorder")
+        let hevySignature = hevy && headers.contains("setindex")
+        guard strongSignature || hevySignature else { return nil }
+        let formatters = makeFormatters()
 
         var unit: String?
         if let weightCol {
@@ -480,7 +513,7 @@ enum WorkoutImport {
         var sessions: [Session] = []
         var index: [String: Int] = [:]
         var skipped = 0
-        for row in table.dropFirst().prefix(50_000) {
+        for row in table.dropFirst().prefix(rowLimit) {
             func cell(_ col: Int?) -> String {
                 guard let col, row.indices.contains(col) else { return "" }
                 return row[col].trimmingCharacters(in: .whitespaces)
@@ -493,8 +526,8 @@ enum WorkoutImport {
             let order = cell(orderCol).lowercased()
             let name = cell(exerciseCol)
             guard !name.isEmpty, order != "rest timer", order != "note",
-                  let date = date(from: cell(dateCol)),
-                  let reps = number(repsCol).map({ Int($0.rounded()) }), reps > 0, reps <= 1_000 else {
+                  let date = date(from: cell(dateCol), using: formatters),
+                  let reps = boundedInt(number(repsCol), 1...1_000) else {
                 skipped += 1
                 continue
             }
@@ -508,11 +541,12 @@ enum WorkoutImport {
                 sessionIndex = found
             } else {
                 var duration = minutes(from: cell(durationCol))
-                if duration == nil, let end = WorkoutImport.date(from: cell(endCol)), end > date {
+                if duration == nil, let end = WorkoutImport.date(from: cell(endCol), using: formatters), end > date {
                     duration = Int((end.timeIntervalSince(date) / 60).rounded())
                 }
                 sessions.append(Session(title: String(title.prefix(80)), date: date,
-                                        durationMinutes: min(max(duration ?? 45, 5), 300), exercises: []))
+                                        durationMinutes: min(max(duration ?? 45, 5), 300), exercises: [],
+                                        importKey: sessionKey))
                 sessionIndex = sessions.count - 1
                 index[sessionKey] = sessionIndex
             }
@@ -526,14 +560,16 @@ enum WorkoutImport {
                 exerciseIndex = sessions[sessionIndex].exercises.count - 1
             }
             let type = cell(typeCol).lowercased()
-            let rpe = number(rpeCol).map { Int($0.rounded()) } ?? 0
+            let rpe = boundedInt(number(rpeCol), 0...10) ?? 0
+            let weight = number(weightCol).flatMap { $0.isFinite ? $0 : nil } ?? 0
             sessions[sessionIndex].exercises[exerciseIndex].reps.append(reps)
-            sessions[sessionIndex].exercises[exerciseIndex].weights.append(min(max(number(weightCol) ?? 0, 0), 2_500))
+            sessions[sessionIndex].exercises[exerciseIndex].weights.append(min(max(weight, 0), 2_500))
             sessions[sessionIndex].exercises[exerciseIndex].rpes.append((6...10).contains(rpe) ? rpe : 0)
             sessions[sessionIndex].exercises[exerciseIndex].warmups.append(type.hasPrefix("warm") || order == "w")
         }
         guard !sessions.isEmpty else { return nil }
         return Parsed(sessions: sessions.sorted { $0.date < $1.date }, skippedRows: skipped,
-                      unitInFile: unit, sourceApp: hevy ? "Hevy" : "Strong")
+                      unitInFile: unit, sourceApp: hevy ? "Hevy" : "Strong",
+                      truncated: table.count - 1 > rowLimit)
     }
 }

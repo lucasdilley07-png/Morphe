@@ -892,7 +892,7 @@
 				CODE_SIGN_ENTITLEMENTS = MorpheWatch/MorpheWatch.entitlements;
 				INFOPLIST_KEY_CFBundleDisplayName = Morphe;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Morphe reads your heart rate and active energy during a workout to show them on your wrist.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves the workout you just trained, with its heart rate, to Apple Health.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Apple Watch needs workout access to run the live session that reads your heart rate. The watch app never saves a workout of its own.";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKBackgroundModes = "workout-processing";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.morpheapp.Morphe;
@@ -920,7 +920,7 @@
 				CODE_SIGN_ENTITLEMENTS = MorpheWatch/MorpheWatch.entitlements;
 				INFOPLIST_KEY_CFBundleDisplayName = Morphe;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Morphe reads your heart rate and active energy during a workout to show them on your wrist.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "With Sync to Health on, Morphe saves the workout you just trained, with its heart rate, to Apple Health.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Apple Watch needs workout access to run the live session that reads your heart rate. The watch app never saves a workout of its own.";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKBackgroundModes = "workout-processing";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.morpheapp.Morphe;

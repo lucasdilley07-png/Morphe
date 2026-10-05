@@ -5,14 +5,15 @@ import WatchKit
 
 /// Heart rate on the wrist (2026-10-04). While a Morphe session runs, the
 /// watch holds a real HealthKit workout session: that is what lets it read
-/// live heart rate and keeps the app in front between sets. The workout is
-/// SAVED to Apple Health only when the phone's "Sync to Health" is on;
-/// otherwise it is discarded at the end and nothing is written.
+/// live heart rate and keeps the app in front between sets. The watch
+/// NEVER saves a workout — its builder is always discarded. The phone
+/// stays the one writer to Apple Health (on a LOGGED session, when Sync
+/// to Health is on), so a cancelled session, a dropped message or a dead
+/// watch can neither duplicate a workout nor lose one (audit 32).
 final class WatchWorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate {
     private let healthStore = HKHealthStore()
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
-    private var saveOnEnd = false
     private var ceiling: Timer?
 
     /// Main-thread callbacks.
@@ -22,9 +23,10 @@ final class WatchWorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWork
 
     var isRunning: Bool { session != nil }
 
-    func start(saveToHealth: Bool) {
-        saveOnEnd = saveToHealth
+    func start() {
         guard HKHealthStore.isHealthDataAvailable(), session == nil else { return }
+        // A workout session needs workout-share permission even though
+        // nothing is ever saved from here.
         let share: Set<HKSampleType> = [HKObjectType.workoutType()]
         let read: Set<HKObjectType> = [HKQuantityType(.heartRate), HKQuantityType(.activeEnergyBurned)]
         healthStore.requestAuthorization(toShare: share, read: read) { [weak self] granted, _ in
@@ -82,16 +84,11 @@ final class WatchWorkoutRecorder: NSObject, HKWorkoutSessionDelegate, HKLiveWork
         ceiling?.invalidate()
         ceiling = nil
         guard let session, let builder else { return }
-        let save = saveOnEnd
         self.session = nil
         self.builder = nil
         session.end()
         builder.endCollection(withEnd: Date()) { _, _ in
-            if save {
-                builder.finishWorkout { _, _ in }
-            } else {
-                builder.discardWorkout()
-            }
+            builder.discardWorkout()
         }
         onRecording?(false)
         onHeartRate?(0)
@@ -155,8 +152,6 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
     @Published var heartRate = 0
     @Published var activeCalories = 0
     private let recorder = WatchWorkoutRecorder()
-    /// The phone's "Sync to Health" setting, mirrored in the snapshot.
-    private var healthSync = false
 
     /// Non-nil while resting; the view derives the ring from it.
     @Published var restEndDate: Date?
@@ -168,11 +163,7 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
         recorder.onHeartRate = { [weak self] bpm in self?.heartRate = bpm }
         recorder.onCalories = { [weak self] kcal in self?.activeCalories = kcal }
         recorder.onRecording = { [weak self] recording in
-            guard let self else { return }
-            // The phone skips its own Health write while the wrist is
-            // recording one — one workout in Health, not two.
-            if recording, self.healthSync { self.send(["cmd": "recording", "on": true]) }
-            if !recording { self.activeCalories = 0 }
+            if !recording { self?.activeCalories = 0 }
         }
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
@@ -257,10 +248,9 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
             lastSequence = seq
         }
         let previousExercise = exerciseName
-        if let value = snapshot["healthSync"] as? Bool { healthSync = value }
         if let value = snapshot["sessionActive"] as? Bool {
             if value, !recorder.isRunning {
-                recorder.start(saveToHealth: healthSync)
+                recorder.start()
             } else if !value, recorder.isRunning {
                 recorder.stop()
             }

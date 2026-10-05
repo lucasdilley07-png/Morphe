@@ -1128,9 +1128,6 @@ final class MorpheAppStore {
     var shareCompletedSessionToFeed = true
     /// Apple Health workout sync — opt-in, write-only. Enable via
     /// `setHealthSync(enabled:)` so the system prompt rides the flip.
-    /// True while the paired watch is recording the live session into
-    /// Health itself (with heart rate) — see handleWatchCommand.
-    var watchIsRecordingToHealth = false
     var healthSyncEnabled = false {
         didSet { persistTrainingPreferences() }
     }
@@ -1705,9 +1702,6 @@ final class MorpheAppStore {
     func deleteAccount() async -> Bool {
         guard let uid = authUser?.id else { return false }
 
-        // Progress photos never left this iPhone — they go with the account.
-        ProgressPhotoStore.deleteAll(profileID: clientProfile.id)
-
         // Server cleanup FIRST, while the auth session is still valid —
         // after user.delete() the rules see an anonymous caller.
         await cloudBackup.eraseUser()
@@ -1750,9 +1744,15 @@ final class MorpheAppStore {
         }
 
         // Local wipe: per-profile defaults, files, and in-memory state.
+        // Progress photos never left this iPhone — they go with the
+        // account, but only once the account is really gone (audit 32:
+        // deleting first lost them when a later step failed).
+        ProgressPhotoStore.deleteAll(profileID: clientProfile.id)
         for key in [trainingPreferencesDefaultsKey, competitionStateDefaultsKey,
                     bodyWeightHistoryDefaultsKey, recoverySeriesDefaultsKey,
                     nutritionSeriesDefaultsKey, activeProgramDefaultsKey,
+                    customProgramDefaultsKey, dailyStreakCountKey, dailyStreakLastDayKey,
+                    dailyStreakBestKey, dailyStreakFreezeDayKey,
                     programCompletionsDefaultsKey, libraryFoldersKey,
                     Self.pendingReferralKey] {
             UserDefaults.standard.removeObject(forKey: key)
@@ -3536,7 +3536,9 @@ final class MorpheAppStore {
         var maxMinutes: Int = 60
     }
 
-    static let customPlanID = "custom-plan"
+    /// Every built plan gets its own id (audit 32: one shared id made a
+    /// finished plan's badge take the next plan's name).
+    static let customPlanIDPrefix = "custom-plan-"
 
     /// What each kind of equipment lets you run.
     private static func equipmentAllowed(_ have: String) -> Set<String> {
@@ -3672,7 +3674,7 @@ final class MorpheAppStore {
                         "leanOut": "Lean Out", "recovery": "Recovery"][request.goal] ?? "Training"
         let gear = request.equipment == "Full Gym" ? "a full gym" : request.equipment.lowercased()
         return TrainingProgram(
-            id: customPlanID,
+            id: customPlanIDPrefix + "preview",
             name: "Your \(weeks)-Week \(goalName) Plan",
             // Said plainly when the catalog couldn't serve the goal well
             // under these limits — the name must not promise more than
@@ -3712,10 +3714,11 @@ final class MorpheAppStore {
     /// training-day count with it.
     @discardableResult
     func startCustomPlan(_ request: PlanRequest) -> Bool {
-        guard let plan = previewPlan(request) else {
+        guard var plan = previewPlan(request) else {
             showToast("No plan fits those limits. Loosen the time or the equipment.")
             return false
         }
+        plan.id = Self.customPlanIDPrefix + String(Int(Date().timeIntervalSince1970))
         customProgram = plan
         if let data = try? JSONEncoder().encode(plan) {
             UserDefaults.standard.set(data, forKey: customProgramDefaultsKey)
@@ -3842,6 +3845,24 @@ final class MorpheAppStore {
         completedProgramIDs = UserDefaults.standard.stringArray(forKey: programCompletionsDefaultsKey) ?? []
     }
 
+    /// A built plan's completion carries its own name and length — the
+    /// plan itself is replaced when the next one is built (audit 32).
+    static func completionKey(for program: TrainingProgram) -> String {
+        program.id.hasPrefix(customPlanIDPrefix)
+            ? "\(program.id)|\(program.weeks)|\(program.name)"
+            : program.id
+    }
+
+    /// (name, weeks) for a completion record, built-in or custom.
+    func completedProgramFacts(_ key: String) -> (name: String, weeks: Int)? {
+        if key.hasPrefix(Self.customPlanIDPrefix) {
+            let parts = key.split(separator: "|", maxSplits: 2).map(String.init)
+            guard parts.count == 3, let weeks = Int(parts[1]) else { return nil }
+            return (parts[2], weeks)
+        }
+        return Self.trainingPrograms.first { $0.id == key }.map { ($0.name, $0.weeks) }
+    }
+
     /// Appends once per program id — re-finishing a re-run program keeps
     /// one badge, not a stack of duplicates.
     func recordProgramCompletion(_ programID: String) {
@@ -3861,7 +3882,7 @@ final class MorpheAppStore {
               progress.nextSessionName == loggedTitle else { return false }
         advanceProgram(by: 1)
         guard let after = programProgress, after.isComplete else { return false }
-        recordProgramCompletion(after.program.id)
+        recordProgramCompletion(Self.completionKey(for: after.program))
         recentWins.insert("Finished the \(after.program.name) program.", at: 0)
         return true
     }
@@ -7006,7 +7027,6 @@ final class MorpheAppStore {
         // second, not from the first set (audit 26, P1).
         defer { WatchBridge.shared.publish() }
         resetSessionVoice()
-        watchIsRecordingToHealth = false
         isWorkoutSessionActive = true
         hasStartedWorkoutFlow = true
         hasCompletedWorkoutFlow = false
@@ -7408,6 +7428,12 @@ final class MorpheAppStore {
         defer { WatchBridge.shared.publish() }
         guard var repsLogged = trackedSetReps[exerciseID], repsLogged.indices.contains(setIndex),
               var weightsLogged = trackedSetWeights[exerciseID], weightsLogged.indices.contains(setIndex) else { return }
+        // A hand-edited set is no longer the set the camera counted.
+        if repsLogged[setIndex] != reps || weightsLogged[setIndex] != max(0, weight),
+           var cameraLogged = trackedSetCamera[exerciseID], cameraLogged.indices.contains(setIndex) {
+            cameraLogged[setIndex] = false
+            trackedSetCamera[exerciseID] = cameraLogged
+        }
         repsLogged[setIndex] = reps
         weightsLogged[setIndex] = max(0, weight)
         trackedSetReps[exerciseID] = repsLogged
@@ -8046,9 +8072,7 @@ final class MorpheAppStore {
 
         // Apple Health (opt-in): the logged session, exactly as logged —
         // real minutes, ending now. Fire-and-forget like the social writes.
-        let wristRecorded = watchIsRecordingToHealth
-        watchIsRecordingToHealth = false
-        if healthSyncEnabled, !wristRecorded {
+        if healthSyncEnabled {
             let healthTitle = currentWorkout.name
             let healthMinutes = completedSessionMinutes ?? currentWorkout.durationMinutes
             Task { await HealthWorkoutSync.save(workoutTitle: healthTitle, minutes: healthMinutes) }
@@ -10808,7 +10832,7 @@ final class MorpheAppStore {
         }
 
         for programID in completedProgramIDs {
-            guard let program = allPrograms.first(where: { $0.id == programID }) else { continue }
+            guard let program = completedProgramFacts(programID) else { continue }
             badges.append(ProfileBadge(
                 title: "Program Complete",
                 detail: "\(program.name) — every session of all \(program.weeks) weeks, logged.",
@@ -14358,7 +14382,8 @@ final class MorpheAppStore {
 
     // MARK: Import from another tracker (2026-10-04)
 
-    struct ImportPlan {
+    struct ImportPlan: Identifiable {
+        let id = UUID()
         var parsed: WorkoutImport.Parsed
         /// Sessions not already in the log (same title within a minute).
         var fresh: [WorkoutImport.Session]
@@ -14369,10 +14394,17 @@ final class MorpheAppStore {
     /// Reads the file and says what an import WOULD add — nothing is
     /// written until `commitImport`.
     func planImport(csv text: String) -> ImportPlan? {
-        guard let parsed = WorkoutImport.parse(text) else { return nil }
+        WorkoutImport.parse(text).map(planImport)
+    }
+
+    func planImport(_ parsed: WorkoutImport.Parsed) -> ImportPlan {
         let mine = currentAthleteWorkoutLogs
+        let keys = Set(mine.compactMap(\.importKey))
+        // The file's own date text plus title is the identity — it does
+        // not move when the phone's time zone does (audit 32). The time
+        // match still catches sessions logged natively.
         let fresh = parsed.sessions.filter { session in
-            !mine.contains {
+            !keys.contains(session.importKey) && !mine.contains {
                 $0.workoutTitle == session.title && abs($0.completedAt.timeIntervalSince(session.date)) < 60
             }
         }
@@ -14420,7 +14452,8 @@ final class MorpheAppStore {
                 enteredByUserID: clientProfile.id,
                 enteredByRole: .client,
                 enteredByName: clientProfile.name,
-                verificationStatus: .athleteSubmitted
+                verificationStatus: .athleteSubmitted,
+                importKey: session.importKey
             )
         }
         workoutLogs = (workoutLogs + logs).sorted { $0.completedAt > $1.completedAt }

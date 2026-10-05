@@ -36,7 +36,7 @@ struct ProfileView: View {
     @State private var exportFile: ExportFile?
     @State private var showImportPicker = false
     @State private var importPlan: MorpheAppStore.ImportPlan?
-    @State private var showImportReview = false
+    @State private var importReading = false
     @State private var showPaywall = false
     @State private var showingCode = false
 
@@ -1543,7 +1543,8 @@ struct ProfileView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         Spacer(minLength: 0)
-                        Button("Import") { showImportPicker = true }
+                        Button(importReading ? "Reading…" : "Import") { showImportPicker = true }
+                            .disabled(importReading)
                             .buttonStyle(SecondaryCTAButtonStyle())
                             .frame(width: 120)
                             .accessibilityLabel("Import workout history from a CSV file")
@@ -1551,25 +1552,31 @@ struct ProfileView: View {
                     .fileImporter(isPresented: $showImportPicker,
                                   allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
                         guard case .success(let url) = result else { return }
-                        let scoped = url.startAccessingSecurityScopedResource()
-                        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                        guard let data = try? Data(contentsOf: url), data.count <= 20_000_000,
-                              let text = String(data: data, encoding: .utf8)
-                                ?? String(data: data, encoding: .isoLatin1),
-                              let plan = store.planImport(csv: text) else {
-                            store.showToast("That file doesn't read as a Hevy or Strong workout export.")
-                            return
+                        importReading = true
+                        // Read and parse off the main thread — a long
+                        // history is tens of thousands of rows (audit 32).
+                        Task {
+                            let parsed = await Task.detached(priority: .userInitiated) { () -> WorkoutImport.Parsed? in
+                                let scoped = url.startAccessingSecurityScopedResource()
+                                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                                guard let data = try? Data(contentsOf: url), data.count <= 20_000_000,
+                                      let text = String(data: data, encoding: .utf8)
+                                        ?? String(data: data, encoding: .isoLatin1) else { return nil }
+                                return WorkoutImport.parse(text)
+                            }.value
+                            importReading = false
+                            guard let parsed else {
+                                store.showToast("That file doesn't read as a Hevy or Strong workout export.")
+                                return
+                            }
+                            importPlan = store.planImport(parsed)
                         }
-                        importPlan = plan
-                        showImportReview = true
                     }
-                    .sheet(isPresented: $showImportReview) {
-                        if let importPlan {
-                            ImportReviewSheet(plan: importPlan)
-                                .environment(store)
-                                .presentationDetents([.medium, .large])
-                                .presentationCornerRadius(28)
-                        }
+                    .sheet(item: $importPlan) { plan in
+                        ImportReviewSheet(plan: plan)
+                            .environment(store)
+                            .presentationDetents([.medium, .large])
+                            .presentationCornerRadius(28)
                     }
 
 
@@ -2397,7 +2404,10 @@ struct ImportReviewSheet: View {
                     note("Weights in the file are in \(unit.label).")
                 }
 
-                note("Imported workouts count toward your history, records and charts. They earn no XP and are marked as imported.")
+                if plan.parsed.truncated {
+                    note("The file is longer than Morphe reads in one pass. Only the first 50,000 rows are included.")
+                }
+                note("Imported workouts count toward your history, records and charts. They earn no XP, and each carries a note saying where it came from.")
 
                 Button(plan.fresh.isEmpty ? "Nothing New to Import" : "Import \(plan.fresh.count) Workout\(plan.fresh.count == 1 ? "" : "s")") {
                     let added = store.commitImport(plan, unit: unit)

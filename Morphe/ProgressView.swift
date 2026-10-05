@@ -1,4 +1,5 @@
 import Charts
+import ImageIO
 import PhotosUI
 import SwiftUI
 import UIKit
@@ -2831,6 +2832,19 @@ enum ProgressPhotoStore {
         return Entry(id: url.lastPathComponent, date: Date(timeIntervalSince1970: TimeInterval(seconds)), url: url)
     }
 
+    /// Picker data → a 1,600px image without ever decoding the original
+    /// at full size (a 48 MP pick is ~190 MB decoded — audit 32).
+    static func downsampled(_ data: Data, maxPixel: CGFloat = 1600) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        return UIImage(cgImage: image)
+    }
+
     static func delete(_ entry: Entry) {
         try? FileManager.default.removeItem(at: entry.url)
     }
@@ -2982,16 +2996,27 @@ struct ProgressPhotosCard: View {
             guard let item else { return }
             Task {
                 let data = try? await item.loadTransferable(type: Data.self)
-                await MainActor.run {
-                    store(data.flatMap(UIImage.init(data:)))
-                    pickerItem = nil
-                }
+                pickerItem = nil
+                let profile = profileID
+                let saved = await Task.detached(priority: .userInitiated) {
+                    data.flatMap { ProgressPhotoStore.downsampled($0) }
+                        .flatMap { ProgressPhotoStore.save($0, profileID: profile) } != nil
+                }.value
+                finish(saved: saved)
             }
         }
         .fullScreenCover(isPresented: $showCamera) {
             ProgressPhotoCamera { image in
                 showCamera = false
-                if let image { store(image) }
+                guard let image else { return }
+                let profile = profileID
+                Task {
+                    // Scale and encode off the main thread.
+                    let saved = await Task.detached(priority: .userInitiated) {
+                        ProgressPhotoStore.save(image, profileID: profile) != nil
+                    }.value
+                    finish(saved: saved)
+                }
             }
             .ignoresSafeArea()
         }
@@ -3033,12 +3058,9 @@ struct ProgressPhotosCard: View {
         .accessibilityHint("Opens the photo")
     }
 
-    private func store(_ image: UIImage?) {
-        guard let image, ProgressPhotoStore.save(image, profileID: profileID) != nil else {
-            saveFailed = true
-            return
-        }
-        saveFailed = false
+    private func finish(saved: Bool) {
+        saveFailed = !saved
+        guard saved else { return }
         Haptics.success()
         reload()
     }

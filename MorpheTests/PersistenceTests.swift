@@ -1221,6 +1221,8 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.trackedSetCamera[exercise.id], [false, true], "parallel to the reps array")
         store.removeTrackedSet(exerciseID: exercise.id, setIndex: 0)
         XCTAssertEqual(store.trackedSetCamera[exercise.id], [true], "removing a set keeps the flags aligned")
+        store.updateTrackedSet(exerciseID: exercise.id, setIndex: 0, reps: 15, weight: 90)
+        XCTAssertEqual(store.trackedSetCamera[exercise.id], [false], "a mid-session hand edit gives the mark up")
 
         // A hand edit gives the mark up; an untouched exercise keeps it.
         let marked = entry([50, 60], camera: [false, true])
@@ -1324,6 +1326,10 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(h.sessions.first?.exercises.first?.warmups, [true, false])
         XCTAssertEqual(h.sessions.first?.exercises.first?.weights, [40, 82.5])
         XCTAssertNil(WorkoutImport.parse("name,age\nA,3"), "an unrelated CSV is refused")
+        XCTAssertNil(WorkoutImport.parse("Date,Exercise Name,Reps\n2026-01-01 10:00:00,Squat,5"),
+                     "a look-alike without either app's signature columns is refused")
+        let hostile = strong + "\n2026-05-14 07:00:00,\"Bad\",inf,\"Squat (Barbell)\",1,nan,1e30,,,,,nan"
+        XCTAssertEqual(WorkoutImport.parse(hostile)?.sessions.count, 2, "nan / inf / 1e30 cells skip the row, never crash")
         XCTAssertEqual(WorkoutImport.minutes(from: "01:02:00"), 62)
 
         let store = MorpheAppStore()
@@ -1338,6 +1344,12 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(again.fresh.count, 0)
         XCTAssertEqual(again.duplicates, 2)
         XCTAssertEqual(store.commitImport(again, unit: .pounds), 0)
+        XCTAssertTrue(store.currentAthleteWorkoutLogs.first { $0.workoutTitle == "Upper A" }?.isImported == true)
+        // The same file after the phone's clock moved: the file's own date
+        // text is the identity, so nothing doubles.
+        var shifted = try XCTUnwrap(WorkoutImport.parse(strong))
+        for i in shifted.sessions.indices { shifted.sessions[i].date.addTimeInterval(3 * 3600) }
+        XCTAssertEqual(store.planImport(shifted).fresh.count, 0, "a time-zone change must not duplicate history")
     }
 
     /// Rebuild wave (2026-08): the retraction classifier — the engine

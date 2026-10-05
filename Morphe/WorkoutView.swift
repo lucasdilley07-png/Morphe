@@ -229,9 +229,11 @@ struct WorkoutView: View {
     /// voice logging does (audit 30).
     private func logCameraSet(reps: Int, rpe: Int?, on exercise: WorkoutExercise) {
         guard reps > 0 else { return }
-        let weight = store.lastSessionWeight(for: exercise.id)
-            ?? store.suggestedWorkingWeight(for: exercise)
-            ?? 0
+        // The weight is the lifter's word: the number on the console's own
+        // stepper, else the last weight they entered — never a suggestion
+        // nobody confirmed (audit 32: an auto-bumped load could mint a
+        // sealed record).
+        let weight = pendingWeight > 0 ? pendingWeight : (store.lastSessionWeight(for: exercise.id) ?? 0)
         // The camera counted these reps — the set carries the mark.
         _ = store.completeTrackedSet(reps: reps, weight: weight, rpe: rpe, allowExtra: true, cameraCounted: true)
     }

@@ -56,9 +56,9 @@ in the app.** These events are deleted with your account.
   to pre-fill your morning check-in slider.
 
 - **Apple Watch heart rate:** during a workout, the watch app reads your
-  heart rate and active energy to show them on your wrist. They stay on
-  the watch. The workout itself is saved to Apple Health only when "Sync
-  to Health" is on; otherwise it is discarded when the session ends.
+  heart rate and active energy to show them on your wrist. Morphe does
+  not store them or send them anywhere, and the watch app never saves a
+  workout of its own.
 
 Health data is used only for the features above. It is **never** used for
 advertising, never sold, and never shared with third parties. Both toggles

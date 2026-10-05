@@ -97,10 +97,7 @@ extension MorpheAppStore {
             "sessionActive": isWorkoutSessionActive,
             "workoutName": currentWorkout.name,
             "unit": weightUnit == .kilograms ? "kg" : "lb",
-            "workoutComplete": isTrackedWorkoutComplete,
-            // The wrist saves its recorded workout to Health only when
-            // this is on (2026-10-04).
-            "healthSync": healthSyncEnabled
+            "workoutComplete": isTrackedWorkoutComplete
         ]
         if let exercise = activeWorkoutExercise {
             let setsTarget = Self.watchSetCount(exercise.sets)
@@ -146,11 +143,6 @@ extension MorpheAppStore {
             }
             reply.merge(watchSnapshot()) { a, _ in a }
             return reply
-        case "recording":
-            // The watch is recording this session into Health with heart
-            // rate — the phone must not write a second, bare workout.
-            watchIsRecordingToHealth = (message["on"] as? Bool ?? false) && isWorkoutSessionActive
-            return watchSnapshot()
         case "next":
             goToNextTrackedExercise()
             return watchSnapshot()
