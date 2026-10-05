@@ -3828,7 +3828,6 @@ struct DiscoverCatalogSection: View {
                     }
                 }
             } else {
-            techniqueLibraryCard
             newThisWeekSection
             mostDoneSection
             ForEach(Self.families, id: \.name) { family in
@@ -3854,6 +3853,9 @@ struct DiscoverCatalogSection: View {
 
             // Connect / scan lives on Network now (Lucas 2026-10-04) —
             // pairing belongs with the people, not the workout shelf.
+
+            // Under the workouts, above Programs (Lucas 2026-10-04).
+            techniqueLibraryCard
             }
         }
     }
