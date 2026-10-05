@@ -90,7 +90,7 @@ First release of Morphe. Build workouts, log real sets by hand or by voice, let 
 - **Price:** Free
 - **Bundle ID:** com.morpheapp.Morphe
 - **Version:** 1.0
-- **Privacy Policy URL:** https://lucasdilley07-png.github.io/Morphe/privacy.html (live once GitHub Pages is enabled — LAUNCH_CHECKLIST step 1)
+- **Privacy Policy URL:** https://lucasdilley07-png.github.io/Morphe/privacy.html (live since 2026-10-05 — LAUNCH_CHECKLIST step 1)
 - **Support URL:** https://lucasdilley07-png.github.io/Morphe/support.html
 - **Marketing URL:** https://lucasdilley07-png.github.io/Morphe/
 

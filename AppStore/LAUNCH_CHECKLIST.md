@@ -25,7 +25,7 @@ accounts. Refreshed 2026-10-03 for the Spartan build (1.0, build 2).
 
 ## ⏳ Needs you before upload (in order)
 
-### 1. GitHub Pages (5 min) — unblocks the three URLs
+### 1. GitHub Pages — DONE 2026-10-05 (site live at the three URLs below)
 Repo → **Settings → Pages** → Source **Deploy from a branch**, Branch
 `main`, Folder `/docs` → Save. In a minute:
 - Privacy: https://lucasdilley07-png.github.io/Morphe/privacy.html
