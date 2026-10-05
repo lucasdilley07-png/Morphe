@@ -36,7 +36,8 @@ struct WorkoutView: View {
     @State private var showDiscardConfirm = false
     @State private var showLibrary = false
     @State private var showSessionQueue = false
-    @State private var showHistory = false
+    /// Runs after the library sheet finishes dismissing.
+    @State private var pendingLibraryAction: (() -> Void)?
     @State private var showBuilder = false
     @State private var showFormCheck = false
     @State private var showCircuitMode = false
@@ -198,6 +199,29 @@ struct WorkoutView: View {
                     .environment(store)
             }
         )
+    }
+
+    /// Close the library sheet, then act — two presentations can't overlap.
+    private func afterLibrary(_ action: @escaping () -> Void) {
+        pendingLibraryAction = action
+        showLibrary = false
+    }
+
+    private var libraryCardDetail: String {
+        let saved = store.savedWorkouts.count
+        let built = store.workoutTemplates.filter { store.isCustomWorkout($0.id) }.count
+        if saved == 0, built == 0 { return "Nothing saved yet. Build a workout or save one from Discover." }
+        var parts: [String] = []
+        if saved > 0 { parts.append("\(saved) saved") }
+        if built > 0 { parts.append("\(built) built") }
+        return parts.joined(separator: " · ")
+    }
+
+    private var progressCardDetail: String {
+        let sessions = store.currentAthleteWorkoutLogs.count
+        return sessions == 0
+            ? "History, records and charts start with your first logged session."
+            : "\(sessions) session\(sessions == 1 ? "" : "s") logged. History, records and charts."
     }
 
     /// Form Check, matched to the exercise the user is actually on. Split
@@ -834,13 +858,41 @@ struct WorkoutView: View {
                 }
 
                 if !store.hasCompletedWorkoutFlow {
-                TrainExpandableSection(
+                // A tap-through card like Today's Schedule (Lucas
+                // 2026-10-05) — the library opens as its own page instead
+                // of unfolding in the middle of Train.
+                TrainLinkCard(
+                    systemImage: "books.vertical",
                     title: "My Library",
-                    subtitle: "Build your own workouts and keep favorites and saved sessions in one place.",
-                    isExpanded: $showLibrary
+                    detail: libraryCardDetail
                 ) {
+                    showLibrary = true
+                }
+                .sheet(isPresented: $showLibrary, onDismiss: {
+                    // Starting, queuing, building and editing all present
+                    // from Train — they run once this sheet is gone.
+                    let action = pendingLibraryAction
+                    pendingLibraryAction = nil
+                    action?()
+                }) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack(alignment: .firstTextBaseline) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("My Library")
+                                        .font(.title2.weight(.bold))
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                    Text("Your builds, favorites and saved sessions.")
+                                        .font(.subheadline)
+                                        .foregroundStyle(MorpheTheme.textSecondary)
+                                }
+                                Spacer(minLength: 8)
+                                Button("Done") { showLibrary = false }
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                    .frame(minWidth: 44, minHeight: 44)
+                            }
                     Button {
-                        showBuilder = true
+                        afterLibrary { showBuilder = true }
                     } label: {
                         Label("Build Workout", systemImage: "plus.circle.fill")
                     }
@@ -855,14 +907,16 @@ struct WorkoutView: View {
                             store.savedWorkoutInsight(for: item)
                         },
                         onStart: { item in
-                            isShowingPainFlow = false
-                            store.startSavedWorkout(item)
+                            afterLibrary {
+                                isShowingPainFlow = false
+                                store.startSavedWorkout(item)
+                            }
                         },
                         onQueue: { item in
-                            store.queueSavedWorkout(item)
+                            afterLibrary { store.queueSavedWorkout(item) }
                         },
                         onWithBuddy: { item in
-                            store.startSavedWorkoutWithBuddy(item)
+                            afterLibrary { store.startSavedWorkoutWithBuddy(item) }
                         },
                         onDuplicate: { item in
                             store.duplicateSavedWorkout(item)
@@ -875,19 +929,21 @@ struct WorkoutView: View {
                         },
                         onEdit: { item in
                             if let templateID = store.editableTemplateID(for: item) {
-                                editingWorkout = EditingWorkout(id: templateID)
+                                afterLibrary { editingWorkout = EditingWorkout(id: templateID) }
                             }
                         },
                         builtWorkouts: store.workoutTemplates.filter { store.isCustomWorkout($0.id) },
                         onStartBuilt: { template in
-                            isShowingPainFlow = false
-                            store.beginLiveWorkout(template)
+                            afterLibrary {
+                                isShowingPainFlow = false
+                                store.beginLiveWorkout(template)
+                            }
                         },
                         onQueueBuilt: { template in
-                            store.openWorkoutTemplate(template)
+                            afterLibrary { store.openWorkoutTemplate(template) }
                         },
                         onEditBuilt: { template in
-                            editingWorkout = EditingWorkout(id: template.id)
+                            afterLibrary { editingWorkout = EditingWorkout(id: template.id) }
                         },
                         onDeleteBuilt: { template in
                             workoutPendingDelete = template
@@ -907,6 +963,14 @@ struct WorkoutView: View {
                         }
                         Button("Keep It", role: .cancel) {}
                     }
+                        }
+                        .padding(20)
+                    }
+                    .background(PremiumBackground().ignoresSafeArea())
+                    .environment(store)
+                    .presentationDetents([.large])
+                    .presentationCornerRadius(28)
+                    .sheetToastSurface()
                 }
                 .id("myLibrary")
                 }
@@ -925,34 +989,14 @@ struct WorkoutView: View {
                     }
                 }
 
-                TrainExpandableSection(
-                    title: "Form help and history",
-                    subtitle: "Open your library help or check recent sessions without crowding the start of the workout page.",
-                    isExpanded: $showHistory
+                // Progress takes this slot (Lucas 2026-10-05): history,
+                // records and charts are one tap from where the work is.
+                TrainLinkCard(
+                    systemImage: "chart.line.uptrend.xyaxis",
+                    title: "Progress",
+                    detail: progressCardDetail
                 ) {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Need form help or substitutions?")
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            Text("Open Learn for the exercise library and beginner-friendly form help, or swap a move from Session tools once you start.")
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                            HStack(spacing: 10) {
-                                Button("Library") {
-                                    store.openMore(.library)
-                                }
-                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accentAlt))
-                                .accessibilityLabel("Open exercise library")
-
-                                Button("Quick Tools") {
-                                    store.openMore(.tools)
-                                }
-                                .buttonStyle(SecondaryCTAButtonStyle())
-                            }
-                        }
-                    }
-
-                    WorkoutHistoryCard(entries: store.workoutHistory)
+                    store.openProgress()
                 }
                 }
             }
@@ -2147,6 +2191,47 @@ private struct LiveWorkoutConsoleCard: View {
 }
 
 /// Entry point for the camera form coach (Phase 1: framing + reps).
+/// A full-width tap-through row — the same shape as Today's Schedule card.
+private struct TrainLinkCard: View {
+    let systemImage: String
+    let title: String
+    let detail: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            GlassCard(.quiet) {
+                HStack(spacing: 12) {
+                    Image(systemName: systemImage)
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(width: 28)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text(detail)
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens \(title)")
+    }
+}
+
 private struct TrainExpandableSection<Content: View>: View {
     let title: String
     let subtitle: String
