@@ -336,3 +336,204 @@ final class WorkoutFilePersistence: WorkoutPersisting {
         try? FileManager.default.removeItem(at: libraryURL)
     }
 }
+
+// MARK: - Import from other trackers (2026-10-04)
+//
+// Reads the per-set CSV that Strong and Hevy export, by HEADER NAME rather
+// than column position, so either app's file (and small format drift) maps
+// onto the same shape. Pure: text in, sessions out. Rows without reps
+// (timed or distance work) are counted and skipped, never guessed at.
+
+enum WorkoutImport {
+    struct Exercise: Equatable {
+        var name: String
+        var reps: [Int] = []
+        var weights: [Double] = []
+        var rpes: [Int] = []
+        var warmups: [Bool] = []
+    }
+
+    struct Session: Equatable {
+        var title: String
+        var date: Date
+        var durationMinutes: Int
+        var exercises: [Exercise]
+        var setCount: Int { exercises.reduce(0) { $0 + $1.reps.count } }
+    }
+
+    struct Parsed: Equatable {
+        var sessions: [Session]
+        var skippedRows: Int
+        /// "lb" / "kg" when the file itself says; nil = the user must say.
+        var unitInFile: String?
+        var sourceApp: String
+    }
+
+    /// RFC-4180-style split: quoted fields, doubled quotes, CR/LF.
+    static func rows(_ text: String, delimiter: Character) -> [[String]] {
+        var rows: [[String]] = []
+        var row: [String] = []
+        var field = ""
+        var quoted = false
+        var iterator = text.makeIterator()
+        var pending: Character? = nil
+        func next() -> Character? {
+            if let p = pending { pending = nil; return p }
+            return iterator.next()
+        }
+        while let ch = next() {
+            if quoted {
+                if ch == "\"" {
+                    if let after = next() {
+                        if after == "\"" { field.append("\"") } else { quoted = false; pending = after }
+                    } else { quoted = false }
+                } else { field.append(ch) }
+            } else if ch == "\"" {
+                quoted = true
+            } else if ch == delimiter {
+                row.append(field); field = ""
+            } else if ch == "\n" || ch == "\r\n" || ch == "\r" {
+                row.append(field); field = ""
+                if !(row.count == 1 && row[0].isEmpty) { rows.append(row) }
+                row = []
+            } else {
+                field.append(ch)
+            }
+        }
+        row.append(field)
+        if !(row.count == 1 && row[0].isEmpty) { rows.append(row) }
+        return rows
+    }
+
+    private static func key(_ header: String) -> String {
+        header.lowercased().filter { $0.isLetter || $0.isNumber }
+    }
+
+    private static let dateFormats = [
+        "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "d MMM yyyy, HH:mm",
+        "yyyy-MM-dd'T'HH:mm:ssXXXXX", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd"
+    ]
+
+    static func date(from text: String) -> Date? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        for format in dateFormats {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: trimmed) { return date }
+        }
+        return nil
+    }
+
+    /// "1h 5m", "45m", "01:02:00", "3720" (seconds) → minutes.
+    static func minutes(from text: String) -> Int? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !trimmed.isEmpty else { return nil }
+        let clock = trimmed.split(separator: ":").compactMap { Int($0) }
+        if trimmed.contains(":"), clock.count == 3 { return clock[0] * 60 + clock[1] + (clock[2] >= 30 ? 1 : 0) }
+        if trimmed.contains(":"), clock.count == 2 { return clock[0] * 60 + clock[1] }
+        if trimmed.contains("h") || trimmed.contains("m") {
+            var total = 0
+            var digits = ""
+            for ch in trimmed {
+                if ch.isNumber { digits.append(ch) }
+                else if ch == "h" { total += (Int(digits) ?? 0) * 60; digits = "" }
+                else if ch == "m" { total += Int(digits) ?? 0; digits = "" }
+                else if ch == "s" { digits = "" }
+            }
+            return total > 0 ? total : nil
+        }
+        if let seconds = Double(trimmed) { return max(Int((seconds / 60).rounded()), 1) }
+        return nil
+    }
+
+    static func parse(_ raw: String) -> Parsed? {
+        var text = raw
+        if text.hasPrefix("\u{FEFF}") { text.removeFirst() }
+        guard let headerLine = text.split(whereSeparator: \.isNewline).first else { return nil }
+        let delimiter: Character = headerLine.filter { $0 == ";" }.count > headerLine.filter { $0 == "," }.count ? ";" : ","
+        let table = rows(text, delimiter: delimiter)
+        guard table.count >= 2 else { return nil }
+        let headers = table[0].map(key)
+        func column(_ names: [String]) -> Int? { names.compactMap { headers.firstIndex(of: $0) }.first }
+
+        guard let dateCol = column(["date", "starttime"]),
+              let exerciseCol = column(["exercisename", "exercisetitle"]),
+              let repsCol = column(["reps"]) else { return nil }
+        let titleCol = column(["workoutname", "title"])
+        let weightCol = column(["weight", "weightlbs", "weightlb", "weightkg"])
+        let unitCol = column(["weightunit"])
+        let rpeCol = column(["rpe"])
+        let typeCol = column(["settype"])
+        let orderCol = column(["setorder", "setindex"])
+        let durationCol = column(["duration"])
+        let endCol = column(["endtime"])
+        let hevy = headers.contains("exercisetitle")
+
+        var unit: String?
+        if let weightCol {
+            if headers[weightCol].hasSuffix("kg") { unit = "kg" }
+            if headers[weightCol].hasSuffix("lbs") || headers[weightCol].hasSuffix("lb") { unit = "lb" }
+        }
+
+        var sessions: [Session] = []
+        var index: [String: Int] = [:]
+        var skipped = 0
+        for row in table.dropFirst().prefix(50_000) {
+            func cell(_ col: Int?) -> String {
+                guard let col, row.indices.contains(col) else { return "" }
+                return row[col].trimmingCharacters(in: .whitespaces)
+            }
+            func number(_ col: Int?) -> Double? {
+                var value = cell(col)
+                if delimiter == ";" { value = value.replacingOccurrences(of: ",", with: ".") }
+                return Double(value)
+            }
+            let order = cell(orderCol).lowercased()
+            let name = cell(exerciseCol)
+            guard !name.isEmpty, order != "rest timer", order != "note",
+                  let date = date(from: cell(dateCol)),
+                  let reps = number(repsCol).map({ Int($0.rounded()) }), reps > 0, reps <= 1_000 else {
+                skipped += 1
+                continue
+            }
+            if unit == nil, !cell(unitCol).isEmpty {
+                unit = cell(unitCol).lowercased().hasPrefix("k") ? "kg" : "lb"
+            }
+            let title = cell(titleCol).isEmpty ? "Imported Workout" : cell(titleCol)
+            let sessionKey = "\(cell(dateCol))|\(title)"
+            let sessionIndex: Int
+            if let found = index[sessionKey] {
+                sessionIndex = found
+            } else {
+                var duration = minutes(from: cell(durationCol))
+                if duration == nil, let end = WorkoutImport.date(from: cell(endCol)), end > date {
+                    duration = Int((end.timeIntervalSince(date) / 60).rounded())
+                }
+                sessions.append(Session(title: String(title.prefix(80)), date: date,
+                                        durationMinutes: min(max(duration ?? 45, 5), 300), exercises: []))
+                sessionIndex = sessions.count - 1
+                index[sessionKey] = sessionIndex
+            }
+            // Sets of one exercise stay together even when a superset
+            // interleaves rows in the file.
+            let exerciseIndex: Int
+            if let found = sessions[sessionIndex].exercises.firstIndex(where: { $0.name == name }) {
+                exerciseIndex = found
+            } else {
+                sessions[sessionIndex].exercises.append(Exercise(name: String(name.prefix(80))))
+                exerciseIndex = sessions[sessionIndex].exercises.count - 1
+            }
+            let type = cell(typeCol).lowercased()
+            let rpe = number(rpeCol).map { Int($0.rounded()) } ?? 0
+            sessions[sessionIndex].exercises[exerciseIndex].reps.append(reps)
+            sessions[sessionIndex].exercises[exerciseIndex].weights.append(min(max(number(weightCol) ?? 0, 0), 2_500))
+            sessions[sessionIndex].exercises[exerciseIndex].rpes.append((6...10).contains(rpe) ? rpe : 0)
+            sessions[sessionIndex].exercises[exerciseIndex].warmups.append(type.hasPrefix("warm") || order == "w")
+        }
+        guard !sessions.isEmpty else { return nil }
+        return Parsed(sessions: sessions.sorted { $0.date < $1.date }, skippedRows: skipped,
+                      unitInFile: unit, sourceApp: hevy ? "Hevy" : "Strong")
+    }
+}

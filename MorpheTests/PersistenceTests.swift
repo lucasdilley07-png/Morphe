@@ -1291,6 +1291,55 @@ final class WorkoutSessionTests: XCTestCase {
         print("PLAN_GRID built \(built) of 720")
     }
 
+    /// Import (2026-10-04): Strong's and Hevy's per-set CSVs map onto the
+    /// same sessions by header name; timed rows are skipped and counted;
+    /// a second import of the same file adds nothing.
+    @MainActor
+    func testImportReadsStrongAndHevyAndNeverDoublesUp() throws {
+        let strong = """
+        Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE
+        2026-05-11 18:30:00,"Upper A",1h 2m,"Bench Press (Barbell)",1,135,8,,,,,
+        2026-05-11 18:30:00,"Upper A",1h 2m,"Bench Press (Barbell)",2,185,5,,,"Paused, first rep",,8
+        2026-05-11 18:30:00,"Upper A",1h 2m,"Plank",1,0,0,,60,,,
+        2026-05-13 07:00:00,"Lower A",45m,"Squat (Barbell)",1,225,5,,,,,9
+        """
+        let parsed = try XCTUnwrap(WorkoutImport.parse(strong))
+        XCTAssertEqual(parsed.sourceApp, "Strong")
+        XCTAssertNil(parsed.unitInFile, "Strong's file doesn't state a unit")
+        XCTAssertEqual(parsed.sessions.map(\.title), ["Upper A", "Lower A"])
+        XCTAssertEqual(parsed.sessions[0].durationMinutes, 62)
+        XCTAssertEqual(parsed.sessions[0].exercises.first?.weights, [135, 185])
+        XCTAssertEqual(parsed.sessions[0].exercises.first?.rpes, [0, 8])
+        XCTAssertEqual(parsed.skippedRows, 1, "the timed plank row has no reps")
+
+        let hevy = """
+        "title","start_time","end_time","description","exercise_title","superset_id","exercise_notes","set_index","set_type","weight_kg","reps","distance_km","duration_seconds","rpe"
+        "Push Day","28 Feb 2026, 18:05","28 Feb 2026, 19:10","","Bench Press (Barbell)",,"",0,"warmup",40,10,,,
+        "Push Day","28 Feb 2026, 18:05","28 Feb 2026, 19:10","","Bench Press (Barbell)",,"",1,"normal",82.5,5,,,8.5
+        """
+        let h = try XCTUnwrap(WorkoutImport.parse(hevy))
+        XCTAssertEqual(h.sourceApp, "Hevy")
+        XCTAssertEqual(h.unitInFile, "kg")
+        XCTAssertEqual(h.sessions.first?.durationMinutes, 65, "end minus start")
+        XCTAssertEqual(h.sessions.first?.exercises.first?.warmups, [true, false])
+        XCTAssertEqual(h.sessions.first?.exercises.first?.weights, [40, 82.5])
+        XCTAssertNil(WorkoutImport.parse("name,age\nA,3"), "an unrelated CSV is refused")
+        XCTAssertEqual(WorkoutImport.minutes(from: "01:02:00"), 62)
+
+        let store = MorpheAppStore()
+        let before = store.currentAthleteWorkoutLogs.count
+        let plan = try XCTUnwrap(store.planImport(csv: strong))
+        XCTAssertEqual(store.commitImport(plan, unit: .pounds), 2)
+        XCTAssertEqual(store.currentAthleteWorkoutLogs.count, before + 2)
+        let bench = store.currentAthleteWorkoutLogs.first { $0.workoutTitle == "Upper A" }?.exercises.first
+        XCTAssertEqual(bench?.weightsPerSet, [135, 185])
+        XCTAssertEqual(bench?.weightUnit, WeightUnit.pounds.rawValue)
+        let again = try XCTUnwrap(store.planImport(csv: strong))
+        XCTAssertEqual(again.fresh.count, 0)
+        XCTAssertEqual(again.duplicates, 2)
+        XCTAssertEqual(store.commitImport(again, unit: .pounds), 0)
+    }
+
     /// Rebuild wave (2026-08): the retraction classifier — the engine
     /// drops these before onCommand ever fires.
     func testCancelPhraseClassifier() {

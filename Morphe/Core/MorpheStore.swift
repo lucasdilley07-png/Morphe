@@ -14350,6 +14350,83 @@ final class MorpheAppStore {
         return true
     }
 
+    // MARK: Import from another tracker (2026-10-04)
+
+    struct ImportPlan {
+        var parsed: WorkoutImport.Parsed
+        /// Sessions not already in the log (same title within a minute).
+        var fresh: [WorkoutImport.Session]
+        var duplicates: Int
+        var setCount: Int { fresh.reduce(0) { $0 + $1.setCount } }
+    }
+
+    /// Reads the file and says what an import WOULD add — nothing is
+    /// written until `commitImport`.
+    func planImport(csv text: String) -> ImportPlan? {
+        guard let parsed = WorkoutImport.parse(text) else { return nil }
+        let mine = currentAthleteWorkoutLogs
+        let fresh = parsed.sessions.filter { session in
+            !mine.contains {
+                $0.workoutTitle == session.title && abs($0.completedAt.timeIntervalSince(session.date)) < 60
+            }
+        }
+        return ImportPlan(parsed: parsed, fresh: fresh, duplicates: parsed.sessions.count - fresh.count)
+    }
+
+    /// Writes the planned sessions as ordinary logs in ONE mutation. They
+    /// are history: no XP, no celebrations, no board post. The note says
+    /// where each came from.
+    @discardableResult
+    func commitImport(_ plan: ImportPlan, unit: WeightUnit) -> Int {
+        guard !plan.fresh.isEmpty else { return 0 }
+        let groups = Dictionary(exerciseDatabase.map { ($0.name.lowercased(), $0.muscleGroup.rawValue) },
+                                uniquingKeysWith: { first, _ in first })
+        let logs: [WorkoutLog] = plan.fresh.map { session in
+            WorkoutLog(
+                athleteID: clientProfile.id,
+                athleteName: clientProfile.name,
+                workoutTemplateID: nil,
+                workoutTitle: session.title,
+                sport: .generalFitness,
+                completedAt: session.date,
+                durationMinutes: session.durationMinutes,
+                exercises: session.exercises.map { exercise in
+                    let working = zip(exercise.weights, exercise.warmups).filter { !$0.1 }.map(\.0)
+                    let top = (working.isEmpty ? exercise.weights : working).max() ?? 0
+                    let rated = exercise.rpes.filter { $0 > 0 }
+                    return LoggedExercise(
+                        name: exercise.name,
+                        sets: "\(exercise.reps.count) sets",
+                        reps: exercise.reps.map(String.init).joined(separator: ", "),
+                        weight: top > 0 ? unit.format(top) : "Bodyweight",
+                        note: "",
+                        rpe: rated.isEmpty ? nil : rated.map(String.init).joined(separator: ", "),
+                        repsPerSet: exercise.reps,
+                        weightsPerSet: exercise.weights,
+                        rpePerSet: exercise.rpes,
+                        weightUnit: unit.rawValue,
+                        muscleGroup: groups[exercise.name.lowercased()],
+                        warmupPerSet: exercise.warmups.contains(true) ? exercise.warmups : nil
+                    )
+                },
+                notes: "Imported from \(plan.parsed.sourceApp) on \(Self.workoutDateLabel(for: .now)).",
+                source: .athleteManual,
+                enteredByUserID: clientProfile.id,
+                enteredByRole: .client,
+                enteredByName: clientProfile.name,
+                verificationStatus: .athleteSubmitted
+            )
+        }
+        workoutLogs = (workoutLogs + logs).sorted { $0.completedAt > $1.completedAt }
+        refreshWorkoutLogDerivedState(for: clientProfile.id)
+        refreshStyleProfile()
+        refreshStreakRiskReminder()
+        refreshWeeklyRecapReminder()
+        detectStreakLapse()
+        track("history_imported")
+        return logs.count
+    }
+
     // MARK: Athlete-owned log corrections
     //
     // Your log, your call — a fat-fingered 500lb bench must not be

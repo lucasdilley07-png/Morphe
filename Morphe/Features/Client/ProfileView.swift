@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import PhotosUI
 
 struct ProfileView: View {
@@ -33,6 +34,9 @@ struct ProfileView: View {
         var id: String { url.absoluteString }
     }
     @State private var exportFile: ExportFile?
+    @State private var showImportPicker = false
+    @State private var importPlan: MorpheAppStore.ImportPlan?
+    @State private var showImportReview = false
     @State private var showPaywall = false
     @State private var showingCode = false
 
@@ -1527,6 +1531,47 @@ struct ProfileView: View {
                         .accessibilityLabel("Export your data as JSON")
                     }
 
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Bring your history")
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Text("Import the workout CSV that Hevy or Strong exports. You see what will be added before anything is saved.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
+                        Button("Import") { showImportPicker = true }
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .frame(width: 120)
+                            .accessibilityLabel("Import workout history from a CSV file")
+                    }
+                    .fileImporter(isPresented: $showImportPicker,
+                                  allowedContentTypes: [.commaSeparatedText, .plainText]) { result in
+                        guard case .success(let url) = result else { return }
+                        let scoped = url.startAccessingSecurityScopedResource()
+                        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                        guard let data = try? Data(contentsOf: url), data.count <= 20_000_000,
+                              let text = String(data: data, encoding: .utf8)
+                                ?? String(data: data, encoding: .isoLatin1),
+                              let plan = store.planImport(csv: text) else {
+                            store.showToast("That file doesn't read as a Hevy or Strong workout export.")
+                            return
+                        }
+                        importPlan = plan
+                        showImportReview = true
+                    }
+                    .sheet(isPresented: $showImportReview) {
+                        if let importPlan {
+                            ImportReviewSheet(plan: importPlan)
+                                .environment(store)
+                                .presentationDetents([.medium, .large])
+                                .presentationCornerRadius(28)
+                        }
+                    }
+
 
                     // Backup health — failures used to be invisible (the
                     // upload was fire-and-forget). Only rendered when a real
@@ -2292,5 +2337,100 @@ private struct IntelligenceKeyEditor: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Import review (2026-10-04)
+
+/// What the file holds and what would be added — the user confirms the
+/// numbers (and the unit, when the file doesn't state one) before a single
+/// log is written.
+struct ImportReviewSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let plan: MorpheAppStore.ImportPlan
+    @State private var unit: WeightUnit = .pounds
+    @State private var seeded = false
+
+    private static let dayFormat: Date.FormatStyle = .dateTime.month(.abbreviated).day().year()
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Import from \(plan.parsed.sourceApp)")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    if let first = plan.fresh.first?.date, let last = plan.fresh.last?.date {
+                        Text("\(first.formatted(Self.dayFormat)) to \(last.formatted(Self.dayFormat))")
+                            .font(.subheadline)
+                            .monospacedDigit()
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    MetricPill(label: "Workouts", value: plan.fresh.count.formatted())
+                    MetricPill(label: "Sets", value: plan.setCount.formatted())
+                }
+
+                if plan.duplicates > 0 {
+                    note("\(plan.duplicates) workout\(plan.duplicates == 1 ? " is" : "s are") already in your log and will be left alone.")
+                }
+                if plan.parsed.skippedRows > 0 {
+                    note("\(plan.parsed.skippedRows) row\(plan.parsed.skippedRows == 1 ? "" : "s") without reps (timed or distance work, rest timers) will be skipped.")
+                }
+
+                if plan.parsed.unitInFile == nil {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("The file doesn't say which unit its weights are in.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Picker("Weights in the file", selection: $unit) {
+                            ForEach(WeightUnit.allCases) { option in
+                                Text(option.label).tag(option)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                } else {
+                    note("Weights in the file are in \(unit.label).")
+                }
+
+                note("Imported workouts count toward your history, records and charts. They earn no XP and are marked as imported.")
+
+                Button(plan.fresh.isEmpty ? "Nothing New to Import" : "Import \(plan.fresh.count) Workout\(plan.fresh.count == 1 ? "" : "s")") {
+                    let added = store.commitImport(plan, unit: unit)
+                    Haptics.success()
+                    store.showToast("\(added) workout\(added == 1 ? "" : "s") added to your history.")
+                    dismiss()
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                .disabled(plan.fresh.isEmpty)
+                .opacity(plan.fresh.isEmpty ? 0.5 : 1)
+
+                Button("Cancel") { dismiss() }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+            }
+            .padding(20)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
+        .onAppear {
+            guard !seeded else { return }
+            seeded = true
+            if let inFile = plan.parsed.unitInFile {
+                unit = inFile == "kg" ? .kilograms : .pounds
+            } else {
+                unit = store.weightUnit
+            }
+        }
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(MorpheTheme.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
