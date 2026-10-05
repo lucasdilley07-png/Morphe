@@ -3399,8 +3399,6 @@ struct DiscoverCatalogSection: View {
     @State private var levelFilter: DemoDifficulty?
     @State private var durationFilter: String?
     @State private var equipmentFilter: String?
-    @State private var showQRConnect = false
-    @State private var qrStartMode: QRConnectSheet.Mode = .show
     /// The workout whose exercises/sets/reps breakdown is open.
     @State private var detailTemplate: WorkoutTemplate?
     @State private var showTechniqueLibrary = false
@@ -3564,11 +3562,6 @@ struct DiscoverCatalogSection: View {
                 TechniqueLibraryView(
                     initialQuery: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines))
                     .environment(store)
-            }
-            .sheet(isPresented: $showQRConnect) {
-                QRConnectSheet(mode: qrStartMode)
-                    .environment(store)
-                    .sheetToastSurface()
             }
             .sheet(item: $detailTemplate) { template in
                 DiscoverWorkoutDetailSheet(template: template, onStart: { onStart(template) })
@@ -3777,48 +3770,6 @@ struct DiscoverCatalogSection: View {
         }
     }
 
-    /// QR connect entry (moved here from the Messages empty state): show your
-    /// Morphe code or scan a coach's / training partner's.
-    private var connectCard: some View {
-        GlassCard(.quiet) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Connect")
-                    .font(.headline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
-
-                Text("Train with people — show your Morphe code or scan a coach's.")
-                    .font(.subheadline)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-
-                HStack(spacing: 10) {
-                    Button {
-                        qrStartMode = .show
-                        showQRConnect = true
-                    } label: {
-                        Label("My Code", systemImage: "qrcode")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-
-                    Button {
-                        qrStartMode = .scan
-                        showQRConnect = true
-                    } label: {
-                        Label("Scan", systemImage: "qrcode.viewfinder")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                }
-
-                if !store.scannedConnections.isEmpty {
-                    Text("\(store.scannedConnections.count) connection\(store.scannedConnections.count == 1 ? "" : "s") saved")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-            }
-        }
-    }
-
     private var landingGrid: some View {
         let byCategory = Dictionary(grouping: filteredWorkouts, by: \.categoryTag)
 
@@ -3901,8 +3852,8 @@ struct DiscoverCatalogSection: View {
                 }
             }
 
-            // Social pairing sits below the workouts it used to outrank.
-            connectCard
+            // Connect / scan lives on Network now (Lucas 2026-10-04) —
+            // pairing belongs with the people, not the workout shelf.
             }
         }
     }

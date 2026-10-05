@@ -287,8 +287,14 @@ struct CommunityView: View {
         // The inbox always mounts now — its search bar is the new-chat door,
         // which has to exist even (especially) with zero conversations. The
         // inbox owns its own refresh and empty state.
-        AthleteInboxView(autoOpenOnlyThread: true)
-            .padding(.top, 6)
+        VStack(spacing: 10) {
+            // Connect lives with the people (Lucas 2026-10-04): show your
+            // Morphe code or scan a training partner's, right above chats.
+            QRConnectRow()
+                .padding(.horizontal, 20)
+            AthleteInboxView(autoOpenOnlyThread: true)
+        }
+        .padding(.top, 6)
     }
 
     private var communityHeaderControls: some View {
@@ -893,7 +899,7 @@ private struct AthleteContactEmptyState: View {
 
                 Text(isSearching
                      ? "Nobody in your contacts matches that search."
-                     : "Connect with your coach or a training partner from the Discover tab — show or scan a Morphe code under Connect.")
+                     : "Connect with a coach or a training partner: show your Morphe code or scan theirs, right above.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -4005,6 +4011,58 @@ private struct ClientConversationRow: View {
                     RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
                         .fill(backgroundColor)
                 )
+        }
+    }
+}
+
+/// Show-or-scan in one compact row: your Morphe code on the left, the
+/// scanner on the right. Self-contained — it owns its own sheet.
+struct QRConnectRow: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var showSheet = false
+    @State private var mode: QRConnectSheet.Mode = .show
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("CONNECT")
+                    .font(MorpheTheme.microLabel(10))
+                    .tracking(1.4)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Spacer(minLength: 8)
+                if !store.scannedConnections.isEmpty {
+                    Text("\(store.scannedConnections.count) saved")
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+            HStack(spacing: 10) {
+                Button {
+                    mode = .show
+                    showSheet = true
+                } label: {
+                    Label("My Code", systemImage: "qrcode")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .accessibilityHint("Shows your Morphe code for someone to scan")
+
+                Button {
+                    mode = .scan
+                    showSheet = true
+                } label: {
+                    Label("Scan", systemImage: "qrcode.viewfinder")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .accessibilityHint("Scans a coach's or training partner's Morphe code")
+            }
+        }
+        .sheet(isPresented: $showSheet) {
+            QRConnectSheet(mode: mode)
+                .environment(store)
+                .sheetToastSurface()
         }
     }
 }
