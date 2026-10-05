@@ -13515,8 +13515,9 @@ final class MorpheAppStore {
     //
     // Lucas 2026-10-04: a streak for opening the app every day — separate
     // from the TRAINING streak, which is schedule-aware and only moves on
-    // logged sessions. This one counts calendar days Morphe was opened,
-    // and breaks on the first day it wasn't. Per profile, on this device
+    // logged sessions. This one counts calendar days Morphe was opened.
+    // One missed day in seven is forgiven; a second one starts it over.
+    // Per profile, on this device
     // (UserDefaults — it does not travel to a new phone yet).
 
     private var dailyStreakCountKey: String { "morphe.dailystreak.count.\(clientProfile.id.uuidString)" }
@@ -13530,19 +13531,42 @@ final class MorpheAppStore {
     private(set) var dailyStreakDays = 0
     private(set) var dailyStreakBest = 0
 
-    /// The whole rule, pure so the tests can pin it: same day holds,
-    /// the day after adds one, anything else starts over at 1.
-    static func advancedDailyStreak(count: Int, lastDay: String, today: String) -> Int {
+    /// The day a missed day was last forgiven ("yyyy-MM-dd"), per profile.
+    private var dailyStreakFreezeDayKey: String { "morphe.dailystreak.freezeDay.\(clientProfile.id.uuidString)" }
+    /// True while a missed day can still be forgiven this week.
+    private(set) var dailyStreakFreezeAvailable = true
+    /// Set when today's open spent the freeze — the row says so once.
+    private(set) var dailyStreakFreezeJustUsed = false
+
+    /// Streaks forgive (app-design canon, law 4): one missed day in any
+    /// seven is bridged instead of zeroing the count.
+    static let dailyStreakFreezeWindowDays = 7
+
+    private static func daysBetween(_ from: String, _ to: String) -> Int? {
+        guard let a = date(fromDayKey: from), let b = date(fromDayKey: to) else { return nil }
+        return Calendar.current.dateComponents([.day], from: a, to: b).day
+    }
+
+    static func dailyStreakFreezeReady(lastFreezeDay: String, today: String) -> Bool {
+        guard !lastFreezeDay.isEmpty, let gap = daysBetween(lastFreezeDay, today) else { return true }
+        return gap >= dailyStreakFreezeWindowDays || gap < 0
+    }
+
+    /// The whole rule, pure so the tests can pin it: same day holds, the
+    /// day after adds one, ONE missed day is forgiven when a freeze is in
+    /// hand (the missed day itself does not count), anything else starts
+    /// over at 1.
+    static func advancedDailyStreak(
+        count: Int, lastDay: String, today: String, freezeReady: Bool = false
+    ) -> (count: Int, usedFreeze: Bool) {
         // "yyyy-MM-dd" sorts as a date. A last-open day AFTER today is
         // westward travel or a clock correction, not a missed day — hold
         // (audit 31: it reset the streak).
-        if !lastDay.isEmpty, lastDay >= today { return max(count, 1) }
-        if let todayDate = date(fromDayKey: today),
-           let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: todayDate),
-           dayKey(for: yesterday) == lastDay {
-            return max(count, 0) + 1
-        }
-        return 1
+        if !lastDay.isEmpty, lastDay >= today { return (max(count, 1), false) }
+        guard let gap = daysBetween(lastDay, today) else { return (1, false) }
+        if gap == 1 { return (max(count, 0) + 1, false) }
+        if gap == 2, freezeReady, count >= 1 { return (count + 1, true) }
+        return (1, false)
     }
 
     /// Called on every arrival in the app shell (Today appearing, each
@@ -13558,10 +13582,17 @@ final class MorpheAppStore {
         guard stamp != lastRecordedOpenStamp else { return }
         lastRecordedOpenStamp = stamp
         let lastDay = defaults.string(forKey: dailyStreakLastDayKey) ?? ""
-        let count = Self.advancedDailyStreak(
+        var freezeDay = defaults.string(forKey: dailyStreakFreezeDayKey) ?? ""
+        let step = Self.advancedDailyStreak(
             count: defaults.integer(forKey: dailyStreakCountKey),
             lastDay: lastDay,
-            today: today)
+            today: today,
+            freezeReady: Self.dailyStreakFreezeReady(lastFreezeDay: freezeDay, today: today))
+        if step.usedFreeze {
+            freezeDay = today
+            defaults.set(today, forKey: dailyStreakFreezeDayKey)
+        }
+        let count = step.count
         let best = max(defaults.integer(forKey: dailyStreakBestKey), count)
         defaults.set(count, forKey: dailyStreakCountKey)
         // Never moves backward — see advancedDailyStreak.
@@ -13569,8 +13600,44 @@ final class MorpheAppStore {
         defaults.set(best, forKey: dailyStreakBestKey)
         if dailyStreakDays != count { dailyStreakDays = count }
         if dailyStreakBest != best { dailyStreakBest = best }
+        dailyStreakFreezeAvailable = Self.dailyStreakFreezeReady(lastFreezeDay: freezeDay, today: today)
+        dailyStreakFreezeJustUsed = step.usedFreeze
         refreshDailyStreakReminder(now: now)
         refreshWeeklySayingReminders(now: now)
+    }
+
+    /// One ring at 8pm on the LAST evening that can still save the streak:
+    /// tomorrow when no missed day can be forgiven, the day after when one
+    /// can. Every open pushes it out, so it only fires on an evening the
+    /// streak would truly end at midnight. A 1-day streak isn't a loss
+    /// worth a push (same bar as training).
+    private func refreshDailyStreakReminder(now: Date = .now) {
+        guard !(appointmentService is NoOpAppointmentService) else { return }
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.dailyStreakNotificationID])
+        let streak = dailyStreakDays
+        guard remindersEnabled, streak >= 2 else { return }
+        let calendar = Calendar.current
+        let freeze = dailyStreakFreezeAvailable
+        guard let lastChance = calendar.date(byAdding: .day, value: freeze ? 2 : 1, to: now),
+              let fireDate = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: lastChance)
+        else { return }
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized
+                || settings.authorizationStatus == .provisional else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Your \(streak)-day streak ends at midnight"
+            content.body = freeze
+                ? "Yesterday was forgiven. Open Morphe before the day closes and it holds."
+                : "Open Morphe before the day closes and it holds."
+            content.sound = .default
+            let trigger = UNCalendarNotificationTrigger(
+                dateMatching: calendar.dateComponents(
+                    [.year, .month, .day, .hour, .minute], from: fireDate),
+                repeats: false)
+            center.add(UNNotificationRequest(
+                identifier: Self.dailyStreakNotificationID, content: content, trigger: trigger))
+        }
     }
 
     // MARK: Weekly saying (Lucas 2026-10-04)
@@ -13617,35 +13684,6 @@ final class MorpheAppStore {
                     repeats: false)
                 center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
             }
-        }
-    }
-
-    /// One ring at 8pm TOMORROW: every open pushes it a day out, so it can
-    /// only fire on an evening the streak would truly end at midnight.
-    /// A 1-day streak isn't a loss worth a push (same bar as training).
-    private func refreshDailyStreakReminder(now: Date = .now) {
-        guard !(appointmentService is NoOpAppointmentService) else { return }
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [Self.dailyStreakNotificationID])
-        let streak = dailyStreakDays
-        guard remindersEnabled, streak >= 2 else { return }
-        let calendar = Calendar.current
-        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
-              let fireDate = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: tomorrow)
-        else { return }
-        center.getNotificationSettings { settings in
-            guard settings.authorizationStatus == .authorized
-                || settings.authorizationStatus == .provisional else { return }
-            let content = UNMutableNotificationContent()
-            content.title = "Your \(streak)-day streak ends at midnight"
-            content.body = "Open Morphe before the day closes and it holds."
-            content.sound = .default
-            let trigger = UNCalendarNotificationTrigger(
-                dateMatching: calendar.dateComponents(
-                    [.year, .month, .day, .hour, .minute], from: fireDate),
-                repeats: false)
-            center.add(UNNotificationRequest(
-                identifier: Self.dailyStreakNotificationID, content: content, trigger: trigger))
         }
     }
 

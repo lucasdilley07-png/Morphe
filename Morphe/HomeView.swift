@@ -109,7 +109,11 @@ struct HomeView: View {
                 // Showing up, counted (Lucas 2026-10-04): days in a row the
                 // app was opened — its own number, not the training streak.
                 if store.dailyStreakDays >= 1 {
-                    DailyStreakRow(days: store.dailyStreakDays, best: store.dailyStreakBest)
+                    DailyStreakRow(
+                        days: store.dailyStreakDays,
+                        best: store.dailyStreakBest,
+                        freezeAvailable: store.dailyStreakFreezeAvailable,
+                        freezeJustUsed: store.dailyStreakFreezeJustUsed)
                 }
 
                 // Jarvis beat: the app asks, you answer, the day reshapes.
@@ -2093,8 +2097,42 @@ private struct FirstWeekCard: View {
 private struct DailyStreakRow: View {
     let days: Int
     let best: Int
+    /// A missed day can still be forgiven this week.
+    let freezeAvailable: Bool
+    /// Today's open spent it.
+    let freezeJustUsed: Bool
+
+    private var freezeLine: String? {
+        if freezeJustUsed { return "Yesterday forgiven. The streak holds." }
+        if days >= 2, freezeAvailable { return "One missed day is covered this week." }
+        return nil
+    }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            countLine
+            if let freezeLine {
+                Text(freezeLine)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, freezeLine == nil ? 0 : 8)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .stroke(MorpheTheme.strokeSubtle, lineWidth: 1)
+        )
+        .animation(.easeOut(duration: 0.2), value: days)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel((days == 1
+            ? "Daily streak: day one. Open Morphe tomorrow to build it."
+            : "Daily streak: \(days) days in a row" + (best > days ? ", best \(best)" : ""))
+            + (freezeLine.map { ". \($0)" } ?? ""))
+    }
+
+    private var countLine: some View {
         HStack(spacing: 10) {
             Image(systemName: "flame.fill")
                 .font(.subheadline.weight(.bold))
@@ -2118,16 +2156,5 @@ private struct DailyStreakRow: View {
                     .foregroundStyle(MorpheTheme.textMuted)
             }
         }
-        .padding(.horizontal, 16)
-        .frame(minHeight: 44)
-        .background(
-            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                .stroke(MorpheTheme.strokeSubtle, lineWidth: 1)
-        )
-        .animation(.easeOut(duration: 0.2), value: days)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(days == 1
-            ? "Daily streak: day one. Open Morphe tomorrow to build it."
-            : "Daily streak: \(days) days in a row" + (best > days ? ", best \(best)" : ""))
     }
 }

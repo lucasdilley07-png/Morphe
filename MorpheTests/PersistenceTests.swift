@@ -1088,20 +1088,29 @@ final class WorkoutSessionTests: XCTestCase {
 
     /// 2026-10-04: the daily (open-the-app) streak rule.
     @MainActor
-    func testDailyStreakHoldsAddsAndBreaks() {
+    func testDailyStreakHoldsAddsForgivesAndBreaks() {
         typealias S = MorpheAppStore
-        XCTAssertEqual(S.advancedDailyStreak(count: 0, lastDay: "", today: "2026-10-04"), 1,
-                       "first open ever is day one")
-        XCTAssertEqual(S.advancedDailyStreak(count: 3, lastDay: "2026-10-04", today: "2026-10-04"), 3,
-                       "a second open the same day changes nothing")
-        XCTAssertEqual(S.advancedDailyStreak(count: 3, lastDay: "2026-10-03", today: "2026-10-04"), 4,
-                       "the next calendar day adds one")
-        XCTAssertEqual(S.advancedDailyStreak(count: 9, lastDay: "2026-10-02", today: "2026-10-04"), 1,
-                       "a missed day starts over")
-        XCTAssertEqual(S.advancedDailyStreak(count: 5, lastDay: "2026-09-30", today: "2026-10-01"), 6,
-                       "month boundaries are still consecutive days")
-        XCTAssertEqual(S.advancedDailyStreak(count: 5, lastDay: "2026-10-05", today: "2026-10-04"), 5,
+        func step(_ count: Int, _ last: String, _ today: String, freeze: Bool = false) -> Int {
+            S.advancedDailyStreak(count: count, lastDay: last, today: today, freezeReady: freeze).count
+        }
+        XCTAssertEqual(step(0, "", "2026-10-04"), 1, "first open ever is day one")
+        XCTAssertEqual(step(3, "2026-10-04", "2026-10-04"), 3, "a second open the same day changes nothing")
+        XCTAssertEqual(step(3, "2026-10-03", "2026-10-04"), 4, "the next calendar day adds one")
+        XCTAssertEqual(step(9, "2026-10-02", "2026-10-04"), 1, "a missed day with no freeze starts over")
+        XCTAssertEqual(step(5, "2026-09-30", "2026-10-01"), 6, "month boundaries are still consecutive days")
+        XCTAssertEqual(step(5, "2026-10-05", "2026-10-04"), 5,
                        "flying west or a clock correction holds the streak — it never resets it or mints days")
+
+        // Streaks forgive: one missed day in seven is bridged.
+        let forgiven = S.advancedDailyStreak(count: 9, lastDay: "2026-10-02", today: "2026-10-04", freezeReady: true)
+        XCTAssertEqual(forgiven.count, 10, "today counts; the missed day does not")
+        XCTAssertTrue(forgiven.usedFreeze)
+        XCTAssertEqual(step(9, "2026-10-01", "2026-10-04", freeze: true), 1, "two missed days are not forgiven")
+        XCTAssertFalse(S.advancedDailyStreak(count: 3, lastDay: "2026-10-03", today: "2026-10-04", freezeReady: true).usedFreeze,
+                       "a consecutive day never spends the freeze")
+        XCTAssertTrue(S.dailyStreakFreezeReady(lastFreezeDay: "", today: "2026-10-04"))
+        XCTAssertFalse(S.dailyStreakFreezeReady(lastFreezeDay: "2026-10-01", today: "2026-10-04"))
+        XCTAssertTrue(S.dailyStreakFreezeReady(lastFreezeDay: "2026-09-27", today: "2026-10-04"), "back after seven days")
     }
 
     /// 2026-10-04: the weekly saying push walks the cited record in
