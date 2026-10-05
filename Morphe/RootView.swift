@@ -336,10 +336,13 @@ struct RootView: View {
             store.consumePendingProgressOpen()
             store.consumePendingDebriefOpen()
         }) {
-            NavigationStack {
-                MorpheAIAgentSheet()
-                    .environment(store)
+            AIChatPullToClose {
+                NavigationStack {
+                    MorpheAIAgentSheet()
+                        .environment(store)
+                }
             }
+            .environment(store)
             // Chat deliberately never queues the session-work gate (it
             // declines with an honest reply instead), so no dialog host here —
             // sheet teardown writing through the shared binding could cancel
@@ -856,6 +859,53 @@ private struct FloatingAIAgentButton: View {
     }
 }
 
+/// Pull down from the top of the chat to leave it (Lucas 2026-10-05). A
+/// full-screen cover has no swipe-to-dismiss of its own, so the top band
+/// of the page (header plus the first rows) listens for a downward drag:
+/// the page follows the finger and closes past 110pt or on a flick.
+/// Drags that start lower belong to the conversation's own scrolling.
+private struct AIChatPullToClose<Content: View>: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ViewBuilder let content: () -> Content
+    @State private var pull: CGFloat = 0
+    @State private var tracking = false
+
+    private var band: CGFloat { 150 }
+
+    var body: some View {
+        content()
+            .offset(y: reduceMotion ? 0 : pull)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 12, coordinateSpace: .global)
+                    .onChanged { value in
+                        if !tracking {
+                            // Decided once per drag: top band, and more
+                            // down than sideways.
+                            guard value.startLocation.y < band,
+                                  value.translation.height > abs(value.translation.width) else { return }
+                            tracking = true
+                        }
+                        // Rubber-band, so it reads as a pull and not a scroll.
+                        let raw = max(0, value.translation.height)
+                        pull = raw / (1 + raw / 400)
+                    }
+                    .onEnded { value in
+                        guard tracking else { return }
+                        tracking = false
+                        let flick = value.predictedEndTranslation.height > 420
+                        if value.translation.height > 110 || flick {
+                            store.closeAIAgent()
+                            // The cover's own slide takes it from here.
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { pull = 0 }
+                        } else {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) { pull = 0 }
+                        }
+                    }
+            )
+    }
+}
+
 private struct MorpheAIAgentSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -950,23 +1000,21 @@ private struct MorpheAIAgentSheet: View {
         }
         .safeAreaInset(edge: .bottom) { composerBar }
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    store.resetAIAgentConversation()
-                } label: {
-                    Image(systemName: "square.and.pencil")
-                        .font(.subheadline.weight(.semibold))
-                }
-                .foregroundStyle(MorpheTheme.textPrimary)
-                .accessibilityLabel("New chat")
-            }
+            // (The new-chat pencil left the header — Lucas 2026-10-05.)
             ToolbarItem(placement: .principal) {
                 // The wordmark alone, centered (Lucas 2026-10-03): the
                 // helmet left the chat header; the AI bubble is the door.
-                Text("MORPHE")
-                    .font(MorpheTheme.microLabel(12))
-                    .tracking(2.4)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                // The grabber above it says the page pulls down to close.
+                VStack(spacing: 5) {
+                    Capsule()
+                        .fill(MorpheTheme.textMuted.opacity(0.6))
+                        .frame(width: 36, height: 4)
+                        .accessibilityHidden(true)
+                    Text("MORPHE")
+                        .font(MorpheTheme.microLabel(12))
+                        .tracking(2.4)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Done") {
