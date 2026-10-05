@@ -35,6 +35,7 @@ struct ProfileView: View {
     }
     @State private var exportFile: ExportFile?
     @State private var showImportPicker = false
+    @State private var showCreatorStudio = false
     @State private var importPlan: MorpheAppStore.ImportPlan?
     @State private var importReading = false
     @State private var showPaywall = false
@@ -538,6 +539,8 @@ struct ProfileView: View {
                 bioSection
 
                 verificationSection
+
+                creatorSection
             }
         }
         .onChange(of: photoPickerItem) {
@@ -650,6 +653,46 @@ struct ProfileView: View {
     private func saveBio() {
         store.updateProfileBio(bioDraft)
         isEditingBio = false
+    }
+
+    /// Creator Coach (2026-10-05): the role shows here once granted; the
+    /// application itself lives on the website, never in the app.
+    @ViewBuilder
+    private var creatorSection: some View {
+        if store.isCreatorCoach {
+            Divider().overlay(MorpheTheme.strokeSubtle)
+            HStack(spacing: 8) {
+                Image(systemName: "person.crop.rectangle.badge.plus")
+                    .foregroundStyle(MorpheTheme.accentText)
+                Text("Creator Coach — publishes workouts, notes and open challenges.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Button {
+                showCreatorStudio = true
+            } label: {
+                Label("Creator Studio", systemImage: "square.and.pencil")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+            .sheet(isPresented: $showCreatorStudio) {
+                CreatorStudioSheet()
+                    .environment(store)
+                    .presentationDetents([.large])
+                    .presentationCornerRadius(28)
+                    .sheetToastSurface()
+            }
+        } else if store.creatorApplicationStatus == .pending {
+            Divider().overlay(MorpheTheme.strokeSubtle)
+            HStack(spacing: 8) {
+                Image(systemName: "hourglass")
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Text("Creator Coach application received — a person reviews it.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+            }
+        }
     }
 
     /// The verification strip under the identity: ask → pending → badge.
@@ -2442,5 +2485,269 @@ struct ImportReviewSheet: View {
             .font(.caption)
             .foregroundStyle(MorpheTheme.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// MARK: - Creator Studio (2026-10-05)
+
+/// Where an approved creator publishes. Three jobs, one sheet: workouts
+/// to Discover, notes to Learn, open challenges to the board. Everything
+/// shows the author's name, and anything can be taken down by its author.
+struct CreatorStudioSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    private enum Job: String, CaseIterable, Identifiable {
+        case workouts = "Workouts", notes = "Notes", challenges = "Challenges"
+        var id: String { rawValue }
+    }
+
+    @State private var job: Job = .workouts
+    @State private var busy = false
+    @State private var noteTitle = ""
+    @State private var noteBody = ""
+    @State private var challengeTitle = ""
+    @State private var challengeMetric: ChallengeMetric = .sets
+    @State private var challengeDays = 7
+    @State private var publishing: WorkoutTemplate?
+
+    private var publishable: [WorkoutTemplate] {
+        let saved = Set(store.savedWorkouts.map(\.workoutTemplateID))
+        return store.workoutTemplates.filter { store.isCustomWorkout($0.id) || saved.contains($0.id) }
+    }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Creator Studio")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text("What you publish carries your name and is visible to every member.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+
+                Picker("Job", selection: $job) {
+                    ForEach(Job.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                switch job {
+                case .workouts: workoutsJob
+                case .notes: notesJob
+                case .challenges: challengesJob
+                }
+            }
+            .padding(20)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .task { await store.refreshCreatorContent(force: true) }
+        .confirmationDialog(
+            publishing.map { "Publish \($0.name) to Discover?" } ?? "",
+            isPresented: Binding(get: { publishing != nil }, set: { if !$0 { publishing = nil } }),
+            titleVisibility: .visible,
+            presenting: publishing
+        ) { template in
+            Button("Publish") {
+                Task {
+                    busy = true
+                    _ = await store.publishCreatorWorkout(from: template)
+                    busy = false
+                }
+            }
+            Button("Not Now", role: .cancel) {}
+        } message: { _ in
+            Text("Every member can start or save it. Only exercises in the shared library travel.")
+        }
+    }
+
+    // MARK: Workouts
+
+    @ViewBuilder
+    private var workoutsJob: some View {
+        sectionLabel("LIVE ON DISCOVER", count: store.myCreatorWorkouts.count)
+        if store.myCreatorWorkouts.isEmpty {
+            quiet("Nothing published yet. Pick one of your workouts below.")
+        } else {
+            ForEach(store.myCreatorWorkouts) { workout in
+                row(title: workout.name,
+                    detail: "\(workout.exercises.count) exercises · \(workout.durationMinutes) min · published \(workout.publishedAt.formatted(date: .abbreviated, time: .omitted))",
+                    action: "Remove") {
+                    Task { await store.unpublishCreatorWorkout(workout) }
+                }
+            }
+        }
+
+        sectionLabel("YOUR WORKOUTS", count: publishable.count)
+        if publishable.isEmpty {
+            quiet("Build a workout in Train, or save one from Discover, and it appears here to publish.")
+        } else {
+            ForEach(publishable) { template in
+                row(title: template.name,
+                    detail: "\(template.exercises.count) exercises · \(template.durationMinutes) min",
+                    action: "Publish") {
+                    publishing = template
+                }
+            }
+        }
+    }
+
+    // MARK: Notes
+
+    @ViewBuilder
+    private var notesJob: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("New note")
+                    .font(.headline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                TextField("Title", text: $noteTitle)
+                    .textFieldStyle(MorpheFieldStyle())
+                TextField("A technique point, a programming idea, a reminder. Plain words.", text: $noteBody, axis: .vertical)
+                    .lineLimit(4...10)
+                    .textFieldStyle(MorpheFieldStyle())
+                HStack {
+                    Text("\(noteBody.count)/2000")
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    Spacer()
+                    Button(busy ? "Publishing…" : "Publish to Learn") {
+                        Task {
+                            busy = true
+                            if await store.publishCreatorNote(title: noteTitle, body: noteBody) {
+                                noteTitle = ""; noteBody = ""
+                            }
+                            busy = false
+                        }
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(busy)
+                }
+            }
+        }
+
+        sectionLabel("YOUR NOTES", count: store.myCreatorNotes.count)
+        if store.myCreatorNotes.isEmpty {
+            quiet("Nothing published yet.")
+        } else {
+            ForEach(store.myCreatorNotes) { note in
+                row(title: note.title,
+                    detail: note.createdAt.formatted(date: .abbreviated, time: .omitted),
+                    action: "Remove") {
+                    Task { await store.deleteCreatorNote(note) }
+                }
+            }
+        }
+    }
+
+    // MARK: Challenges
+
+    @ViewBuilder
+    private var challengesJob: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Open challenge")
+                    .font(.headline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text("Listed on every member's board — no code needed. Scores come from logged workouts only.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                TextField("Title", text: $challengeTitle)
+                    .textFieldStyle(MorpheFieldStyle())
+                Picker("Metric", selection: $challengeMetric) {
+                    ForEach(ChallengeMetric.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Picker("Length", selection: $challengeDays) {
+                    ForEach([7, 14, 30], id: \.self) { Text("\($0) days").tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Button(busy ? "Opening…" : "Open to Everyone") {
+                    Task {
+                        busy = true
+                        if await store.createOpenChallenge(title: challengeTitle, metric: challengeMetric, days: challengeDays) {
+                            challengeTitle = ""
+                        }
+                        busy = false
+                    }
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                .disabled(busy || challengeTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+
+        let mine = store.openChallenges.filter { $0.hostUid == store.authUser?.id }
+        sectionLabel("YOUR OPEN CHALLENGES", count: mine.count)
+        if mine.isEmpty {
+            quiet("None open right now.")
+        } else {
+            ForEach(mine) { listing in
+                row(title: listing.title,
+                    detail: "Code \(listing.code) · ends \(listing.endsAt.formatted(date: .abbreviated, time: .omitted))",
+                    action: "Delist") {
+                    Task { await store.delistOpenChallenge(listing) }
+                }
+            }
+        }
+    }
+
+    // MARK: Pieces
+
+    private func sectionLabel(_ title: String, count: Int) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.4)
+                .foregroundStyle(MorpheTheme.textMuted)
+            Text(String(format: "%03d", count))
+                .font(MorpheTheme.microLabel(10))
+                .monospacedDigit()
+                .foregroundStyle(MorpheTheme.accentAlt)
+        }
+        .padding(.top, 4)
+    }
+
+    private func quiet(_ text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(MorpheTheme.textMuted)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func row(title: String, detail: String, action: String, perform: @escaping () -> Void) -> some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .lineLimit(2)
+                Text(detail)
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 8)
+            Button(action, action: perform)
+                .buttonStyle(SecondaryCTAButtonStyle())
+                .frame(width: 96)
+                .disabled(busy)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panelStrong)
+        )
     }
 }

@@ -1377,3 +1377,170 @@ final class FirebaseCloudBackup: CloudBackingUp {
         return result
     }
 }
+
+// MARK: - Creator Coach (2026-10-05)
+//
+// Server-owned role, client-published content. The role is read from
+// users/{uid}.creator (granted only by the admin tool); the application
+// itself is filed on the website, so the app only ever READS its status.
+// Published documents are small, denormalize the author's name, and are
+// listable by every signed-in member.
+
+protocol CreatorSyncing: AnyObject {
+    /// (creator role granted?, application status)
+    func fetchCreatorStatus(uid: String) async -> (creator: Bool, application: CreatorApplicationStatus)?
+    func publishWorkout(_ workout: CreatorWorkout) async -> Bool
+    func unpublishWorkout(id: String) async -> Bool
+    /// Newest first.
+    func fetchPublishedWorkouts(limit: Int) async -> [CreatorWorkout]?
+    func publishNote(_ note: CreatorNote) async -> Bool
+    func deleteNote(id: String) async -> Bool
+    func fetchNotes(limit: Int) async -> [CreatorNote]?
+    func listOpenChallenge(_ listing: OpenChallengeListing) async -> Bool
+    func delistOpenChallenge(code: String) async -> Bool
+    func fetchOpenChallenges() async -> [OpenChallengeListing]?
+}
+
+final class NoOpCreatorService: CreatorSyncing {
+    func fetchCreatorStatus(uid: String) async -> (creator: Bool, application: CreatorApplicationStatus)? { nil }
+    func publishWorkout(_ workout: CreatorWorkout) async -> Bool { false }
+    func unpublishWorkout(id: String) async -> Bool { false }
+    func fetchPublishedWorkouts(limit: Int) async -> [CreatorWorkout]? { nil }
+    func publishNote(_ note: CreatorNote) async -> Bool { false }
+    func deleteNote(id: String) async -> Bool { false }
+    func fetchNotes(limit: Int) async -> [CreatorNote]? { nil }
+    func listOpenChallenge(_ listing: OpenChallengeListing) async -> Bool { false }
+    func delistOpenChallenge(code: String) async -> Bool { false }
+    func fetchOpenChallenges() async -> [OpenChallengeListing]? { nil }
+}
+
+final class FirebaseCreatorService: CreatorSyncing {
+    private var db: Firestore { Firestore.firestore() }
+
+    func fetchCreatorStatus(uid: String) async -> (creator: Bool, application: CreatorApplicationStatus)? {
+        guard let userSnap = try? await db.collection("users").document(uid).getDocument() else { return nil }
+        let creator = (userSnap.data()?["creator"] as? Bool) ?? false
+        var application = CreatorApplicationStatus.none
+        if let appSnap = try? await db.collection("coachApplications").document(uid).getDocument(),
+           appSnap.exists, let raw = appSnap.data()?["status"] as? String {
+            application = CreatorApplicationStatus(rawValue: raw) ?? .pending
+        }
+        if creator { application = .approved }
+        return (creator, application)
+    }
+
+    func publishWorkout(_ workout: CreatorWorkout) async -> Bool {
+        do {
+            try await db.collection("creatorWorkouts").document(workout.id).setData([
+                "authorUid": workout.authorUid,
+                "authorName": workout.authorName,
+                "authorHandle": workout.authorHandle,
+                "name": workout.name,
+                "focus": workout.focus,
+                "level": workout.level,
+                "durationMinutes": workout.durationMinutes,
+                "equipment": workout.equipment,
+                "notes": workout.notes,
+                "exercises": workout.exercises.map { exercise -> [String: Any] in
+                    var line: [String: Any] = [
+                        "libraryID": exercise.libraryID, "name": exercise.name,
+                        "sets": exercise.sets, "reps": exercise.reps
+                    ]
+                    if let rest = exercise.restSeconds { line["restSeconds"] = rest }
+                    return line
+                },
+                "publishedAt": Timestamp(date: workout.publishedAt)
+            ])
+            return true
+        } catch { return false }
+    }
+
+    func unpublishWorkout(id: String) async -> Bool {
+        do { try await db.collection("creatorWorkouts").document(id).delete(); return true } catch { return false }
+    }
+
+    func fetchPublishedWorkouts(limit: Int) async -> [CreatorWorkout]? {
+        guard let snap = try? await db.collection("creatorWorkouts")
+            .order(by: "publishedAt", descending: true).limit(to: limit).getDocuments() else { return nil }
+        return snap.documents.compactMap { doc in
+            let d = doc.data()
+            guard let name = d["name"] as? String, let authorUid = d["authorUid"] as? String else { return nil }
+            let lines = (d["exercises"] as? [[String: Any]] ?? []).compactMap { line -> CreatorExercise? in
+                guard let id = line["libraryID"] as? String, let n = line["name"] as? String else { return nil }
+                return CreatorExercise(libraryID: id, name: n, sets: line["sets"] as? Int ?? 3,
+                                       reps: line["reps"] as? Int ?? 10, restSeconds: line["restSeconds"] as? Int)
+            }
+            return CreatorWorkout(
+                id: doc.documentID, authorUid: authorUid,
+                authorName: d["authorName"] as? String ?? "Coach",
+                authorHandle: d["authorHandle"] as? String ?? "",
+                name: name, focus: d["focus"] as? String ?? "Full Body",
+                level: d["level"] as? String ?? "Moderate",
+                durationMinutes: d["durationMinutes"] as? Int ?? 45,
+                equipment: d["equipment"] as? String ?? "Full Gym",
+                notes: d["notes"] as? String ?? "",
+                exercises: lines,
+                publishedAt: (d["publishedAt"] as? Timestamp)?.dateValue() ?? .distantPast)
+        }
+    }
+
+    func publishNote(_ note: CreatorNote) async -> Bool {
+        do {
+            try await db.collection("creatorNotes").document(note.id).setData([
+                "authorUid": note.authorUid, "authorName": note.authorName,
+                "authorHandle": note.authorHandle, "title": note.title, "body": note.body,
+                "createdAt": Timestamp(date: note.createdAt)
+            ])
+            return true
+        } catch { return false }
+    }
+
+    func deleteNote(id: String) async -> Bool {
+        do { try await db.collection("creatorNotes").document(id).delete(); return true } catch { return false }
+    }
+
+    func fetchNotes(limit: Int) async -> [CreatorNote]? {
+        guard let snap = try? await db.collection("creatorNotes")
+            .order(by: "createdAt", descending: true).limit(to: limit).getDocuments() else { return nil }
+        return snap.documents.compactMap { doc in
+            let d = doc.data()
+            guard let title = d["title"] as? String, let body = d["body"] as? String,
+                  let authorUid = d["authorUid"] as? String else { return nil }
+            return CreatorNote(
+                id: doc.documentID, authorUid: authorUid,
+                authorName: d["authorName"] as? String ?? "Coach",
+                authorHandle: d["authorHandle"] as? String ?? "",
+                title: title, body: body,
+                createdAt: (d["createdAt"] as? Timestamp)?.dateValue() ?? .distantPast)
+        }
+    }
+
+    func listOpenChallenge(_ listing: OpenChallengeListing) async -> Bool {
+        do {
+            try await db.collection("openChallenges").document(listing.code).setData([
+                "code": listing.code, "title": listing.title, "hostUid": listing.hostUid,
+                "hostName": listing.hostName, "metric": listing.metric.rawValue,
+                "endsAt": Timestamp(date: listing.endsAt), "createdAt": FieldValue.serverTimestamp()
+            ])
+            return true
+        } catch { return false }
+    }
+
+    func delistOpenChallenge(code: String) async -> Bool {
+        do { try await db.collection("openChallenges").document(code).delete(); return true } catch { return false }
+    }
+
+    func fetchOpenChallenges() async -> [OpenChallengeListing]? {
+        guard let snap = try? await db.collection("openChallenges")
+            .whereField("endsAt", isGreaterThan: Timestamp(date: .now))
+            .order(by: "endsAt").limit(to: 50).getDocuments() else { return nil }
+        return snap.documents.compactMap { doc in
+            let d = doc.data()
+            guard let title = d["title"] as? String, let hostUid = d["hostUid"] as? String,
+                  let metric = ChallengeMetric(rawValue: d["metric"] as? String ?? ""),
+                  let ends = (d["endsAt"] as? Timestamp)?.dateValue() else { return nil }
+            return OpenChallengeListing(code: doc.documentID, title: title, hostUid: hostUid,
+                                        hostName: d["hostName"] as? String ?? "Coach", metric: metric, endsAt: ends)
+        }
+    }
+}

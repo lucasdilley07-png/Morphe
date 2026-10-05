@@ -97,7 +97,10 @@ struct MoreView: View {
         case .nutrition:
             nutritionPanel
         default:
-            learningPanel
+            Group {
+                CoachNotesCard()
+                learningPanel
+            }
         }
     }
 
@@ -1183,5 +1186,77 @@ private struct FuelMeter: View {
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(label): \(value) of \(target)\(unit)")
+    }
+}
+
+// MARK: - From Coaches (2026-10-05)
+
+/// Notes published by Creator Coaches, newest first. Each one can be
+/// reported; the author's name is always on it.
+struct CoachNotesCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var expanded: Set<String> = []
+    @State private var reporting: CreatorNote?
+
+    var body: some View {
+        let notes = store.creatorNotes
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("From Coaches")
+                    .font(.headline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                if notes.isEmpty {
+                    Text(store.authUser == nil
+                         ? "Sign in to read notes from Creator Coaches."
+                         : "Nothing published yet. Notes from approved Creator Coaches land here.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                } else {
+                    ForEach(notes.prefix(20)) { note in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(note.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Text("\(note.authorName)\(note.authorHandle.isEmpty ? "" : " · @\(note.authorHandle)") · \(note.createdAt.formatted(date: .abbreviated, time: .omitted))")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Text(note.body)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .lineLimit(expanded.contains(note.id) ? nil : 3)
+                                .fixedSize(horizontal: false, vertical: true)
+                            HStack(spacing: 14) {
+                                if note.body.count > 160 {
+                                    Button(expanded.contains(note.id) ? "Less" : "Read more") {
+                                        if expanded.contains(note.id) { expanded.remove(note.id) } else { expanded.insert(note.id) }
+                                    }
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.accentText)
+                                }
+                                Button("Report") { reporting = note }
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            .frame(minHeight: 32)
+                        }
+                        .padding(.vertical, 4)
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+                    }
+                }
+            }
+        }
+        .task { await store.refreshCreatorContent() }
+        .confirmationDialog("Report this note?", isPresented: Binding(get: { reporting != nil }, set: { if !$0 { reporting = nil } }),
+                            titleVisibility: .visible, presenting: reporting) { note in
+            ForEach(["Spam", "Harassment", "Unsafe advice", "Other"], id: \.self) { reason in
+                Button(reason) {
+                    store.reportCreatorContent(kind: "creatorNote", id: note.id, authorUid: note.authorUid,
+                                               excerpt: note.title + " — " + note.body, reason: reason)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("A person reviews every report.")
+        }
     }
 }

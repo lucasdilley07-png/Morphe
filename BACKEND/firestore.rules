@@ -31,7 +31,16 @@ service cloud.firestore {
     // (checked at the call sites via resource) but never mint one.
     function keepsVerifiedHonest() {
       return request.resource.data.get('coach', {}).get('verified', false) != true
-        && request.resource.data.get('verified', false) != true;
+        && request.resource.data.get('verified', false) != true
+        && request.resource.data.get('creator', false) != true;
+    }
+
+    // Creator Coach (2026-10-05): a role granted ONLY by the admin tool
+    // (users/{uid}.creator). The application is filed on the website; the
+    // app reads its status and, once approved, publishes under this check.
+    function isCreator() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('creator', false) == true;
     }
 
     // The user's profile document. Private to its owner, plus read access
@@ -44,7 +53,9 @@ service cloud.firestore {
         && (request.resource.data.get('coach', {}).get('verified', false) != true
             || resource.data.get('coach', {}).get('verified', false) == true)
         && (request.resource.data.get('verified', false) != true
-            || resource.data.get('verified', false) == true);
+            || resource.data.get('verified', false) == true)
+        && (request.resource.data.get('creator', false) != true
+            || resource.data.get('creator', false) == true);
       // Account deletion is user-initiated IN the app (App Store 5.1.1(v)):
       // the owner deletes their own root doc; state/* and coachShare are
       // removed by the same flow, and the Auth user is deleted last.
@@ -304,6 +315,71 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && request.resource.data.uid == uid;
       allow delete: if isOwner(uid);
+    }
+
+    // Creator Coach applications — filed from the website by the signed-in
+    // applicant, one per account. The applicant reads their own and may
+    // resubmit after a decline; status is set to 'approved' only by the
+    // admin tool (which also flips users/{uid}.creator).
+    match /coachApplications/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(
+             ['uid', 'email', 'name', 'username', 'specialty', 'credentials',
+              'experience', 'links', 'plan', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80
+        && request.resource.data.username is string && request.resource.data.username.size() <= 40
+        && request.resource.data.specialty is string && request.resource.data.specialty.size() <= 120
+        && request.resource.data.credentials is string && request.resource.data.credentials.size() <= 600
+        && request.resource.data.experience is string && request.resource.data.experience.size() <= 600
+        && request.resource.data.links is string && request.resource.data.links.size() <= 600
+        && request.resource.data.plan is string && request.resource.data.plan.size() <= 1200;
+      allow update: if isOwner(uid)
+        && resource.data.status in ['pending', 'declined']
+        && request.resource.data.status == 'pending'
+        && request.resource.data.uid == uid;
+      allow delete: if isOwner(uid);
+    }
+
+    // What creators publish. Every signed-in member reads; only an
+    // approved creator writes, and only under their own uid.
+    match /creatorWorkouts/{id} {
+      allow read: if isSignedIn();
+      allow create: if isCreator()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80
+        && request.resource.data.notes is string && request.resource.data.notes.size() <= 600
+        && request.resource.data.exercises is list && request.resource.data.exercises.size() <= 20;
+      allow update: if isCreator() && resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorUid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
+    }
+
+    match /creatorNotes/{id} {
+      allow read: if isSignedIn();
+      allow create: if isCreator()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.title is string && request.resource.data.title.size() <= 80
+        && request.resource.data.body is string && request.resource.data.body.size() <= 2000;
+      allow update: if isCreator() && resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorUid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
+    }
+
+    // Public listing of a creator's challenge. The challenge doc itself
+    // is created the ordinary way; joining uses the ordinary code path.
+    match /openChallenges/{code} {
+      allow read: if isSignedIn();
+      allow create: if isCreator()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.code == code
+        && request.resource.data.title is string && request.resource.data.title.size() <= 60
+        && exists(/databases/$(database)/documents/challenges/$(code))
+        && get(/databases/$(database)/documents/challenges/$(code)).data.hostUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.hostUid == request.auth.uid;
     }
 
     // Coach-managed client profiles (pre-signup) + claim handoff.

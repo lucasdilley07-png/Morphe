@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Morphe Creator Coaches</title>
+<meta name="description" content="Apply for a free Creator Coach account on Morphe: publish workouts, notes and open challenges to every member.">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root { --bg:#FFFFFF; --bg-elevated:#F6F6F8; --fg:#16181F; --fg-2:rgba(22,24,31,0.66); --hair:rgba(22,24,31,0.12); --accent:#2957D9; --accent-ink:#2957D9; --warn:#B4541A; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#121214; --bg-elevated:#1A1A1C; --fg:#F2F3F7; --fg-2:rgba(242,243,247,0.7); --hair:rgba(242,243,247,0.12); --accent-ink:#7AA2FF; --warn:#F2A35B; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font-family:"Manrope",-apple-system,"Helvetica Neue",Arial,sans-serif; font-size:17px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+.wrap { max-width:720px; margin:0 auto; padding-inline:20px; padding-block:40px 96px; }
+.brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; margin-bottom:32px; }
+.brand img { width:22px; height:30px; }
+.brand span { font-family:"IBM Plex Mono",monospace; font-weight:500; letter-spacing:0.32em; font-size:14px; }
+.micro { font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--accent-ink); margin:0 0 12px; }
+h1 { font-size:clamp(2rem,1.4rem+2vw,2.6rem); letter-spacing:-0.02em; line-height:1.05; margin:0 0 8px; text-wrap:balance; }
+h2 { font-size:1.35rem; letter-spacing:-0.01em; margin:40px 0 8px; }
+p, li { color:var(--fg-2); max-width:65ch; }
+p strong { color:var(--fg); font-weight:700; }
+a { color:var(--accent-ink); }
+ul { padding-left:20px; }
+li { margin-bottom:8px; }
+.card { border:1px solid var(--hair); border-radius:20px; background:var(--bg-elevated); padding:24px; margin-top:24px; }
+.card p { margin:0 0 12px; }
+label { display:block; font-weight:700; font-size:14px; margin:16px 0 6px; color:var(--fg); }
+label span { font-weight:400; color:var(--fg-2); }
+input, textarea { width:100%; font:inherit; font-size:16px; color:var(--fg); background:var(--bg); border:1px solid var(--hair); border-radius:12px; padding:12px 14px; min-height:44px; }
+textarea { min-height:96px; resize:vertical; }
+input:focus, textarea:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:transparent; }
+.btn { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 20px; border-radius:12px; border:1px solid var(--hair); background:var(--bg); color:var(--fg); font:inherit; font-weight:700; font-size:15px; cursor:pointer; text-decoration:none; }
+.btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn[disabled] { opacity:0.5; cursor:default; }
+.row { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+.note { font-size:13px; color:var(--fg-2); margin-top:12px; }
+.status { font-family:"IBM Plex Mono",monospace; font-size:13px; letter-spacing:0.08em; padding:10px 14px; border-radius:12px; border:1px solid var(--hair); margin-top:16px; }
+.status.ok { color:var(--accent-ink); }
+.status.warn { color:var(--warn); }
+.hidden { display:none; }
+.foot { margin-top:48px; padding-top:16px; border-top:1px solid var(--hair); font-size:13px; color:var(--fg-2); display:flex; gap:16px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="brand" href="index.html" aria-label="Morphe home"><img src="assets/helmet.png" alt=""><span>MORPHE</span></a>
+  <p class="micro">Creator Coach</p>
+  <h1>Coach the people who are just starting.</h1>
+  <p>A Creator Coach account is a free account type for coaches, trainers and experienced lifters who want to put their work in front of Morphe's members. It is granted by application. A person reads every one.</p>
+
+  <h2>What you can do with it</h2>
+  <ul>
+    <li><strong>Publish workouts</strong> to Discover. Any member can start or save them. Your name is on every one.</li>
+    <li><strong>Write coach notes</strong> for Learn: technique points, programming ideas, reminders.</li>
+    <li><strong>Open challenges</strong> to everyone. Members join from their board with no code; scores come only from logged workouts.</li>
+    <li>More creator tools arrive first for Creator Coaches.</li>
+  </ul>
+
+  <h2>Who gets accepted</h2>
+  <ul>
+    <li>Coaches and trainers with a recognised certification, competitive athletes, or lifters with a real track record you can point to.</li>
+    <li>People who will publish honest, safe, beginner-aware work. Morphe does not run medical or rehab advice.</li>
+    <li>You need a Morphe account first. Sign in with it below; the application is tied to that account.</li>
+  </ul>
+
+  <div class="card" id="gate">
+    <p><strong>Sign in with your Morphe account</strong></p>
+    <p>Same email and password as the app. Your password goes to Morphe's sign-in service only, never to this page's host.</p>
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="email" inputmode="email">
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <div class="row">
+      <button class="btn btn-primary" id="signin" type="button">Sign in</button>
+    </div>
+    <div class="status warn hidden" id="gate-status" role="status"></div>
+    <p class="note">No account yet? Get Morphe on your iPhone and create one there first.</p>
+  </div>
+
+  <div class="card hidden" id="app">
+    <p><strong>Your application</strong> <span class="note" id="who"></span></p>
+    <div class="status hidden" id="app-status" role="status"></div>
+    <form id="form" novalidate>
+      <label for="name">Name <span>as members should see it</span></label>
+      <input id="name" maxlength="80" autocomplete="name" required>
+      <label for="username">Morphe username</label>
+      <input id="username" maxlength="40" autocomplete="username" placeholder="without the @" required>
+      <label for="specialty">What you coach <span>one line</span></label>
+      <input id="specialty" maxlength="120" placeholder="Strength for beginners, boxing conditioning, mobility…" required>
+      <label for="credentials">Certifications or competitive record</label>
+      <textarea id="credentials" maxlength="600" placeholder="NSCA-CPT, USA Boxing Level 1, state powerlifting champion 2024…" required></textarea>
+      <label for="experience">Years coaching and where</label>
+      <textarea id="experience" maxlength="600" required></textarea>
+      <label for="links">Links <span>website, Instagram, YouTube, gym page</span></label>
+      <textarea id="links" maxlength="600" required></textarea>
+      <label for="plan">What you would publish first</label>
+      <textarea id="plan" maxlength="1200" placeholder="Two or three workouts, a note, a challenge — in your own words." required></textarea>
+      <div class="row">
+        <button class="btn btn-primary" id="submit" type="submit">Send application</button>
+        <button class="btn" id="signout" type="button">Sign out</button>
+      </div>
+      <div class="status warn hidden" id="form-status" role="status"></div>
+      <p class="note">By sending it you agree that what you publish as a Creator Coach carries your name, follows the <a href="privacy.html">privacy policy</a> and Morphe's content rules, and can be removed if it doesn't. Decisions show in your Morphe profile. Declined applications can be sent again after you've added to them.</p>
+    </form>
+  </div>
+
+  <div class="foot"><a href="index.html">Morphe</a><a href="privacy.html">Privacy policy</a><a href="support.html">Support</a><span>TRAIN SMARTER</span></div>
+</div>
+
+<script>
+// Morphe's Firebase project. The key below identifies the project to
+// Google's sign-in and database services; what any signed-in person can
+// read or write is decided by the server rules, not by this key.
+// Empty until applications open.
+var FIREBASE_WEB_API_KEY = "";
+var FIREBASE_PROJECT = "morphe-3c5c2";
+
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var session = null; // { idToken, uid, email } — memory only, gone on reload
+  var existing = null;
+
+  var FS = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT + "/databases/(default)/documents";
+  var FIELDS = ["name", "username", "specialty", "credentials", "experience", "links", "plan"];
+
+  function show(el, text, kind) {
+    el.textContent = text;
+    el.className = "status " + (kind || "") + (text ? "" : " hidden");
+  }
+
+  if (!FIREBASE_WEB_API_KEY) {
+    show($("gate-status"), "Applications open soon. Check back here.", "warn");
+    $("signin").disabled = true;
+  }
+
+  function fail(res) {
+    return res.json().then(function (body) {
+      var msg = (body && body.error && (body.error.message || body.error.status)) || ("HTTP " + res.status);
+      throw new Error(msg);
+    });
+  }
+
+  function signIn(email, password) {
+    return fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + FIREBASE_WEB_API_KEY, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: password, returnSecureToken: true })
+    }).then(function (res) { return res.ok ? res.json() : fail(res); });
+  }
+
+  function loadApplication() {
+    return fetch(FS + "/coachApplications/" + session.uid, {
+      headers: { Authorization: "Bearer " + session.idToken }
+    }).then(function (res) {
+      if (res.status === 404) return null;
+      return res.ok ? res.json() : fail(res);
+    });
+  }
+
+  function fieldValue(doc, key) {
+    var f = doc && doc.fields && doc.fields[key];
+    return f ? (f.stringValue || "") : "";
+  }
+
+  function render(doc) {
+    existing = doc;
+    var status = fieldValue(doc, "status");
+    $("who").textContent = session.email;
+    FIELDS.forEach(function (k) { $(k).value = fieldValue(doc, k); });
+    var lock = status === "pending" || status === "approved";
+    FIELDS.forEach(function (k) { $(k).disabled = lock; });
+    $("submit").disabled = lock;
+    if (status === "approved") {
+      show($("app-status"), "APPROVED — Creator Studio is in your Morphe profile.", "ok");
+    } else if (status === "pending") {
+      show($("app-status"), "RECEIVED — a person is reviewing it. The result shows in your Morphe profile.", "ok");
+    } else if (status === "declined") {
+      show($("app-status"), "NOT ACCEPTED THIS TIME. Add to it and send it again.", "warn");
+    } else {
+      show($("app-status"), "", "");
+    }
+  }
+
+  $("signin").addEventListener("click", function () {
+    var email = $("email").value.trim(), password = $("password").value;
+    if (!email || !password) { show($("gate-status"), "Email and password, please.", "warn"); return; }
+    $("signin").disabled = true;
+    show($("gate-status"), "Signing in…", "");
+    signIn(email, password).then(function (r) {
+      session = { idToken: r.idToken, uid: r.localId, email: r.email };
+      $("password").value = "";
+      return loadApplication();
+    }).then(function (doc) {
+      render(doc);
+      $("gate").classList.add("hidden");
+      $("app").classList.remove("hidden");
+      show($("gate-status"), "", "");
+    }).catch(function (e) {
+      var m = String(e.message || e);
+      show($("gate-status"), m.indexOf("INVALID_LOGIN") >= 0 || m.indexOf("EMAIL_NOT_FOUND") >= 0 || m.indexOf("INVALID_PASSWORD") >= 0
+        ? "That email and password don't match a Morphe account." : "Couldn't sign in: " + m, "warn");
+    }).finally(function () { $("signin").disabled = false; });
+  });
+
+  $("signout").addEventListener("click", function () {
+    session = null; existing = null;
+    $("app").classList.add("hidden");
+    $("gate").classList.remove("hidden");
+  });
+
+  $("form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!session) return;
+    var missing = FIELDS.filter(function (k) { return !$(k).value.trim(); });
+    if (missing.length) { show($("form-status"), "Every field is needed.", "warn"); return; }
+    var now = new Date().toISOString();
+    var fields = {
+      uid: { stringValue: session.uid },
+      email: { stringValue: session.email },
+      status: { stringValue: "pending" },
+      updatedAt: { timestampValue: now }
+    };
+    FIELDS.forEach(function (k) { fields[k] = { stringValue: $(k).value.trim().replace(/^@/, "") }; });
+    var mask = Object.keys(fields);
+    if (!existing) { fields.createdAt = { timestampValue: now }; mask.push("createdAt"); }
+    var url = FS + "/coachApplications/" + session.uid + "?" + mask.map(function (k) { return "updateMask.fieldPaths=" + k; }).join("&");
+    $("submit").disabled = true;
+    show($("form-status"), "Sending…", "");
+    fetch(url, {
+      method: "PATCH",
+      headers: { Authorization: "Bearer " + session.idToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: fields })
+    }).then(function (res) { return res.ok ? res.json() : fail(res); })
+      .then(function (doc) { render(doc); show($("form-status"), "", ""); })
+      .catch(function (e) {
+        show($("form-status"), "Couldn't send it: " + String(e.message || e) + ". Try again in a moment.", "warn");
+        $("submit").disabled = false;
+      });
+  });
+})();
+</script>
+</body>
+</html>

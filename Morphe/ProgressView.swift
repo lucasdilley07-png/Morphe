@@ -2419,6 +2419,38 @@ private struct ChallengesCard: View {
                     }
                 }
 
+                // Open challenges from Creator Coaches (2026-10-05): no
+                // code, one tap to join.
+                let joinedCodes = Set(store.activeChallenges.map(\.code))
+                let open = store.openChallenges.filter { !joinedCodes.contains($0.code) }
+                if !open.isEmpty {
+                    Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+                    Text("OPEN TO EVERYONE")
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.4)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    ForEach(open) { listing in
+                        HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(listing.title)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                    .lineLimit(1)
+                                Text("\(listing.hostName) · \(listing.metric.label) · ends \(listing.endsAt.formatted(date: .abbreviated, time: .omitted))")
+                                    .font(.caption2)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                            Button("Join") {
+                                Task { await store.joinChallenge(code: listing.code) }
+                            }
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .disabled(store.isCompetitionBusy)
+                        }
+                    }
+                }
+
                 Divider().overlay(MorpheTheme.stroke.opacity(0.5))
 
                 HStack(spacing: 8) {
@@ -2451,6 +2483,7 @@ private struct ChallengesCard: View {
         }
         .task {
             await store.refreshChallenges()
+            await store.refreshCreatorContent()
         }
         .sheet(isPresented: $showCreateSheet) {
             CreateChallengeSheet()

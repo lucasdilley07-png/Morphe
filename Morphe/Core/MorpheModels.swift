@@ -3076,3 +3076,70 @@ struct ChallengeSummary: Identifiable, Hashable, Codable {
         }
     }
 }
+
+// MARK: - Creator Coach (2026-10-05)
+//
+// A free account type granted by hand: the person applies on the Morphe
+// website, Lucas approves or declines, and users/{uid}.creator flips on the
+// server. Nothing in the app can mint it (rules: keepsVerifiedHonest). An
+// approved creator publishes workouts, coach notes and open challenges that
+// every signed-in member can see; everything carries the author's name.
+
+enum CreatorApplicationStatus: String {
+    case none
+    case pending
+    case approved
+    case declined
+}
+
+/// One exercise line of a published workout — library id plus the
+/// prescription, so any member's app rebuilds it against its own library.
+struct CreatorExercise: Hashable, Codable {
+    var libraryID: String
+    var name: String
+    var sets: Int
+    var reps: Int
+    var restSeconds: Int?
+}
+
+/// A workout a creator published to Discover's "From Coaches" shelf.
+struct CreatorWorkout: Identifiable, Hashable, Codable {
+    var id: String
+    var authorUid: String
+    var authorName: String
+    var authorHandle: String
+    var name: String
+    var focus: String
+    var level: String
+    var durationMinutes: Int
+    var equipment: String
+    var notes: String
+    var exercises: [CreatorExercise]
+    var publishedAt: Date
+}
+
+/// A short written piece from a creator — a technique note, a programming
+/// idea, a reminder. Shown in Learn under "From Coaches".
+struct CreatorNote: Identifiable, Hashable, Codable {
+    var id: String
+    var authorUid: String
+    var authorName: String
+    var authorHandle: String
+    var title: String
+    var body: String
+    var createdAt: Date
+}
+
+/// A challenge a creator opened to everyone — the listing points at the
+/// ordinary challenge doc; joining uses the same code path as a private one.
+struct OpenChallengeListing: Identifiable, Hashable {
+    var code: String
+    var title: String
+    var hostUid: String
+    var hostName: String
+    var metric: ChallengeMetric
+    var endsAt: Date
+
+    var id: String { code }
+    var isExpired: Bool { Date.now > endsAt }
+}

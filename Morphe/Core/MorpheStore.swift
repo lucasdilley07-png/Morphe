@@ -964,6 +964,7 @@ final class MorpheAppStore {
     /// Verification requests + badge status. Real app injects
     /// `FirebaseVerificationService`; no-op default for tests/previews.
     private let verificationService: VerificationSyncing
+    private let creatorService: CreatorSyncing
     /// Personal appointments (one Firestore doc each). Real app injects
     /// `FirebaseAppointmentService`; no-op default for tests/previews.
     private let appointmentService: AppointmentSyncing
@@ -1214,6 +1215,7 @@ final class MorpheAppStore {
          managedClientService: ManagedClientSyncing = NoOpManagedClientService(),
          usernameDirectory: UsernameDirectoryService = NoOpUsernameDirectory(),
          verificationService: VerificationSyncing = NoOpVerificationService(),
+         creatorService: CreatorSyncing = NoOpCreatorService(),
          appointmentService: AppointmentSyncing = NoOpAppointmentService(),
          leaderboardService: LeaderboardSyncing? = nil,
          messagingService: MessagingSyncing? = nil,
@@ -1236,6 +1238,7 @@ final class MorpheAppStore {
         MorpheTheme.isLight = MorpheTheme.defaultIsLight()
         self.usernameDirectory = usernameDirectory
         self.verificationService = verificationService
+        self.creatorService = creatorService
         self.appointmentService = appointmentService
         // MorpheApp.swift (owned by another work stream) builds the store with
         // the pre-competition parameter list, so nil infers the right service:
@@ -1440,6 +1443,7 @@ final class MorpheAppStore {
 
             // The badge is server-owned; mirror it on every launch.
             Task { await refreshVerificationStatus() }
+            Task { await refreshCreatorStatus() }
             // The schedule lives per-doc in the cloud — pull it fresh each
             // launch (offline serves the Firestore cache copy).
             Task { await refreshAppointments() }
@@ -1567,6 +1571,11 @@ final class MorpheAppStore {
         appointments = []
         // The badge belongs to the signed-out account, not the device.
         isVerifiedUser = false
+        isCreatorCoach = false
+        creatorApplicationStatus = .none
+        creatorWorkouts = []
+        creatorNotes = []
+        openChallenges = []
         verificationRequestStatus = .none
         // Fetched competition data belongs to the signed-out account too.
         // (Opt-in + joined codes stay in their per-profile defaults keys.)
@@ -2280,6 +2289,7 @@ final class MorpheAppStore {
             onboardingDraft.name = user.displayName
         }
         Task { await refreshVerificationStatus() }
+        Task { await refreshCreatorStatus(force: true) }
         Task { await refreshAppointments() }
         Task { await refreshThreads() }
         // Blocked set BEFORE the inbox can render (post-revamp audit
@@ -2661,6 +2671,246 @@ final class MorpheAppStore {
                     symbol: "checkmark.seal.fill"
                 )
             }
+        }
+    }
+
+    // MARK: - Creator Coach (2026-10-05)
+    //
+    // Role granted on the server only (apply on the website; Lucas reviews).
+    // The app mirrors the role, and an approved creator publishes
+    // workouts, notes and open challenges every member can see.
+
+    private(set) var isCreatorCoach = false
+    private(set) var creatorApplicationStatus: CreatorApplicationStatus = .none
+    /// Everyone's shelf: what creators have published, newest first.
+    private(set) var creatorWorkouts: [CreatorWorkout] = []
+    private(set) var creatorNotes: [CreatorNote] = []
+    private(set) var openChallenges: [OpenChallengeListing] = []
+    private var creatorContentFetchedAt: Date?
+
+    var myCreatorWorkouts: [CreatorWorkout] {
+        guard let uid = authUser?.id else { return [] }
+        return creatorWorkouts.filter { $0.authorUid == uid }
+    }
+
+    var myCreatorNotes: [CreatorNote] {
+        guard let uid = authUser?.id else { return [] }
+        return creatorNotes.filter { $0.authorUid == uid }
+    }
+
+    /// Mirrors the server-owned role. Daily unless forced (sign-in).
+    func refreshCreatorStatus(force: Bool = false) async {
+        guard let uid = authUser?.id else { return }
+        let checkedKey = "morphe.creator.checked.\(uid)"
+        let today = Self.dayKey()
+        if !force, UserDefaults.standard.string(forKey: checkedKey) == today { return }
+        guard let status = await creatorService.fetchCreatorStatus(uid: uid) else { return }
+        UserDefaults.standard.set(today, forKey: checkedKey)
+        let was = isCreatorCoach
+        isCreatorCoach = status.creator
+        creatorApplicationStatus = status.application
+        if status.creator, !was {
+            showCelebration(
+                title: "Creator Coach",
+                detail: "Your application was accepted. Creator Studio is in your profile.",
+                symbol: "person.crop.rectangle.badge.plus"
+            )
+        }
+    }
+
+    /// Pulls the shelves everyone sees. Five-minute cache; forced after a
+    /// creator's own publish so their work shows at once.
+    func refreshCreatorContent(force: Bool = false) async {
+        guard authUser != nil else { return }
+        if !force, let last = creatorContentFetchedAt, Date.now.timeIntervalSince(last) < 300 { return }
+        async let workouts = creatorService.fetchPublishedWorkouts(limit: 100)
+        async let notes = creatorService.fetchNotes(limit: 100)
+        async let open = creatorService.fetchOpenChallenges()
+        if let workouts = await workouts { creatorWorkouts = workouts }
+        if let notes = await notes { creatorNotes = notes }
+        if let open = await open { openChallenges = open.filter { !$0.isExpired } }
+        creatorContentFetchedAt = .now
+    }
+
+    private var creatorIdentity: (uid: String, name: String, handle: String)? {
+        guard isCreatorCoach, let me = competitionSelf else { return nil }
+        return (me.uid, me.name, profileShowcase.username)
+    }
+
+    /// First integer in a prescription string ("3 sets" → 3, "8-10 reps" → 8).
+    private static func leadingInt(_ text: String, fallback: Int) -> Int {
+        let digits = text.components(separatedBy: CharacterSet.decimalDigits.inverted).first { !$0.isEmpty }
+        return Int(digits ?? "") ?? fallback
+    }
+
+    /// A saved or built workout → the document the shelf shows. Only
+    /// exercises that exist in the library travel (another member's app
+    /// must rebuild it); custom one-offs are left out and said so.
+    func creatorWorkout(from template: WorkoutTemplate) -> (workout: CreatorWorkout, dropped: Int)? {
+        guard let me = creatorIdentity else { return nil }
+        let known = Set(exerciseDatabase.map(\.id))
+        var dropped = 0
+        let lines: [CreatorExercise] = template.exercises.compactMap { exercise in
+            guard known.contains(exercise.exerciseLibraryID) else { dropped += 1; return nil }
+            return CreatorExercise(
+                libraryID: exercise.exerciseLibraryID, name: exercise.name,
+                sets: max(1, Self.leadingInt(exercise.sets, fallback: 3)),
+                reps: max(1, Self.leadingInt(exercise.reps, fallback: 10)),
+                restSeconds: exercise.restSeconds)
+        }
+        guard !lines.isEmpty else { return nil }
+        return (CreatorWorkout(
+            id: UUID().uuidString, authorUid: me.uid, authorName: me.name, authorHandle: me.handle,
+            name: String(template.name.prefix(80)),
+            focus: template.focusTag.isEmpty ? "Full Body" : template.focusTag,
+            level: template.difficulty.rawValue,
+            durationMinutes: max(5, min(template.durationMinutes, 180)),
+            equipment: template.equipment.isEmpty ? "Full Gym" : template.equipment,
+            notes: String((template.coachNote.isEmpty ? template.notes : template.coachNote).prefix(600)),
+            exercises: Array(lines.prefix(20)),
+            publishedAt: .now), dropped)
+    }
+
+    /// A published document → a runnable template for THIS member's app.
+    /// Nil when none of its exercises resolve here.
+    func template(for workout: CreatorWorkout) -> WorkoutTemplate? {
+        let index = WorkoutCatalog.makeIndex(exerciseDatabase)
+        let exercises: [WorkoutExercise] = workout.exercises.enumerated().compactMap { offset, line in
+            guard let reference = index[line.libraryID] else { return nil }
+            return WorkoutExercise(
+                id: "\(workout.id)-\(offset)", exerciseLibraryID: reference.id, name: reference.name,
+                muscleGroup: reference.muscleGroup, sets: "\(line.sets) sets", reps: "\(line.reps) reps",
+                difficulty: reference.difficulty, formCue: reference.formCue,
+                intensityLabel: "", restSeconds: line.restSeconds)
+        }
+        guard !exercises.isEmpty, let id = UUID(uuidString: workout.id) else { return nil }
+        let byline = workout.authorHandle.isEmpty ? workout.authorName : "\(workout.authorName) · @\(workout.authorHandle)"
+        return WorkoutTemplate(
+            id: id, name: workout.name, type: "From \(workout.authorName)", sport: .generalFitness,
+            category: workout.focus == "Conditioning" ? .conditioning : (workout.focus == "Recovery" ? .recovery : .strength),
+            sessionType: workout.focus == "Recovery" ? .recoverySession : .gymWorkout,
+            goal: workout.notes.isEmpty ? "Published by \(byline)" : workout.notes,
+            difficulty: DemoDifficulty(rawValue: workout.level) ?? .moderate,
+            durationMinutes: workout.durationMinutes, equipment: workout.equipment,
+            focusTag: workout.focus, trainingTypeTag: "Coach workout", categoryTag: "From Coaches",
+            goalTag: "", exercises: exercises, notes: workout.notes,
+            coachNote: "Published by \(byline)." + (workout.notes.isEmpty ? "" : " " + workout.notes))
+    }
+
+    func publishCreatorWorkout(from template: WorkoutTemplate) async -> Bool {
+        guard let built = creatorWorkout(from: template) else {
+            showToast(isCreatorCoach ? "None of that workout's exercises are in the shared library, so it can't travel."
+                                     : "Creator tools need an approved Creator Coach account.")
+            return false
+        }
+        if ContentModeration.containsBlockedTerm(built.workout.name + " " + built.workout.notes) {
+            showToast("That text can't be published.", isError: true)
+            return false
+        }
+        guard await creatorService.publishWorkout(built.workout) else {
+            showToast("Couldn't publish — check your connection.", isError: true)
+            return false
+        }
+        creatorWorkouts.insert(built.workout, at: 0)
+        track("creator_workout_published")
+        Haptics.success()
+        showToast(built.dropped == 0
+                  ? "\(built.workout.name) is live on Discover."
+                  : "\(built.workout.name) is live. \(built.dropped) custom exercise\(built.dropped == 1 ? "" : "s") stayed behind.")
+        return true
+    }
+
+    func unpublishCreatorWorkout(_ workout: CreatorWorkout) async {
+        guard workout.authorUid == authUser?.id else { return }
+        guard await creatorService.unpublishWorkout(id: workout.id) else {
+            showToast("Couldn't remove it — check your connection.", isError: true)
+            return
+        }
+        creatorWorkouts.removeAll { $0.id == workout.id }
+        showToast("Removed from Discover.")
+    }
+
+    func publishCreatorNote(title: String, body: String) async -> Bool {
+        guard let me = creatorIdentity else {
+            showToast("Creator tools need an approved Creator Coach account.")
+            return false
+        }
+        let cleanTitle = String(title.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80))
+        let cleanBody = String(body.trimmingCharacters(in: .whitespacesAndNewlines).prefix(2000))
+        guard !cleanTitle.isEmpty, cleanBody.count >= 20 else {
+            showToast("Give the note a title and at least a sentence.")
+            return false
+        }
+        if ContentModeration.containsBlockedTerm(cleanTitle + " " + cleanBody) {
+            showToast("That text can't be published.", isError: true)
+            return false
+        }
+        let note = CreatorNote(id: UUID().uuidString, authorUid: me.uid, authorName: me.name,
+                               authorHandle: me.handle, title: cleanTitle, body: cleanBody, createdAt: .now)
+        guard await creatorService.publishNote(note) else {
+            showToast("Couldn't publish — check your connection.", isError: true)
+            return false
+        }
+        creatorNotes.insert(note, at: 0)
+        track("creator_note_published")
+        Haptics.success()
+        showToast("Published to Learn.")
+        return true
+    }
+
+    func deleteCreatorNote(_ note: CreatorNote) async {
+        guard note.authorUid == authUser?.id else { return }
+        guard await creatorService.deleteNote(id: note.id) else {
+            showToast("Couldn't remove it — check your connection.", isError: true)
+            return
+        }
+        creatorNotes.removeAll { $0.id == note.id }
+    }
+
+    /// An ordinary challenge, then its public listing. Anyone can join it
+    /// from the board without a code.
+    func createOpenChallenge(title: String, metric: ChallengeMetric, days: Int) async -> Bool {
+        guard isCreatorCoach else {
+            showToast("Open challenges need an approved Creator Coach account.")
+            return false
+        }
+        if ContentModeration.containsBlockedTerm(title) {
+            showToast("That title can't be published.", isError: true)
+            return false
+        }
+        guard let challenge = await createChallenge(title: title, metric: metric, days: days) else { return false }
+        let listing = OpenChallengeListing(code: challenge.code, title: challenge.title, hostUid: challenge.hostUid,
+                                           hostName: challenge.hostName, metric: challenge.metric, endsAt: challenge.endsAt)
+        guard await creatorService.listOpenChallenge(listing) else {
+            showToast("The challenge exists (code \(challenge.code)) but couldn't be listed publicly.", isError: true)
+            return false
+        }
+        openChallenges.append(listing)
+        openChallenges.sort { $0.endsAt < $1.endsAt }
+        track("open_challenge_created")
+        showToast("\(challenge.title) is open to everyone.")
+        return true
+    }
+
+    func delistOpenChallenge(_ listing: OpenChallengeListing) async {
+        guard listing.hostUid == authUser?.id else { return }
+        guard await creatorService.delistOpenChallenge(code: listing.code) else {
+            showToast("Couldn't remove the listing — check your connection.", isError: true)
+            return
+        }
+        openChallenges.removeAll { $0.code == listing.code }
+        showToast("Listing removed. Members already in keep their scoreboard.")
+    }
+
+    /// Reports ride the same queue a human reviews for the feed.
+    func reportCreatorContent(kind: String, id: String, authorUid: String, excerpt: String, reason: String) {
+        guard let uid = authUser?.id else { return }
+        Task {
+            let sent = await feedService.submitReport(
+                reporterUid: uid, kind: "post", targetId: "\(kind)/\(id)",
+                targetUid: authorUid, reason: reason, excerpt: String(excerpt.prefix(300)))
+            showToast(sent ? "Report sent — a human reviews every one."
+                           : "Report didn't send — check your connection.")
         }
     }
 

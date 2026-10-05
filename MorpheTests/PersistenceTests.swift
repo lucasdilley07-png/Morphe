@@ -1352,6 +1352,93 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.planImport(shifted).fresh.count, 0, "a time-zone change must not duplicate history")
     }
 
+    /// Creator Coach (2026-10-05): the role is server-owned and mirrored;
+    /// without it nothing publishes; with it a saved workout becomes a
+    /// shared document of library exercises, and comes back as a runnable
+    /// template on any member's app.
+    @MainActor
+    func testCreatorRoleGatesPublishingAndWorkoutsRoundTrip() async {
+        final class MockCreatorService: CreatorSyncing {
+            var creator = false
+            var published: [CreatorWorkout] = []
+            var notes: [CreatorNote] = []
+            var listings: [OpenChallengeListing] = []
+            func fetchCreatorStatus(uid: String) async -> (creator: Bool, application: CreatorApplicationStatus)? {
+                (creator, creator ? .approved : .pending)
+            }
+            func publishWorkout(_ workout: CreatorWorkout) async -> Bool { published.append(workout); return true }
+            func unpublishWorkout(id: String) async -> Bool { published.removeAll { $0.id == id }; return true }
+            func fetchPublishedWorkouts(limit: Int) async -> [CreatorWorkout]? { published }
+            func publishNote(_ note: CreatorNote) async -> Bool { notes.append(note); return true }
+            func deleteNote(id: String) async -> Bool { notes.removeAll { $0.id == id }; return true }
+            func fetchNotes(limit: Int) async -> [CreatorNote]? { notes }
+            func listOpenChallenge(_ listing: OpenChallengeListing) async -> Bool { listings.append(listing); return true }
+            func delistOpenChallenge(code: String) async -> Bool { listings.removeAll { $0.code == code }; return true }
+            func fetchOpenChallenges() async -> [OpenChallengeListing]? { listings }
+        }
+        let service = MockCreatorService()
+        let store = MorpheAppStore(creatorService: service)
+        store.authUser = AppUser(id: "coach-1", email: "coach@morphe.app", role: .athlete, displayName: "Coach Kay", createdAt: .now)
+        let template = store.discoverWorkouts[0]
+
+        // Not a creator: status mirrors "pending", nothing publishes.
+        await store.refreshCreatorStatus(force: true)
+        XCTAssertFalse(store.isCreatorCoach)
+        XCTAssertEqual(store.creatorApplicationStatus, .pending)
+        XCTAssertNil(store.creatorWorkout(from: template))
+        let refused = await store.publishCreatorWorkout(from: template)
+        XCTAssertFalse(refused)
+        XCTAssertTrue(service.published.isEmpty)
+        let refusedNote = await store.publishCreatorNote(title: "Brace", body: "A full sentence about bracing the trunk before a heavy pull.")
+        XCTAssertFalse(refusedNote)
+
+        // Approved on the server: the role mirrors and publishing works.
+        service.creator = true
+        await store.refreshCreatorStatus(force: true)
+        XCTAssertTrue(store.isCreatorCoach)
+        let built = store.creatorWorkout(from: template)
+        XCTAssertEqual(built?.workout.authorUid, "coach-1")
+        XCTAssertEqual(built?.workout.exercises.count, template.exercises.count, "catalog exercises all travel")
+        XCTAssertEqual(built?.dropped, 0)
+        let publishedOK = await store.publishCreatorWorkout(from: template)
+        XCTAssertTrue(publishedOK)
+        XCTAssertEqual(service.published.count, 1)
+        XCTAssertEqual(store.myCreatorWorkouts.count, 1)
+
+        // Any member's app rebuilds it against its own library.
+        let doc = service.published[0]
+        let rebuilt = store.template(for: doc)
+        XCTAssertEqual(rebuilt?.name, template.name)
+        XCTAssertEqual(rebuilt?.exercises.count, template.exercises.count)
+        XCTAssertEqual(rebuilt?.exercises.first?.sets, "\(doc.exercises[0].sets) sets")
+        XCTAssertEqual(rebuilt?.categoryTag, "From Coaches")
+        XCTAssertFalse(doc.authorName.isEmpty)
+        XCTAssertTrue(rebuilt?.coachNote.contains(doc.authorName) == true, "the byline rides the template")
+
+        // An exercise the library doesn't know is dropped, not invented.
+        var foreign = doc
+        foreign.exercises = [CreatorExercise(libraryID: "no-such-move", name: "Mystery", sets: 3, reps: 10, restSeconds: nil)]
+        XCTAssertNil(store.template(for: foreign))
+
+        // Notes: too short is refused; a real one lands; only the author removes.
+        let shortNote = await store.publishCreatorNote(title: "Hi", body: "short")
+        XCTAssertFalse(shortNote)
+        let realNote = await store.publishCreatorNote(title: "Brace first", body: "Set the brace before the bar leaves the floor, every rep, every set.")
+        XCTAssertTrue(realNote)
+        XCTAssertEqual(store.myCreatorNotes.count, 1)
+        var someoneElses = store.myCreatorNotes[0]
+        someoneElses.authorUid = "other"
+        await store.deleteCreatorNote(someoneElses)
+        XCTAssertEqual(service.notes.count, 1, "another author's note is left alone")
+        await store.unpublishCreatorWorkout(doc)
+        XCTAssertTrue(service.published.isEmpty)
+
+        // Sign-out clears the mirrored role.
+        store.signOut()
+        XCTAssertFalse(store.isCreatorCoach)
+        XCTAssertTrue(store.creatorWorkouts.isEmpty)
+    }
+
     /// Rebuild wave (2026-08): the retraction classifier — the engine
     /// drops these before onCommand ever fires.
     func testCancelPhraseClassifier() {

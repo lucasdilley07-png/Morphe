@@ -1624,6 +1624,7 @@ struct DiscoverScreenView: View {
                 .padding(.bottom, 120)
             }
             .toolbar(.hidden, for: .navigationBar)
+            .task { await store.refreshCreatorContent() }
             .onAppear { consumeProgramsReveal() }
             .onChange(of: store.pendingDiscoverProgramsReveal) { _, _ in
                 consumeProgramsReveal()
@@ -3913,6 +3914,7 @@ struct DiscoverCatalogSection: View {
                     }
                 }
             } else {
+            fromCoachesSection
             newThisWeekSection
             mostDoneSection
             ForEach(Self.families, id: \.name) { family in
@@ -3988,6 +3990,24 @@ struct DiscoverCatalogSection: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the exercise library")
+    }
+
+    /// What Creator Coaches have published (2026-10-05), newest first,
+    /// each rebuilt against this app's library and bylined.
+    @ViewBuilder
+    private var fromCoachesSection: some View {
+        let shelf = store.creatorWorkouts.compactMap { workout in
+            store.template(for: workout).map { (template: $0, badge: Optional(workout.authorName)) }
+        }
+        if !shelf.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader(title: "From Coaches", count: shelf.count)
+                Text("Published by approved Creator Coaches. Start or save any of them.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                miniCardShelf(Array(shelf.prefix(12)))
+            }
+        }
     }
 
     // MARK: - New & trending shelves

@@ -48,6 +48,17 @@ and a date. This is our own measurement: **no third-party analytics SDK is
 involved, nothing is fingerprinted, and no advertising identifiers exist
 in the app.** These events are deleted with your account.
 
+## Creator Coach applications (website, optional)
+
+If you apply for a Creator Coach account on the Morphe website, you sign in
+with your Morphe account and send your name, username, email, what you
+coach, credentials, experience, links, and what you would publish. That
+application is stored with your account, read only by you and by the person
+reviewing it, and used only to decide the application. A Creator Coach's
+published workouts, notes and open challenges carry their name and are
+visible to every signed-in member. You can withdraw an application, and
+remove anything you published, at any time.
+
 ## Apple Health (optional, off by default)
 
 - **Writing:** with "Sync to Health" on, each workout you log is saved to
