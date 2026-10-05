@@ -55,6 +55,11 @@ in the app.** These events are deleted with your account.
 - **Reading:** with "Sleep from Health" on, Morphe reads last night's sleep
   to pre-fill your morning check-in slider.
 
+- **Apple Watch heart rate:** during a workout, the watch app reads your
+  heart rate and active energy to show them on your wrist. They stay on
+  the watch. The workout itself is saved to Apple Health only when "Sync
+  to Health" is on; otherwise it is discarded when the session ends.
+
 Health data is used only for the features above. It is **never** used for
 advertising, never sold, and never shared with third parties. Both toggles
 live in Profile → Settings and are off until you turn them on.
@@ -68,7 +73,15 @@ live in Profile → Settings and are off until you turn them on.
   feed; clips are never uploaded), and scanning
   Morphe connect/party QR codes.
 - **Photo library (add-only)** — saving clips you record, only when you
-  tap Save. Morphe cannot read your library.
+  tap Save. Morphe cannot read your library. Photos you pick through the
+  system photo picker are the only ones the app receives.
+- **Progress photos** — photos you take or pick for the Progress screen
+  are stored on your iPhone only. They are never uploaded, never shown to
+  anyone, and no analysis is run on them. Deleting your account or the app
+  removes them.
+- **Food and water log, imported history** — what you log, and any workout
+  file you import from another app, is saved with the rest of your
+  training data under your own account.
 - **Microphone & speech recognition** — recording audio for clips you
   capture in video mode, and dictating messages to the in-app
   assistant. Audio is processed for transcription only.
