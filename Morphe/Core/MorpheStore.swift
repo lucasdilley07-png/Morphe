@@ -14000,6 +14000,22 @@ final class MorpheAppStore {
     // the house rule. Coach manual entry above is the honest path; a real
     // vision import can return when a real model reads real photos.
 
+    /// A hand-edited set is no longer the set the camera counted (TRAIN
+    /// HONEST, 2026-10-04): any exercise whose reps, weights, or set count
+    /// changed in an editor gives up its camera marks.
+    static func droppingEditedCameraMarks(from edited: WorkoutLog, comparedTo original: WorkoutLog) -> WorkoutLog {
+        var edited = edited
+        let before = Dictionary(original.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        for i in edited.exercises.indices where edited.exercises[i].cameraCountedPerSet != nil {
+            let now = edited.exercises[i]
+            if let was = before[now.id],
+               was.repsPerSet == now.repsPerSet, was.weightsPerSet == now.weightsPerSet,
+               was.reps == now.reps, was.weight == now.weight, was.sets == now.sets { continue }
+            edited.exercises[i].cameraCountedPerSet = nil
+        }
+        return edited
+    }
+
     func updateWorkoutLog(_ updatedLog: WorkoutLog) {
         guard canCoachModifyWorkoutLog(updatedLog) else {
             showToast("Coach edit access is required for this log.")
@@ -14007,6 +14023,7 @@ final class MorpheAppStore {
         }
 
         guard let index = workoutLogs.firstIndex(where: { $0.id == updatedLog.id }) else { return }
+        let updatedLog = Self.droppingEditedCameraMarks(from: updatedLog, comparedTo: workoutLogs[index])
         workoutLogs[index] = updatedLog
         workoutLogs.sort { $0.completedAt > $1.completedAt }
         refreshWorkoutLogDerivedState(for: updatedLog.athleteID)
@@ -14134,6 +14151,7 @@ final class MorpheAppStore {
     func updateOwnWorkoutLog(_ updatedLog: WorkoutLog) {
         guard updatedLog.athleteID == clientProfile.id else { return }
         guard let index = workoutLogs.firstIndex(where: { $0.id == updatedLog.id }) else { return }
+        let updatedLog = Self.droppingEditedCameraMarks(from: updatedLog, comparedTo: workoutLogs[index])
         workoutLogs[index] = updatedLog
         workoutLogs.sort { $0.completedAt > $1.completedAt }
         refreshWorkoutLogDerivedState(for: updatedLog.athleteID)

@@ -1221,6 +1221,20 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.trackedSetCamera[exercise.id], [false, true], "parallel to the reps array")
         store.removeTrackedSet(exerciseID: exercise.id, setIndex: 0)
         XCTAssertEqual(store.trackedSetCamera[exercise.id], [true], "removing a set keeps the flags aligned")
+
+        // A hand edit gives the mark up; an untouched exercise keeps it.
+        let marked = entry([50, 60], camera: [false, true])
+        var other = entry([20], camera: [true]); other.name = "Curl"
+        let original = WorkoutLog(
+            athleteID: store.clientProfile.id, athleteName: "A", workoutTemplateID: nil, workoutTitle: "T",
+            sport: .generalFitness, completedAt: .now, durationMinutes: 30, exercises: [marked, other],
+            notes: "", source: .athleteManual, enteredByUserID: store.clientProfile.id,
+            enteredByRole: .client, enteredByName: "A", verificationStatus: .athleteSubmitted)
+        var edited = original
+        edited.exercises[0].weightsPerSet = [50, 80]
+        let result = MorpheAppStore.droppingEditedCameraMarks(from: edited, comparedTo: original)
+        XCTAssertNil(result.exercises[0].cameraCountedPerSet, "edited numbers lose the camera mark")
+        XCTAssertEqual(result.exercises[1].cameraCountedPerSet, [true], "an untouched exercise keeps it")
     }
 
     /// Rebuild wave (2026-08): the retraction classifier — the engine
