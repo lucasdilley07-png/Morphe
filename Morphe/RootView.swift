@@ -1222,7 +1222,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     private func claimStageForActiveCapture() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playAndRecord, mode: .default,
-                                 options: Self.routeOptions())
+                                 options: routeOptions())
         Self.allowHapticsWhileRecording()
         try? session.setActive(true, options: .notifyOthersOnDeactivation)
         sessionOwned = true
@@ -1236,16 +1236,19 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// headset mic in; the cost is honest and stated in Settings: other
     /// apps' music plays in call quality while Morphe listens.
     static var headsetMicEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: "morphe.heymorphe.headsetmic") as? Bool ?? true }
+        // Off unless chosen (Lucas 2026-10-04: opening the app made other
+        // apps' music sound muffled — the hands-free Bluetooth profile
+        // drops ALL audio to call quality the moment it is allowed).
+        get { UserDefaults.standard.object(forKey: "morphe.heymorphe.headsetmic") as? Bool ?? false }
         set { UserDefaults.standard.set(newValue, forKey: "morphe.heymorphe.headsetmic") }
     }
 
     /// The route half of every session this engine configures — the
     /// mixing/ducking half is the caller's.
-    private static func routeOptions(_ extra: AVAudioSession.CategoryOptions = []) -> AVAudioSession.CategoryOptions {
+    private func routeOptions(_ extra: AVAudioSession.CategoryOptions = []) -> AVAudioSession.CategoryOptions {
         var options: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .allowBluetoothA2DP]
         options.formUnion(extra)
-        if headsetMicEnabled {
+        if usingHeadsetMic {
             options.insert(.allowBluetoothHFP)
             // AirPods' high-quality link where the hardware has it
             // (iOS 26); hands-free stays the fallback.
@@ -1261,6 +1264,51 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// Set after every category change.
     private static func allowHapticsWhileRecording() {
         try? AVAudioSession.sharedInstance().setAllowHapticsAndSystemSoundsDuringRecording(true)
+    }
+
+    /// True while this engine's sessions allow the hands-free profile.
+    /// Decided when passive listening arms and held for the whole
+    /// exchange, so the route never flaps mid-capture. NEVER true while
+    /// another app is playing: music keeps its full-quality link, and
+    /// Morphe listens through the phone's mic instead.
+    private var usingHeadsetMic = false
+    private var musicWatchTimer: Timer?
+    private var quietPolls = 0
+
+    /// Other audio started or stopped under a passive listen: re-arm on
+    /// the right mic. Leaving the headset mic is immediate (music must
+    /// not sit in call quality); returning to it waits for two quiet
+    /// checks so a gap between songs doesn't flap the route.
+    private func startMusicWatch() {
+        guard musicWatchTimer == nil else { return }
+        let timer = Timer(timeInterval: 4, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async { self?.reconcileHeadsetMic() }
+        }
+        musicWatchTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopMusicWatch() {
+        musicWatchTimer?.invalidate()
+        musicWatchTimer = nil
+        quietPolls = 0
+    }
+
+    private func reconcileHeadsetMic() {
+        guard state == .passive, !interrupted else { return }
+        let playing = AVAudioSession.sharedInstance().isOtherAudioPlaying
+        if usingHeadsetMic, playing || !Self.headsetMicEnabled {
+            quietPolls = 0
+            beginListening()
+        } else if !usingHeadsetMic, Self.headsetMicEnabled, !playing {
+            quietPolls += 1
+            if quietPolls >= 2 {
+                quietPolls = 0
+                beginListening()
+            }
+        } else {
+            quietPolls = 0
+        }
     }
 
     /// Re-applies the route after the Settings switch flips.
@@ -1444,8 +1492,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         ) { [weak self] note in
             guard let self,
                   let raw = note.userInfo?[AVAudioSessionSilenceSecondaryAudioHintTypeKey] as? UInt,
-                  AVAudioSession.SilenceSecondaryAudioHintType(rawValue: raw) == .end,
-                  self.waitingForQuiet else { return }
+                  let hint = AVAudioSession.SilenceSecondaryAudioHintType(rawValue: raw) else { return }
+            // Another app just started playing while the headset mic is
+            // in use: give it its full-quality link back at once.
+            if hint == .begin, self.usingHeadsetMic { self.reconcileHeadsetMic() }
+            guard hint == .end, self.waitingForQuiet else { return }
             self.waitingForQuiet = false
             self.start()
         }
@@ -1742,6 +1793,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
 
     func stop() {
         state = .off
+        stopMusicWatch()
         interrupted = false
         resumeRetries = 0
         // A user-level stop is not a pause: the resume hook must not
@@ -1863,7 +1915,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         // Morphe talks WITHOUT hearing itself.
         try? AVAudioSession.sharedInstance().setCategory(
             .playAndRecord, mode: .voiceChat,
-            options: Self.routeOptions(.duckOthers))
+            options: routeOptions(.duckOthers))
         Self.allowHapticsWhileRecording()
         armBargeInRecognition()
     }
@@ -2211,7 +2263,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
         sessionOwned = false
         try? session.setCategory(.playAndRecord, mode: .default,
-                                 options: Self.routeOptions(.mixWithOthers))
+                                 options: routeOptions(.mixWithOthers))
     }
 
     private func beginListening() {
@@ -2263,12 +2315,16 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         SoundEffects.externalAudioOwner = true
 
         let session = AVAudioSession.sharedInstance()
+        // The headset mic only when nothing else is playing — see
+        // usingHeadsetMic.
+        usingHeadsetMic = Self.headsetMicEnabled && !session.isOtherAudioPlaying
+        if Self.headsetMicEnabled { startMusicWatch() } else { stopMusicWatch() }
         do {
             // .mixWithOthers, not .duckOthers (audit 13, P1): merely
             // WAITING for a wake word must not quiet the user's playlist
             // for the whole workout. speak() ducks for its own duration.
             try session.setCategory(.playAndRecord, mode: .default,
-                                    options: Self.routeOptions(.mixWithOthers))
+                                    options: routeOptions(.mixWithOthers))
             Self.allowHapticsWhileRecording()
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             sessionOwned = true
@@ -2314,6 +2370,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
 
     private func standDown() {
         state = .off
+        stopMusicWatch()
         endSpeakingLevel()
         followUpDeadline = nil
         activeIsFollowUp = false

@@ -1329,7 +1329,7 @@ struct ProfileView: View {
                         Divider().overlay(MorpheTheme.strokeSubtle)
                         preferenceToggleRow(
                             title: "Listen through headphones",
-                            caption: "With AirPods or a Bluetooth headset connected, Morphe hears you through their microphone instead of the phone's. The trade: music from other apps plays in call quality while Morphe listens. Off keeps music at full quality and listens through the phone.",
+                            caption: "With AirPods or a Bluetooth headset connected, Morphe hears you through their microphone when nothing else is playing. While music or other audio plays, it listens through the phone instead, so your music keeps its full quality.",
                             isOn: Binding(
                                 get: { store.heyMorpheHeadsetMic },
                                 set: { store.setHeyMorpheHeadsetMic($0) }
