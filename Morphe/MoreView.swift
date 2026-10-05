@@ -42,31 +42,23 @@ struct MoreView: View {
         // 2026-10-05) — nothing stays pinned; the swipe between the three
         // panels is unchanged.
         VStack(alignment: .leading, spacing: 12) {
-            // Swipe between the three panels (Lucas 2026-08-18) — same
-            // pager grammar as Network's panes.
-            TabView(selection: Binding(
-                get: { activeFeature },
-                set: { store.selectedHubFeature = $0 }
-            )) {
-                ForEach(Self.tabs) { feature in
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 16) {
-                            learnHeader
-                            panel(for: feature)
-                            // Once per tab, on the last page — not three
-                            // copies (audit 11, P2-16).
-                            if feature == Self.tabs.last {
-                                ManifestoCard()
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 4)
-                        .padding(.bottom, 120)
+            // The chips are buttons only (Lucas 2026-10-05): the
+            // horizontal swipe belongs to the main tab pager now.
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    learnHeader
+                    panel(for: activeFeature)
+                    // Once, on the last panel — not three copies (audit 11,
+                    // P2-16).
+                    if activeFeature == Self.tabs.last {
+                        ManifestoCard()
                     }
-                    .tag(feature)
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 4)
+                .padding(.bottom, 120)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
+            .id(activeFeature)
         }
         .padding(.top, MorpheTheme.Spacing.pageTopCompact)
     }

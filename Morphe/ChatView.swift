@@ -21,30 +21,25 @@ struct CommunityView: View {
         // away with the page instead of staying pinned. The swipe between
         // panes is unchanged.
         return VStack(spacing: 0) {
-            // The swipe shell: Chats on the left, the feed on the right —
-            // one horizontal gesture between your people and their work.
-            // Selection is the SAME store var every deep link already sets,
-            // so doors keep landing exactly where they always did.
-            TabView(selection: $store.selectedCommunitySection) {
-                contactScreen
-                    .tag(ClientCommunitySection.contact)
-
-                if FeatureFlags.socialFeedEnabled {
-                    // The stack hosts the feed's author push (swipe-back). The
-                    // system bar stays hidden — the HUD has its own chrome.
-                    NavigationStack {
-                        forYouScreen
-                            .toolbar(.hidden, for: .navigationBar)
-                    }
-                    .tag(ClientCommunitySection.forYou)
-                } else {
-                    boardScreen
-                        .tag(ClientCommunitySection.board)
-                    calendarScreen
-                        .tag(ClientCommunitySection.calendar)
+            // The tabs are buttons only (Lucas 2026-10-05): the horizontal
+            // swipe now belongs to the main Today / Train / Discover /
+            // Network / Learn pager, so the panes here no longer page.
+            // Selection is the SAME store var every deep link already sets.
+            switch store.selectedCommunitySection {
+            case .forYou where FeatureFlags.socialFeedEnabled:
+                // The stack hosts the feed's author push (swipe-back). The
+                // system bar stays hidden — the HUD has its own chrome.
+                NavigationStack {
+                    forYouScreen
+                        .toolbar(.hidden, for: .navigationBar)
                 }
+            case .board:
+                boardScreen
+            case .calendar:
+                calendarScreen
+            default:
+                contactScreen
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
         }
         // The paged panes stay mounted, so .task never re-fires on a
         // swipe — without this, the inbox (one-shot fetch) only updated

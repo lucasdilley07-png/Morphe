@@ -626,9 +626,10 @@ private struct ClientExperienceShell: View {
 
     var body: some View {
         @Bindable var store = store
-        // The custom bottom bar is the only navigator — the system tab bar is
-        // hidden per tab, and the page style is gone so horizontal chip rows
-        // and carousels don't fight an edge-swipe pager.
+        // The custom bottom bar navigates, and so does a horizontal swipe
+        // (Lucas 2026-10-05): the five tabs are one pager, in the bar's
+        // order. Horizontal chip rows and carousels inside a page keep
+        // their own drags; the pager takes the rest.
         return TabView(selection: $store.selectedClientTab) {
             // Each screen's identity is keyed off tabResetKey, so tapping the
             // tab icon rebuilds it at its root (top of page, drill-ins
@@ -643,6 +644,14 @@ private struct ClientExperienceShell: View {
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.train)
 
+            // Discover is a first-class tab again; Progress presents as a
+            // sheet from the profile row and the old doors (Lucas 2026-08-26).
+            // Pager order = bar order (today, train, discover, network, learn).
+            DiscoverScreenView()
+                .id(store.tabResetKey("discover"))
+                .toolbar(.hidden, for: .tabBar)
+                .tag(ClientTab.discover)
+
             // Un-gated: the For You feed is REAL now (Firestore posts).
             // CommunityView gates its own demo-only sections internally.
             CommunityView()
@@ -652,18 +661,12 @@ private struct ClientExperienceShell: View {
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.community)
 
-            // Discover is a first-class tab again; Progress presents as a
-            // sheet from the profile row and the old doors (Lucas 2026-08-26).
-            DiscoverScreenView()
-                .id(store.tabResetKey("discover"))
-                .toolbar(.hidden, for: .tabBar)
-                .tag(ClientTab.discover)
-
             MoreView()
                 .id(store.tabResetKey("more"))
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.more)
         }
+        .tabViewStyle(.page(indexDisplayMode: .never))
         .safeAreaInset(edge: .top) {
             // Icons only — no band, no hairline. The short ink→clear fade
             // (same scrim the coach header uses) keeps the STATUS BAR
