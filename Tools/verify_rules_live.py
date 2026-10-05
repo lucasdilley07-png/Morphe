@@ -330,6 +330,44 @@ try:
     check("B lists A's claimed docs by uid", False,
           run_query(B, "managedClients", "claimedByUid", A["uid"]))
 
+    print("\n— Creator Coach (2026-10-05) —")
+    app_fields = {"uid": s(A["uid"]), "email": s("a@rules.test"), "name": s("Rules A"),
+                  "username": s("rulesa"), "specialty": s("Beginners"), "credentials": s("NSCA-CPT"),
+                  "experience": s("3 years"), "links": s("https://example.com"),
+                  "plan": s("Two workouts and a note."), "status": s("pending"), "createdAt": ts}
+    check("A files a Creator Coach application (pending)", True,
+          fs_call(A, "PATCH", f"coachApplications/{A['uid']}", {"fields": app_fields}))
+    check("A reads their own application", True,
+          fs_call(A, "GET", f"coachApplications/{A['uid']}"))
+    check("B reads A's application", False,
+          fs_call(B, "GET", f"coachApplications/{A['uid']}"))
+    check("A sets their own application to approved", False,
+          fs_call(A, "PATCH", f"coachApplications/{A['uid']}?updateMask.fieldPaths=status",
+                  {"fields": {"status": s("approved")}}))
+    check("B files an application under A's uid", False,
+          fs_call(B, "PATCH", f"coachApplications/{A['uid']}", {"fields": app_fields}))
+    check("A self-mints users/{A}.creator = true", False,
+          fs_call(A, "PATCH", f"users/{A['uid']}?updateMask.fieldPaths=creator",
+                  {"fields": {"creator": b(True)}}))
+    check("A (not a creator) publishes a creator workout", False,
+          fs_call(A, "PATCH", f"creatorWorkouts/cw-{RUN_ID}",
+                  {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"), "name": s("Test"),
+                              "notes": s(""), "exercises": {"arrayValue": {"values": []}}, "publishedAt": ts}}))
+    check("A (not a creator) publishes a creator note", False,
+          fs_call(A, "PATCH", f"creatorNotes/cn-{RUN_ID}",
+                  {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                              "title": s("Test"), "body": s("Body"), "createdAt": ts}}))
+    check("A (not a creator) lists an open challenge", False,
+          fs_call(A, "PATCH", f"openChallenges/OPEN{RUN_ID[:4].upper()}",
+                  {"fields": {"code": s(f"OPEN{RUN_ID[:4].upper()}"), "title": s("Test"),
+                              "hostUid": s(A["uid"]), "hostName": s("Rules A"), "metric": s("sets"), "endsAt": ts}}))
+    check("B (signed in) lists the creator workouts shelf", True,
+          run_query(B, "creatorWorkouts", "authorUid", "nobody"))
+    check("A withdraws their application", True,
+          fs_call(A, "DELETE", f"coachApplications/{A['uid']}"))
+    # The ALLOW half for an approved creator needs the server-granted flag,
+    # which only the admin tool sets — exercised by hand, not here.
+
     print("\n— Account deletion path —")
     check("B deletes A's post", False, fs_call(B, "DELETE", f"posts/{post_id}"))
     check("A deletes their own post", True, fs_call(A, "DELETE", f"posts/{post_id}"))
@@ -359,6 +397,7 @@ finally:
         (A, f"users/{A['uid']}/following/{B['uid']}"),
         (A, f"users/{A['uid']}/blocked/{B['uid']}"),
         (A, f"users/{A['uid']}/coachShare/summary"),
+        (A, f"coachApplications/{A['uid']}"),
         (A, f"usernames/{username}"),
         (A, f"users/{A['uid']}"),
     ]:
