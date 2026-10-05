@@ -1441,6 +1441,21 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertTrue(store.creatorWorkouts.isEmpty)
     }
 
+    /// Train's layout (2026-10-05): order and hidden set persist in the
+    /// style profile, unknown ids drop, missing ones append.
+    @MainActor
+    func testTrainLayoutPersistsOrderAndHiddenSections() {
+        let store = MorpheAppStore()
+        XCTAssertEqual(store.trainCardLayout, TrainCardID.defaultOrder)
+        store.setTrainLayout(order: ["progress", "bogus", "library"], hidden: ["partner"])
+        XCTAssertEqual(store.trainCardLayout, [.progress, .library, .program, .partner])
+        XCTAssertEqual(store.visibleTrainCards, [.progress, .library, .program])
+        let json = try! JSONEncoder().encode(store.styleProfile)
+        let back = try! JSONDecoder().decode(UserStyleProfile.self, from: json)
+        XCTAssertEqual(back.trainCardOrder, ["progress", "bogus", "library"])
+        XCTAssertEqual(back.trainHiddenCards, ["partner"])
+    }
+
     /// Rebuild wave (2026-08): the retraction classifier — the engine
     /// drops these before onCommand ever fires.
     func testCancelPhraseClassifier() {

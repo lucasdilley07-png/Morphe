@@ -1046,6 +1046,45 @@ enum HomeCardID: String, CaseIterable, Identifiable {
     }
 }
 
+/// Train's reorderable sections (Lucas 2026-10-05) — everything under
+/// the session hero. Same resolve rule as HomeCardID.
+enum TrainCardID: String, CaseIterable, Identifiable {
+    case program
+    case library
+    case partner
+    case progress
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .program: return "Your program"
+        case .library: return "My Library"
+        case .partner: return "Partner session"
+        case .progress: return "Progress"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .program: return "The multi-week plan in flight"
+        case .library: return "Your builds, favorites and saved sessions"
+        case .partner: return "A session shared with a training partner"
+        case .progress: return "History, records and charts"
+        }
+    }
+
+    static let defaultOrder: [TrainCardID] = [.program, .library, .partner, .progress]
+
+    static func resolvedOrder(from raw: [String]) -> [TrainCardID] {
+        var order = raw.compactMap(TrainCardID.init(rawValue:))
+        for card in defaultOrder where !order.contains(card) {
+            order.append(card)
+        }
+        return order
+    }
+}
+
 /// Morphe's spoken accent/voice options (Lucas 2026-09). The id is the
 /// chosen value in UserStyleProfile.voiceStyle; resolution to a real
 /// AVSpeechSynthesisVoice happens in HeyMorpheEngine (quality-ranked,
@@ -1343,6 +1382,9 @@ struct UserStyleProfile: Codable, Equatable {
     var homeCardOrder: [String] = []
     /// Cards the user hid from Today (raw HomeCardID values).
     var homeHiddenCards: [String] = []
+    /// Train's section order and hidden sections (raw TrainCardID values).
+    var trainCardOrder: [String] = []
+    var trainHiddenCards: [String] = []
     /// How often each Today card gets used (learned half — feeds the
     /// suggest-then-confirm layout proposal, never silent rearranging).
     var homeCardTaps: [String: Int] = [:]
@@ -1372,6 +1414,8 @@ struct UserStyleProfile: Codable, Equatable {
         characterID = ((try? c.decodeIfPresent(String.self, forKey: .characterID)) ?? nil) ?? "morphe"
         homeCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .homeCardOrder)) ?? nil) ?? []
         homeHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .homeHiddenCards)) ?? nil) ?? []
+        trainCardOrder = ((try? c.decodeIfPresent([String].self, forKey: .trainCardOrder)) ?? nil) ?? []
+        trainHiddenCards = ((try? c.decodeIfPresent([String].self, forKey: .trainHiddenCards)) ?? nil) ?? []
         homeCardTaps = ((try? c.decodeIfPresent([String: Int].self, forKey: .homeCardTaps)) ?? nil) ?? [:]
         declinedLayoutSuggestions = ((try? c.decodeIfPresent([String].self, forKey: .declinedLayoutSuggestions)) ?? nil) ?? []
         updatedAt = ((try? c.decodeIfPresent(Date.self, forKey: .updatedAt)) ?? nil) ?? .distantPast

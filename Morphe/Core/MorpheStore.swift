@@ -433,6 +433,32 @@ final class MorpheAppStore {
         persistLocalProfile()
     }
 
+    // MARK: Train layout (Lucas 2026-10-05)
+
+    var trainCardLayout: [TrainCardID] {
+        TrainCardID.resolvedOrder(from: styleProfile.trainCardOrder)
+    }
+
+    var visibleTrainCards: [TrainCardID] {
+        trainCardLayout.filter { !styleProfile.trainHiddenCards.contains($0.rawValue) }
+    }
+
+    /// Why a shown section may still render nothing right now.
+    func trainCardUnlockNote(_ card: TrainCardID) -> String? {
+        switch card {
+        case .program: return programProgress == nil ? "Shows while a program is running." : nil
+        case .partner: return selectedWorkoutPartner == nil ? "Shows when a partner session is set up." : nil
+        default: return nil
+        }
+    }
+
+    func setTrainLayout(order: [String]? = nil, hidden: [String]? = nil) {
+        if let order { styleProfile.trainCardOrder = order }
+        if let hidden { styleProfile.trainHiddenCards = hidden }
+        styleProfile.updatedAt = .now
+        persistLocalProfile()
+    }
+
     // MARK: The visible learning loop (personalization phase 4)
 
     /// One line of what Morphe actually knows, spoken on Today under the

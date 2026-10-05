@@ -38,6 +38,7 @@ struct WorkoutView: View {
     @State private var showSessionQueue = false
     /// Runs after the library sheet finishes dismissing.
     @State private var pendingLibraryAction: (() -> Void)?
+    @State private var showTrainLayoutEditor = false
     @State private var showBuilder = false
     @State private var showFormCheck = false
     @State private var showCircuitMode = false
@@ -199,6 +200,154 @@ struct WorkoutView: View {
                     .environment(store)
             }
         )
+    }
+
+
+    /// One reorderable Train section (Lucas 2026-10-05). Gates stay
+    /// inside each case — a hidden-by-circumstance card (no program
+    /// running, no partner) simply renders nothing.
+    @ViewBuilder
+    private func trainCard(_ card: TrainCardID) -> some View {
+        switch card {
+        case .program:
+            if store.programProgress != nil {
+                ProgramSectionCard()
+            }
+        case .library:
+                // A tap-through card like Today's Schedule (Lucas
+                // 2026-10-05) — the library opens as its own page instead
+                // of unfolding in the middle of Train.
+                TrainLinkCard(
+                    systemImage: "books.vertical",
+                    title: "My Library",
+                    detail: libraryCardDetail
+                ) {
+                    showLibrary = true
+                }
+                .sheet(isPresented: $showLibrary, onDismiss: {
+                    // Starting, queuing, building and editing all present
+                    // from Train — they run once this sheet is gone.
+                    let action = pendingLibraryAction
+                    pendingLibraryAction = nil
+                    action?()
+                }) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack(alignment: .firstTextBaseline) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("My Library")
+                                        .font(.title2.weight(.bold))
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                    Text("Your builds, favorites and saved sessions.")
+                                        .font(.subheadline)
+                                        .foregroundStyle(MorpheTheme.textSecondary)
+                                }
+                                Spacer(minLength: 8)
+                                Button("Done") { showLibrary = false }
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                    .frame(minWidth: 44, minHeight: 44)
+                            }
+                    Button {
+                        afterLibrary { showBuilder = true }
+                    } label: {
+                        Label("Build Workout", systemImage: "plus.circle.fill")
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityLabel("Build your own workout")
+
+                    // Built workouts live INSIDE the library now (the "My
+                    // Workouts" segment) — one home, not a second card.
+                    SavedWorkoutsLibraryCard(
+                        items: store.savedWorkouts,
+                        insightFor: { item in
+                            store.savedWorkoutInsight(for: item)
+                        },
+                        onStart: { item in
+                            afterLibrary {
+                                isShowingPainFlow = false
+                                store.startSavedWorkout(item)
+                            }
+                        },
+                        onQueue: { item in
+                            afterLibrary { store.queueSavedWorkout(item) }
+                        },
+                        onWithBuddy: { item in
+                            afterLibrary { store.startSavedWorkoutWithBuddy(item) }
+                        },
+                        onDuplicate: { item in
+                            store.duplicateSavedWorkout(item)
+                        },
+                        onTogglePin: { item in
+                            store.togglePinnedSavedWorkout(item)
+                        },
+                        onRemove: { item in
+                            store.removeSavedWorkout(item)
+                        },
+                        onEdit: { item in
+                            if let templateID = store.editableTemplateID(for: item) {
+                                afterLibrary { editingWorkout = EditingWorkout(id: templateID) }
+                            }
+                        },
+                        builtWorkouts: store.workoutTemplates.filter { store.isCustomWorkout($0.id) },
+                        onStartBuilt: { template in
+                            afterLibrary {
+                                isShowingPainFlow = false
+                                store.beginLiveWorkout(template)
+                            }
+                        },
+                        onQueueBuilt: { template in
+                            afterLibrary { store.openWorkoutTemplate(template) }
+                        },
+                        onEditBuilt: { template in
+                            afterLibrary { editingWorkout = EditingWorkout(id: template.id) }
+                        },
+                        onDeleteBuilt: { template in
+                            workoutPendingDelete = template
+                        }
+                    )
+                    .confirmationDialog(
+                        deleteWorkoutDialogTitle,
+                        isPresented: Binding(
+                            get: { workoutPendingDelete != nil },
+                            set: { if !$0 { workoutPendingDelete = nil } }
+                        ),
+                        titleVisibility: .visible,
+                        presenting: workoutPendingDelete
+                    ) { template in
+                        Button("Delete Workout", role: .destructive) {
+                            store.deleteCustomWorkout(template.id)
+                        }
+                        Button("Keep It", role: .cancel) {}
+                    }
+                        }
+                        .padding(20)
+                    }
+                    .background(PremiumBackground().ignoresSafeArea())
+                    .environment(store)
+                    .presentationDetents([.large])
+                    .presentationCornerRadius(28)
+                    .sheetToastSurface()
+                }
+                .id("myLibrary")
+        case .partner:
+                if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
+                    PartnerSessionCard(
+                        partner: partner,
+                        mode: store.selectedPartnerWorkoutMode,
+                        plan: plan
+                    ) {
+                        store.sendPartnerReadyCheck()
+                    }
+                }
+        case .progress:
+                TrainLinkCard(
+                    systemImage: "chart.line.uptrend.xyaxis",
+                    title: "Progress",
+                    detail: progressCardDetail
+                ) {
+                    store.openProgress()
+                }
+        }
     }
 
     /// Close the library sheet, then act — two presentations can't overlap.
@@ -848,156 +997,39 @@ struct WorkoutView: View {
                     )
                 }
 
-                // A RUNNING program's arc stays here — it's your plan
-                // in flight. Browsing Morphe's programs moved to Discover
-                // with the rest of the catalog (Lucas 2026-08-28), and My
-                // Library takes this slot: your own workouts outrank the
-                // storefront on Train.
-                if !store.hasCompletedWorkoutFlow, store.programProgress != nil {
-                    ProgramSectionCard()
-                }
-
+                // The sections below the hero are the user's to order and
+                // hide (Lucas 2026-10-05) — same editor Today has. The
+                // post-finish review owns the screen until the session is
+                // logged or discarded; nothing is deleted.
                 if !store.hasCompletedWorkoutFlow {
-                // A tap-through card like Today's Schedule (Lucas
-                // 2026-10-05) — the library opens as its own page instead
-                // of unfolding in the middle of Train.
-                TrainLinkCard(
-                    systemImage: "books.vertical",
-                    title: "My Library",
-                    detail: libraryCardDetail
-                ) {
-                    showLibrary = true
-                }
-                .sheet(isPresented: $showLibrary, onDismiss: {
-                    // Starting, queuing, building and editing all present
-                    // from Train — they run once this sheet is gone.
-                    let action = pendingLibraryAction
-                    pendingLibraryAction = nil
-                    action?()
-                }) {
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack(alignment: .firstTextBaseline) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("My Library")
-                                        .font(.title2.weight(.bold))
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                    Text("Your builds, favorites and saved sessions.")
-                                        .font(.subheadline)
-                                        .foregroundStyle(MorpheTheme.textSecondary)
-                                }
-                                Spacer(minLength: 8)
-                                Button("Done") { showLibrary = false }
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                                    .frame(minWidth: 44, minHeight: 44)
-                            }
+                    ForEach(store.visibleTrainCards) { card in
+                        trainCard(card)
+                    }
+
+                    if store.visibleTrainCards.isEmpty {
+                        Text("All sections hidden — tap Edit Train's layout to bring them back.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 8)
+                    }
+
                     Button {
-                        afterLibrary { showBuilder = true }
+                        showTrainLayoutEditor = true
                     } label: {
-                        Label("Build Workout", systemImage: "plus.circle.fill")
+                        Label("Edit Train's layout", systemImage: "slider.horizontal.3")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .frame(minHeight: 32)
+                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .accessibilityLabel("Build your own workout")
-
-                    // Built workouts live INSIDE the library now (the "My
-                    // Workouts" segment) — one home, not a second card.
-                    SavedWorkoutsLibraryCard(
-                        items: store.savedWorkouts,
-                        insightFor: { item in
-                            store.savedWorkoutInsight(for: item)
-                        },
-                        onStart: { item in
-                            afterLibrary {
-                                isShowingPainFlow = false
-                                store.startSavedWorkout(item)
-                            }
-                        },
-                        onQueue: { item in
-                            afterLibrary { store.queueSavedWorkout(item) }
-                        },
-                        onWithBuddy: { item in
-                            afterLibrary { store.startSavedWorkoutWithBuddy(item) }
-                        },
-                        onDuplicate: { item in
-                            store.duplicateSavedWorkout(item)
-                        },
-                        onTogglePin: { item in
-                            store.togglePinnedSavedWorkout(item)
-                        },
-                        onRemove: { item in
-                            store.removeSavedWorkout(item)
-                        },
-                        onEdit: { item in
-                            if let templateID = store.editableTemplateID(for: item) {
-                                afterLibrary { editingWorkout = EditingWorkout(id: templateID) }
-                            }
-                        },
-                        builtWorkouts: store.workoutTemplates.filter { store.isCustomWorkout($0.id) },
-                        onStartBuilt: { template in
-                            afterLibrary {
-                                isShowingPainFlow = false
-                                store.beginLiveWorkout(template)
-                            }
-                        },
-                        onQueueBuilt: { template in
-                            afterLibrary { store.openWorkoutTemplate(template) }
-                        },
-                        onEditBuilt: { template in
-                            afterLibrary { editingWorkout = EditingWorkout(id: template.id) }
-                        },
-                        onDeleteBuilt: { template in
-                            workoutPendingDelete = template
-                        }
-                    )
-                    .confirmationDialog(
-                        deleteWorkoutDialogTitle,
-                        isPresented: Binding(
-                            get: { workoutPendingDelete != nil },
-                            set: { if !$0 { workoutPendingDelete = nil } }
-                        ),
-                        titleVisibility: .visible,
-                        presenting: workoutPendingDelete
-                    ) { template in
-                        Button("Delete Workout", role: .destructive) {
-                            store.deleteCustomWorkout(template.id)
-                        }
-                        Button("Keep It", role: .cancel) {}
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Edit Train's layout — reorder or hide sections")
+                    .sheet(isPresented: $showTrainLayoutEditor) {
+                        TrainLayoutEditorSheet()
+                            .environment(store)
+                            .presentationCornerRadius(28)
                     }
-                        }
-                        .padding(20)
-                    }
-                    .background(PremiumBackground().ignoresSafeArea())
-                    .environment(store)
-                    .presentationDetents([.large])
-                    .presentationCornerRadius(28)
-                    .sheetToastSurface()
-                }
-                .id("myLibrary")
-                }
-
-                // Post-finish, the review flow owns the screen (audit D3):
-                // the library/form disclosures come back the moment the
-                // session is logged or discarded. Nothing is deleted.
-                if !store.hasCompletedWorkoutFlow {
-                if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
-                    PartnerSessionCard(
-                        partner: partner,
-                        mode: store.selectedPartnerWorkoutMode,
-                        plan: plan
-                    ) {
-                        store.sendPartnerReadyCheck()
-                    }
-                }
-
-                // Progress takes this slot (Lucas 2026-10-05): history,
-                // records and charts are one tap from where the work is.
-                TrainLinkCard(
-                    systemImage: "chart.line.uptrend.xyaxis",
-                    title: "Progress",
-                    detail: progressCardDetail
-                ) {
-                    store.openProgress()
-                }
                 }
             }
             .padding(.horizontal, 20)
@@ -2192,6 +2224,76 @@ private struct LiveWorkoutConsoleCard: View {
 }
 
 /// Entry point for the camera form coach (Phase 1: framing + reps).
+/// Train's layout editor — the Today editor's shape, for Train's sections.
+struct TrainLayoutEditorSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(store.trainCardLayout) { card in
+                        let hidden = store.styleProfile.trainHiddenCards.contains(card.rawValue)
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(card.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Text(card.detail)
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                if let note = store.trainCardUnlockNote(card) {
+                                    Text(note)
+                                        .font(.caption2)
+                                        .foregroundStyle(MorpheTheme.accentText)
+                                }
+                            }
+                            Spacer()
+                            Button {
+                                var set = store.styleProfile.trainHiddenCards
+                                if hidden { set.removeAll { $0 == card.rawValue } } else { set.append(card.rawValue) }
+                                store.setTrainLayout(hidden: set)
+                                Haptics.selection()
+                            } label: {
+                                Image(systemName: hidden ? "eye.slash" : "eye")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(hidden ? MorpheTheme.textMuted : MorpheTheme.accentText)
+                                    .frame(width: 44, height: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel(hidden ? "Show \(card.title)" : "Hide \(card.title)")
+                        }
+                        .listRowBackground(MorpheTheme.inkAlt)
+                    }
+                    .onMove { from, to in
+                        var order = store.trainCardLayout
+                        order.move(fromOffsets: from, toOffset: to)
+                        store.setTrainLayout(order: order.map(\.rawValue))
+                        Haptics.selection()
+                    }
+                } header: {
+                    Text("Drag to reorder — today's session stays on top.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(MorpheTheme.ink)
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Train's layout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(MorpheTheme.accentText)
+                }
+            }
+        }
+    }
+}
+
 /// A full-width tap-through row — the same shape as Today's Schedule card.
 private struct TrainLinkCard: View {
     let systemImage: String
