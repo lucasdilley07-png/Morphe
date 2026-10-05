@@ -1,5 +1,7 @@
 import Charts
+import PhotosUI
 import SwiftUI
+import UIKit
 
 // Named ProgressScreenView (not ProgressView) so it can't shadow SwiftUI's
 // ProgressView spinner — the shadowing silently embedded this entire dashboard
@@ -313,6 +315,9 @@ struct ProgressScreenView: View {
                 // this-week/streak pills already live in the hero strip.)
                 WorkoutHistoryCard(logs: store.currentAthleteWorkoutLogs)
             }
+
+            // What the numbers can't show (2026-10-04). On this iPhone only.
+            ProgressPhotosCard(profileID: store.clientProfile.id)
 
             if store.todayExperienceTier >= 2 {
                 AthletePatternInsightsCard(insights: athletePatternInsights)
@@ -2737,6 +2742,322 @@ private struct NutritionAdherenceCard: View {
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
             }
+        }
+    }
+}
+
+// MARK: - Progress photos (2026-10-04)
+//
+// Private by construction: files live in the app's own Application Support
+// folder on this iPhone, keyed by profile. Nothing is uploaded, nothing is
+// shown to anyone, and no analysis is run on them — the old "AI scan" card
+// promised readings Morphe cannot honestly make from a photo.
+
+enum ProgressPhotoStore {
+    struct Entry: Identifiable, Hashable {
+        let id: String      // file name
+        let date: Date
+        let url: URL
+    }
+
+    static func directory(profileID: UUID, root: URL? = nil) -> URL {
+        let base = root ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return base.appendingPathComponent("ProgressPhotos", isDirectory: true)
+            .appendingPathComponent(profileID.uuidString, isDirectory: true)
+    }
+
+    /// Oldest first. The capture time is the file name (epoch seconds), so
+    /// the order survives backups and restores that rewrite file dates.
+    static func list(profileID: UUID, root: URL? = nil) -> [Entry] {
+        let dir = directory(profileID: profileID, root: root)
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
+        return names.compactMap { name -> Entry? in
+            guard name.hasSuffix(".jpg"),
+                  let seconds = TimeInterval(name.dropLast(4)) else { return nil }
+            return Entry(id: name, date: Date(timeIntervalSince1970: seconds),
+                         url: dir.appendingPathComponent(name))
+        }
+        .sorted { $0.date < $1.date }
+    }
+
+    /// Scaled to 1,600pt on the long edge and written as JPEG.
+    @discardableResult
+    static func save(_ image: UIImage, profileID: UUID, date: Date = .now, root: URL? = nil) -> Entry? {
+        let dir = directory(profileID: profileID, root: root)
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        } catch { return nil }
+        let longEdge = max(image.size.width, image.size.height)
+        let scale = longEdge > 1600 ? 1600 / longEdge : 1
+        let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let scaled = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        guard let data = scaled.jpegData(compressionQuality: 0.82) else { return nil }
+        var seconds = Int(date.timeIntervalSince1970)
+        var url = dir.appendingPathComponent("\(seconds).jpg")
+        while FileManager.default.fileExists(atPath: url.path) {
+            seconds += 1
+            url = dir.appendingPathComponent("\(seconds).jpg")
+        }
+        do {
+            try data.write(to: url, options: [.atomic, .completeFileProtection])
+        } catch { return nil }
+        return Entry(id: url.lastPathComponent, date: Date(timeIntervalSince1970: TimeInterval(seconds)), url: url)
+    }
+
+    static func delete(_ entry: Entry) {
+        try? FileManager.default.removeItem(at: entry.url)
+    }
+
+    /// Account deletion takes the photos with it.
+    static func deleteAll(profileID: UUID, root: URL? = nil) {
+        try? FileManager.default.removeItem(at: directory(profileID: profileID, root: root))
+    }
+}
+
+/// Decodes off the main thread at the size it will be shown.
+private struct ProgressPhotoImage: View {
+    let entry: ProgressPhotoStore.Entry
+    let side: CGFloat
+    @State private var image: UIImage?
+
+    var body: some View {
+        ZStack {
+            MorpheTheme.panelStrong
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            }
+        }
+        .task(id: entry.id) {
+            let url = entry.url
+            let target = CGSize(width: side * 3, height: side * 3 * 4 / 3)
+            image = await Task.detached(priority: .userInitiated) {
+                UIImage(contentsOfFile: url.path)?.preparingThumbnail(of: target)
+            }.value
+        }
+    }
+}
+
+private struct ProgressPhotoCamera: UIViewControllerRepresentable {
+    let onCapture: (UIImage?) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            picker.sourceType = .camera
+        }
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onCapture: onCapture) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onCapture: (UIImage?) -> Void
+        init(onCapture: @escaping (UIImage?) -> Void) { self.onCapture = onCapture }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            onCapture(info[.originalImage] as? UIImage)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onCapture(nil)
+        }
+    }
+}
+
+struct ProgressPhotosCard: View {
+    let profileID: UUID
+    @State private var entries: [ProgressPhotoStore.Entry] = []
+    @State private var pickerItem: PhotosPickerItem?
+    @State private var showCamera = false
+    @State private var viewing: ProgressPhotoStore.Entry?
+    @State private var saveFailed = false
+
+    private static let dayFormat: Date.FormatStyle = .dateTime.month(.abbreviated).day().year()
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Progress Photos")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text("Same spot, same light, every few weeks. Stored on this iPhone only — never uploaded, never shown to anyone.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let first = entries.first, let latest = entries.last, first != latest {
+                    HStack(spacing: 8) {
+                        comparePane(first, label: "First")
+                        comparePane(latest, label: "Latest")
+                    }
+                } else if let only = entries.first {
+                    comparePane(only, label: "First")
+                        .frame(maxWidth: 180)
+                    Text("Add another in a few weeks and the two sit side by side.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+                if entries.count > 2 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(entries.reversed()) { entry in
+                                Button {
+                                    viewing = entry
+                                } label: {
+                                    ProgressPhotoImage(entry: entry, side: 56)
+                                        .frame(width: 56, height: 74)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Photo from \(entry.date.formatted(Self.dayFormat))")
+                            }
+                        }
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        Button {
+                            showCamera = true
+                        } label: {
+                            Label("Take Photo", systemImage: "camera")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                    }
+                    PhotosPicker(selection: $pickerItem, matching: .images) {
+                        Label("Choose Photo", systemImage: "photo")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                }
+
+                if saveFailed {
+                    Text("That photo couldn't be saved. Try again.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.warning)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .onAppear { reload() }
+        .onChange(of: profileID) { _, _ in reload() }
+        .onChange(of: pickerItem) { _, item in
+            guard let item else { return }
+            Task {
+                let data = try? await item.loadTransferable(type: Data.self)
+                await MainActor.run {
+                    store(data.flatMap(UIImage.init(data:)))
+                    pickerItem = nil
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            ProgressPhotoCamera { image in
+                showCamera = false
+                if let image { store(image) }
+            }
+            .ignoresSafeArea()
+        }
+        .sheet(item: $viewing) { entry in
+            ProgressPhotoViewer(entry: entry, dateText: entry.date.formatted(Self.dayFormat)) {
+                ProgressPhotoStore.delete(entry)
+                viewing = nil
+                reload()
+            }
+            .presentationCornerRadius(28)
+        }
+    }
+
+    private func comparePane(_ entry: ProgressPhotoStore.Entry, label: String) -> some View {
+        Button {
+            viewing = entry
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                ProgressPhotoImage(entry: entry, side: 160)
+                    .aspectRatio(3 / 4, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Color.black.opacity(0.05), lineWidth: 0.5)
+                    )
+                Text(label.uppercased())
+                    .font(MorpheTheme.microLabel(10))
+                    .tracking(1.2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Text(entry.date.formatted(Self.dayFormat))
+                    .font(.caption.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(MorpheTheme.textPrimary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(label) photo, \(entry.date.formatted(Self.dayFormat))")
+        .accessibilityHint("Opens the photo")
+    }
+
+    private func store(_ image: UIImage?) {
+        guard let image, ProgressPhotoStore.save(image, profileID: profileID) != nil else {
+            saveFailed = true
+            return
+        }
+        saveFailed = false
+        Haptics.success()
+        reload()
+    }
+
+    private func reload() {
+        entries = ProgressPhotoStore.list(profileID: profileID)
+    }
+}
+
+private struct ProgressPhotoViewer: View {
+    let entry: ProgressPhotoStore.Entry
+    let dateText: String
+    let onDelete: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmDelete = false
+
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text(dateText)
+                    .font(.headline)
+                    .monospacedDigit()
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Spacer()
+                Button("Done") { dismiss() }
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .frame(minWidth: 44, minHeight: 44)
+            }
+            ProgressPhotoImage(entry: entry, side: 360)
+                .aspectRatio(3 / 4, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            Button("Delete Photo", role: .destructive) { confirmDelete = true }
+                .frame(minHeight: 44)
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .background(PremiumBackground().ignoresSafeArea())
+        .confirmationDialog("Delete this photo?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { onDelete() }
+            Button("Keep", role: .cancel) {}
+        } message: {
+            Text("It is removed from this iPhone and can't be brought back.")
         }
     }
 }

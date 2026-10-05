@@ -1700,6 +1700,9 @@ final class MorpheAppStore {
     func deleteAccount() async -> Bool {
         guard let uid = authUser?.id else { return false }
 
+        // Progress photos never left this iPhone — they go with the account.
+        ProgressPhotoStore.deleteAll(profileID: clientProfile.id)
+
         // Server cleanup FIRST, while the auth session is still valid —
         // after user.delete() the rules see an anonymous caller.
         await cloudBackup.eraseUser()

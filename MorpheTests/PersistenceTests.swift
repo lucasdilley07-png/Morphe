@@ -1158,6 +1158,36 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(store.nutrition.waterConsumed, 0, "never below zero")
     }
 
+    /// Progress photos (2026-10-04): saved small, listed oldest first by
+    /// capture time, kept per profile, and gone when deleted.
+    func testProgressPhotosSaveListAndDeletePerProfile() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let me = UUID(), other = UUID()
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 3000, height: 4000)).image { ctx in
+            UIColor.gray.setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 3000, height: 4000))
+        }
+        let early = Date(timeIntervalSince1970: 1_760_000_000)
+        let later = early.addingTimeInterval(86_400 * 30)
+        let second = try XCTUnwrap(ProgressPhotoStore.save(image, profileID: me, date: later, root: root))
+        _ = try XCTUnwrap(ProgressPhotoStore.save(image, profileID: me, date: early, root: root))
+        let twin = try XCTUnwrap(ProgressPhotoStore.save(image, profileID: me, date: early, root: root))
+        XCTAssertNotEqual(twin.date, early, "two photos in the same second both survive")
+
+        let list = ProgressPhotoStore.list(profileID: me, root: root)
+        XCTAssertEqual(list.count, 3)
+        XCTAssertEqual(list.first?.date, early, "oldest first")
+        XCTAssertEqual(list.last?.id, second.id)
+        let saved = try XCTUnwrap(UIImage(contentsOfFile: second.url.path))
+        XCTAssertLessThanOrEqual(max(saved.size.width, saved.size.height) * saved.scale, 1600)
+        XCTAssertTrue(ProgressPhotoStore.list(profileID: other, root: root).isEmpty, "another profile sees nothing")
+
+        ProgressPhotoStore.delete(second)
+        XCTAssertEqual(ProgressPhotoStore.list(profileID: me, root: root).count, 2)
+        ProgressPhotoStore.deleteAll(profileID: me, root: root)
+        XCTAssertTrue(ProgressPhotoStore.list(profileID: me, root: root).isEmpty)
+    }
+
     /// Rebuild wave (2026-08): the retraction classifier — the engine
     /// drops these before onCommand ever fires.
     func testCancelPhraseClassifier() {
