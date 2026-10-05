@@ -333,7 +333,9 @@ struct ProgressScreenView: View {
                 .id("strengthOverTime")
                 PRTimelineCard(
                     records: store.recentPersonalRecords(limit: 5),
-                    weightUnit: store.weightUnit
+                    weightUnit: store.weightUnit,
+                    cameraCounted: store.cameraCountedRecordNames(),
+                    cameraSetTotal: store.cameraCountedSetTotal
                 )
 
                 // The STUDY tier — seven analysis charts — moves behind one
@@ -1450,6 +1452,9 @@ private struct PRTimelineCard: View {
     @Environment(MorpheAppStore.self) private var store
     let records: [(date: Date, exerciseName: String, weight: Double)]
     let weightUnit: WeightUnit
+    /// Records whose reps the camera counted (TRAIN HONEST, 2026-10-04).
+    var cameraCounted: Set<String> = []
+    var cameraSetTotal: Int = 0
 
     @State private var sharePayload: ShareCardPayload?
 
@@ -1469,6 +1474,13 @@ private struct PRTimelineCard: View {
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                 } else {
+                    // What the seal means, said once and exactly.
+                    Text(cameraSetTotal > 0
+                         ? "\(cameraSetTotal) set\(cameraSetTotal == 1 ? "" : "s") counted by the Form Check camera so far. The seal vouches for the reps; the weight is your word."
+                         : "Log a set through Form Check and the camera counts the reps — records set that way carry a seal.")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                     ForEach(Array(records.enumerated()), id: \.offset) { index, record in
                         HStack(alignment: .center, spacing: 10) {
                             Image(systemName: "trophy.fill")
@@ -1488,6 +1500,11 @@ private struct PRTimelineCard: View {
                                     Text(MorpheAppStore.workoutDateLabel(for: record.date))
                                         .font(.caption2)
                                         .foregroundStyle(MorpheTheme.textMuted)
+                                    if cameraCounted.contains(record.exerciseName) {
+                                        Label("Reps counted by camera", systemImage: "checkmark.seal.fill")
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(MorpheTheme.accentText)
+                                    }
                                 }
                                 .contentShape(Rectangle())
                             }

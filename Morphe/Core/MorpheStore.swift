@@ -855,6 +855,8 @@ final class MorpheAppStore {
     /// or dropset counts as ONE set, with its sub-work described here.
     var trackedSetLabels: [String: [String]] = [:] { didSet { persistWorkoutSession() } }
     var trackedSetWarmups: [String: [Bool]] = [:] { didSet { persistWorkoutSession() } }
+    /// Per-set "reps counted by the camera" flags, parallel to trackedSetReps.
+    var trackedSetCamera: [String: [Bool]] = [:] { didSet { persistWorkoutSession() } }
     /// Session-scoped superset pairs, stored BOTH directions (A1→A2 and
     /// A2→A1). The template never changes; the pairing dies with the session.
     var supersetPartners: [String: String] = [:] { didSet { persistWorkoutSession() } }
@@ -3162,6 +3164,7 @@ final class MorpheAppStore {
         trackedSetRPE = snapshot.trackedSetRPE
         trackedSetLabels = snapshot.trackedSetLabels
         trackedSetWarmups = snapshot.trackedSetWarmups
+        trackedSetCamera = snapshot.trackedSetCamera
         supersetPartners = snapshot.supersetPartners
         pendingSetDrafts = snapshot.pendingSetDrafts
         workoutSessionStartedAt = snapshot.workoutSessionStartedAt
@@ -3217,6 +3220,7 @@ final class MorpheAppStore {
                 trackedSetRPE: trackedSetRPE,
                 trackedSetLabels: trackedSetLabels,
                 trackedSetWarmups: trackedSetWarmups,
+                trackedSetCamera: trackedSetCamera,
                 supersetPartners: supersetPartners,
                 pendingSetDrafts: pendingSetDrafts,
                 workoutSessionStartedAt: workoutSessionStartedAt,
@@ -4929,6 +4933,37 @@ final class MorpheAppStore {
             .map { $0 }
     }
 
+    /// Exercises whose standing record set had its reps counted by the
+    /// camera (TRAIN HONEST, 2026-10-04). The seal vouches for the count;
+    /// the weight on the bar is still the lifter's word.
+    func cameraCountedRecordNames() -> Set<String> {
+        var best: [String: (weight: Double, camera: Bool)] = [:]
+        for log in currentAthleteWorkoutLogs.sorted(by: { $0.completedAt < $1.completedAt }) {
+            for exercise in log.exercises {
+                guard let weights = exercise.weightsPerSet else { continue }
+                let warmups = exercise.warmupPerSet ?? []
+                let camera = exercise.cameraCountedPerSet ?? []
+                for (index, weight) in weights.enumerated() where weight > 0 {
+                    if warmups.indices.contains(index), warmups[index] { continue }
+                    let normalized = normalizedLoggedWeight(weight, recordedUnit: exercise.weightUnit)
+                    // Strictly greater: the record belongs to the day the
+                    // weight FIRST landed, same as recentPersonalRecords.
+                    if normalized > (best[exercise.name]?.weight ?? 0) {
+                        best[exercise.name] = (normalized, camera.indices.contains(index) && camera[index])
+                    }
+                }
+            }
+        }
+        return Set(best.filter { $0.value.camera }.keys)
+    }
+
+    /// Lifetime sets whose reps the camera counted.
+    var cameraCountedSetTotal: Int {
+        currentAthleteWorkoutLogs.reduce(0) { total, log in
+            total + log.exercises.reduce(0) { $0 + $1.cameraCountedSetCount }
+        }
+    }
+
     /// All-time top logged weight per exercise, in the current display unit —
     /// the baseline `logWorkout` diffs against to catch a PR the moment it
     /// lands (same derivation as `recentPersonalRecords`, minus the dates).
@@ -5667,6 +5702,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
+        trackedSetCamera = [:]
         supersetPartners = [:]
         sessionUserNote = ""
         return true
@@ -6771,6 +6807,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
+        trackedSetCamera = [:]
         supersetPartners = [:]
         sessionUserNote = ""
         workoutFeedbackResponse = ""
@@ -7080,7 +7117,7 @@ final class MorpheAppStore {
     /// Returns whether the set actually logged, so callers can gate follow-on
     /// behavior (the auto rest timer) on a real set, not a rejected tap.
     @discardableResult
-    func completeTrackedSet(reps: Int, weight: Double? = nil, rpe: Int? = nil, allowExtra: Bool = false, label: String = "", isWarmup: Bool = false) -> Bool {
+    func completeTrackedSet(reps: Int, weight: Double? = nil, rpe: Int? = nil, allowExtra: Bool = false, label: String = "", isWarmup: Bool = false, cameraCounted: Bool = false) -> Bool {
         // The wrist mirrors every session mutation (market audit 2026-08).
         defer { WatchBridge.shared.publish() }
         guard let exercise = activeWorkoutExercise else { return false }
@@ -7105,6 +7142,13 @@ final class MorpheAppStore {
         trackedSetLabels[exercise.id, default: []].append(label)
         // Warm-ups count toward the session's work but never toward PRs.
         trackedSetWarmups[exercise.id, default: []].append(isWarmup)
+        // Padded first: a session restored from before this flag existed
+        // must stay parallel to the reps array.
+        var cameraFlags = trackedSetCamera[exercise.id, default: []]
+        let priorSets = trackedSetReps[exercise.id, default: []].count - 1
+        while cameraFlags.count < priorSets { cameraFlags.append(false) }
+        cameraFlags.append(cameraCounted)
+        trackedSetCamera[exercise.id] = cameraFlags
         // The set logged; its draft is spent.
         pendingSetDrafts[exercise.id] = nil
         Haptics.impact(.light)
@@ -7185,6 +7229,10 @@ final class MorpheAppStore {
             warmupsLogged.remove(at: setIndex)
             trackedSetWarmups[exerciseID] = warmupsLogged
         }
+        if var cameraLogged = trackedSetCamera[exerciseID], cameraLogged.indices.contains(setIndex) {
+            cameraLogged.remove(at: setIndex)
+            trackedSetCamera[exerciseID] = cameraLogged
+        }
         completedWorkoutSets[exerciseID] = repsLogged.count
         showToast("Set removed.")
     }
@@ -7205,6 +7253,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
+        trackedSetCamera = [:]
         supersetPartners = [:]
         sessionUserNote = ""
         workoutFeedbackResponse = ""
@@ -9257,6 +9306,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
+        trackedSetCamera = [:]
         supersetPartners = [:]
         sessionUserNote = ""
         showTrainTab()
@@ -14126,6 +14176,7 @@ final class MorpheAppStore {
         trackedSetRPE = [:]
         trackedSetLabels = [:]
         trackedSetWarmups = [:]
+        trackedSetCamera = [:]
         supersetPartners = [:]
         sessionUserNote = ""
     }
@@ -15270,7 +15321,10 @@ final class MorpheAppStore {
                 muscleGroup: exercise.muscleGroup.rawValue,
                 warmupPerSet: repsLogged.isEmpty
                     ? nil
-                    : trackedSetWarmups[exercise.id, default: []]
+                    : trackedSetWarmups[exercise.id, default: []],
+                cameraCountedPerSet: trackedSetCamera[exercise.id, default: []].contains(true)
+                    ? trackedSetCamera[exercise.id, default: []]
+                    : nil
             )
         }
     }

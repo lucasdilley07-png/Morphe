@@ -232,7 +232,8 @@ struct WorkoutView: View {
         let weight = store.lastSessionWeight(for: exercise.id)
             ?? store.suggestedWorkingWeight(for: exercise)
             ?? 0
-        _ = store.completeTrackedSet(reps: reps, weight: weight, rpe: rpe, allowExtra: true)
+        // The camera counted these reps — the set carries the mark.
+        _ = store.completeTrackedSet(reps: reps, weight: weight, rpe: rpe, allowExtra: true, cameraCounted: true)
     }
 
     private var activeWorkoutMode: some View {

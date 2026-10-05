@@ -1496,9 +1496,17 @@ struct LoggedExercise: Identifiable, Hashable, Codable {
     /// decode as all-working. Warm-ups count toward volume (work is work)
     /// but never toward PRs, e1RM, or strength trends.
     var warmupPerSet: [Bool]?
+    /// Per-set "the camera counted these reps" flags, parallel to
+    /// repsPerSet (TRAIN HONEST, 2026-10-04). Optional: older logs decode
+    /// as hand-entered. It vouches for the REP COUNT only — the weight is
+    /// still the lifter's word.
+    var cameraCountedPerSet: [Bool]? = nil
 }
 
 extension LoggedExercise {
+    /// Sets whose reps the camera counted.
+    var cameraCountedSetCount: Int { cameraCountedPerSet?.filter { $0 }.count ?? 0 }
+
     /// Weights from WORKING sets only — the numbers PR/e1RM/strength
     /// derivations are allowed to read. A heavy warm-up single must never
     /// mint a record.

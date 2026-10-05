@@ -1188,6 +1188,41 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertTrue(ProgressPhotoStore.list(profileID: me, root: root).isEmpty)
     }
 
+    /// TRAIN HONEST (2026-10-04): a set logged through Form Check carries
+    /// the camera mark into the saved workout, a record set that way gets
+    /// the seal, and a later hand-entered record takes it away again.
+    @MainActor
+    func testCameraCountedSetsMarkTheLogAndTheRecord() {
+        func entry(_ weights: [Double], camera: [Bool]?, warmups: [Bool]? = nil) -> LoggedExercise {
+            var e = LoggedExercise(name: "Goblet Squat", sets: "\(weights.count)", reps: "5", weight: "", note: "")
+            e.repsPerSet = weights.map { _ in 5 }
+            e.weightsPerSet = weights
+            e.weightUnit = "lb"
+            e.warmupPerSet = warmups
+            e.cameraCountedPerSet = camera
+            return e
+        }
+        XCTAssertEqual(entry([50, 60], camera: [false, true]).cameraCountedSetCount, 1)
+        XCTAssertEqual(entry([50, 60], camera: nil).cameraCountedSetCount, 0, "older logs read as hand-entered")
+
+        // Older logs without the field still decode.
+        let legacy = #"{"id":"11111111-1111-1111-1111-111111111111","name":"Squat","sets":"1","reps":"5","weight":"100","note":""}"#
+        XCTAssertNil(try? JSONDecoder().decode(LoggedExercise.self, from: Data(legacy.utf8)).cameraCountedPerSet ?? nil)
+
+        let store = MorpheAppStore()
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
+        store.startTodayWorkout()
+        guard store.isWorkoutSessionActive, let exercise = store.activeWorkoutExercise else {
+            return XCTFail("a session should be running")
+        }
+        XCTAssertTrue(store.completeTrackedSet(reps: 8, weight: 40))
+        XCTAssertTrue(store.completeTrackedSet(reps: 8, weight: 45, allowExtra: true, cameraCounted: true))
+        XCTAssertEqual(store.trackedSetCamera[exercise.id], [false, true], "parallel to the reps array")
+        store.removeTrackedSet(exerciseID: exercise.id, setIndex: 0)
+        XCTAssertEqual(store.trackedSetCamera[exercise.id], [true], "removing a set keeps the flags aligned")
+    }
+
     /// Rebuild wave (2026-08): the retraction classifier — the engine
     /// drops these before onCommand ever fires.
     func testCancelPhraseClassifier() {
