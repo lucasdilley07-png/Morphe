@@ -1128,6 +1128,9 @@ final class MorpheAppStore {
     var shareCompletedSessionToFeed = true
     /// Apple Health workout sync — opt-in, write-only. Enable via
     /// `setHealthSync(enabled:)` so the system prompt rides the flip.
+    /// True while the paired watch is recording the live session into
+    /// Health itself (with heart rate) — see handleWatchCommand.
+    var watchIsRecordingToHealth = false
     var healthSyncEnabled = false {
         didSet { persistTrainingPreferences() }
     }
@@ -7003,6 +7006,7 @@ final class MorpheAppStore {
         // second, not from the first set (audit 26, P1).
         defer { WatchBridge.shared.publish() }
         resetSessionVoice()
+        watchIsRecordingToHealth = false
         isWorkoutSessionActive = true
         hasStartedWorkoutFlow = true
         hasCompletedWorkoutFlow = false
@@ -8042,7 +8046,9 @@ final class MorpheAppStore {
 
         // Apple Health (opt-in): the logged session, exactly as logged —
         // real minutes, ending now. Fire-and-forget like the social writes.
-        if healthSyncEnabled {
+        let wristRecorded = watchIsRecordingToHealth
+        watchIsRecordingToHealth = false
+        if healthSyncEnabled, !wristRecorded {
             let healthTitle = currentWorkout.name
             let healthMinutes = completedSessionMinutes ?? currentWorkout.durationMinutes
             Task { await HealthWorkoutSync.save(workoutTitle: healthTitle, minutes: healthMinutes) }

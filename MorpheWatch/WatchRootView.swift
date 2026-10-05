@@ -83,6 +83,7 @@ struct WatchRootView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
+                    heartLine
 
                     adjusterRow(
                         label: "REPS",
@@ -145,6 +146,35 @@ struct WatchRootView: View {
         }
     }
 
+    /// Live heart rate from the watch's own sensor — absent until there
+    /// is a real reading.
+    @ViewBuilder
+    private var heartLine: some View {
+        if model.heartRate > 0 {
+            HStack(spacing: 4) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(gold)
+                Text("\(model.heartRate)")
+                    .font(.system(.footnote, design: .rounded).weight(.bold))
+                    .monospacedDigit()
+                Text("BPM")
+                    .font(.system(size: 9, weight: .semibold))
+                    .tracking(1.2)
+                    .foregroundStyle(.secondary)
+                if model.activeCalories > 0 {
+                    Text("· \(model.activeCalories) CAL")
+                        .font(.system(size: 9, weight: .semibold))
+                        .tracking(1.2)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Heart rate \(model.heartRate) beats per minute")
+        }
+    }
+
     private func adjusterRow(label: String, value: String,
                              down: @escaping () -> Void,
                              up: @escaping () -> Void) -> some View {
@@ -193,6 +223,7 @@ struct WatchRootView: View {
                     }
                 }
                 .frame(width: 90, height: 90)
+                heartLine
                 Button("Skip") { model.skipRest() }
                     .controlSize(.small)
             }
