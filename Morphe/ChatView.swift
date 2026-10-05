@@ -210,12 +210,18 @@ struct CommunityView: View {
             VStack(alignment: .leading, spacing: 16) {
                 networkHeader.padding(.horizontal, -20)
                 WeeklyBoardCard()
+                // Under the board: a For You feed of what Creator Coaches
+                // have published (Lucas 2026-10-05).
+                CreatorFeed()
             }
             .padding(.horizontal, 20)
             .padding(.top, 6)
             .padding(.bottom, 120)
         }
-        .refreshable { await store.refreshLeaderboard(force: true) }
+        .refreshable {
+            await store.refreshLeaderboard(force: true)
+            await store.refreshCreatorContent(force: true)
+        }
     }
 
     /// CALENDAR pane: the personal schedule — upcoming appointments plus
@@ -4073,6 +4079,208 @@ struct QRConnectRow: View {
             QRConnectSheet(mode: mode)
                 .environment(store)
                 .sheetToastSurface()
+        }
+    }
+}
+
+// MARK: - Creator feed (2026-10-05)
+
+/// Everything Creator Coaches have published, newest first, as a feed:
+/// workouts you can start or save, notes you can read, open challenges you
+/// can join. Every item carries its author; notes can be reported.
+struct CreatorFeed: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var expandedNotes: Set<String> = []
+    @State private var expandedWorkouts: Set<String> = []
+    @State private var reporting: CreatorNote?
+
+    private enum Item: Identifiable {
+        case workout(CreatorWorkout)
+        case note(CreatorNote)
+        case challenge(OpenChallengeListing)
+
+        var id: String {
+            switch self {
+            case .workout(let w): return "w-" + w.id
+            case .note(let n): return "n-" + n.id
+            case .challenge(let c): return "c-" + c.code
+            }
+        }
+        var date: Date {
+            switch self {
+            case .workout(let w): return w.publishedAt
+            case .note(let n): return n.createdAt
+            case .challenge(let c): return c.endsAt.addingTimeInterval(-30 * 86_400)
+            }
+        }
+    }
+
+    private var items: [Item] {
+        let joined = Set(store.activeChallenges.map(\.code))
+        var all: [Item] = store.creatorWorkouts.map(Item.workout)
+            + store.creatorNotes.map(Item.note)
+            + store.openChallenges.filter { !joined.contains($0.code) }.map(Item.challenge)
+        all.sort { $0.date > $1.date }
+        return all
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Rectangle().fill(MorpheTheme.stroke).frame(width: 3, height: 14)
+                Text("FOR YOU")
+                    .scaledFont(size: 14, weight: .bold, design: .monospaced)
+                    .tracking(2)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text(String(format: "%03d", items.count))
+                    .font(MorpheTheme.microLabel(10))
+                    .tracking(1.0)
+                    .foregroundStyle(MorpheTheme.accentAlt)
+                Rectangle().fill(MorpheTheme.stroke).frame(height: 1)
+            }
+            Text("From approved Creator Coaches. Workouts to start or save, notes to read, challenges to join.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+
+            if items.isEmpty {
+                GlassCard(.quiet) {
+                    Text(store.authUser == nil
+                         ? "Sign in to see what coaches are publishing."
+                         : "Nothing published yet. When Creator Coaches post workouts, notes and challenges, they land here.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                ForEach(items) { item in
+                    switch item {
+                    case .workout(let workout): workoutCard(workout)
+                    case .note(let note): noteCard(note)
+                    case .challenge(let listing): challengeCard(listing)
+                    }
+                }
+            }
+        }
+        .task { await store.refreshCreatorContent() }
+        .confirmationDialog("Report this note?", isPresented: Binding(get: { reporting != nil }, set: { if !$0 { reporting = nil } }),
+                            titleVisibility: .visible, presenting: reporting) { note in
+            ForEach(["Spam", "Harassment", "Unsafe advice", "Other"], id: \.self) { reason in
+                Button(reason) {
+                    store.reportCreatorContent(kind: "creatorNote", id: note.id, authorUid: note.authorUid,
+                                               excerpt: note.title + " — " + note.body, reason: reason)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("A person reviews every report.")
+        }
+    }
+
+    private func byline(_ name: String, _ handle: String, _ date: Date, kind: String) -> some View {
+        HStack(spacing: 6) {
+            Text(kind.uppercased())
+                .font(MorpheTheme.microLabel(9))
+                .tracking(1.4)
+                .foregroundStyle(MorpheTheme.accentText)
+            Text("·")
+                .foregroundStyle(MorpheTheme.textMuted)
+            Text("\(name)\(handle.isEmpty ? "" : " · @\(handle)") · \(date.formatted(date: .abbreviated, time: .omitted))")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textMuted)
+                .lineLimit(1)
+        }
+    }
+
+    @ViewBuilder
+    private func workoutCard(_ workout: CreatorWorkout) -> some View {
+        if let template = store.template(for: workout) {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 10) {
+                    byline(workout.authorName, workout.authorHandle, workout.publishedAt, kind: "Workout")
+                    Text(workout.name)
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text("\(template.exercises.count) exercises · \(workout.durationMinutes) min · \(workout.equipment) · \(workout.level)")
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                    if !workout.notes.isEmpty {
+                        Text(workout.notes)
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if expandedWorkouts.contains(workout.id) {
+                        ForEach(template.exercises) { exercise in
+                            Text("\(exercise.name) — \(exercise.sets) × \(exercise.reps)")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                    }
+                    HStack(spacing: 10) {
+                        Button("Start") { store.startCatalogWorkout(template) }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        Button(store.isCatalogWorkoutSaved(template) ? "Saved" : "Save") { store.saveCatalogWorkout(template) }
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .disabled(store.isCatalogWorkoutSaved(template))
+                        Spacer(minLength: 0)
+                        Button(expandedWorkouts.contains(workout.id) ? "Less" : "Exercises") {
+                            if expandedWorkouts.contains(workout.id) { expandedWorkouts.remove(workout.id) } else { expandedWorkouts.insert(workout.id) }
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(minHeight: 44)
+                    }
+                }
+            }
+        }
+    }
+
+    private func noteCard(_ note: CreatorNote) -> some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 8) {
+                byline(note.authorName, note.authorHandle, note.createdAt, kind: "Note")
+                Text(note.title)
+                    .font(.headline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text(note.body)
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .lineLimit(expandedNotes.contains(note.id) ? nil : 4)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 14) {
+                    if note.body.count > 200 {
+                        Button(expandedNotes.contains(note.id) ? "Less" : "Read more") {
+                            if expandedNotes.contains(note.id) { expandedNotes.remove(note.id) } else { expandedNotes.insert(note.id) }
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                    }
+                    Button("Report") { reporting = note }
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .frame(minHeight: 32)
+            }
+        }
+    }
+
+    private func challengeCard(_ listing: OpenChallengeListing) -> some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 8) {
+                byline(listing.hostName, "", listing.endsAt, kind: "Open challenge")
+                Text(listing.title)
+                    .font(.headline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text("\(listing.metric.label) · ends \(listing.endsAt.formatted(date: .abbreviated, time: .omitted)) · scores come from logged workouts only")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Join") { Task { await store.joinChallenge(code: listing.code) } }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .disabled(store.isCompetitionBusy)
+            }
         }
     }
 }
