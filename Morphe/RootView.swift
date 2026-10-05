@@ -125,6 +125,13 @@ struct RootView: View {
 
     /// Reduce Motion swaps travel for a quick crossfade — never zero
     /// feedback, never a slide/spring.
+    /// True from the wake until the exchange ends (listening, thinking,
+    /// answering).
+    private var voiceHasTheStage: Bool {
+        let state = store.heyMorphe.state
+        return state == .active || state == .thinking || state == .speaking
+    }
+
     private var shellAnimation: Animation {
         reduceMotion ? .easeInOut(duration: 0.1) : .easeInOut(duration: 0.25)
     }
@@ -446,7 +453,10 @@ struct RootView: View {
             // screens (a signed-out account still has hasCompletedOnboarding set).
             // And never over the day takeover (audit 13, P2): the popup is the
             // character's center-stage moment and already has its own AI door.
-            if isInAppShell && !store.shouldShowDayPopup {
+            // And it slides off to the right while "Hey Morphe" has the
+            // stage (Lucas 2026-10-04): the voice is already the door, so
+            // the button gets out of the way and returns when it's done.
+            if isInAppShell && !store.shouldShowDayPopup && !voiceHasTheStage {
                 FloatingAIAgentButton()
                     .padding(.trailing, 20)
                     // Clears the floating glass capsule (~57pt + 6pt inset),
@@ -473,6 +483,10 @@ struct RootView: View {
         // still land, they just don't travel.
         .animation(shellAnimation, value: store.selectedClientTab)
         .animation(shellAnimation, value: store.toastMessage)
+        // Out fast, back a touch slower — exits beat entrances.
+        .animation(reduceMotion ? .easeInOut(duration: 0.2)
+                   : (voiceHasTheStage ? .easeIn(duration: 0.2) : .easeOut(duration: 0.28)),
+                   value: voiceHasTheStage)
         // The celebrations are the app's ONE emotional beat — the banner and
         // the full-screen stamp get a spring pop where everything else stays
         // mechanical.
