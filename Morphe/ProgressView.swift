@@ -2803,6 +2803,12 @@ enum ProgressPhotoStore {
         let dir = directory(profileID: profileID, root: root)
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            // "On this iPhone only" has to hold for iCloud device backups
+            // too — the folder is excluded from them.
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            var folder = dir
+            try? folder.setResourceValues(values)
         } catch { return nil }
         let longEdge = max(image.size.width, image.size.height)
         let scale = longEdge > 1600 ? 1600 / longEdge : 1
