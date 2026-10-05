@@ -2663,7 +2663,7 @@ struct PostComment: Identifiable, Hashable {
 /// `weeks`, with an optional lighter deload week. The program supplies
 /// STRUCTURE and sequencing; the per-exercise progression engine supplies
 /// the numbers — nothing here fabricates a load.
-struct TrainingProgram: Identifiable, Hashable {
+struct TrainingProgram: Identifiable, Hashable, Codable {
     var id: String
     var name: String
     var summary: String

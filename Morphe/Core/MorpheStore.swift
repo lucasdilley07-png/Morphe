@@ -3516,6 +3516,213 @@ final class MorpheAppStore {
         )
     ]
 
+    // MARK: Your plan (2026-10-04)
+    //
+    // A program built for one person from five answers, by fixed rules,
+    // out of sessions that already exist in the catalog. No model is
+    // involved and nothing is invented: every session is a real catalog
+    // workout, and the rules are below for anyone to read.
+
+    struct PlanRequest: Equatable {
+        /// weightLoss / strengthBuilding / leanOut / recovery
+        var goal: String = "strengthBuilding"
+        var daysPerWeek: Int = 3
+        /// Bodyweight / Dumbbells / Full Gym
+        var equipment: String = "Full Gym"
+        var level: DemoDifficulty = .beginner
+        var maxMinutes: Int = 60
+    }
+
+    static let customPlanID = "custom-plan"
+
+    /// What each kind of equipment lets you run.
+    private static func equipmentAllowed(_ have: String) -> Set<String> {
+        switch have {
+        case "Bodyweight": return ["Bodyweight"]
+        case "Dumbbells": return ["Bodyweight", "Dumbbells"]
+        default: return ["Bodyweight", "Dumbbells", "Full Gym"]
+        }
+    }
+
+    private static func levelRank(_ level: DemoDifficulty) -> Int {
+        switch level {
+        case .recovery: return 0
+        case .beginner: return 1
+        case .moderate: return 2
+        case .advanced: return 3
+        }
+    }
+
+    /// General-training styles only: sport, combat, dance, Olympic lifting,
+    /// strongman and pool/bike sessions need gear or skill a general plan
+    /// must not assume.
+    private static let planCategories: Set<String> = [
+        "Strength & Powerlifting", "Bodybuilding & Hypertrophy", "Calisthenics & Bodyweight",
+        "Kettlebell & Dumbbell", "HIIT & Conditioning", "Functional & CrossFit-Style",
+        "Running & Cardio", "Recovery & Longevity", "Yoga, Mobility & Flexibility",
+        "Pilates & Core Control", "Barre & Low-Impact"
+    ]
+
+    /// The week's shape. Beginners train the whole body each strength day;
+    /// from three days up, experienced lifters split it.
+    static func planSlots(for request: PlanRequest) -> [String] {
+        let days = max(2, min(6, request.daysPerWeek))
+        if request.goal == "recovery" { return Array(repeating: "Recovery", count: days) }
+        let beginner = levelRank(request.level) <= 1
+        var slots: [String]
+        switch (days, beginner) {
+        case (2, _): slots = ["Full Body", "Full Body"]
+        case (3, true): slots = ["Full Body", "Full Body", "Full Body"]
+        case (3, false): slots = ["Push", "Pull", "Legs"]
+        case (4, true): slots = ["Full Body", "Legs", "Full Body", "Conditioning"]
+        case (4, false): slots = ["Push", "Legs", "Pull", "Full Body"]
+        case (5, true): slots = ["Full Body", "Conditioning", "Full Body", "Legs", "Recovery"]
+        case (5, false): slots = ["Push", "Pull", "Legs", "Full Body", "Conditioning"]
+        case (_, true): slots = ["Full Body", "Conditioning", "Full Body", "Legs", "Full Body", "Recovery"]
+        default: slots = ["Push", "Pull", "Legs", "Push", "Pull", "Legs"]
+        }
+        // Weight loss always carries conditioning; two days trades one
+        // strength day for it, more days trade the last strength slot.
+        if request.goal == "weightLoss", !slots.contains("Conditioning"),
+           let last = slots.lastIndex(where: { $0 != "Recovery" }) {
+            slots[last] = "Conditioning"
+        }
+        return slots
+    }
+
+    /// Restore-family styles fill Recovery slots only — a chair session
+    /// written for older adults is not a general beginner's leg day.
+    private static let restoreCategories: Set<String> = [
+        "Recovery & Longevity", "Yoga, Mobility & Flexibility",
+        "Pilates & Core Control", "Barre & Low-Impact"
+    ]
+    /// Cardio styles fill Conditioning slots only — a hill-sprint day is
+    /// not a strength slot whatever its focus tag says.
+    private static let cardioCategories: Set<String> = ["HIIT & Conditioning", "Running & Cardio"]
+
+    /// Nil when the catalog cannot fill the week under these limits —
+    /// better no plan than one with a hole in it.
+    static func buildPlan(_ request: PlanRequest, from workouts: [WorkoutTemplate]) -> TrainingProgram? {
+        let allowed = equipmentAllowed(request.equipment)
+        let ceiling = max(levelRank(request.level), 1)
+        let recoveryGoal = request.goal == "recovery"
+        let pool = workouts.filter {
+            allowed.contains($0.equipment)
+                && planCategories.contains($0.categoryTag)
+                && $0.durationMinutes <= request.maxMinutes
+        }
+        var used = Set<String>()
+        var sessions: [String] = []
+        var goalMatches = 0
+        for slot in planSlots(for: request) {
+            let workSlot = slot != "Recovery" && slot != "Conditioning"
+            func score(_ workout: WorkoutTemplate) -> Int {
+                var points = 0
+                if workout.goalTag == request.goal { points += 4 }
+                if levelRank(workout.difficulty) == ceiling { points += 2 }
+                if workout.equipment == request.equipment { points += 1 }
+                // A strength or lean-out day should read as lifting, not a circuit.
+                if workSlot, request.goal != "weightLoss",
+                   workout.trainingTypeTag.localizedCaseInsensitiveContains("strength")
+                    || workout.trainingTypeTag.localizedCaseInsensitiveContains("hypertrophy") {
+                    points += 3
+                }
+                return points
+            }
+            func fits(_ workout: WorkoutTemplate, focus: String, maxRank: Int) -> Bool {
+                guard !used.contains(workout.name), workout.focusTag == focus else { return false }
+                // Recovery slots take recovery-level sessions; work slots never do.
+                if slot == "Recovery" { return workout.difficulty == .recovery }
+                guard workout.difficulty != .recovery, levelRank(workout.difficulty) <= maxRank else { return false }
+                if !recoveryGoal, restoreCategories.contains(workout.categoryTag) { return false }
+                if workSlot, cardioCategories.contains(workout.categoryTag) { return false }
+                return true
+            }
+            let focuses = slot == "Recovery" ? ["Recovery"] : [slot, "Full Body", "Legs", "Conditioning"]
+            // Own level first. Only a beginner may reach one level up:
+            // for a session that serves the goal when nothing at their
+            // level does, or when nothing at their level fits at all.
+            let passes: [(rank: Int, goalOnly: Bool)] = ceiling == 1
+                ? [(1, true), (2, true), (1, false), (2, false)]
+                : [(ceiling, false)]
+            var pick: WorkoutTemplate?
+            search: for pass in passes {
+                // Goal-led passes keep to the slot's own focus — a
+                // beginner's full-body day never becomes a pistol-squat
+                // day because it shared a goal tag.
+                for focus in (pass.goalOnly ? [focuses[0]] : focuses) {
+                    pick = pool.filter {
+                        fits($0, focus: focus, maxRank: pass.rank)
+                            && (!pass.goalOnly || slot == "Recovery" || $0.goalTag == request.goal)
+                    }
+                    .max { score($0) == score($1) ? $0.name > $1.name : score($0) < score($1) }
+                    if pick != nil { break search }
+                }
+            }
+            guard let pick else { return nil }
+            used.insert(pick.name)
+            sessions.append(pick.name)
+            if pick.goalTag == request.goal { goalMatches += 1 }
+        }
+        let weeks = ceiling <= 1 ? 4 : 6
+        let goalName = ["weightLoss": "Weight Loss", "strengthBuilding": "Strength",
+                        "leanOut": "Lean Out", "recovery": "Recovery"][request.goal] ?? "Training"
+        let gear = request.equipment == "Full Gym" ? "a full gym" : request.equipment.lowercased()
+        return TrainingProgram(
+            id: customPlanID,
+            name: "Your \(weeks)-Week \(goalName) Plan",
+            // Said plainly when the catalog couldn't serve the goal well
+            // under these limits — the name must not promise more than
+            // the sessions deliver.
+            summary: "Built from your answers: \(sessions.count) days a week, \(gear), sessions up to \(request.maxMinutes) minutes. Week \(weeks) deloads."
+                + (goalMatches * 2 < sessions.count
+                   ? " The catalog has few \(goalName.lowercased()) sessions inside these limits, so this week leans on general training. More time or equipment opens more."
+                   : ""),
+            weeks: weeks,
+            deloadWeek: weeks,
+            weeklySessionNames: sessions
+        )
+    }
+
+    private var customProgramDefaultsKey: String {
+        "morphe.customProgram.\(clientProfile.id.uuidString)"
+    }
+
+    /// The plan built for this profile, if one was ever built.
+    private(set) var customProgram: TrainingProgram?
+
+    private func loadCustomProgram() -> TrainingProgram? {
+        guard let data = UserDefaults.standard.data(forKey: customProgramDefaultsKey) else { return nil }
+        return try? JSONDecoder().decode(TrainingProgram.self, from: data)
+    }
+
+    /// Built-in programs plus this profile's own plan.
+    var allPrograms: [TrainingProgram] {
+        Self.trainingPrograms + (customProgram.map { [$0] } ?? [])
+    }
+
+    func previewPlan(_ request: PlanRequest) -> TrainingProgram? {
+        Self.buildPlan(request, from: discoverWorkouts)
+    }
+
+    /// Saves the plan, stages its first session, and aligns the weekly
+    /// training-day count with it.
+    @discardableResult
+    func startCustomPlan(_ request: PlanRequest) -> Bool {
+        guard let plan = previewPlan(request) else {
+            showToast("No plan fits those limits. Loosen the time or the equipment.")
+            return false
+        }
+        customProgram = plan
+        if let data = try? JSONEncoder().encode(plan) {
+            UserDefaults.standard.set(data, forKey: customProgramDefaultsKey)
+        }
+        clientProfile.trainingDaysPerWeek = plan.weeklySessionNames.count
+        persistLocalProfile()
+        startProgram(plan)
+        return true
+    }
+
     /// Live program progress, all derived from the completed-session COUNT —
     /// weeks advance when the work is done, never because a date passed.
     struct ProgramProgress {
@@ -3558,7 +3765,7 @@ final class MorpheAppStore {
 
     var programProgress: ProgramProgress? {
         guard let snapshot = activeProgramState,
-              let program = Self.trainingPrograms.first(where: { $0.id == snapshot.programID }),
+              let program = allPrograms.first(where: { $0.id == snapshot.programID }),
               !program.weeklySessionNames.isEmpty
         else { return nil }
         let done = min(snapshot.completedSessions, program.totalSessions)
@@ -3841,6 +4048,7 @@ final class MorpheAppStore {
             "recoverySeries": recoverySeriesDefaultsKey,
             "nutritionSeries": nutritionSeriesDefaultsKey,
             "activeProgram": activeProgramDefaultsKey,
+            "customProgram": customProgramDefaultsKey,
             "programCompletions": programCompletionsDefaultsKey,
             "libraryFolders": libraryFoldersKey,
         ]
@@ -3910,6 +4118,7 @@ final class MorpheAppStore {
         threadReadCache = nil
         recoverySeries = loadSeries(recoverySeriesDefaultsKey)
         nutritionSeries = loadSeries(nutritionSeriesDefaultsKey)
+        customProgram = loadCustomProgram()
         activeProgramState = loadActiveProgramSnapshot()
         loadProgramCompletions()
         loadLibraryFolders()
@@ -10593,7 +10802,7 @@ final class MorpheAppStore {
         }
 
         for programID in completedProgramIDs {
-            guard let program = Self.trainingPrograms.first(where: { $0.id == programID }) else { continue }
+            guard let program = allPrograms.first(where: { $0.id == programID }) else { continue }
             badges.append(ProfileBadge(
                 title: "Program Complete",
                 detail: "\(program.name) — every session of all \(program.weeks) weeks, logged.",

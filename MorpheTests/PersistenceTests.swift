@@ -1237,6 +1237,60 @@ final class WorkoutSessionTests: XCTestCase {
         XCTAssertEqual(result.exercises[1].cameraCountedPerSet, [true], "an untouched exercise keeps it")
     }
 
+    /// Plan builder (2026-10-04): every plan is made of real catalog
+    /// sessions inside the limits asked for, across the whole answer grid.
+    @MainActor
+    func testPlanBuilderRespectsEveryLimitAcrossTheGrid() {
+        typealias S = MorpheAppStore
+        let store = MorpheAppStore()
+        let catalog = store.discoverWorkouts
+        let byName = Dictionary(catalog.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+        let allowed: [String: Set<String>] = [
+            "Bodyweight": ["Bodyweight"], "Dumbbells": ["Bodyweight", "Dumbbells"],
+            "Full Gym": ["Bodyweight", "Dumbbells", "Full Gym"]]
+        var built = 0
+        for goal in ["weightLoss", "strengthBuilding", "leanOut", "recovery"] {
+            for days in 2...6 {
+                for gear in ["Bodyweight", "Dumbbells", "Full Gym"] {
+                    for level in [DemoDifficulty.beginner, .moderate, .advanced] {
+                        for minutes in [30, 45, 60, 90] {
+                            let request = S.PlanRequest(goal: goal, daysPerWeek: days, equipment: gear,
+                                                        level: level, maxMinutes: minutes)
+                            guard let plan = S.buildPlan(request, from: catalog) else { continue }
+                            built += 1
+                            XCTAssertEqual(plan.weeklySessionNames.count, days)
+                            XCTAssertEqual(Set(plan.weeklySessionNames).count, days, "no session twice in a week")
+                            XCTAssertEqual(plan.deloadWeek, plan.weeks)
+                            for name in plan.weeklySessionNames {
+                                guard let workout = byName[name] else { XCTFail("\(name) is not in the catalog"); continue }
+                                XCTAssertTrue(allowed[gear]!.contains(workout.equipment), "\(name) needs \(workout.equipment)")
+                                XCTAssertLessThanOrEqual(workout.durationMinutes, minutes)
+                                if level == .beginner {
+                                    XCTAssertNotEqual(workout.difficulty, .advanced, "\(name) is too hard for a beginner")
+                                }
+                                if goal != "recovery" {
+                                    XCTAssertFalse(name.contains("Older Adults") || name.contains("Chair"),
+                                                   "\(name) is written for a different audience")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        XCTAssertGreaterThan(built, 300, "most of the 720 answer combinations produce a plan")
+        // The beginner default — the ICP's first plan — must exist.
+        let first = S.buildPlan(S.PlanRequest(), from: catalog)
+        XCTAssertEqual(first?.weeks, 4)
+        XCTAssertEqual(first?.weeklySessionNames.count, 3)
+        XCTAssertTrue(first?.weeklySessionNames.contains("Beginner Linear Progression — Day A") == true
+                      && first?.weeklySessionNames.contains("Beginner Linear Progression — Day B") == true,
+                      "a beginner's strength plan is built on the beginner strength days")
+        XCTAssertEqual(S.planSlots(for: S.PlanRequest(goal: "weightLoss", daysPerWeek: 2)), ["Full Body", "Conditioning"])
+        XCTAssertEqual(S.buildPlan(S.PlanRequest(), from: catalog), first, "same answers, same plan")
+        print("PLAN_GRID built \(built) of 720")
+    }
+
     /// Rebuild wave (2026-08): the retraction classifier — the engine
     /// drops these before onCommand ever fires.
     func testCancelPhraseClassifier() {

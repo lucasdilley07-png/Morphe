@@ -1099,6 +1099,167 @@ struct WorkoutView: View {
     }
 }
 
+// MARK: - Plan builder (2026-10-04)
+
+/// Five answers, and the week redraws under them as each one changes —
+/// nothing is collected that doesn't visibly alter the plan.
+struct PlanBuilderSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var request = MorpheAppStore.PlanRequest()
+    @State private var seeded = false
+
+    private static let goals: [(tag: String, label: String)] = [
+        ("strengthBuilding", "Get stronger"), ("leanOut", "Lean out"),
+        ("weightLoss", "Lose weight"), ("recovery", "Move and recover")
+    ]
+    private static let levels: [(level: DemoDifficulty, label: String)] = [
+        (.beginner, "New to this"), (.moderate, "Training a while"), (.advanced, "Experienced")
+    ]
+
+    var body: some View {
+        let plan = store.previewPlan(request)
+
+        return ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Build My Plan")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text("Fixed rules, real catalog sessions. Change an answer and the week below changes with it.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                    Button("Close") { dismiss() }
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+
+                question("Goal") {
+                    ForEach(Self.goals, id: \.tag) { goal in
+                        chip(goal.label, selected: request.goal == goal.tag) { request.goal = goal.tag }
+                    }
+                }
+                question("Days a week") {
+                    ForEach(2...6, id: \.self) { days in
+                        chip("\(days)", selected: request.daysPerWeek == days) { request.daysPerWeek = days }
+                    }
+                }
+                question("Equipment") {
+                    ForEach(["Bodyweight", "Dumbbells", "Full Gym"], id: \.self) { gear in
+                        chip(gear == "Bodyweight" ? "None" : gear, selected: request.equipment == gear) {
+                            request.equipment = gear
+                        }
+                    }
+                }
+                question("Experience") {
+                    ForEach(Self.levels, id: \.level) { item in
+                        chip(item.label, selected: request.level == item.level) { request.level = item.level }
+                    }
+                }
+                question("Time per session") {
+                    ForEach([30, 45, 60, 90], id: \.self) { minutes in
+                        chip("\(minutes) min", selected: request.maxMinutes == minutes) { request.maxMinutes = minutes }
+                    }
+                }
+
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if let plan {
+                            Text(plan.name)
+                                .font(.headline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Text(plan.summary)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text("\(plan.weeks) WEEKS · \(plan.weeklySessionNames.count) SESSIONS A WEEK · WEEK \(plan.weeks) DELOADS")
+                                .font(MorpheTheme.microLabel(10))
+                                .tracking(1.2)
+                                .foregroundStyle(MorpheTheme.accentText)
+                            ForEach(Array(plan.weeklySessionNames.enumerated()), id: \.offset) { index, name in
+                                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                    Text("DAY \(index + 1)")
+                                        .font(MorpheTheme.microLabel(10))
+                                        .tracking(1.2)
+                                        .monospacedDigit()
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                        .frame(width: 44, alignment: .leading)
+                                    Text(name)
+                                        .font(.subheadline)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            Text("Each week repeats these sessions in order. Loads move up from your own logs. A training aid, not medical advice.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            Text("No plan fits those limits")
+                                .font(.headline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Text("The catalog can't fill that week. Allow more time per session or more equipment.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .animation(.easeOut(duration: 0.2), value: plan)
+
+                Button(store.programProgress == nil ? "Start This Plan" : "Replace My Program With This") {
+                    if store.startCustomPlan(request) {
+                        Haptics.success()
+                        dismiss()
+                    }
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                .disabled(plan == nil)
+                .opacity(plan == nil ? 0.5 : 1)
+            }
+            .padding(20)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
+        .onAppear {
+            guard !seeded else { return }
+            seeded = true
+            // Start from what the profile already says.
+            request.daysPerWeek = max(2, min(6, store.clientProfile.trainingDaysPerWeek))
+            let goal = store.clientProfile.goal.lowercased()
+            if goal.contains("weight") || goal.contains("fat") { request.goal = "weightLoss" }
+            else if goal.contains("lean") || goal.contains("tone") { request.goal = "leanOut" }
+            else if goal.contains("recover") || goal.contains("mobil") { request.goal = "recovery" }
+            let level = store.clientProfile.fitnessLevel.lowercased()
+            if level.contains("advanced") { request.level = .advanced }
+            else if level.contains("intermediate") || level.contains("moderate") { request.level = .moderate }
+        }
+    }
+
+    private func question(_ title: String, @ViewBuilder chips: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.2)
+                .foregroundStyle(MorpheTheme.textMuted)
+            WrapStack(spacing: 8) { chips() }
+        }
+    }
+
+    private func chip(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(label) {
+            Haptics.selection()
+            action()
+        }
+        .buttonStyle(FilterChipStyle(isSelected: selected))
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
 // MARK: - Technique Library (2026-10-04)
 
 /// One exercise row: name, what it trains, what it needs.
@@ -1756,6 +1917,7 @@ private struct PostWorkoutSmartActionCard: View {
 private struct ProgramSectionCard: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var showLeaveConfirm = false
+    @State private var showPlanBuilder = false
     /// Discover hosts this card under a section that already carries the
     /// title and one-liner — repeating them read as a stutter
     /// (audit 18, P2).
@@ -1854,7 +2016,32 @@ private struct ProgramSectionCard: View {
                 .foregroundStyle(MorpheTheme.textSecondary)
         }
 
-        ForEach(MorpheAppStore.trainingPrograms) { program in
+        // The plan built for this person leads the shelf (2026-10-04).
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Build My Plan")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(MorpheTheme.textPrimary)
+            Text("Five answers: goal, days, equipment, level, time. Morphe lays out the weeks from its own catalog.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Build My Plan") { showPlanBuilder = true }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panelStrong.opacity(0.6))
+        )
+        .sheet(isPresented: $showPlanBuilder) {
+            PlanBuilderSheet()
+                .environment(store)
+                .presentationDetents([.large])
+                .presentationCornerRadius(28)
+                .sheetToastSurface()
+        }
+
+        ForEach(store.allPrograms) { program in
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(program.name)
