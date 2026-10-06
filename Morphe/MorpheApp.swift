@@ -26,7 +26,7 @@ struct MorpheApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            SystemAppearanceMirror { RootView() }
                 // Scrolling any page slides the keyboard off and returns
                 // to the content under it; screens that chose the
                 // follow-the-finger mode (the chats) keep their own.
@@ -39,9 +39,8 @@ struct MorpheApp: App {
                 .environment(store)
                 .preferredColorScheme(store.selectedAppearance)
                 .onAppear {
-                    // Cold-start half of the sheet fix: didSet only fires on
-                    // toggle, so the saved preference is pinned on the window
-                    // once it exists. Sheets ignore preferredColorScheme.
+                    // Any window override an older build pinned is cleared,
+                    // so sheets and covers follow the iPhone's setting too.
                     MorpheAppStore.applyWindowAppearance(isLight: store.appearanceIsLight)
                     KeyboardSwipeDismisser.shared.install()
                 }
@@ -151,5 +150,26 @@ final class KeyboardSwipeDismisser: NSObject, UIGestureRecognizerDelegate {
             view = current.superview
         }
         return true
+    }
+}
+
+/// Mirrors the iPhone's Light/Dark setting into the store (Lucas
+/// 2026-10-06): the token system flips with the system, never from an
+/// in-app switch. Sits above every preferredColorScheme, so the scheme it
+/// reads is the system's own.
+private struct SystemAppearanceMirror<Content: View>: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.colorScheme) private var colorScheme
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        content()
+            .onAppear { sync() }
+            .onChange(of: colorScheme) { _, _ in sync() }
+    }
+
+    private func sync() {
+        let light = colorScheme == .light
+        if store.appearanceIsLight != light { store.appearanceIsLight = light }
     }
 }

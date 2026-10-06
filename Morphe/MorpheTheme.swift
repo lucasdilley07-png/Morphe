@@ -20,9 +20,10 @@ enum MorpheTheme {
     /// written only when the user actually toggles, so an undecided
     /// device keeps following the system.
     static func defaultIsLight() -> Bool {
-        if let chosen = UserDefaults.standard.object(forKey: "morphe.appearance.light") as? Bool {
-            return chosen
-        }
+        // The in-app override is gone (Lucas 2026-10-06): the app follows
+        // the iPhone's Light/Dark setting. An older build's stored choice
+        // is dropped so nobody stays pinned.
+        UserDefaults.standard.removeObject(forKey: "morphe.appearance.light")
         // Screen traits, not .current — the store seeds before any scene
         // exists, where .current is undefined (audit 27, P2).
         return UIScreen.main.traitCollection.userInterfaceStyle != .dark

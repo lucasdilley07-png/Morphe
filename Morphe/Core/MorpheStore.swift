@@ -113,32 +113,26 @@ final class MorpheAppStore {
         await restoreFromCloud()
     }
 
-    /// Light/dark appearance — device-level (not per-profile: the person
-    /// holding the phone picks how it looks). Flips the whole token system.
+    /// Light/dark follows the iPhone (Lucas 2026-10-06): there is no
+    /// in-app switch any more. The root view mirrors the system scheme
+    /// into this flag, which flips the whole token system.
     var appearanceIsLight = MorpheTheme.defaultIsLight() {
-        didSet {
-            MorpheTheme.isLight = appearanceIsLight
-            UserDefaults.standard.set(appearanceIsLight, forKey: "morphe.appearance.light")
-            Self.applyWindowAppearance(isLight: appearanceIsLight)
-        }
+        didSet { MorpheTheme.isLight = appearanceIsLight }
     }
 
-    /// Pins the scheme on every window, not just the SwiftUI root:
-    /// sheets and covers are separate presentation roots that ignore the
-    /// root view's preferredColorScheme, so without this the profile
-    /// sheet (and 40+ other sheets) follow the SYSTEM appearance instead
-    /// of the in-app toggle.
+    /// Clears any window-level override an older build pinned, so every
+    /// window follows the system again.
     static func applyWindowAppearance(isLight: Bool) {
-        let style: UIUserInterfaceStyle = isLight ? .light : .dark
         for scene in UIApplication.shared.connectedScenes {
             guard let windowScene = scene as? UIWindowScene else { continue }
             for window in windowScene.windows {
-                window.overrideUserInterfaceStyle = style
+                window.overrideUserInterfaceStyle = .unspecified
             }
         }
     }
 
-    var selectedAppearance: ColorScheme? { appearanceIsLight ? .light : .dark }
+    /// Nil = the system's choice, everywhere a sheet or cover asks.
+    var selectedAppearance: ColorScheme? { nil }
     var toastMessage: String?
     var celebration: CelebrationMoment?
     /// The full-screen stamp — only PRs and finished programs land here;

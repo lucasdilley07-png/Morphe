@@ -860,7 +860,7 @@ struct ProfileView: View {
             ("Notifications", "reminders nudge streak recap board updates"),
             ("Who can see you", Self.whoCanSeeYouKeywords),
             ("Health", "apple health activity rings sleep sync workouts prefill check-in"),
-            ("Your app", "appearance dark light mode theme accent color"),
+            ("Your app", "theme accent color"),
             ("Your data", "export json download backup cloud morphe pro subscription plans"),
             ("More info and support", "about terms privacy policy contact support email version"),
             ("Login", "sign out log out delete account remove")
@@ -1507,22 +1507,9 @@ struct ProfileView: View {
                     )
             }
 
-            settingsSection("Your app", keywords: "appearance dark light mode theme accent color") {
-                HStack {
-                    Text("Appearance")
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Spacer()
-                    Picker("Appearance", selection: $store.appearanceIsLight) {
-                        Text("Dark").tag(false)
-                        Text("Light").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 140)
-                }
-
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
+            // Light and dark follow the iPhone's own setting (Lucas
+            // 2026-10-06) — no appearance switch here.
+            settingsSection("Your app", keywords: "theme accent color") {
                 // Accent color — picked once in onboarding, now editable
                 // anytime. Gold is the brand default; the others personalize
                 // the whole app's accent pair.
