@@ -126,12 +126,18 @@ enum MorpheTheme {
         // so ONE constant rendered six different gaps. Targets below aim
         // every tab at the same visual start line under the icon row —
         // adjust these four, never per-view literals.
-        static let pageTopToday: CGFloat = 48
-        static let pageTopTrain: CGFloat = 60
-        static let pageTopStacked: CGFloat = 60   // Discover, Network
-        // Matches pageTopStacked — these pages open with title text, and
-        // anything shorter leaves it under the floating avatar button.
-        static let pageTopCompact: CGFloat = 60   // Progress, Learn
+        // Re-measured 2026-10-05 after the pager moved under the status
+        // bar (Lucas: "every page starts too low except Discover"): the
+        // plain-scroll tabs already carry the status-bar inset, so their
+        // own top padding is zero; Discover, inside a NavigationStack,
+        // keeps its 60 and is the reference line (~126pt from the top).
+        static let pageTopToday: CGFloat = 0
+        static let pageTopTrain: CGFloat = 0
+        static let pageTopStacked: CGFloat = 60   // Discover (NavigationStack)
+        // The tab row is a 44pt button whose label sits mid-row — pull the
+        // row up so the label lands on the reference line.
+        static let pageTopNetwork: CGFloat = -12
+        static let pageTopCompact: CGFloat = 0    // Learn
     }
 
     /// Monospaced micro-label — the telemetry signature. Pair with

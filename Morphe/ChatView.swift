@@ -7,7 +7,7 @@ struct CommunityView: View {
     @State private var showFormCamera = false
     @State private var showCalendarEditor = false
     /// Tab landing clears the floating header icons.
-    var topPadding: CGFloat = MorpheTheme.Spacing.pageTopStacked
+    var topPadding: CGFloat = MorpheTheme.Spacing.pageTopNetwork
 
     /// One-shot per mount: land on CHATS when messages are waiting
     /// (speed audit S2-3) — Snapchat's own default, and it cuts the reply

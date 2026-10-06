@@ -55,7 +55,6 @@ struct MoreView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 4)
                 .padding(.bottom, 120)
             }
             .id(activeFeature)
