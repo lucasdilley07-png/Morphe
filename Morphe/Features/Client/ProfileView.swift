@@ -58,11 +58,14 @@ struct ProfileView: View {
                     store: store,
                     weightDraft: $weightDraft,
                     onOpenProgress: { requestOpenProgress() }
-                )
+                ) {
+                    // Level and rank sit under the weight and above the
+                    // history door (Lucas 2026-10-06).
+                    levelCard
+                }
                 detailsCard
                 targetsCard
                 settingsSections
-                levelCard
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
@@ -401,7 +404,7 @@ struct ProfileView: View {
         isEditingTargets = false
     }
 
-    /// XP readout at the bottom of the page. Levels climb a decade curve:
+    /// XP readout under the weight card. Levels climb a decade curve:
     /// 1–10 take 100 XP each, 11–20 take 200, 21–30 take 300, and so on.
     private var levelCard: some View {
         let level = store.clientProfile.level
@@ -1879,7 +1882,7 @@ struct ProfileView: View {
 }
 
 /// Athlete profile = strictly training: snapshot, focus, recent work, records.
-private struct AthleteProfileBody: View {
+private struct AthleteProfileBody<Between: View>: View {
     let store: MorpheAppStore
     /// Owned by ProfileView so its unsaved-edit guard can see it.
     @Binding var weightDraft: String
@@ -1887,6 +1890,8 @@ private struct AthleteProfileBody: View {
     /// P1: the row's direct close silently dropped typed drafts — the
     /// exact bug the weightDraft hoist fixed for Done and swipe-down).
     let onOpenProgress: () -> Void
+    /// Rendered between the weight card and the history door.
+    @ViewBuilder let between: () -> Between
     @State private var showWeightWarning = false
 
     var body: some View {
@@ -1936,6 +1941,8 @@ private struct AthleteProfileBody: View {
                     }
                 }
             }
+
+            between()
 
             // Training history lives in Progress — one door, not four
             // duplicate cards (Snapshot/Focus/Logs/PRs all re-rendered what
