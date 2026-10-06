@@ -57,9 +57,7 @@ console or the creator).
 
 ## Website key
 
-`docs/coach.html` holds `FIREBASE_WEB_API_KEY`. It is empty in the repo;
-with it empty the page says "Applications open soon". The key identifies the
-project to Google's sign-in and database services — what a signed-in person
-can read or write is decided by the rules, not the key — but it lives in the
-gitignored `GoogleService-Info.plist`, so putting it on a public page is
-Lucas's call. Fill it in and push to open applications.
+`docs/coach.html` holds `FIREBASE_WEB_API_KEY` (added 2026-10-05 on Lucas's
+call; applications are open). The key identifies the project to Google's
+sign-in and database services — what a signed-in person can read or write is
+decided by the published rules, not the key.
