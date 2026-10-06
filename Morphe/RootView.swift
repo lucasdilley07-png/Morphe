@@ -630,17 +630,26 @@ private struct ClientExperienceShell: View {
         // (Lucas 2026-10-05): the five tabs are one pager, in the bar's
         // order. Horizontal chip rows and carousels inside a page keep
         // their own drags; the pager takes the rest.
-        return TabView(selection: $store.selectedClientTab) {
+        // The pager's own backing view painted the status-bar strip in the
+        // system colour — a white bar in light mode (Lucas 2026-10-05). The
+        // pager now runs under the status bar and each page re-creates the
+        // inset itself, so the page's own field reaches the top edge and
+        // nothing sits behind the icons but the page.
+        return GeometryReader { geo in
+        let topInset = geo.safeAreaInsets.top
+        TabView(selection: $store.selectedClientTab) {
             // Each screen's identity is keyed off tabResetKey, so tapping the
             // tab icon rebuilds it at its root (top of page, drill-ins
             // closed). Train is deliberately NOT keyed — a tab tap must never
             // reset a live session or running rest timer.
             HomeView()
                 .id(store.tabResetKey("today"))
+                .pageTopInset(topInset)
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.today)
 
             WorkoutView()
+                .pageTopInset(topInset)
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.train)
 
@@ -649,6 +658,7 @@ private struct ClientExperienceShell: View {
             // Pager order = bar order (today, train, discover, network, learn).
             DiscoverScreenView()
                 .id(store.tabResetKey("discover"))
+                .pageTopInset(topInset)
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.discover)
 
@@ -658,20 +668,25 @@ private struct ClientExperienceShell: View {
                 // Keyed like the other tabs: re-tapping Network lands back
                 // at the top of a fresh feed instead of doing nothing.
                 .id(store.tabResetKey("community"))
+                .pageTopInset(topInset)
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.community)
 
             MoreView()
                 .id(store.tabResetKey("more"))
+                .pageTopInset(topInset)
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.more)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
-        .safeAreaInset(edge: .top) {
-            // Icons only — no band, no hairline, no fade (Lucas 2026-10-05:
-            // the ink→clear scrim read as a white header in light mode).
-            // The three squares have opaque faces of their own; the page
-            // tops below are unchanged because the inset keeps its height.
+        .ignoresSafeArea(edges: .top)
+        // The icons FLOAT over the page (Lucas 2026-10-05): no inset, no
+        // band, nothing behind them but the page itself. The pager's own
+        // backing view filled the old inset with a white strip in light
+        // mode. Each page's top padding (MorpheTheme.Spacing.pageTop*)
+        // sets its title just under the row.
+        .overlay(alignment: .top) {
+            // Overlays keep to the safe area on their own — no extra inset.
             ClientPinnedHeader()
                 .padding(.horizontal, 16)
         }
@@ -690,6 +705,15 @@ private struct ClientExperienceShell: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: KeyboardWatcher.shared.isVisible)
+        }
+    }
+}
+
+private extension View {
+    /// Re-creates the status-bar inset inside a pager that ignores it:
+    /// page content starts below the bar, page backgrounds reach the top.
+    func pageTopInset(_ height: CGFloat) -> some View {
+        safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: height) }
     }
 }
 
