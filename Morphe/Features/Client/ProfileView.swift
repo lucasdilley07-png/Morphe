@@ -231,13 +231,58 @@ struct ProfileView: View {
 
     /// Everything about the user's training identity, editable in place —
     /// onboarding stays lean, so this is where these details live.
+    /// Collapsed by default (Lucas 2026-10-06): four lines of what's set,
+    /// and the chip groups only when editing — they ran a full screen.
+    @State private var editingDetails = false
+
+    private var detailsSummary: [(String, String)] {
+        let goals = store.clientProfile.selectedGoals
+        let styles = store.clientProfile.selectedTrainingStyles.map(\.rawValue)
+        let gear = Array(selectedEquipment).sorted()
+        func line(_ items: [String], none: String) -> String {
+            items.isEmpty ? none : items.prefix(3).joined(separator: ", ") + (items.count > 3 ? " +\(items.count - 3)" : "")
+        }
+        return [
+            ("Experience", store.clientProfile.fitnessLevel.isEmpty ? "Not set" : store.clientProfile.fitnessLevel),
+            ("Goals", line(goals, none: "Not set")),
+            ("Styles", line(styles, none: "Not set")),
+            ("Equipment", line(gear, none: "Not set"))
+        ]
+    }
+
     private var detailsCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Your Details")
-                    .font(.headline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                HStack {
+                    Text("Your Details")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Button(editingDetails ? "Done" : "Edit") {
+                        withAnimation(.easeInOut(duration: 0.2)) { editingDetails.toggle() }
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(minWidth: 44, minHeight: 32)
+                }
 
+                if !editingDetails {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(detailsSummary, id: \.0) { row in
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Text(row.0.uppercased())
+                                    .font(MorpheTheme.microLabel(10))
+                                    .tracking(1.2)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .frame(width: 92, alignment: .leading)
+                                Text(row.1)
+                                    .font(.subheadline)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                    .lineLimit(2)
+                            }
+                        }
+                    }
+                } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Experience")
                         .font(.caption.weight(.semibold))
@@ -279,7 +324,7 @@ struct ProfileView: View {
                             Button(style.rawValue) {
                                 store.toggleProfileTrainingStyle(style)
                             }
-                            .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.selectedTrainingStyles.contains(style), selectedColor: MorpheTheme.warning))
+                            .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.selectedTrainingStyles.contains(style)))
                         }
                     }
                 }
@@ -299,8 +344,7 @@ struct ProfileView: View {
                         }
                     }
                 }
-
-
+                }
             }
         }
     }
@@ -439,7 +483,7 @@ struct ProfileView: View {
 
                     ProgressBarView(progress: level.progress, color: MorpheTheme.accent)
 
-                    Text("Earn XP from workouts, daily wins, and quizzes. Each tier of ten levels asks a little more: 100 XP per level through 10, then 200, then 300.")
+                    Text("XP comes from workouts, daily wins and quizzes.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -877,23 +921,98 @@ struct ProfileView: View {
     private static let whoCanSeeYouKeywords =
         "weekly board leaderboard privacy feed posts streak byline accent share blocked accounts unblock"
 
-    /// One grouped section: small-caps header + rows, hidden when the
-    /// search query matches neither its title nor its keywords.
+    /// Collapsed by default (Lucas 2026-10-06: "text heavy and
+    /// unorganized"): each section is one row — icon, title, a short line
+    /// of what's inside — and opens on tap. One open at a time. A search
+    /// opens every matching section so the answer is on screen.
+    @State private var openSection: String?
+
+    private static let sectionMeta: [String: (icon: String, summary: String)] = [
+        "Make it yours": ("paintbrush", "Sounds, character, voice, tour"),
+        "What Morphe has learned": ("brain.head.profile", "What it knows about how you train"),
+        "Your account": ("person.crop.circle", "Name, username, invites"),
+        "How you train": ("figure.strengthtraining.traditional", "Days, limits, rest timer, units"),
+        "Voice": ("waveform", "Hey Morphe, hands-free"),
+        "Morphe Intelligence": ("sparkles", "Claude key, neural voice"),
+        "Notifications": ("bell", "Reminders"),
+        "Who can see you": ("eye", "Board, feed, blocked accounts"),
+        "Health": ("heart", "Apple Health"),
+        "Your app": ("paintpalette", "Accent color"),
+        "Your data": ("externaldrive", "Export, import, backup, Pro"),
+        "More info and support": ("questionmark.circle", "About, privacy, contact"),
+        "Login": ("rectangle.portrait.and.arrow.right", "Sign out, delete account")
+    ]
+
+    /// One grouped section, hidden when the search query matches neither
+    /// its title nor its keywords.
     @ViewBuilder
     private func settingsSection<Content: View>(
         _ title: String, keywords: String, emphasis: CardEmphasis = .standard,
         @ViewBuilder content: () -> Content
     ) -> some View {
         if settingsSectionMatches(title: title, keywords: keywords) {
+            let searching = !settingsQuery.trimmingCharacters(in: .whitespaces).isEmpty
+            let open = searching || openSection == title
+            let meta = Self.sectionMeta[title]
             GlassCard(emphasis) {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text(title.uppercased())
-                        .font(MorpheTheme.microLabel(10))
-                        .tracking(1.6)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    content()
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            openSection = open ? nil : title
+                        }
+                        Haptics.selection()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: meta?.icon ?? "circle")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.accentText)
+                                .frame(width: 26)
+                                .accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                if !open, let summary = meta?.summary {
+                                    Text(summary)
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                        .lineLimit(1)
+                                }
+                            }
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .rotationEffect(.degrees(open ? 90 : 0))
+                                .accessibilityHidden(true)
+                        }
+                        .frame(minHeight: 32)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(searching)
+                    .accessibilityLabel(title)
+                    .accessibilityValue(open ? "Open" : "Closed")
+                    .accessibilityHint(open ? "Collapses the section" : "Opens the section")
+
+                    if open {
+                        content()
+                    }
                 }
             }
+        }
+    }
+
+    /// A thin label between groups of sections. Hidden while searching —
+    /// the matches speak for themselves.
+    @ViewBuilder
+    private func settingsGroupLabel(_ title: String) -> some View {
+        if settingsQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+            Text(title.uppercased())
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.6)
+                .foregroundStyle(MorpheTheme.textMuted)
+                .padding(.top, 8)
         }
     }
 
@@ -996,6 +1115,8 @@ struct ProfileView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
             }
+
+            settingsGroupLabel("Profile")
 
             // Identity customization (personalization phase 2): pick
             // Morphe's persona and the app's sound voice. Writes go through
@@ -1240,6 +1361,8 @@ struct ProfileView: View {
 
             }
 
+            settingsGroupLabel("Training")
+
             settingsSection("How you train", keywords: Self.howYouTrainKeywords) {
                 // Weekly target — drives the consistency denominator on
                 // Progress; was user-set in onboarding then locked forever.
@@ -1401,6 +1524,8 @@ struct ProfileView: View {
                     )
 
             }
+
+            settingsGroupLabel("Privacy, data and support")
 
             settingsSection("Who can see you", keywords: Self.whoCanSeeYouKeywords) {
                     // The board publishes your real name — and scores post on
