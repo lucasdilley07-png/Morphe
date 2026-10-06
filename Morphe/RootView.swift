@@ -121,7 +121,7 @@ struct RootView: View {
     /// Clearance for the floating AI button over the dock. Scales with the
     /// dock's own micro-labels (audit 13, P2): a fixed 74 overlapped the
     /// capsule at accessibility text sizes.
-    @ScaledMetric(relativeTo: .caption2) private var aiButtonDockClearance: CGFloat = 74
+    @ScaledMetric(relativeTo: .caption2) private var aiButtonDockClearance: CGFloat = 90   // 74 → 90 (Lucas 2026-10-05: slightly higher)
 
     /// Reduce Motion swaps travel for a quick crossfade — never zero
     /// feedback, never a slide/spring.
