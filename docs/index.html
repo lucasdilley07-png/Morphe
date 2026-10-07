@@ -101,104 +101,22 @@ p { margin: 0; }
 @media (max-width: 640px) { .nav-links a:not(.btn) { display: none; } }
 
 /* Hero: the brand field, the helmet, the thesis. */
-.hero { background: #061233 url("assets/hero-field.jpg") center / cover no-repeat; isolation: isolate; color: var(--on-field); position: relative; overflow: hidden; min-height: min(92vh, 900px); display: flex; flex-direction: column; }
-/* The battle field (Lucas 2026-10-05). Copy sits left over a darkening
-   that keeps the type at AA without hiding the charge on the right. */
-.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
-  background: linear-gradient(90deg, rgba(4,12,40,0.86) 0%, rgba(4,12,40,0.72) 38%, rgba(4,12,40,0.22) 62%, rgba(4,12,40,0.05) 100%),
-              linear-gradient(180deg, rgba(4,12,40,0.35) 0%, rgba(4,12,40,0) 30%, rgba(4,12,40,0.55) 100%); }
-.hero-scene { display: none; }
-/* Phones (Lucas 2026-10-05, vertical reference): the copy stacks at the
-   top over the sky, the hero runs tall so the charging figure and the
-   line show beneath it, and the facts become a 2×2 card grid. */
-@media (max-width: 820px) {
-  /* The copy sits on the image's sky (a wide, top-anchored crop); the
-     charge itself is its own full-bleed picture underneath, so the figure
-     is never hidden behind the headline. */
-  .hero { min-height: 0; background-size: 260% auto; background-position: 38% 0; }
-  .hero::before { background: linear-gradient(180deg, rgba(4,12,40,0.70) 0%, rgba(4,12,40,0.55) 60%, rgba(4,12,40,0.35) 100%); }
-  .hero .wrap { padding-block: 36px 24px; align-items: start; min-height: 0; }
-  .hero-mark { display: none; }
-  .hero-scene { display: block; position: relative; z-index: 1; width: 100%; height: 96vw; object-fit: cover; object-position: 72% 50%; margin-top: -36px;
-    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14%, #000 100%); mask-image: linear-gradient(180deg, transparent 0, #000 14%, #000 100%); }
-}
+.hero { background: linear-gradient(180deg, var(--field-top) 0%, var(--field-mid) 52%, var(--field-bottom) 100%); color: var(--on-field); position: relative; overflow: hidden; }
 .hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.05;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"); }
-.hero .wrap { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 40px; align-items: center; padding-block: clamp(64px, 8vw, 128px); flex: 1; }
-@media (max-width: 820px) { .hero .wrap { grid-template-columns: 1fr; } .hero-actions { flex-direction: column; } .hero-actions .btn { width: 100%; } }
+.hero .wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 40px; align-items: center; padding-block: clamp(64px, 8vw, 128px); }
+@media (max-width: 820px) { .hero .wrap { grid-template-columns: 1fr; text-align: center; } .hero-copy { align-items: center; } .hero-actions { justify-content: center; } }
 .hero-copy { display: grid; gap: 24px; }
 .hero .micro { color: #FFFFFF; }
 .hero h1 { font-size: clamp(3rem, 2rem + 6vw, 6.5rem); letter-spacing: -0.04em; line-height: 0.95; }
 .hero h1 .line2 { display: block; color: rgba(255,255,255,0.78); font-weight: 600; letter-spacing: -0.03em; }
-@media (max-width: 820px) { .hero h1 { font-size: clamp(2.2rem, 10.5vw, 3rem); } .hero .lede { font-size: 1.05rem; } }
 .hero .lede { color: rgba(255,255,255,0.84); font-size: 1.2rem; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
-/* The figure in the photograph is the hero mark now; the column just
-   keeps the copy to the left of the charge. */
-.hero-mark { display: block; min-height: 1px; }
+.hero-mark { display: grid; place-items: center; }
+.hero-mark img { width: min(240px, 60vw); filter: drop-shadow(0 0 22px rgba(255,255,255,0.45)) drop-shadow(0 24px 40px rgba(10, 20, 80, 0.45)); animation: lift 1.2s ease-out both; }
 @keyframes lift { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: none; } }
-
-/* ---- Motion (2026-10-06). Entrances ease out, exits ease in, nothing idle
-   pulses; every move is caused by load, scroll, hover or a tap. Reduced
-   Motion gets the finished state with no travel (the global rule above
-   also zeroes every transition). */
-@media (prefers-reduced-motion: no-preference) {
-  .hero .micro, .hero h1 .w, .hero .lede, .hero-actions { opacity: 0; transform: translateY(18px); animation: rise 640ms cubic-bezier(.2,.7,.2,1) forwards; }
-  .hero .micro { animation-delay: 80ms; }
-  .hero h1 .w { display: inline-block; }
-  .hero h1 .w:nth-child(1) { animation-delay: 160ms; } .hero h1 .w:nth-child(2) { animation-delay: 240ms; }
-  .hero h1 .line2 .w:nth-child(1) { animation-delay: 340ms; } .hero h1 .line2 .w:nth-child(2) { animation-delay: 400ms; } .hero h1 .line2 .w:nth-child(3) { animation-delay: 460ms; }
-  .hero .lede { animation-delay: 560ms; } .hero-actions { animation-delay: 660ms; }
-  .hero-fact { opacity: 0; transform: translateY(14px); animation: rise 520ms cubic-bezier(.2,.7,.2,1) forwards; }
-  .hero-fact:nth-child(1) { animation-delay: 760ms; } .hero-fact:nth-child(2) { animation-delay: 840ms; } .hero-fact:nth-child(3) { animation-delay: 920ms; } .hero-fact:nth-child(4) { animation-delay: 1000ms; }
-  .reveal { opacity: 0; transform: translateY(22px); transition: opacity 560ms cubic-bezier(.2,.7,.2,1), transform 560ms cubic-bezier(.2,.7,.2,1); transition-delay: calc(var(--i, 0) * 70ms); }
-  .reveal.in { opacity: 1; transform: none; }
-  .hero-bg { transition: transform 120ms ease-out; }
-}
-@keyframes rise { to { opacity: 1; transform: none; } }
-/* The field moves on its own layer so parallax never repaints the copy. */
-.hero-bg { position: absolute; inset: -6% -4%; background: inherit; background-position: inherit; background-size: inherit; z-index: 0; will-change: transform; }
-.hero > .wrap, .hero-foot, .hero-scene { position: relative; z-index: 1; }
-/* Hover and press: lift on things you can act on. */
-.rule, .feature, .card { transition: transform 200ms cubic-bezier(.2,.7,.2,1), border-color 200ms ease, box-shadow 200ms ease, background-color 200ms ease; }
-.rule { position: relative; border-radius: 14px; padding: 16px 12px; margin-inline: -12px; }
-.rule::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; border-radius: 3px; background: var(--accent); transform: scaleY(0); transition: transform 200ms cubic-bezier(.2,.7,.2,1); }
-.rule:hover, .rule:focus-within, .rule.lit { background: var(--bg-elevated); }
-.rule:hover::before, .rule:focus-within::before, .rule.lit::before { transform: scaleY(1); }
-.feature { border-radius: 16px; padding: 20px 14px; margin-inline: -14px; border-bottom-color: transparent; }
-.feature:hover, .feature.lit { background: var(--bg-elevated); transform: translateY(-3px); box-shadow: 0 10px 28px rgba(6,18,51,0.10), 0 1px 0 var(--hair); }
-.feature .micro { transition: color 200ms ease; } .feature:hover .micro, .feature.lit .micro { color: var(--accent-ink); }
-.btn { transition: transform 160ms cubic-bezier(.2,.7,.2,1), background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
-.btn:hover { transform: translateY(-2px); } .btn:active { transform: translateY(0) scale(0.98); transition-duration: 90ms; }
-.btn-primary:hover, .btn-on-field:hover { box-shadow: 0 10px 24px rgba(41,87,217,0.35); }
-/* Counted numbers: tabular so nothing jitters while they run up. */
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 8px 0 28px; }
-.stat { border: 1px solid var(--hair); border-radius: 16px; padding: 16px 14px; background: var(--bg-elevated); }
-.stat b { display: block; font-size: clamp(1.8rem, 1.2rem + 2.4vw, 2.8rem); letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--fg); }
-.stat span { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-3); }
-@media (max-width: 520px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .stat { padding: 12px 10px; } }
-/* The nav tightens once the page has moved, and the active section lights. */
-.nav.scrolled { box-shadow: 0 1px 0 var(--hair), 0 8px 24px rgba(6,18,51,0.08); }
-.nav.scrolled .wrap { padding-block: 8px; }
-.nav .wrap { transition: padding 200ms ease; }
-.nav-links a.active:not(.btn) { color: var(--fg); background: var(--bg-elevated); }
-.hero-foot { position: relative; z-index: 1; border-top: 1px solid rgba(255,255,255,0.18); background: rgba(4,12,40,0.55); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-@media (max-width: 820px) {
-  .hero-foot { border-top: 0; background: #061233; backdrop-filter: none; -webkit-backdrop-filter: none; margin-top: -40px; }
-  .hero-foot .wrap { padding-block: 16px 28px; gap: 12px; }
-  .hero-fact { padding: 12px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.22); background: rgba(6,18,51,0.62); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); flex-direction: column; gap: 10px; }
-  .hero-fact .ico { width: 44px; height: 44px; }
-  .hero-fact b { font-size: 11px; }
-  .hero-fact span { font-size: 13px; }
-}
-.hero-foot .wrap { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px; padding-block: 20px; }
-@media (max-width: 820px) { .hero-foot .wrap { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-/* Two across on phones too — the reference keeps the 2×2. */
-.hero-fact { display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
-.hero-fact .ico { flex: none; width: 40px; height: 40px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.28); background: rgba(255,255,255,0.08); display: grid; place-items: center; }
-.hero-fact .ico svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.hero-fact b { display: block; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #fff; }
-.hero-fact span { display: block; font-size: 14px; color: rgba(255,255,255,0.78); margin-top: 2px; }
+.hero-foot { position: relative; z-index: 1; border-top: 1px solid rgba(255,255,255,0.18); }
+.hero-foot .wrap { display: flex; flex-wrap: wrap; gap: 8px 32px; justify-content: space-between; padding-block: 16px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: rgba(255,255,255,0.78); }
 
 /* The house rules: a ledger, not icon cards. */
 .rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; border-top: 1px solid var(--hair); }
@@ -329,47 +247,46 @@ p { margin: 0; }
 </nav>
 
 <header class="hero" id="top">
-  <div class="hero-bg" id="hero-bg" aria-hidden="true"></div>
   <div class="wrap">
     <div class="hero-copy">
       <p class="micro">The Spartan in your pocket</p>
-      <h1><span class="w">TRAIN</span> <span class="w">SMARTER</span><span class="line2"><span class="w">Every</span> <span class="w">number</span> <span class="w">is&nbsp;earned.</span></span></h1>
+      <h1>TRAIN SMARTER<span class="line2">Every number is earned.</span></h1>
       <p class="lede">Morphe is a Spartan training guardian. It plans the session, logs real sets, counts real reps through the camera, and never invents a number. No ads. No trackers. Nothing fake.</p>
       <div class="hero-actions">
         <a class="btn btn-on-field" href="#download">Download Morphe</a>
         <a class="btn btn-field-ghost" href="#about">Why Spartan</a>
       </div>
     </div>
-    <div class="hero-mark" aria-hidden="true"></div>
+    <div class="hero-mark" aria-hidden="true">
+      <img src="assets/helmet.png" alt="">
+    </div>
   </div>
-  <img class="hero-scene" src="assets/hero-field.jpg" alt="" aria-hidden="true">
   <div class="hero-foot">
     <div class="wrap">
-      <div class="hero-fact"><div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></div><div><b>Counts real reps</b><span>Through the camera, on your phone. Video never leaves it.</span></div></div>
-      <div class="hero-fact"><div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10v4M21 10v4M6 8v8M18 8v8M6 12h12"/></svg></div><div><b>Plans the session</b><span>Built from your goal, days and equipment.</span></div></div>
-      <div class="hero-fact"><div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 20V12M12 20V6M19 20v-4"/></svg></div><div><b>Logs real sets</b><span>Every number comes from a set you logged.</span></div></div>
-      <div class="hero-fact"><div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></div><div><b>Built for athletes</b><span>No ads. No trackers. Nothing fake. iPhone, iOS 17+.</span></div></div>
+      <span>IPHONE · IOS 17+</span>
+      <span>VIDEO NEVER LEAVES YOUR PHONE</span>
+      <span>YOUR DATA, YOUR EXPORT</span>
     </div>
   </div>
 </header>
 
 <section class="section" aria-labelledby="rules-h">
   <div class="wrap">
-    <div class="section-head reveal">
+    <div class="section-head">
       <p class="micro">The house rules</p>
       <h2 id="rules-h">Four laws. Every screen keeps them.</h2>
     </div>
     <div class="rules">
-      <div class="rule reveal" style="--i:1" tabindex="0"><span class="micro">01</span><div><h3>Real scores only</h3><p>Every stat is computed from sets you actually logged.</p></div></div>
-      <div class="rule reveal" style="--i:2" tabindex="0"><span class="micro">02</span><div><h3>No ads. No trackers.</h3><p>Your numbers are yours. Never sold, never used to target you.</p></div></div>
-      <div class="rule reveal" style="--i:3" tabindex="0"><span class="micro">03</span><div><h3>Safety stays free</h3><p>Your data, your export, and every safety feature. Free, always.</p></div></div>
-      <div class="rule reveal" style="--i:4" tabindex="0"><span class="micro">04</span><div><h3>Nothing fake</h3><p>No invented streaks, no padded progress. If Morphe shows it, you did it.</p></div></div>
+      <div class="rule"><span class="micro">01</span><div><h3>Real scores only</h3><p>Every stat is computed from sets you actually logged.</p></div></div>
+      <div class="rule"><span class="micro">02</span><div><h3>No ads. No trackers.</h3><p>Your numbers are yours. Never sold, never used to target you.</p></div></div>
+      <div class="rule"><span class="micro">03</span><div><h3>Safety stays free</h3><p>Your data, your export, and every safety feature. Free, always.</p></div></div>
+      <div class="rule"><span class="micro">04</span><div><h3>Nothing fake</h3><p>No invented streaks, no padded progress. If Morphe shows it, you did it.</p></div></div>
     </div>
   </div>
 </section>
 
 <section class="section record" aria-labelledby="record-h">
-  <div class="wrap reveal">
+  <div class="wrap">
     <p class="micro" id="record-h" style="color: var(--accent-ink)">The line</p>
     <blockquote id="saying">“He who sweats more in training bleeds less in war.”</blockquote>
     <p class="who" id="saying-who">The line Morphe trains by.</p>
@@ -379,12 +296,12 @@ p { margin: 0; }
 
 <section class="section" id="about" aria-labelledby="about-h">
   <div class="wrap">
-    <div class="section-head reveal">
+    <div class="section-head">
       <p class="micro">About</p>
       <h2 id="about-h">Sparta didn’t sell motivation. It built discipline and let the results speak.</h2>
     </div>
     <div class="about">
-      <div class="prose reveal" style="--i:1">
+      <div class="prose">
         <p>Morphe is the same product. <strong>Nothing invented, nothing padded, every number earned.</strong> You plan the session, log the sets, and the Morphe Score reflects what you actually did. Not a number someone made up.</p>
         <p>The AI inside it speaks like a guardian, not a hype man. The register is laconic: short sentences, verbs first, zero filler, zero flattery. If it doesn’t know a number, it says so.</p>
         <p>The brand takes three things from Sparta and leaves the rest: discipline, brevity, and the line that holds together. Every ancient line Morphe quotes carries where it is written down, and the app says plainly what it does not take from Sparta.</p>
@@ -394,7 +311,7 @@ p { margin: 0; }
           <p>Sparta ran on the forced labor of the helots, an enslaved majority, and policed them with terror. Morphe takes discipline, brevity, and the shield line. It leaves the rest. <span class="src" style="font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--fg-3)">Thucydides 4.80 · Plutarch, Lycurgus 28</span></p>
         </div>
       </div>
-      <aside class="guardian reveal" style="--i:2" aria-label="The ladder">
+      <aside class="guardian" aria-label="The ladder">
         <img src="assets/helmet.png" alt="The Morphe helmet" style="width:40px;height:auto;border-radius:0">
         <p class="micro">The ladder</p>
         <h3>Earned, not given</h3>
@@ -407,31 +324,24 @@ p { margin: 0; }
 
 <section class="section" aria-labelledby="does-h">
   <div class="wrap">
-    <div class="section-head reveal">
+    <div class="section-head">
       <p class="micro">What it does</p>
       <h2 id="does-h">Plan. Log. Prove it.</h2>
     </div>
-    <!-- Real counts from the shipped catalog (2026-10-05). They run up
-         once when they scroll into view. -->
-    <div class="stats reveal" style="--i:1" aria-label="What ships in the app">
-      <div class="stat"><b data-count="595">0</b><span>Exercises</span></div>
-      <div class="stat"><b data-count="319">0</b><span>Workouts</span></div>
-      <div class="stat"><b data-count="17">0</b><span>Training styles</span></div>
-    </div>
     <div class="features">
-      <div class="feature reveal" style="--i:1" tabindex="0"><span class="micro">Build</span><h3>Your own workouts</h3><p>A library of 590+ exercises, 300+ ready workouts across 17 training styles, and multi-week programs. Add your own when something’s missing.</p></div>
-      <div class="feature reveal" style="--i:2" tabindex="0"><span class="micro">Log</span><h3>Every set, real weight</h3><p>Weight, sets, reps, RPE. A rest timer in the Dynamic Island keeps you moving. Say “log 3 by 10 at 135” and it’s logged.</p></div>
-      <div class="feature reveal" style="--i:3" tabindex="0"><span class="micro">Form Check</span><h3>The camera counts</h3><p>On-device pose tracking reads your build, counts reps across eleven movement patterns, times holds, and tells you what it measured. Video never leaves the phone.</p></div>
-      <div class="feature reveal" style="--i:4" tabindex="0"><span class="micro">Progress</span><h3>A score you earned</h3><p>Streaks with honest outs, PRs from real logged sets, trends computed from your own history.</p></div>
-      <div class="feature reveal" style="--i:5" tabindex="0"><span class="micro">Together</span><h3>The shield line</h3><p>Train the same workout live with a partner. Weekly boards, challenges, and coach messaging. Opt-in, real scores only.</p></div>
-      <div class="feature reveal" style="--i:6" tabindex="0"><span class="micro">Yours</span><h3>Your data, your call</h3><p>Cloud backup, optional Apple Health sync, one-file export, and in-app account deletion. No analytics trackers, ever.</p></div>
+      <div class="feature"><span class="micro">Build</span><h3>Your own workouts</h3><p>A library of 590+ exercises, 300+ ready workouts across 17 training styles, and multi-week programs. Add your own when something’s missing.</p></div>
+      <div class="feature"><span class="micro">Log</span><h3>Every set, real weight</h3><p>Weight, sets, reps, RPE. A rest timer in the Dynamic Island keeps you moving. Say “log 3 by 10 at 135” and it’s logged.</p></div>
+      <div class="feature"><span class="micro">Form Check</span><h3>The camera counts</h3><p>On-device pose tracking reads your build, counts reps across eleven movement patterns, times holds, and tells you what it measured. Video never leaves the phone.</p></div>
+      <div class="feature"><span class="micro">Progress</span><h3>A score you earned</h3><p>Streaks with honest outs, PRs from real logged sets, trends computed from your own history.</p></div>
+      <div class="feature"><span class="micro">Together</span><h3>The shield line</h3><p>Train the same workout live with a partner. Weekly boards, challenges, and coach messaging. Opt-in, real scores only.</p></div>
+      <div class="feature"><span class="micro">Yours</span><h3>Your data, your call</h3><p>Cloud backup, optional Apple Health sync, one-file export, and in-app account deletion. No analytics trackers, ever.</p></div>
     </div>
   </div>
 </section>
 
 <section class="section" id="store" aria-labelledby="store-h">
   <div class="wrap">
-    <div class="section-head reveal">
+    <div class="section-head">
       <p class="micro">Store</p>
       <h2 id="store-h">Fuel and gear. Honest labels only.</h2>
       <p class="lede">Supplements that say exactly what is in them, and gear that lasts.</p>
@@ -506,89 +416,6 @@ p { margin: 0; }
 
 <script>
 (function () {
-  // ---- Motion (2026-10-06): reveal on scroll, counted numbers, hero
-  // parallax, nav state. All of it respects Reduce Motion and never runs
-  // on a timer by itself.
-  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var reveals = document.querySelectorAll(".reveal");
-  if (!("IntersectionObserver" in window) || reduce) {
-    reveals.forEach(function (el) { el.classList.add("in"); });
-    document.querySelectorAll("[data-count]").forEach(function (el) { el.textContent = el.getAttribute("data-count"); });
-  } else {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (!e.isIntersecting) return;
-        e.target.classList.add("in");
-        e.target.querySelectorAll("[data-count]").forEach(countUp);
-        io.unobserve(e.target);
-      });
-    }, { rootMargin: "0px 0px -8% 0px", threshold: 0 });
-    reveals.forEach(function (el) { io.observe(el); });
-  }
-  function countUp(el) {
-    var target = parseInt(el.getAttribute("data-count"), 10) || 0;
-    var start = null, dur = 900;
-    function step(ts) {
-      if (start === null) start = ts;
-      var p = Math.min(1, (ts - start) / dur);
-      var eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = Math.round(target * eased).toLocaleString();
-      if (p < 1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
-
-  // Hero parallax: the field drifts a little slower than the page, and
-  // follows the pointer a few pixels on desktop. Transforms only.
-  var heroBg = document.getElementById("hero-bg");
-  var hero = document.querySelector(".hero");
-  var px = 0, py = 0, sy = 0, ticking = false;
-  function paint() {
-    ticking = false;
-    if (!heroBg) return;
-    heroBg.style.transform = "translate3d(" + px.toFixed(1) + "px," + (sy * 0.18 + py).toFixed(1) + "px,0)";
-  }
-  function queue() { if (!ticking) { ticking = true; requestAnimationFrame(paint); } }
-  if (heroBg && !reduce) {
-    window.addEventListener("scroll", function () {
-      sy = Math.min(window.scrollY, 900);
-      queue();
-    }, { passive: true });
-    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-      hero.addEventListener("pointermove", function (e) {
-        var r = hero.getBoundingClientRect();
-        px = ((e.clientX - r.left) / r.width - 0.5) * -14;
-        py = ((e.clientY - r.top) / r.height - 0.5) * -8;
-        queue();
-      });
-      hero.addEventListener("pointerleave", function () { px = 0; py = 0; queue(); });
-    }
-  }
-
-  // Nav: tightens after the first scroll; the link for the section in
-  // view lights up.
-  var nav = document.querySelector(".nav");
-  var links = Array.prototype.slice.call(document.querySelectorAll(".nav-links a[href^='#']:not(.btn)"));
-  var targets = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
-  function navState() {
-    if (nav) nav.classList.toggle("scrolled", window.scrollY > 24);
-    var y = window.scrollY + 120, current = null;
-    targets.forEach(function (t, i) { if (t && t.offsetTop <= y) current = i; });
-    links.forEach(function (a, i) { a.classList.toggle("active", i === current); });
-  }
-  window.addEventListener("scroll", navState, { passive: true });
-  navState();
-
-  // Touch has no hover: a tap lights a rule or feature card the way a
-  // pointer would, and a second tap lets it go.
-  document.querySelectorAll(".rule, .feature").forEach(function (el) {
-    el.addEventListener("click", function () {
-      var on = el.classList.contains("lit");
-      document.querySelectorAll(".rule.lit, .feature.lit").forEach(function (o) { o.classList.remove("lit"); });
-      if (!on) el.classList.add("lit");
-    });
-  });
-
   // The standard is a fixed line (Lucas 2026-10-03); the app keeps the
   // daily rotation through the eight verified sayings in The Code.
 
