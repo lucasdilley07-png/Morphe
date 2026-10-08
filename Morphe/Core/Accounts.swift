@@ -62,9 +62,17 @@ protocol AuthService: AnyObject {
     /// Permanently deletes the signed-in account (App Store 5.1.1(v)).
     /// Firebase may demand a recent sign-in — thrown as `.requiresRecentLogin`.
     func deleteAccount() async throws
+    /// True when `deleteAccount()` would be refused for a stale sign-in.
+    /// Asked BEFORE any server erasure starts (audit 2026-10-07, P0): the
+    /// old order erased the backup, the @name and the profile doc, then
+    /// hit requiresRecentLogin — and the recovery instruction (sign out,
+    /// sign in) restored nothing, because nothing was left to restore.
+    func needsFreshSignInToDelete() async -> Bool
 }
 
 extension AuthService {
+    func needsFreshSignInToDelete() async -> Bool { false }
+
     static func validate(email: String, password: String) throws {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.contains("@"), trimmed.contains("."), trimmed.count >= 5 else {

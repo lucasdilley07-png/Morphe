@@ -17,7 +17,7 @@ Copy/paste these into App Store Connect. Fields are length-limited as noted.
 > carries workout/tracker/gym either way.
 
 ## Promotional text (≤170 chars, editable any time without review)
-Train smarter. Real sets, a camera that counts your reps on your device, and a score that only states what you logged. No ads, no trackers. (161 chars)
+Train smarter. Real sets, a camera that counts your reps on your device, and a score that only states what you logged. No ads, no trackers. (139 chars)
 
 ## Keywords (≤100 chars, comma-separated, no spaces)
 `workout,gym,fitness,tracker,exercise,log,strength,reps,sets,training,lifting,recovery,builder`
@@ -65,7 +65,6 @@ CHECK YOUR RECOVERY
 
 TRAIN TOGETHER
 • Weekly boards and code-joinable challenges — opt-in, real scores only
-• (Feed, posts, reactions and comments ship when FeatureFlags.socialFeedEnabled is on — leave these out of the listing until then)
 • Live buddy sessions: train the same workout together in real time
 
 YOUR DATA, YOUR CALL

@@ -1297,6 +1297,28 @@ final class WorkoutSessionTests: XCTestCase {
 
     /// Import (2026-10-04): Strong's and Hevy's per-set CSVs map onto the
     /// same sessions by header name; timed rows are skipped and counted;
+    /// The import identity must survive a relaunch (audit 2026-10-07, P1):
+    /// it was encoded by the synthesized keys but never decoded, so every
+    /// restore stripped it and a re-import after a time-zone change
+    /// doubled the history.
+    @MainActor
+    func testImportKeySurvivesEncodeDecode() throws {
+        let store = MorpheAppStore()
+        let strong = """
+        Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE
+        2026-05-11 18:30:00,"Upper A",1h 2m,"Bench Press (Barbell)",1,135,8,,,,,
+        """
+        let plan = try XCTUnwrap(store.planImport(csv: strong))
+        XCTAssertEqual(store.commitImport(plan, unit: .pounds), 1)
+        let imported = try XCTUnwrap(store.currentAthleteWorkoutLogs.first { $0.workoutTitle == "Upper A" })
+        XCTAssertNotNil(imported.importKey)
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let reloaded = try decoder.decode(WorkoutLog.self, from: encoder.encode(imported))
+        XCTAssertEqual(reloaded.importKey, imported.importKey)
+        XCTAssertTrue(reloaded.isImported)
+    }
+
     /// a second import of the same file adds nothing.
     @MainActor
     func testImportReadsStrongAndHevyAndNeverDoublesUp() throws {

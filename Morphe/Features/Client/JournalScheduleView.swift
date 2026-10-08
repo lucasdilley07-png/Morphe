@@ -416,7 +416,7 @@ private struct ProfileLine: View {
 // MARK: - Appointments (real personal schedule)
 
 /// One appointment line: kind icon, title, when, and who it's with.
-/// Shared by the client schedule list and the coach's card in BookingView.
+/// Shared by the client schedule list (the coach booking card is gone).
 struct AppointmentRowView: View {
     let appointment: Appointment
 

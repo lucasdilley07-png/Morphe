@@ -1616,6 +1616,10 @@ extension WorkoutLog {
         visibility = ((try? c.decodeIfPresent(String.self, forKey: .visibility)) ?? nil) ?? "Connected coach + athlete"
         verificationStatus = ((try? c.decodeIfPresent(WorkoutVerificationStatus.self, forKey: .verificationStatus)) ?? nil) ?? .athleteSubmitted
         sessionFeedback = ((try? c.decodeIfPresent(String.self, forKey: .sessionFeedback)) ?? nil)
+        // Encoded by the synthesized keys but never read back (audit
+        // 2026-10-07, P1): every relaunch stripped it, so a re-import after
+        // a time-zone change duplicated the whole history.
+        importKey = ((try? c.decodeIfPresent(String.self, forKey: .importKey)) ?? nil)
     }
 }
 

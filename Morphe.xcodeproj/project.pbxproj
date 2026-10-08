@@ -30,7 +30,6 @@
 		1B20F6002C400001002000A1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001002000A2 /* PrivacyInfo.xcprivacy */; };
 		1B20F6002C4000010010004B /* Accounts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100066 /* Accounts.swift */; };
 		1B20F6002C4000010010004C /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100067 /* AuthView.swift */; };
-		1B20F6002C4000010010004D /* BookingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100068 /* BookingView.swift */; };
 		1B20F6002C4000010010004E /* MorpheCatalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100069 /* MorpheCatalog.json */; };
 		1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010006A /* WorkoutCatalog.swift */; };
 		1B20F6002C400001001000AA /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000A9 /* PersistenceTests.swift */; };
@@ -135,7 +134,6 @@
 		1B20F6002C400001002000A2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		1B20F6002C40000100100066 /* Accounts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Accounts.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100067 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
-		1B20F6002C40000100100068 /* BookingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100069 /* MorpheCatalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/MorpheCatalog.json; sourceTree = "<group>"; };
 		1B20F6002C4000010010006A /* WorkoutCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCatalog.swift; sourceTree = "<group>"; };
 		1B20F6002C400001001000A1 /* MorpheTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MorpheTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -301,7 +299,6 @@
 				1B20F6002C40000100100053 /* OnboardingView.swift */,
 				1B20F6002C40000100100067 /* AuthView.swift */,
 				1B20F6002C4000010010FD02 /* QRConnectView.swift */,
-				1B20F6002C40000100100068 /* BookingView.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -524,7 +521,6 @@
 				1B20F6002C40000100100043 /* OnboardingView.swift in Sources */,
 				1B20F6002C4000010010004C /* AuthView.swift in Sources */,
 				1B20F6002C4000010010FD01 /* QRConnectView.swift in Sources */,
-				1B20F6002C4000010010004D /* BookingView.swift in Sources */,
 				1B20F6002C40000100100044 /* JournalScheduleView.swift in Sources */,
 				1B20F6002C400001001000D0 /* FormCheckView.swift in Sources */,
 				1B20F6002C400001001000E0 /* CaptureView.swift in Sources */,

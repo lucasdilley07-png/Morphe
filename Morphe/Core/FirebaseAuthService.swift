@@ -113,6 +113,17 @@ final class FirebaseAuthService: AuthService {
         currentUser = nil
     }
 
+    /// Firebase refuses sensitive operations when the sign-in is older
+    /// than ~5 minutes (the ID token's auth_time). Read it up front so the
+    /// store can send the user to re-sign-in BEFORE anything is erased.
+    func needsFreshSignInToDelete() async -> Bool {
+        guard let user = Auth.auth().currentUser,
+              let result = try? await user.getIDTokenResult(),
+              let authTime = (result.claims["auth_time"] as? NSNumber)?.doubleValue
+        else { return false }
+        return Date().timeIntervalSince1970 - authTime > 4.5 * 60
+    }
+
     /// Deletes the users/{uid} root doc, then the Auth account itself.
     /// Firebase refuses stale sessions with requiresRecentLogin — surfaced
     /// as its own error so the UI can say exactly what to do.

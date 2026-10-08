@@ -91,13 +91,12 @@ struct AuthView: View {
                         }
                     }
 
-                    Button(isSignUp ? "Sign In" : "Create Account") {
+                    Button(isSignUp ? "Already have an account? Sign in" : "New here? Create an account") {
                         withAnimation {
                             isSignUp.toggle()
                             store.authErrorMessage = nil
                         }
                     }
-                    .accessibilityLabel(isSignUp ? "Already have an account? Sign in" : "New here? Create an account")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(MorpheTheme.accentText)
                     .frame(maxWidth: .infinity)

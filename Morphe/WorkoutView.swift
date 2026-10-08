@@ -4911,6 +4911,10 @@ struct TrainTogetherSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var joinCode = ""
+    /// The scanner mounts on request (audit 2026-10-07): a live camera in
+    /// the join card asked for camera permission the moment the sheet
+    /// opened, before the user had chosen to scan anything.
+    @State private var showScanner = false
     @State private var hostMode: PartyMode = .inPerson
     @State private var hasClassTime = false
     @State private var classTime = Date.now.addingTimeInterval(3600)
@@ -5013,14 +5017,24 @@ struct TrainTogetherSheet: View {
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
 
-                QRScannerView { payload in
-                    guard let code = MorpheAppStore.partyCode(fromScanned: payload) else { return }
-                    Task {
-                        if await store.joinParty(code: code) { dismiss() }
+                if showScanner {
+                    QRScannerView { payload in
+                        guard let code = MorpheAppStore.partyCode(fromScanned: payload) else { return }
+                        Task {
+                            if await store.joinParty(code: code) { dismiss() }
+                        }
                     }
+                    .frame(height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+                } else {
+                    Button {
+                        showScanner = true
+                    } label: {
+                        Label("Scan a code", systemImage: "camera.viewfinder")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
                 }
-                .frame(height: 200)
-                .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
 
                 HStack(spacing: 10) {
                     TextField("Or type the code (e.g. F7KQ2M)", text: $joinCode)

@@ -49,6 +49,10 @@ protocol CloudBackingUp: AnyObject {
     /// uploads failed (audit finding).
     @discardableResult
     func pushLogs(_ logs: [WorkoutLog]) async -> Bool
+    /// Merge-by-id form: the cloud keeps logs this device never had
+    /// (another device's, or a restore that failed) unless they are in
+    /// `deletedIDs`. The default forwards to the plain push.
+    func pushLogs(_ logs: [WorkoutLog], deletedIDs: Set<UUID>) async -> Bool
     func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry])
     /// The per-profile blob bag (see CloudSnapshot.extras) — merged by
     /// name server-side-of-write, so a device missing a blob can't erase it.
@@ -57,6 +61,12 @@ protocol CloudBackingUp: AnyObject {
     /// Account deletion: removes every state/* backup doc for the current
     /// user (best-effort, while the auth session is still valid).
     func eraseUser() async
+}
+
+extension CloudBackingUp {
+    func pushLogs(_ logs: [WorkoutLog], deletedIDs: Set<UUID>) async -> Bool {
+        await pushLogs(logs)
+    }
 }
 
 /// Default backup that does nothing — keeps the store fully functional offline
@@ -1238,14 +1248,46 @@ final class FirebaseCloudBackup: CloudBackingUp {
     }
 
     func pushLogs(_ logs: [WorkoutLog]) async -> Bool {
-        guard let doc = stateDoc("logs"),
-              let data = try? encoder.encode(logs),
+        await pushLogs(logs, deletedIDs: [])
+    }
+
+    /// MERGE by id, never a blind overwrite (audit 2026-10-07, P0): the old
+    /// whole-document setData meant any path where local < cloud — a
+    /// restore whose log fetch failed, a second device, a solo-onboarded
+    /// phone signing in — replaced the real history with the short one on
+    /// the next push. Local wins per id; cloud-only logs survive unless
+    /// deleted on some device; the deleted set itself is unioned so a
+    /// delete on one phone sticks when the other phone pushes.
+    func pushLogs(_ logs: [WorkoutLog], deletedIDs: Set<UUID>) async -> Bool {
+        guard let doc = stateDoc("logs") else { return false }
+        let snap: DocumentSnapshot
+        do { snap = try await doc.getDocument() } catch { return false }
+        var deleted = deletedIDs
+        var merged = logs
+        if let data = snap.data() {
+            if let names = data["deleted"] as? [String] {
+                deleted.formUnion(names.compactMap(UUID.init(uuidString:)))
+            }
+            if let json = data["json"] as? String,
+               let bytes = json.data(using: .utf8),
+               let elements = try? decoder.decode([FailableElement<WorkoutLog>].self, from: bytes) {
+                let localIDs = Set(logs.map(\.id))
+                for log in elements.compactMap(\.value)
+                where !localIDs.contains(log.id) && !deleted.contains(log.id) {
+                    merged.append(log)
+                }
+            }
+        }
+        merged.removeAll { deleted.contains($0.id) }
+        merged.sort { $0.completedAt > $1.completedAt }
+        guard let data = try? encoder.encode(merged),
               let json = String(data: data, encoding: .utf8) else { return false }
         do {
             try await doc.setData([
                 "schemaVersion": 1,
-                "count": logs.count,
+                "count": merged.count,
                 "json": json,
+                "deleted": Array(deleted.map(\.uuidString).sorted().suffix(500)),
                 "updatedAt": FieldValue.serverTimestamp()
             ])
             return true
@@ -1348,14 +1390,22 @@ final class FirebaseCloudBackup: CloudBackingUp {
             }
         }
 
-        if let doc = stateDoc("logs"),
-           let snap = try? await doc.getDocument(),
-           let json = snap.data()?["json"] as? String,
-           let data = json.data(using: .utf8),
-           // Same tolerant per-element decode as the file store: one bad log
-           // drops that entry, never the whole array.
-           let elements = try? decoder.decode([FailableElement<WorkoutLog>].self, from: data) {
-            result.logs = elements.compactMap(\.value)
+        if let doc = stateDoc("logs") {
+            // A thrown fetch is a FAILED pull, not an empty history (audit
+            // 2026-10-07, P0): treating it as "no backup" set the local
+            // logs to [] and the next push overwrote the real history.
+            let snap: DocumentSnapshot
+            do { snap = try await doc.getDocument() } catch {
+                result.fetchFailed = true
+                return result
+            }
+            if let json = snap.data()?["json"] as? String,
+               let data = json.data(using: .utf8),
+               // Same tolerant per-element decode as the file store: one bad log
+               // drops that entry, never the whole array.
+               let elements = try? decoder.decode([FailableElement<WorkoutLog>].self, from: data) {
+                result.logs = elements.compactMap(\.value)
+            }
         }
 
         if let doc = stateDoc("weightHistory"),

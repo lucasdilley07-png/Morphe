@@ -66,9 +66,17 @@ mattering the moment this exists.
 
 ### 7. Submit for review
 Screenshots from step 2, description from `metadata.md`, category Health &
-Fitness, price Free. Review notes to include: Form Check runs entirely
-on-device and video never leaves the phone; the Morphe AI chat answers
-from the user's own logs; account deletion is in Profile → Your data.
+Fitness, price Free. **App Review Information → Sign-in required: YES**,
+with the reviewer account's email + password (create it in Firebase
+first, sign in once on a device, accept the terms, and log two or three
+sessions so Progress, the board and the score aren't empty). Review notes
+to include: every feature is tied to a synced account, so there is no
+account-free mode; Form Check runs entirely on-device and video never
+leaves the phone; the Morphe AI chat answers from the user's own logs
+(no key needed); to try Train Together with one device, open Train →
+Train Together, host a session and note the code — a second account can
+join by typing it; account deletion is Profile → Login → Delete Account,
+export is Profile → Your data.
 
 ## Verification record
 - 2026-10-03: `xcodebuild -configuration Release` for iOS Simulator

@@ -1,6 +1,6 @@
 # Morphe Privacy Policy
 
-**Effective date:** July 26, 2026
+**Effective date:** October 7, 2026
 **Developer:** Lucas Dilley
 **Contact:** lucasdilley.07@gmail.com
 
@@ -72,8 +72,12 @@ remove anything you published, at any time.
   workout of its own.
 
 Health data is used only for the features above. It is **never** used for
-advertising, never sold, and never shared with third parties. Both toggles
-live in Profile → Settings and are off until you turn them on.
+advertising, never sold, and never shared with third parties. The one
+value that leaves the Health framework is the sleep number you confirm in
+your morning check-in: it is stored with your training data and backed up
+to your account (Google Firebase, as the processor for your backup). Raw
+Health records are never uploaded. Both toggles live in Profile → Health
+and are off until you turn them on.
 
 ## Device permissions
 

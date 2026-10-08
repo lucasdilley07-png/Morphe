@@ -67,7 +67,7 @@ struct MoreView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitleView(
                 title: "Learn",
-                subtitle: "Ask me anything about training, recovery, or eating right — short lessons live here too.",
+                subtitle: "Lessons, the exercise library, and nutrition basics live here. Tap the Morphe bubble to ask anything.",
                 titleSize: 16
             )
 

@@ -1,6 +1,6 @@
 import SwiftUI
 import Observation
-import UserNotifications
+@preconcurrency import UserNotifications
 import WidgetKit
 
 @MainActor
@@ -312,8 +312,11 @@ final class MorpheAppStore {
 
     private(set) var workoutDebriefs: [WorkoutDebrief] = {
         guard let data = UserDefaults.standard.data(forKey: MorpheAppStore.debriefsKey),
-              let decoded = try? JSONDecoder().decode([WorkoutDebrief].self, from: data) else { return [] }
-        return decoded
+              // Per element (audit 2026-10-07, P2): one undecodable entry
+              // used to drop every debrief, and the next save wrote [].
+              let decoded = try? JSONDecoder().decode([FailableElement<WorkoutDebrief>].self, from: data)
+        else { return [] }
+        return decoded.compactMap(\.value)
     }()
 
     // MARK: - Personalization spine (Lucas 2026-09-09)
@@ -804,6 +807,22 @@ final class MorpheAppStore {
         return Double(ratings.reduce(0, +)) / Double(ratings.count)
     }
 
+    /// Ids of logs the user deleted, kept per account so the merge-by-id
+    /// backup (audit 2026-10-07, P0: the push was a blind overwrite) can
+    /// tell "deleted here" from "logged on another device". Bounded.
+    private var deletedLogIDsKey: String { "morphe.cloud.deletedLogs.\(authUser?.id ?? "local")" }
+
+    private func noteLogDeleted(_ id: UUID) {
+        var ids = UserDefaults.standard.stringArray(forKey: deletedLogIDsKey) ?? []
+        ids.append(id.uuidString)
+        if ids.count > 500 { ids.removeFirst(ids.count - 500) }
+        UserDefaults.standard.set(ids, forKey: deletedLogIDsKey)
+    }
+
+    private func deletedLogIDsForCloud() -> Set<UUID> {
+        Set((UserDefaults.standard.stringArray(forKey: deletedLogIDsKey) ?? []).compactMap(UUID.init(uuidString:)))
+    }
+
     func flushLogBackupNow() async {
         guard hasCompletedOnboarding else { return }
         await flushPendingDebriefs()
@@ -811,7 +830,7 @@ final class MorpheAppStore {
         if let data = try? JSONEncoder().encode(logs) {
             logBackupNearLimit = data.count > 800_000
         }
-        if await cloudBackup.pushLogs(logs) {
+        if await cloudBackup.pushLogs(logs, deletedIDs: deletedLogIDsForCloud()) {
             logBackupState = cloudBackupActive ? .current(.now) : .idle
             logPushRetryCount = 0
         } else {
@@ -1666,6 +1685,26 @@ final class MorpheAppStore {
         hasCompletedOnboarding = false
         // AFTER the flag flip so the didSet mirror is a guarded no-op.
         workoutLogs = []
+        // The library file is already gone; the in-memory copy was the
+        // leak (audit 2026-10-07, P1): the next account on this phone saw
+        // this one's custom and saved workouts and persisted them as its own.
+        workoutTemplates.removeAll { customWorkoutIDs.contains($0.id) }
+        customWorkoutIDs = []
+        customExercises = []
+        savedWorkouts = []
+        persistedSavedCatalogIDs = []
+        persistedSavedTemplates = []
+        persistedPinnedCatalogIDs = []
+        // Tracked sets are this account's too (audit 2026-10-07, P2): the
+        // session-flag flip below re-persists whatever is still in them.
+        completedWorkoutSets = [:]
+        trackedSetReps = [:]
+        trackedSetWeights = [:]
+        trackedSetRPE = [:]
+        trackedSetLabels = [:]
+        trackedSetWarmups = [:]
+        trackedSetCamera = [:]
+        isWorkoutLoggedToday = false
         for key in [trainingPreferencesDefaultsKey, competitionStateDefaultsKey,
                     bodyWeightHistoryDefaultsKey, recoverySeriesDefaultsKey,
                     nutritionSeriesDefaultsKey, activeProgramDefaultsKey,
@@ -1730,6 +1769,15 @@ final class MorpheAppStore {
     /// Returns false when Firebase demands a fresh sign-in.
     func deleteAccount() async -> Bool {
         guard let uid = authUser?.id else { return false }
+        // Freshness BEFORE erasure (audit 2026-10-07, P0): a stale sign-in
+        // is refused at the very end by Firebase, and by then the backup,
+        // the @name and the profile doc were already gone — the "sign out,
+        // sign back in" recovery then restored an empty account.
+        if await authService.needsFreshSignInToDelete() {
+            showToast(AuthError.requiresRecentLogin.errorDescription
+                ?? "For safety, sign out, sign back in, then delete the account.")
+            return false
+        }
 
         // Server cleanup FIRST, while the auth session is still valid —
         // after user.delete() the rules see an anonymous caller.
@@ -1973,6 +2021,7 @@ final class MorpheAppStore {
     func checkAndReserveUsername(_ raw: String) async -> String? {
         let name = UsernameRules.normalize(raw)
         if let error = UsernameRules.validationError(name) { return error }
+        if ContentModeration.containsBlockedTerm(name) { return "That name isn't allowed — try another." }
         let uid = authUser?.id ?? clientProfile.id.uuidString
         switch await usernameDirectory.claim(name, for: uid, releasing: nil) {
         case .claimed:
@@ -1996,6 +2045,10 @@ final class MorpheAppStore {
         let name = UsernameRules.normalize(raw)
         if let error = UsernameRules.validationError(name) {
             showToast(error)
+            return false
+        }
+        if ContentModeration.containsBlockedTerm(name) {
+            showToast("That name isn't allowed — try another.")
             return false
         }
         guard name != profileShowcase.username else {
@@ -3313,6 +3366,7 @@ final class MorpheAppStore {
         )
         persistedSavedTemplates = savedTemplates
         persistedPinnedCatalogIDs = pinnedCatalogIDs
+        mirrorExtrasToCloud()
     }
 
     /// Rebuilds the user's custom exercises and workouts from disk at launch.
@@ -4367,6 +4421,14 @@ final class MorpheAppStore {
     /// decoders read a restore exactly like a local load.
     func perProfileExtrasBlobs() -> [String: String] {
         var blobs: [String: String] = [:]
+        // The workout library (custom exercises/workouts, saved and pinned
+        // Discover items) rides the same bag (audit 2026-10-07, P1): sign-out
+        // promised "signing back in restores everything" while the only
+        // copy was the local file it had just deleted.
+        if let snapshot = workoutPersistence.loadLibrary(),
+           let data = try? JSONEncoder().encode(snapshot) {
+            blobs["workoutLibrary"] = data.base64EncodedString()
+        }
         for (name, key) in extrasKeyByName {
             guard let object = UserDefaults.standard.object(forKey: key),
                   let data = try? PropertyListSerialization.data(
@@ -4382,6 +4444,14 @@ final class MorpheAppStore {
     /// build restoring a newer backup keeps what it understands).
     func applyRestoredExtras(_ blobs: [String: String]) {
         for (name, encoded) in blobs {
+            if name == "workoutLibrary" {
+                if let data = Data(base64Encoded: encoded),
+                   let snapshot = try? JSONDecoder().decode(WorkoutLibrarySnapshot.self, from: data) {
+                    workoutPersistence.saveLibrary(snapshot)
+                    loadCustomWorkoutLibrary()
+                }
+                continue
+            }
             guard let key = extrasKeyByName[name],
                   let data = Data(base64Encoded: encoded),
                   let object = try? PropertyListSerialization.propertyList(
@@ -11236,6 +11306,10 @@ final class MorpheAppStore {
             showToast("Your name can't be empty.")
             return false
         }
+        guard !ContentModeration.containsBlockedTerm(trimmed) else {
+            showToast("That name isn't allowed — try another.")
+            return false
+        }
         guard trimmed != profileShowcase.displayName else { return true }
         // Renames are rate-limited; a no-op save above never burns the window.
         if let next = nextNameChangeDate {
@@ -12792,6 +12866,12 @@ final class MorpheAppStore {
     func sendMessage(_ text: String) async {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
+        // Same term filter as posts and creator content (App Review 1.2):
+        // private messages are user-generated content too.
+        guard !ContentModeration.containsBlockedTerm(clean) else {
+            showToast("That message can't be sent — keep it respectful.", isError: true)
+            return
+        }
         guard let uid = authUser?.id, let threadId = activeThreadId else { return }
         // Optimistic echo (speed audit S0-4): the bubble renders NOW; the
         // listener's server copy replaces it on arrival.
@@ -14599,6 +14679,7 @@ final class MorpheAppStore {
             return
         }
 
+        noteLogDeleted(log.id)
         workoutLogs.removeAll { $0.id == log.id }
         refreshWorkoutLogDerivedState(for: log.athleteID)
         showToast("Workout log removed.")
@@ -14794,6 +14875,7 @@ final class MorpheAppStore {
 
     func deleteOwnWorkoutLog(_ log: WorkoutLog) {
         guard log.athleteID == clientProfile.id else { return }
+        noteLogDeleted(log.id)
         workoutLogs.removeAll { $0.id == log.id }
         refreshWorkoutLogDerivedState(for: log.athleteID)
         refreshStyleProfile()

@@ -3052,16 +3052,11 @@ final class DictationEngine: NSObject {
 private struct NetworkProfilePreviewSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @State private var showBooking = false
 
     let profile: NetworkProfilePreview
 
     /// Anyone can book a listed coach profile (not another athlete, and
     /// not themselves).
-    private var canBookThisCoach: Bool {
-        profile.role == .coach
-    }
-
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
@@ -3118,26 +3113,6 @@ private struct NetworkProfilePreviewSheet: View {
                     }
                 }
 
-                if canBookThisCoach {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Train with \(profile.name)")
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            Text("Book a 1-on-1 session and work directly with this coach.")
-                                .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Button {
-                                showBooking = true
-                            } label: {
-                                Label("Book", systemImage: "calendar.badge.plus")
-                            }
-                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                            .accessibilityLabel("Book a session with this coach")
-                        }
-                    }
-                }
 
                 GlassCard {
                     VStack(alignment: .leading, spacing: 12) {
@@ -3177,10 +3152,6 @@ private struct NetworkProfilePreviewSheet: View {
                 }
                 .foregroundStyle(MorpheTheme.textPrimary)
             }
-        }
-        .sheet(isPresented: $showBooking) {
-            CoachBookingSheet(coachName: profile.name)
-                .preferredColorScheme(store.selectedAppearance)
         }
     }
 

@@ -935,10 +935,10 @@ struct ProfileView: View {
         "Voice": ("waveform", "Hey Morphe, hands-free"),
         "Morphe Intelligence": ("sparkles", "Claude key, neural voice"),
         "Notifications": ("bell", "Reminders"),
-        "Who can see you": ("eye", "Board, feed, blocked accounts"),
+        "Who can see you": ("eye", FeatureFlags.socialFeedEnabled ? "Board, feed, blocked accounts" : "Weekly board, blocked accounts"),
         "Health": ("heart", "Apple Health"),
         "Your app": ("paintpalette", "Accent color"),
-        "Your data": ("externaldrive", "Export, import, backup, Pro"),
+        "Your data": ("externaldrive", PremiumGate.storefrontEnabled ? "Export, import, backup, Pro" : "Export, import, backup"),
         "More info and support": ("questionmark.circle", "About, privacy, contact"),
         "Login": ("rectangle.portrait.and.arrow.right", "Sign out, delete account")
     ]
@@ -1876,7 +1876,9 @@ struct ProfileView: View {
                         }
                         Button("Cancel", role: .cancel) {}
                     } message: {
-                        Text("This deletes your sign-in, cloud backup, weight history, and @username permanently — there is no undo. Posts and comments you shared stay on the feed unless you delete them first (long-press any of yours).")
+                        Text(FeatureFlags.socialFeedEnabled
+                             ? "This deletes your sign-in, cloud backup, weight history, and @username permanently — there is no undo. Posts and comments you shared stay on the feed unless you delete them first (long-press any of yours)."
+                             : "This deletes your sign-in, cloud backup, weight history, and @username permanently — there is no undo.")
                     }
                 }
             }

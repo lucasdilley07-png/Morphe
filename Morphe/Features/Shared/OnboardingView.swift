@@ -233,7 +233,13 @@ struct OnboardingFlowView: View {
                             }
 
                             Button(nextButtonTitle) {
-                                if currentStep == .username {
+                                // .identity stacks name + @name on one page
+                                // (audit 2026-10-07, P0): it must reserve
+                                // too, or the handle the user typed is
+                                // thrown away and completeOnboarding falls
+                                // back to the lowercased name — unclaimed,
+                                // and colliding with every other "Alex".
+                                if currentStep == .username || currentStep == .identity {
                                     // Advancing IS the claim: availability check
                                     // and reservation are one transaction, so
                                     // two people can never pass with one name.
@@ -993,9 +999,19 @@ private struct ProfileReviewStep: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(MorpheTheme.accentAlt)
                 .sheet(isPresented: $showFullTerms) {
-                    TermsGateView(readOnly: true)
-                        .environment(store)
-                        .background(PremiumBackground().ignoresSafeArea())
+                    // A visible way out (audit 2026-10-07): read-only hides
+                    // the agree/disagree bar, and nothing hinted at the swipe.
+                    NavigationStack {
+                        TermsGateView(readOnly: true)
+                            .environment(store)
+                            .background(PremiumBackground().ignoresSafeArea())
+                            .toolbar {
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    Button("Done") { showFullTerms = false }
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                            }
+                    }
                 }
 
                 // App Store 1.2: consenting users must know abusive content
