@@ -219,7 +219,10 @@ service cloud.firestore {
       // public web config enumerate every (username, uid) pair AND drain
       // the daily read quota unauthenticated. Every in-app reader (claim
       // check, directory search) runs signed in.
-      allow read:   if isSignedIn();
+      allow get:    if isSignedIn();
+      // Directory search is a bounded prefix scan; an unbounded list would
+      // let one client page through every member.
+      allow list:   if isSignedIn() && request.query.limit <= 50;
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
       allow update: if isSignedIn()
         && resource.data.uid == request.auth.uid
@@ -339,39 +342,57 @@ service cloud.firestore {
       allow update: if isOwner(uid)
         && resource.data.status in ['pending', 'declined']
         && request.resource.data.status == 'pending'
-        && request.resource.data.uid == uid;
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(
+             ['uid', 'email', 'name', 'username', 'specialty', 'credentials',
+              'experience', 'links', 'plan', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80
+        && request.resource.data.username is string && request.resource.data.username.size() <= 40
+        && request.resource.data.specialty is string && request.resource.data.specialty.size() <= 120
+        && request.resource.data.credentials is string && request.resource.data.credentials.size() <= 600
+        && request.resource.data.experience is string && request.resource.data.experience.size() <= 600
+        && request.resource.data.links is string && request.resource.data.links.size() <= 600
+        && request.resource.data.plan is string && request.resource.data.plan.size() <= 1200;
       allow delete: if isOwner(uid);
     }
 
     // What creators publish. Every signed-in member reads; only an
     // approved creator writes, and only under their own uid.
     match /creatorWorkouts/{id} {
-      allow read: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && request.query.limit <= 100;
       allow create: if isCreator()
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.name is string && request.resource.data.name.size() <= 80
         && request.resource.data.notes is string && request.resource.data.notes.size() <= 600
         && request.resource.data.exercises is list && request.resource.data.exercises.size() <= 20;
       allow update: if isCreator() && resource.data.authorUid == request.auth.uid
-        && request.resource.data.authorUid == request.auth.uid;
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80
+        && request.resource.data.notes is string && request.resource.data.notes.size() <= 600
+        && request.resource.data.exercises is list && request.resource.data.exercises.size() <= 20;
       allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
     }
 
     match /creatorNotes/{id} {
-      allow read: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && request.query.limit <= 100;
       allow create: if isCreator()
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.title is string && request.resource.data.title.size() <= 80
         && request.resource.data.body is string && request.resource.data.body.size() <= 2000;
       allow update: if isCreator() && resource.data.authorUid == request.auth.uid
-        && request.resource.data.authorUid == request.auth.uid;
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.title is string && request.resource.data.title.size() <= 80
+        && request.resource.data.body is string && request.resource.data.body.size() <= 2000;
       allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
     }
 
     // Public listing of a creator's challenge. The challenge doc itself
     // is created the ordinary way; joining uses the ordinary code path.
     match /openChallenges/{code} {
-      allow read: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && request.query.limit <= 50;
       allow create: if isCreator()
         && request.resource.data.hostUid == request.auth.uid
         && request.resource.data.code == code

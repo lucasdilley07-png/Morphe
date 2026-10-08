@@ -98,7 +98,7 @@ p { margin: 0; }
 .nav-links a { text-decoration: none; padding: 10px 12px; border-radius: 10px; font-weight: 600; font-size: 14px; color: var(--fg-2); }
 .nav-links a:hover { color: var(--fg); background: var(--bg-elevated); }
 .nav-links .btn { min-height: 44px; padding-inline: 16px; margin-left: 8px; }
-@media (max-width: 640px) { .nav-links a:not(.btn) { display: none; } }
+@media (max-width: 640px) { .nav-links a:not(.btn):not(.nav-keep) { display: none; } .nav-links .btn { margin-left: 0; } }
 
 /* Hero: the brand field, the helmet, the thesis. */
 .hero { background: linear-gradient(180deg, var(--field-top) 0%, var(--field-mid) 52%, var(--field-bottom) 100%); color: var(--on-field); position: relative; overflow: hidden; }
@@ -220,9 +220,9 @@ p { margin: 0; }
 /* Footer */
 .footer { padding-block: 32px; border-top: 1px solid var(--hair); }
 .footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: center; color: var(--fg-3); font-size: 13px; }
-.footer a { color: var(--fg-2); text-decoration: none; }
+.footer a { color: var(--fg-2); text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
 .footer a:hover { color: var(--fg); }
-.footer .links { display: flex; flex-wrap: wrap; gap: 18px; }
+.footer .links { display: flex; flex-wrap: wrap; gap: 0 18px; }
 
 .toast { position: fixed; left: 50%; bottom: calc(88px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 35; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 14px; box-shadow: 0 10px 24px rgba(0,0,0,0.2); }
 .toast[hidden] { display: none; }
@@ -240,7 +240,7 @@ p { margin: 0; }
       <a href="#about">About</a>
       <a href="#store">Store</a>
       <a href="#download">Download</a>
-      <a href="coach.html">Coaches</a>
+      <a class="nav-keep" href="coach.html">Coaches</a>
       <a class="btn btn-primary" href="#download">Get Morphe</a>
     </div>
   </div>
@@ -511,13 +511,29 @@ p { margin: 0; }
   document.getElementById("checkout").addEventListener("click", function () { say("Checkout opens with the launch"); });
   render();
 
-  // Download links are disabled until the release exists; say so instead of
-  // sending anyone to a dead page.
-  ["appstore-link", "testflight-link"].forEach(function (id) {
-    document.getElementById(id).addEventListener("click", function (e) {
+  // Release links. Fill these in when Apple assigns them (App Store id →
+  // https://apps.apple.com/app/id<ID>, TestFlight → https://testflight.apple.com/join/<CODE>);
+  // until then the buttons stay disabled and say so instead of sending
+  // anyone to a dead page.
+  var APP_STORE_URL = "";
+  var TESTFLIGHT_URL = "";
+  [["appstore-link", APP_STORE_URL], ["testflight-link", TESTFLIGHT_URL]].forEach(function (pair) {
+    var link = document.getElementById(pair[0]);
+    if (pair[1]) {
+      link.href = pair[1];
+      link.removeAttribute("aria-disabled");
+      link.removeAttribute("aria-describedby");
+      link.target = "_blank"; link.rel = "noopener";
+      return;
+    }
+    link.addEventListener("click", function (e) {
       e.preventDefault(); say("Link goes live with the release");
     });
   });
+  if (APP_STORE_URL || TESTFLIGHT_URL) {
+    var fine = document.getElementById("dl-fine");
+    fine.textContent = APP_STORE_URL ? "FREE · IOS 17 OR LATER" : "BETA · IOS 17 OR LATER";
+  }
 })();
 </script>
 </body>

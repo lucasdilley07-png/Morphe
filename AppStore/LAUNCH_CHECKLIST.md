@@ -16,7 +16,8 @@ accounts. Refreshed 2026-10-03 for the Spartan build (1.0, build 2).
 - Compiles clean in **Release** (DEBUG-only AI reviewer stripped) — see
   the 2026-10-03 verification below.
 - `PrivacyInfo.xcprivacy` declares UserDefaults + file-timestamp reasons
-  and the collected data types; `ITSAppUsesNonExemptEncryption = NO`;
+  and the collected data types (the widget extension carries its own
+  manifest, UserDefaults only, added 2026-10-07); `ITSAppUsesNonExemptEncryption = NO`;
   usage strings for camera, microphone, speech, Photos (add-only), Health
   read/write; Live Activities on; iPhone-only, portrait.
 - App icon: Lucas's glass-tile helmet, 1024 RGB, no alpha. Launch screen:

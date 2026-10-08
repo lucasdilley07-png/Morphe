@@ -67,7 +67,6 @@ TRAIN TOGETHER
 • Weekly boards and code-joinable challenges — opt-in, real scores only
 • (Feed, posts, reactions and comments ship when FeatureFlags.socialFeedEnabled is on — leave these out of the listing until then)
 • Live buddy sessions: train the same workout together in real time
-• Coaches: manage your roster, message clients, and see consented live progress
 
 YOUR DATA, YOUR CALL
 • Your account backs up your training so a new phone restores everything

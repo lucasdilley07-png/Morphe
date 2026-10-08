@@ -2,17 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Morphe</title>
 <script>
   // GitHub Pages static-path shim: /invite/<handle> has no real file, so
-  // the 404 forwards it to invite.html?u=<handle>. Anything else goes home.
+  // the 404 forwards it to invite.html?u=<handle>. Anything else goes to
+  // the site root — which on project Pages is /Morphe/, not /.
+  var SITE_ROOT = location.hostname.endsWith("github.io") ? "/Morphe/" : "/";
   var parts = location.pathname.split("/").filter(Boolean);
   var idx = parts.lastIndexOf("invite");
-  var base = location.pathname.slice(0, location.pathname.lastIndexOf("/invite/") + 1) || "/";
   if (idx >= 0 && parts[idx + 1]) {
-    location.replace(base + "invite.html?u=" + encodeURIComponent(parts[idx + 1]));
+    location.replace(SITE_ROOT + "invite.html?u=" + encodeURIComponent(parts[idx + 1]));
   } else {
-    location.replace("/");
+    location.replace(SITE_ROOT);
   }
 </script>
 </head>
