@@ -1113,9 +1113,22 @@ struct MorpheDayPopup: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    @State private var ringIn = false
     @State private var bubbleIn = false
     @State private var choicesIn = false
     @State private var dragOffset: CGFloat = 0
+    /// The ring's voice: idles at 0.22, flares while Morphe "speaks" the
+    /// greeting on arrival, on a tap, and when an answer lands.
+    @State private var ringLevel: Double = 0.22
+    @State private var ringSpeaking = false
+    @State private var ringPulse = false
+    /// The answer being acknowledged before the popup leaves.
+    @State private var chosen: MorpheAppStore.DayPopupChoiceKind?
+    @State private var flareTask: Task<Void, Never>?
+
+    /// Drag shrinks the scrim with the block, so letting go reads as a
+    /// return and a long pull reads as a dismissal in progress.
+    private var dragProgress: CGFloat { min(max(dragOffset, 0) / 260, 1) }
 
     var body: some View {
         let _ = store.morpheAskRefresh
@@ -1127,7 +1140,7 @@ struct MorpheDayPopup: View {
                 // (Lucas 2026-10-02): a popup darkens the page; it never
                 // whites it out, so the helmet stays white on it. 60% since
                 // 2026-10-03 (Lucas: ten points darker).
-                Color.black.opacity(0.6).ignoresSafeArea()
+                Color.black.opacity(0.6 * (1 - 0.6 * Double(dragProgress))).ignoresSafeArea()
                     .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             store.dismissDayPopupForSession()
@@ -1172,21 +1185,24 @@ struct MorpheDayPopup: View {
                     .padding(.horizontal, 8)
                     Spacer()
                 }
-                // Drag-to-dismiss moves Morphe + bubbles; the scrim stays.
+                // Drag-to-dismiss moves Morphe + bubbles; the scrim stays
+                // (and thins as the block goes). The pull is rubber-banded
+                // so the block follows the finger without racing it.
                 .offset(y: max(0, dragOffset))
-                .scaleEffect(appeared || reduceMotion ? 1 : 0.96)
+                .scaleEffect(appeared || reduceMotion ? 1 - 0.06 * dragProgress : 0.96)
                 .gesture(
                     DragGesture(minimumDistance: 5)
                         .onChanged { value in
-                            dragOffset = max(0, value.translation.height)
+                            let raw = max(0, value.translation.height)
+                            dragOffset = reduceMotion ? raw : raw / (1 + raw / 600)
                         }
                         .onEnded { value in
-                            if value.translation.height > 120 {
+                            if value.translation.height > 120 || value.predictedEndTranslation.height > 320 {
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                     store.dismissDayPopupForSession()
                                 }
                             } else {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.72)) {
                                     dragOffset = 0
                                 }
                             }
@@ -1195,42 +1211,81 @@ struct MorpheDayPopup: View {
             }
             // Fade-in entrance, no slide (Lucas 2026-09).
             .opacity(appeared || reduceMotion ? 1 : 0)
-            .onAppear {
-                guard !appeared else { return }
-                // Morphe ARRIVES, then speaks, then offers answers
-                // (luxury audit): ring → bubble → choices. Reduce Motion
-                // collapses to one fade.
-                if reduceMotion {
-                    appeared = true; bubbleIn = true; choicesIn = true
-                    return
-                }
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.35)) {
-                    appeared = true
-                }
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.85).delay(0.63)) {
-                    bubbleIn = true
-                }
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.85).delay(0.77)) {
-                    choicesIn = true
-                }
-            }
-            .transition(.opacity)
+            .onAppear { enter() }
+            .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.97)))
             .onDisappear {
                 // The stagger plays on every open, not once per process
                 // (audit 23, P2).
-                appeared = false; bubbleIn = false; choicesIn = false
+                flareTask?.cancel()
+                appeared = false; ringIn = false; bubbleIn = false; choicesIn = false
+                chosen = nil; dragOffset = 0
+                ringLevel = 0.22; ringSpeaking = false
             }
             .accessibilityAddTraits(.isModal)
             .accessibilitySortPriority(1000)
         }
     }
 
+    // MARK: Entrance
+
+    /// Morphe ARRIVES, then speaks, then offers answers (luxury audit):
+    /// ring → bubble → choices, the whole beat inside ~0.7s so it never
+    /// stands between the open and the day. Reduce Motion collapses to
+    /// one fade with no flare and no stagger.
+    private func enter() {
+        guard !appeared else { return }
+        if reduceMotion {
+            appeared = true; ringIn = true; bubbleIn = true; choicesIn = true
+            return
+        }
+        withAnimation(.easeOut(duration: 0.2)) { appeared = true }
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.68).delay(0.05)) { ringIn = true }
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.78).delay(0.22)) { bubbleIn = true }
+        // Chips carry their own per-index delay (see choiceRow).
+        choicesIn = true
+        flareTask?.cancel()
+        flareTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled else { return }
+            Haptics.impact(.light)
+            await speakFlare()
+        }
+    }
+
+    /// The ring's voice rising and settling — stepped, since the ring
+    /// reads `level` every frame and is not an Animatable value.
+    @MainActor
+    private func speakFlare() async {
+        ringSpeaking = true
+        for level in [0.62, 0.5, 0.38, 0.28, 0.22] {
+            ringLevel = level
+            try? await Task.sleep(for: .milliseconds(130))
+            if Task.isCancelled { return }
+        }
+        ringSpeaking = false
+    }
+
+    /// Tap the ring and Morphe answers with a pulse — a small, honest
+    /// bit of life, nothing spoken and nothing changed.
+    private func tapRing() {
+        Haptics.selection()
+        guard !reduceMotion else { return }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { ringPulse = true }
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.7).delay(0.12)) { ringPulse = false }
+        flareTask?.cancel()
+        flareTask = Task { @MainActor in await speakFlare() }
+    }
+
     private var popupContent: some View {
         VStack(spacing: 0) {
             // Morphe's face: the frequency ring, breathing at a gentle
-            // idle level.
-            MorpheFrequencyRing(level: 0.22, speaking: false)
+            // idle level and rising when it speaks.
+            MorpheFrequencyRing(level: ringLevel, speaking: ringSpeaking)
                 .frame(width: 170, height: 170)
+                .scaleEffect(ringPulse ? 1.07 : (ringIn || reduceMotion ? 1 : 0.55))
+                .opacity(ringIn || reduceMotion ? 1 : 0)
+                .contentShape(Circle())
+                .onTapGesture { tapRing() }
                 .accessibilityHidden(true)
 
             MorpheSpeechBubble {
@@ -1247,42 +1302,81 @@ struct MorpheDayPopup: View {
                 }
             }
             .padding(.top, -6)
-            .opacity(bubbleIn ? 1 : 0)
-            .offset(y: bubbleIn ? 0 : 8)
+            // The bubble pops from its tail, like a word leaving the ring.
+            .scaleEffect(bubbleIn || reduceMotion ? 1 : 0.85, anchor: .top)
+            .opacity(bubbleIn || reduceMotion ? 1 : 0)
+            .offset(y: bubbleIn || reduceMotion ? 0 : -6)
 
             VStack(spacing: 10) {
                 ForEach(Array(store.dayPopupChoices.enumerated()), id: \.element.id) { index, choice in
-                    if index == 0 {
-                        choiceButton(choice)
-                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    } else {
-                        // Solid answer bubbles (Lucas 2026-09) — the
-                        // app-wide outlined secondary read see-through
-                        // over the scrim.
-                        choiceButton(choice)
-                            .buttonStyle(SolidChoiceButtonStyle())
-                    }
+                    choiceRow(choice, index: index)
                 }
             }
             .frame(maxWidth: 320)
             .padding(.top, 22)
-            .opacity(choicesIn ? 1 : 0)
-            .offset(y: choicesIn ? 0 : 8)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 24)
     }
 
+    /// One answer chip: staggered in 45ms behind the one above, and when
+    /// an answer is picked the others step back while it holds — the
+    /// acknowledgement lands before the popup leaves.
+    @ViewBuilder
+    private func choiceRow(_ choice: MorpheAppStore.DayPopupChoice, index: Int) -> some View {
+        let shown = choicesIn || reduceMotion
+        let isChosen = chosen == choice.kind
+        let dimmed = chosen != nil && !isChosen
+        Group {
+            if index == 0 {
+                choiceButton(choice)
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+            } else {
+                // Solid answer bubbles (Lucas 2026-09) — the
+                // app-wide outlined secondary read see-through
+                // over the scrim.
+                choiceButton(choice)
+                    .buttonStyle(SolidChoiceButtonStyle())
+            }
+        }
+        .opacity(shown ? (dimmed ? 0.35 : 1) : 0)
+        .offset(y: shown ? 0 : 14)
+        .scaleEffect(isChosen ? 1.04 : (shown ? 1 : 0.96))
+        .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.82).delay(0.34 + Double(index) * 0.045), value: choicesIn)
+        .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.7), value: chosen)
+        .disabled(chosen != nil)
+    }
+
     private func choiceButton(_ choice: MorpheAppStore.DayPopupChoice) -> some View {
         Button {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                store.answerDayPopup(choice.kind)
-            }
+            answer(choice.kind)
         } label: {
             Label(choice.label, systemImage: choice.symbol)
                 .frame(maxWidth: .infinity)
         }
         .accessibilityLabel(choice.label)
+    }
+
+    /// Acknowledge, then act: the chosen chip holds while the rest step
+    /// back and the ring answers — 200ms, then the real action fires.
+    private func answer(_ kind: MorpheAppStore.DayPopupChoiceKind) {
+        guard chosen == nil else { return }
+        Haptics.impact(.light)
+        if reduceMotion {
+            withAnimation(.easeInOut(duration: 0.2)) { store.answerDayPopup(kind) }
+            return
+        }
+        chosen = kind
+        flareTask?.cancel()
+        flareTask = Task { @MainActor in
+            async let flare: Void = speakFlare()
+            try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                store.answerDayPopup(kind)
+            }
+            _ = await flare
+        }
     }
 }
 

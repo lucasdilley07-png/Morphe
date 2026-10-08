@@ -2426,9 +2426,24 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
             // .mixWithOthers, not .duckOthers (audit 13, P1): merely
             // WAITING for a wake word must not quiet the user's playlist
             // for the whole workout. speak() ducks for its own duration.
-            try session.setCategory(.playAndRecord, mode: .default,
-                                    options: routeOptions(.mixWithOthers))
+            // Every change to a live session rebuilds the audio hardware
+            // graph, and every rebuild is a dip in whatever else is
+            // playing (Lucas 2026-10-07: "still pauses music when opening
+            // and closing the app"). So: touch the category only when it
+            // actually differs — the per-pass recycle and the foreground
+            // re-arm used to re-set an identical category every time —
+            // and keep the hardware at the sample rate it is already
+            // running (the music app's), so bringing the mic up never
+            // forces the 44.1↔48 kHz switch that restarts other apps'
+            // audio units.
+            let wanted = routeOptions(.mixWithOthers)
+            if session.category != .playAndRecord || session.mode != .default
+                || session.categoryOptions != wanted {
+                try session.setCategory(.playAndRecord, mode: .default, options: wanted)
+            }
             Self.allowHapticsWhileRecording()
+            let runningRate = session.sampleRate
+            if runningRate > 0 { try? session.setPreferredSampleRate(runningRate) }
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             sessionOwned = true
             try installMicTap(feeding: request)
