@@ -1,7 +1,39 @@
 # Morphe — Launch checklist
 
 What's ready in this repo, and the exact steps that need your Apple/GitHub
-accounts. Refreshed 2026-10-03 for the Spartan build (1.0, build 2).
+accounts. Refreshed 2026-10-07 after the launch audits (1.0, build 2, abe28bf).
+
+## Next steps — 2026-10-07 → Friday 2026-10-09 (in order)
+
+**Tonight (Tue 10-07)**
+- [ ] Pay the Apple Developer Program ($99) — developer.apple.com/programs/enroll. Everything below waits on approval (usually 24–48h).
+- [ ] Test on the phone (build abe28bf is installed): open/close the app with music playing — does it still dip? Day popup entrance. Onboard a throwaway account and confirm the @name you type is the one you get.
+- [ ] Firebase console → upgrade `morphe-3c5c2` to Blaze, set a $10 budget alert.
+- [ ] Google Cloud → Credentials → restrict the web API key to the referrer `https://lucasdilley07-png.github.io/*`.
+- [ ] Firebase Auth → Settings → confirm "Email enumeration protection" is on.
+
+**Wed 10-08 (while enrollment processes)**
+- [ ] Create the reviewer account in the app: sign up, accept terms, log 2–3 sessions, join the weekly board. Keep the email + password for App Review Information.
+- [ ] Decide the store name: `Morphe` first, `Morphe: Workout Tracker` as the fallback (cosmetics brand conflict).
+- [ ] Decide whether the website Store section ships hidden or as "coming soon" (currently placeholder prices).
+- [ ] Sign in on the Pro Max simulator, then say "take the screenshots" — capture is automated.
+
+**When Apple approves the program**
+- [ ] Xcode → Signing: switch the four targets to the paid team (new Team ID likely). Reinstall on the phone.
+- [ ] App Store Connect → new app record: name, bundle `com.morpheapp.Morphe`, the three URLs (privacy/support/marketing), App Privacy per `metadata.md` table, age rating 12+.
+- [ ] Archive (Release, Any iOS Device) → Distribute → TestFlight. Build 2 is set.
+- [ ] TestFlight internal group: add your own Apple ID; install from TestFlight on the phone; run one full session + a Form Check.
+- [ ] App Review Information: Sign-in required = YES with the reviewer account; paste the review notes from step 7 below.
+- [ ] Submit for review (expect 24–72h; a Friday public listing is a stretch — TestFlight Friday is the realistic target).
+
+**After the links exist**
+- [ ] Paste the App Store / TestFlight URLs into `APP_STORE_URL` / `TESTFLIGHT_URL` at the bottom of `docs/index.html`, push — the buttons go live by themselves.
+- [ ] If the app name changed, update `AppStore/metadata.md` and the site's `<title>`.
+
+**Open code items (not blockers)**
+- [ ] Four hard-width buttons may clip at accessibility text sizes (Train Anyway 150, Open 88, Join 80, picker 110).
+- [ ] If the music dip persists with Hey Morphe on: decide whether to arm the mic only when nothing is playing (reverses the 10-05 "always listen" call).
+- [ ] Deferred by order: AI without a user key + full-history AI, then the coach layer; Spanish; form diagrams for the 401 bundled exercises; push notifications (needs the paid program).
 
 ## ✅ Done (in the repo, verified 2026-10-03)
 - `AppStore/metadata.md` — name, subtitle, keywords, description (Spartan
