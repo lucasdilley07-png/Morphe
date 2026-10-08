@@ -162,14 +162,33 @@ private struct SystemAppearanceMirror<Content: View>: View {
     @Environment(\.colorScheme) private var colorScheme
     @ViewBuilder let content: () -> Content
 
+    @State private var pending = false
+
+    /// A sheet or cover in flight: the theme remount would tear it down
+    /// mid-edit (audit 33 — iOS flips appearance at sunset on its own).
+    private var somethingPresented: Bool {
+        store.showClientProfile || store.showAIAgent || store.showQuickAdd
+            || store.showUniversalSearch || store.showProgressSheet
+            || store.isWorkoutSessionActive
+    }
+
     var body: some View {
         content()
             .onAppear { sync() }
             .onChange(of: colorScheme) { _, _ in sync() }
+            .onChange(of: somethingPresented) { _, presented in
+                if !presented, pending { sync() }
+            }
     }
 
     private func sync() {
         let light = colorScheme == .light
-        if store.appearanceIsLight != light { store.appearanceIsLight = light }
+        guard store.appearanceIsLight != light else { pending = false; return }
+        // Tokens follow at once (sheets read them live); the full remount
+        // waits until nothing is presented and no session is running.
+        MorpheTheme.isLight = light
+        if somethingPresented { pending = true; return }
+        pending = false
+        store.appearanceIsLight = light
     }
 }

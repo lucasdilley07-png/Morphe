@@ -25,20 +25,24 @@ struct CommunityView: View {
             // swipe now belongs to the main Today / Train / Discover /
             // Network / Learn pager, so the panes here no longer page.
             // Selection is the SAME store var every deep link already sets.
-            switch store.selectedCommunitySection {
-            case .forYou where FeatureFlags.socialFeedEnabled:
-                // The stack hosts the feed's author push (swipe-back). The
-                // system bar stays hidden — the HUD has its own chrome.
-                NavigationStack {
-                    forYouScreen
-                        .toolbar(.hidden, for: .navigationBar)
+            // Panes stay MOUNTED (audit 33): a switch that rebuilt the
+            // inbox refired its one-shot auto-open and double-fetched.
+            // Only the selected pane is visible and touchable.
+            ZStack {
+                pane(.contact) { contactScreen }
+                if FeatureFlags.socialFeedEnabled {
+                    pane(.forYou) {
+                        // The stack hosts the feed's author push (swipe-back).
+                        // The system bar stays hidden — the HUD has its own chrome.
+                        NavigationStack {
+                            forYouScreen
+                                .toolbar(.hidden, for: .navigationBar)
+                        }
+                    }
+                } else {
+                    pane(.board) { boardScreen }
+                    pane(.calendar) { calendarScreen }
                 }
-            case .board:
-                boardScreen
-            case .calendar:
-                calendarScreen
-            default:
-                contactScreen
             }
         }
         // The paged panes stay mounted, so .task never re-fires on a
@@ -305,6 +309,16 @@ struct CommunityView: View {
             }
             .padding(.bottom, 10)
         ))
+    }
+
+    /// One mounted pane: shown and interactive only while selected.
+    @ViewBuilder
+    private func pane<Content: View>(_ section: ClientCommunitySection, @ViewBuilder content: () -> Content) -> some View {
+        let selected = store.selectedCommunitySection == section
+        content()
+            .opacity(selected ? 1 : 0)
+            .allowsHitTesting(selected)
+            .accessibilityHidden(!selected)
     }
 
     private var communityHeaderControls: some View {
@@ -4093,6 +4107,7 @@ struct CreatorFeed: View {
     @State private var expandedNotes: Set<String> = []
     @State private var expandedWorkouts: Set<String> = []
     @State private var reporting: CreatorNote?
+    @State private var reportingWorkout: CreatorWorkout?
 
     private enum Item: Identifiable {
         case workout(CreatorWorkout)
@@ -4174,6 +4189,18 @@ struct CreatorFeed: View {
         } message: { _ in
             Text("A person reviews every report.")
         }
+        .confirmationDialog("Report this workout?", isPresented: Binding(get: { reportingWorkout != nil }, set: { if !$0 { reportingWorkout = nil } }),
+                            titleVisibility: .visible, presenting: reportingWorkout) { workout in
+            ForEach(["Spam", "Unsafe programming", "Misleading", "Other"], id: \.self) { reason in
+                Button(reason) {
+                    store.reportCreatorContent(kind: "creatorWorkout", id: workout.id, authorUid: workout.authorUid,
+                                               excerpt: workout.name + " — " + workout.notes, reason: reason)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("A person reviews every report.")
+        }
     }
 
     private func byline(_ name: String, _ handle: String, _ date: Date, kind: String) -> some View {
@@ -4231,6 +4258,10 @@ struct CreatorFeed: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(MorpheTheme.accentText)
                         .frame(minHeight: 44)
+                        Button("Report") { reportingWorkout = workout }
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .frame(minHeight: 44)
                     }
                 }
             }

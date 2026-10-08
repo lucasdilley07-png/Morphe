@@ -2794,7 +2794,21 @@ final class MorpheAppStore {
     /// A published document → a runnable template for THIS member's app.
     /// Nil when none of its exercises resolve here.
     func template(for workout: CreatorWorkout) -> WorkoutTemplate? {
+        template(for: workout, index: creatorExerciseIndex)
+    }
+
+    /// Built once per library size — `template(for:)` ran per card per
+    /// render (audit 33).
+    private var creatorIndexCache: (count: Int, index: [String: ExerciseReference])?
+    private var creatorExerciseIndex: [String: ExerciseReference] {
+        let count = exerciseDatabase.count
+        if let cache = creatorIndexCache, cache.count == count { return cache.index }
         let index = WorkoutCatalog.makeIndex(exerciseDatabase)
+        creatorIndexCache = (count, index)
+        return index
+    }
+
+    func template(for workout: CreatorWorkout, index: [String: ExerciseReference]) -> WorkoutTemplate? {
         let exercises: [WorkoutExercise] = workout.exercises.enumerated().compactMap { offset, line in
             guard let reference = index[line.libraryID] else { return nil }
             return WorkoutExercise(
@@ -7351,6 +7365,12 @@ final class MorpheAppStore {
 
     func saveCatalogWorkout(_ template: WorkoutTemplate) {
         ensureCatalogWorkoutInLibrary(template)
+        // A coach's workout isn't in the bundled catalog, so the relaunch
+        // rebuild can't resolve its id (audit 33: it vanished). Keep it
+        // as the member's own copy — persisted like a built workout.
+        if template.categoryTag == "From Coaches" {
+            customWorkoutIDs.insert(template.id)
+        }
         guard !savedWorkouts.contains(where: { $0.workoutTemplateID == template.id }) else {
             showToast("\(template.name) is already in My Library.")
             return
@@ -7391,7 +7411,10 @@ final class MorpheAppStore {
     /// on the returning-user path wipes savedWorkouts).
     private func rebuildSavedCatalogWorkouts() {
         for idString in persistedSavedCatalogIDs {
-            guard let template = catalogWorkouts.first(where: { $0.id.uuidString == idString }),
+            // Catalog first; a saved coach workout lives among the restored
+            // custom templates (see saveCatalogWorkout).
+            guard let template = catalogWorkouts.first(where: { $0.id.uuidString == idString })
+                    ?? workoutTemplates.first(where: { $0.id.uuidString == idString }),
                   !savedWorkouts.contains(where: { $0.workoutTemplateID == template.id })
             else { continue }
             ensureCatalogWorkoutInLibrary(template)
@@ -7400,7 +7423,7 @@ final class MorpheAppStore {
                     workoutTemplateID: template.id,
                     workoutName: template.name,
                     sport: template.sport,
-                    sourceName: "Morphe Programs",
+                    sourceName: template.categoryTag == "From Coaches" ? template.type : "Morphe Programs",
                     sourceRole: .client,
                     sourceContext: "Saved from Discover",
                     bestFor: .solo,
@@ -9571,9 +9594,14 @@ final class MorpheAppStore {
     /// A touch during an exchange ends it (Lucas 2026-10-05): any answer
     /// still streaming is dropped, nothing is spoken, listening resumes.
     func cancelVoiceExchange() {
+        guard heyMorphe.state != .passive, heyMorphe.state != .off else { return }
         voiceReplyGeneration += 1
         voiceStreamTask?.cancel()
         voiceStreamTask = nil
+        // The "Thinking…" chip must not outlive the exchange it belonged to.
+        voiceExchangeClearTask?.cancel()
+        voiceExchangeClearTask = nil
+        lastVoiceExchange = nil
         heyMorphe.cancelExchange()
         Haptics.selection()
     }

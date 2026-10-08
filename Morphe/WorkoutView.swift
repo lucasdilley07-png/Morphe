@@ -224,110 +224,6 @@ struct WorkoutView: View {
                 ) {
                     showLibrary = true
                 }
-                .sheet(isPresented: $showLibrary, onDismiss: {
-                    // Starting, queuing, building and editing all present
-                    // from Train — they run once this sheet is gone.
-                    let action = pendingLibraryAction
-                    pendingLibraryAction = nil
-                    action?()
-                }) {
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack(alignment: .firstTextBaseline) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("My Library")
-                                        .font(.title2.weight(.bold))
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                    Text("Your builds, favorites and saved sessions.")
-                                        .font(.subheadline)
-                                        .foregroundStyle(MorpheTheme.textSecondary)
-                                }
-                                Spacer(minLength: 8)
-                                Button("Done") { showLibrary = false }
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                                    .frame(minWidth: 44, minHeight: 44)
-                            }
-                    Button {
-                        afterLibrary { showBuilder = true }
-                    } label: {
-                        Label("Build Workout", systemImage: "plus.circle.fill")
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .accessibilityLabel("Build your own workout")
-
-                    // Built workouts live INSIDE the library now (the "My
-                    // Workouts" segment) — one home, not a second card.
-                    SavedWorkoutsLibraryCard(
-                        items: store.savedWorkouts,
-                        insightFor: { item in
-                            store.savedWorkoutInsight(for: item)
-                        },
-                        onStart: { item in
-                            afterLibrary {
-                                isShowingPainFlow = false
-                                store.startSavedWorkout(item)
-                            }
-                        },
-                        onQueue: { item in
-                            afterLibrary { store.queueSavedWorkout(item) }
-                        },
-                        onWithBuddy: { item in
-                            afterLibrary { store.startSavedWorkoutWithBuddy(item) }
-                        },
-                        onDuplicate: { item in
-                            store.duplicateSavedWorkout(item)
-                        },
-                        onTogglePin: { item in
-                            store.togglePinnedSavedWorkout(item)
-                        },
-                        onRemove: { item in
-                            store.removeSavedWorkout(item)
-                        },
-                        onEdit: { item in
-                            if let templateID = store.editableTemplateID(for: item) {
-                                afterLibrary { editingWorkout = EditingWorkout(id: templateID) }
-                            }
-                        },
-                        builtWorkouts: store.workoutTemplates.filter { store.isCustomWorkout($0.id) },
-                        onStartBuilt: { template in
-                            afterLibrary {
-                                isShowingPainFlow = false
-                                store.beginLiveWorkout(template)
-                            }
-                        },
-                        onQueueBuilt: { template in
-                            afterLibrary { store.openWorkoutTemplate(template) }
-                        },
-                        onEditBuilt: { template in
-                            afterLibrary { editingWorkout = EditingWorkout(id: template.id) }
-                        },
-                        onDeleteBuilt: { template in
-                            workoutPendingDelete = template
-                        }
-                    )
-                    .confirmationDialog(
-                        deleteWorkoutDialogTitle,
-                        isPresented: Binding(
-                            get: { workoutPendingDelete != nil },
-                            set: { if !$0 { workoutPendingDelete = nil } }
-                        ),
-                        titleVisibility: .visible,
-                        presenting: workoutPendingDelete
-                    ) { template in
-                        Button("Delete Workout", role: .destructive) {
-                            store.deleteCustomWorkout(template.id)
-                        }
-                        Button("Keep It", role: .cancel) {}
-                    }
-                        }
-                        .padding(20)
-                    }
-                    .background(PremiumBackground().ignoresSafeArea())
-                    .environment(store)
-                    .presentationDetents([.large])
-                    .presentationCornerRadius(28)
-                    .sheetToastSurface()
-                }
                 .id("myLibrary")
         case .partner:
                 if store.partnerWorkoutEnabled, let partner = store.selectedWorkoutPartner, let plan = store.currentPartnerWorkoutPlan {
@@ -1037,6 +933,113 @@ struct WorkoutView: View {
             // (Lucas 2026-10-03: the landing sat 54pt higher than Today).
             .padding(.top, MorpheTheme.Spacing.pageTopTrain)
             .padding(.bottom, 120)
+        }
+        // The library sheet hangs off the always-mounted scroll (audit 33):
+        // on the card it went dead whenever the card was hidden or the
+        // post-finish review owned the page, and popped later on its own.
+        .sheet(isPresented: $showLibrary, onDismiss: {
+            // Starting, queuing, building and editing all present
+            // from Train — they run once this sheet is gone.
+            let action = pendingLibraryAction
+            pendingLibraryAction = nil
+            action?()
+        }) {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("My Library")
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Text("Your builds, favorites and saved sessions.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                        Spacer(minLength: 8)
+                        Button("Done") { showLibrary = false }
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+            Button {
+                afterLibrary { showBuilder = true }
+            } label: {
+                Label("Build Workout", systemImage: "plus.circle.fill")
+            }
+            .buttonStyle(SecondaryCTAButtonStyle())
+            .accessibilityLabel("Build your own workout")
+
+            // Built workouts live INSIDE the library now (the "My
+            // Workouts" segment) — one home, not a second card.
+            SavedWorkoutsLibraryCard(
+                items: store.savedWorkouts,
+                insightFor: { item in
+                    store.savedWorkoutInsight(for: item)
+                },
+                onStart: { item in
+                    afterLibrary {
+                        isShowingPainFlow = false
+                        store.startSavedWorkout(item)
+                    }
+                },
+                onQueue: { item in
+                    afterLibrary { store.queueSavedWorkout(item) }
+                },
+                onWithBuddy: { item in
+                    afterLibrary { store.startSavedWorkoutWithBuddy(item) }
+                },
+                onDuplicate: { item in
+                    store.duplicateSavedWorkout(item)
+                },
+                onTogglePin: { item in
+                    store.togglePinnedSavedWorkout(item)
+                },
+                onRemove: { item in
+                    store.removeSavedWorkout(item)
+                },
+                onEdit: { item in
+                    if let templateID = store.editableTemplateID(for: item) {
+                        afterLibrary { editingWorkout = EditingWorkout(id: templateID) }
+                    }
+                },
+                builtWorkouts: store.workoutTemplates.filter { store.isCustomWorkout($0.id) },
+                onStartBuilt: { template in
+                    afterLibrary {
+                        isShowingPainFlow = false
+                        store.beginLiveWorkout(template)
+                    }
+                },
+                onQueueBuilt: { template in
+                    afterLibrary { store.openWorkoutTemplate(template) }
+                },
+                onEditBuilt: { template in
+                    afterLibrary { editingWorkout = EditingWorkout(id: template.id) }
+                },
+                onDeleteBuilt: { template in
+                    workoutPendingDelete = template
+                }
+            )
+            .confirmationDialog(
+                deleteWorkoutDialogTitle,
+                isPresented: Binding(
+                    get: { workoutPendingDelete != nil },
+                    set: { if !$0 { workoutPendingDelete = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: workoutPendingDelete
+            ) { template in
+                Button("Delete Workout", role: .destructive) {
+                    store.deleteCustomWorkout(template.id)
+                }
+                Button("Keep It", role: .cancel) {}
+            }
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground().ignoresSafeArea())
+            .environment(store)
+            .presentationDetents([.large])
+            .presentationCornerRadius(28)
+            .sheetToastSurface()
         }
         .onAppear { revealLibraryIfRequested(proxy) }
         .onChange(of: store.pendingLibraryReveal) { _, _ in
