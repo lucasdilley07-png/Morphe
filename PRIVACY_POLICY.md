@@ -123,7 +123,7 @@ never breaks the rest of the app.
 ## AI assistant with your own key (optional)
 
 The in-app assistant works offline out of the box. If you add your own
-API keys in Profile → Voice:
+API keys in Profile → Morphe Intelligence:
 
 - **Anthropic** — the text of your chat messages, plus a short summary of
   your recent training that the assistant needs to answer, is sent to
