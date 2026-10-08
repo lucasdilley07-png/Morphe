@@ -30,3 +30,76 @@ OPEN CODE ITEMS (NOT BLOCKERS)
 ☐ 4 hard-width buttons may clip at accessibility text sizes
 ☐ If the music dip persists with Hey Morphe on: decide whether to arm the mic only when nothing is playing (reverses the 10/5 "always listen" call)
 ☐ Deferred by my order: AI without a key + full-history AI → then coach layer; Spanish; form diagrams; push notifications (needs paid program)
+
+
+MORPHE — BUSINESS SIDE (added Wed 10/8)
+Researched 10/8: USPTO fee, CA LLC fees, domain availability, print prices. Everything marked (est.) is an estimate — verify at checkout.
+
+1. ENTITY (LLC) — do first, the rest attach to it
+☐ Form a California LLC with a NEUTRAL holdco name (per the empire plan: ventures attach to the holdco) — Morphe becomes a DBA, so a trademark fight never forces a rename of the company
+☐ File Articles of Organization online (bizfileonline.sos.ca.gov) — $70
+☐ Statement of Information within 90 days — $20
+☐ EIN from the IRS — free, same day (irs.gov, not a paid service)
+☐ Calendar the $800 franchise tax — due the 15th day of the 4th month after formation, every year
+☐ County fictitious business name ("Morphe") — ~$30–60 + newspaper publication ~$40–100 (est.)
+☐ Business bank account under the LLC; put Apple Developer + Firebase on the LLC card
+☐ Move the Apple Developer Program enrollment to the LLC if it hasn't been paid yet (org enrollment needs a D-U-N-S number — free, 1–5 days; individual enrollment is fine for Friday, can migrate later)
+
+2. TRADEMARK — file after the LLC exists
+☐ Knockout search first: tmsearch.uspto.gov for "MORPHE" — Morphe LLC (cosmetics) holds Reg. 4967948 + 5756672 in Class 3/35. Different classes from ours, but it's a well-known brand: an opposition is possible. Have the fallback name picked BEFORE filing.
+☐ File the word mark MORPHE — Class 9 (downloadable fitness software) + Class 41 (fitness training services) — $350/class = $700 DIY using ID-Manual descriptions (custom wording adds $200/class)
+☐ Optional: attorney review/filing ~$500–1,500 (est.) — worth it given the Morphe LLC conflict
+☐ Timeline: 12–18 months to registration; use ™ now, ® only after
+☐ Same day: claim handles — @trainmorphe / @morpheapp on Instagram, TikTok, YouTube, X, Threads (check which base is free on all five, use ONE everywhere)
+
+3. DOMAIN + DIGITAL FOOTPRINT
+Availability checked 10/8: morphe.app, morpheapp.com, morphe.io, morphe.co, morphe.training = TAKEN. Available: trainmorphe.com, morphefit.com, morphetraining.com, morphe.fit, morphe.gg
+☐ Buy trainmorphe.com (matches the handle + "TRAIN" line) — ~$12–20/yr (est.); morphe.fit as a second if cheap (~$30–40/yr est.)
+☐ Point it at GitHub Pages: add docs/CNAME, DNS A records → GitHub Pages IPs + www CNAME, enforce HTTPS (Claude does the repo side; you do DNS at the registrar)
+☐ Email: hello@ on the domain — free via Cloudflare Email Routing → Gmail, or Google Workspace ~$7–8/mo (est.)
+☐ Update the three App Store URLs (privacy/support/marketing) to the new domain BEFORE submitting
+☐ SEO basics on the site (Claude): title/meta description per page, Open Graph + Twitter cards with the helmet, sitemap.xml, robots.txt, canonical URLs, structured data (SoftwareApplication)
+☐ Google Search Console + Bing Webmaster: verify the domain, submit the sitemap
+☐ Link-in-bio on every social → the site; site → App Store once the link exists
+☐ Apple product page = the real SEO: name/subtitle/keywords in metadata.md are already within limits — rework once the name decision is final
+
+4. PRODUCTS (website store)
+☐ Decide what's REAL for launch: the gear line (tee, cap, shaker, belt) can ship print-on-demand with no inventory; the supplement line (whey, creatine, electrolytes, pre) needs a co-packer, label compliance and liability insurance — NOT a Friday item, keep it "coming soon" or hide it
+☐ Print-on-demand storefront: Fourthwall or Printful + Shopify — Fourthwall has no monthly fee, takes a cut per order (est.); Shopify ~$39/mo (est.)
+☐ Design 2 SKUs max to start (Helmet Tee, Field Cap) with the brand-kit helmet; order one sample of each before listing (~$25–40 each, est.)
+☐ Real prices from the supplier's base cost + margin; replace the placeholder numbers in docs/index.html, wire the checkout link, remove the "nothing is for sale" notes
+☐ Sales tax: the LLC's seller's permit (CDTFA, free) before the first sale
+
+5. CONTENT — sourcing law applies: every post cites a real artifact
+☐ Follow docs/LAUNCH-CONTENT-CALENDAR.md; the raw material already exists: this week's audit (3 P0 data-loss bugs found and fixed before launch), the $99 Apple gate as the real blocker, the music-dip bug, the 595-exercise library, the Spartan rebrand
+☐ Film the launch-week vlog: pay the Apple gate on camera, the first TestFlight install, the first real session logged
+☐ 3 short-form cuts/week from the vlog on Lucas_Dilley + Book_Of_Lucas (register split per account); HBPC posts only the production side
+☐ Cost: $0 — own camera, own edit stack
+
+6. POSTERS / FLYERS — the gym-floor channel (priority #3 in the acquisition plan)
+☐ One design: helmet + "TRAIN HONEST" + QR to the site (QR → App Store once live); Claude builds the print file from the brand kit
+☐ 100 full-color flyers ~$25–50; 50–100 11x17 posters ~$36–85 (sourced ranges); local print shop or Vistaprint
+☐ Ask the gym owner before posting; offer the coach pilot (docs/COACH-PITCH.md) in the same conversation — the poster is the excuse for the pitch
+☐ No paid ads (standing rule: nothing to amplify at n=1)
+
+7. BUDGET — first 30 days
+Apple Developer Program ............ $99/yr
+CA LLC (filing $70 + SOI $20) ....... $90
+CA franchise tax (year 1) ........... $800 (due ~month 4)
+EIN ................................. $0
+Fictitious business name ............ $70–160 (est.)
+Trademark, 2 classes, DIY ........... $700
+  + attorney (optional) ............. $500–1,500 (est.)
+Domain(s) ........................... $15–60/yr (est.)
+Email on the domain ................. $0–96/yr (est.)
+Firebase Blaze ...................... ~$0–25/mo at launch scale (est.), $10 budget alert
+Store platform ...................... $0 (Fourthwall) or $39/mo (Shopify) (est.)
+Product samples (2) ................. $50–80 (est.)
+Flyers 100 + posters 50–100 ......... $60–135
+Paid ads ............................ $0
+Content ............................. $0
+--------------------------------------------------
+DIY total, cash out in 30 days ...... ~$1,100–1,400 (franchise tax lands month 4 → ~$1,900–2,200 by then)
+With a trademark attorney ........... ~$2,400–3,700
+
+Order of spend: Apple ($99, tonight) → LLC ($90) → domain ($15) → trademark ($700, after the knockout search) → print ($60–135) → everything else as revenue allows.

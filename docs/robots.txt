@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://lucasdilley07-png.github.io/Morphe/sitemap.xml

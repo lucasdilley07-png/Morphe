@@ -55,6 +55,21 @@ page = f"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Morphe Privacy Policy</title>
+<meta name="description" content="What Morphe collects, where it lives, and the controls you have — export and delete are both in the app.">
+<link rel="canonical" href="https://lucasdilley07-png.github.io/Morphe/privacy.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Morphe">
+<meta property="og:title" content="Morphe Privacy Policy">
+<meta property="og:description" content="What Morphe collects, where it lives, and the controls you have — export and delete are both in the app.">
+<meta property="og:url" content="https://lucasdilley07-png.github.io/Morphe/privacy.html">
+<meta property="og:image" content="https://lucasdilley07-png.github.io/Morphe/assets/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Morphe Privacy Policy">
+<meta name="twitter:description" content="What Morphe collects, where it lives, and the controls you have — export and delete are both in the app.">
+<meta name="twitter:image" content="https://lucasdilley07-png.github.io/Morphe/assets/og-card.png">
+<meta name="theme-color" content="#121214">
 <link rel="icon" href="assets/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
