@@ -1,0 +1,32 @@
+MORPHE — NEXT STEPS (Tue 10/7 → Fri 10/9)
+Build on phone: abe28bf
+
+TONIGHT (TUE 10/7)
+☐ Pay the Apple Developer Program ($99) — everything below waits on approval (24–48h)
+☐ Test on phone: open/close with music playing (still dips?), day popup entrance, onboard a throwaway account → the @name I type is the one I get
+☐ Firebase → upgrade morphe-3c5c2 to Blaze, $10 budget alert
+☐ Google Cloud → Credentials → restrict web API key to https://lucasdilley07-png.github.io/*
+☐ Firebase Auth → confirm email-enumeration protection is ON
+
+WED 10/8 (WHILE ENROLLMENT PROCESSES)
+☐ Create the reviewer account in the app: sign up, accept terms, log 2–3 sessions, join the weekly board — save email + password
+☐ Decide store name: "Morphe" first, fallback "Morphe: Workout Tracker" (cosmetics brand)
+☐ Decide: website Store section hidden or "coming soon"
+☐ Sign in on the Pro Max simulator → tell Claude "take the screenshots"
+
+WHEN APPLE APPROVES
+☐ Xcode signing → paid team on all 4 targets (new Team ID likely) → reinstall on phone
+☐ App Store Connect record: name, bundle com.morpheapp.Morphe, 3 URLs (privacy/support/marketing), App Privacy per metadata.md, age 12+
+☐ Archive (Release) → TestFlight
+☐ TestFlight internal group = my Apple ID → install → run one full session + a Form Check
+☐ App Review Information: Sign-in required = YES + reviewer account; paste review notes from LAUNCH_CHECKLIST step 7
+☐ Submit for review (24–72h). TestFlight Friday = realistic. Public listing Friday = stretch.
+
+AFTER THE LINKS EXIST
+☐ Paste App Store / TestFlight URLs into APP_STORE_URL / TESTFLIGHT_URL at the bottom of docs/index.html → push (buttons go live by themselves)
+☐ If the app name changed: update AppStore/metadata.md + site <title>
+
+OPEN CODE ITEMS (NOT BLOCKERS)
+☐ 4 hard-width buttons may clip at accessibility text sizes
+☐ If the music dip persists with Hey Morphe on: decide whether to arm the mic only when nothing is playing (reverses the 10/5 "always listen" call)
+☐ Deferred by my order: AI without a key + full-history AI → then coach layer; Spanish; form diagrams; push notifications (needs paid program)
