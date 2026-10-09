@@ -5001,6 +5001,57 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertEqual(store.nutrition.waterGoal, 9)
     }
 
+    /// The whiteboard chart (2026-10-09): calories from the goal's
+    /// multiplier, grams from the split, protein never under 0.85 g/lb,
+    /// and the grams reconcile to the calories.
+    func testNutritionPlanFollowsTheChartWithAProteinFloor() {
+        let lean = NutritionPlan.make(weightLb: 170, goal: .leanOut)
+        XCTAssertEqual(lean.calories, 2200, "170 × 13 rounded to 50")
+        XCTAssertEqual(lean.proteinGrams, 165, "40/30/30 → 2200 × 0.30 / 4 = 165 g, above the 145 g floor")
+        XCTAssertFalse(lean.proteinFloorApplied)
+        XCTAssertEqual(lean.fatGrams, 75, "2200 × 0.30 / 9 ≈ 73 → 75")
+        XCTAssertEqual(lean.carbGrams, 215, "(2200 − 165×4 − 75×9) / 4 = 216 → 215")
+        XCTAssertEqual(lean.goal.splitLabel, "40/30/30")
+
+        let bulk = NutritionPlan.make(weightLb: 170, goal: .bulk)
+        XCTAssertEqual(bulk.calories, 2700, "170 × 16 = 2720 → 2700")
+        XCTAssertEqual(bulk.proteinGrams, 170, "50/25/25 → 2700 × 0.25 / 4 = 169 → 170; floor 145 does not apply")
+        XCTAssertGreaterThan(bulk.carbGrams, lean.carbGrams, "a bulk eats more carbs than a cut")
+
+        // With these multipliers every split's protein share clears the
+        // floor, but the floor is still the contract: for any weight and
+        // goal, protein ≥ 0.85 g/lb and the grams reconcile to the calories.
+        for goal in NutritionGoalMode.allCases {
+            for weight in [110.0, 150.0, 200.0, 260.0] {
+                let plan = NutritionPlan.make(weightLb: weight, goal: goal)
+                XCTAssertGreaterThanOrEqual(Double(plan.proteinGrams), weight * 0.85 - 2.5, "\(goal) at \(weight) lb")
+                let fromGrams = plan.carbGrams * 4 + plan.proteinGrams * 4 + plan.fatGrams * 9
+                XCTAssertLessThanOrEqual(abs(fromGrams - plan.calories), 40, "\(goal) at \(weight) lb: grams must add up to the calories")
+            }
+        }
+    }
+
+    @MainActor
+    func testNutritionReplyUsesTheChartAndTheUsersWeight() {
+        let store = freshStore()
+        store.clientProfile.selectedGoals = ["Lose weight"]
+        store.clientProfile.goal = "Lose weight"
+        // Set directly: updateBodyMetrics persists on a delay, and that
+        // write would land after the next test's setUp cleared the file.
+        store.clientProfile.bodyWeight = "170 lb"
+        XCTAssertEqual(store.nutritionGoalMode, .leanOut)
+        let reply = try? XCTUnwrap(store.nutritionReply(to: "what should i eat"))
+        XCTAssertTrue(reply?.contains("2200 calories") == true, "cites the user's own calories — got \(reply ?? "nil")")
+        XCTAssertTrue(reply?.contains("40/30/30") == true)
+        XCTAssertTrue(reply?.contains("Learn → Nutrition") == true)
+        // A goal named in the question wins over the profile's.
+        let bulk = store.nutritionReply(to: "how do i bulk")
+        XCTAssertTrue(bulk?.contains("Bulk") == true && bulk?.contains("50/25/25") == true, "got \(bulk ?? "nil")")
+        XCTAssertNil(store.nutritionReply(to: "start my workout"), "non-food questions pass through")
+        XCTAssertTrue(MorpheAppStore.isNutritionQuestion("how much protein"))
+        XCTAssertTrue(store.nutritionKnowledgeForPrompt.contains("Chicken breast"))
+    }
+
     func testNutritionTargetsFallBackToLabeledStartersWithoutWeight() {
         let store = freshStore()
         let targets = store.nutritionTargets

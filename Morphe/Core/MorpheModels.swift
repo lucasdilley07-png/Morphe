@@ -1739,6 +1739,156 @@ struct NutritionTargets: Equatable {
     var sourceNote: String
 }
 
+/// Lucas's whiteboard nutrition chart (2026-10-09, the photo lives at
+/// Content/Nutrition/whiteboard-2026-10-09.jpg), structured by goal. The
+/// three splits and the BW×15 anchor are his; the per-goal calorie
+/// multipliers match the targets math the app already ran. Protein never
+/// drops below 0.85 g/lb whatever the split says — the floor is the one
+/// number that doesn't move with the goal.
+enum NutritionGoalMode: String, CaseIterable, Identifiable {
+    case leanOut = "Lean out"
+    case maintain = "Maintain"
+    case bulk = "Bulk"
+
+    var id: String { rawValue }
+
+    /// Daily calories per pound of body weight. Maintain is the board's BW×15.
+    var caloriesPerLb: Double {
+        switch self {
+        case .leanOut: return 13
+        case .maintain: return 15
+        case .bulk: return 16
+        }
+    }
+
+    /// Carbs / protein / fat as percent of calories — the board's three splits.
+    var split: (carbs: Int, protein: Int, fat: Int) {
+        switch self {
+        case .leanOut: return (40, 30, 30)
+        case .maintain: return (45, 30, 25)
+        case .bulk: return (50, 25, 25)
+        }
+    }
+
+    var splitLabel: String { "\(split.carbs)/\(split.protein)/\(split.fat)" }
+
+    /// The one-line rule for the goal.
+    var rule: String {
+        switch self {
+        case .leanOut:
+            return "Deficit of about 2 cal per pound under maintenance. Protein stays high so the weight you lose is fat. Fill plates from the low-cal column; keep simple carbs for right around training."
+        case .maintain:
+            return "Body weight × 15. Carbs scale with the day's training — more on heavy days, less on rest days — and protein holds steady."
+        case .bulk:
+            return "Surplus of about 1 cal per pound over maintenance, mostly from complex carbs. Keep fats moderate and let the scale move about half a pound a week, not more."
+        }
+    }
+
+    /// Which columns of the board to lean on for the goal, in order.
+    var leanOn: [NutritionFoodGroup] {
+        switch self {
+        case .leanOut: return [.proteins, .lowCalVolume, .complexCarbs, .fats, .simpleCarbs]
+        case .maintain: return [.proteins, .complexCarbs, .lowCalVolume, .fats, .simpleCarbs]
+        case .bulk: return [.complexCarbs, .proteins, .simpleCarbs, .fats, .lowCalVolume]
+        }
+    }
+
+    /// Reads the goal from the user's own onboarding words. Fat-loss wins
+    /// when goals mix — overshooting calories hurts that goal the most.
+    static func infer(fromGoalText text: String) -> NutritionGoalMode {
+        let goal = text.lowercased()
+        if goal.contains("lose") || goal.contains("lean") || goal.contains("fat")
+            || goal.contains("cut") || goal.contains("weight loss") {
+            return .leanOut
+        }
+        if goal.contains("build") || goal.contains("strength")
+            || goal.contains("muscle") || goal.contains("bulk") || goal.contains("gain") {
+            return .bulk
+        }
+        return .maintain
+    }
+}
+
+/// The five columns on the board, with their calories per gram.
+enum NutritionFoodGroup: String, CaseIterable, Identifiable {
+    case simpleCarbs, complexCarbs, lowCalVolume, proteins, fats
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .simpleCarbs: return "Simple carbs"
+        case .complexCarbs: return "Complex carbs"
+        case .lowCalVolume: return "Low-cal volume"
+        case .proteins: return "Proteins"
+        case .fats: return "Fats"
+        }
+    }
+
+    var caloriesPerGram: Int { self == .fats ? 9 : 4 }
+
+    var whenToUse: String {
+        switch self {
+        case .simpleCarbs: return "Fast energy — before or right after training."
+        case .complexCarbs: return "The base of the plate on training days."
+        case .lowCalVolume: return "Fullness for few calories — unlimited on a cut."
+        case .proteins: return "Every meal. The floor that never moves."
+        case .fats: return "Hormones and satiety — measured, not avoided."
+        }
+    }
+
+    var foods: [String] {
+        switch self {
+        case .simpleCarbs:
+            return ["Bananas", "Honey", "Berries", "Plain milk", "Plain yogurt", "Tomatoes", "Bell peppers"]
+        case .complexCarbs:
+            return ["Rice", "Oats", "Quinoa", "Beans", "Lentils", "Sweet potato", "Squash", "Peas", "Corn", "Potatoes"]
+        case .lowCalVolume:
+            return ["Broccoli", "Leafy greens", "Apples", "Pears", "Berries", "Watermelon", "Cucumber", "Brussels sprouts", "Cauliflower"]
+        case .proteins:
+            return ["Tuna", "Salmon", "Pork loin", "Sardines", "Greek yogurt", "Chicken breast", "Cod", "Flounder", "Tenderloin", "Sirloin", "Flank steak", "Cottage cheese", "Skim milk", "Whole eggs", "Egg whites"]
+        case .fats:
+            return ["Avocado", "Salmon", "Mackerel", "Sardines", "Tuna", "Nuts", "Seeds", "Plant oils"]
+        }
+    }
+}
+
+/// A day's macro plan for one body weight and goal: calories from the
+/// goal's multiplier, grams from the split, with the protein floor
+/// applied and carbs taking up the difference so the grams still add up
+/// to the calories.
+struct NutritionPlan: Equatable {
+    var goal: NutritionGoalMode
+    var weightLb: Int
+    var calories: Int
+    var carbGrams: Int
+    var proteinGrams: Int
+    var fatGrams: Int
+    /// True when 0.85 g/lb beat the split's protein share.
+    var proteinFloorApplied: Bool
+
+    static let proteinFloorPerLb = 0.85
+
+    static func make(weightLb: Double, goal: NutritionGoalMode) -> NutritionPlan {
+        let calories = Int(((weightLb * goal.caloriesPerLb) / 50).rounded()) * 50
+        let split = goal.split
+        let splitProtein = Double(calories) * Double(split.protein) / 100 / 4
+        let floorProtein = weightLb * proteinFloorPerLb
+        let proteinFloorApplied = floorProtein > splitProtein
+        let protein = Int((max(splitProtein, floorProtein) / 5).rounded()) * 5
+        let fat = Int((Double(calories) * Double(split.fat) / 100 / 9 / 5).rounded()) * 5
+        let carbs = max(0, Int(((Double(calories) - Double(protein * 4) - Double(fat * 9)) / 4 / 5).rounded()) * 5)
+        return NutritionPlan(goal: goal, weightLb: Int(weightLb.rounded()), calories: calories,
+                             carbGrams: carbs, proteinGrams: protein, fatGrams: fat,
+                             proteinFloorApplied: proteinFloorApplied)
+    }
+
+    /// One spoken-ready line.
+    var summary: String {
+        "\(goal.rawValue): body weight \(weightLb) lb × \(goal.caloriesPerLb.formatted()) = \(calories) calories, split \(goal.splitLabel) → \(carbGrams) g carbs, \(proteinGrams) g protein, \(fatGrams) g fat."
+    }
+}
+
 struct FriendActivity: Identifiable, Hashable {
     var id = UUID()
     var title: String

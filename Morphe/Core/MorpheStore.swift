@@ -5144,26 +5144,80 @@ final class MorpheAppStore {
                 sourceNote: "Starter targets — log your weight in Profile to personalize"
             )
         }
-        let goalText = (clientProfile.selectedGoals + [clientProfile.goal])
-            .joined(separator: " ").lowercased()
-        // Fat-loss framing wins when goals mix (e.g. "Lose weight" + "Build
-        // consistency") — overshooting calories hurts that goal the most.
-        let caloriesPerLb: Double
-        if goalText.contains("lose") || goalText.contains("lean") || goalText.contains("fat")
-            || goalText.contains("cut") || goalText.contains("weight loss") {
-            caloriesPerLb = 13
-        } else if goalText.contains("build") || goalText.contains("strength")
-            || goalText.contains("muscle") || goalText.contains("bulk") {
-            caloriesPerLb = 16
-        } else {
-            caloriesPerLb = 15
-        }
+        // The chart (NutritionGoalMode) owns the multipliers; the targets
+        // card shows the protein FLOOR, the plan shows the full split.
+        let goal = nutritionGoalMode
         return NutritionTargets(
-            calories: Int(((weightLb * caloriesPerLb) / 50).rounded()) * 50,
-            proteinGrams: Int(((weightLb * 0.85) / 5).rounded()) * 5,
+            calories: Int(((weightLb * goal.caloriesPerLb) / 50).rounded()) * 50,
+            proteinGrams: Int(((weightLb * NutritionPlan.proteinFloorPerLb) / 5).rounded()) * 5,
             waterCups: min(max(Int((weightLb / 20).rounded()), 8), 16),
-            sourceNote: "Based on your logged weight (\(Int(weightLb.rounded())) lb) and goal"
+            sourceNote: "Based on your logged weight (\(Int(weightLb.rounded())) lb) and goal (\(goal.rawValue.lowercased()))"
         )
+    }
+
+    /// Lean out / maintain / bulk, read from the user's own goal words.
+    var nutritionGoalMode: NutritionGoalMode {
+        NutritionGoalMode.infer(fromGoalText: (clientProfile.selectedGoals + [clientProfile.goal]).joined(separator: " "))
+    }
+
+    /// The full macro plan for the user's weight and goal; nil until a
+    /// weight is logged (no invented numbers).
+    var nutritionPlan: NutritionPlan? {
+        guard let weightLb = Self.parsedBodyWeightLb(clientProfile.bodyWeight, assumedUnit: weightUnit) else { return nil }
+        return NutritionPlan.make(weightLb: weightLb, goal: nutritionGoalMode)
+    }
+
+    /// The chart for a goal the user is previewing (Learn → Nutrition
+    /// picker); nil without a logged weight.
+    func nutritionPlan(for goal: NutritionGoalMode) -> NutritionPlan? {
+        guard let weightLb = Self.parsedBodyWeightLb(clientProfile.bodyWeight, assumedUnit: weightUnit) else { return nil }
+        return NutritionPlan.make(weightLb: weightLb, goal: goal)
+    }
+
+    // MARK: Nutrition in the AI's memory (Lucas 2026-10-09)
+
+    static func isNutritionQuestion(_ lowercasedPrompt: String) -> Bool {
+        ["nutrition", "macro", "protein", "carb", "calorie", "eat", "meal", "diet",
+         "bulk", "cut ", "cutting", "lean out", "maintain", "food", "fat loss"]
+            .contains { lowercasedPrompt.contains($0) }
+    }
+
+    /// The whiteboard chart, as text the model can reason from. Sent only
+    /// when the question is about food, like the lore record.
+    var nutritionKnowledgeForPrompt: String {
+        var lines: [String] = ["Morphe's nutrition chart (the founder's, 2026-10). Carbs and protein 4 cal/g, fat 9 cal/g."]
+        for goal in NutritionGoalMode.allCases {
+            lines.append("\(goal.rawValue): body weight × \(goal.caloriesPerLb.formatted()) cal, split carbs/protein/fat \(goal.splitLabel). \(goal.rule)")
+        }
+        lines.append("Protein floor for every goal: \(NutritionPlan.proteinFloorPerLb) g per lb.")
+        for group in NutritionFoodGroup.allCases {
+            lines.append("\(group.title) (\(group.caloriesPerGram) cal/g; \(group.whenToUse.lowercased())): \(group.foods.joined(separator: ", ")).")
+        }
+        if let plan = nutritionPlan {
+            lines.append("This user's plan, from their logged weight and goal: \(plan.summary) Lean on, in order: \(plan.goal.leanOn.map(\.title).joined(separator: ", ")).")
+        } else {
+            lines.append("This user has no logged weight yet, so give the method, not their numbers, and tell them to log weight in Profile.")
+        }
+        lines.append("Not medical advice; say so once if they ask about a condition.")
+        return lines.joined(separator: " ")
+    }
+
+    /// The offline answer to a food question, from the chart and the
+    /// user's own weight — never a generic "keep it simple" line.
+    func nutritionReply(to lowercasedPrompt: String) -> String? {
+        guard Self.isNutritionQuestion(lowercasedPrompt) else { return nil }
+        // A goal named in the question wins over the profile's goal.
+        var goal = nutritionGoalMode
+        if lowercasedPrompt.contains("bulk") || lowercasedPrompt.contains("gain") { goal = .bulk }
+        else if lowercasedPrompt.contains("lean") || lowercasedPrompt.contains("cut") || lowercasedPrompt.contains("fat loss") || lowercasedPrompt.contains("lose") { goal = .leanOut }
+        else if lowercasedPrompt.contains("maintain") { goal = .maintain }
+        let order = goal.leanOn.prefix(3).map { $0.title.lowercased() }.joined(separator: ", then ")
+        let plate = "Lean on \(order). \(goal.rule)"
+        guard let plan = nutritionPlan(for: goal) else {
+            return "\(goal.rawValue) runs body weight × \(goal.caloriesPerLb.formatted()) calories at a \(goal.splitLabel) carb/protein/fat split, protein never under \(NutritionPlan.proteinFloorPerLb) g per pound. Log your weight in Profile and I'll give you the grams. \(plate) The full chart is in Learn → Nutrition."
+        }
+        let floorNote = plan.proteinFloorApplied ? " Protein sits above the split's share because the \(NutritionPlan.proteinFloorPerLb) g/lb floor wins." : ""
+        return "\(plan.summary)\(floorNote) \(plate) The full chart is in Learn → Nutrition."
     }
 
     /// Pushes the computed targets into the nutrition card's goal fields.
@@ -9497,6 +9551,9 @@ final class MorpheAppStore {
         lines.append(Self.loreGuardrail)
         if let userText, Self.isLoreQuestion(userText.lowercased()) {
             lines.append(Self.loreRecord)
+        }
+        if let userText, Self.isNutritionQuestion(userText.lowercased()) {
+            lines.append(nutritionKnowledgeForPrompt)
         }
         // The luxury register (audit 2026-09): quiet confidence, enforced.
         // "Lead with the answer" yields to the Encouraging style, whose
@@ -15417,9 +15474,7 @@ final class MorpheAppStore {
                 return "\(lead)Start by solving the smallest friction point first, then let the rest of the week stay lighter and more repeatable."
             }
         case .more:
-            if lowercasedPrompt.contains("nutrition") || lowercasedPrompt.contains("eat") || lowercasedPrompt.contains("meal") {
-                return "Keep nutrition simple today: hit protein, drink water, and make dinner the easiest meal to win. You don’t need perfect tracking to make progress."
-            }
+            if let answer = nutritionReply(to: lowercasedPrompt) { return answer }
 
             if lowercasedPrompt.contains("learn") || lowercasedPrompt.contains("study") || lowercasedPrompt.contains("quiz") {
                 return "The best learning move right now is to pair one lesson with one action. Pick a form tip or recovery basic, then use it in your next session today."
@@ -15429,6 +15484,9 @@ final class MorpheAppStore {
         // The lore answers from the cited record — after every data and
         // tab handler, so it only ever replaces the honest "I don't know".
         if let lore = loreReply(to: lowercasedPrompt) { return lore }
+        // Food questions from any tab answer from the chart and the
+        // user's weight (Lucas 2026-10-09) — same placement as the lore.
+        if let answer = nutritionReply(to: lowercasedPrompt) { return answer }
 
         // ACCURACY over vibes: the old last resort was generic coach-tone
         // filler that pretended to answer anything. An honest assistant

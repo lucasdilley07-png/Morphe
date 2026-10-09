@@ -260,6 +260,8 @@ struct MoreView: View {
                 }
             }
 
+            NutritionChartCard()
+
             AIInsightCard(insight: store.nutritionInsight)
         }
     }
@@ -1255,6 +1257,141 @@ struct CoachNotesCard: View {
             Button("Cancel", role: .cancel) {}
         } message: { _ in
             Text("A person reviews every report.")
+        }
+    }
+}
+
+
+/// The whiteboard chart (Lucas 2026-10-09) as a goal picker, a macro bar,
+/// and the five food columns. Numbers come from the user's logged weight
+/// through NutritionPlan; without a weight the card shows the method and
+/// says so.
+struct NutritionChartCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var goal: NutritionGoalMode?
+
+    private var shownGoal: NutritionGoalMode { goal ?? store.nutritionGoalMode }
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("The Chart")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Text("4 · 4 · 9 CAL/G")
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+                Picker("Goal", selection: Binding(
+                    get: { shownGoal },
+                    set: { goal = $0; Haptics.selection() }
+                )) {
+                    ForEach(NutritionGoalMode.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if let plan = store.nutritionPlan(for: shownGoal) {
+                    HStack(spacing: 8) {
+                        MetricPill(label: "Calories", value: "\(plan.calories)")
+                        MetricPill(label: "Carbs", value: "\(plan.carbGrams)g")
+                        MetricPill(label: "Protein", value: "\(plan.proteinGrams)g")
+                        MetricPill(label: "Fat", value: "\(plan.fatGrams)g")
+                    }
+                    Text("Body weight \(plan.weightLb) lb × \(shownGoal.caloriesPerLb.formatted()) · split \(shownGoal.splitLabel)\(plan.proteinFloorApplied ? " · protein held at the 0.85 g/lb floor" : "")")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("Body weight × \(shownGoal.caloriesPerLb.formatted()) calories · split \(shownGoal.splitLabel). Log your weight in Profile for the grams.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                macroBar
+
+                Text(shownGoal.rule)
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Rectangle().fill(MorpheTheme.strokeSubtle).frame(height: 1)
+
+                // The five columns, in the order this goal leans on them.
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(shownGoal.leanOn.enumerated()), id: \.element.id) { index, group in
+                        foodColumn(group, rank: index + 1)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.2), value: shownGoal)
+
+                Text("From the founder's whiteboard. A method, not medical advice.")
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    /// Carbs / protein / fat as one bar — the diagram.
+    private var macroBar: some View {
+        let split = shownGoal.split
+        return VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { geo in
+                HStack(spacing: 2) {
+                    segment(width: geo.size.width * CGFloat(split.carbs) / 100, color: MorpheTheme.accent, label: "C \(split.carbs)%")
+                    segment(width: geo.size.width * CGFloat(split.protein) / 100, color: MorpheTheme.accentAlt, label: "P \(split.protein)%")
+                    segment(width: geo.size.width * CGFloat(split.fat) / 100, color: MorpheTheme.textMuted.opacity(0.6), label: "F \(split.fat)%")
+                }
+            }
+            .frame(height: 28)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: shownGoal)
+            .accessibilityLabel("Carbs \(split.carbs) percent, protein \(split.protein) percent, fat \(split.fat) percent")
+        }
+    }
+
+    private func segment(width: CGFloat, color: Color, label: String) -> some View {
+        ZStack {
+            Rectangle().fill(color)
+            Text(label)
+                .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .frame(width: max(width - 2, 0))
+    }
+
+    private func foodColumn(_ group: NutritionFoodGroup, rank: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text("\(rank)")
+                    .font(.system(.caption2, design: .monospaced).weight(.bold))
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(width: 16, height: 16)
+                    .background(Circle().fill(MorpheTheme.accent.opacity(0.15)))
+                Text(group.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text("\(group.caloriesPerGram) cal/g")
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            Text(group.whenToUse)
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(group.foods.joined(separator: " · "))
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
