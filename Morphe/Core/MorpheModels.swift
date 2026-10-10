@@ -3192,6 +3192,47 @@ struct CoachShareSummary: Codable, Hashable {
 
 /// One row of the Find Athletes username search — a directory hit, nothing
 /// more (profiles stay private until people choose to post).
+/// One line in the Morphe chat (Lucas 2026-10-10): every account has a
+/// conversation with Morphe — weekly reports from the user's own logs,
+/// news about what shipped, and answers to questions. Stored per
+/// profile, cloud-backed.
+struct MorpheInboxItem: Identifiable, Hashable, Codable {
+    enum Kind: String, Codable { case weeklyReport, news, question, answer }
+    var id: String
+    var kind: Kind
+    var date: Date
+    var title: String
+    var body: String
+
+    var isFromMorphe: Bool { kind != .question }
+}
+
+/// What shipped, in Morphe's voice, dated — every entry is a real build
+/// (sourcing law). Newest first. Delivered once per entry.
+enum MorpheNews {
+    static let entries: [MorpheInboxItem] = [
+        MorpheInboxItem(id: "news-2026-10-10-chat", kind: .news, date: day(2026, 10, 10),
+                        title: "This chat",
+                        body: "Every account has this conversation with me now. Each Monday I send your week in review from your own logs. I'll tell you here when something new ships. And you can ask me anything, any time."),
+        MorpheInboxItem(id: "news-2026-10-10-build", kind: .news, date: day(2026, 10, 10),
+                        title: "Build Workout",
+                        body: "Train has a Build Workout card: build one yourself, answer a few questions and I build it with you from the library, or start a multi-week program."),
+        MorpheInboxItem(id: "news-2026-10-10-people", kind: .news, date: day(2026, 10, 10),
+                        title: "Quick Add and connect",
+                        body: "The person-plus button is people: coaches and members on Morphe. Open an account, request to connect, message, or hide. Chats has a New message button. Humans only — no bots, no spam, no AI-written posts."),
+        MorpheInboxItem(id: "news-2026-10-10-fuel", kind: .news, date: day(2026, 10, 10),
+                        title: "Food check and the chart",
+                        body: "Learn → Nutrition: scan a barcode or photograph a meal and I report where it comes from, how processed it is and what's in it, with sources. The chart shows your calories and split for lean out, maintain or bulk."),
+        MorpheInboxItem(id: "news-2026-10-10-ranks", kind: .news, date: day(2026, 10, 10),
+                        title: "Ranks and colors",
+                        body: "Ten ranks, Rookie to General, climbed only by logged work. Each rank unlocks its own accent color — Morphe Dark Blue to start, platinum at Colonel, gold at General. The ladder is in Learn → The Code.")
+    ]
+
+    private static func day(_ y: Int, _ m: Int, _ d: Int) -> Date {
+        Calendar(identifier: .gregorian).date(from: DateComponents(year: y, month: m, day: d, hour: 9)) ?? .now
+    }
+}
+
 /// A connect request between two members (LinkedIn shape, Lucas
 /// 2026-10-10): connectRequests/{fromUid_toUid}. Accepted = connected.
 struct ConnectRequest: Identifiable, Hashable {

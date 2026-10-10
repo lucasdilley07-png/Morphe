@@ -695,7 +695,8 @@ private struct ClientExperienceShell: View {
             // sides; the root ink shows around it. Yields to the keyboard
             // (audit 13, P1) instead of floating on top of it.
             if !KeyboardWatcher.shared.isVisible {
-                BottomTabNavigation(items: ClientTab.visibleCases, selected: store.selectedClientTab) { tab in
+                BottomTabNavigation(items: ClientTab.visibleCases, selected: store.selectedClientTab,
+                                    badges: [.community: store.networkBadgeCount]) { tab in
                     store.selectedClientTab = tab
                     // Tapping the icon always lands at the top of that tab's
                     // first page.

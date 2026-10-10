@@ -91,7 +91,7 @@ struct CommunityView: View {
         // Equal columns, each label centered (Lucas 2026-10-10: more
         // separated, symmetrical — same as Discover's).
         HStack(alignment: .bottom, spacing: 0) {
-            sectionTab("CHATS", .contact, showsBadge: store.unreadThreadCount > 0)
+            sectionTab("CHATS", .contact, badgeCount: store.networkBadgeCount)
             if FeatureFlags.socialFeedEnabled {
                 sectionTab("FEED", .forYou)
             } else {
@@ -125,7 +125,8 @@ struct CommunityView: View {
     }
 
     private func sectionTab(_ label: String, _ section: ClientCommunitySection,
-                            showsBadge: Bool = false) -> some View {
+                            badgeCount: Int = 0) -> some View {
+        let showsBadge = badgeCount > 0
         let isActive = store.selectedCommunitySection == section
         return Button {
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -141,9 +142,9 @@ struct CommunityView: View {
                         .minimumScaleFactor(0.75)
                         .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
                     if showsBadge {
-                        Circle()
-                            .fill(MorpheTheme.accent)
-                            .frame(width: 6, height: 6)
+                        // The count sits top-right of the title (Lucas 2026-10-10).
+                        CountBadge(count: badgeCount)
+                            .offset(y: -6)
                     }
                 }
                 Rectangle()
@@ -154,7 +155,7 @@ struct CommunityView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(showsBadge ? "\(label.capitalized), new messages" : label.capitalized)
+        .accessibilityLabel(showsBadge ? "\(label.capitalized), \(badgeCount) new" : label.capitalized)
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
@@ -3734,6 +3735,7 @@ struct AthleteInboxView: View {
     @State private var searchTask: Task<Void, Never>?
     @State private var startingChatUid: String?
     @State private var showNewConversation = false
+    @State private var showMorpheThread = false
     @FocusState private var searchFocused: Bool
 
     private var myUid: String { store.authUser?.id ?? "" }
@@ -3843,6 +3845,28 @@ struct AthleteInboxView: View {
                 )
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
+
+                // Morphe's own conversation, pinned (Lucas 2026-10-10):
+                // weekly reports, news, answers. Every account has it.
+                if cleanQuery.isEmpty {
+                    Button {
+                        showMorpheThread = true
+                    } label: {
+                        MorpheThreadRow(lastItem: store.morpheInbox.last, unread: store.morpheInboxUnreadCount)
+                    }
+                    .buttonStyle(.plain)
+                    .sheet(isPresented: $showMorpheThread, onDismiss: { store.markMorpheInboxRead() }) {
+                        MorpheThreadView()
+                            .environment(store)
+                            .presentationDetents([.large])
+                            .presentationDragIndicator(.visible)
+                            .presentationCornerRadius(28)
+                            .sheetToastSurface()
+                    }
+                    Divider()
+                        .overlay(MorpheTheme.stroke.opacity(0.5))
+                        .padding(.leading, 72)
+                }
 
                 ForEach(Array(visibleThreads.enumerated()), id: \.element.id) { index, thread in
                     Button {
@@ -4099,6 +4123,174 @@ private struct ClientConversationRow: View {
 }
 
 // MARK: - Creator feed (2026-10-05)
+
+/// The pinned Morphe row in Chats.
+struct MorpheThreadRow: View {
+    let lastItem: MorpheInboxItem?
+    let unread: Int
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(MorpheTheme.accent.opacity(0.18))
+                Image("MorpheAIMark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 30, height: 30)
+            }
+            .frame(width: 44, height: 44)
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    if unread > 0 {
+                        Circle().fill(MorpheTheme.accent).frame(width: 8, height: 8)
+                    }
+                    Text("Morphe")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text("GUARDIAN")
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(1.2)
+                        .foregroundStyle(MorpheTheme.accentText)
+                    Spacer()
+                    if let lastItem {
+                        Text(lastItem.date.formatted(.relative(presentation: .named)))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(unread > 0 ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                    }
+                }
+                Text(lastItem.map { $0.title.isEmpty ? $0.body : "\($0.title): \($0.body)" } ?? "Weekly reports, news, and answers to anything you ask.")
+                    .font(unread > 0 ? .caption.weight(.semibold) : .caption)
+                    .foregroundStyle(unread > 0 ? MorpheTheme.textPrimary : MorpheTheme.textSecondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(unread > 0 ? "Morphe, \(unread) new" : "Morphe")
+    }
+}
+
+/// The Morphe conversation: reports and news on the left, your questions
+/// on the right, a composer that asks the same brain as the floating chat.
+struct MorpheThreadView: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var draft = ""
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Morphe")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text("Weekly reports from your logs · what's new · ask anything")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                Spacer(minLength: 8)
+                Button("Done") { dismiss() }
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .frame(minWidth: 44, minHeight: 44)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+
+            ScrollViewReader { proxy in
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        if store.morpheInbox.isEmpty {
+                            Text("Nothing here yet. Your first report lands on Monday after your first logged week — or ask me something now.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .padding(.top, 8)
+                        }
+                        ForEach(store.morpheInbox) { item in
+                            bubble(item).id(item.id)
+                        }
+                        if store.morpheReplyInFlight {
+                            HStack(spacing: 8) {
+                                ProgressView().tint(MorpheTheme.accent)
+                                Text("Morphe is thinking…")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+                .onAppear { if let last = store.morpheInbox.last { proxy.scrollTo(last.id, anchor: .bottom) } }
+                .onChange(of: store.morpheInbox.count) { _, _ in
+                    if let last = store.morpheInbox.last {
+                        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
+                }
+            }
+
+            Divider().overlay(MorpheTheme.stroke.opacity(0.8))
+            HStack(spacing: 10) {
+                TextField("Ask Morphe", text: $draft, axis: .vertical)
+                    .lineLimit(1...3)
+                    .submitLabel(.send)
+                    .onSubmit { send() }
+                    .textFieldStyle(MorpheFieldStyle())
+                Button("Send") { send() }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .frame(width: 96)
+                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || store.morpheReplyInFlight)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
+        .onAppear { store.refreshMorpheInbox() }
+    }
+
+    private func send() {
+        let text = draft
+        draft = ""
+        Task { await store.askMorpheInThread(text) }
+    }
+
+    @ViewBuilder
+    private func bubble(_ item: MorpheInboxItem) -> some View {
+        VStack(alignment: item.isFromMorphe ? .leading : .trailing, spacing: 4) {
+            HStack(spacing: 6) {
+                if item.isFromMorphe {
+                    Text(item.kind == .weeklyReport ? "WEEK IN REVIEW" : (item.kind == .news ? "NEW IN MORPHE" : "MORPHE"))
+                        .font(MorpheTheme.microLabel(9))
+                        .tracking(1.2)
+                        .foregroundStyle(MorpheTheme.accentText)
+                }
+                Text(item.date.formatted(.dateTime.month(.abbreviated).day().hour().minute()))
+                    .font(.caption2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                if !item.title.isEmpty {
+                    Text(item.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                }
+                Text(item.body)
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(12)
+            .frame(maxWidth: 320, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(item.isFromMorphe ? MorpheTheme.panel : MorpheTheme.accentAlt.opacity(0.3))
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: item.isFromMorphe ? .leading : .trailing)
+        .accessibilityElement(children: .combine)
+    }
+}
 
 /// New message (Lucas 2026-10-10): the people you can message now —
 /// connected, followed, already chatting — plus a directory search for

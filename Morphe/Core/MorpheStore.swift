@@ -1743,6 +1743,7 @@ final class MorpheAppStore {
                     threadReadKey, activitySeenKey, storySeenKey,
                     lastKnownStreakKey, comebackPendingKey, foodChecksKey, recentFoodsKey,
                     savedExercisesKey, savedLessonsKey, savedDietPlansKey, hiddenPeopleKey, knownNamesKey,
+                    morpheInboxKey, morpheInboxReadKey,
                     dailyStreakCountKey, dailyStreakLastDayKey, dailyStreakBestKey, dailyStreakFreezeDayKey,
                     // An invite link opened before sign-out must not credit
                     // the next account's recruiter (audit 2026-10-10, P2).
@@ -4811,6 +4812,8 @@ final class MorpheAppStore {
             "savedDietPlans": savedDietPlansKey,
             "hiddenPeople": hiddenPeopleKey,
             "knownNames": knownNamesKey,
+            "morpheInbox": morpheInboxKey,
+            "morpheInboxRead": morpheInboxReadKey,
             "dailyStreakCount": dailyStreakCountKey,
             "dailyStreakLastDay": dailyStreakLastDayKey,
             "dailyStreakBest": dailyStreakBestKey,
@@ -4906,6 +4909,7 @@ final class MorpheAppStore {
         loadRecentFoods()
         loadSavedThings()
         loadHiddenPeople()
+        loadMorpheInbox()
     }
 
     /// Called from `submitRecoveryCheckIn` — records today's real inputs.
@@ -6466,6 +6470,7 @@ final class MorpheAppStore {
 
     func finishLaunchSequence() {
         armDayPopupForThisOpen()
+        refreshMorpheInbox()
         withAnimation(.easeInOut(duration: 0.3)) {
             isShowingLaunchSequence = false
         }
@@ -9305,6 +9310,152 @@ final class MorpheAppStore {
     /// tracker converges on. Per profile.
     private(set) var recentFoods: [FoodSearchResult] = []
     private var recentFoodsKey: String { "morphe.fuel.recents.\(clientProfile.id.uuidString)" }
+
+    // MARK: - The Morphe chat (Lucas 2026-10-10)
+    //
+    // Every account has a conversation with Morphe: a weekly report built
+    // from the user's own logs (never invented — a week with nothing
+    // logged says so), news about real builds (once per entry), and
+    // answers (the same brain as the floating chat).
+
+    private var morpheInboxKey: String { "morphe.inbox.\(clientProfile.id.uuidString)" }
+    private var morpheInboxReadKey: String { "morphe.inbox.read.\(clientProfile.id.uuidString)" }
+    var morpheInbox: [MorpheInboxItem] = []
+    var morpheInboxReadAt: Date = .distantPast
+    var morpheReplyInFlight = false
+
+    func loadMorpheInbox() {
+        morpheInbox = loadSeries(morpheInboxKey)
+        let t = UserDefaults.standard.double(forKey: morpheInboxReadKey)
+        morpheInboxReadAt = t > 0 ? Date(timeIntervalSince1970: t) : .distantPast
+    }
+
+    private func saveMorpheInbox() {
+        morpheInbox.sort { $0.date < $1.date }
+        saveSeries(morpheInbox, key: morpheInboxKey, cap: 400)
+        mirrorExtrasToCloud()
+    }
+
+    var morpheInboxUnreadCount: Int {
+        morpheInbox.filter { $0.isFromMorphe && $0.date > morpheInboxReadAt }.count
+    }
+
+    func markMorpheInboxRead() {
+        morpheInboxReadAt = .now
+        UserDefaults.standard.set(morpheInboxReadAt.timeIntervalSince1970, forKey: morpheInboxReadKey)
+    }
+
+    /// Delivers what is due: unseen news, and the report for the week that
+    /// just ended (Monday or later, once). Called on every app open.
+    func refreshMorpheInbox(now: Date = .now) {
+        guard hasCompletedOnboarding else { return }
+        var changed = false
+        // News: first ever open delivers the whole set so a new member
+        // sees what Morphe does; afterwards only entries newer than the
+        // last delivered one.
+        let delivered = Set(morpheInbox.filter { $0.kind == .news }.map(\.id))
+        for entry in MorpheNews.entries.reversed() where !delivered.contains(entry.id) && entry.date <= now {
+            var item = entry
+            if morpheInbox.isEmpty { item.date = now.addingTimeInterval(-60) }   // lands "just now" on a fresh account
+            morpheInbox.append(item); changed = true
+        }
+        // The week that just ended.
+        let thisWeekStart = LeaderboardWeek.start()
+        let weekId = "report-\(Int(thisWeekStart.timeIntervalSince1970))"
+        if !morpheInbox.contains(where: { $0.id == weekId }),
+           let lastWeekStart = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: thisWeekStart),
+           hasAnyLogsBefore(thisWeekStart) {
+            morpheInbox.append(MorpheInboxItem(id: weekId, kind: .weeklyReport, date: max(thisWeekStart.addingTimeInterval(9 * 3600), min(now, thisWeekStart.addingTimeInterval(9 * 3600))),
+                                               title: "Your week in review",
+                                               body: weeklyReportBody(weekStart: lastWeekStart, weekEnd: thisWeekStart)))
+            changed = true
+        }
+        if changed { saveMorpheInbox() }
+    }
+
+    private func hasAnyLogsBefore(_ date: Date) -> Bool {
+        currentAthleteWorkoutLogs.contains { $0.completedAt < date }
+            || recoverySeries.contains { $0.date < date }
+            || nutritionSeries.contains { $0.date < date }
+    }
+
+    /// The report, from logs only. Every number here is one the user
+    /// produced; a quiet week is reported as a quiet week.
+    func weeklyReportBody(weekStart: Date, weekEnd: Date) -> String {
+        let calendar = Calendar.current
+        let logs = currentAthleteWorkoutLogs.filter { $0.completedAt >= weekStart && $0.completedAt < weekEnd }
+        let priorStart = calendar.date(byAdding: .weekOfYear, value: -1, to: weekStart) ?? weekStart
+        let priorLogs = currentAthleteWorkoutLogs.filter { $0.completedAt >= priorStart && $0.completedAt < weekStart }
+        let checkIns = recoverySeries.filter { $0.date >= weekStart && $0.date < weekEnd }
+        let fuelDays = Set(nutritionSeries.filter { $0.date >= weekStart && $0.date < weekEnd && ($0.calories > 0 || $0.protein > 0) }
+            .map { calendar.startOfDay(for: $0.date) }).count
+        let range = "\(weekStart.formatted(.dateTime.month(.abbreviated).day())) – \(weekEnd.addingTimeInterval(-1).formatted(.dateTime.month(.abbreviated).day()))"
+        var lines: [String] = ["Week of \(range)."]
+
+        if logs.isEmpty {
+            lines.append("No sessions logged. Nothing to dress up — the plan is still there when you are.")
+        } else {
+            let sets = logs.reduce(0) { $0 + $1.exercises.reduce(0) { $0 + ($1.repsPerSet?.count ?? 0) } }
+            let minutes = logs.reduce(0) { $0 + $1.durationMinutes }
+            let target = max(1, clientProfile.trainingDaysPerWeek)
+            var line = "\(logs.count) session\(logs.count == 1 ? "" : "s") of your \(target)-a-week target"
+            if !priorLogs.isEmpty { line += " (\(priorLogs.count) the week before)" }
+            line += ", \(sets) sets, \(minutes) minutes."
+            lines.append(line)
+            let names = logs.flatMap { $0.exercises.map(\.name) }
+            if let top = Dictionary(grouping: names, by: { $0 }).max(by: { $0.value.count < $1.value.count })?.key {
+                lines.append("Most trained: \(top).")
+            }
+        }
+        let streak = currentAthleteWorkoutSummary.currentStreakDays
+        if streak >= 2 { lines.append("Streak: \(streak) days.") }
+        if !checkIns.isEmpty {
+            let avg = Double(checkIns.map(\.score).reduce(0, +)) / Double(checkIns.count)
+            let sleep = checkIns.map(\.sleepHours).reduce(0, +) / Double(checkIns.count)
+            lines.append("Check-ins: \(checkIns.count) of 7 days, readiness averaged \(Int(avg.rounded())), sleep \(sleep.formatted(.number.precision(.fractionLength(1)))) h.")
+        } else {
+            lines.append("No check-ins this week — thirty seconds on Today tells me how you're recovering.")
+        }
+        if fuelDays > 0 { lines.append("Fuel logged on \(fuelDays) day\(fuelDays == 1 ? "" : "s").") }
+        if let hour = styleProfile.preferredTrainingHour { lines.append("Habit: you train around \(Self.formattedHour(hour)).") }
+        if !logs.isEmpty, logs.count < max(1, clientProfile.trainingDaysPerWeek) {
+            lines.append("Next week: one more session than this one. That's the whole ask.")
+        } else if !logs.isEmpty {
+            lines.append("Target met. Hold the line next week.")
+        }
+        return lines.joined(separator: " ")
+    }
+
+    /// A question to Morphe from this chat: the same brain as the
+    /// floating chat, answered into the thread (Claude with the user's
+    /// key, the built-in brain without one).
+    func askMorpheInThread(_ text: String) async {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, !morpheReplyInFlight else { return }
+        if let refusal = ContentModeration.humanityRefusal(for: clean, kind: .message) {
+            showToast(refusal.message, isError: true); return
+        }
+        morpheInbox.append(MorpheInboxItem(id: UUID().uuidString, kind: .question, date: .now, title: "", body: String(clean.prefix(1000))))
+        saveMorpheInbox()
+        morpheReplyInFlight = true
+        defer { morpheReplyInFlight = false }
+        var answer: String
+        if let key = MorpheIntelligence.apiKey {
+            let turns = morpheInbox.filter { $0.kind == .question || $0.kind == .answer }.suffix(12)
+                .map { MorpheIntelligence.Turn(isUser: $0.kind == .question, text: $0.body) }
+            do {
+                answer = try await MorpheIntelligence.reply(system: intelligenceSystemPrompt(spoken: false, userText: clean), turns: turns, apiKey: key, timeout: 30)
+            } catch {
+                answer = (error as? MorpheIntelligence.IntelligenceError)?.errorDescription ?? "I couldn't reach Claude. The built-in answer: " + athleteAgentReply(to: clean)
+            }
+        } else {
+            answer = athleteAgentReply(to: clean)
+        }
+        morpheInbox.append(MorpheInboxItem(id: UUID().uuidString, kind: .answer, date: .now, title: "", body: answer))
+        saveMorpheInbox()
+        markMorpheInboxRead()
+        Haptics.impact(.light)
+    }
 
     // MARK: - Saved things (Learn → Library, Lucas 2026-10-10)
     //
@@ -13496,6 +13647,7 @@ final class MorpheAppStore {
         wasBackgrounded = false
         dayPopupSessionDismissed = false
         armDayPopupForThisOpen()
+        refreshMorpheInbox()
         morpheAskRefresh += 1
     }
 
@@ -14025,6 +14177,10 @@ final class MorpheAppStore {
     }
 
     var unreadThreadCount: Int { liveThreads.filter { isThreadUnread($0) }.count }
+    /// What's waiting in Network: unread chats, Morphe's unread reports and
+    /// news, and connect requests to answer. Shown on the Chats tab label
+    /// and the dock (Lucas 2026-10-10).
+    var networkBadgeCount: Int { unreadThreadCount + morpheInboxUnreadCount + incomingConnectRequests.count }
 
     /// Sends one immutable message into the open thread. The listener streams
     /// it back into `activeThreadMessages`; the local inbox preview rolls
@@ -15735,7 +15891,7 @@ final class MorpheAppStore {
               let fireDate = calendar.date(bySettingHour: 9, minute: 5, second: 0, of: nextWeekStart)
         else { return }
 
-        let body = "\(recap.sessions) session\(recap.sessions == 1 ? "" : "s"), \(recap.sets) sets logged — your recap card is in Progress, under your profile."
+        let body = "\(recap.sessions) session\(recap.sessions == 1 ? "" : "s"), \(recap.sets) sets logged — Morphe's full report is waiting in Chats."
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .authorized
                 || settings.authorizationStatus == .provisional else { return }

@@ -6688,6 +6688,26 @@ final class ModerationTests: XCTestCase {
         XCTAssertNil(store.authUser)
     }
 
+    func testMorpheChatDeliversNewsOnceAndReportsOnlyLoggedWeeks() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.acceptTerms()
+        store.refreshMorpheInbox()
+        let news = store.morpheInbox.filter { $0.kind == .news }
+        XCTAssertEqual(news.count, MorpheNews.entries.count, "a fresh account gets every entry once")
+        XCTAssertTrue(store.morpheInbox.filter { $0.kind == .weeklyReport }.isEmpty, "no logs before this week → no report invented")
+        store.refreshMorpheInbox()
+        XCTAssertEqual(store.morpheInbox.filter { $0.kind == .news }.count, news.count, "never delivered twice")
+        XCTAssertEqual(store.morpheInboxUnreadCount, news.count)
+        store.markMorpheInboxRead()
+        XCTAssertEqual(store.morpheInboxUnreadCount, 0)
+        // The report body never dresses up an empty week.
+        let start = LeaderboardWeek.start()
+        let body = store.weeklyReportBody(weekStart: Calendar.current.date(byAdding: .weekOfYear, value: -1, to: start)!, weekEnd: start)
+        XCTAssertTrue(body.contains("No sessions logged"), body)
+    }
+
     func testKnownNamesGiveFollowedPeopleANameInPickers() {
         let store = MorpheAppStore()
         store.rememberName("Dana Cole", for: "u9")

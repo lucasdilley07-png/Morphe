@@ -2037,16 +2037,35 @@ struct QuickActionButton: View {
 struct BottomTabNavigation<Item: MorpheTabItem & CaseIterable>: View where Item.AllCases == [Item] {
     let items: [Item]
     let selected: Item
+    /// Count badges per tab (0 = none).
+    var badges: [Item: Int] = [:]
     let onSelect: (Item) -> Void
 
     var body: some View {
-        MorpheTabBar(items: items, selected: selected, onSelect: onSelect)
+        MorpheTabBar(items: items, selected: selected, badges: badges, onSelect: onSelect)
+    }
+}
+
+/// The red count pill every messaging app wears top-right of an icon.
+struct CountBadge: View {
+    let count: Int
+    var body: some View {
+        Text(count > 99 ? "99+" : "\(count)")
+            .font(.system(size: 10, weight: .bold))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .padding(.horizontal, 5)
+            .frame(minWidth: 17, minHeight: 17)
+            .background(Capsule().fill(MorpheTheme.danger))
+            .overlay(Capsule().stroke(Color.black.opacity(0.25), lineWidth: 0.5))
+            .accessibilityLabel("\(count) new")
     }
 }
 
 struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCases == [Item] {
     let items: [Item]
     let selected: Item
+    var badges: [Item: Int] = [:]
     let onSelect: (Item) -> Void
 
     var body: some View {
@@ -2064,6 +2083,12 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                     VStack(spacing: 4) {
                         Image(systemName: item.systemImage)
                             .font(.system(size: 21, weight: .semibold))
+                            .overlay(alignment: .topTrailing) {
+                                if let count = badges[item], count > 0 {
+                                    CountBadge(count: count)
+                                        .offset(x: 10, y: -8)
+                                }
+                            }
                         // Named, not icons-only: six abstract glyphs made
                         // new users guess what Discover/Network/Learn were
                         // (audit BLOCKER). Mono micro-labels keep the HUD.
@@ -2085,7 +2110,7 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text(item.title))
+                .accessibilityLabel(Text((badges[item] ?? 0) > 0 ? "\(item.title), \(badges[item]!) new" : item.title))
                 .accessibilityAddTraits(selected == item ? [.isButton, .isSelected] : .isButton)
             }
         }
