@@ -742,6 +742,42 @@ enum FitnessGoalOption: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// How the user eats (Lucas 2026-10-10: "diet" under goals). Multi-select,
+/// stored comma-joined like equipment; "No restrictions" stands alone.
+enum DietOption: String, CaseIterable, Identifiable {
+    case noRestrictions = "No restrictions"
+    case highProtein = "High protein"
+    case vegetarian = "Vegetarian"
+    case vegan = "Vegan"
+    case pescatarian = "Pescatarian"
+    case halal = "Halal"
+    case kosher = "Kosher"
+    case glutenFree = "Gluten-free"
+    case dairyFree = "Dairy-free"
+    case lowCarb = "Low carb / keto"
+    case fasting = "Intermittent fasting"
+
+    var id: String { rawValue }
+}
+
+/// What the user says they are weakest at (Lucas 2026-10-10: "weakness"
+/// under equipment). Their own read, never inferred from logs.
+enum WeaknessOption: String, CaseIterable, Identifiable {
+    case upperBody = "Upper body"
+    case lowerBody = "Lower body"
+    case core = "Core"
+    case cardio = "Cardio / endurance"
+    case mobility = "Mobility"
+    case balance = "Balance"
+    case grip = "Grip"
+    case explosiveness = "Explosiveness"
+    case consistency = "Consistency"
+    case recovery = "Sleep & recovery"
+    case nutrition = "Nutrition discipline"
+
+    var id: String { rawValue }
+}
+
 enum TrainingStyleOption: String, CaseIterable, Identifiable {
     case strength = "Strength"
     case conditioning = "Conditioning"
@@ -1192,55 +1228,68 @@ struct LoreEntry: Identifiable, Hashable {
     var id: String { title }
 }
 
-/// The three stages of the agoge are Xenophon's (Constitution of the
-/// Lacedaemonians 2–4: boys, youths, those in their prime); Plutarch
-/// (Lycurgus 16–17) adds entry at seven and the twenty-year-old eirēn.
-/// The ages on this ladder — hēbōn at 20, full standing at 30 — are the
-/// standard modern reconstruction, not a line in either text.
-enum AgogeRank: Int, CaseIterable, Identifiable {
-    case pais, paidiskos, hebon, homoios
+/// The rank ladder (Lucas 2026-10-10): American military-style titles,
+/// climbed by level — and levels come only from logged work. Titles are
+/// a familiar vocabulary for standing, not a claim about any service.
+enum MorpheRank: Int, CaseIterable, Identifiable {
+    case rookie, cadet, privateFirst, corporal, sergeant, lieutenant, captain, major, colonel, general
 
     var id: Int { rawValue }
 
-    static func rank(forLevel level: Int) -> AgogeRank {
-        switch level {
-        case ..<11: return .pais
-        case 11..<20: return .paidiskos
-        case 20..<30: return .hebon
-        default: return .homoios
-        }
+    static func rank(forLevel level: Int) -> MorpheRank {
+        var current: MorpheRank = .rookie
+        for rank in MorpheRank.allCases where level >= rank.firstLevel { current = rank }
+        return current
     }
 
     /// The level this rank is reached at.
     var firstLevel: Int {
         switch self {
-        case .pais: return 1
-        case .paidiskos: return 11
-        case .hebon: return 20
-        case .homoios: return 30
+        case .rookie: return 1
+        case .cadet: return 5
+        case .privateFirst: return 10
+        case .corporal: return 15
+        case .sergeant: return 20
+        case .lieutenant: return 26
+        case .captain: return 32
+        case .major: return 40
+        case .colonel: return 50
+        case .general: return 60
         }
     }
 
     var title: String {
         switch self {
-        case .pais: return "Pais"
-        case .paidiskos: return "Paidiskos"
-        case .hebon: return "Hēbōn"
-        case .homoios: return "Homoios"
+        case .rookie: return "Rookie"
+        case .cadet: return "Cadet"
+        case .privateFirst: return "Private"
+        case .corporal: return "Corporal"
+        case .sergeant: return "Sergeant"
+        case .lieutenant: return "Lieutenant"
+        case .captain: return "Captain"
+        case .major: return "Major"
+        case .colonel: return "Colonel"
+        case .general: return "General"
         }
     }
 
-    /// Plain-English gloss — the Greek never stands alone.
+    /// One plain line on what the rank means here.
     var gloss: String {
         switch self {
-        case .pais: return "First stage of the agoge"
-        case .paidiskos: return "Second stage of the agoge"
-        case .hebon: return "Third stage: the young adults"
-        case .homoios: return "One of the Equals"
+        case .rookie: return "Day one. Everyone starts here."
+        case .cadet: return "In training — the habit is forming."
+        case .privateFirst: return "Enlisted. Sessions are routine now."
+        case .corporal: return "First stripe. You lead yourself."
+        case .sergeant: return "The work is consistent and it shows."
+        case .lieutenant: return "Commissioned by the log, nothing else."
+        case .captain: return "A standard others can train to."
+        case .major: return "Months of logged work behind the title."
+        case .colonel: return "Rare air. Earned the slow way."
+        case .general: return "The top of the ladder. There is no rank above it."
         }
     }
 
-    var next: AgogeRank? { AgogeRank(rawValue: rawValue + 1) }
+    var next: MorpheRank? { MorpheRank(rawValue: rawValue + 1) }
 }
 
 enum SpartanLore {
@@ -2573,6 +2622,10 @@ struct ClientProfile: Hashable {
     var fitnessLevel: String
     var limitations: String
     var equipment: String
+    /// Comma-joined DietOption / WeaknessOption titles, set in Profile → Your
+    /// Details ("" = not set). Both read by the AI prompt.
+    var diet: String = ""
+    var weaknesses: String = ""
     /// Free-text body metrics, user-editable from Profile ("5'10\"", "178 cm").
     var height: String = ""
     var bodyWeight: String = ""

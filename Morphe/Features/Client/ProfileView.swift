@@ -239,14 +239,18 @@ struct ProfileView: View {
         let goals = store.clientProfile.selectedGoals
         let styles = store.clientProfile.selectedTrainingStyles.map(\.rawValue)
         let gear = Array(selectedEquipment).sorted()
+        let diet = MorpheAppStore.splitJoined(store.clientProfile.diet)
+        let weak = MorpheAppStore.splitJoined(store.clientProfile.weaknesses)
         func line(_ items: [String], none: String) -> String {
             items.isEmpty ? none : items.prefix(3).joined(separator: ", ") + (items.count > 3 ? " +\(items.count - 3)" : "")
         }
         return [
             ("Experience", store.clientProfile.fitnessLevel.isEmpty ? "Not set" : store.clientProfile.fitnessLevel),
             ("Goals", line(goals, none: "Not set")),
+            ("Diet", line(diet, none: "Not set")),
             ("Styles", line(styles, none: "Not set")),
-            ("Equipment", line(gear, none: "Not set"))
+            ("Equipment", line(gear, none: "Not set")),
+            ("Weakness", line(weak, none: "Not set"))
         ]
     }
 
@@ -316,6 +320,22 @@ struct ProfileView: View {
                 Divider().overlay(MorpheTheme.strokeSubtle)
 
                 VStack(alignment: .leading, spacing: 8) {
+                    Text("Diet")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
+                        ForEach(DietOption.allCases) { option in
+                            Button(option.rawValue) {
+                                store.toggleProfileDiet(option)
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: MorpheAppStore.splitJoined(store.clientProfile.diet).contains(option.rawValue)))
+                        }
+                    }
+                }
+
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
+                VStack(alignment: .leading, spacing: 8) {
                     Text("Training styles")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textMuted)
@@ -341,6 +361,25 @@ struct ProfileView: View {
                                 toggleEquipment(option)
                             }
                             .buttonStyle(FilterChipStyle(isSelected: selectedEquipment.contains(option)))
+                        }
+                    }
+                }
+
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Weakness")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    Text("Your own read. Morphe leans plans and advice toward it.")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    WrapStack(spacing: 8) {
+                        ForEach(WeaknessOption.allCases) { option in
+                            Button(option.rawValue) {
+                                store.toggleProfileWeakness(option)
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: MorpheAppStore.splitJoined(store.clientProfile.weaknesses).contains(option.rawValue)))
                         }
                     }
                 }
@@ -507,7 +546,7 @@ struct ProfileView: View {
     /// The agoge rung this level stands on (Sparta's own ladder) — opens
     /// The Code, where every rung and its source is laid out.
     private var rankRow: some View {
-        let rank = AgogeRank.rank(forLevel: store.currentLevelNumber)
+        let rank = MorpheRank.rank(forLevel: store.currentLevelNumber)
         let nextLabel = rank.next.map { "\($0.title) at \($0.firstLevel)" }
         return Button {
             showingCode = true

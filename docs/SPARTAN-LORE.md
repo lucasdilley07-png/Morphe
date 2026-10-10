@@ -21,9 +21,9 @@ pitch use; they are the parts that go stale.
 
 | Surface | What it does | Source it stands on |
 |---|---|---|
-| **The Code** sheet (Learn tab → "From the record" card; Profile → rank row) | Today's saying in serif, the agoge ladder with the user's rung lit, seven short reads, all eight sayings, and "What Morphe leaves behind" | every block carries its citation |
+| **The Code** sheet (Learn tab → "From the record" card; Profile → rank row) | Today's saying in serif, seven short reads, all eight sayings, and "What Morphe leaves behind" | every block carries its citation |
 | **Saying of the day** | One line a day, picked by day number, same for everyone, never reshuffled | 8 verified sayings (§3) |
-| **Agoge rank** on the level card + level-up banner | Levels 1–10 Pais, 11–19 Paidiskos, 20–29 Hēbōn, 30+ Homoios | stages: Xenophon, *Lac. Pol.* 2–4; ages: modern reconstruction |
+| **Rank** on the level card + level-up banner | Retired 2026-10-10 by Lucas: the Greek rungs (Pais → Homoios) are replaced by a ten-rank American military-style ladder, Rookie → General, climbed by level. The agoge stays in §4 as record, not UI | — |
 | **Laconic** communication style | "Direct" renamed (same id, no migration). The register now lives in the style, so "Encouraging" is honored | — |
 | **AI lore guardrail** (Claude prompt) | Short law on every turn (never quote from memory, never invent or "adapt", never glorify helotry, never "molon labe"); the 8 cited sayings are sent only on a turn that asks for lore | §3, §6 |
 | **Built-in brain** | "who are you", "my rank", "a Spartan saying" answer from the record with no API key | §3 |
@@ -134,9 +134,10 @@ no standard translation, so the app uses Babbitt's actual line.
 - Source warning: Xenophon is a 4th-century admirer; Plutarch describes a
   Roman-era revival that differed from the classical system.
 
-**Mapping.** App levels use the reconstruction's upper bounds (Hēbōn at 20,
-Equal at 30), and the app says so on the ladder itself. Greek titles are grammatically masculine; the app shows them with a
-plain gloss, and the record itself has Spartan girls training (§5).
+**Mapping.** No longer shipped: from 2026-10-10 the app's ladder is
+Rookie → Cadet → Private → Corporal → Sergeant → Lieutenant → Captain →
+Major → Colonel → General (levels 1/5/10/15/20/26/32/40/50/60). The agoge
+bands above remain record for the lore sheet only.
 
 ---
 

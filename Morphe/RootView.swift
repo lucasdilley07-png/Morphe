@@ -3957,7 +3957,7 @@ private struct WelcomeExperienceView: View {
             VStack(alignment: .leading, spacing: 16) {
                 kicker("Progress")
                 title("A score you earned.")
-                body("Streaks with honest outs, PRs from real logged sets, trends from your own history, and levels on Sparta's own ladder: Pais, Paidiskos, Hēbōn, Equal. A quick daily check-in reads sleep, energy, soreness and mood, and Morphe adjusts the day around it.")
+                body("Streaks with honest outs, PRs from real logged sets, trends from your own history, and ranks climbed by level, Rookie to General. A quick daily check-in reads sleep, energy, soreness and mood, and Morphe adjusts the day around it.")
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 8) {
                         rule("Daily check-in", "Today → Check In: sleep, energy, soreness, mood.")

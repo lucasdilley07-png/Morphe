@@ -65,6 +65,8 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var fitnessLevel: String
     var equipment: String
     var injuries: String
+    var diet: String = ""
+    var weaknesses: String = ""
     var theme: String
     var accentPalette: String
     var customAccentHex: String = ""
@@ -191,6 +193,8 @@ extension LocalProfileSnapshot {
         fitnessLevel = str(.fitnessLevel)
         equipment = str(.equipment)
         injuries = str(.injuries)
+        diet = str(.diet)
+        weaknesses = str(.weaknesses)
         theme = str(.theme)
         accentPalette = str(.accentPalette)
         customAccentHex = str(.customAccentHex)

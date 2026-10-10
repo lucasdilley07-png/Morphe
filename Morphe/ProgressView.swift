@@ -2958,7 +2958,7 @@ struct ProgressPhotosCard: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Progress Photos")
+                    Text("Progress Library")
                         .font(.headline)
                         .foregroundStyle(MorpheTheme.textPrimary)
                     Text("Same spot, same light, every few weeks. Stored on this iPhone only — never uploaded, never shown to anyone.")

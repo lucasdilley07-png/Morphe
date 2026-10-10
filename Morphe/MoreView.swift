@@ -772,7 +772,7 @@ struct SpartanCodeContent: View {
     var saying: LaconicSaying = SpartanLore.saying()
     let onDone: () -> Void
 
-    private var rank: AgogeRank { AgogeRank.rank(forLevel: store.currentLevelNumber) }
+    private var rank: MorpheRank { MorpheRank.rank(forLevel: store.currentLevelNumber) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -900,20 +900,19 @@ struct SpartanCodeContent: View {
             VStack(alignment: .leading, spacing: 12) {
                 sectionLabel("The ladder")
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(AgogeRank.allCases) { rung in
+                    ForEach(MorpheRank.allCases) { rung in
                         ladderRow(rung)
                     }
                 }
-                Text("The three stages are Xenophon\u{2019}s. The ages behind the last two, twenty and thirty, are the standard modern reconstruction. Levels come only from logged work.")
+                Text("Ten ranks, climbed by level. Levels come only from logged work — there is nothing to buy and nothing to skip.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                sourceLine("Xenophon, Constitution of the Lacedaemonians 2\u{2013}4 · Plutarch, Lycurgus 16\u{2013}18")
             }
         }
     }
 
-    private func ladderRow(_ rung: AgogeRank) -> some View {
+    private func ladderRow(_ rung: MorpheRank) -> some View {
         let isCurrent = rung == rank
         let reached = rung.rawValue <= rank.rawValue
         let lit = MorpheTheme.accentText
@@ -924,7 +923,7 @@ struct SpartanCodeContent: View {
             // the node is reached; below it, when the NEXT one is.
             VStack(spacing: 0) {
                 Rectangle()
-                    .fill(rung == .pais ? Color.clear : (reached ? lit : unlit))
+                    .fill(rung == .rookie ? Color.clear : (reached ? lit : unlit))
                     .frame(width: 2, height: 8)
                 Circle()
                     .fill(reached ? lit : Color.clear)
@@ -963,7 +962,7 @@ struct SpartanCodeContent: View {
         .accessibilityLabel("\(rung.title), \(rung.gloss), from level \(rung.firstLevel). \(isCurrent ? "Your rank, level \(store.currentLevelNumber)" : (reached ? "Reached" : "Not reached yet"))")
     }
 
-    private func ladderTitle(_ rung: AgogeRank, isCurrent: Bool) -> some View {
+    private func ladderTitle(_ rung: MorpheRank, isCurrent: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(rung.title)
                 .font(.subheadline.weight(.semibold))

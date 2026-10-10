@@ -5253,6 +5253,32 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertFalse(reloaded.personalizedPlanIDs.isEmpty, "the plan rebuilt around it")
     }
 
+    func testDietAndWeaknessChipsPersistAndReachThePrompt() {
+        let store = freshStore()
+        store.toggleProfileDiet(.vegan)
+        store.toggleProfileDiet(.glutenFree)
+        XCTAssertEqual(store.clientProfile.diet, "Vegan, Gluten-free", "joined in option order")
+        store.toggleProfileDiet(.noRestrictions)
+        XCTAssertEqual(store.clientProfile.diet, "No restrictions", "no restrictions stands alone")
+        store.toggleProfileDiet(.halal)
+        XCTAssertEqual(store.clientProfile.diet, "Halal", "a real restriction drops 'no restrictions'")
+
+        store.toggleProfileWeakness(.core)
+        store.toggleProfileWeakness(.upperBody)
+        XCTAssertEqual(store.clientProfile.weaknesses, "Upper body, Core")
+        store.toggleProfileWeakness(.core)
+        XCTAssertEqual(store.clientProfile.weaknesses, "Upper body")
+
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.clientProfile.diet, "Halal", "diet survives relaunch")
+        XCTAssertEqual(reloaded.clientProfile.weaknesses, "Upper body", "weakness survives relaunch")
+
+        let prompt = reloaded.intelligenceSystemPrompt(spoken: false, userText: "what should I eat")
+        XCTAssertTrue(prompt.contains("diet: halal"), "the brain knows the diet")
+        XCTAssertTrue(prompt.contains("weakness is upper body"), "the brain knows the weakness")
+        XCTAssertTrue(prompt.contains("This user's diet, set in their profile: Halal"), "nutrition block carries it")
+    }
+
     func testUpdateGoalTargetsTrimsCapsAndPersists() {
         let store = freshStore()
         store.updateGoalTargets(
@@ -8110,19 +8136,19 @@ final class SpartanLoreTests: XCTestCase {
         XCTAssertEqual(seen.count, SpartanLore.sayings.count, "consecutive days walk the whole record")
     }
 
-    func testAgogeLadderMatchesTheRecord() {
-        XCTAssertEqual(AgogeRank.rank(forLevel: 1), .pais)
-        XCTAssertEqual(AgogeRank.rank(forLevel: 10), .pais)
-        XCTAssertEqual(AgogeRank.rank(forLevel: 11), .paidiskos)
-        XCTAssertEqual(AgogeRank.rank(forLevel: 19), .paidiskos)
-        XCTAssertEqual(AgogeRank.rank(forLevel: 20), .hebon, "hebontes were the twenty-year-olds")
-        XCTAssertEqual(AgogeRank.rank(forLevel: 29), .hebon)
-        XCTAssertEqual(AgogeRank.rank(forLevel: 30), .homoios, "full standing at thirty")
-        XCTAssertEqual(AgogeRank.rank(forLevel: 400), .homoios)
-        for rank in AgogeRank.allCases {
-            XCTAssertEqual(AgogeRank.rank(forLevel: rank.firstLevel), rank)
+    func testRankLadderClimbsByLevel() {
+        XCTAssertEqual(MorpheRank.rank(forLevel: 1), .rookie)
+        XCTAssertEqual(MorpheRank.rank(forLevel: 4), .rookie)
+        XCTAssertEqual(MorpheRank.rank(forLevel: 5), .cadet)
+        XCTAssertEqual(MorpheRank.rank(forLevel: 19), .corporal)
+        XCTAssertEqual(MorpheRank.rank(forLevel: 20), .sergeant)
+        XCTAssertEqual(MorpheRank.rank(forLevel: 59), .colonel)
+        XCTAssertEqual(MorpheRank.rank(forLevel: 400), .general)
+        for rank in MorpheRank.allCases {
+            XCTAssertEqual(MorpheRank.rank(forLevel: rank.firstLevel), rank)
         }
-        XCTAssertNil(AgogeRank.homoios.next)
+        XCTAssertNil(MorpheRank.general.next)
+        XCTAssertEqual(MorpheRank.allCases.count, 10)
     }
 
     func testGoldFromBeforeTheRebrandMigratesAndALaterPickSticks() {
