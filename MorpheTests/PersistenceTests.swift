@@ -6744,9 +6744,18 @@ final class DepthSprintTests: XCTestCase {
 
     func testPaletteUnlocksGateAndGrandfather() {
         let store = freshStore()   // level 1
-        XCTAssertTrue(store.isPaletteUnlocked(.spartan), "the brand default ships free")
-        XCTAssertTrue(store.isPaletteUnlocked(.gold), "the legacy gold stays reachable at level 1")
-        XCTAssertFalse(store.isPaletteUnlocked(.pink), "pink is a level-12 earn")
+        XCTAssertTrue(store.isPaletteUnlocked(.morpheDark), "the starter ships free")
+        XCTAssertFalse(store.isPaletteUnlocked(.spartan), "Spartan Blue is Cadet's, level 5")
+        XCTAssertFalse(store.isPaletteUnlocked(.gold), "metallic gold is General's, level 60")
+        XCTAssertFalse(store.isPaletteUnlocked(.pink), "pink is Major's, level 40")
+        XCTAssertEqual(store.paletteUnlockLevel(.gold), 60)
+        for rank in MorpheRank.allCases {
+            XCTAssertEqual(store.paletteUnlockLevel(rank.palette), rank.firstLevel, "\(rank.title) unlocks its color on arrival")
+        }
+        XCTAssertEqual(Set(MorpheRank.allCases.map(\.palette)).count, MorpheRank.allCases.count, "every rank has its own color")
+        XCTAssertEqual(MorpheRank.general.palette, .gold)
+        XCTAssertEqual(MorpheRank.rookie.palette, .morpheDark)
+        XCTAssertEqual(store.profileShowcase.accentPalette, .morpheDark, "a fresh profile starts in Morphe Dark Blue")
 
         let before = store.profileShowcase.accentPalette
         store.updateAccentPalette(.pink)
@@ -8152,8 +8161,8 @@ final class SpartanLoreTests: XCTestCase {
     }
 
     func testGoldFromBeforeTheRebrandMigratesAndALaterPickSticks() {
-        XCTAssertEqual(MorpheAppStore.rebrandMigratedAccent(.gold, paletteEpoch: 0), .spartan,
-                       "the pre-rebrand default moves to the new brand")
+        XCTAssertEqual(MorpheAppStore.rebrandMigratedAccent(.gold, paletteEpoch: 0), .morpheDark,
+                       "the pre-rebrand default moves to the starter blue")
         XCTAssertEqual(MorpheAppStore.rebrandMigratedAccent(.green, paletteEpoch: 0), .green,
                        "any other palette was a choice and is untouched")
         XCTAssertEqual(MorpheAppStore.rebrandMigratedAccent(.gold, paletteEpoch: MorpheAppStore.spartanPaletteEpoch), .gold,
@@ -8175,18 +8184,20 @@ final class SpartanLoreTests: XCTestCase {
         files.saveProfile(old)
 
         let relaunched = MorpheAppStore()
-        XCTAssertEqual(relaunched.profileShowcase.accentPalette, .spartan)
+        XCTAssertEqual(relaunched.profileShowcase.accentPalette, .morpheDark)
         relaunched.settleRebrandMigration()
         let migrated = try XCTUnwrap(files.loadProfile())
-        XCTAssertEqual(migrated.accentPalette, AccentPalette.spartan.rawValue,
+        XCTAssertEqual(migrated.accentPalette, AccentPalette.morpheDark.rawValue,
                        "settling writes the migrated palette to disk at once")
         XCTAssertEqual(migrated.paletteEpoch, MorpheAppStore.spartanPaletteEpoch)
 
+        // Gold is General's now: a level-60 athlete picks it on purpose.
+        relaunched.clientProfile.level.currentTitle = "Level 60"
         relaunched.updateAccentPalette(.gold)
         let again = MorpheAppStore()
         XCTAssertEqual(again.profileShowcase.accentPalette, .gold,
                        "Gold chosen after the rebrand is a choice, not the old default")
-        again.updateAccentPalette(.spartan)
+        again.updateAccentPalette(.morpheDark)
     }
 
     func testOldSnapshotsDecodeAsThePreRebrandEpoch() throws {

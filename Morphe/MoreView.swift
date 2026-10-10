@@ -492,7 +492,7 @@ private struct QuizCallingCard: View {
     private var plate: (fill: LinearGradient, text: Color) {
         switch index % 4 {
         case 0:
-            return (LinearGradient(colors: [MorpheTheme.brandBlue, MorpheTheme.brandBlueDeep],
+            return (LinearGradient(colors: [MorpheTheme.accent, MorpheTheme.accentAlt],
                                    startPoint: .topLeading, endPoint: .bottomTrailing), .white)
         case 1:
             return (LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.12),
@@ -500,7 +500,7 @@ private struct QuizCallingCard: View {
                                    startPoint: .topLeading, endPoint: .bottomTrailing), .white)
         case 2:
             // Deep blue, not the gold-era bronze (audit 30).
-            return (LinearGradient(colors: [MorpheTheme.brandBlueDeep,
+            return (LinearGradient(colors: [MorpheTheme.accentAlt,
                                             Color(red: 0.102, green: 0.153, blue: 0.40)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing), .white)
         default:
@@ -904,7 +904,7 @@ struct SpartanCodeContent: View {
                         ladderRow(rung)
                     }
                 }
-                Text("Ten ranks, climbed by level. Levels come only from logged work — there is nothing to buy and nothing to skip.")
+                Text("Ten ranks, climbed by level, each with its own accent color — Rookie starts in Morphe Dark Blue, General wears gold. Levels come only from logged work — there is nothing to buy and nothing to skip.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -926,7 +926,7 @@ struct SpartanCodeContent: View {
                     .fill(rung == .rookie ? Color.clear : (reached ? lit : unlit))
                     .frame(width: 2, height: 8)
                 Circle()
-                    .fill(reached ? lit : Color.clear)
+                    .fill(reached ? MorpheTheme.swatchStyle(for: rung.palette) : AnyShapeStyle(Color.clear))
                     .overlay(Circle().stroke(reached ? lit : unlit, lineWidth: 2))
                     .frame(width: isCurrent ? 16 : 12, height: isCurrent ? 16 : 12)
                 Rectangle()
@@ -959,7 +959,7 @@ struct SpartanCodeContent: View {
             .padding(.bottom, 12)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(rung.title), \(rung.gloss), from level \(rung.firstLevel). \(isCurrent ? "Your rank, level \(store.currentLevelNumber)" : (reached ? "Reached" : "Not reached yet"))")
+        .accessibilityLabel("\(rung.title), \(rung.gloss), from level \(rung.firstLevel), unlocks the \(rung.palette.rawValue) accent. \(isCurrent ? "Your rank, level \(store.currentLevelNumber)" : (reached ? "Reached" : "Not reached yet"))")
     }
 
     private func ladderTitle(_ rung: MorpheRank, isCurrent: Bool) -> some View {

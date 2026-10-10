@@ -513,7 +513,7 @@ struct CaptureView: View {
                     .frame(maxWidth: .infinity, minHeight: 52)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(MorpheTheme.brandBlue)
+                            .fill(MorpheTheme.accent)
                     )
                 }
                 .buttonStyle(.plain)
@@ -578,7 +578,7 @@ struct CaptureView: View {
                     .frame(maxWidth: .infinity, minHeight: 52)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(MorpheTheme.brandBlue)
+                            .fill(MorpheTheme.accent)
                     )
                 }
                 .buttonStyle(.plain)

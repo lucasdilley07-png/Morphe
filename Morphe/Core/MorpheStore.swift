@@ -6154,7 +6154,7 @@ final class MorpheAppStore {
 
     /// Pure decision: the accent a restored profile should wear.
     static func rebrandMigratedAccent(_ accent: AccentPalette, paletteEpoch: Int) -> AccentPalette {
-        accent == .gold && paletteEpoch < spartanPaletteEpoch ? .spartan : accent
+        accent == .gold && paletteEpoch < spartanPaletteEpoch ? .morpheDark : accent
     }
 
     private var rebrandMigrationPending = false
@@ -10767,14 +10767,12 @@ final class MorpheAppStore {
     /// persist the profile.
     // MARK: Milestone unlocks (levels finally mean something)
 
-    /// Level each accent palette unlocks at. Spartan Blue (the brand
-    /// default), legacy Gold, and two others ship free; the rest are
-    /// earned. Cosmetics ONLY — data, analytics, and safety are never
-    /// gated behind progression.
-    static let paletteUnlockLevels: [AccentPalette: Int] = [
-        .spartan: 1, .gold: 1, .electricBlue: 1, .green: 1,
-        .red: 3, .orange: 5, .purple: 8, .pink: 12
-    ]
+    /// Level each accent palette unlocks at: one color per rank (Lucas
+    /// 2026-10-10) — Morphe Dark Blue at Rookie, metallic gold at General.
+    /// Cosmetics ONLY — data, analytics, and safety are never gated
+    /// behind progression.
+    static let paletteUnlockLevels: [AccentPalette: Int] = Dictionary(
+        uniqueKeysWithValues: MorpheRank.allCases.map { ($0.palette, $0.firstLevel) })
 
     func paletteUnlockLevel(_ palette: AccentPalette) -> Int {
         Self.paletteUnlockLevels[palette] ?? 1
@@ -11724,7 +11722,7 @@ final class MorpheAppStore {
         guard isPaletteUnlocked(palette) else {
             showToast(palette == .recruiter
                 ? "Recruiter unlocks when someone joins through your invite."
-                : "\(palette.rawValue) unlocks at level \(paletteUnlockLevel(palette)) — keep logging.")
+                : "\(palette.rawValue) comes with \(palette.rank?.title ?? "a rank") at level \(paletteUnlockLevel(palette)) — keep logging.")
             return
         }
         profileShowcase.accentPalette = palette
@@ -13414,7 +13412,7 @@ final class MorpheAppStore {
         guard postAccentIdentity else { return "" }
         if profileShowcase.accentPalette == .custom {
             let hex = profileShowcase.customAccentHex
-            return hex.isEmpty ? AccentPalette.spartan.rawValue : String(hex.prefix(24))
+            return hex.isEmpty ? AccentPalette.morpheDark.rawValue : String(hex.prefix(24))
         }
         return profileShowcase.accentPalette.rawValue
     }

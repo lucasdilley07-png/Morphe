@@ -181,15 +181,15 @@ struct SectionTitleView: View {
 /// appearance.
 struct MorpheHelmetMark: View {
     var glowRadius: CGFloat = 10
-    /// On the brand-blue field (the launch screen) the glow is white; on
-    /// the app's own surfaces it is brand blue.
+    /// On the launch field the glow is white; on the app's own surfaces
+    /// it is the accent.
     var onBrandField: Bool = false
 
     var body: some View {
         Image("HelmetMark")
             .resizable()
             .scaledToFit()
-            .shadow(color: onBrandField ? Color.white.opacity(0.55) : MorpheTheme.brandBlue.opacity(0.7),
+            .shadow(color: onBrandField ? Color.white.opacity(0.55) : MorpheTheme.accent.opacity(0.7),
                     radius: glowRadius)
             .accessibilityHidden(true)
     }
@@ -322,12 +322,14 @@ struct MorpheOrbView: View {
         }
     }
 
-    private static let navy = Color(red: 0.02, green: 0.06, blue: 0.18)
-    private static let glassBlue = Color(red: 0.49, green: 0.83, blue: 1.0)
-    private static let electric = Color(red: 0.25, green: 0.55, blue: 1.0)
+    // The orb's colors follow the user's accent (Lucas 2026-10-10); only
+    // the helmet keeps the image's own colors.
+    private static var navy: Color { MorpheTheme.orbColors.deep }
+    private static var glassBlue: Color { MorpheTheme.orbColors.glass }
+    private static var electric: Color { MorpheTheme.orbColors.electric }
 
-    /// The bubble: real glass with a navy tint so the interior stays as
-    /// deep as the image on any field (the mark is light on dark).
+    /// The bubble: real glass with a deep accent tint so the interior
+    /// stays as deep as the image on any field (the mark is light on dark).
     @ViewBuilder
     private func glass(_ size: CGFloat) -> some View {
         let tint = Self.navy.opacity(MorpheTheme.isLight ? 0.78 : 0.55)
@@ -512,7 +514,7 @@ struct MorpheFrequencyRing: View {
         let glowRadius = baseRadius * (1.15 + level * 0.35)
         let glowRect = CGRect(x: center.x - glowRadius, y: center.y - glowRadius,
                               width: glowRadius * 2, height: glowRadius * 2)
-        let glowTint = MorpheTheme.isLight ? MorpheTheme.brandBlueText : MorpheTheme.brandBlue
+        let glowTint = MorpheTheme.isLight ? MorpheTheme.accentText : MorpheTheme.accent
         context.fill(Path(ellipseIn: glowRect), with: .radialGradient(
             Gradient(colors: [glowTint.opacity(0.10 + level * 0.14), .clear]),
             center: center, startRadius: 0, endRadius: glowRadius))
@@ -522,15 +524,15 @@ struct MorpheFrequencyRing: View {
         // popup is up, so white reads there.
         let groups: [(waves: Double, direction: Double, tint: Color)] = MorpheTheme.isLight
             ? [
-                (3, 1, MorpheTheme.brandBlue),
-                (4, -1, Color(red: 0.478, green: 0.635, blue: 1.0)),
+                (3, 1, MorpheTheme.accent),
+                (4, -1, MorpheTheme.orbColors.glass),
                 (5, 1, Color.white.opacity(0.9))
             ]
             : [
-                (3, 1, MorpheTheme.brandBlue),
-                // Lit blue, not brandBlueDeep: #1A3BA3 is 2:1 on the dark
+                (3, 1, MorpheTheme.accent),
+                // Lit, not the deep secondary: #1A3BA3 was 2:1 on the dark
                 // canvas and the second ribbon vanished (audit 29).
-                (4, -1, MorpheTheme.brandBlueText),
+                (4, -1, MorpheTheme.accentText),
                 (5, 1, Color.white.opacity(0.75))
             ]
 
@@ -570,7 +572,7 @@ struct VoiceTranscriptPill: View {
         HStack(spacing: 8) {
             Image(systemName: "waveform")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(MorpheTheme.brandBlueText)
+                .foregroundStyle(MorpheTheme.accentText)
                 .symbolEffect(.variableColor.iterative, options: .repeating)
             Text(text)
                 .font(.subheadline.weight(.semibold))
@@ -643,7 +645,7 @@ struct HelloBeatOverlay: View {
             Text("hello, \(store.greetingName)")
                 .font(.system(size: 42, weight: .light, design: .serif))
                 .italic()
-                .foregroundStyle(MorpheTheme.brandBlueText)
+                .foregroundStyle(MorpheTheme.accentText)
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
                 .padding(.horizontal, 32)
@@ -1011,7 +1013,7 @@ struct RecordStampOverlay: View {
                 Text(moment.kicker)
                     .scaledFont(size: 13, weight: .bold, design: .monospaced)
                     .tracking(3)
-                    .foregroundStyle(MorpheTheme.brandBlueText)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .padding(.bottom, 16)
 
                 Text(moment.headline)
@@ -1024,7 +1026,7 @@ struct RecordStampOverlay: View {
 
                 Text(moment.valueLine.uppercased())
                     .scaledFont(size: 28, weight: .bold, design: .monospaced)
-                    .foregroundStyle(MorpheTheme.brandBlueText)
+                    .foregroundStyle(MorpheTheme.accentText)
 
                 if !moment.detailLine.isEmpty {
                     Text(moment.detailLine.uppercased())
@@ -1049,7 +1051,7 @@ struct RecordStampOverlay: View {
                                 )
                             }
                         }
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandBlue))
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                         .frame(width: 220)
                     }
                     Button("Done", action: onDismiss)
@@ -2446,7 +2448,7 @@ struct ManifestoCard: View {
                 Text("TRAIN SMARTER")
                     .scaledFont(size: 13, weight: .bold, design: .monospaced)
                     .tracking(2.4)
-                    .foregroundStyle(MorpheTheme.brandBlueText)
+                    .foregroundStyle(MorpheTheme.accentText)
             }
         }
     }
@@ -2500,7 +2502,7 @@ private struct ShareCardFrame<Content: View>: View {
                     Text("MORPHE")
                         .font(.system(size: 22, design: .monospaced).weight(.black))
                         .tracking(6)
-                        .foregroundStyle(MorpheTheme.brandBlue)
+                        .foregroundStyle(MorpheTheme.accent)
                     Spacer()
                     Text(dateLabel.uppercased())
                         .font(.system(size: 11, design: .monospaced).weight(.semibold))
@@ -2595,7 +2597,7 @@ struct ShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "trophy.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.brandBlue)
+                            .foregroundStyle(MorpheTheme.accent)
                         Text("NEW PR · \(name.uppercased())")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
@@ -2609,7 +2611,7 @@ struct ShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "flame.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.brandBlue)
+                            .foregroundStyle(MorpheTheme.accent)
                         Text("\(data.streak)-DAY STREAK")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
@@ -2633,7 +2635,7 @@ struct PRShareCardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "trophy.fill")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(MorpheTheme.brandBlue)
+                        .foregroundStyle(MorpheTheme.accent)
                     ShareCardKicker(text: "NEW RECORD")
                 }
                 .padding(.bottom, 10)
@@ -2647,7 +2649,7 @@ struct PRShareCardView: View {
 
                 Text(data.weightLabel.uppercased())
                     .font(.system(size: 34, design: .monospaced).weight(.bold))
-                    .foregroundStyle(MorpheTheme.brandBlue)
+                    .foregroundStyle(MorpheTheme.accent)
 
                 if !data.previousLabel.isEmpty {
                     Text("UP FROM \(data.previousLabel.uppercased())")
@@ -2671,14 +2673,14 @@ struct StreakShareCardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(MorpheTheme.brandBlue)
+                        .foregroundStyle(MorpheTheme.accent)
                     ShareCardKicker(text: "CONSISTENCY")
                 }
                 .padding(.bottom, 14)
 
                 Text("\(data.streak)")
                     .font(.system(size: 96, design: .monospaced).weight(.bold))
-                    .foregroundStyle(MorpheTheme.brandBlue)
+                    .foregroundStyle(MorpheTheme.accent)
 
                 Text("DAY STREAK")
                     .font(.system(size: 18, design: .monospaced).weight(.bold))
@@ -2707,7 +2709,7 @@ struct RecapShareCardView: View {
 
                 Text("\(data.sessions)")
                     .font(.system(size: 96, design: .monospaced).weight(.bold))
-                    .foregroundStyle(MorpheTheme.brandBlue)
+                    .foregroundStyle(MorpheTheme.accent)
 
                 Text(data.sessions == 1 ? "SESSION" : "SESSIONS")
                     .font(.system(size: 18, design: .monospaced).weight(.bold))
@@ -2724,7 +2726,7 @@ struct RecapShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "trophy.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.brandBlue)
+                            .foregroundStyle(MorpheTheme.accent)
                         Text("\(data.prCount) NEW PR\(data.prCount == 1 ? "" : "S")")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
@@ -2737,7 +2739,7 @@ struct RecapShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "flame.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.brandBlue)
+                            .foregroundStyle(MorpheTheme.accent)
                         Text("\(data.streak)-DAY STREAK")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)

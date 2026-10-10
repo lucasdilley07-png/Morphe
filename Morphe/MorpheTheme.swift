@@ -84,7 +84,7 @@ enum MorpheTheme {
     static let warning = Color(red: 0.98, green: 0.70, blue: 0.25)         // amber, distinct from accent
     static let danger = Color(red: 0.95, green: 0.36, blue: 0.36)
     static let lavender = Color(red: 0.72, green: 0.72, blue: 0.74)        // neutral (no off-brand purple)
-    private static var currentAccentPalette: AccentPalette = .spartan
+    private static var currentAccentPalette: AccentPalette = .morpheDark
 
     /// HUD corner radius — sharp, technical. One knob for the whole system.
     // Hims-audit revamp (2026-08-09): soft, calm geometry. The hard 3pt
@@ -176,6 +176,34 @@ enum MorpheTheme {
     /// as the user-selectable legacy "Gold" palette only.
     static let brandBlue = Color(red: 0.161, green: 0.341, blue: 0.851)    // #2957D9
     static let brandBlueDeep = Color(red: 0.102, green: 0.231, blue: 0.639) // deeper blue for gradients
+    /// Morphe Dark Blue — the level-1 starter accent (Lucas 2026-10-10):
+    /// the launch field's deep end, with the brand-kit navy beneath it.
+    static let morpheDarkBlue = Color(red: 0.118, green: 0.267, blue: 0.722)  // #1E44B8
+    static let morpheNavy = Color(red: 0.039, green: 0.102, blue: 0.227)      // #0A1A3A
+    /// Metallic pairs: General's gold and Colonel's silver. The flat
+    /// color is the accent; the sheen lives in metallicSheen(for:).
+    static let metalGold = Color(red: 0.851, green: 0.678, blue: 0.259)       // #D9AD42
+    static let metalGoldDeep = Color(red: 0.549, green: 0.420, blue: 0.102)   // #8C6B1A
+    static let metalSilver = Color(red: 0.788, green: 0.808, blue: 0.839)     // #C9CED6
+    static let metalSilverDeep = Color(red: 0.490, green: 0.522, blue: 0.561) // #7D858F
+
+    /// Brushed-metal fill for the metallic palettes' swatches and rank
+    /// marks; everything else gets its flat primary. AnyShapeStyle so a
+    /// Circle().fill(...) takes either.
+    static func swatchStyle(for palette: AccentPalette) -> AnyShapeStyle {
+        switch palette {
+        case .gold:
+            return AnyShapeStyle(LinearGradient(
+                colors: [Color(red: 0.97, green: 0.91, blue: 0.63), metalGold, metalGoldDeep, Color(red: 0.91, green: 0.79, blue: 0.42)],
+                startPoint: .topLeading, endPoint: .bottomTrailing))
+        case .silver:
+            return AnyShapeStyle(LinearGradient(
+                colors: [Color(red: 0.95, green: 0.96, blue: 0.97), metalSilver, metalSilverDeep, Color(red: 0.88, green: 0.90, blue: 0.92)],
+                startPoint: .topLeading, endPoint: .bottomTrailing))
+        default:
+            return AnyShapeStyle(colors(for: palette).primary)
+        }
+    }
     /// Legacy gold pair — the pre-rebrand brand, kept for the Gold palette.
     static let legacyGold = Color(red: 1.0, green: 0.839, blue: 0.0)       // #FFD600
     static let legacyGoldDeep = Color(red: 0.95, green: 0.72, blue: 0.0)
@@ -196,6 +224,53 @@ enum MorpheTheme {
             startPoint: .top, endPoint: .bottom)
     }
 
+    /// HSB multiply: the accent re-shaded for a role (a navy under it, a
+    /// pale glass over it) without leaving its hue.
+    static func shaded(_ color: Color, saturation satScale: CGFloat = 1, brightness: CGFloat? = nil) -> Color {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard UIColor(color).getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return color }
+        return Color(hue: h, saturation: min(1, s * satScale), brightness: brightness ?? b, opacity: a)
+    }
+
+    /// The launch field in the user's accent (Lucas 2026-10-10: the
+    /// loading screen takes the rank color; helmet and type stay white).
+    /// The two brand blues keep the hand-tuned brand field.
+    static var accentField: LinearGradient {
+        switch currentAccentPalette {
+        case .spartan: return brandField
+        case .morpheDark:
+            return LinearGradient(colors: [Color(red: 0.165, green: 0.333, blue: 0.820), morpheDarkBlue, morpheNavy],
+                                  startPoint: .top, endPoint: .bottom)
+        default:
+            let pair = colors(for: currentAccentPalette)
+            return LinearGradient(colors: [shaded(pair.primary, saturation: 0.9, brightness: 0.96), pair.primary, pair.secondary],
+                                  startPoint: .top, endPoint: .bottom)
+        }
+    }
+
+    /// The Morphe AI orb's three colors, in the accent: the deep tint
+    /// under the glass, the pale glass highlight, and the live color of
+    /// the waves and bloom. The helmet image never changes.
+    static var orbColors: (deep: Color, glass: Color, electric: Color) {
+        switch currentAccentPalette {
+        case .spartan, .morpheDark:
+            return (Color(red: 0.02, green: 0.06, blue: 0.18),
+                    Color(red: 0.49, green: 0.83, blue: 1.0),
+                    Color(red: 0.25, green: 0.55, blue: 1.0))
+        default:
+            let primary = colors(for: currentAccentPalette).primary
+            return (shaded(primary, saturation: 0.95, brightness: 0.18),
+                    shaded(primary, saturation: 0.45, brightness: 1.0),
+                    shaded(primary, saturation: 1.0, brightness: 0.95))
+        }
+    }
+
+    /// Hey Morphe's screen-edge glow, in the accent.
+    static var voiceGlowColors: [Color] {
+        let orb = orbColors
+        return [orb.electric, orb.glass, .white, orb.glass, orb.electric]
+    }
+
     /// Accent for TEXT and glyphs on themed surfaces. The palette is tuned
     /// for the dark HUD; on the light field #FFD600 reads at ~1.4:1, so
     /// light mode darkens whatever accent is active until it's legible ink.
@@ -210,15 +285,18 @@ enum MorpheTheme {
     /// to the #7AA2FF class (audit 28, P1: #2957D9 on #121214 is 3.1:1).
     static func asText(_ color: Color) -> Color {
         if isLight {
-            return currentAccentPalette == .spartan && color == brandBlue
-                ? brandBlue : darkenedForLightText(color)
+            // The two brand blues already pass on white (#2957D9 ~5.5:1,
+            // #1E44B8 ~7:1) and stay themselves.
+            if currentAccentPalette == .spartan && color == brandBlue { return brandBlue }
+            if currentAccentPalette == .morpheDark && color == morpheDarkBlue { return morpheDarkBlue }
+            return darkenedForLightText(color)
         }
         // Gate on LUMINANCE, not HSB brightness (audit 29, P1): brand
         // blue has brightness 0.85, sailed through the old `b >= 0.8`
         // gate unlifted, and every accent label in dark mode shipped at
         // 3.1:1. Anything darker than ~5:1 on the canvas gets lifted.
         guard relativeLuminance(color) < 0.25 else { return color }
-        if color == brandBlue { return brandBlueText }
+        if color == brandBlue || color == morpheDarkBlue { return brandBlueText }
         var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         guard UIColor(color).getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return color }
         return Color(hue: h, saturation: s * 0.6, brightness: 1.0, opacity: a)
@@ -262,20 +340,22 @@ enum MorpheTheme {
     static var accent: Color {
         switch currentAccentPalette {
         case .spartan: return brandBlue
-        case .gold: return legacyGold
         default: return colors(for: currentAccentPalette).primary
         }
     }
 
     static var accentAlt: Color {
         switch currentAccentPalette {
+        case .morpheDark:
+            // Navy under the dark blue in light mode; the same lit blue
+            // as Spartan on the dark canvas, where navy would vanish.
+            return isLight ? morpheNavy : Color(red: 0.424, green: 0.561, blue: 0.961)
         case .spartan:
             // Deep blue vanishes on the dark canvas (audit 28, P1: 2.0:1)
             // — dark mode lifts the secondary to a lit blue.
             // #6C8FF5 — 5.9:1 on the canvas, AA on the raised panels too
             // (audit 29: the first lift, #4C78F0, was 3.8:1 on hero cards).
             return isLight ? brandBlueDeep : Color(red: 0.424, green: 0.561, blue: 0.961)
-        case .gold: return legacyGoldDeep
         default: return colors(for: currentAccentPalette).secondary
         }
     }
@@ -355,13 +435,14 @@ enum MorpheTheme {
                 Color(red: 0.98, green: 0.54, blue: 0.78),
                 Color(red: 0.90, green: 0.34, blue: 0.62)
             )
+        case .morpheDark:
+            return (morpheDarkBlue, morpheNavy)
         case .spartan:
             return (brandBlue, brandBlueDeep)
+        case .silver:
+            return (metalSilver, metalSilverDeep)
         case .gold:
-            return (
-                Color(red: 0.92, green: 0.80, blue: 0.42),
-                Color(red: 0.76, green: 0.61, blue: 0.20)
-            )
+            return (metalGold, metalGoldDeep)
         case .recruiter:
             // The referral-earned palette: a teal no level unlocks.
             return (

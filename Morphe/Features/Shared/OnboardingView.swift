@@ -16,11 +16,12 @@ struct LaunchSequenceView: View {
 
     var body: some View {
         ZStack {
-            // The launch beat lives on the brand field (Lucas 2026-10-02):
-            // the Spartan blue gradient in BOTH appearances, the icy
-            // helmet lit on it, white type. The system splash (solid
-            // brand blue + the same helmet) hands off into this.
-            MorpheTheme.brandField.ignoresSafeArea()
+            // The launch beat lives on the accent field (Lucas 2026-10-02
+            // brand field; 2026-10-10: the rank color): the gradient in
+            // BOTH appearances, the icy helmet lit on it, white type. The
+            // system splash (solid brand blue + the same helmet) hands off
+            // into this.
+            MorpheTheme.accentField.ignoresSafeArea()
 
             VStack(spacing: 22) {
                 Spacer()

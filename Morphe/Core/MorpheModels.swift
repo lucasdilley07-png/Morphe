@@ -641,7 +641,12 @@ enum ThemePreset: String, CaseIterable, Identifiable {
 }
 
 enum AccentPalette: String, CaseIterable, Identifiable {
-    /// The brand default since the Spartan rebrand (2026-10-01) — free.
+    /// One color per rank (Lucas 2026-10-10): Morphe Dark Blue is the
+    /// level-1 starter, every rank after it unlocks the next, General
+    /// wears metallic gold. Declared in ladder order so pickers read as
+    /// the climb. See MorpheRank.palette.
+    case morpheDark = "Morphe Dark Blue"
+    /// The bright brand blue of the 2026-10-01 rebrand — now Cadet's.
     case spartan = "Spartan Blue"
     case electricBlue = "Electric Blue"
     case green = "Green"
@@ -649,6 +654,9 @@ enum AccentPalette: String, CaseIterable, Identifiable {
     case orange = "Orange"
     case purple = "Purple"
     case pink = "Pink"
+    case silver = "Silver"
+    /// Metallic gold — General only. (Raw value kept: it was the
+    /// pre-rebrand brand palette and old profiles store "Gold".)
     case gold = "Gold"
     /// Earned by referral, not level — unlocks when someone joins Morphe
     /// through this user's invite link (see `isPaletteUnlocked`).
@@ -659,6 +667,12 @@ enum AccentPalette: String, CaseIterable, Identifiable {
     case custom = "Custom"
 
     var id: String { rawValue }
+
+    /// The rank this color belongs to; nil for Recruiter and Custom.
+    var rank: MorpheRank? { MorpheRank.allCases.first { $0.palette == self } }
+
+    /// Gold and silver draw with a metallic sheen (swatches, rank badges).
+    var isMetallic: Bool { self == .gold || self == .silver }
 }
 
 enum AvatarStyle: String, CaseIterable, Identifiable {
@@ -1290,6 +1304,23 @@ enum MorpheRank: Int, CaseIterable, Identifiable {
     }
 
     var next: MorpheRank? { MorpheRank(rawValue: rawValue + 1) }
+
+    /// The accent color this rank unlocks (personalization, Lucas
+    /// 2026-10-10). Rookie's is the starter everyone has.
+    var palette: AccentPalette {
+        switch self {
+        case .rookie: return .morpheDark
+        case .cadet: return .spartan
+        case .privateFirst: return .electricBlue
+        case .corporal: return .green
+        case .sergeant: return .red
+        case .lieutenant: return .orange
+        case .captain: return .purple
+        case .major: return .pink
+        case .colonel: return .silver
+        case .general: return .gold
+        }
+    }
 }
 
 enum SpartanLore {
@@ -2578,7 +2609,7 @@ struct OnboardingDraft: Hashable {
     var confidence: ConfidenceLevel = .maybe
     var biggestObstacle: ObstacleOption = .time
     var theme: ThemePreset = .morpheBlackBlue
-    var accentPalette: AccentPalette = .spartan
+    var accentPalette: AccentPalette = .morpheDark
     var avatarStyle: AvatarStyle = .cleanStarter
 
     var goal: FitnessGoalOption {

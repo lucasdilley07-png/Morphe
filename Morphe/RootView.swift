@@ -809,7 +809,7 @@ private struct FloatingAIAgentButton: View {
                         .scaledToFit()
                         .frame(width: 40, height: 40)
                         .shadow(color: .black.opacity(0.22), radius: 6, y: 3)
-                        .shadow(color: MorpheTheme.brandBlue.opacity(0.25), radius: 12, y: 0)
+                        .shadow(color: MorpheTheme.accent.opacity(0.25), radius: 12, y: 0)
                         .frame(width: 44, height: 44)
                         .contentShape(Circle())
                 } else {
@@ -3918,7 +3918,7 @@ private struct WelcomeExperienceView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 64, height: 64)
-                    .shadow(color: MorpheTheme.brandBlue.opacity(0.25), radius: 12)
+                    .shadow(color: MorpheTheme.accent.opacity(0.25), radius: 12)
                     .accessibilityHidden(true)
                 kicker("Morphe AI")
                 title("Talk to it. Out loud.")
@@ -3990,7 +3990,7 @@ private struct WelcomeExperienceView: View {
             .accessibilityLabel("Step \(page + 1) of \(pages.count)")
 
             Button(primaryLabel) { primaryAction() }
-                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandBlue))
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
             if current != .done, current != .welcome {
                 Button("Skip") { advance() }
@@ -4159,9 +4159,9 @@ private struct TourExchange: View {
         VStack(alignment: .trailing, spacing: 6) {
             Text(you)
                 .font(.subheadline)
-                .foregroundStyle(MorpheTheme.onFill(MorpheTheme.brandBlue))
+                .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
                 .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MorpheTheme.brandBlue))
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MorpheTheme.accent))
             Text(morphe)
                 .font(.subheadline)
                 .foregroundStyle(MorpheTheme.textPrimary)
@@ -4342,7 +4342,7 @@ private struct HeyMorpheStage: View {
                     if engine.state == .active {
                         Image(systemName: "waveform")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.brandBlueText)
+                            .foregroundStyle(MorpheTheme.accentText)
                             .symbolEffect(.variableColor.iterative, options: .repeating, isActive: !reduceMotion)
                     }
                     Text(line)
@@ -4385,10 +4385,7 @@ private struct VoiceEdgeGlow: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 54, style: .continuous)
-        let gradient = AngularGradient(
-            colors: [MorpheTheme.brandBlue, Color(red: 0.49, green: 0.83, blue: 1.0), .white,
-                     Color(red: 0.49, green: 0.83, blue: 1.0), MorpheTheme.brandBlue],
-            center: .center)
+        let gradient = AngularGradient(colors: MorpheTheme.voiceGlowColors, center: .center)
         ZStack {
             shape.strokeBorder(gradient, lineWidth: 3)
             shape.strokeBorder(gradient, lineWidth: 12).blur(radius: 16)

@@ -2030,7 +2030,7 @@ struct FormCheckView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("FORM CHECK · \(spec.label.uppercased())")
                     .font(MorpheTheme.microLabel(10)).tracking(1.6)
-                    .foregroundStyle(MorpheTheme.brandBlueText)
+                    .foregroundStyle(MorpheTheme.accentText)
                 Text(session.exerciseName.uppercased())
                     .scaledFont(size: 22, weight: .bold, design: .monospaced).tracking(2)
                     .foregroundStyle(.white)
@@ -2205,7 +2205,7 @@ struct FormCheckView: View {
                             metrics: session.repMetrics
                         )
                     }
-                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandBlue))
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     .accessibilityLabel("Finish set and review")
                     .disabled(spec.countsReps ? session.repCount == 0 : session.elapsedSeconds < 1)
                     .opacity((spec.countsReps ? session.repCount == 0 : session.elapsedSeconds < 1) ? 0.5 : 1)
@@ -2233,13 +2233,13 @@ struct FormCheckView: View {
     private func messageState(title: String, detail: String) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "camera.metering.unknown")
-                .font(.system(size: 40)).foregroundStyle(MorpheTheme.brandBlueText)
+                .font(.system(size: 40)).foregroundStyle(MorpheTheme.accentText)
             Text(title).font(.title3.weight(.bold)).foregroundStyle(.white)
             Text(detail)
                 .font(.subheadline).foregroundStyle(.white.opacity(0.7))
                 .multilineTextAlignment(.center)
             Button("Close") { dismiss() }
-                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandBlue))
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 .padding(.top, 8)
         }
         .padding(28)

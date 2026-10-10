@@ -552,6 +552,12 @@ struct ProfileView: View {
             showingCode = true
         } label: {
             HStack(alignment: .center, spacing: 12) {
+                // The rank's own color — metallic for the top two.
+                Circle()
+                    .fill(MorpheTheme.swatchStyle(for: rank.palette))
+                    .frame(width: 28, height: 28)
+                    .overlay(Circle().stroke(MorpheTheme.strokeSubtle, lineWidth: 1))
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("RANK")
                         .font(MorpheTheme.microLabel())
@@ -1690,7 +1696,7 @@ struct ProfileView: View {
                     }
                     // Locks were mute until tapped (UX test 2026-09-30):
                     // a first-timer saw five padlocks with no path.
-                    Text("Locked colors unlock as you level up \u{2014} tap one to see its level.")
+                    Text("Every rank brings its own color, Rookie\u{2019}s dark blue to General\u{2019}s gold \u{2014} tap a locked one to see its rank.")
                         .font(.caption2)
                         .foregroundStyle(MorpheTheme.textMuted)
                     // The Custom dot's editor: any color at all. Applies
@@ -1949,12 +1955,9 @@ struct ProfileView: View {
         }
     }
 
-    /// The dot shows the color the palette actually resolves to — `.gold`
-    /// means the brand-yellow pair, not the muted legacy gold swatch.
+    /// The dot shows the color the palette actually resolves to.
     private func accentDotColor(for palette: AccentPalette) -> Color {
-        // The legacy Gold dot stays GOLD — the rename to blue must not
-        // relabel the relic (spartan rebrand 2026-10-01).
-        palette == .gold ? MorpheTheme.legacyGold : MorpheTheme.colors(for: palette).primary
+        MorpheTheme.colors(for: palette).primary
     }
 
     /// ColorPicker ↔ stored hex. Setting routes through the store so the
@@ -1982,7 +1985,7 @@ struct ProfileView: View {
         } label: {
             ZStack {
                 Circle()
-                    .fill(accentDotColor(for: palette))
+                    .fill(MorpheTheme.swatchStyle(for: palette))
                     .frame(width: 28, height: 28)
                     .opacity(isUnlocked ? 1 : 0.35)
                 if isSelected {
@@ -2006,7 +2009,7 @@ struct ProfileView: View {
             ? "\(palette.rawValue) accent"
             : palette == .recruiter
                 ? "Recruiter accent, unlocks when someone joins through your invite"
-                : "\(palette.rawValue) accent, unlocks at level \(store.paletteUnlockLevel(palette))")
+                : "\(palette.rawValue) accent, unlocks with \(palette.rank?.title ?? "rank") at level \(store.paletteUnlockLevel(palette))")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 

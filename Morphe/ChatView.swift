@@ -140,7 +140,7 @@ struct CommunityView: View {
                         .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
                     if showsBadge {
                         Circle()
-                            .fill(MorpheTheme.brandBlue)
+                            .fill(MorpheTheme.accent)
                             .frame(width: 6, height: 6)
                     }
                 }
@@ -1999,7 +1999,7 @@ private struct StoryBubble: View {
 
     private var ringColor: Color {
         switch ringState {
-        case .unseen: return MorpheTheme.brandBlue
+        case .unseen: return MorpheTheme.accent
         case .seen: return MorpheTheme.stroke
         case .empty: return MorpheTheme.textPrimary.opacity(0.30)
         }
@@ -2038,7 +2038,7 @@ private struct StoryBubble: View {
                             .padding(.vertical, 2)
                             .background(
                                 RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
-                                    .fill(MorpheTheme.brandBlue)
+                                    .fill(MorpheTheme.accent)
                             )
                             .offset(x: 6, y: -6)
                         }
@@ -2091,7 +2091,7 @@ private struct StorySessionViewer: View {
                 HStack(spacing: 4) {
                     ForEach(entry.posts.indices, id: \.self) { tick in
                         Rectangle()
-                            .fill(tick <= index ? MorpheTheme.brandBlue : MorpheTheme.stroke)
+                            .fill(tick <= index ? MorpheTheme.accent : MorpheTheme.stroke)
                             .frame(height: 2)
                     }
                 }
@@ -2156,11 +2156,11 @@ private struct StorySessionViewer: View {
                         } label: {
                             Image(systemName: reaction.symbol)
                                 .font(.subheadline.weight(.bold))
-                                .foregroundStyle(isMine ? MorpheTheme.brandBlueText : MorpheTheme.textPrimary)
+                                .foregroundStyle(isMine ? MorpheTheme.accentText : MorpheTheme.textPrimary)
                                 .frame(width: 44, height: 44)
                                 .background(
                                     RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
-                                        .stroke(isMine ? MorpheTheme.brandBlue.opacity(0.6) : MorpheTheme.stroke, lineWidth: 1)
+                                        .stroke(isMine ? MorpheTheme.accent.opacity(0.6) : MorpheTheme.stroke, lineWidth: 1)
                                 )
                                 .contentShape(Rectangle())
                         }
@@ -2261,7 +2261,7 @@ private struct BoardStoryView: View {
                         HStack(spacing: 12) {
                             Text("#\(index + 1)")
                                 .scaledFont(size: 22, weight: .bold, design: .monospaced)
-                                .foregroundStyle(index == 0 ? MorpheTheme.brandBlueText : MorpheTheme.textPrimary.opacity(0.55))
+                                .foregroundStyle(index == 0 ? MorpheTheme.accentText : MorpheTheme.textPrimary.opacity(0.55))
                                 .frame(width: 44, alignment: .leading)
                             Text(entry.name)
                                 .scaledFont(size: 22, weight: .black)
@@ -2271,7 +2271,7 @@ private struct BoardStoryView: View {
                             Text("\(entry.score) SETS")
                                 .scaledFont(size: 14, weight: .bold, design: .monospaced)
                                 .tracking(1.2)
-                                .foregroundStyle(MorpheTheme.brandBlueText)
+                                .foregroundStyle(MorpheTheme.accentText)
                         }
                     }
                 }
@@ -2285,14 +2285,14 @@ private struct BoardStoryView: View {
                     store.pendingProgressOpen = true
                     dismiss()
                 }
-                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.brandBlue))
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
 
                 HStack {
                     Spacer()
                     Text("TRAIN SMARTER")
                         .scaledFont(size: 11, weight: .bold, design: .monospaced)
                         .tracking(1.6)
-                        .foregroundStyle(MorpheTheme.brandBlueText)
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
             }
             .padding(20)
@@ -2480,7 +2480,7 @@ struct FeedGridTile: View {
                         ].compactMap(\.self).joined(separator: " · "))
                             .font(MorpheTheme.microLabel(9))
                             .tracking(1.0)
-                            .foregroundStyle(MorpheTheme.brandBlueText)
+                            .foregroundStyle(MorpheTheme.accentText)
                     }
                 }
                 .padding(10)
@@ -2498,13 +2498,13 @@ struct FeedGridTile: View {
                 if post.verified {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(MorpheTheme.brandBlueText)
+                        .foregroundStyle(MorpheTheme.accentText)
                 }
                 Spacer(minLength: 0)
                 if let count = store.feedReactionCounts[post.id], count > 0 {
                     Image(systemName: "heart.fill")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(MorpheTheme.brandBlueText)
+                        .foregroundStyle(MorpheTheme.accentText)
                     Text("\(count)")
                         .font(.caption2.weight(.bold).monospaced())
                         .foregroundStyle(MorpheTheme.textPrimary)
@@ -2585,7 +2585,7 @@ private struct StoryCardView: View {
                 ].compactMap(\.self).joined(separator: "   ·   "))
                     .scaledFont(size: 14, weight: .bold, design: .monospaced)
                     .tracking(1.2)
-                    .foregroundStyle(MorpheTheme.brandBlueText)
+                    .foregroundStyle(MorpheTheme.accentText)
                     .padding(.bottom, 12)
             }
 
@@ -2593,7 +2593,7 @@ private struct StoryCardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "trophy.fill")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(MorpheTheme.brandBlueText)
+                        .foregroundStyle(MorpheTheme.accentText)
                     Text("NEW PR · \(name.uppercased())")
                         .scaledFont(size: 12, weight: .bold, design: .monospaced)
                         .tracking(1.2)
@@ -2624,7 +2624,7 @@ private struct StoryCardView: View {
                 Text("TRAIN SMARTER")
                     .scaledFont(size: 11, weight: .bold, design: .monospaced)
                     .tracking(1.6)
-                    .foregroundStyle(MorpheTheme.brandBlueText)
+                    .foregroundStyle(MorpheTheme.accentText)
             }
         }
         .padding(24)
@@ -2856,7 +2856,7 @@ private struct FeedPostCard: View {
                                                     .font(MorpheTheme.microLabel(9))
                                                     .tracking(0.5)
                                             }
-                                            .foregroundStyle(MorpheTheme.brandBlueText)
+                                            .foregroundStyle(MorpheTheme.accentText)
                                             .accessibilityLabel("\(duo)-day duo streak with \(post.authorName)")
                                         }
                                     }
@@ -3936,7 +3936,7 @@ struct AthleteInboxView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 16)
                         .frame(height: 34)
-                        .background(Capsule().fill(MorpheTheme.brandBlue))
+                        .background(Capsule().fill(MorpheTheme.accent))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Start a chat with \(hit.username)")
@@ -3976,7 +3976,7 @@ struct LiveThreadRow: View {
                 HStack(spacing: 6) {
                     if isUnread {
                         Circle()
-                            .fill(MorpheTheme.brandBlue)
+                            .fill(MorpheTheme.accent)
                             .frame(width: 8, height: 8)
                     }
                     Text(name)
@@ -3985,7 +3985,7 @@ struct LiveThreadRow: View {
                     Spacer()
                     Text(thread.updatedAt.formatted(.relative(presentation: .named)))
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(isUnread ? MorpheTheme.brandBlueText : MorpheTheme.textMuted)
+                        .foregroundStyle(isUnread ? MorpheTheme.accentText : MorpheTheme.textMuted)
                 }
 
                 Text(thread.lastMessage.isEmpty ? "No messages yet" : thread.lastMessage)

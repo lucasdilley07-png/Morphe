@@ -782,7 +782,7 @@ struct WorkoutView: View {
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                            .fill(MorpheTheme.brandBlue)
+                            .fill(MorpheTheme.accent)
                     )
                     .accessibilityElement(children: .combine)
 
@@ -1871,7 +1871,7 @@ private struct WorkoutDebriefSheet: View {
                                         .background(
                                             RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
                                                 .fill(intensity == option
-                                                      ? MorpheTheme.brandBlue
+                                                      ? MorpheTheme.accent
                                                       : MorpheTheme.panelStrong.opacity(0.6))
                                         )
                                         .foregroundStyle(intensity == option ? .white : MorpheTheme.textPrimary)
@@ -2737,7 +2737,7 @@ private struct ActiveWorkoutTrackerCard: View {
                        let prLine = store.prProximityLine(for: exercise) {
                         Text(prLine)
                             .font(MorpheTheme.microLabel(10)).tracking(1.0)
-                            .foregroundStyle(MorpheTheme.brandBlueText)
+                            .foregroundStyle(MorpheTheme.accentText)
                     }
                     Text(exercise.formCue)
                         .font(.caption)
@@ -3187,7 +3187,7 @@ private struct VoiceSetLogBar: View {
                 HStack(spacing: 10) {
                     Image(systemName: controller.isListening ? "waveform" : "mic.fill")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(controller.isListening ? MorpheTheme.brandBlueText : MorpheTheme.accentText)
+                        .foregroundStyle(controller.isListening ? MorpheTheme.accentText : MorpheTheme.accentText)
                         .symbolEffect(.variableColor.iterative, isActive: controller.isListening)
                     Text(controller.isListening
                          ? (controller.transcript.isEmpty ? "Listening — say \"10 at 135\"…" : controller.transcript)
