@@ -88,7 +88,9 @@ struct CommunityView: View {
         // on the center line, matching Train's header. The camera door
         // rides a trailing overlay so it never pushes the tabs off-center
         // when the feed relights.
-        HStack(alignment: .bottom, spacing: 28) {
+        // Equal columns, each label centered (Lucas 2026-10-10: more
+        // separated, symmetrical — same as Discover's).
+        HStack(alignment: .bottom, spacing: 0) {
             sectionTab("CHATS", .contact, showsBadge: store.unreadThreadCount > 0)
             if FeatureFlags.socialFeedEnabled {
                 sectionTab("FEED", .forYou)
@@ -148,7 +150,7 @@ struct CommunityView: View {
                     .fill(isActive ? MorpheTheme.accent : .clear)
                     .frame(width: 34, height: 3)
             }
-            .frame(minHeight: 44, alignment: .bottom)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .bottom)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

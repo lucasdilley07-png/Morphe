@@ -32,9 +32,24 @@ struct ExerciseDetailView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text(exercise.name)
-                                .font(.title2.weight(.bold))
-                                .foregroundStyle(MorpheTheme.textPrimary)
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(exercise.name)
+                                    .font(.title2.weight(.bold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Spacer(minLength: 8)
+                                // Saved exercises live in Learn → Library (Lucas 2026-10-10).
+                                Button {
+                                    store.toggleSavedExercise(exercise)
+                                    Haptics.impact(.light)
+                                } label: {
+                                    Image(systemName: store.savedExerciseIDs.contains(exercise.id) ? "bookmark.fill" : "bookmark")
+                                        .font(.headline)
+                                        .foregroundStyle(MorpheTheme.accentText)
+                                        .frame(width: 44, height: 44)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(store.savedExerciseIDs.contains(exercise.id) ? "Remove from saved exercises" : "Save exercise")
+                            }
 
                             HStack(spacing: 8) {
                                 MetricPill(label: "Muscles", value: exercise.musclesWorked)

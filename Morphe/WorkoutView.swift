@@ -40,6 +40,12 @@ struct WorkoutView: View {
     @State private var pendingLibraryAction: (() -> Void)?
     @State private var showTrainLayoutEditor = false
     @State private var showBuilder = false
+    /// Build Workout (Lucas 2026-10-10): the chooser, then one of three doors.
+    @State private var showBuildChooser = false
+    @State private var showAIBuilder = false
+    @State private var showPlanBuilderDoor = false
+    /// Runs after the chooser / builder sheet finishes dismissing.
+    @State private var pendingBuildAction: (() -> Void)?
     @State private var showFormCheck = false
     @State private var showCircuitMode = false
     @State private var showEmptyLibraryNotice = false
@@ -160,6 +166,56 @@ struct WorkoutView: View {
             }
         )
         .background(
+            EmptyView().sheet(isPresented: $showBuildChooser, onDismiss: {
+                let action = pendingBuildAction
+                pendingBuildAction = nil
+                action?()
+            }) {
+                BuildWorkoutChooserSheet(
+                    onBuildYourself: { pendingBuildAction = { showBuilder = true }; showBuildChooser = false },
+                    onBuildWithAI: { pendingBuildAction = { showAIBuilder = true }; showBuildChooser = false },
+                    onBuildPlan: { pendingBuildAction = { showPlanBuilderDoor = true }; showBuildChooser = false }
+                )
+                .environment(store)
+                .presentationDetents([.medium])
+                .presentationCornerRadius(28)
+            }
+        )
+        .background(
+            EmptyView().sheet(isPresented: $showAIBuilder, onDismiss: {
+                let action = pendingBuildAction
+                pendingBuildAction = nil
+                action?()
+            }) {
+                AIWorkoutBuilderSheet(onStart: { template in
+                    pendingBuildAction = {
+                        isShowingPainFlow = false
+                        store.beginLiveWorkout(template)
+                    }
+                    showAIBuilder = false
+                })
+                .environment(store)
+                .presentationDetents([.large])
+                .presentationCornerRadius(28)
+                .sheetToastSurface()
+            }
+        )
+        .background(
+            EmptyView().sheet(isPresented: $showPlanBuilderDoor) {
+                PlanBuilderSheet()
+                    .environment(store)
+                    .presentationDetents([.large])
+                    .presentationCornerRadius(28)
+                    .sheetToastSurface()
+            }
+        )
+        .onChange(of: store.pendingBuildWorkoutReveal) { _, reveal in
+            // "Choose Next" after a finished program lands here.
+            guard reveal else { return }
+            store.pendingBuildWorkoutReveal = false
+            showBuildChooser = true
+        }
+        .background(
             EmptyView().sheet(isPresented: $showTrainTogether) {
                 TrainTogetherSheet()
                     .environment(store)
@@ -213,6 +269,17 @@ struct WorkoutView: View {
             if store.programProgress != nil {
                 ProgramSectionCard()
             }
+        case .builder:
+                TrainLinkCard(
+                    systemImage: "hammer.fill",
+                    title: "Build Workout",
+                    detail: MorpheIntelligence.apiKey == nil
+                        ? "Build one yourself, or answer a few questions and Morphe builds it from the library."
+                        : "Build one yourself, or answer a few questions and Morphe AI builds it with you."
+                ) {
+                    showBuildChooser = true
+                }
+                .id("buildWorkout")
         case .library:
                 // A tap-through card like Today's Schedule (Lucas
                 // 2026-10-05) — the library opens as its own page instead
@@ -255,7 +322,7 @@ struct WorkoutView: View {
     private var libraryCardDetail: String {
         let saved = store.savedWorkouts.count
         let built = store.workoutTemplates.filter { store.isCustomWorkout($0.id) }.count
-        if saved == 0, built == 0 { return "Nothing saved yet. Build a workout or save one from Discover." }
+        if saved == 0, built == 0 { return "Nothing saved yet. Save one from Discover, or build one above." }
         var parts: [String] = []
         if saved > 0 { parts.append("\(saved) saved") }
         if built > 0 { parts.append("\(built) built") }
@@ -985,7 +1052,7 @@ struct WorkoutView: View {
                             Text("My Library")
                                 .font(.title2.weight(.bold))
                                 .foregroundStyle(MorpheTheme.textPrimary)
-                            Text("Your builds, favorites and saved sessions.")
+                            Text("Your saved workouts — favorites, Discover saves, and the ones you built.")
                                 .font(.subheadline)
                                 .foregroundStyle(MorpheTheme.textSecondary)
                         }
@@ -994,16 +1061,8 @@ struct WorkoutView: View {
                             .foregroundStyle(MorpheTheme.textPrimary)
                             .frame(minWidth: 44, minHeight: 44)
                     }
-            Button {
-                afterLibrary { showBuilder = true }
-            } label: {
-                Label("Build Workout", systemImage: "plus.circle.fill")
-            }
-            .buttonStyle(SecondaryCTAButtonStyle())
-            .accessibilityLabel("Build your own workout")
-
-            // Built workouts live INSIDE the library now (the "My
-            // Workouts" segment) — one home, not a second card.
+            // Building moved to Train's Build Workout card (Lucas
+            // 2026-10-10) — the library only shows what is saved.
             SavedWorkoutsLibraryCard(
                 items: store.savedWorkouts,
                 insightFor: { item in
@@ -1336,6 +1395,12 @@ struct PlanBuilderSheet: View {
                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 .disabled(plan == nil)
                 .opacity(plan == nil ? 0.5 : 1)
+
+                // Morphe's ready programs ride here now (Lucas 2026-10-10:
+                // the shelf left Discover).
+                if store.programProgress == nil {
+                    ProgramSectionCard(showsLibraryHeader: true)
+                }
             }
             .padding(20)
         }
@@ -1352,6 +1417,288 @@ struct PlanBuilderSheet: View {
             let level = store.clientProfile.fitnessLevel.lowercased()
             if level.contains("advanced") { request.level = .advanced }
             else if level.contains("intermediate") || level.contains("moderate") { request.level = .moderate }
+        }
+    }
+
+    private func question(_ title: String, @ViewBuilder chips: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.2)
+                .foregroundStyle(MorpheTheme.textMuted)
+            WrapStack(spacing: 8) { chips() }
+        }
+    }
+
+    private func chip(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(label) {
+            Haptics.selection()
+            action()
+        }
+        .buttonStyle(FilterChipStyle(isSelected: selected))
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+// MARK: - Build Workout (Lucas 2026-10-10)
+
+/// Three doors: your own build, a build with Morphe AI, a multi-week plan.
+struct BuildWorkoutChooserSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let onBuildYourself: () -> Void
+    let onBuildWithAI: () -> Void
+    let onBuildPlan: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Build Workout")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Spacer(minLength: 8)
+                Button("Close") { dismiss() }
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .frame(minWidth: 44, minHeight: 44)
+            }
+            door("Build it yourself", systemImage: "hammer.fill",
+                 detail: "Pick exercises from the library, set your sets and reps, name it. Yours in My Library.",
+                 action: onBuildYourself)
+            door("Build with Morphe AI", systemImage: "sparkles",
+                 detail: MorpheIntelligence.apiKey == nil
+                    ? "Answer a few questions — goal, split, style, intensity, time, gear — and Morphe builds the session from the library by its rules. Add your key for a bespoke build."
+                    : "Answer a few questions — goal, split, style, intensity, time, gear — and Morphe AI builds the session with you from the library.",
+                 action: onBuildWithAI)
+            door("Multi-week program", systemImage: "calendar",
+                 detail: "A plan measured in weeks: sessions in order, progression from your logs, one deload before the end.",
+                 action: onBuildPlan)
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .background(PremiumBackground().ignoresSafeArea())
+    }
+
+    private func door(_ title: String, systemImage: String, detail: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            GlassCard(.quiet) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: systemImage)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text(detail)
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+    }
+}
+
+/// The questionnaire, then the build: Morphe AI with the user's key,
+/// Morphe's rules without one. Every answer is seeded from the profile.
+struct AIWorkoutBuilderSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    /// Called with the saved template when the user chooses Save & Start.
+    let onStart: (WorkoutTemplate) -> Void
+
+    @State private var request = GuidedBuildRequest()
+    @State private var seeded = false
+    @State private var draft: BuiltWorkoutDraft?
+    @State private var isBuilding = false
+    @State private var rebuildSeed = 0
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Build with Morphe AI")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text(MorpheIntelligence.apiKey == nil
+                             ? "Answer, then Morphe builds it from the library by its rules (add your key for a bespoke build)."
+                             : "Answer, then Morphe AI builds the session with you from the library.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                    Button("Close") { dismiss() }
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+
+                question("Goal") {
+                    ForEach(GuidedBuildRequest.goals, id: \.self) { goal in
+                        chip(goal, selected: request.goal == goal) { request.goal = goal }
+                    }
+                }
+                question("Split") {
+                    ForEach(GuidedBuildRequest.splits, id: \.self) { split in
+                        chip(split, selected: request.split == split) { request.split = split }
+                    }
+                }
+                question("Style") {
+                    ForEach(GuidedBuildRequest.styles, id: \.self) { style in
+                        chip(style, selected: request.style == style) { request.style = style }
+                    }
+                }
+                question("Intensity") {
+                    ForEach(GuidedBuildRequest.intensities, id: \.self) { level in
+                        chip(level, selected: request.intensity == level) { request.intensity = level }
+                    }
+                }
+                question("Difficulty") {
+                    ForEach([DemoDifficulty.beginner, .moderate, .advanced], id: \.self) { level in
+                        chip(level == .moderate ? "Intermediate" : level.rawValue, selected: request.level == level) { request.level = level }
+                    }
+                }
+                question("Time") {
+                    ForEach(GuidedBuildRequest.minutesOptions, id: \.self) { minutes in
+                        chip("\(minutes) min", selected: request.minutes == minutes) { request.minutes = minutes }
+                    }
+                }
+                question("Equipment") {
+                    ForEach(MorpheAppStore.equipmentOptions, id: \.self) { gear in
+                        chip(gear, selected: request.equipment.contains(gear)) {
+                            if request.equipment.contains(gear) { request.equipment.remove(gear) } else { request.equipment.insert(gear) }
+                        }
+                    }
+                }
+                question("Lean on") {
+                    ForEach(MuscleGroup.allCases) { group in
+                        chip(group.rawValue, selected: request.focus.contains(group)) {
+                            if request.focus.contains(group) { request.focus.remove(group) } else { request.focus.insert(group) }
+                        }
+                    }
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("AVOID")
+                        .font(MorpheTheme.microLabel(10))
+                        .tracking(1.2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    TextField("Injuries, movements to skip…", text: $request.avoid, axis: .vertical)
+                        .textFieldStyle(MorpheFieldStyle())
+                        .lineLimit(1...3)
+                }
+
+                Button {
+                    build()
+                } label: {
+                    HStack(spacing: 8) {
+                        if isBuilding { ProgressView().tint(MorpheTheme.onFill(MorpheTheme.accent)) }
+                        Text(isBuilding ? "Building…" : (draft == nil ? "Build It" : "Rebuild"))
+                    }
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                .disabled(isBuilding)
+
+                if let draft {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text(draft.name)
+                                    .font(.headline)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Spacer()
+                                Text(draft.source.uppercased())
+                                    .font(MorpheTheme.microLabel(9))
+                                    .tracking(1.2)
+                                    .foregroundStyle(MorpheTheme.accentText)
+                            }
+                            Text(draft.summary)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(request.summaryLine.uppercased())
+                                .font(MorpheTheme.microLabel(9))
+                                .tracking(1.0)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            ForEach(Array(draft.items.enumerated()), id: \.element.id) { index, item in
+                                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                    Text("\(index + 1)")
+                                        .font(MorpheTheme.microLabel(10))
+                                        .monospacedDigit()
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                        .frame(width: 18, alignment: .trailing)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(item.exercise.name)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(MorpheTheme.textPrimary)
+                                        Text("\(item.sets) × \(item.reps) · \(item.exercise.muscleGroup.rawValue)\(item.exercise.equipment.isEmpty ? "" : " · \(item.exercise.equipment)")")
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.textSecondary)
+                                    }
+                                }
+                            }
+                            ForEach(draft.notes, id: \.self) { note in
+                                Text(note)
+                                    .font(.caption2)
+                                    .foregroundStyle(MorpheTheme.warning)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Text("Sets and reps are a starting point — adjust them in My Library. A training aid, not medical advice.")
+                                .font(.caption2)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    HStack(spacing: 10) {
+                        Button("Save to My Library") {
+                            store.saveBuiltWorkout(draft)
+                            Haptics.success()
+                            dismiss()
+                        }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        Button("Save & Start") {
+                            let template = store.saveBuiltWorkout(draft)
+                            Haptics.success()
+                            onStart(template)
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    }
+                }
+            }
+            .padding(20)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
+        .onAppear {
+            guard !seeded else { return }
+            seeded = true
+            request = store.seededBuildRequest()
+        }
+    }
+
+    private func build() {
+        isBuilding = true
+        let current = request
+        let seed = rebuildSeed
+        rebuildSeed += 1
+        Task {
+            let built = MorpheIntelligence.apiKey == nil
+                ? store.buildWorkoutWithRules(current, seed: seed)
+                : await store.buildWorkoutWithMorpheAI(current)
+            withAnimation(.easeOut(duration: 0.2)) { draft = built }
+            isBuilding = false
+            Haptics.impact(.light)
         }
     }
 
@@ -1650,7 +1997,6 @@ struct TechniqueLibraryView: View {
 /// workout here drops straight into the live tracker on Train.
 struct DiscoverScreenView: View {
     @Environment(MorpheAppStore.self) private var store
-    @State private var showPrograms = false
 
     var body: some View {
         // The stack exists for the category drill-in: a real push with
@@ -1683,18 +2029,8 @@ struct DiscoverScreenView: View {
                                 store.startCatalogWorkout(template)
                             }
                         )
-
-                        // Morphe's programs live with the rest of the catalog
-                        // now (Lucas 2026-08-28) — collapsed by default so the
-                        // workout grid keeps the spotlight. The card shows your
-                        // active program's arc here too if one is running.
-                        TrainExpandableSection(
-                            title: "Programs",
-                            subtitle: "Multi-week plans — sessions in order, progression built in, one deload before the end.",
-                            isExpanded: $showPrograms
-                        ) {
-                            ProgramSectionCard(showsLibraryHeader: false)
-                        }
+                        // (Programs and Build My Plan left Discover, Lucas
+                        // 2026-10-10 — both live behind Train → Build Workout.)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -1712,19 +2048,7 @@ struct DiscoverScreenView: View {
             .onChange(of: store.selectedDiscoverSection) { _, section in
                 if section == .feed { Task { await store.refreshCreatorContent() } }
             }
-            .onAppear { consumeProgramsReveal() }
-            .onChange(of: store.pendingDiscoverProgramsReveal) { _, _ in
-                consumeProgramsReveal()
-            }
         }
-    }
-
-    /// "Choose Next" on Train sends the user here with a one-shot asking
-    /// the Programs section to be open on arrival (audit 18, P1).
-    private func consumeProgramsReveal() {
-        guard store.pendingDiscoverProgramsReveal else { return }
-        store.pendingDiscoverProgramsReveal = false
-        showPrograms = true
     }
 }
 
@@ -1733,7 +2057,9 @@ private struct DiscoverSectionTabs: View {
     @Environment(MorpheAppStore.self) private var store
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 28) {
+        // Equal halves, each label centered in its own column (Lucas
+        // 2026-10-10: more separated, symmetrical).
+        HStack(alignment: .bottom, spacing: 0) {
             ForEach(DiscoverSection.allCases) { section in
                 let isActive = store.selectedDiscoverSection == section
                 Button {
@@ -1749,7 +2075,7 @@ private struct DiscoverSectionTabs: View {
                             .fill(isActive ? MorpheTheme.accent : .clear)
                             .frame(width: 34, height: 3)
                     }
-                    .frame(minHeight: 44, alignment: .bottom)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .bottom)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -2084,7 +2410,6 @@ private struct PostWorkoutSmartActionCard: View {
 private struct ProgramSectionCard: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var showLeaveConfirm = false
-    @State private var showPlanBuilder = false
     /// Discover hosts this card under a section that already carries the
     /// title and one-liner — repeating them read as a stutter
     /// (audit 18, P2).
@@ -2140,7 +2465,7 @@ private struct ProgramSectionCard: View {
                 store.revealDiscoverPrograms()
             }
             .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-            .accessibilityLabel("Finish this program and browse programs in Discover")
+            .accessibilityLabel("Finish this program and build your next one")
         } else {
             Text("Up next: \(progress.nextSessionName)")
                 .font(.subheadline.weight(.semibold))
@@ -2183,30 +2508,6 @@ private struct ProgramSectionCard: View {
                 .foregroundStyle(MorpheTheme.textSecondary)
         }
 
-        // The plan built for this person leads the shelf (2026-10-04).
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Build My Plan")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(MorpheTheme.textPrimary)
-            Text("Five answers: goal, days, equipment, level, time. Morphe lays out the weeks from its own catalog.")
-                .font(.caption)
-                .foregroundStyle(MorpheTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Button("Build My Plan") { showPlanBuilder = true }
-                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-        }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                .fill(MorpheTheme.panelStrong.opacity(0.6))
-        )
-        .sheet(isPresented: $showPlanBuilder) {
-            PlanBuilderSheet()
-                .environment(store)
-                .presentationDetents([.large])
-                .presentationCornerRadius(28)
-                .sheetToastSurface()
-        }
 
         ForEach(store.allPrograms) { program in
             VStack(alignment: .leading, spacing: 6) {

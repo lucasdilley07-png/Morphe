@@ -3255,6 +3255,9 @@ private struct UniversalSearchSheet: View {
     @State private var query = ""
     @State private var category: UniversalSearchCategory = .accounts
     @State private var searchDebounce: Task<Void, Never>?
+    /// Instagram shape (Lucas 2026-10-10): the page is empty until the
+    /// user submits a search; the category filters appear with results.
+    @State private var hasSearched = false
     @FocusState private var searchFocused: Bool
 
     private var normalizedQuery: String {
@@ -3318,39 +3321,65 @@ private struct UniversalSearchSheet: View {
                     // one per keystroke.
                     .onChange(of: query) { _, newValue in
                         searchDebounce?.cancel()
+                        if newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            hasSearched = false   // cleared: back to the empty page
+                        }
                         searchDebounce = Task {
                             try? await Task.sleep(nanoseconds: 350_000_000)
                             guard !Task.isCancelled else { return }
                             await store.searchAthletes(query: newValue)
                         }
                     }
+                    .onSubmit {
+                        guard !normalizedQuery.isEmpty else { return }
+                        withAnimation(.easeInOut(duration: 0.2)) { hasSearched = true }
+                        Haptics.selection()
+                    }
 
-                Picker("Search Category", selection: $category) {
-                    ForEach(UniversalSearchCategory.allCases) { item in
-                        Text(item.rawValue).tag(item)
+                if hasSearched {
+                    Picker("Search Category", selection: $category) {
+                        ForEach(UniversalSearchCategory.allCases) { item in
+                            Text(item.rawValue).tag(item)
+                        }
                     }
-                }
-                .pickerStyle(.segmented)
+                    .pickerStyle(.segmented)
 
-                // Swipe between the categories (Lucas 2026-08-18) — same
-                // pager grammar as Train and Learn; the picker stays synced
-                // through the shared selection.
-                TabView(selection: $category) {
-                    ScrollView(showsIndicators: false) {
-                        accountsResults.padding(.bottom, 40)
+                    // Swipe between the categories (Lucas 2026-08-18) — same
+                    // pager grammar as Train and Learn; the picker stays synced
+                    // through the shared selection.
+                    TabView(selection: $category) {
+                        ScrollView(showsIndicators: false) {
+                            accountsResults.padding(.bottom, 40)
+                        }
+                        .tag(UniversalSearchCategory.accounts)
+                        ScrollView(showsIndicators: false) {
+                            plansResults.padding(.bottom, 40)
+                        }
+                        .tag(UniversalSearchCategory.plans)
+                        ScrollView(showsIndicators: false) {
+                            libraryResults.padding(.bottom, 40)
+                        }
+                        .tag(UniversalSearchCategory.library)
                     }
-                    .tag(UniversalSearchCategory.accounts)
-                    ScrollView(showsIndicators: false) {
-                        plansResults.padding(.bottom, 40)
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .frame(maxHeight: .infinity)
+                } else {
+                    // The empty page: nothing to filter yet.
+                    VStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        Text(normalizedQuery.isEmpty
+                             ? "Type a name, @username, workout or exercise, then search."
+                             : "Press search to see accounts, workouts and exercises for \u{201C}\(query.trimmingCharacters(in: .whitespacesAndNewlines))\u{201D}.")
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .tag(UniversalSearchCategory.plans)
-                    ScrollView(showsIndicators: false) {
-                        libraryResults.padding(.bottom, 40)
-                    }
-                    .tag(UniversalSearchCategory.library)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.top, 40)
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .frame(maxHeight: .infinity)
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)

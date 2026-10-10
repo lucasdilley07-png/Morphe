@@ -7,6 +7,13 @@ struct MoreView: View {
     /// The saying the door card showed when it was tapped — The Code
     /// leads with exactly that line.
     @State private var openedSaying: LaconicSaying?
+    @State private var showLessons = false
+    @State private var showWhyMorphe = false
+    @State private var showChart = false
+    @State private var showBasics = false
+    @State private var openedLibraryPage: LearnLibraryPageKind?
+    @State private var pendingExerciseOpen: ExerciseReference?
+    @State private var pendingSavedWorkoutStart: SavedWorkoutLibraryItem?
 
     /// The three surfaces this tab actually owns. Scores/Progress duplicated
     /// the Progress tab and Quick Tools duplicated the Train tab + AI FAB, so
@@ -49,11 +56,7 @@ struct MoreView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     learnHeader
                     panel(for: activeFeature)
-                    // Once, on the last panel — not three copies (audit 11,
-                    // P2-16).
-                    if activeFeature == Self.tabs.last {
-                        ManifestoCard()
-                    }
+                    // (Why Morphe folds inside the Lessons page now.)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 120)
@@ -74,7 +77,7 @@ struct MoreView: View {
 
             // Centered chip row (Lucas 2026-08-16): three chips balance on
             // the page's center line, matching the app-wide symmetry.
-            HStack(spacing: 10) {
+            HStack(spacing: 20) {
                 ForEach(Self.tabs) { feature in
                     Button(chipTitle(for: feature)) {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -117,51 +120,55 @@ struct MoreView: View {
             // (SportModeSelector removed from here: browsing the library must
             // not rewrite the user's sports, goal, and persisted profile as a
             // side effect — changing sport lives on the plan surfaces.)
-            GlassCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Exercise Library")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("Browse by muscle group, then open the movement for beginner-friendly form help and safer alternatives.")
-                        .foregroundStyle(MorpheTheme.textSecondary)
+            // Doors, not walls (Lucas 2026-10-10): the exercise library
+            // and every saved thing open as their own slide-up page.
+            LearnLibraryRow(systemImage: "figure.strengthtraining.traditional", title: "Exercise Library",
+                            detail: "\(store.allExercises.count) movements by muscle group — form help and safer alternatives inside.") {
+                openedLibraryPage = .exercises
+            }
 
-                    // Platform note (audit 11, P2-17): a drag starting on
-                    // this horizontal row scrolls the chips, not the pager
-                    // — standard nested-scroll behavior; the page tabs
-                    // above remain the guaranteed door.
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(MuscleGroup.allCases) { group in
-                                Button(group.rawValue) {
-                                    store.selectMuscleGroup(group)
-                                }
-                                .buttonStyle(FilterChipStyle(isSelected: store.selectedMuscleGroup == group))
-                            }
-                        }
-                    }
-
-                    ForEach(store.filteredExercises) { exercise in
-                        HStack(alignment: .top) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(exercise.name)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                                Text(exercise.musclesWorked)
-                                    .font(.caption)
-                                    .foregroundStyle(MorpheTheme.textSecondary)
-                            }
-
-                            Spacer()
-
-                            Button("Open") {
-                                store.selectedExercise = exercise
-                            }
-                            .buttonStyle(SecondaryCTAButtonStyle())
-                            .frame(width: 88)
-                        }
-                        .padding(.vertical, 4)
-                    }
+            VStack(alignment: .leading, spacing: 10) {
+                CodeLabel(text: "Saved", color: MorpheTheme.accentText)
+                LearnLibraryRow(systemImage: "bookmark", title: "Saved posts",
+                                detail: store.savedPostIds.isEmpty ? "Nothing saved yet — bookmark a post from its menu." : "\(store.savedPostIds.count) saved") {
+                    openedLibraryPage = .savedPosts
                 }
+                LearnLibraryRow(systemImage: "dumbbell", title: "Saved workouts",
+                                detail: store.savedWorkouts.isEmpty ? "Nothing saved yet — save one from Discover or build one in Train." : "\(store.savedWorkouts.count) saved") {
+                    openedLibraryPage = .savedWorkouts
+                }
+                LearnLibraryRow(systemImage: "figure.walk", title: "Saved exercises",
+                                detail: store.savedExerciseIDs.isEmpty ? "Nothing saved yet — tap the bookmark on any movement." : "\(store.savedExerciseIDs.count) saved") {
+                    openedLibraryPage = .savedExercises
+                }
+                LearnLibraryRow(systemImage: "fork.knife", title: "Saved diet plans",
+                                detail: store.savedDietPlanModes.isEmpty ? "Nothing saved yet — save a plan from the chart under Nutrition." : "\(store.savedDietPlanModes.count) saved") {
+                    openedLibraryPage = .savedDietPlans
+                }
+                LearnLibraryRow(systemImage: "text.book.closed", title: "Saved lessons",
+                                detail: store.savedLessonIDs.isEmpty ? "Nothing saved yet — tap the bookmark on any lesson." : "\(store.savedLessonIDs.count) saved") {
+                    openedLibraryPage = .savedLessons
+                }
+            }
+            .sheet(item: $openedLibraryPage, onDismiss: {
+                // A sheet can't present the root exercise sheet while it's
+                // up — the tapped movement opens once this page is gone.
+                if let exercise = pendingExerciseOpen {
+                    pendingExerciseOpen = nil
+                    store.selectedExercise = exercise
+                }
+                if let item = pendingSavedWorkoutStart {
+                    pendingSavedWorkoutStart = nil
+                    store.startSavedWorkout(item)
+                }
+            }) { page in
+                LearnLibraryPage(page: page,
+                                 onOpenExercise: { exercise in pendingExerciseOpen = exercise; openedLibraryPage = nil },
+                                 onStartSavedWorkout: { item in pendingSavedWorkoutStart = item; openedLibraryPage = nil })
+                    .environment(store)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationCornerRadius(28)
             }
 
             GlassCard {
@@ -218,6 +225,12 @@ struct MoreView: View {
 
             FuelLogCard()
 
+            // Drop-downs, chart first (Lucas 2026-10-10).
+            LearnDisclosure(title: "The chart", subtitle: "Calories and the carb · protein · fat split for your goal, from your logged weight.", isExpanded: $showChart) {
+                NutritionChartCard()
+            }
+
+            LearnDisclosure(title: "Nutrition basics", subtitle: "Calories, protein, water — the three numbers to hit before anything fancy.", isExpanded: $showBasics) {
             GlassCard {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Nutrition Basics")
@@ -263,7 +276,7 @@ struct MoreView: View {
                 }
             }
 
-            NutritionChartCard()
+            }
 
             AIInsightCard(insight: store.nutritionInsight)
         }
@@ -345,9 +358,14 @@ struct MoreView: View {
             RecordLineCard(saying: todaysLine) {
                 openedSaying = todaysLine
             }
+            // Only the saying (Lucas 2026-10-10): a quote pop-up that
+            // changes every day — the ladder and the rest of The Code
+            // stay behind the rank row on Profile.
             .sheet(item: $openedSaying) { saying in
-                SpartanCodeSheet(saying: saying)
-                    .environment(store)
+                DailySayingSheet(saying: saying)
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+                    .presentationCornerRadius(28)
             }
 
             // Discover-style quiz wall (Lucas 2026-08-16): every quiz is a
@@ -392,15 +410,10 @@ struct MoreView: View {
                     .background(PremiumBackground())
             }
 
-            GlassCard {
+            // Drop-downs (Lucas 2026-10-10): Lessons and Why Morphe fold
+            // away so the page doesn't run long.
+            LearnDisclosure(title: "Lessons", subtitle: "Two-minute reads on training, recovery, and effort.", isExpanded: $showLessons) {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Lessons")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("Two-minute reads on training, recovery, and effort.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-
                     let lessons = orderedLessons
 
                     if !lessons.forYou.isEmpty {
@@ -426,6 +439,10 @@ struct MoreView: View {
                 }
             }
 
+            LearnDisclosure(title: "Why Morphe", subtitle: "The four rules the app is built on.", isExpanded: $showWhyMorphe) {
+                ManifestoCard()
+            }
+
             // Personal Rules lived on the deleted Quick Tools panel; the rules
             // are learned habits, so they belong with the lessons.
             if !store.personalRules.isEmpty {
@@ -442,13 +459,26 @@ struct MoreView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 4)
         } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(lesson.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                Text(lesson.subtitle)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accentAlt)
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(lesson.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text(lesson.subtitle)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentAlt)
+                }
+                Spacer(minLength: 0)
+                Button {
+                    store.toggleSavedLesson(lesson)
+                } label: {
+                    Image(systemName: store.savedLessonIDs.contains(lesson.id) ? "bookmark.fill" : "bookmark")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(store.savedLessonIDs.contains(lesson.id) ? "Remove from saved lessons" : "Save lesson")
             }
         }
         .disclosureGroupStyle(HUDDisclosureStyle())
@@ -708,7 +738,367 @@ private struct CodeLabel: View {
     }
 }
 
-/// Today's saying as a slim door into The Code.
+/// A Learn → Library door: glyph, title, one line, chevron.
+struct LearnLibraryRow: View {
+    let systemImage: String
+    let title: String
+    let detail: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            GlassCard(.quiet) {
+                HStack(spacing: 12) {
+                    Image(systemName: systemImage)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text(detail)
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.up")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title). \(detail)")
+        .accessibilityHint("Opens a page")
+    }
+}
+
+enum LearnLibraryPageKind: String, Identifiable {
+    case exercises, savedPosts, savedWorkouts, savedExercises, savedDietPlans, savedLessons
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .exercises: return "Exercise Library"
+        case .savedPosts: return "Saved posts"
+        case .savedWorkouts: return "Saved workouts"
+        case .savedExercises: return "Saved exercises"
+        case .savedDietPlans: return "Saved diet plans"
+        case .savedLessons: return "Saved lessons"
+        }
+    }
+}
+
+/// The slide-up page behind each library row.
+struct LearnLibraryPage: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let page: LearnLibraryPageKind
+    let onOpenExercise: (ExerciseReference) -> Void
+    let onStartSavedWorkout: (SavedWorkoutLibraryItem) -> Void
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(page.title)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer(minLength: 8)
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                content
+            }
+            .padding(20)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch page {
+        case .exercises:
+            Text("Browse by muscle group, then open the movement for form help and safer alternatives.")
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textSecondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(MuscleGroup.allCases) { group in
+                        Button(group.rawValue) { store.selectMuscleGroup(group) }
+                            .buttonStyle(FilterChipStyle(isSelected: store.selectedMuscleGroup == group))
+                    }
+                }
+            }
+            exerciseList(store.filteredExercises)
+        case .savedExercises:
+            if store.savedExercises.isEmpty {
+                empty("Nothing saved yet. Open any movement and tap the bookmark.")
+            } else {
+                exerciseList(store.savedExercises)
+            }
+        case .savedPosts:
+            if store.savedPostIds.isEmpty {
+                empty("Nothing saved yet. Bookmark a post from its menu.")
+            } else if store.savedFeedPosts.isEmpty {
+                empty("\(store.savedPostIds.count) saved — they show here once the feed has loaded them.")
+            } else {
+                ForEach(store.savedFeedPosts) { post in
+                    GlassCard(.quiet) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(post.authorName)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.accentText)
+                            Text(post.text)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button("Remove from saved") { store.toggleSaved(post) }
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .buttonStyle(.plain)
+                                .frame(minHeight: 32)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        case .savedWorkouts:
+            if store.savedWorkouts.isEmpty {
+                empty("Nothing saved yet. Save one from Discover, or build one in Train → Build Workout.")
+            } else {
+                ForEach(store.savedWorkouts) { item in
+                    GlassCard(.quiet) {
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.workoutName)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Text({
+                                    let insight = store.savedWorkoutInsight(for: item)
+                                    return insight.completionCount == 0
+                                        ? "\(item.sport.rawValue) · never completed"
+                                        : "\(item.sport.rawValue) · completed \(insight.completionCount)×"
+                                }())
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                            Button("Start") { onStartSavedWorkout(item) }
+                                .buttonStyle(SecondaryCTAButtonStyle())
+                                .frame(width: 80)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        case .savedDietPlans:
+            if store.savedDietPlans.isEmpty {
+                empty("Nothing saved yet. Under Nutrition → The chart, pick a goal and tap Save this plan.")
+            } else {
+                ForEach(store.savedDietPlans) { mode in
+                    GlassCard(.quiet) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(mode.rawValue)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Spacer()
+                                Button { store.toggleSavedDietPlan(mode) } label: {
+                                    Image(systemName: "bookmark.fill")
+                                        .foregroundStyle(MorpheTheme.accentText)
+                                        .frame(width: 32, height: 32)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Remove \(mode.rawValue) plan")
+                            }
+                            if let plan = store.nutritionPlan(for: mode) {
+                                HStack(spacing: 8) {
+                                    MetricPill(label: "Calories", value: "\(plan.calories)")
+                                    MetricPill(label: "Carbs", value: "\(plan.carbGrams)g")
+                                    MetricPill(label: "Protein", value: "\(plan.proteinGrams)g")
+                                    MetricPill(label: "Fat", value: "\(plan.fatGrams)g")
+                                }
+                                Text("From your logged weight (\(plan.weightLb) lb) — the numbers move when the weight does.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            } else {
+                                Text("Log your weight in Profile → Your Details to see the numbers.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            Text(mode.rule)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        case .savedLessons:
+            if store.savedLessons.isEmpty {
+                empty("Nothing saved yet. Tap the bookmark on any lesson.")
+            } else {
+                ForEach(store.savedLessons) { lesson in
+                    GlassCard(.quiet) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(lesson.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                    Text(lesson.subtitle)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(MorpheTheme.accentAlt)
+                                }
+                                Spacer(minLength: 0)
+                                Button { store.toggleSavedLesson(lesson) } label: {
+                                    Image(systemName: "bookmark.fill")
+                                        .foregroundStyle(MorpheTheme.accentText)
+                                        .frame(width: 32, height: 32)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Remove from saved lessons")
+                            }
+                            Text(lesson.detail)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        }
+    }
+
+    private func exerciseList(_ exercises: [ExerciseReference]) -> some View {
+        VStack(spacing: 8) {
+            ForEach(exercises) { exercise in
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(exercise.name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text(exercise.musclesWorked)
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                    Spacer()
+                    Button("Open") { onOpenExercise(exercise) }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .frame(width: 88)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    private func empty(_ text: String) -> some View {
+        GlassCard(.quiet) {
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// The quote pop-up (Lucas 2026-10-10): today's saying, who said it,
+/// when, and where it is written — nothing else.
+struct DailySayingSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let saying: LaconicSaying
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            CodeLabel(text: "From the record · today", color: MorpheTheme.accentText)
+            Text("\u{201C}\(saying.text)\u{201D}")
+                .font(.record(.title2))
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(saying.speaker)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text(saying.context)
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(saying.source)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            Text("A new line every day.")
+                .font(.caption2)
+                .foregroundStyle(MorpheTheme.textMuted)
+            Spacer(minLength: 0)
+            Button("Done") { dismiss() }
+                .buttonStyle(SecondaryCTAButtonStyle())
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(PremiumBackground().ignoresSafeArea())
+    }
+}
+
+/// A folding section for Learn: tracked label, hairline, +/-; the
+/// subtitle shows only while folded.
+struct LearnDisclosure<Content: View>: View {
+    let title: String
+    let subtitle: String
+    @Binding var isExpanded: Bool
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+            } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 10) {
+                        Text(title.uppercased())
+                            .font(MorpheTheme.microLabel(12))
+                            .tracking(1.6)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                        Rectangle()
+                            .fill(MorpheTheme.stroke)
+                            .frame(height: 1)
+                            .frame(maxWidth: .infinity)
+                        Image(systemName: isExpanded ? "minus" : "plus")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                    }
+                    if !isExpanded {
+                        Text(subtitle)
+                            .font(.footnote)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(title), \(isExpanded ? "expanded" : "collapsed")")
+            if isExpanded {
+                content()
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+}
+
+/// Today's saying as a slim door to the quote pop-up.
 struct RecordLineCard: View {
     let saying: LaconicSaying
     let onOpen: () -> Void
@@ -739,7 +1129,7 @@ struct RecordLineCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("From the record: \(saying.text) \(saying.speaker), \(saying.source)")
-        .accessibilityHint("Opens The Code")
+        .accessibilityHint("Shows today's saying")
     }
 }
 
@@ -1750,6 +2140,17 @@ struct NutritionChartCard: View {
                         MetricPill(label: "Protein", value: "\(plan.proteinGrams)g")
                         MetricPill(label: "Fat", value: "\(plan.fatGrams)g")
                     }
+                    Button {
+                        store.toggleSavedDietPlan(shownGoal)
+                        Haptics.impact(.light)
+                    } label: {
+                        Label(store.savedDietPlanModes.contains(shownGoal.rawValue) ? "Saved to your library" : "Save this plan",
+                              systemImage: store.savedDietPlanModes.contains(shownGoal.rawValue) ? "bookmark.fill" : "bookmark")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(minHeight: 32)
                     Text("Body weight \(plan.weightLb) lb × \(shownGoal.caloriesPerLb.formatted()) · split \(shownGoal.splitLabel)\(plan.proteinFloorApplied ? " · protein held at the 0.85 g/lb floor" : "")")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)

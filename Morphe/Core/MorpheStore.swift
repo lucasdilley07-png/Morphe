@@ -1737,6 +1737,7 @@ final class MorpheAppStore {
                     // switch, wrong to share across accounts.
                     threadReadKey, activitySeenKey, storySeenKey,
                     lastKnownStreakKey, comebackPendingKey, foodChecksKey, recentFoodsKey,
+                    savedExercisesKey, savedLessonsKey, savedDietPlansKey,
                     dailyStreakCountKey, dailyStreakLastDayKey, dailyStreakBestKey, dailyStreakFreezeDayKey,
                     // An invite link opened before sign-out must not credit
                     // the next account's recruiter (audit 2026-10-10, P2).
@@ -3331,7 +3332,8 @@ final class MorpheAppStore {
         return "\(base) \(suffix)"
     }
 
-    func createCustomWorkout(name: String, sport: SportFocus, items: [CustomWorkoutItem]) {
+    @discardableResult
+    func createCustomWorkout(name: String, sport: SportFocus, items: [CustomWorkoutItem]) -> WorkoutTemplate {
         let trimmed = uniqueWorkoutName(name.trimmingCharacters(in: .whitespacesAndNewlines))
         let exercises = items.map { item in
             WorkoutExercise(
@@ -3371,7 +3373,224 @@ final class MorpheAppStore {
             setCurrentWorkout(template)
             showToast("\(template.name) is ready in your Current plan.")
         }
+        return template
     }
+
+    // MARK: - Build Workout (Lucas 2026-10-10)
+
+    /// The questionnaire's defaults, from what the profile already says.
+    func seededBuildRequest() -> GuidedBuildRequest {
+        var request = GuidedBuildRequest()
+        let level = clientProfile.fitnessLevel.lowercased()
+        if level.contains("advanced") { request.level = .advanced }
+        else if level.contains("beginner") { request.level = .beginner }
+        else { request.level = .moderate }
+        let goal = (clientProfile.selectedGoals + [clientProfile.goal]).joined(separator: " ").lowercased()
+        if goal.contains("strong") { request.goal = "Get stronger"; request.style = "Strength" }
+        else if goal.contains("muscle") { request.goal = "Build muscle"; request.style = "Hypertrophy" }
+        else if goal.contains("weight") || goal.contains("fat") || goal.contains("lean") { request.goal = "Lose fat"; request.style = "Circuit" }
+        else if goal.contains("condition") { request.goal = "Conditioning"; request.style = "HIIT" }
+        else if goal.contains("sport") { request.goal = "Sport performance" }
+        let preferred = onboardingDraft.preferredWorkoutLength
+        request.minutes = [20, 30, 45, 60, 90].min(by: { abs($0 - preferred) < abs($1 - preferred) }) ?? 45
+        request.equipment = Set(Self.splitJoined(clientProfile.equipment))
+        for weakness in Self.splitJoined(clientProfile.weaknesses) {
+            switch weakness.lowercased() {
+            case let w where w.contains("upper"): request.focus.formUnion([.chest, .back, .shoulders])
+            case let w where w.contains("lower"): request.focus.insert(.legs)
+            case let w where w.contains("core"): request.focus.insert(.core)
+            case let w where w.contains("cardio"): request.focus.insert(.conditioning)
+            case let w where w.contains("grip"): request.focus.insert(.arms)
+            default: break
+            }
+        }
+        request.avoid = clientProfile.limitations
+        return request
+    }
+
+    /// Exercises the user's equipment allows. "Full gym" opens the whole
+    /// library; nothing chosen reads as bodyweight only — Morphe never
+    /// assumes a barbell.
+    static func exerciseFitsEquipment(_ exercise: ExerciseReference, owned: Set<String>) -> Bool {
+        let gear = exercise.equipment.lowercased()
+        let bodyweight = gear.isEmpty || gear.hasPrefix("none") || gear.contains("mat") || gear.contains("wall")
+            || gear.contains("chair") || gear.contains("floor") || gear.contains("countertop") || gear.contains("towel")
+        if bodyweight { return true }
+        let ownedLower = Set(owned.map { $0.lowercased() })
+        if ownedLower.contains("full gym") { return true }
+        let needs: [(String, [String])] = [
+            ("dumbbells", ["dumbbell"]),
+            ("barbell & rack", ["barbell", "rack", "bench", "ez bar", "plates", "pvc"]),
+            ("kettlebells", ["kettlebell"]),
+            ("resistance bands", ["band"]),
+            ("pull-up bar", ["pull-up bar", "rings", "parallettes", "dip bar"]),
+            ("cardio machines", ["rowing", "bike", "treadmill", "machine", "step platform", "rope"]),
+            ("pool", ["pool"])
+        ]
+        for (item, keys) in needs where ownedLower.contains(item) {
+            if keys.contains(where: { gear.contains($0) }) { return true }
+        }
+        return false
+    }
+
+    /// The muscle groups a split works, in the order they get picked.
+    static func targetGroups(for split: String) -> [MuscleGroup] {
+        switch split {
+        case "Upper body": return [.chest, .back, .shoulders, .arms, .back]
+        case "Lower body": return [.legs, .legs, .core, .legs]
+        case "Push": return [.chest, .shoulders, .arms, .chest]
+        case "Pull": return [.back, .arms, .back, .core]
+        case "Legs": return [.legs, .legs, .legs, .core]
+        case "Core": return [.core, .core, .conditioning]
+        case "Conditioning": return [.conditioning, .legs, .core, .conditioning]
+        default: return [.legs, .chest, .back, .shoulders, .core]
+        }
+    }
+
+    /// Sets × reps and rest for the goal, nudged by intensity.
+    static func prescription(goal: String, intensity: String) -> (sets: Int, reps: Int, rest: Int) {
+        var p: (sets: Int, reps: Int, rest: Int)
+        switch goal {
+        case "Get stronger": p = (5, 5, 150)
+        case "Build muscle": p = (4, 10, 90)
+        case "Lose fat", "Conditioning": p = (3, 15, 45)
+        case "Mobility & recovery": p = (2, 12, 30)
+        default: p = (3, 8, 90)
+        }
+        switch intensity {
+        case "Easy": p.sets = max(2, p.sets - 1)
+        case "Hard": p.sets += 1
+        case "All out": p.sets += 1; p.rest = max(20, p.rest - 30)
+        default: break
+        }
+        return p
+    }
+
+    /// No key: Morphe's own rules pick from the library — equipment,
+    /// level, the split's muscle groups round-robin, the focus groups
+    /// doubled. Deterministic for the same answers (the "Rebuild" button
+    /// shifts the seed), and it says so on the card.
+    func buildWorkoutWithRules(_ request: GuidedBuildRequest, seed: Int = 0) -> BuiltWorkoutDraft {
+        let levelRank: [DemoDifficulty: Int] = [.recovery: 0, .beginner: 1, .moderate: 2, .advanced: 3]
+        let maxRank = levelRank[request.level] ?? 2
+        let avoidWords = request.avoid.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init).filter { $0.count >= 4 }
+        var pool = allExercises.filter { exercise in
+            Self.exerciseFitsEquipment(exercise, owned: request.equipment)
+                && (levelRank[exercise.difficulty] ?? 2) <= maxRank
+                && !avoidWords.contains(where: { exercise.name.lowercased().contains($0) || exercise.musclesWorked.lowercased().contains($0) })
+        }
+        if request.goal == "Mobility & recovery" {
+            let gentle = pool.filter { $0.difficulty == .recovery || $0.discipline.lowercased().contains("yoga") || $0.discipline.lowercased().contains("mobility") }
+            if gentle.count >= 4 { pool = gentle }
+        }
+        let styleWord = request.style.lowercased()
+        func styleScore(_ e: ExerciseReference) -> Int {
+            let d = e.discipline.lowercased()
+            if d.contains(styleWord) { return 2 }
+            if styleWord == "strength", d.contains("powerlifting") || d.contains("weightlifting") { return 2 }
+            if styleWord == "hiit" || styleWord == "circuit", e.muscleGroup == .conditioning { return 1 }
+            return 0
+        }
+        let count = max(4, min(10, request.minutes / 7))
+        var groups = Self.targetGroups(for: request.split)
+        for focus in request.focus.sorted(by: { $0.rawValue < $1.rawValue }) { groups.insert(focus, at: min(1, groups.count)) }
+        var chosen: [ExerciseReference] = []
+        var notes: [String] = []
+        var cursor = seed
+        for i in 0..<count {
+            let group = groups[i % groups.count]
+            var candidates = pool.filter { $0.muscleGroup == group && !chosen.contains($0) }
+            if candidates.isEmpty { candidates = pool.filter { !chosen.contains($0) } }
+            guard !candidates.isEmpty else { break }
+            candidates.sort { (styleScore($0), $0.name) > (styleScore($1), $1.name) }
+            let top = Array(candidates.prefix(max(3, candidates.count / 3)))
+            chosen.append(top[(cursor + i * 7) % top.count])
+            cursor += 3
+        }
+        if chosen.count < count {
+            notes.append("Only \(chosen.count) exercises fit your equipment and level — add equipment in Profile → Your Details for more.")
+        }
+        let p = Self.prescription(goal: request.goal, intensity: request.intensity)
+        let items = chosen.map { CustomWorkoutItem(exercise: $0, sets: p.sets, reps: p.reps) }
+        let name = "\(request.split) \(request.style)"
+        let summary = "\(items.count) exercises, \(p.sets)×\(p.reps), about \(request.minutes) min. Picked by Morphe's rules from the library for \(request.goal.lowercased()) at \(request.intensity.lowercased()) intensity."
+        if request.equipment.isEmpty { notes.append("No equipment chosen, so this is bodyweight only.") }
+        return BuiltWorkoutDraft(name: name, summary: summary, items: items, source: "Morphe's rules", notes: notes)
+    }
+
+    /// With the user's key: Claude builds the session from the library
+    /// list it is given (names only, so nothing is invented), as strict
+    /// JSON. Falls back to the rules build on any failure, and says so.
+    func buildWorkoutWithMorpheAI(_ request: GuidedBuildRequest) async -> BuiltWorkoutDraft {
+        guard let key = MorpheIntelligence.apiKey else {
+            var draft = buildWorkoutWithRules(request)
+            draft.notes.insert("No Morphe Intelligence key — built by Morphe's rules. Add your key in Profile → Morphe Intelligence for a bespoke build.", at: 0)
+            return draft
+        }
+        let levelRank: [DemoDifficulty: Int] = [.recovery: 0, .beginner: 1, .moderate: 2, .advanced: 3]
+        let maxRank = levelRank[request.level] ?? 2
+        let pool = allExercises.filter {
+            Self.exerciseFitsEquipment($0, owned: request.equipment) && (levelRank[$0.difficulty] ?? 2) <= maxRank
+        }
+        let library = pool.prefix(400).map { "\($0.name) | \($0.muscleGroup.rawValue) | \($0.equipment.isEmpty ? "none" : $0.equipment) | \($0.difficulty.rawValue)" }.joined(separator: "\n")
+        var details: [String] = []
+        if clientProfile.age > 0 { details.append("age \(clientProfile.age)") }
+        if !clientProfile.fitnessLevel.isEmpty { details.append("experience \(clientProfile.fitnessLevel)") }
+        if !clientProfile.weaknesses.isEmpty { details.append("self-reported weakness: \(clientProfile.weaknesses)") }
+        if !clientProfile.limitations.isEmpty { details.append("injury note: \(clientProfile.limitations)") }
+        let system = """
+        You are Morphe, the Spartan training guardian inside the Morphe iOS app. Build ONE workout session for this user. Use ONLY exercise names from the library list below, spelled exactly. Respect the equipment, level, time, and anything to avoid. Honest numbers: sets 1–10, reps 1–50, rest in seconds. Reply with strict JSON only, no prose, in this shape:
+        {"name": "short title", "summary": "one or two plain sentences on what this session is and why it fits", "exercises": [{"name": "exact library name", "sets": 4, "reps": 10, "restSeconds": 90, "note": "one short cue or empty"}]}
+        Order the exercises as they should be done. Compound work first for strength and muscle; circuits and intervals for conditioning; gentle flow for recovery. Not medical advice; never promise results.
+        LIBRARY:
+        \(library)
+        """
+        let ask = """
+        Goal: \(request.goal). Split: \(request.split). Style: \(request.style). Intensity: \(request.intensity). Level: \(request.level.rawValue). Time: \(request.minutes) minutes. Equipment: \(request.equipment.isEmpty ? "bodyweight only" : request.equipment.sorted().joined(separator: ", ")). Lean on: \(request.focus.isEmpty ? "no preference" : request.focus.map(\.rawValue).sorted().joined(separator: ", ")). Avoid: \(request.avoid.isEmpty ? "nothing noted" : request.avoid). About them: \(details.isEmpty ? "nothing else on file" : details.joined(separator: "; ")).
+        """
+        do {
+            let text = try await MorpheIntelligence.reply(system: system, turns: [MorpheIntelligence.Turn(isUser: true, text: ask)], apiKey: key, timeout: 60)
+            guard let object = FoodCheckService.extractJSONObject(from: text),
+                  let rows = object["exercises"] as? [[String: Any]], !rows.isEmpty else {
+                throw MorpheIntelligence.IntelligenceError.malformed
+            }
+            var items: [CustomWorkoutItem] = []
+            var notes: [String] = []
+            for row in rows {
+                let name = ((row["name"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                guard let match = allExercises.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame })
+                        ?? allExercises.first(where: { $0.name.lowercased().contains(name.lowercased()) && name.count >= 5 }) else {
+                    if !name.isEmpty { notes.append("\(name) isn't in the library, so it was left out.") }
+                    continue
+                }
+                let sets = min(max((row["sets"] as? Int) ?? Int((row["sets"] as? Double) ?? 3), 1), 10)
+                let reps = min(max((row["reps"] as? Int) ?? Int((row["reps"] as? Double) ?? 10), 1), 50)
+                items.append(CustomWorkoutItem(exercise: match, sets: sets, reps: reps))
+            }
+            guard items.count >= 3 else { throw MorpheIntelligence.IntelligenceError.malformed }
+            let name = ((object["name"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let summary = ((object["summary"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return BuiltWorkoutDraft(name: name.isEmpty ? "\(request.split) \(request.style)" : String(name.prefix(60)),
+                                     summary: summary.isEmpty ? "Built by Morphe AI from your answers." : String(summary.prefix(300)),
+                                     items: items, source: "Morphe AI", notes: notes)
+        } catch {
+            var draft = buildWorkoutWithRules(request)
+            draft.notes.insert("Morphe AI couldn't answer just now (\((error as? LocalizedError)?.errorDescription ?? "no reply")) — this one is Morphe's rules instead.", at: 0)
+            return draft
+        }
+    }
+
+    /// Saves a built draft as a custom workout. Returns the template so
+    /// the caller can start it once its sheet is gone.
+    @discardableResult
+    func saveBuiltWorkout(_ draft: BuiltWorkoutDraft) -> WorkoutTemplate {
+        let sport: SportFocus = clientProfile.sportMode
+        return createCustomWorkout(name: draft.name, sport: sport, items: draft.items)
+    }
+
+    /// "Choose Next" after a finished program sends the user to Train's
+    /// Build Workout (the programs shelf left Discover, Lucas 2026-10-10).
+    var pendingBuildWorkoutReveal = false
 
     /// Deletes one of the user's custom workouts.
     /// Deletion is confirmed at the VIEW level with delete-specific copy
@@ -4264,6 +4483,7 @@ final class MorpheAppStore {
     var pendingDiscoverProgramsReveal = false
 
     func revealDiscoverPrograms() {
+        pendingBuildWorkoutReveal = true
         pendingDiscoverProgramsReveal = true
         showDiscoverTab()
     }
@@ -4541,6 +4761,9 @@ final class MorpheAppStore {
             // Audit 2026-10-10: the daily streak and the food recents are
             // per-profile state too — "a new phone restores everything".
             "recentFoods": recentFoodsKey,
+            "savedExercises": savedExercisesKey,
+            "savedLessons": savedLessonsKey,
+            "savedDietPlans": savedDietPlansKey,
             "dailyStreakCount": dailyStreakCountKey,
             "dailyStreakLastDay": dailyStreakLastDayKey,
             "dailyStreakBest": dailyStreakBestKey,
@@ -4634,6 +4857,7 @@ final class MorpheAppStore {
         loadProgramCompletions()
         loadLibraryFolders()
         loadRecentFoods()
+        loadSavedThings()
     }
 
     /// Called from `submitRecoveryCheckIn` — records today's real inputs.
@@ -9032,6 +9256,55 @@ final class MorpheAppStore {
     /// tracker converges on. Per profile.
     private(set) var recentFoods: [FoodSearchResult] = []
     private var recentFoodsKey: String { "morphe.fuel.recents.\(clientProfile.id.uuidString)" }
+
+    // MARK: - Saved things (Learn → Library, Lucas 2026-10-10)
+    //
+    // Exercises, lessons and diet plans the user bookmarked. Per profile,
+    // in the extras bag (cloud-backed), so a new phone restores them.
+    private var savedExercisesKey: String { "morphe.saved.exercises.\(clientProfile.id.uuidString)" }
+    private var savedLessonsKey: String { "morphe.saved.lessons.\(clientProfile.id.uuidString)" }
+    private var savedDietPlansKey: String { "morphe.saved.dietplans.\(clientProfile.id.uuidString)" }
+
+    var savedExerciseIDs: Set<String> = []
+    var savedLessonIDs: Set<String> = []
+    /// NutritionGoalMode raw values.
+    var savedDietPlanModes: Set<String> = []
+
+    func loadSavedThings() {
+        savedExerciseIDs = Set(UserDefaults.standard.stringArray(forKey: savedExercisesKey) ?? [])
+        savedLessonIDs = Set(UserDefaults.standard.stringArray(forKey: savedLessonsKey) ?? [])
+        savedDietPlanModes = Set(UserDefaults.standard.stringArray(forKey: savedDietPlansKey) ?? [])
+    }
+
+    func toggleSavedExercise(_ exercise: ExerciseReference) {
+        if savedExerciseIDs.contains(exercise.id) { savedExerciseIDs.remove(exercise.id) } else { savedExerciseIDs.insert(exercise.id) }
+        UserDefaults.standard.set(Array(savedExerciseIDs).sorted(), forKey: savedExercisesKey)
+        mirrorExtrasToCloud()
+        showToast(savedExerciseIDs.contains(exercise.id) ? "\(exercise.name) saved to your library." : "Removed from saved exercises.")
+    }
+
+    func toggleSavedLesson(_ lesson: LessonCard) {
+        if savedLessonIDs.contains(lesson.id) { savedLessonIDs.remove(lesson.id) } else { savedLessonIDs.insert(lesson.id) }
+        UserDefaults.standard.set(Array(savedLessonIDs).sorted(), forKey: savedLessonsKey)
+        mirrorExtrasToCloud()
+        showToast(savedLessonIDs.contains(lesson.id) ? "Lesson saved to your library." : "Removed from saved lessons.")
+    }
+
+    func toggleSavedDietPlan(_ mode: NutritionGoalMode) {
+        if savedDietPlanModes.contains(mode.rawValue) { savedDietPlanModes.remove(mode.rawValue) } else { savedDietPlanModes.insert(mode.rawValue) }
+        UserDefaults.standard.set(Array(savedDietPlanModes).sorted(), forKey: savedDietPlansKey)
+        mirrorExtrasToCloud()
+        showToast(savedDietPlanModes.contains(mode.rawValue) ? "\(mode.rawValue) plan saved to your library." : "Removed from saved plans.")
+    }
+
+    var savedExercises: [ExerciseReference] {
+        allExercises.filter { savedExerciseIDs.contains($0.id) }.sorted { $0.name < $1.name }
+    }
+    var savedLessons: [LessonCard] { lessons.filter { savedLessonIDs.contains($0.id) } }
+    var savedDietPlans: [NutritionGoalMode] { NutritionGoalMode.allCases.filter { savedDietPlanModes.contains($0.rawValue) } }
+    /// Saved posts the feed has loaded (bookmarks live on the account;
+    /// the post bodies come with the feed).
+    var savedFeedPosts: [FeedPost] { feedPosts.filter { savedPostIds.contains($0.id) } }
 
     func loadRecentFoods() {
         recentFoods = loadSeries(recentFoodsKey)

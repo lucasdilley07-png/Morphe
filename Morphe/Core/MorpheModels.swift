@@ -894,6 +894,46 @@ struct ExerciseReference: Identifiable, Hashable {
 }
 
 /// One line in the workout builder: a chosen exercise with target sets/reps.
+/// The questionnaire behind "Build with Morphe AI" (Lucas 2026-10-10).
+/// Every answer is a chip; the profile seeds the defaults.
+struct GuidedBuildRequest: Equatable {
+    static let goals = ["Get stronger", "Build muscle", "Lose fat", "Conditioning", "Mobility & recovery", "Sport performance"]
+    static let splits = ["Full body", "Upper body", "Lower body", "Push", "Pull", "Legs", "Core", "Conditioning"]
+    static let styles = ["Strength", "Hypertrophy", "HIIT", "Circuit", "Endurance", "Boxing", "Mobility"]
+    static let intensities = ["Easy", "Moderate", "Hard", "All out"]
+    static let minutesOptions = [20, 30, 45, 60, 90]
+
+    var goal = "Build muscle"
+    var split = "Full body"
+    var style = "Strength"
+    var intensity = "Moderate"
+    var level: DemoDifficulty = .moderate
+    var minutes = 45
+    /// From MorpheAppStore.equipmentOptions.
+    var equipment: Set<String> = []
+    /// Muscle groups to lean on (seeded from the profile's weakness).
+    var focus: Set<MuscleGroup> = []
+    /// Free text: injuries, movements to skip.
+    var avoid = ""
+
+    var summaryLine: String {
+        "\(split) · \(style) · \(intensity.lowercased()) · \(minutes) min · \(level.rawValue.lowercased())"
+    }
+}
+
+/// What a build produced, before it is saved: the exercises as library
+/// references with sets and reps, plus where the pick came from.
+struct BuiltWorkoutDraft: Equatable {
+    var name: String
+    var summary: String
+    var items: [CustomWorkoutItem]
+    /// "Morphe AI" (Claude, the user's key) or "Morphe's rules" (no key).
+    var source: String
+    /// Honest footnotes: exercises the model named that aren't in the
+    /// library, equipment assumptions, and so on.
+    var notes: [String] = []
+}
+
 struct CustomWorkoutItem: Identifiable, Hashable {
     var id = UUID()
     var exercise: ExerciseReference
@@ -1107,6 +1147,9 @@ enum HomeCardID: String, CaseIterable, Identifiable {
 /// the session hero. Same resolve rule as HomeCardID.
 enum TrainCardID: String, CaseIterable, Identifiable {
     case program
+    /// Build Workout (Lucas 2026-10-10): your own build, or one built with
+    /// Morphe AI after a short questionnaire. Sits above My Library.
+    case builder
     case library
     case partner
     case progress
@@ -1116,6 +1159,7 @@ enum TrainCardID: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .program: return "Your program"
+        case .builder: return "Build Workout"
         case .library: return "My Library"
         case .partner: return "Partner session"
         case .progress: return "Progress"
@@ -1125,18 +1169,26 @@ enum TrainCardID: String, CaseIterable, Identifiable {
     var detail: String {
         switch self {
         case .program: return "The multi-week plan in flight"
-        case .library: return "Your builds, favorites and saved sessions"
+        case .builder: return "Build one yourself, or with Morphe AI"
+        case .library: return "Your saved workouts"
         case .partner: return "A session shared with a training partner"
         case .progress: return "History, records and charts"
         }
     }
 
-    static let defaultOrder: [TrainCardID] = [.program, .library, .partner, .progress]
+    static let defaultOrder: [TrainCardID] = [.program, .builder, .library, .partner, .progress]
 
     static func resolvedOrder(from raw: [String]) -> [TrainCardID] {
         var order = raw.compactMap(TrainCardID.init(rawValue:))
+        // Missing cards append — except the builder, which sits directly
+        // above the library it feeds (added 2026-10-10 after orders were
+        // already saved).
         for card in defaultOrder where !order.contains(card) {
-            order.append(card)
+            if card == .builder, let index = order.firstIndex(of: .library) {
+                order.insert(card, at: index)
+            } else {
+                order.append(card)
+            }
         }
         return order
     }

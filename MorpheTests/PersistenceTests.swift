@@ -1470,8 +1470,8 @@ final class WorkoutSessionTests: XCTestCase {
         let store = MorpheAppStore()
         XCTAssertEqual(store.trainCardLayout, TrainCardID.defaultOrder)
         store.setTrainLayout(order: ["progress", "bogus", "library"], hidden: ["partner"])
-        XCTAssertEqual(store.trainCardLayout, [.progress, .library, .program, .partner])
-        XCTAssertEqual(store.visibleTrainCards, [.progress, .library, .program])
+        XCTAssertEqual(store.trainCardLayout, [.progress, .builder, .library, .program, .partner], "missing cards append; the builder slots above the library")
+        XCTAssertEqual(store.visibleTrainCards, [.progress, .builder, .library, .program])
         let json = try! JSONEncoder().encode(store.styleProfile)
         let back = try! JSONDecoder().decode(UserStyleProfile.self, from: json)
         XCTAssertEqual(back.trainCardOrder, ["progress", "bogus", "library"])
@@ -6654,6 +6654,37 @@ final class ModerationTests: XCTestCase {
             m.record(.message, text: "ok", now: t0.addingTimeInterval(Double(n) * 5))
         }
         XCTAssertNotNil(m.refusal(for: .message, text: "ok", now: t0.addingTimeInterval(10)))
+    }
+
+    func testTrainCardOrderInsertsNewCardsWhereTheDefaultPutsThem() {
+        // A saved order from before the builder existed.
+        let order = TrainCardID.resolvedOrder(from: ["library", "program", "progress", "partner"])
+        XCTAssertEqual(order, [.builder, .library, .program, .progress, .partner], "the builder lands above the library it precedes by default")
+        XCTAssertEqual(TrainCardID.resolvedOrder(from: []), TrainCardID.defaultOrder)
+    }
+
+    func testRulesBuilderRespectsEquipmentLevelAndCount() {
+        let store = MorpheAppStore()
+        var request = GuidedBuildRequest()
+        request.equipment = []            // bodyweight only
+        request.level = .beginner
+        request.minutes = 45
+        request.split = "Full body"
+        let draft = store.buildWorkoutWithRules(request)
+        XCTAssertEqual(draft.source, "Morphe's rules")
+        XCTAssertGreaterThanOrEqual(draft.items.count, 4)
+        XCTAssertLessThanOrEqual(draft.items.count, 10)
+        for item in draft.items {
+            XCTAssertTrue(MorpheAppStore.exerciseFitsEquipment(item.exercise, owned: []), "\(item.exercise.name) needs gear the user doesn't have (\(item.exercise.equipment))")
+            XCTAssertNotEqual(item.exercise.difficulty, .advanced, "beginner build never hands out advanced work")
+        }
+        XCTAssertEqual(draft.items.map(\.exercise.id).count, Set(draft.items.map(\.exercise.id)).count, "no repeats")
+        // Same answers, same build; a new seed shifts it.
+        XCTAssertEqual(store.buildWorkoutWithRules(request).items.map(\.exercise.id), draft.items.map(\.exercise.id))
+        request.goal = "Get stronger"; request.intensity = "Hard"
+        let strong = store.buildWorkoutWithRules(request)
+        XCTAssertEqual(strong.items.first?.sets, 6, "5×5 plus one for hard")
+        XCTAssertEqual(strong.items.first?.reps, 5)
     }
 
     func testTermsVersionBumpRegatesOldAcceptances() {
