@@ -6656,6 +6656,17 @@ final class ModerationTests: XCTestCase {
         XCTAssertNotNil(m.refusal(for: .message, text: "ok", now: t0.addingTimeInterval(10)))
     }
 
+    func testWelcomePopupShowsAtMostOnceAnHour() {
+        let store = MorpheAppStore()
+        UserDefaults.standard.removeObject(forKey: "morphe.daypopup.lastShown")
+        XCTAssertFalse(store.isDayPopupThrottled, "never shown: not throttled")
+        store.noteDayPopupShown()
+        XCTAssertTrue(store.isDayPopupThrottled, "just shown: throttled")
+        store.noteDayPopupShown(at: .now.addingTimeInterval(-3601))
+        XCTAssertFalse(store.isDayPopupThrottled, "an hour later it can show again")
+        UserDefaults.standard.removeObject(forKey: "morphe.daypopup.lastShown")
+    }
+
     func testQuickAddMergesPeopleAndHidesTheRightOnes() {
         let store = MorpheAppStore()
         store.directoryPeople = [AthleteSearchResult(username: "ava", uid: "u1"),

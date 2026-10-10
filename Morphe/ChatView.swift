@@ -2742,15 +2742,16 @@ private struct FeedAuthorView: View {
                                 .foregroundStyle(MorpheTheme.textSecondary)
                         }
                         Spacer()
-                        if !isMine, store.isRealFeedActive {
-                            Button(store.isFollowing(authorUid) ? "Following" : "Follow") {
-                                store.toggleFollow(uid: authorUid, name: authorName)
-                            }
-                            .buttonStyle(FilterChipStyle(
-                                isSelected: store.isFollowing(authorUid),
-                                selectedColor: MorpheTheme.accent))
-                        }
                     }
+                }
+
+                if !isMine, store.isRealFeedActive {
+                    // The same Connect · Message · Invite · Follow bar as
+                    // Quick Add's account page (Lucas 2026-10-10).
+                    PersonActionBar(card: store.person(for: authorUid) ?? PersonCard(
+                        uid: authorUid, name: authorName, username: "",
+                        headline: authorPosts.first?.authorHeadline ?? "",
+                        accentId: authorPosts.first?.authorAccent ?? "", verified: verified, isCoach: false))
                 }
 
                 ForEach(authorPosts) { post in
@@ -3732,6 +3733,7 @@ struct AthleteInboxView: View {
     @State private var query = ""
     @State private var searchTask: Task<Void, Never>?
     @State private var startingChatUid: String?
+    @State private var showNewConversation = false
     @FocusState private var searchFocused: Bool
 
     private var myUid: String { store.authUser?.id ?? "" }
@@ -3808,9 +3810,32 @@ struct AthleteInboxView: View {
                 if let topContent {
                     topContent
                 }
-                searchField
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
+                HStack(spacing: 10) {
+                    searchField
+                    // Start a new conversation (Lucas 2026-10-10): the
+                    // pencil every messaging app has.
+                    Button {
+                        showNewConversation = true
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .frame(width: 44, height: 44)
+                            .background(Circle().fill(MorpheTheme.panelStrong))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("New message")
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+                .sheet(isPresented: $showNewConversation) {
+                    NewConversationSheet()
+                        .environment(store)
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.visible)
+                        .presentationCornerRadius(28)
+                        .sheetToastSurface()
+                }
 
                 GuideHint(
                     key: "network.chats",
@@ -4126,6 +4151,99 @@ struct QRConnectRow: View {
 }
 
 // MARK: - Creator feed (2026-10-05)
+
+/// New message (Lucas 2026-10-10): the people you can message now —
+/// connected, followed, already chatting — plus a directory search for
+/// anyone else. Tap a person and the conversation opens.
+struct NewConversationSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var searchTask: Task<Void, Never>?
+    @State private var startingUid: String?
+
+    private var cleanQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+
+    private var people: [PersonCard] {
+        let base = store.messageablePeople
+        guard !cleanQuery.isEmpty else { return base }
+        var cards = base.filter { $0.name.lowercased().contains(cleanQuery) || $0.username.lowercased().contains(cleanQuery) }
+        let me = store.authUser?.id ?? ""
+        for hit in store.athleteSearchResults where hit.uid != me && !cards.contains(where: { $0.uid == hit.uid }) && !store.blockedUids.contains(hit.uid) {
+            cards.append(store.person(for: hit.uid) ?? PersonCard(uid: hit.uid, name: "", username: hit.username, headline: "", accentId: "", verified: false, isCoach: false))
+        }
+        return cards
+    }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("New message")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer(minLength: 8)
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                TextField("To: name or @username", text: $query)
+                    .textFieldStyle(MorpheFieldStyle())
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .onChange(of: query) { _, text in
+                        searchTask?.cancel()
+                        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard clean.count >= 2 else { return }
+                        searchTask = Task {
+                            try? await Task.sleep(nanoseconds: 350_000_000)
+                            guard !Task.isCancelled else { return }
+                            await store.searchAthletes(query: clean)
+                        }
+                    }
+
+                Text((cleanQuery.isEmpty ? "People you can message" : "Results").uppercased())
+                    .font(MorpheTheme.microLabel(11))
+                    .tracking(1.4)
+                    .foregroundStyle(MorpheTheme.textMuted)
+
+                if people.isEmpty {
+                    GlassCard(.quiet) {
+                        Text(cleanQuery.isEmpty
+                             ? "Nobody yet. Connect with people from Quick Add, or type a @username to find anyone on Morphe."
+                             : (cleanQuery.count < 2 ? "Keep typing…" : (store.athleteSearchFailed ? "Couldn't reach the directory — check your connection." : "No one matches \u{201C}\(query.trimmingCharacters(in: .whitespacesAndNewlines))\u{201D}.")))
+                            .font(.subheadline)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    ForEach(people) { card in
+                        PersonRow(card: card, trailing: {
+                            if startingUid == card.uid {
+                                ProgressView().tint(MorpheTheme.accent)
+                            } else {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                        }, onOpen: {
+                            guard startingUid == nil else { return }
+                            startingUid = card.uid
+                            Task {
+                                let opened = await store.startDirectChat(with: card.uid, name: card.displayName)
+                                startingUid = nil
+                                if opened { dismiss() }
+                            }
+                        })
+                    }
+                }
+            }
+            .padding(20)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
+    }
+}
 
 /// Everything Creator Coaches have published, newest first, as a feed:
 /// workouts you can start or save, notes you can read, open challenges you

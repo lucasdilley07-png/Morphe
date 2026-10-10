@@ -9554,6 +9554,34 @@ final class MorpheAppStore {
 
     func person(for uid: String) -> PersonCard? { knownPeople.first { $0.uid == uid } }
 
+    /// The account page, from anywhere (feed author, chat, board): the
+    /// root presents it. Facts come from what the app knows; the caller's
+    /// name/handle fill any gap.
+    var viewingPerson: PersonCard?
+
+    func viewPerson(uid: String, name: String = "", username: String = "", headline: String = "", accentId: String = "", verified: Bool = false) {
+        var card = person(for: uid) ?? PersonCard(uid: uid, name: "", username: "", headline: "", accentId: "", verified: false, isCoach: false)
+        if card.name.isEmpty { card.name = name }
+        if card.username.isEmpty { card.username = username }
+        if card.headline.isEmpty { card.headline = headline }
+        if card.accentId.isEmpty { card.accentId = accentId }
+        card.verified = card.verified || verified
+        viewingPerson = card
+    }
+
+    /// People you can message right away: connected, followed, or already
+    /// in a conversation — the New Message picker's first list.
+    var messageablePeople: [PersonCard] {
+        let me = authUser?.id ?? ""
+        let threadUids = Set(liveThreads.flatMap { [$0.coachUid, $0.athleteUid] })
+        let uids = connectedUids.union(followedUids).union(threadUids).subtracting([me]).subtracting(blockedUids)
+        return uids.compactMap { uid in
+            person(for: uid) ?? liveThreads.first(where: { $0.coachUid == uid || $0.athleteUid == uid }).map {
+                PersonCard(uid: uid, name: $0.counterpartName(for: me), username: "", headline: "", accentId: "", verified: false, isCoach: false)
+            }
+        }.sorted { $0.displayName.lowercased() < $1.displayName.lowercased() }
+    }
+
     /// Quick Add's list: not me, not blocked, not hidden, not already
     /// connected or asked; coaches first.
     var quickAddPeople: [PersonCard] {
@@ -13298,6 +13326,21 @@ final class MorpheAppStore {
     /// session without burning the day — it can re-offer next launch.
     private(set) var dayPopupSessionDismissed = false
 
+    /// At most once an hour (Lucas 2026-10-10: every open was too much).
+    static let dayPopupMinimumGap: TimeInterval = 3600
+    private static let dayPopupShownKey = "morphe.daypopup.lastShown"
+    var lastDayPopupShownAt: Date? {
+        let t = UserDefaults.standard.double(forKey: Self.dayPopupShownKey)
+        return t > 0 ? Date(timeIntervalSince1970: t) : nil
+    }
+    var isDayPopupThrottled: Bool {
+        guard let last = lastDayPopupShownAt else { return false }
+        return Date.now.timeIntervalSince(last) < Self.dayPopupMinimumGap
+    }
+    func noteDayPopupShown(at date: Date = .now) {
+        UserDefaults.standard.set(date.timeIntervalSince1970, forKey: Self.dayPopupShownKey)
+    }
+
     var shouldShowDayPopup: Bool {
         // Every app open (Lucas 2026-08-18): answering or dismissing parks
         // the popup only until the next foreground return — the reply keys
@@ -13313,7 +13356,8 @@ final class MorpheAppStore {
               !showHelloBeat, !showWelcomeExperience,
               !isWorkoutSessionActive, !hasUnsavedSessionWork,
               !minimumWinModeEnabled, comebackLapsedStreak == nil,
-              !dayPopupSessionDismissed
+              !dayPopupSessionDismissed,
+              !isDayPopupThrottled
         else { return false }
         return true
     }

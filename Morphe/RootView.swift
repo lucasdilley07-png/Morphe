@@ -214,6 +214,16 @@ struct RootView: View {
             }
         }
         .preferredColorScheme(store.selectedAppearance)
+        // Anyone's account page, from any surface (feed, chats, board).
+        .sheet(item: $store.viewingPerson) { card in
+            PersonAccountSheet(card: card)
+                .environment(store)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(28)
+                .sheetToastSurface()
+                .preferredColorScheme(store.selectedAppearance)
+        }
         .sheet(item: $store.selectedExercise, onDismiss: {
             store.consumePendingDebriefOpen()
         }) { exercise in
@@ -315,8 +325,9 @@ struct RootView: View {
             .presentationDragIndicator(.visible)
             .preferredColorScheme(store.selectedAppearance)
         }
-        // Full screen (Lucas 2026-10-10): people deserve the whole page.
-        .fullScreenCover(isPresented: $store.showQuickAdd, onDismiss: {
+        // A tall sheet with the Search sheet's chrome (Lucas 2026-10-10):
+        // drag line on top, Done in the bar, the title centered under it.
+        .sheet(isPresented: $store.showQuickAdd, onDismiss: {
             if store.pendingAIAgentOpen {
                 store.pendingAIAgentOpen = false
                 store.openAIAgent()
@@ -329,6 +340,9 @@ struct RootView: View {
                     .environment(store)
             }
             .background(PremiumBackground())
+            .presentationDetents([.large])
+            .presentationCornerRadius(28)
+            .presentationDragIndicator(.visible)
             .preferredColorScheme(store.selectedAppearance)
         }
         .fullScreenCover(isPresented: $store.showAIAgent, onDismiss: {
@@ -377,6 +391,20 @@ struct RootView: View {
         .overlay {
             MorpheDayPopup()
                 .environment(store)
+                // Stamp every showing so the hour gap counts from the
+                // last time it was actually on screen.
+                .onAppear {
+                    if store.shouldShowDayPopup {
+                        store.noteDayPopupShown()
+                        store.selectedClientTab = .today   // the popup always opens on Today
+                    }
+                }
+                .onChange(of: store.shouldShowDayPopup) { _, showing in
+                    if showing {
+                        store.noteDayPopupShown()
+                        store.selectedClientTab = .today
+                    }
+                }
         }
         .animation(.easeInOut(duration: 0.3), value: store.shouldShowDayPopup)
         // Away (Lucas 2026-10-10): the popup sat untouched for 2½ minutes.
@@ -3568,16 +3596,16 @@ private struct QuickAddSheet: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .firstTextBaseline) {
-                    SectionTitleView(
-                        title: "Quick Add",
-                        subtitle: "People on Morphe. Tap a card to see the account; connect, or hide."
-                    )
-                    Spacer(minLength: 8)
-                    Button("Done") { dismissQuickAdd() }
+                VStack(spacing: 4) {
+                    Text("Quick Add")
+                        .font(.title2.weight(.bold))
                         .foregroundStyle(MorpheTheme.textPrimary)
-                        .frame(minWidth: 44, minHeight: 44)
+                    Text("People on Morphe. Tap a card to see the account; connect, or hide.")
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.center)
                 }
+                .frame(maxWidth: .infinity)
 
                 TextField("Search people by name or @username", text: $query)
                     .textFieldStyle(MorpheFieldStyle())
@@ -3708,6 +3736,12 @@ private struct QuickAddSheet: View {
             .padding(.top, 8)
             .padding(.bottom, 40)
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") { dismissQuickAdd() }
+                    .foregroundStyle(MorpheTheme.textPrimary)
+            }
+        }
         .sheet(item: $codeMode) { mode in
             QRConnectSheet(mode: mode)
                 .environment(store)
@@ -3774,7 +3808,7 @@ private struct QuickAddSheet: View {
 
 /// One person: accent-colored initial, name, @username, byline, verified
 /// seal; the trailing controls are the caller's.
-private struct PersonRow<Trailing: View>: View {
+struct PersonRow<Trailing: View>: View {
     let card: PersonCard
     @ViewBuilder let trailing: () -> Trailing
     let onOpen: () -> Void
@@ -3828,7 +3862,7 @@ private struct PersonRow<Trailing: View>: View {
     }
 }
 
-private struct PersonAvatar: View {
+struct PersonAvatar: View {
     let card: PersonCard
     var size: CGFloat = 44
 
@@ -3858,9 +3892,67 @@ private struct QuickAddPillStyle: ButtonStyle {
     }
 }
 
-/// The account page behind a Quick Add card: what they published, plus
-/// connect / message / follow / hide / block / report.
-private struct PersonAccountSheet: View {
+/// Connect · Message · Invite · Follow — the same bar on every account
+/// surface (Quick Add page, feed author page). Instagram/LinkedIn shape.
+struct PersonActionBar: View {
+    @Environment(MorpheAppStore.self) private var store
+    let card: PersonCard
+    /// Runs after a chat is opened (the host sheet dismisses itself).
+    var onOpenedChat: () -> Void = {}
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                switch store.connectionState(with: card.uid) {
+                case .none:
+                    Button {
+                        Task { await store.sendConnectRequest(to: card) }
+                    } label: { Label("Connect", systemImage: "person.badge.plus") }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                case .requested:
+                    Button("Requested") { Task { await store.removeConnection(with: card.uid) } }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                        .accessibilityHint("Withdraws the request")
+                case .incoming:
+                    if let request = store.incomingConnectRequests.first(where: { $0.fromUid == card.uid }) {
+                        Button("Accept") { Task { await store.respondToConnectRequest(request, accept: true) } }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        Button("Decline") { Task { await store.respondToConnectRequest(request, accept: false) } }
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                    }
+                case .connected:
+                    Label("Connected", systemImage: "checkmark")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                Button {
+                    Task {
+                        if await store.startDirectChat(with: card.uid, name: card.displayName) { onOpenedChat() }
+                    }
+                } label: { Label("Message", systemImage: "bubble.left.fill") }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+            }
+            HStack(spacing: 8) {
+                Button(store.followedUids.contains(card.uid) ? "Following" : "Follow") {
+                    store.toggleFollow(uid: card.uid, name: card.displayName)
+                }
+                .buttonStyle(FilterChipStyle(isSelected: store.followedUids.contains(card.uid)))
+                ShareLink(item: store.networkInviteMessage) {
+                    Label("Invite to train", systemImage: "figure.2")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(FilterChipStyle(isSelected: false))
+                .accessibilityHint("Shares your Train Together invite")
+                Spacer(minLength: 0)
+            }
+        }
+    }
+}
+
+/// The account page behind a Quick Add card or a feed author: what they
+/// published, plus connect / message / invite / follow / hide / block / report.
+struct PersonAccountSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let card: PersonCard
@@ -3909,43 +4001,7 @@ private struct PersonAccountSheet: View {
                     }
                 }
 
-                HStack(spacing: 8) {
-                    switch store.connectionState(with: card.uid) {
-                    case .none:
-                        Button {
-                            Task { await store.sendConnectRequest(to: card) }
-                        } label: { Label("Connect", systemImage: "person.badge.plus") }
-                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    case .requested:
-                        Button("Requested · withdraw") { Task { await store.removeConnection(with: card.uid) } }
-                            .buttonStyle(SecondaryCTAButtonStyle())
-                    case .incoming:
-                        if let request = store.incomingConnectRequests.first(where: { $0.fromUid == card.uid }) {
-                            Button("Accept") { Task { await store.respondToConnectRequest(request, accept: true) } }
-                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                            Button("Decline") { Task { await store.respondToConnectRequest(request, accept: false) } }
-                                .buttonStyle(SecondaryCTAButtonStyle())
-                        }
-                    case .connected:
-                        Button {
-                            Task {
-                                if await store.startDirectChat(with: card.uid, name: card.displayName) { dismiss() }
-                            }
-                        } label: { Label("Message", systemImage: "bubble.left.fill") }
-                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    }
-                    Button(store.followedUids.contains(card.uid) ? "Following" : "Follow") {
-                        store.toggleFollow(uid: card.uid, name: card.displayName)
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .frame(width: 110)
-                }
-
-                if store.connectionState(with: card.uid) == .connected {
-                    Text("Connected. You can message each other.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
+                PersonActionBar(card: card, onOpenedChat: { dismiss() })
 
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 10) {
