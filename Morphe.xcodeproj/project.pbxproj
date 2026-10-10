@@ -31,6 +31,7 @@
 		1B20F6002C4000010010004B /* Accounts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100066 /* Accounts.swift */; };
 		1B20F6002C4000010010004C /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100067 /* AuthView.swift */; };
 		1B20F6002C4000010010004E /* MorpheCatalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C40000100100069 /* MorpheCatalog.json */; };
+		1B20F6002C400001003000B1 /* FoodLibrary.json in Resources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001003000B2 /* FoodLibrary.json */; };
 		1B20F6002C4000010010004F /* WorkoutCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010006A /* WorkoutCatalog.swift */; };
 		1B20F6002C400001001000AA /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000A9 /* PersistenceTests.swift */; };
 		1B20F6002C400001001000D0 /* FormCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C400001001000D1 /* FormCheckView.swift */; };
@@ -135,6 +136,7 @@
 		1B20F6002C40000100100066 /* Accounts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Accounts.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100067 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		1B20F6002C40000100100069 /* MorpheCatalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/MorpheCatalog.json; sourceTree = "<group>"; };
+		1B20F6002C400001003000B2 /* FoodLibrary.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/FoodLibrary.json; sourceTree = "<group>"; };
 		1B20F6002C4000010010006A /* WorkoutCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCatalog.swift; sourceTree = "<group>"; };
 		1B20F6002C400001001000A1 /* MorpheTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MorpheTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B20F6002C400001001000A9 /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceTests.swift; sourceTree = "<group>"; };
@@ -226,6 +228,7 @@
 				1B20F6002C40000100100019 /* Assets.xcassets */,
 				1B20F6002C40000100100065 /* PrivacyInfo.xcprivacy */,
 				1B20F6002C40000100100069 /* MorpheCatalog.json */,
+				1B20F6002C400001003000B2 /* FoodLibrary.json */,
 				1B20F6002C400FD100100002 /* FormDiagrams */,
 				8FA6B9CF04B05F800FEA80B0 /* MorpheAppIntents.swift */,
 			);
@@ -480,6 +483,7 @@
 				A0F9E0963000DCBC00DAC2F6 /* GoogleService-Info.plist in Resources */,
 				1B20F6002C4000010010004A /* PrivacyInfo.xcprivacy in Resources */,
 				1B20F6002C4000010010004E /* MorpheCatalog.json in Resources */,
+				1B20F6002C400001003000B1 /* FoodLibrary.json in Resources */,
 				1B20F6002C400FD100100001 /* FormDiagrams in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

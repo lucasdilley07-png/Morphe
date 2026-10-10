@@ -251,25 +251,32 @@ struct MorpheOrbView: View {
                 Image("MorpheAIOrbBase")
                     .resizable()
                     .scaledToFit()
+                innerGlow(size)
                 if live { ribbons(size).clipShape(Circle().inset(by: size * 0.045)) }
-                Image("MorpheAIHelmet")
-                    .resizable()
-                    .scaledToFit()
-                    .colorMultiply(Color(red: 0.75, green: 0.9, blue: 1.0))
-                    .blur(radius: size * 0.05)
-                    .opacity(0.95)
-                    .scaleEffect(1.06)
-                Image("MorpheAIHelmet")
-                    .resizable()
-                    .scaledToFit()
+                // The helmet and its glow are what move with the voice
+                // (Lucas 2026-10-10): the orb holds still, the Spartan
+                // jumps inside it.
+                ZStack {
+                    Image("MorpheAIHelmet")
+                        .resizable()
+                        .scaledToFit()
+                        .colorMultiply(Color(red: 0.75, green: 0.9, blue: 1.0))
+                        .blur(radius: size * 0.05)
+                        .opacity(0.95)
+                        .scaleEffect(1.06)
+                    Image("MorpheAIHelmet")
+                        .resizable()
+                        .scaledToFit()
+                }
+                .scaleEffect(reduceMotion ? 1 : 1 + level * 0.12)
+                .offset(y: reduceMotion ? 0 : -level * size * 0.02)
+                .animation(.easeOut(duration: 0.1), value: level)
                 if live { rimLight(size) }
             }
             // One compositing group: the ribbons' screen blend stays
             // inside the orb instead of bleeding into the page.
             .compositingGroup()
             .frame(width: size, height: size)
-            .scaleEffect(reduceMotion ? 1 : 1 + level * 0.06)
-            .animation(.easeOut(duration: 0.1), value: level)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .accessibilityHidden(true)
@@ -339,6 +346,20 @@ struct MorpheOrbView: View {
             .fill(RadialGradient(
                 colors: [Self.electric.opacity(0.18 + level * 0.32), .clear],
                 center: .center, startRadius: 0, endRadius: size * 0.5))
+            .animation(.easeOut(duration: 0.12), value: level)
+    }
+
+    /// A small glow just inside the rim, brightening a little with the
+    /// voice — the glass catching light from within.
+    private func innerGlow(_ size: CGFloat) -> some View {
+        Circle()
+            .strokeBorder(AngularGradient(
+                colors: [Self.glassBlue.opacity(0.55), Color.white.opacity(0.35), Self.glassBlue.opacity(0.45),
+                         Self.electric.opacity(0.4), Self.glassBlue.opacity(0.55)],
+                center: .center, angle: .degrees(20)), lineWidth: size * 0.07)
+            .padding(size * 0.03)
+            .blur(radius: size * 0.03)
+            .opacity(0.5 + level * 0.3)
             .animation(.easeOut(duration: 0.12), value: level)
     }
 
