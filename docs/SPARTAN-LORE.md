@@ -21,7 +21,7 @@ pitch use; they are the parts that go stale.
 
 | Surface | What it does | Source it stands on |
 |---|---|---|
-| **The Code** sheet (Learn tab → "From the record" card; Profile → rank row) | Today's saying in serif, seven short reads, all eight sayings, and "What Morphe leaves behind" | every block carries its citation |
+| **The Code** sheet (Learn tab → "From the record" card; Profile → rank row) | Today's saying in serif, seven short reads, all eight sayings (the "What Morphe leaves behind" card was removed from the sheet 2026-10-10; the entry still feeds the AI guardrail) | every block carries its citation |
 | **Saying of the day** | One line a day, picked by day number, same for everyone, never reshuffled | 8 verified sayings (§3) |
 | **Rank** on the level card + level-up banner | Retired 2026-10-10 by Lucas: the Greek rungs (Pais → Homoios) are replaced by a ten-rank American military-style ladder, Rookie → General, climbed by level. The agoge stays in §4 as record, not UI | — |
 | **Laconic** communication style | "Direct" renamed (same id, no migration). The register now lives in the style, so "Encouraging" is honored | — |

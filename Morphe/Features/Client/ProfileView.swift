@@ -1821,24 +1821,15 @@ struct ProfileView: View {
                     // Wrapped: nine 44pt targets don't fit one row on a
                     // 393pt device — crushed dots overlapped their rings.
                     WrapStack(spacing: 8) {
-                        ForEach(AccentPalette.allCases) { palette in
+                        ForEach(AccentPalette.allCases.filter { $0 != .custom }) { palette in
                             accentDot(for: palette)
                         }
                     }
                     // Locks were mute until tapped (UX test 2026-09-30):
                     // a first-timer saw five padlocks with no path.
-                    Text("Every rank brings its own color, Rookie\u{2019}s dark blue to General\u{2019}s gold \u{2014} tap a locked one to see its rank.")
+                    Text("Every rank brings its own color, Rookie\u{2019}s dark blue through Colonel\u{2019}s platinum to General\u{2019}s gold \u{2014} tap a locked one to see its rank.")
                         .font(.caption2)
                         .foregroundStyle(MorpheTheme.textMuted)
-                    // The Custom dot's editor: any color at all. Applies
-                    // live and persists with the profile (cloud included).
-                    if store.profileShowcase.accentPalette == .custom {
-                        ColorPicker(selection: customAccentBinding, supportsOpacity: false) {
-                            Text("Pick your color")
-                                .font(.subheadline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                        }
-                    }
                 }
 
             }
@@ -2089,18 +2080,6 @@ struct ProfileView: View {
     /// The dot shows the color the palette actually resolves to.
     private func accentDotColor(for palette: AccentPalette) -> Color {
         MorpheTheme.colors(for: palette).primary
-    }
-
-    /// ColorPicker ↔ stored hex. Setting routes through the store so the
-    /// theme re-applies live and the profile snapshot persists.
-    private var customAccentBinding: Binding<Color> {
-        Binding(
-            get: {
-                MorpheTheme.color(fromHex: store.profileShowcase.customAccentHex)
-                    ?? MorpheTheme.brandBlue
-            },
-            set: { store.updateCustomAccent(hex: MorpheTheme.hex(from: $0)) }
-        )
     }
 
     private func accentDot(for palette: AccentPalette) -> some View {

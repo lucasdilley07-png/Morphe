@@ -193,12 +193,22 @@ enum MorpheTheme {
     static func swatchStyle(for palette: AccentPalette) -> AnyShapeStyle {
         switch palette {
         case .gold:
+            // Gold chrome, the same band structure as platinum.
             return AnyShapeStyle(LinearGradient(
-                colors: [Color(red: 0.97, green: 0.91, blue: 0.63), metalGold, metalGoldDeep, Color(red: 0.91, green: 0.79, blue: 0.42)],
+                stops: [.init(color: Color(red: 1.0, green: 0.96, blue: 0.84), location: 0.0),
+                        .init(color: Color(red: 0.95, green: 0.82, blue: 0.48), location: 0.28),
+                        .init(color: metalGoldDeep, location: 0.5),
+                        .init(color: Color(red: 0.99, green: 0.93, blue: 0.68), location: 0.68),
+                        .init(color: metalGold, location: 1.0)],
                 startPoint: .topLeading, endPoint: .bottomTrailing))
-        case .silver:
+        case .platinum:
+            // Chrome: hard highlight bands, not a soft brushed fade.
             return AnyShapeStyle(LinearGradient(
-                colors: [Color(red: 0.95, green: 0.96, blue: 0.97), metalSilver, metalSilverDeep, Color(red: 0.88, green: 0.90, blue: 0.92)],
+                stops: [.init(color: .white, location: 0.0),
+                        .init(color: Color(red: 0.85, green: 0.87, blue: 0.90), location: 0.28),
+                        .init(color: Color(red: 0.56, green: 0.59, blue: 0.64), location: 0.5),
+                        .init(color: Color(red: 0.96, green: 0.97, blue: 0.98), location: 0.68),
+                        .init(color: Color(red: 0.72, green: 0.75, blue: 0.79), location: 1.0)],
                 startPoint: .topLeading, endPoint: .bottomTrailing))
         default:
             return AnyShapeStyle(colors(for: palette).primary)
@@ -275,7 +285,7 @@ enum MorpheTheme {
             return (Color(red: 0.02, green: 0.06, blue: 0.18),
                     Color(red: 0.49, green: 0.83, blue: 1.0),
                     Color(red: 0.25, green: 0.55, blue: 1.0))
-        case .silver:
+        case .platinum:
             // Near-zero saturation would wash the glass to plain white
             // (audit 2026-10-10) — silver gets its own cool steel trio.
             return (Color(red: 0.10, green: 0.11, blue: 0.14), metalSilver, metalSilverDeep)
@@ -477,7 +487,7 @@ enum MorpheTheme {
             return (morpheDarkBlue, morpheNavy)
         case .spartan:
             return (brandBlue, brandBlueDeep)
-        case .silver:
+        case .platinum:
             return (metalSilver, metalSilverDeep)
         case .gold:
             return (metalGold, metalGoldDeep)

@@ -873,17 +873,8 @@ struct SpartanCodeContent: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            GlassCard(.quiet) {
-                VStack(alignment: .leading, spacing: 8) {
-                    sectionLabel(SpartanLore.whatWeLeave.title)
-                    Text(SpartanLore.whatWeLeave.body)
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    sourceLine(SpartanLore.whatWeLeave.source)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            // ("What Morphe leaves behind" left the sheet, Lucas 2026-10-10;
+            // the entry stays in SpartanLore for the AI's lore guardrail.)
 
             Button("Done", action: onDone)
                 .buttonStyle(SecondaryCTAButtonStyle())
@@ -904,7 +895,7 @@ struct SpartanCodeContent: View {
                         ladderRow(rung)
                     }
                 }
-                Text("Ten ranks, climbed by level, each with its own accent color — Rookie starts in Morphe Dark Blue, General wears gold. Levels come only from logged work — there is nothing to buy and nothing to skip.")
+                Text("Ten ranks, climbed by level, each with its own accent color — Rookie starts in Morphe Dark Blue, Colonel earns platinum, General wears gold. Levels come only from logged work — there is nothing to buy and nothing to skip.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -926,7 +917,7 @@ struct SpartanCodeContent: View {
                     .fill(rung == .rookie ? Color.clear : (reached ? lit : unlit))
                     .frame(width: 2, height: 8)
                 Circle()
-                    .fill(reached ? MorpheTheme.swatchStyle(for: rung.palette) : AnyShapeStyle(Color.clear))
+                    .fill(reached ? lit : Color.clear)
                     .overlay(Circle().stroke(reached ? lit : unlit, lineWidth: 2))
                     .frame(width: isCurrent ? 16 : 12, height: isCurrent ? 16 : 12)
                 Rectangle()
@@ -936,6 +927,24 @@ struct SpartanCodeContent: View {
                     .frame(maxHeight: .infinity)
             }
             .frame(width: 16)
+            .accessibilityHidden(true)
+
+            // The rank's color, left of its name (Lucas 2026-10-10): what
+            // each rung unlocks, locked until the rung is reached.
+            ZStack {
+                Circle()
+                    .fill(MorpheTheme.swatchStyle(for: rung.palette))
+                    .overlay(Circle().stroke(MorpheTheme.strokeSubtle, lineWidth: 1))
+                    .opacity(reached ? 1 : 0.4)
+                if !reached {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .shadow(color: .black.opacity(0.35), radius: 1)
+                }
+            }
+            .frame(width: 28, height: 28)
+            .padding(.top, 2)
             .accessibilityHidden(true)
 
             // Side by side at normal sizes; stacked once the type is
@@ -959,7 +968,7 @@ struct SpartanCodeContent: View {
             .padding(.bottom, 12)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(rung.title). \(rung.gloss) From level \(rung.firstLevel), unlocks the \(rung.palette.rawValue) accent. \(isCurrent ? "Your rank, level \(store.currentLevelNumber)" : (reached ? "Reached" : "Not reached yet"))")
+        .accessibilityLabel("\(rung.title). \(rung.gloss) From level \(rung.firstLevel), unlocks the \(rung.palette.rawValue) accent\(reached ? "" : ", locked"). \(isCurrent ? "Your rank, level \(store.currentLevelNumber)" : (reached ? "Reached" : "Not reached yet"))")
     }
 
     private func ladderTitle(_ rung: MorpheRank, isCurrent: Bool) -> some View {

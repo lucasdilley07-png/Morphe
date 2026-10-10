@@ -2565,7 +2565,8 @@ final class MorpheAppStore {
         if let theme = ThemePreset(rawValue: snapshot.theme) {
             profileShowcase.theme = theme
         }
-        if let accent = AccentPalette(rawValue: snapshot.accentPalette) {
+        if let accent = AccentPalette(rawValue: snapshot.accentPalette)
+            ?? (snapshot.accentPalette == "Silver" ? .platinum : nil) {
             let resolved = Self.rebrandMigratedAccent(accent, paletteEpoch: snapshot.paletteEpoch)
             profileShowcase.accentPalette = resolved
             if resolved != accent { rebrandMigrationPending = true }
@@ -10865,7 +10866,9 @@ final class MorpheAppStore {
     /// joins Morphe through this user's invite (server-backed count).
     func isPaletteUnlocked(_ palette: AccentPalette) -> Bool {
         if palette == profileShowcase.accentPalette { return true }
-        if palette == .custom { return true }
+        // Custom retired (Lucas 2026-10-10): the ladder's colors are the
+        // colors. An already-applied custom stays until they pick a rank color.
+        if palette == .custom { return false }
         if palette == .recruiter { return referralCount >= 1 }
         return currentLevelNumber >= paletteUnlockLevel(palette)
     }

@@ -654,16 +654,15 @@ enum AccentPalette: String, CaseIterable, Identifiable {
     case orange = "Orange"
     case purple = "Purple"
     case pink = "Pink"
-    case silver = "Silver"
+    case platinum = "Platinum"
     /// Metallic gold — General only. (Raw value kept: it was the
     /// pre-rebrand brand palette and old profiles store "Gold".)
     case gold = "Gold"
     /// Earned by referral, not level — unlocks when someone joins Morphe
     /// through this user's invite link (see `isPaletteUnlocked`).
     case recruiter = "Recruiter"
-    /// Any color at all: the hex lives in ProfileShowcase.customAccentHex
-    /// and MorpheTheme resolves it. Free for everyone — customization is a
-    /// launch feature, not a grind reward.
+    /// RETIRED 2026-10-10 (Lucas: the ladder's colors are the colors).
+    /// Kept so old profiles decode; hidden from the picker, never unlocks.
     case custom = "Custom"
 
     var id: String { rawValue }
@@ -672,7 +671,7 @@ enum AccentPalette: String, CaseIterable, Identifiable {
     var rank: MorpheRank? { MorpheRank.allCases.first { $0.palette == self } }
 
     /// Gold and silver draw with a metallic sheen (swatches, rank badges).
-    var isMetallic: Bool { self == .gold || self == .silver }
+    var isMetallic: Bool { self == .gold || self == .platinum }
 }
 
 enum AvatarStyle: String, CaseIterable, Identifiable {
@@ -1317,7 +1316,7 @@ enum MorpheRank: Int, CaseIterable, Identifiable {
         case .lieutenant: return .orange
         case .captain: return .purple
         case .major: return .pink
-        case .colonel: return .silver
+        case .colonel: return .platinum
         case .general: return .gold
         }
     }

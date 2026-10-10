@@ -7455,12 +7455,14 @@ final class CustomizationTests: XCTestCase {
         XCTAssertEqual(MorpheTheme.accentColor(forPaletteId: "garbage"), MorpheTheme.brandBlue)
     }
 
-    func testCustomAccentPersistsAcrossRelaunch() {
+    func testCustomAccentIsRetiredButAnAppliedOneIsGrandfathered() {
         let store = freshStore()
         store.updateAccentPalette(.custom)
+        XCTAssertNotEqual(store.profileShowcase.accentPalette, .custom, "custom no longer applies from the picker")
+        // A profile that already wore a custom color keeps it across relaunch.
+        store.profileShowcase.accentPalette = .custom
         store.updateCustomAccent(hex: "#123456")
-        XCTAssertEqual(store.profileShowcase.customAccentHex, "#123456")
-
+        XCTAssertTrue(store.isPaletteUnlocked(.custom), "grandfathered while applied")
         let relaunched = MorpheAppStore()
         XCTAssertEqual(relaunched.profileShowcase.accentPalette, .custom)
         XCTAssertEqual(relaunched.profileShowcase.customAccentHex, "#123456")
@@ -7479,7 +7481,7 @@ final class CustomizationTests: XCTestCase {
 
         // Defaults: both on.
         XCTAssertTrue(store.feedAuthorHeadline.contains("streak"))
-        store.updateAccentPalette(.custom)
+        store.profileShowcase.accentPalette = .custom   // grandfathered custom
         store.updateCustomAccent(hex: "#00FF88")
         XCTAssertEqual(store.feedAuthorAccentId, "#00FF88")
 
@@ -7502,9 +7504,10 @@ final class CustomizationTests: XCTestCase {
         XCTAssertFalse(relaunched.postAccentIdentity)
     }
 
-    func testCustomPaletteIsFreeForEveryone() {
+    func testCustomPaletteIsRetired() {
         let store = freshStore()
-        XCTAssertTrue(store.isPaletteUnlocked(.custom))
+        XCTAssertFalse(store.isPaletteUnlocked(.custom), "retired 2026-10-10: the ladder's colors are the colors")
+        XCTAssertEqual(MorpheRank.colonel.palette, .platinum)
     }
 }
 
