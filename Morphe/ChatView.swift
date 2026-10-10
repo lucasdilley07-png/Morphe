@@ -4109,6 +4109,14 @@ struct CreatorFeed: View {
     @State private var expandedWorkouts: Set<String> = []
     @State private var reporting: CreatorNote?
     @State private var reportingWorkout: CreatorWorkout?
+    /// Search + type filter (Lucas 2026-10-10: a LinkedIn-style stream).
+    @State private var query = ""
+    @State private var filter: Filter = .all
+
+    private enum Filter: String, CaseIterable, Identifiable {
+        case all = "All", blogs = "Blogs", workouts = "Workouts", challenges = "Challenges"
+        var id: String { rawValue }
+    }
 
     private enum Item: Identifiable {
         case workout(CreatorWorkout)
@@ -4133,36 +4141,67 @@ struct CreatorFeed: View {
 
     private var items: [Item] {
         let joined = Set(store.activeChallenges.map(\.code))
-        var all: [Item] = store.creatorWorkouts.map(Item.workout)
-            + store.creatorNotes.map(Item.note)
-            + store.openChallenges.filter { !joined.contains($0.code) }.map(Item.challenge)
+        var all: [Item] = []
+        if filter == .all || filter == .workouts { all += store.creatorWorkouts.map(Item.workout) }
+        if filter == .all || filter == .blogs { all += store.creatorNotes.map(Item.note) }
+        if filter == .all || filter == .challenges { all += store.openChallenges.filter { !joined.contains($0.code) }.map(Item.challenge) }
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if !q.isEmpty {
+            all = all.filter { item in
+                let haystack: String
+                switch item {
+                case .workout(let w): haystack = [w.name, w.notes, w.authorName, w.authorHandle, w.equipment, w.level].joined(separator: " ")
+                case .note(let n): haystack = [n.title, n.body, n.authorName, n.authorHandle].joined(separator: " ")
+                case .challenge(let c): haystack = [c.title, c.hostName, c.metric.label].joined(separator: " ")
+                }
+                return haystack.lowercased().contains(q)
+            }
+        }
         all.sort { $0.date > $1.date }
         return all
     }
 
+    private var totalCount: Int {
+        store.creatorWorkouts.count + store.creatorNotes.count + store.openChallenges.count
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Rectangle().fill(MorpheTheme.stroke).frame(width: 3, height: 14)
-                Text("FEED")
-                    .scaledFont(size: 14, weight: .bold, design: .monospaced)
-                    .tracking(2)
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                Text(String(format: "%03d", items.count))
-                    .font(MorpheTheme.microLabel(10))
-                    .tracking(1.0)
-                    .foregroundStyle(MorpheTheme.accentAlt)
-                Rectangle().fill(MorpheTheme.stroke).frame(height: 1)
+            // Search, then the stream (Lucas 2026-10-10).
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(MorpheTheme.textMuted)
+                TextField("Search coaches, blogs, workouts…", text: $query)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                if !query.isEmpty {
+                    Button { query = "" } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
             }
-            Text("From approved Creator Coaches. Workouts to start or save, notes to read, challenges to join.")
-                .font(.caption)
-                .foregroundStyle(MorpheTheme.textSecondary)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 46)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MorpheTheme.panelStrong))
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Filter.allCases) { f in
+                        Button(f.rawValue) { filter = f; Haptics.selection() }
+                            .buttonStyle(FilterChipStyle(isSelected: filter == f))
+                    }
+                }
+            }
 
             if items.isEmpty {
                 GlassCard(.quiet) {
                     Text(store.authUser == nil
                          ? "Sign in to see what coaches are publishing."
-                         : "Nothing published yet. When Creator Coaches post workouts, notes and challenges, they land here.")
+                         : (totalCount == 0
+                            ? "Nothing published yet. When Creator Coaches post workouts, blogs and challenges, they land here."
+                            : "Nothing matches that search."))
                         .font(.subheadline)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -4206,18 +4245,36 @@ struct CreatorFeed: View {
         }
     }
 
+    /// The post header: avatar initials, name, handle and age on the left,
+    /// the content type on the right — the stream reads like a feed, not
+    /// a list of cards.
     private func byline(_ name: String, _ handle: String, _ date: Date, kind: String) -> some View {
-        HStack(spacing: 6) {
+        let initials = name.split(separator: " ").prefix(2).compactMap { $0.first }.map(String.init).joined().uppercased()
+        return HStack(alignment: .center, spacing: 10) {
+            Text(initials.isEmpty ? "C" : initials)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(MorpheTheme.accentText)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(MorpheTheme.accent.opacity(0.15)))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(name.isEmpty ? "Creator Coach" : name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .lineLimit(1)
+                Text("\(handle.isEmpty ? "Creator Coach" : "@\(handle)") · \(date.formatted(.relative(presentation: .named)))")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
             Text(kind.uppercased())
                 .font(MorpheTheme.microLabel(9))
-                .tracking(1.4)
+                .tracking(1.2)
                 .foregroundStyle(MorpheTheme.accentText)
-            Text("·")
-                .foregroundStyle(MorpheTheme.textMuted)
-            Text("\(name)\(handle.isEmpty ? "" : " · @\(handle)") · \(date.formatted(date: .abbreviated, time: .omitted))")
-                .font(.caption)
-                .foregroundStyle(MorpheTheme.textMuted)
-                .lineLimit(1)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(MorpheTheme.accent.opacity(0.12)))
         }
     }
 
@@ -4274,7 +4331,7 @@ struct CreatorFeed: View {
     private func noteCard(_ note: CreatorNote) -> some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 8) {
-                byline(note.authorName, note.authorHandle, note.createdAt, kind: "Note")
+                byline(note.authorName, note.authorHandle, note.createdAt, kind: "Blog")
                 Text(note.title)
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
@@ -4303,7 +4360,7 @@ struct CreatorFeed: View {
     private func challengeCard(_ listing: OpenChallengeListing) -> some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 8) {
-                byline(listing.hostName, "", listing.endsAt, kind: "Open challenge")
+                byline(listing.hostName, "", listing.endsAt.addingTimeInterval(-30 * 86_400), kind: "Challenge")
                 Text(listing.title)
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
