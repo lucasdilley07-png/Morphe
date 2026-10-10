@@ -1560,6 +1560,31 @@ struct ProfileView: View {
             // The learning loop, visible (personalization spine 2026-09):
             // Morphe says exactly what it has derived from real logs — and
             // says "still learning" instead of inventing patterns.
+            // Your app (the accent picker) sits under Make it yours (Lucas 2026-10-10).
+            settingsSection("Your app", keywords: "theme accent color") {
+                // Accent color — picked once in onboarding, now editable
+                // anytime. Gold is the brand default; the others personalize
+                // the whole app's accent pair.
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Accent")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    // Wrapped: nine 44pt targets don't fit one row on a
+                    // 393pt device — crushed dots overlapped their rings.
+                    WrapStack(spacing: 8) {
+                        ForEach(AccentPalette.allCases.filter { $0 != .custom }) { palette in
+                            accentDot(for: palette)
+                        }
+                    }
+                    // Locks were mute until tapped (UX test 2026-09-30):
+                    // a first-timer saw five padlocks with no path.
+                    Text("Every rank brings its own color, Rookie\u{2019}s dark blue through Colonel\u{2019}s platinum to General\u{2019}s gold \u{2014} tap a locked one to see its rank.")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+            }
+
             settingsSection("What Morphe has learned", keywords: "personalization learned patterns ai adapt") {
                 if store.styleProfile.hasLearnedAnything {
                     VStack(alignment: .leading, spacing: 8) {
@@ -1838,30 +1863,6 @@ struct ProfileView: View {
 
             // Light and dark follow the iPhone's own setting (Lucas
             // 2026-10-06) — no appearance switch here.
-            settingsSection("Your app", keywords: "theme accent color") {
-                // Accent color — picked once in onboarding, now editable
-                // anytime. Gold is the brand default; the others personalize
-                // the whole app's accent pair.
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Accent")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    // Wrapped: nine 44pt targets don't fit one row on a
-                    // 393pt device — crushed dots overlapped their rings.
-                    WrapStack(spacing: 8) {
-                        ForEach(AccentPalette.allCases.filter { $0 != .custom }) { palette in
-                            accentDot(for: palette)
-                        }
-                    }
-                    // Locks were mute until tapped (UX test 2026-09-30):
-                    // a first-timer saw five padlocks with no path.
-                    Text("Every rank brings its own color, Rookie\u{2019}s dark blue through Colonel\u{2019}s platinum to General\u{2019}s gold \u{2014} tap a locked one to see its rank.")
-                        .font(.caption2)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-
-            }
-
             settingsSection("Your data", keywords: "export json download backup cloud morphe pro subscription plans") {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 3) {
