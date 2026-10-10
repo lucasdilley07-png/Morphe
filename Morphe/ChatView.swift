@@ -228,7 +228,7 @@ struct CommunityView: View {
             .padding(.bottom, 120)
         }
         .refreshable {
-            await store.refreshLeaderboard(force: true)
+            await store.refreshBoards(force: true)
         }
     }
 
@@ -1498,11 +1498,7 @@ private struct RealFeedSection: View {
     /// "You're #N this week" from the REAL fetched board, or the leader's
     /// name when the viewer isn't ranked. Honest either way.
     private var boardChipLine: String {
-        let myUid = store.authUser?.id ?? ""
-        if let index = store.weeklyLeaderboard.firstIndex(where: { $0.uid == myUid }) {
-            return "You're #\(index + 1) on this week's board"
-        }
-        return "This week's board — \(store.weeklyLeaderboard.first?.name ?? "open") leads"
+        store.boardChipLine ?? "Boards — create one or join with a code"
     }
 
     var body: some View {

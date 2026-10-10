@@ -3496,6 +3496,18 @@ struct CoachSessionLaunchRequest: Identifiable, Hashable {
 /// leaderboards/{weekKey}/entries/{uid}. `verified` mirrors the server-granted
 /// badge (users/{uid}.verified) as an honest trust signal; the rules refuse a
 /// claimed badge the server never granted.
+/// A board (Lucas 2026-10-10): a named group with its own 6-char code,
+/// required to join — knowing the code is the invite, like parties and
+/// challenges. Standings reset every ISO week under boards/{code}/weeks.
+struct BoardGroup: Identifiable, Hashable, Codable {
+    var code: String
+    var name: String
+    var hostUid: String
+    var hostName: String
+    var createdAt: Date
+    var id: String { code }
+}
+
 struct WeeklyLeaderboardEntry: Identifiable, Hashable, Codable {
     var uid: String
     var name: String

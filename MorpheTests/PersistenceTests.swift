@@ -6688,6 +6688,17 @@ final class ModerationTests: XCTestCase {
         XCTAssertNil(store.authUser)
     }
 
+    func testBoardsPersistPerProfileAndLeaveForgetsThem() {
+        let store = MorpheAppStore()
+        store.rememberBoard(BoardGroup(code: "ABC123", name: "Tuesday crew", hostUid: "h", hostName: "Host", createdAt: .now))
+        XCTAssertEqual(store.myBoards.map(\.code), ["ABC123"])
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.myBoards.first?.name, "Tuesday crew", "joined boards survive relaunch")
+        reloaded.leaveBoard(code: "ABC123")
+        XCTAssertTrue(reloaded.myBoards.isEmpty)
+        XCTAssertTrue(MorpheAppStore().myBoards.isEmpty, "leaving persists too")
+    }
+
     func testMorpheChatDeliversNewsOnceAndReportsOnlyLoggedWeeks() {
         let store = MorpheAppStore()
         store.onboardingDraft.name = "Sarah"

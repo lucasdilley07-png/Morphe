@@ -1612,6 +1612,9 @@ final class MorpheAppStore {
         hiddenPeopleUids = []
         knownNames = [:]
         viewingPerson = nil
+        myBoards = []
+        boardStandings = [:]
+        boardSelfEntries = [:]
         // One account's appointments, streak and sayings must not ring
         // after sign-out or under the next account (audit 31).
         if !(appointmentService is NoOpAppointmentService) {
@@ -1743,7 +1746,7 @@ final class MorpheAppStore {
                     threadReadKey, activitySeenKey, storySeenKey,
                     lastKnownStreakKey, comebackPendingKey, foodChecksKey, recentFoodsKey,
                     savedExercisesKey, savedLessonsKey, savedDietPlansKey, hiddenPeopleKey, knownNamesKey,
-                    morpheInboxKey, morpheInboxReadKey,
+                    morpheInboxKey, morpheInboxReadKey, boardsKey,
                     dailyStreakCountKey, dailyStreakLastDayKey, dailyStreakBestKey, dailyStreakFreezeDayKey,
                     // An invite link opened before sign-out must not credit
                     // the next account's recruiter (audit 2026-10-10, P2).
@@ -4814,6 +4817,7 @@ final class MorpheAppStore {
             "knownNames": knownNamesKey,
             "morpheInbox": morpheInboxKey,
             "morpheInboxRead": morpheInboxReadKey,
+            "boards": boardsKey,
             "dailyStreakCount": dailyStreakCountKey,
             "dailyStreakLastDay": dailyStreakLastDayKey,
             "dailyStreakBest": dailyStreakBestKey,
@@ -4910,6 +4914,7 @@ final class MorpheAppStore {
         loadSavedThings()
         loadHiddenPeople()
         loadMorpheInbox()
+        loadBoards()
     }
 
     /// Called from `submitRecoveryCheckIn` — records today's real inputs.
@@ -5189,6 +5194,148 @@ final class MorpheAppStore {
         DateInterval(start: LeaderboardWeek.start(), duration: 7 * 86_400)
     }
 
+    // MARK: Boards with codes (Lucas 2026-10-10)
+    //
+    // The open global board is gone from the UI: every board is a group
+    // with a code, required to join. Joined boards persist per profile
+    // (cloud-backed); scores post to every joined board each time a set
+    // lands, from the same honest weekly totals.
+
+    private var boardsKey: String { "morphe.boards.\(clientProfile.id.uuidString)" }
+    var myBoards: [BoardGroup] = []
+    var boardStandings: [String: [WeeklyLeaderboardEntry]] = [:]
+    var boardSelfEntries: [String: WeeklyLeaderboardEntry] = [:]
+    var boardRespect: [String: [String: Int]] = [:]
+    var myBoardRespect: [String: Set<String>] = [:]
+    var boardsFetchFailed: Set<String> = []
+    private var lastBoardsRefreshAt: Date?
+
+    func loadBoards() { myBoards = loadSeries(boardsKey) }
+    private func saveBoards() {
+        saveSeries(myBoards, key: boardsKey, cap: 50)
+        mirrorExtrasToCloud()
+    }
+
+    /// Test/offline seam: a board becomes "mine" locally.
+    func rememberBoard(_ board: BoardGroup) {
+        myBoards.removeAll { $0.code == board.code }
+        myBoards.append(board)
+        saveBoards()
+    }
+
+    @discardableResult
+    func createBoard(name: String) async -> BoardGroup? {
+        guard let me = competitionSelf else { showToast("Sign in to create a board."); return nil }
+        let clean = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        guard !clean.isEmpty else { return nil }
+        if ContentModeration.containsBlockedTerm(clean) || ContentModeration.humanityRefusal(for: clean, kind: .comment) != nil {
+            showToast("Pick a plain name for the board.", isError: true); return nil
+        }
+        let board = BoardGroup(code: Self.makePartyCode(), name: clean, hostUid: me.uid, hostName: me.name, createdAt: .now)
+        guard await leaderboardService.createBoard(board) else {
+            showToast("Couldn't create the board — check your connection.", isError: true); return nil
+        }
+        rememberBoard(board)
+        postBoardScores()
+        Task { await refreshBoards(force: true) }
+        refreshWeeklyBoardReminder()
+        Haptics.success()
+        showToast("\(board.name) is live — share the code \(board.code).")
+        return board
+    }
+
+    @discardableResult
+    func joinBoard(code raw: String) async -> Bool {
+        guard competitionSelf != nil else { showToast("Sign in to join a board."); return false }
+        let code = raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard code.count >= 4 else { showToast("That's not a board code.", isError: true); return false }
+        if myBoards.contains(where: { $0.code == code }) { showToast("You're already on that board."); return true }
+        guard let board = await leaderboardService.fetchBoard(code: code) else {
+            showToast("No board with code \(code). Codes are shared by the board's host.", isError: true); return false
+        }
+        rememberBoard(board)
+        postBoardScores()
+        Task { await refreshBoards(force: true) }
+        refreshWeeklyBoardReminder()
+        Haptics.success()
+        showToast("You're on \(board.name).")
+        return true
+    }
+
+    /// Leaving stops future posts; this week's posted row stays (no client
+    /// deletes, same as the old board — disclosed in the card copy).
+    func leaveBoard(code: String) {
+        myBoards.removeAll { $0.code == code }
+        boardStandings[code] = nil
+        boardSelfEntries[code] = nil
+        saveBoards()
+        refreshWeeklyBoardReminder()
+        showToast("Left the board. This week's posted entry stays until Monday.")
+    }
+
+    /// Every joined board gets the same honest weekly totals.
+    private func postBoardScores() {
+        guard let me = competitionSelf, !myBoards.isEmpty else { return }
+        let totals = competitionTotals(in: currentBoardWeekInterval)
+        let entry = WeeklyLeaderboardEntry(uid: me.uid, name: me.name, verified: isVerifiedUser,
+                                           score: totals.sets, workouts: totals.workouts, updatedAt: nil)
+        for board in myBoards {
+            leaderboardService.postBoardScore(code: board.code, weekKey: LeaderboardWeek.key(), entry: entry)
+        }
+    }
+
+    func refreshBoards(force: Bool = false) async {
+        guard !myBoards.isEmpty else { return }
+        if !force, let last = lastBoardsRefreshAt, Date.now.timeIntervalSince(last) < Self.boardStalenessWindow { return }
+        let weekKey = LeaderboardWeek.key()
+        for board in myBoards {
+            if let top = await leaderboardService.fetchBoardTop(code: board.code, weekKey: weekKey, limit: 50) {
+                withAnimation(.easeInOut(duration: 0.25)) { boardStandings[board.code] = top }
+                boardsFetchFailed.remove(board.code)
+            } else if boardStandings[board.code] == nil {
+                boardsFetchFailed.insert(board.code)
+            }
+            if let me = competitionSelf {
+                boardSelfEntries[board.code] = await leaderboardService.fetchBoardEntry(code: board.code, weekKey: weekKey, uid: me.uid)
+            }
+            var uids = (boardStandings[board.code] ?? []).map(\.uid)
+            if let mine = boardSelfEntries[board.code]?.uid, !uids.contains(mine) { uids.append(mine) }
+            if !uids.isEmpty {
+                let counts = await leaderboardService.fetchBoardRespectCounts(code: board.code, weekKey: weekKey, uids: uids)
+                if !counts.isEmpty { boardRespect[board.code] = counts }
+                if let giver = authUser?.id {
+                    myBoardRespect[board.code] = await leaderboardService.fetchMyBoardRespect(code: board.code, weekKey: weekKey, giverUid: giver, among: uids)
+                }
+            }
+        }
+        lastBoardsRefreshAt = .now
+    }
+
+    func toggleBoardRespect(code: String, for uid: String) {
+        guard let giver = authUser?.id, giver != uid else { return }
+        let weekKey = LeaderboardWeek.key()
+        if myBoardRespect[code, default: []].contains(uid) {
+            myBoardRespect[code, default: []].remove(uid)
+            boardRespect[code, default: [:]][uid] = max(0, boardRespect[code, default: [:]][uid, default: 1] - 1)
+            leaderboardService.revokeBoardRespect(code: code, weekKey: weekKey, to: uid, from: giver)
+        } else {
+            myBoardRespect[code, default: []].insert(uid)
+            boardRespect[code, default: [:]][uid, default: 0] += 1
+            leaderboardService.giveBoardRespect(code: code, weekKey: weekKey, to: uid, from: giver)
+            Haptics.impact(.light)
+        }
+    }
+
+    /// "You're #N on <board>" for the feed chip — the first joined board.
+    var boardChipLine: String? {
+        guard let board = myBoards.first else { return nil }
+        let rows = boardStandings[board.code] ?? []
+        if let me = authUser?.id, let index = rows.firstIndex(where: { $0.uid == me }) {
+            return "You're #\(index + 1) on \(board.name) this week"
+        }
+        return "\(board.name) — \(rows.first?.name ?? "nobody") leads this week"
+    }
+
     // MARK: Weekly board actions
 
     /// Opts in, posts the honest current score (0 is a real score), and pulls
@@ -5200,6 +5347,7 @@ final class MorpheAppStore {
         }
         leaderboardOptIn = true
         postWeeklyBoardScore()
+        postBoardScores()
         // Forced: the user just joined — they must see themselves land.
         Task { await refreshLeaderboard(force: true) }
         refreshWeeklyBoardReminder()
@@ -5226,7 +5374,7 @@ final class MorpheAppStore {
         guard appointmentRemindersEnabled else { return }
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [Self.weeklyBoardNotificationID])
-        guard leaderboardOptIn else { return }
+        guard leaderboardOptIn || !myBoards.isEmpty else { return }
         // Ambient reminders never trigger the permission prompt cold — they
         // schedule only if the user already granted notifications through a
         // user-context ask (the appointment reminder path prompts).

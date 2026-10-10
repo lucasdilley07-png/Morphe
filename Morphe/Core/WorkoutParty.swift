@@ -429,6 +429,30 @@ protocol LeaderboardSyncing: AnyObject {
     func fetchChallenge(code: String) async -> ChallengeSummary?
     /// Upsert the user's own member score (fire-and-forget).
     func postChallengeScore(code: String, member: ChallengeMember)
+
+    // Boards (code-gated weekly standings, 2026-10-10)
+    func createBoard(_ board: BoardGroup) async -> Bool
+    func fetchBoard(code: String) async -> BoardGroup?
+    func postBoardScore(code: String, weekKey: String, entry: WeeklyLeaderboardEntry)
+    func fetchBoardTop(code: String, weekKey: String, limit: Int) async -> [WeeklyLeaderboardEntry]?
+    func fetchBoardEntry(code: String, weekKey: String, uid: String) async -> WeeklyLeaderboardEntry?
+    func giveBoardRespect(code: String, weekKey: String, to uid: String, from giverUid: String)
+    func revokeBoardRespect(code: String, weekKey: String, to uid: String, from giverUid: String)
+    func fetchBoardRespectCounts(code: String, weekKey: String, uids: [String]) async -> [String: Int]
+    func fetchMyBoardRespect(code: String, weekKey: String, giverUid: String, among uids: [String]) async -> Set<String>
+}
+
+/// Defaults so mocks and the no-op compile; Firebase overrides them.
+extension LeaderboardSyncing {
+    func createBoard(_ board: BoardGroup) async -> Bool { false }
+    func fetchBoard(code: String) async -> BoardGroup? { nil }
+    func postBoardScore(code: String, weekKey: String, entry: WeeklyLeaderboardEntry) {}
+    func fetchBoardTop(code: String, weekKey: String, limit: Int) async -> [WeeklyLeaderboardEntry]? { nil }
+    func fetchBoardEntry(code: String, weekKey: String, uid: String) async -> WeeklyLeaderboardEntry? { nil }
+    func giveBoardRespect(code: String, weekKey: String, to uid: String, from giverUid: String) {}
+    func revokeBoardRespect(code: String, weekKey: String, to uid: String, from giverUid: String) {}
+    func fetchBoardRespectCounts(code: String, weekKey: String, uids: [String]) async -> [String: Int] { [:] }
+    func fetchMyBoardRespect(code: String, weekKey: String, giverUid: String, among uids: [String]) async -> Set<String> { [] }
 }
 
 /// Default that does nothing — keeps the store fully functional offline and
@@ -460,6 +484,84 @@ final class FirebaseLeaderboardService: LeaderboardSyncing {
 
     private func respect(_ weekKey: String, uid: String) -> CollectionReference {
         entries(weekKey).document(uid).collection("respect")
+    }
+
+    // MARK: Boards (boards/{code}/weeks/{weekKey}/entries/{uid})
+
+    private func boardDoc(_ code: String) -> DocumentReference { db.collection("boards").document(code) }
+    private func boardEntries(_ code: String, _ weekKey: String) -> CollectionReference {
+        boardDoc(code).collection("weeks").document(weekKey).collection("entries")
+    }
+    private func boardRespect(_ code: String, _ weekKey: String, uid: String) -> CollectionReference {
+        boardEntries(code, weekKey).document(uid).collection("respect")
+    }
+
+    func createBoard(_ board: BoardGroup) async -> Bool {
+        do {
+            try await boardDoc(board.code).setData([
+                "name": board.name, "hostUid": board.hostUid, "hostName": board.hostName,
+                "createdAt": FieldValue.serverTimestamp()
+            ])
+            return true
+        } catch { return false }
+    }
+
+    func fetchBoard(code: String) async -> BoardGroup? {
+        guard let snap = try? await boardDoc(code).getDocument(), snap.exists, let d = snap.data() else { return nil }
+        return BoardGroup(code: snap.documentID, name: d["name"] as? String ?? "Board",
+                          hostUid: d["hostUid"] as? String ?? "", hostName: d["hostName"] as? String ?? "",
+                          createdAt: (d["createdAt"] as? Timestamp)?.dateValue() ?? .now)
+    }
+
+    func postBoardScore(code: String, weekKey: String, entry: WeeklyLeaderboardEntry) {
+        boardEntries(code, weekKey).document(entry.uid).setData([
+            "uid": entry.uid, "name": entry.name, "verified": entry.verified,
+            "score": entry.score, "workouts": entry.workouts,
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true)
+    }
+
+    func fetchBoardTop(code: String, weekKey: String, limit: Int) async -> [WeeklyLeaderboardEntry]? {
+        guard let snapshot = try? await boardEntries(code, weekKey).order(by: "score", descending: true).limit(to: limit).getDocuments()
+        else { return nil }
+        return snapshot.documents.compactMap { Self.entry(from: $0.documentID, data: $0.data()) }
+    }
+
+    func fetchBoardEntry(code: String, weekKey: String, uid: String) async -> WeeklyLeaderboardEntry? {
+        guard let snap = try? await boardEntries(code, weekKey).document(uid).getDocument(), snap.exists, let data = snap.data() else { return nil }
+        return Self.entry(from: snap.documentID, data: data)
+    }
+
+    func giveBoardRespect(code: String, weekKey: String, to uid: String, from giverUid: String) {
+        boardRespect(code, weekKey, uid: uid).document(giverUid).setData(["createdAt": FieldValue.serverTimestamp()])
+    }
+
+    func revokeBoardRespect(code: String, weekKey: String, to uid: String, from giverUid: String) {
+        boardRespect(code, weekKey, uid: uid).document(giverUid).delete()
+    }
+
+    func fetchBoardRespectCounts(code: String, weekKey: String, uids: [String]) async -> [String: Int] {
+        var counts: [String: Int] = [:]
+        for uid in uids {
+            guard let snap = try? await boardRespect(code, weekKey, uid: uid).count.getAggregation(source: .server) else { continue }
+            counts[uid] = Int(truncating: snap.count)
+        }
+        return counts
+    }
+
+    func fetchMyBoardRespect(code: String, weekKey: String, giverUid: String, among uids: [String]) async -> Set<String> {
+        await withTaskGroup(of: String?.self) { group in
+            for uid in uids {
+                let doc = boardRespect(code, weekKey, uid: uid).document(giverUid)
+                group.addTask {
+                    guard let snap = try? await doc.getDocument(), snap.exists else { return nil }
+                    return uid
+                }
+            }
+            var mine: Set<String> = []
+            for await hit in group { if let uid = hit { mine.insert(uid) } }
+            return mine
+        }
     }
 
     // MARK: Respect

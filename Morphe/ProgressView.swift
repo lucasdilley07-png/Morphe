@@ -2189,206 +2189,237 @@ private let verifiedSealBlue = Color(red: 0.25, green: 0.56, blue: 0.96)
 /// ever renders what was actually fetched from Firestore.
 struct WeeklyBoardCard: View {
     @Environment(MorpheAppStore.self) private var store
+    @State private var query = ""
+    @State private var showCreate = false
+    @State private var showJoin = false
+    @State private var newName = ""
+    @State private var joinCode = ""
+    @State private var busy = false
 
     private var myUid: String? { store.authUser?.id }
+    private var cleanQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
 
-    /// Rows to show: the fetched top 10 (of the fetched top 50).
-    private var topRows: [WeeklyLeaderboardEntry] {
-        Array(store.weeklyLeaderboard.prefix(10))
-    }
-
-    /// The user's position within the FETCHED list (1-based), if present.
-    /// Positions beyond what was fetched are unknowable cheaply — the card
-    /// says so instead of inventing a rank.
-    private var myFetchedRank: Int? {
-        guard let myUid,
-              let index = store.weeklyLeaderboard.firstIndex(where: { $0.uid == myUid })
-        else { return nil }
-        return index + 1
+    /// Boards matching the search by name, code, or a member's name.
+    private var visibleBoards: [BoardGroup] {
+        guard !cleanQuery.isEmpty else { return store.myBoards }
+        return store.myBoards.filter { board in
+            board.name.lowercased().contains(cleanQuery) || board.code.lowercased().contains(cleanQuery)
+                || (store.boardStandings[board.code] ?? []).contains { $0.name.lowercased().contains(cleanQuery) }
+        }
     }
 
     var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Weekly Board")
-                    .font(.headline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+        VStack(alignment: .leading, spacing: 14) {
+            TextField("Search boards, codes, people", text: $query)
+                .textFieldStyle(MorpheFieldStyle())
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
 
-                if store.leaderboardOptIn {
-                    optedInBody
-                } else {
-                    optInPitch
+            HStack(spacing: 10) {
+                Button { showCreate = true } label: {
+                    Label("Create a board", systemImage: "plus").frame(maxWidth: .infinity)
                 }
-            }
-        }
-        .task {
-            await store.refreshLeaderboard()
-        }
-    }
-
-    private var optInPitch: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("A global board of real Morphe athletes, reset every Monday. Your score is the sets you actually log — nothing else. Leaving stops future posts, but anything already posted stays visible for the rest of the week.")
-                .font(.caption)
-                .foregroundStyle(MorpheTheme.textSecondary)
-
-            Button("Join Board") {
-                store.joinWeeklyBoard()
-            }
-            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-        }
-    }
-
-    @ViewBuilder
-    private var optedInBody: some View {
-        Text("Top of the fetched board (top 50) — total sets logged this week.")
-            .font(.caption)
-            .foregroundStyle(MorpheTheme.textSecondary)
-
-        if topRows.isEmpty {
-            // Only a LOADED emptiness is an empty board — a fetch still
-            // in flight or failed says so instead.
-            switch store.leaderboardFetchState {
-            case .idle, .loading:
-                Text("LOADING THE BOARD…")
-                    .font(MorpheTheme.microLabel())
-                    .tracking(1.2)
-                    .foregroundStyle(MorpheTheme.textMuted)
-            case .failed:
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("The board couldn't load — check your connection.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-                    Button("Retry") {
-                        Task { await store.refreshLeaderboard(force: true) }
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
-                    .frame(width: 118)
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                Button { showJoin = true } label: {
+                    Label("Join with code", systemImage: "number").frame(maxWidth: .infinity)
                 }
-            case .loaded:
-                Text("No scores posted this week yet — log a workout and yours starts the board.")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textSecondary)
-            }
-        } else {
-            VStack(spacing: 6) {
-                ForEach(Array(topRows.enumerated()), id: \.element.id) { index, entry in
-                    boardRow(rank: index + 1, entry: entry, isMe: entry.uid == myUid)
-                }
+                .buttonStyle(SecondaryCTAButtonStyle())
             }
 
-            // The user's own honest position when they're outside the top 10.
-            if let myUid, !topRows.contains(where: { $0.uid == myUid }) {
-                if let rank = myFetchedRank,
-                   let mine = store.weeklyLeaderboard.first(where: { $0.uid == myUid }) {
-                    Divider().overlay(MorpheTheme.stroke.opacity(0.5))
-                    boardRow(rank: rank, entry: mine, isMe: true)
-                } else if let mine = store.weeklyLeaderboardSelfEntry {
-                    Divider().overlay(MorpheTheme.stroke.opacity(0.5))
-                    HStack(spacing: 8) {
-                        Text("You")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentText)
-                        Text("\(mine.score) sets — posted, outside the fetched top 50")
+            if store.myBoards.isEmpty {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("No boards yet")
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text("Every board is a group with its own code — create one and share the code, or join a friend's. Scores are the sets you actually log, reset every Monday.")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                } else {
-                    Text("Not on the board this week yet — log a workout to post your score.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else if visibleBoards.isEmpty {
+                Text("Nothing matches \u{201C}\(query.trimmingCharacters(in: .whitespacesAndNewlines))\u{201D}.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+            } else {
+                ForEach(visibleBoards) { board in
+                    boardCard(board)
                 }
             }
         }
-
-        Button("Leave Board") {
-            store.leaveWeeklyBoard()
+        .task { await store.refreshBoards() }
+        .sheet(isPresented: $showCreate) {
+            boardSheet(title: "Create a board", placeholder: "Board name (e.g. Tuesday crew)", text: $newName, action: "Create") {
+                busy = true
+                let name = newName
+                Task {
+                    if await store.createBoard(name: name) != nil { newName = ""; showCreate = false }
+                    busy = false
+                }
+            }
         }
-        .buttonStyle(SecondaryCTAButtonStyle())
+        .sheet(isPresented: $showJoin) {
+            boardSheet(title: "Join with a code", placeholder: "6-character code", text: $joinCode, action: "Join") {
+                busy = true
+                let code = joinCode
+                Task {
+                    if await store.joinBoard(code: code) { joinCode = ""; showJoin = false }
+                    busy = false
+                }
+            }
+        }
     }
 
-    private func boardRow(rank: Int, entry: WeeklyLeaderboardEntry, isMe: Bool) -> some View {
+    private func boardSheet(title: String, placeholder: String, text: Binding<String>, action: String, perform: @escaping () -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(title)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(MorpheTheme.textPrimary)
+            TextField(placeholder, text: text)
+                .textFieldStyle(MorpheFieldStyle())
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(action == "Join" ? .characters : .words)
+                .submitLabel(.done)
+                .onSubmit(perform)
+            Text(action == "Join"
+                 ? "A code is the only way in — ask the board's host for it."
+                 : "You'll get a 6-character code to share. Anyone with the code can join; scores are logged sets, reset every Monday.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(busy ? "Working…" : action, action: perform)
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                .disabled(busy || text.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty)
+            Spacer(minLength: 0)
+        }
+        .padding(24)
+        .background(PremiumBackground().ignoresSafeArea())
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(28)
+        .sheetToastSurface()
+    }
+
+    private func boardCard(_ board: BoardGroup) -> some View {
+        let rows = Array((store.boardStandings[board.code] ?? []).prefix(10))
+        return GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(board.name)
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text("Host \(board.hostName) · resets Monday · sets logged this week")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    Spacer(minLength: 0)
+                    ShareLink(item: "Join my Morphe board \u{201C}\(board.name)\u{201D} with the code \(board.code) — Network → Board → Join with code.") {
+                        HStack(spacing: 4) {
+                            Text(board.code)
+                                .font(.system(.caption, design: .monospaced).weight(.bold))
+                            Image(systemName: "square.and.arrow.up").font(.caption2.weight(.bold))
+                        }
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .padding(.horizontal, 10)
+                        .frame(minHeight: 32)
+                        .background(Capsule().fill(MorpheTheme.accent.opacity(0.15)))
+                    }
+                    .accessibilityLabel("Share the code \(board.code)")
+                }
+
+                if rows.isEmpty {
+                    Text(store.boardsFetchFailed.contains(board.code)
+                         ? "The board couldn't load — pull to refresh."
+                         : "No scores posted this week yet — log a workout and yours starts the board.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                } else {
+                    VStack(spacing: 6) {
+                        ForEach(Array(rows.enumerated()), id: \.element.id) { index, entry in
+                            boardRow(board: board, rank: index + 1, entry: entry, isMe: entry.uid == myUid)
+                        }
+                    }
+                    if let myUid, !rows.contains(where: { $0.uid == myUid }) {
+                        let all = store.boardStandings[board.code] ?? []
+                        if let index = all.firstIndex(where: { $0.uid == myUid }) {
+                            Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+                            boardRow(board: board, rank: index + 1, entry: all[index], isMe: true)
+                        } else if let mine = store.boardSelfEntries[board.code] {
+                            Divider().overlay(MorpheTheme.stroke.opacity(0.5))
+                            Text("You: \(mine.score) sets — posted, outside the fetched top 50")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                    }
+                }
+
+                Button("Leave board") { store.leaveBoard(code: board.code) }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .frame(minHeight: 32)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func boardRow(board: BoardGroup, rank: Int, entry: WeeklyLeaderboardEntry, isMe: Bool) -> some View {
         HStack(spacing: 8) {
             Text("\(rank)")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(isMe ? MorpheTheme.accentText : MorpheTheme.textMuted)
                 .frame(width: 22, alignment: .leading)
-
             Text(isMe ? "\(entry.name) (you)" : entry.name)
                 .font(.caption.weight(isMe ? .bold : .semibold))
                 .foregroundStyle(isMe ? MorpheTheme.accentText : MorpheTheme.textPrimary)
                 .lineLimit(1)
-
             if entry.verified {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.caption2)
                     .foregroundStyle(verifiedSealBlue)
                     .accessibilityLabel("Verified")
             }
-
             Spacer()
-
-            // Respect — the one-tap reaction on a training partner's week
-            // (2026-09-30). Only real logged work is visible here, so the
-            // tap only ever lands on real work. Your own row shows what
-            // you've RECEIVED, read-only.
-            let respectCount = store.boardRespectCounts[entry.uid, default: 0]
+            let respectCount = store.boardRespect[board.code, default: [:]][entry.uid, default: 0]
             if isMe {
                 if respectCount > 0 {
                     HStack(spacing: 3) {
-                        Image(systemName: "hands.clap.fill")
-                            .font(.caption2)
-                        Text("\(respectCount)")
-                            .font(.caption2.weight(.semibold))
+                        Image(systemName: "hands.clap.fill").font(.caption2)
+                        Text("\(respectCount)").font(.caption2.weight(.semibold)).monospacedDigit()
                     }
-                    .foregroundStyle(MorpheTheme.accentText)
+                    .foregroundStyle(MorpheTheme.textMuted)
                     .accessibilityLabel("\(respectCount) respect received")
                 }
-            } else if store.authUser != nil {
-                let mine = store.myRespectedBoardUids.contains(entry.uid)
+            } else {
+                let given = store.myBoardRespect[board.code, default: []].contains(entry.uid)
                 Button {
-                    store.toggleBoardRespect(for: entry.uid)
+                    store.toggleBoardRespect(code: board.code, for: entry.uid)
                 } label: {
                     HStack(spacing: 3) {
-                        Image(systemName: mine ? "hands.clap.fill" : "hands.clap")
-                            .font(.caption2)
+                        Image(systemName: given ? "hands.clap.fill" : "hands.clap").font(.caption2)
                         if respectCount > 0 {
-                            Text("\(respectCount)")
-                                .font(.caption2.weight(.semibold))
-                                .contentTransition(.numericText())
+                            Text("\(respectCount)").font(.caption2.weight(.semibold)).monospacedDigit()
                         }
                     }
-                    .foregroundStyle(mine ? MorpheTheme.accentText : MorpheTheme.textMuted)
-                    // The row is 3pt-padded — the control carries its own
-                    // 44pt-wide target so gym thumbs land it.
-                    .frame(minWidth: 44, minHeight: 30)
-                    .contentShape(Rectangle())
+                    .foregroundStyle(given ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                    .frame(minWidth: 44, minHeight: 32)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(mine
-                    ? "Take back respect for \(entry.name)"
-                    : "Give respect to \(entry.name)")
+                .accessibilityLabel(given ? "Take back respect" : "Give respect")
             }
-
-            Text("\(entry.score) sets")
-                .font(.caption)
-                .foregroundStyle(MorpheTheme.textSecondary)
+            Text("\(entry.score)")
+                .font(.caption.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(isMe ? MorpheTheme.accentText : MorpheTheme.textPrimary)
+                .frame(width: 40, alignment: .trailing)
         }
-        .padding(.vertical, 3)
-        .padding(.horizontal, 6)
-        .background(
-            isMe ? MorpheTheme.accent.opacity(0.10) : Color.clear,
-            in: RoundedRectangle(cornerRadius: MorpheTheme.radius)
-        )
-        // Combining children swallowed the button (audit habit): contain
-        // keeps the row readable AND the respect tap reachable.
-        .accessibilityElement(children: .contain)
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
     }
 }
-
-/// Code-joinable challenges — the party-code pattern applied to a scoreboard.
-/// Rows show the fetched top member versus the user's own fetched score; a
-/// member who hasn't posted yet is told exactly what unlocks it.
 private struct ChallengesCard: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var joinCode = ""

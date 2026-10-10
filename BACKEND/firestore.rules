@@ -562,6 +562,48 @@ service cloud.firestore {
       }
     }
 
+    // Boards with codes (2026-10-10): a named group whose 6-char doc id IS
+    // the join code — get by code, never list. The host creates it
+    // (immutable); standings live per ISO week under weeks/{weekKey}/
+    // entries/{uid} with the weekly board's honesty checks (own row only,
+    // non-negative ints, verified only if server-granted, no deletes),
+    // and the same respect receipts.
+    match /boards/{code} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['name', 'hostUid', 'hostName', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.hostName is string
+        && request.resource.data.hostName.size() <= 60;
+      allow update, delete: if false;
+
+      match /weeks/{weekKey}/entries/{uid} {
+        allow read: if isSignedIn();
+        allow create, update: if isOwner(uid)
+          && request.resource.data.uid == uid
+          && request.resource.data.score is int
+          && request.resource.data.score >= 0
+          && request.resource.data.workouts is int
+          && request.resource.data.workouts >= 0
+          && (request.resource.data.get('verified', false) != true
+              || get(/databases/$(database)/documents/users/$(uid)).data.get('verified', false) == true);
+        allow delete: if false;
+
+        match /respect/{giverUid} {
+          allow read: if isSignedIn();
+          allow create: if isOwner(giverUid)
+            && giverUid != uid
+            && request.resource.data.keys().hasOnly(['createdAt']);
+          allow update: if false;
+          allow delete: if isOwner(giverUid);
+        }
+      }
+    }
+
     // Code-joinable challenges. The 6-char doc id is the join code — knowing
     // it is the invite (get by code; no listing), exactly like parties. The
     // host creates the challenge doc (immutable afterward, host-set window

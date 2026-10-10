@@ -341,6 +341,28 @@ try:
     check("B deletes own receipt (account erasure)", True,
           fs_call(B, "DELETE", f"users/{A['uid']}/referrals/{B['uid']}"))
 
+    print("\n— Boards with codes —")
+    board = f"RB{RUN_ID[:4].upper()}"
+    check("A creates a board", True,
+          fs_call(A, "PATCH", f"boards/{board}",
+                  {"fields": {"name": s("Rules board"), "hostUid": s(A["uid"]), "hostName": s("Rules A")}}))
+    check("B creates a board AS A", False,
+          fs_call(B, "PATCH", f"boards/{board}-f",
+                  {"fields": {"name": s("Forged"), "hostUid": s(A["uid"]), "hostName": s("A")}}))
+    check("B reads the board by code", True, fs_call(B, "GET", f"boards/{board}"))
+    check("B lists boards", False, run_query(B, "boards", "hostUid", A["uid"]))
+    check("B posts own entry on the board", True,
+          fs_call(B, "PATCH", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}",
+                  {"fields": {"uid": s(B["uid"]), "name": s("B"), "score": i(12), "workouts": i(2)}}))
+    check("A posts an entry AS B on the board", False,
+          fs_call(A, "PATCH", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}",
+                  {"fields": {"uid": s(B["uid"]), "name": s("B"), "score": i(99), "workouts": i(9)}}))
+    check("A respects B's week on the board", True,
+          fs_call(A, "PATCH", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}/respect/{A['uid']}",
+                  {"fields": {}}))
+    check("A deletes the board", False, fs_call(A, "DELETE", f"boards/{board}"))
+    # Boards are immutable: one board doc + one entry stay per run. Known, accepted.
+
     print("\n— Board respect (giver writes own receipt under the receiver's entry) —")
     wk = f"test-{RUN_ID}"
     check("B posts own board entry (staging)", True,
