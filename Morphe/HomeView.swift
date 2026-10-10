@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 struct HomeView: View {
     @Environment(MorpheAppStore.self) private var store
@@ -1143,6 +1144,10 @@ struct MorpheDayPopup: View {
     /// The answer being acknowledged before the popup leaves.
     @State private var chosen: MorpheAppStore.DayPopupChoiceKind?
     @State private var flareTask: Task<Void, Never>?
+    /// The popup is the presence check (Lucas 2026-10-10): untouched for
+    /// this long means nobody is here → Away mode.
+    @State private var idleTask: Task<Void, Never>?
+    private static let idleSeconds: Double = 150
 
     /// Drag shrinks the scrim with the block, so letting go reads as a
     /// return and a long pull reads as a dismissal in progress.
@@ -1160,6 +1165,7 @@ struct MorpheDayPopup: View {
                 // 2026-10-03 (Lucas: ten points darker).
                 Color.black.opacity(0.6 * (1 - 0.6 * Double(dragProgress))).ignoresSafeArea()
                     .onTapGesture {
+                        noteInteraction()
                         withAnimation(.easeInOut(duration: 0.25)) {
                             store.dismissDayPopupForSession()
                         }
@@ -1187,6 +1193,7 @@ struct MorpheDayPopup: View {
                     HStack {
                         Spacer()
                         Button {
+                            noteInteraction()
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                 store.dismissDayPopupForSession()
                             }
@@ -1211,6 +1218,7 @@ struct MorpheDayPopup: View {
                 .gesture(
                     DragGesture(minimumDistance: 5)
                         .onChanged { value in
+                            noteInteraction()
                             let raw = max(0, value.translation.height)
                             dragOffset = reduceMotion ? raw : raw / (1 + raw / 600)
                         }
@@ -1235,6 +1243,8 @@ struct MorpheDayPopup: View {
                 // The stagger plays on every open, not once per process
                 // (audit 23, P2).
                 flareTask?.cancel()
+                idleTask?.cancel()
+                PopupNarrator.shared.stop()
                 appeared = false; ringIn = false; bubbleIn = false; choicesIn = false
                 chosen = nil; dragOffset = 0
                 ringLevel = 0.22; ringSpeaking = false
@@ -1250,8 +1260,27 @@ struct MorpheDayPopup: View {
     /// ring → bubble → choices, the whole beat inside ~0.7s so it never
     /// stands between the open and the day. Reduce Motion collapses to
     /// one fade with no flare and no stagger.
+    /// A touch on the stage is the user being here: the presence timer
+    /// stops. Called from every control and the scrim.
+    private func noteInteraction() {
+        idleTask?.cancel()
+        idleTask = nil
+    }
+
     private func enter() {
         guard !appeared else { return }
+        // Morphe reads the greeting and the question aloud (Lucas
+        // 2026-10-10) — mixable, over anything else playing; never while a
+        // Hey Morphe exchange or a recording owns the stage.
+        let line = store.homeGreeting + ". " + store.dayPopupQuestion
+        PopupNarrator.shared.speak(line, after: reduceMotion ? 0.1 : 0.8)
+        idleTask?.cancel()
+        idleTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(Self.idleSeconds))
+            guard !Task.isCancelled, store.shouldShowDayPopup else { return }
+            PopupNarrator.shared.stop()
+            withAnimation(.easeInOut(duration: 0.4)) { store.enterAwayMode() }
+        }
         if reduceMotion {
             appeared = true; ringIn = true; bubbleIn = true; choicesIn = true
             return
@@ -1286,6 +1315,7 @@ struct MorpheDayPopup: View {
     /// Tap the ring and Morphe answers with a pulse — a small, honest
     /// bit of life, nothing spoken and nothing changed.
     private func tapRing() {
+        noteInteraction()
         Haptics.selection()
         guard !reduceMotion else { return }
         withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { ringPulse = true }
@@ -1384,6 +1414,11 @@ struct MorpheDayPopup: View {
     /// back and the ring answers — 200ms, then the real action fires.
     private func answer(_ kind: MorpheAppStore.DayPopupChoiceKind) {
         guard chosen == nil else { return }
+        noteInteraction()
+        PopupNarrator.shared.stop()
+        // The glitter (Lucas 2026-10-10): the answer buttons only — the
+        // scrim and the X stay silent. Mixable, never over other apps.
+        SoundEffects.play(.star)
         Haptics.impact(.light)
         if reduceMotion {
             withAnimation(.easeInOut(duration: 0.2)) { store.answerDayPopup(kind) }
@@ -2294,5 +2329,82 @@ private struct DailyStreakRow: View {
                     .foregroundStyle(MorpheTheme.textMuted)
             }
         }
+    }
+}
+
+
+// MARK: - Popup narration (Lucas 2026-10-10)
+
+/// Reads the welcome line aloud in Morphe's chosen voice, MIXED over
+/// whatever else is playing. Deliberately not the Hey Morphe engine: that
+/// one claims the stage and pauses other apps' audio, which is right for
+/// an exchange and wrong for a greeting. Ambient category, no duck; the
+/// silent switch mutes it like any ambient sound.
+@MainActor
+final class PopupNarrator: NSObject {
+    static let shared = PopupNarrator()
+    private let synthesizer = AVSpeechSynthesizer()
+    private var pending: Task<Void, Never>?
+
+    func speak(_ text: String, after delay: Double) {
+        pending?.cancel()
+        pending = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            let engine = HeyMorpheEngine.shared
+            // An exchange or a recording owns the stage — stay quiet.
+            guard engine.state == .off || engine.state == .passive, !SoundEffects.externalAudioOwner else { return }
+            let session = AVAudioSession.sharedInstance()
+            if session.category == .soloAmbient || session.category == .ambient {
+                try? session.setCategory(.ambient, options: [.mixWithOthers])
+            }
+            synthesizer.stopSpeaking(at: .immediate)
+            let utterance = AVSpeechUtterance(string: text)
+            utterance.rate = 0.48
+            let option = MorpheVoiceOption.spec(for: HeyMorpheEngine.preferredVoiceStyle)
+            utterance.voice = HeyMorpheEngine.voice(for: option.id)
+            utterance.pitchMultiplier = option.pitch
+            synthesizer.speak(utterance)
+        }
+    }
+
+    func stop() {
+        pending?.cancel()
+        pending = nil
+        if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
+    }
+}
+
+/// The Away screen: the app opened and nobody was there for 2½ minutes.
+/// The mic is off, the popup is parked; one tap brings everything back.
+struct AwayOverlay: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    var body: some View {
+        ZStack {
+            MorpheTheme.ink.ignoresSafeArea()
+            VStack(spacing: 22) {
+                MorpheOrbView(level: 0.05)
+                    .frame(width: 150, height: 150)
+                Text("AWAY")
+                    .font(MorpheTheme.microLabel(12))
+                    .tracking(2.4)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Text("Nobody touched the screen, so Morphe stopped listening.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                Text("Tap anywhere to come back")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentText)
+            }
+            .padding(.bottom, 40)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { withAnimation(.easeInOut(duration: 0.3)) { store.leaveAwayMode() } }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Morphe is away. Tap anywhere to come back.")
+        .accessibilityAddTraits(.isButton)
     }
 }

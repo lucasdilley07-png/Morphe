@@ -11433,6 +11433,35 @@ final class MorpheAppStore {
     /// per account lifetime, cleared by the overlay when the beat ends.
     var showHelloBeat = false
 
+    // MARK: - Away mode (Lucas 2026-10-10)
+
+    /// True after the welcome popup sat untouched for 2½ minutes: the
+    /// app opened, nobody was there. The mic stops listening, the popup
+    /// parks, and a quiet Away screen waits for a tap — never a sign-out
+    /// (that wipes the phone's copy by design) and never a self-quit
+    /// (iOS forbids it).
+    private(set) var isAway = false
+
+    func enterAwayMode() {
+        guard !isAway, !isWorkoutSessionActive else { return }
+        isAway = true
+        dayPopupSessionDismissed = true
+        morpheAskRefresh += 1
+        heyMorphe.stop()
+        track("away_mode")
+    }
+
+    /// Any touch brings the app back: the mic re-arms and the welcome
+    /// plays again, as if the open just happened.
+    func leaveAwayMode() {
+        guard isAway else { return }
+        isAway = false
+        dayPopupSessionDismissed = false
+        morpheAskRefresh += 1
+        startVoiceIfEnabled()
+        Haptics.selection()
+    }
+
     struct MonthlyChallenge {
         let target: Int
         let done: Int

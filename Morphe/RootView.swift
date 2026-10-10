@@ -378,6 +378,15 @@ struct RootView: View {
                 .environment(store)
         }
         .animation(.easeInOut(duration: 0.3), value: store.shouldShowDayPopup)
+        // Away (Lucas 2026-10-10): the popup sat untouched for 2½ minutes.
+        .overlay {
+            if store.isAway {
+                AwayOverlay()
+                    .environment(store)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: store.isAway)
         // "Hey Morphe" edge glow + exchange chip — ABOVE the takeover
         // (audit 12, P2-1): voice works during it, so it must be visible
         // during it.
