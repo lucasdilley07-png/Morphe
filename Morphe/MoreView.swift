@@ -1025,9 +1025,16 @@ struct FuelLogCard: View {
                 VStack(spacing: 12) {
                     FuelMeter(label: "Calories", value: day.caloriesConsumed, target: targets.calories, unit: "")
                     FuelMeter(label: "Protein", value: day.proteinConsumed, target: targets.proteinGrams, unit: "g")
-                    HStack(spacing: 12) {
-                        FuelMeter(label: "Carbs", value: store.carbsConsumedToday, target: plan?.carbGrams ?? 0, unit: "g")
-                        FuelMeter(label: "Fat", value: store.fatConsumedToday, target: plan?.fatGrams ?? 0, unit: "g")
+                    if let plan {
+                        HStack(spacing: 12) {
+                            FuelMeter(label: "Carbs", value: store.carbsConsumedToday, target: plan.carbGrams, unit: "g")
+                            FuelMeter(label: "Fat", value: store.fatConsumedToday, target: plan.fatGrams, unit: "g")
+                        }
+                    } else {
+                        Text("Carbs \(store.carbsConsumedToday)g · Fat \(store.fatConsumedToday)g — log your weight in Profile for targets.")
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(MorpheTheme.textMuted)
                     }
                     HStack(spacing: 12) {
                         FuelMeter(label: "Water", value: day.waterConsumed, target: targets.waterCups, unit: " cups")
@@ -1197,6 +1204,7 @@ struct FoodSearchSheet: View {
     @State private var query = ""
     @State private var libraryHits: [FoodLibraryItem] = []
     @State private var productHits: [FoodSearchResult] = []
+    @State private var productsUnreachable = false
     @State private var searching = false
     @State private var searchTask: Task<Void, Never>?
     @State private var chosen: FoodSearchResult?
@@ -1242,10 +1250,14 @@ struct FoodSearchSheet: View {
                         }
                         if searching {
                             HStack(spacing: 8) { ProgressView(); Text("Searching products…").font(.caption).foregroundStyle(MorpheTheme.textMuted) }
+                        } else if productsUnreachable {
+                            Text("Couldn't reach Open Food Facts — packaged products are offline right now.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
                         } else if !productHits.isEmpty {
                             section("Products · Open Food Facts", productHits.map { ($0, $0.brand.isEmpty ? "Packaged" : $0.brand) })
                         }
-                        if !searching, libraryHits.isEmpty, productHits.isEmpty, query.count >= 2 {
+                        if !searching, !productsUnreachable, libraryHits.isEmpty, productHits.isEmpty, query.count >= 2 {
                             Text("Nothing by that name in the library or the product database.")
                                 .font(.caption)
                                 .foregroundStyle(MorpheTheme.textMuted)
@@ -1283,13 +1295,18 @@ struct FoodSearchSheet: View {
             productHits = []
             guard q.count >= 2 else { searching = false; return }
             searching = true
+            productsUnreachable = false
             searchTask = Task {
-                // Debounce: products are a network call; the library is not.
-                try? await Task.sleep(for: .milliseconds(450))
+                // Debounce: products are a network call (Open Food Facts
+                // allows ~10 searches a minute); the library is not.
+                try? await Task.sleep(for: .milliseconds(800))
                 guard !Task.isCancelled else { return }
-                let hits = await FoodCheckService.searchProducts(q)
+                let result = await FoodCheckService.searchProducts(q)
                 guard !Task.isCancelled else { return }
-                productHits = hits
+                switch result {
+                case .hits(let hits): productHits = hits
+                case .unreachable: productsUnreachable = true
+                }
                 searching = false
             }
         }
@@ -1500,7 +1517,7 @@ struct FuelEstimateSheet: View {
                                 .padding(.horizontal, 10).padding(.vertical, 6)
                                 .background(Capsule().fill(MorpheTheme.panelStrong))
                         }
-                        Text("Photo estimates tend to run low on mixed and fatty plates — in a controlled-kitchen test the leading apps missed about a third of the calories. Adjust the portion if the plate was bigger than it looks.")
+                        Text("Photo estimates tend to run low on mixed and fatty plates — an NIH metabolic-kitchen study (2026) found the leading photo apps under-counted calories by 250–345 per meal. Adjust the portion if the plate was bigger than it looks.")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textMuted)
                             .fixedSize(horizontal: false, vertical: true)

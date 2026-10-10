@@ -462,6 +462,20 @@ struct WorkoutView: View {
                             }
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        // Finish with nothing logged asks first (audit
+                        // 2026-10-10): "as written" is a real session, XP
+                        // and a streak day — never by accident.
+                        .confirmationDialog("Nothing logged yet", isPresented: Binding(
+                            get: { store.pendingZeroSetFinish },
+                            set: { if !$0 { store.pendingZeroSetFinish = false } }
+                        ), titleVisibility: .visible) {
+                            Button("Log it as written") {
+                                if store.finishTrackedWorkoutSession(confirmedEmpty: true) { restRunning = false }
+                            }
+                            Button("Keep training", role: .cancel) {}
+                        } message: {
+                            Text("No sets were logged. Logging as written records every planned set at the written reps and bodyweight.")
+                        }
 
                         Button("Discard") {
                             showDiscardConfirm = true
@@ -559,9 +573,12 @@ struct WorkoutView: View {
             // else the cross-session progression suggestion (last logged
             // weight, bumped when last time felt easy).
             if let exercise = store.activeWorkoutExercise {
+                // A movement with no history starts at 0/BW (audit
+                // 2026-10-10, P1): the previous exercise's 135 used to ride
+                // in and get logged on push-ups as a "record".
                 pendingWeight = store.lastSessionWeight(for: exercise.id)
                     ?? store.suggestedWorkingWeight(for: exercise)
-                    ?? pendingWeight
+                    ?? 0
             }
         }
         .onAppear {
@@ -592,7 +609,13 @@ struct WorkoutView: View {
             // state, so the store signals and the view drives — same
             // pattern as every logging surface feeding one console.
             _ = store.consumePendingVoiceRest()
-            restSeconds = store.voiceRestSeconds
+            // A lock-screen rest already running resumes from its shared
+            // anchor (audit 2026-10-10, P2) instead of restarting in full.
+            if let end = RestTimerSharedState.readEndDate(), end > .now {
+                restSeconds = max(Int(end.timeIntervalSinceNow.rounded()), 1)
+            } else {
+                restSeconds = store.voiceRestSeconds
+            }
             restRunning = true
         }
         .onChange(of: store.voiceLoggedWeightToken) { _, _ in
@@ -3157,13 +3180,20 @@ final class HoldRepeater {
         schedule(action, after: 0.5)   // brief delay before auto-repeat kicks in
     }
 
+    /// A hold can't run forever (audit 2026-10-10, P1): if the scroll
+    /// view steals the touch, onEnded never fires — cap the ramp so a
+    /// stolen hold stops on its own instead of dialing weight into the
+    /// hundreds.
+    static let maxHoldSeconds: TimeInterval = 3
+
     private func schedule(_ action: @escaping () -> Void, after delay: TimeInterval) {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.isHolding else { return }
-                action()
                 let held = Date().timeIntervalSince(self.start ?? Date())
+                guard held < Self.maxHoldSeconds else { self.end(); return }
+                action()
                 self.schedule(action, after: Self.interval(heldSeconds: held))
             }
         }
@@ -6535,15 +6565,16 @@ private struct SetRepLoggingSheet: View {
                 .map { "\(fmt($0.0))×\($0.1)" }
                 .joined(separator: " → ")
             label = drops.isEmpty ? "" : "Dropset \(chain) \(unit)"
-            // One set, honest totals: all reps counted, top weight carried.
-            reps += drops.reduce(0) { $0 + $1.1 }
-            weight = max(mainWeight, drops.map(\.0).max() ?? 0)
+            // The main set's own reps and weight (audit 2026-10-10, P1):
+            // summing the drops' reps onto the top weight inflated e1RM and
+            // the PR line; the chain in the label keeps the whole story.
+            weight = mainWeight
         case .superset:
             let partners = subEntries.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
             label = partners.isEmpty ? "" : "Superset " + partners
                 .map { "+ \($0.name.trimmingCharacters(in: .whitespaces)) ×\($0.reps)" }
                 .joined(separator: " ")
-            reps += partners.reduce(0) { $0 + $1.reps }
+            // Partner reps belong to the partners, not this bar.
             weight = mainWeight
         }
 

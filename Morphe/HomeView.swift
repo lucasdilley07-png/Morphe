@@ -184,7 +184,9 @@ struct HomeView: View {
                         // The tomorrow-hook (audit E3): the done-state names
                         // what's next instead of ending the relationship
                         // for the day.
-                        nextUpLine: "Up next: \(store.currentWorkout.name) — see you tomorrow.",
+                        // The plan rotates at rollover, so naming "next" here
+                        // named the one just finished (audit 2026-10-10).
+                        nextUpLine: "See you tomorrow.",
                         onViewProgress: { store.openProgress() },
                         onTrainAgain: { store.selectedClientTab = .train }
                     )
@@ -1667,8 +1669,12 @@ private struct TodayNextMoveCard: View {
                                 .accessibilityLabel("Start today's plan")
                         }
 
-                        Button("Switch Workout", action: onSwitch)
-                            .buttonStyle(SecondaryCTAButtonStyle())
+                        // Switch is a dead tap mid-session (audit 2026-10-10, P2):
+                        // the library reveal only lands in planning mode.
+                        if !store.isWorkoutSessionActive {
+                            Button("Switch Workout", action: onSwitch)
+                                .buttonStyle(SecondaryCTAButtonStyle())
+                        }
                     }
                 }
 

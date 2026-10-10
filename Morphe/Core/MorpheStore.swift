@@ -1696,6 +1696,13 @@ final class MorpheAppStore {
         workoutLogs = []
         // Food checks are this account's diet (audit 2026-10-10).
         foodChecks = []
+        recentFoods = []
+        // The one real secret on the phone leaves with the account (audit
+        // 2026-10-10, P1): the next sign-up must not bill its photos and
+        // chats to this account's keys.
+        MorpheIntelligence.clearAPIKey()
+        MorpheNeuralVoice.clearAPIKey()
+        intelligenceEnabled = false
         // The library file is already gone; the in-memory copy was the
         // leak (audit 2026-10-07, P1): the next account on this phone saw
         // this one's custom and saved workouts and persisted them as its own.
@@ -1725,7 +1732,11 @@ final class MorpheAppStore {
                     // (launch audit P2-18). Cosmetic to lose on a device
                     // switch, wrong to share across accounts.
                     threadReadKey, activitySeenKey, storySeenKey,
-                    lastKnownStreakKey, comebackPendingKey, foodChecksKey,
+                    lastKnownStreakKey, comebackPendingKey, foodChecksKey, recentFoodsKey,
+                    dailyStreakCountKey, dailyStreakLastDayKey, dailyStreakBestKey, dailyStreakFreezeDayKey,
+                    // An invite link opened before sign-out must not credit
+                    // the next account's recruiter (audit 2026-10-10, P2).
+                    Self.pendingReferralKey,
                     // The welcome debt is this account's, not the device's.
                     Self.welcomePendingKey] {
             UserDefaults.standard.removeObject(forKey: key)
@@ -1793,6 +1804,13 @@ final class MorpheAppStore {
         // Server cleanup FIRST, while the auth session is still valid —
         // after user.delete() the rules see an anonymous caller.
         await cloudBackup.eraseUser()
+        // The selfie, the coach application and the per-user lists are
+        // owner-only too (audit 2026-10-10, P1): once Auth is gone nobody
+        // can delete them. A failure aborts, same as the debriefs.
+        guard await cloudBackup.eraseAccountSideDocs(uid: uid) else {
+            showToast("Couldn't erase your verification and coach records — check your connection and try again.", isError: true)
+            return false
+        }
         managedClientService.clearCoachShare(athleteUid: uid)
         let username = profileShowcase.username
         if !username.isEmpty {
@@ -2034,7 +2052,10 @@ final class MorpheAppStore {
         if let error = UsernameRules.validationError(name) { return error }
         if ContentModeration.containsBlockedTerm(name) { return "That name isn't allowed — try another." }
         let uid = authUser?.id ?? clientProfile.id.uuidString
-        switch await usernameDirectory.claim(name, for: uid, releasing: nil) {
+        // Back → a new name must release the one reserved a minute ago
+        // (audit 2026-10-10, P2), or the old claim sits under this uid forever.
+        let previous = onboardingDraft.username
+        switch await usernameDirectory.claim(name, for: uid, releasing: previous.isEmpty || previous == name ? nil : previous) {
         case .claimed:
             onboardingDraft.username = name
             return nil
@@ -2659,6 +2680,20 @@ final class MorpheAppStore {
                 )
             }
         } else if !snapshot.dailyStateDay.isEmpty {
+            // The saved day already ended — bank yesterday's fuel as a
+            // history point too (audit 2026-10-10, P1): the board is reset
+            // by then, so the init rollover would record nothing.
+            if snapshot.nutritionCaloriesConsumed > 0 || snapshot.nutritionProteinConsumed > 0,
+               let day = Self.date(fromDayKey: snapshot.dailyStateDay) {
+                let targets = nutritionTargets
+                var entries: [DailyNutritionEntry] = loadSeries(nutritionSeriesDefaultsKey)
+                entries.removeAll { Self.dayKey(for: $0.date) == snapshot.dailyStateDay }
+                entries.append(DailyNutritionEntry(date: day, calories: snapshot.nutritionCaloriesConsumed,
+                                                   protein: snapshot.nutritionProteinConsumed,
+                                                   calorieTarget: targets.calories, proteinTarget: targets.proteinGrams))
+                saveSeries(entries, key: nutritionSeriesDefaultsKey)
+                nutritionSeries = entries
+            }
             // The saved day already ended — bank its task results for the
             // dial here, because the rollover at the end of init can't (the
             // saved completion titles belong to a list that no longer exists).
@@ -3717,7 +3752,7 @@ final class MorpheAppStore {
 
         for log in currentAthleteWorkoutLogs {
             for exercise in log.exercises {
-                guard let weights = exercise.weightsPerSet,
+                guard let weights = exercise.workingWeightsPerSet,
                       let top = weights.max(), top > 0 else { continue }
                 let recordedUnit = WeightUnit(rawValue: exercise.weightUnit ?? "") ?? weightUnit
                 let normalized: Double
@@ -4430,6 +4465,13 @@ final class MorpheAppStore {
             "programCompletions": programCompletionsDefaultsKey,
             "libraryFolders": libraryFoldersKey,
             "foodChecks": foodChecksKey,
+            // Audit 2026-10-10: the daily streak and the food recents are
+            // per-profile state too — "a new phone restores everything".
+            "recentFoods": recentFoodsKey,
+            "dailyStreakCount": dailyStreakCountKey,
+            "dailyStreakLastDay": dailyStreakLastDayKey,
+            "dailyStreakBest": dailyStreakBestKey,
+            "dailyStreakFreezeDay": dailyStreakFreezeDayKey,
         ]
     }
 
@@ -5261,13 +5303,23 @@ final class MorpheAppStore {
         let protein = Int((Double(record.protein ?? 0) * factor).rounded())
         let carbs = Int((Double(record.carbs ?? 0) * factor).rounded())
         let fat = Int((Double(record.fat ?? 0) * factor).rounded())
-        guard calories + protein + carbs + fat > 0 else { return false }
+        guard calories + protein + carbs + fat > 0 else {
+            showToast("No numbers to log for this one.")
+            return false
+        }
         nutrition.caloriesConsumed += calories
         nutrition.proteinConsumed += protein
+        // Where the numbers came from, not how the check started (audit
+        // 2026-10-10, P2): label numbers are the label's even if a photo
+        // rode along; web-identified products are the web's.
+        let numbersSource: String
+        if record.isPer100g { numbersSource = "Open Food Facts" }
+        else if record.usedPhoto { numbersSource = "Photo estimate" }
+        else { numbersSource = record.usedWebSearch ? "Web estimate" : "Estimate" }
         nutrition.meals.append(MealLogEntry(
             mealType: slot.rawValue, name: String(name.prefix(60)), calories: calories, protein: protein, logged: true,
             carbs: carbs, fat: fat, grams: record.isPer100g ? grams : nil,
-            source: record.usedPhoto ? "Photo estimate" : "Open Food Facts"))
+            source: numbersSource))
         persistLocalProfile()
         foodChecks[index].loggedMealID = nutrition.meals.last?.id
         saveSeries(foodChecks, key: foodChecksKey, cap: 300)
@@ -5415,7 +5467,7 @@ final class MorpheAppStore {
 
         for log in currentAthleteWorkoutLogs.sorted(by: { $0.completedAt < $1.completedAt }) {
             for exercise in log.exercises {
-                guard let weights = exercise.weightsPerSet,
+                guard let weights = exercise.workingWeightsPerSet,
                       let top = weights.max(), top > 0 else { continue }
                 let recordedUnit = WeightUnit(rawValue: exercise.weightUnit ?? "") ?? weightUnit
                 let normalized: Double
@@ -5596,7 +5648,7 @@ final class MorpheAppStore {
         var perExercise: [String: [(date: Date, top: Double)]] = [:]
         for log in currentAthleteWorkoutLogs {
             for exercise in log.exercises {
-                guard let top = exercise.weightsPerSet?.max(), top > 0 else { continue }
+                guard let top = exercise.workingWeightsPerSet?.max(), top > 0 else { continue }
                 let normalized = normalizedLoggedWeight(top, recordedUnit: exercise.weightUnit)
                 perExercise[exercise.name, default: []].append((log.completedAt, normalized))
             }
@@ -7564,9 +7616,10 @@ final class MorpheAppStore {
         pendingWorkoutChange = nil
     }
 
-    func startTodayWorkout() {
+    func startTodayWorkout(onStart: (() -> Void)? = nil) {
         confirmDiscardingSessionWork("Restart today's workout?") { [weak self] in
             self?.performStartTodayWorkout()
+            onStart?()
         }
     }
 
@@ -7730,7 +7783,7 @@ final class MorpheAppStore {
             // The engine looks past them to the last REAL working session.
             guard !log.notes.contains("Deload week.") else { continue }
             guard let logged = log.exercises.first(where: { $0.name == name }),
-                  let weights = logged.weightsPerSet,
+                  let weights = logged.workingWeightsPerSet,
                   let top = weights.max(), top > 0 else { continue }
             let unit = WeightUnit(rawValue: logged.weightUnit ?? "") ?? weightUnit
             let feedback = log.sessionFeedback.flatMap { WorkoutFeedbackOption(rawValue: $0) }
@@ -8243,8 +8296,18 @@ final class MorpheAppStore {
         Haptics.impact(.light)
     }
 
+    /// Set when Finish is tapped with nothing logged: the view asks "log
+    /// as written?" before a planned-but-untracked session becomes a
+    /// real one (audit 2026-10-10, P2: Start → Finish by accident minted
+    /// a full workout, XP and a streak day).
+    var pendingZeroSetFinish = false
+
     @discardableResult
-    func finishTrackedWorkoutSession() -> Bool {
+    func finishTrackedWorkoutSession(confirmedEmpty: Bool = false) -> Bool {
+        if !confirmedEmpty, trackedSetTotalCount == 0, isWorkoutSessionActive {
+            pendingZeroSetFinish = true
+            return false
+        }
         // The wrist mirrors every session mutation (market audit 2026-08).
         defer { WatchBridge.shared.publish() }
         guard hasStartedWorkoutFlow else {
@@ -8819,6 +8882,11 @@ final class MorpheAppStore {
         let removed = nutrition.meals.remove(at: index)
         nutrition.caloriesConsumed = max(nutrition.caloriesConsumed - removed.calories, 0)
         nutrition.proteinConsumed = max(nutrition.proteinConsumed - removed.protein, 0)
+        // A checked food taken out of the log can be logged again.
+        if let check = foodChecks.firstIndex(where: { $0.loggedMealID == removed.id }) {
+            foodChecks[check].loggedMealID = nil
+            saveSeries(foodChecks, key: foodChecksKey, cap: 300)
+        }
         persistLocalProfile()
     }
 
@@ -9773,6 +9841,28 @@ final class MorpheAppStore {
                 lines.append(session)
             } else {
                 lines.append("Today's planned workout: \(currentWorkout.name).")
+            }
+            // The facts the offline brain answers from (audit 2026-10-10,
+            // P1): with a key, Claude used to say "I don't know that
+            // number" for readiness, streak and score.
+            do {
+                let summary = currentAthleteWorkoutSummary
+                let targets = nutritionTargets
+                var facts: [String] = []
+                if didCompleteQuickCheckIn {
+                    facts.append("today's readiness \(recovery.score)/100 (\(recovery.status.rawValue.lowercased()); sleep \(recovery.sleepHours.formatted(.number.precision(.fractionLength(0...1)))) h, energy \(recovery.energy)/10, soreness \(recovery.soreness)/10)")
+                } else {
+                    facts.append("no check-in yet today")
+                }
+                facts.append("training streak \(summary.currentStreakDays) days")
+                facts.append("Morphe score \(clientProfile.health.score)")
+                facts.append("level \(currentLevelNumber), \(AgogeRank.rank(forLevel: currentLevelNumber).title)")
+                facts.append("fuel today \(nutrition.caloriesConsumed) of \(targets.calories) calories and \(nutrition.proteinConsumed) of \(targets.proteinGrams) g protein, \(nutrition.waterConsumed) of \(targets.waterCups) cups water")
+                if let plan = nutritionPlan { facts.append("nutrition plan: \(plan.summary)") }
+                if isWorkoutLoggedToday { facts.append("today's session is logged") }
+                lines.append("Their real numbers right now: \(facts.joined(separator: "; ")). Quote these when asked; never invent others.")
+            }
+            do {
             }
             // The personalization spine feeds the brain (Lucas 2026-09):
             // real derived facts only — the honesty gates upstream mean an
@@ -12263,10 +12353,23 @@ final class MorpheAppStore {
         let streak = currentAthleteWorkoutSummary.currentStreakDays
         guard streak >= 2 else { return nil }
         guard !plannedRestDay() else { return nil }
-        let loggedToday = currentAthleteWorkoutLogs.contains {
-            Calendar.current.isDateInToday($0.completedAt)
+        let calendar = Calendar.current
+        let logs = currentAthleteWorkoutLogs
+        let loggedToday = logs.contains { calendar.isDateInToday($0.completedAt) }
+        guard !loggedToday else { return nil }
+        // Only on the day the streak would actually end (audit 2026-10-10,
+        // P1): the same allowed-gap rule the streak and its push reminder
+        // use. A 3-day/week lifter was threatened five days straight.
+        var activeDays = Set(logs.map { calendar.startOfDay(for: $0.completedAt) })
+        for key in protectedDayKeys {
+            if let day = Self.date(fromDayKey: key) { activeDays.insert(calendar.startOfDay(for: day)) }
         }
-        return loggedToday ? nil : streak
+        guard let latestDay = activeDays.max() else { return nil }
+        let daysPerWeek = max(1, min(7, clientProfile.trainingDaysPerWeek))
+        let allowedGap = max(1, 8 - daysPerWeek)
+        guard let deadlineDay = calendar.date(byAdding: .day, value: allowedGap, to: latestDay),
+              calendar.isDateInToday(deadlineDay) else { return nil }
+        return streak
     }
 
     // MARK: - Conversational voice (alive wave)
@@ -12688,11 +12791,12 @@ final class MorpheAppStore {
         case .startCoach:
             // Legacy chip kind from the coach era — no assignments exist
             // in the one-account world; treated as a plain start.
-            persistDayReply("Locked in — your session's live in Train.")
-            startTodayWorkout()
+            startTodayWorkout { [weak self] in self?.persistDayReply("Locked in — your session's live in Train.") }
         case .start:
-            persistDayReply("Locked in — your session's live in Train.")
-            startTodayWorkout()
+            // The reply lands only when the session really starts (audit
+            // 2026-10-10, P2): cancelling the discard gate used to leave
+            // "Locked in" as the day's spoken line.
+            startTodayWorkout { [weak self] in self?.persistDayReply("Locked in — your session's live in Train.") }
         case .ownPlan:
             persistDayReply("Your own plan it is — it's live in Train.")
             startTodayWorkout()

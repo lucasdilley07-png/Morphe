@@ -97,9 +97,11 @@ and are off until you turn them on.
 - **Food and water log, imported history** — what you log, and any workout
   file you import from another app, is saved with the rest of your
   training data under your own account.
-- **Food check** — scanning a product's barcode sends only that number to
-  Open Food Facts, a public product database (no account, no personal
-  data). **With your own Anthropic key added**, every check — barcode or
+- **Food log and food check** — searching the food log sends the text you
+  type to Open Food Facts, a public product database (no account, no
+  personal data); the bundled whole-food library (USDA, public domain) is
+  searched on your phone. Scanning a product's barcode sends only that
+  number to Open Food Facts. **With your own Anthropic key added**, every check — barcode or
   photo — also sends Anthropic the label facts (product name, ingredients,
   origins, countries sold in) and, for a photo, the photo itself, and
   Claude runs up to five web searches for the brand's supply chain. Morphe
@@ -128,10 +130,11 @@ never breaks the rest of the app.
 - No selling or renting of your data — to anyone, ever.
 - No location tracking.
 - No contact-list access.
-- No third-party analytics trackers. The only third-party service Morphe
-  itself uses is Google Firebase (authentication and database hosting),
+- No third-party analytics trackers. The third-party services Morphe
+  itself uses are Google Firebase (authentication and database hosting),
   which processes your data on our behalf under
-  [Google's terms](https://firebase.google.com/support/privacy). The AI
+  [Google's terms](https://firebase.google.com/support/privacy), and Open
+  Food Facts (food search and barcode lookups, no personal data). The AI
   providers below are reached only with a key you add yourself.
 
 ## AI assistant with your own key (optional)

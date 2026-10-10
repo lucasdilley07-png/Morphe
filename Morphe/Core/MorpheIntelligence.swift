@@ -1002,20 +1002,27 @@ extension FoodCheckService {
     /// Packaged products by name from Open Food Facts text search — the
     /// same public database the barcode check reads. Per 100 g, with the
     /// listed serving when the product states one in grams.
-    static func searchProducts(_ query: String, limit: Int = 15) async -> [FoodSearchResult] {
+    enum ProductSearchResult {
+        case hits([FoodSearchResult])
+        case unreachable
+    }
+
+    static func searchProducts(_ query: String, limit: Int = 15) async -> ProductSearchResult {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-_.~ ")
         guard q.count >= 2,
-              let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let encoded = q.addingPercentEncoding(withAllowedCharacters: allowed)?.replacingOccurrences(of: " ", with: "+"),
               let url = URL(string: "https://world.openfoodfacts.org/cgi/search.pl?search_terms=\(encoded)&search_simple=1&action=process&json=1&page_size=\(limit)&fields=code,product_name,brands,nutriments,serving_size")
-        else { return [] }
+        else { return .hits([]) }
         var request = URLRequest(url: url)
         request.timeoutInterval = 12
         request.setValue("Morphe iOS (https://lucasdilley07-png.github.io/Morphe/)", forHTTPHeaderField: "User-Agent")
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let products = json["products"] as? [[String: Any]] else { return [] }
-        return products.compactMap { p in
+              let products = json["products"] as? [[String: Any]] else { return .unreachable }
+        return .hits(products.compactMap { p in
             let name = (p["product_name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let n = p["nutriments"] as? [String: Any] ?? [:]
             func number(_ key: String) -> Double? {
@@ -1024,7 +1031,8 @@ extension FoodCheckService {
                 if let s = n[key] as? String { return Double(s) }
                 return nil
             }
-            guard !name.isEmpty, let kcal = number("energy-kcal_100g") else { return nil }
+            // Many entries carry kJ only (audit 2026-10-10): 1 kcal = 4.184 kJ.
+            guard !name.isEmpty, let kcal = number("energy-kcal_100g") ?? number("energy_100g").map({ $0 / 4.184 }) else { return nil }
             let serving = servingGrams(from: p["serving_size"] as? String)
             return FoodSearchResult(
                 name: name,
@@ -1034,7 +1042,7 @@ extension FoodCheckService {
                 carbs100: number("carbohydrates_100g") ?? 0, fat100: number("fat_100g") ?? 0,
                 servingGrams: serving, servingLabel: serving.map { "Listed serving · \($0) g" },
                 barcode: p["code"] as? String)
-        }
+        })
     }
 
     /// "1 portion (100 g)", "200 g", "30g", "1 cup (240 ml)" → grams/ml.

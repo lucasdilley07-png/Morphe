@@ -61,12 +61,18 @@ protocol CloudBackingUp: AnyObject {
     /// Account deletion: removes every state/* backup doc for the current
     /// user (best-effort, while the auth session is still valid).
     func eraseUser() async
+    /// Account deletion: the owner-only docs outside state/* that nobody
+    /// can delete once Auth is gone — the verification selfie, the coach
+    /// application, appointments, saved posts, follows, blocks. False
+    /// aborts the deletion. Default: nothing to erase.
+    func eraseAccountSideDocs(uid: String) async -> Bool
 }
 
 extension CloudBackingUp {
     func pushLogs(_ logs: [WorkoutLog], deletedIDs: Set<UUID>) async -> Bool {
         await pushLogs(logs)
     }
+    func eraseAccountSideDocs(uid: String) async -> Bool { true }
 }
 
 /// Default backup that does nothing — keeps the store fully functional offline
@@ -545,13 +551,15 @@ final class FirebaseMessagingService: MessagingSyncing {
         // so an inbox can never show a preview whose message doesn't exist.
         let batch = db.batch()
         let message = threadDoc(threadId).collection("messages").document()
+        // Bytes, not characters (audit 2026-10-10, P2): the rules count
+        // size() in bytes, so an emoji-heavy message at the cap was denied.
         batch.setData([
             "senderUid": senderUid,
-            "text": String(clean.prefix(2000)),
+            "text": clean.wireClamped(2000),
             "sentAt": FieldValue.serverTimestamp()
         ], forDocument: message)
         batch.updateData([
-            "lastMessage": String(clean.prefix(Self.previewLimit)),
+            "lastMessage": clean.wireClamped(Self.previewLimit),
             "lastSender": senderUid,
             "updatedAt": FieldValue.serverTimestamp()
         ], forDocument: threadDoc(threadId))
@@ -1363,6 +1371,24 @@ final class FirebaseCloudBackup: CloudBackingUp {
             if let doc = stateDoc(name) {
                 try? await doc.delete()
             }
+        }
+    }
+
+    func eraseAccountSideDocs(uid: String) async -> Bool {
+        do {
+            for path in ["verificationRequests", "coachApplications"] {
+                try await db.collection(path).document(uid).delete()
+            }
+            for sub in ["appointments", "savedPosts", "following", "blocked"] {
+                let snap = try await db.collection("users").document(uid).collection(sub).limit(to: 500).getDocuments()
+                guard !snap.documents.isEmpty else { continue }
+                let batch = db.batch()
+                for doc in snap.documents { batch.deleteDocument(doc.reference) }
+                try await batch.commit()
+            }
+            return true
+        } catch {
+            return false
         }
     }
 

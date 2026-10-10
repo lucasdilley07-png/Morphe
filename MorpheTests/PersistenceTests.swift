@@ -1718,7 +1718,11 @@ final class WorkoutSessionTests: XCTestCase {
             items: [CustomWorkoutItem(exercise: exercise, sets: 1, reps: 5)]
         )
         store.startTodayWorkout()
-        XCTAssertTrue(store.finishTrackedWorkoutSession())
+        // Nothing logged → Finish asks first (audit 2026-10-10); "as
+        // written" is the explicit answer.
+        XCTAssertFalse(store.finishTrackedWorkoutSession())
+        XCTAssertTrue(store.pendingZeroSetFinish)
+        XCTAssertTrue(store.finishTrackedWorkoutSession(confirmedEmpty: true))
         store.skipWorkoutDebrief()
         XCTAssertFalse(store.showWorkoutDebrief)
         XCTAssertTrue(store.workoutDebriefs.isEmpty, "a skip records nothing")
@@ -7909,6 +7913,12 @@ final class UXPsychologyTests: XCTestCase {
 
         backdateSession(store, daysAgo: 2)
         backdateSession(store, daysAgo: 1)
+        // The warning fires only on the deadline day (audit 2026-10-10): a
+        // 3-day/week lifter has days in hand after yesterday's session…
+        store.clientProfile.trainingDaysPerWeek = 3
+        XCTAssertNil(store.streakOnTheLineDays, "with days in hand there is nothing on the line yet")
+        // …a 7-day/week lifter is on the line today.
+        store.clientProfile.trainingDaysPerWeek = 7
         XCTAssertEqual(store.streakOnTheLineDays, 2,
                        "two logged days and an unlogged today = a real streak at risk")
 
