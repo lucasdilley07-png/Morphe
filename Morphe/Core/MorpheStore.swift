@@ -2630,7 +2630,8 @@ final class MorpheAppStore {
                 nutrition.nutritionScore = snapshot.nutritionScore
             }
             nutrition.meals = snapshot.nutritionMeals.map {
-                MealLogEntry(mealType: $0.mealType, name: $0.name, calories: $0.calories, protein: $0.protein, logged: true)
+                MealLogEntry(mealType: $0.mealType, name: $0.name, calories: $0.calories, protein: $0.protein, logged: true,
+                             carbs: $0.carbs ?? 0, fat: $0.fat ?? 0, grams: $0.grams, source: $0.source ?? "")
             }
 
             // Today's recovery check-in (score -1 = none saved today).
@@ -3133,7 +3134,8 @@ final class MorpheAppStore {
                 nutritionScore: nutrition.nutritionScore,
                 nutritionMode: nutrition.mode.rawValue,
                 nutritionMeals: nutrition.meals.map {
-                    MealSnapshot(mealType: $0.mealType, name: $0.name, calories: $0.calories, protein: $0.protein)
+                    MealSnapshot(mealType: $0.mealType, name: $0.name, calories: $0.calories, protein: $0.protein,
+                                 carbs: $0.carbs, fat: $0.fat, grams: $0.grams, source: $0.source)
                 },
                 didCompleteQuickCheckIn: didCompleteQuickCheckIn,
                 recoveryScore: didCompleteQuickCheckIn ? recovery.score : -1,
@@ -3672,7 +3674,7 @@ final class MorpheAppStore {
             // header renders CHATS, not the section's internal rawValue.
             switch selectedCommunitySection {
             case .contact: return "Chats"
-            case .forYou: return "For You"
+            case .forYou: return "Feed"
             case .board: return "Board"
             case .calendar: return "Calendar"
             }
@@ -4507,6 +4509,7 @@ final class MorpheAppStore {
         activeProgramState = loadActiveProgramSnapshot()
         loadProgramCompletions()
         loadLibraryFolders()
+        loadRecentFoods()
     }
 
     /// Called from `submitRecoveryCheckIn` — records today's real inputs.
@@ -5233,20 +5236,30 @@ final class MorpheAppStore {
     /// The checked food lands in today's fuel with its own numbers; the
     /// record remembers which meal so it never double-logs.
     @discardableResult
-    func logFoodCheckToFuel(_ record: FoodCheckRecord, grams: Int? = nil) -> Bool {
+    func logFoodCheckToFuel(_ record: FoodCheckRecord, grams: Int? = nil, multiplier: Double = 1, slot: MealSlot = .suggested) -> Bool {
         guard let index = foodChecks.firstIndex(where: { $0.id == record.id }), !record.isLogged else { return false }
         var name = record.displayName.isEmpty ? "Checked food" : record.displayName
-        var calories = record.calories ?? 0
-        var protein = record.protein ?? 0
+        var factor = max(0.1, min(multiplier, 5))
         // Label numbers are per 100 g (audit 2026-10-10): scale to the
         // portion the user actually ate, and say so in the entry.
         if record.isPer100g, let grams, grams > 0 {
-            let factor = Double(grams) / 100
-            calories = Int((Double(calories) * factor).rounded())
-            protein = Int((Double(protein) * factor).rounded())
+            factor = Double(grams) / 100
             name += " · \(grams) g"
+        } else if multiplier != 1 {
+            name += " · ×\(multiplier.formatted(.number.precision(.fractionLength(0...2))))"
         }
-        guard addCustomMeal(name: name, calories: calories, protein: protein) else { return false }
+        let calories = Int((Double(record.calories ?? 0) * factor).rounded())
+        let protein = Int((Double(record.protein ?? 0) * factor).rounded())
+        let carbs = Int((Double(record.carbs ?? 0) * factor).rounded())
+        let fat = Int((Double(record.fat ?? 0) * factor).rounded())
+        guard calories + protein + carbs + fat > 0 else { return false }
+        nutrition.caloriesConsumed += calories
+        nutrition.proteinConsumed += protein
+        nutrition.meals.append(MealLogEntry(
+            mealType: slot.rawValue, name: String(name.prefix(60)), calories: calories, protein: protein, logged: true,
+            carbs: carbs, fat: fat, grams: record.isPer100g ? grams : nil,
+            source: record.usedPhoto ? "Photo estimate" : "Open Food Facts"))
+        persistLocalProfile()
         foodChecks[index].loggedMealID = nutrition.meals.last?.id
         saveSeries(foodChecks, key: foodChecksKey, cap: 300)
         mirrorExtrasToCloud()
@@ -8798,6 +8811,62 @@ final class MorpheAppStore {
         nutrition.caloriesConsumed = max(nutrition.caloriesConsumed - removed.calories, 0)
         nutrition.proteinConsumed = max(nutrition.proteinConsumed - removed.protein, 0)
         persistLocalProfile()
+    }
+
+    // MARK: Fuel log — search, library, recents (2026-10-10)
+
+    /// Today's macros, summed from what was actually logged.
+    var carbsConsumedToday: Int { nutrition.meals.filter(\.logged).map(\.carbs).reduce(0, +) }
+    var fatConsumedToday: Int { nutrition.meals.filter(\.logged).map(\.fat).reduce(0, +) }
+
+    /// Foods the user logged lately, newest first — the fast lane every
+    /// tracker converges on. Per profile.
+    private(set) var recentFoods: [FoodSearchResult] = []
+    private var recentFoodsKey: String { "morphe.fuel.recents.\(clientProfile.id.uuidString)" }
+
+    func loadRecentFoods() {
+        recentFoods = loadSeries(recentFoodsKey)
+    }
+
+    /// Logs a food at a portion: the numbers come from the source's per
+    /// 100 g values, scaled — never from a guess.
+    @discardableResult
+    func logFood(_ food: FoodSearchResult, grams: Int, slot: MealSlot) -> Bool {
+        guard grams > 0, grams <= 2_000 else { return false }
+        let t = food.totals(grams: grams)
+        guard t.calories + t.protein + t.carbs + t.fat > 0 else {
+            showToast("That entry has no numbers to log.")
+            return false
+        }
+        nutrition.caloriesConsumed += t.calories
+        nutrition.proteinConsumed += t.protein
+        nutrition.meals.append(MealLogEntry(
+            mealType: slot.rawValue, name: String(food.displayName.prefix(60)), calories: t.calories, protein: t.protein,
+            logged: true, carbs: t.carbs, fat: t.fat, grams: grams, source: food.source))
+        recentFoods.removeAll { $0.id == food.id }
+        recentFoods.insert(food, at: 0)
+        if recentFoods.count > 30 { recentFoods.removeLast(recentFoods.count - 30) }
+        saveSeries(recentFoods, key: recentFoodsKey, cap: 30)
+        persistLocalProfile()
+        return true
+    }
+
+    /// A meal typed from the label (fuel rebuild): all four numbers, a slot.
+    @discardableResult
+    func addManualMeal(name: String, slot: MealSlot, calories: Int, protein: Int, carbs: Int, fat: Int) -> Bool {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, calories >= 0, protein >= 0, carbs >= 0, fat >= 0, calories + protein + carbs + fat > 0 else {
+            showToast("Give the meal a name and at least one number.")
+            return false
+        }
+        let kcal = min(calories, 5_000)
+        nutrition.caloriesConsumed += kcal
+        nutrition.proteinConsumed += min(protein, 500)
+        nutrition.meals.append(MealLogEntry(
+            mealType: slot.rawValue, name: String(clean.prefix(60)), calories: kcal, protein: min(protein, 500),
+            logged: true, carbs: min(carbs, 1_000), fat: min(fat, 500), grams: nil, source: "Manual"))
+        persistLocalProfile()
+        return true
     }
 
     /// One cup. Not capped at the goal (2026-10-04: a ninth cup on an

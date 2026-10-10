@@ -996,14 +996,16 @@ struct SpartanCodeContent: View {
 /// food; every number is the user's.
 struct FuelLogCard: View {
     @Environment(MorpheAppStore.self) private var store
-    @State private var showCustom = false
-    @State private var mealName = ""
-    @State private var mealCalories = ""
-    @State private var mealProtein = ""
-    @FocusState private var focused: Bool
+    @State private var showSearch = false
+    @State private var showCamera = false
+    @State private var showManual = false
+    @State private var estimate: FoodCheckRecord?
+    @State private var pendingEstimate: FoodCheckRecord?
+    @State private var showNeedsKey = false
 
     var body: some View {
         let targets = store.nutritionTargets
+        let plan = store.nutritionPlan
         let day = store.nutrition
 
         return GlassCard {
@@ -1012,15 +1014,21 @@ struct FuelLogCard: View {
                     Text("Today's Fuel")
                         .font(.headline)
                         .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("Log what you eat and drink. The numbers are yours; Morphe doesn't estimate food.")
+                    Text("Search the library or shoot the plate. Every number shows where it came from; photo numbers are estimates.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
+                // The day against the plan: calories and protein from the
+                // targets, carbs and fat from the chart's split.
                 VStack(spacing: 12) {
-                    FuelMeter(label: "Protein", value: day.proteinConsumed, target: targets.proteinGrams, unit: "g")
                     FuelMeter(label: "Calories", value: day.caloriesConsumed, target: targets.calories, unit: "")
+                    FuelMeter(label: "Protein", value: day.proteinConsumed, target: targets.proteinGrams, unit: "g")
+                    HStack(spacing: 12) {
+                        FuelMeter(label: "Carbs", value: store.carbsConsumedToday, target: plan?.carbGrams ?? 0, unit: "g")
+                        FuelMeter(label: "Fat", value: store.fatConsumedToday, target: plan?.fatGrams ?? 0, unit: "g")
+                    }
                     HStack(spacing: 12) {
                         FuelMeter(label: "Water", value: day.waterConsumed, target: targets.waterCups, unit: " cups")
                         HStack(spacing: 8) {
@@ -1034,116 +1042,146 @@ struct FuelLogCard: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("QUICK ADD")
-                        .font(MorpheTheme.microLabel(10))
-                        .tracking(1.2)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                    WrapStack(spacing: 8) {
-                        ForEach(day.quickMeals) { meal in
-                            Button("\(meal.title) · \(meal.protein)g") {
-                                Haptics.selection()
-                                store.addQuickMeal(meal)
-                            }
-                            .buttonStyle(FilterChipStyle(isSelected: false))
-                            .accessibilityLabel("Add \(meal.title), \(meal.calories) calories, \(meal.protein) grams of protein")
-                        }
-                        Button(showCustom ? "Close" : "Your own meal") {
-                            withAnimation(.easeOut(duration: 0.2)) { showCustom.toggle() }
-                            focused = showCustom
-                        }
-                        .buttonStyle(FilterChipStyle(isSelected: showCustom))
+                // The two doors (Lucas 2026-10-10): search and camera.
+                HStack(spacing: 10) {
+                    Button {
+                        showSearch = true
+                    } label: {
+                        Label("Search food", systemImage: "magnifyingglass").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    Button {
+                        if MorpheIntelligence.apiKey == nil { showNeedsKey = true } else { showCamera = true }
+                    } label: {
+                        Label("Camera", systemImage: "camera.fill").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                }
+                .disabled(store.foodCheckBusy)
+
+                if store.foodCheckBusy {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Reading the plate…")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
                     }
                 }
 
-                if showCustom {
-                    VStack(spacing: 8) {
-                        TextField("Meal name", text: $mealName)
-                            .textFieldStyle(MorpheFieldStyle())
-                            .focused($focused)
-                        HStack(spacing: 8) {
-                            TextField("Calories", text: $mealCalories)
-                                .textFieldStyle(MorpheFieldStyle())
-                                .keyboardType(.numberPad)
-                            TextField("Protein (g)", text: $mealProtein)
-                                .textFieldStyle(MorpheFieldStyle())
-                                .keyboardType(.numberPad)
-                        }
-                        Button("Add Meal") {
-                            let added = store.addCustomMeal(
-                                name: mealName,
-                                calories: Int(mealCalories) ?? 0,
-                                protein: Int(mealProtein) ?? 0)
-                            if added {
-                                Haptics.success()
-                                mealName = ""; mealCalories = ""; mealProtein = ""
-                                focused = false
-                                withAnimation(.easeIn(duration: 0.16)) { showCustom = false }
-                            }
-                        }
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    }
-                    .transition(.opacity)
-                }
+                Button("Enter a label by hand") { showManual = true }
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(minHeight: 32)
 
-                if !day.meals.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("LOGGED TODAY")
-                            .font(MorpheTheme.microLabel(10))
-                            .tracking(1.2)
+                loggedToday(day.meals.filter(\.logged))
+            }
+        }
+        .sheet(isPresented: $showSearch) {
+            FoodSearchSheet()
+                .environment(store)
+                .presentationDetents([.large])
+        }
+        .sheet(isPresented: $showManual) {
+            ManualMealSheet()
+                .environment(store)
+                .presentationDetents([.medium, .large])
+        }
+        .fullScreenCover(isPresented: $showCamera, onDismiss: presentPendingEstimate) {
+            FoodPhotoCamera { image in
+                showCamera = false
+                guard let image else { return }
+                Task { pendingEstimate = await store.runFoodCheck(image: image, barcode: nil); presentPendingEstimate() }
+            }
+            .ignoresSafeArea()
+        }
+        .sheet(item: $estimate) { record in
+            FuelEstimateSheet(record: record)
+                .environment(store)
+                .presentationDetents([.large])
+        }
+        .alert("Photo logging needs your key", isPresented: $showNeedsKey) {
+            Button("Search instead") { showSearch = true }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Reading a plate runs on Claude with your own Anthropic key (Profile → Morphe Intelligence). Morphe never guesses food on its own — search the library instead.")
+        }
+    }
+
+    private func presentPendingEstimate() {
+        guard let record = pendingEstimate, !showCamera else { return }
+        pendingEstimate = nil
+        estimate = record
+    }
+
+    @ViewBuilder
+    private func loggedToday(_ meals: [MealLogEntry]) -> some View {
+        if meals.isEmpty {
+            Text("Nothing logged yet today.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textMuted)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(MealSlot.allCases) { slot in
+                    let rows = meals.filter { $0.mealType == slot.rawValue }
+                    if !rows.isEmpty { mealSection(slot.rawValue, rows) }
+                }
+                let other = meals.filter { MealSlot(rawValue: $0.mealType) == nil }
+                if !other.isEmpty { mealSection("Logged", other) }
+            }
+        }
+    }
+
+    private func mealSection(_ title: String, _ rows: [MealLogEntry]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title.uppercased())
+                    .font(MorpheTheme.microLabel(10))
+                    .tracking(1.2)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Spacer()
+                Text("\(rows.map(\.calories).reduce(0, +)) cal")
+                    .font(MorpheTheme.microLabel(10))
+                    .monospacedDigit()
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            ForEach(rows) { meal in
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(meal.name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .lineLimit(1)
+                        Text("\(meal.calories) cal · \(meal.protein)g P · \(meal.carbs)g C · \(meal.fat)g F\(meal.source.isEmpty ? "" : " · \(meal.source)")")
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                    Button {
+                        withAnimation(.easeIn(duration: 0.16)) { store.removeMeal(meal) }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption.weight(.bold))
                             .foregroundStyle(MorpheTheme.textMuted)
-                        ForEach(day.meals) { meal in
-                            HStack(spacing: 8) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(meal.name)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(MorpheTheme.textPrimary)
-                                        .lineLimit(1)
-                                    Text("\(meal.calories) cal · \(meal.protein)g protein")
-                                        .font(.caption)
-                                        .monospacedDigit()
-                                        .foregroundStyle(MorpheTheme.textSecondary)
-                                }
-                                Spacer(minLength: 8)
-                                Button {
-                                    withAnimation(.easeIn(duration: 0.16)) { store.removeMeal(meal) }
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundStyle(MorpheTheme.textMuted)
-                                        .frame(width: 44, height: 44)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("Remove \(meal.name)")
-                            }
-                        }
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
-                } else {
-                    Text("Nothing logged yet today.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Remove \(meal.name)")
                 }
             }
         }
     }
 
-    private func stepButton(
-        _ symbol: String, label: String, disabled: Bool, action: @escaping () -> Void
-    ) -> some View {
-        Button {
-            Haptics.selection()
-            action()
-        } label: {
+    private func stepButton(_ symbol: String, label: String, disabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             Image(systemName: symbol)
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(disabled ? MorpheTheme.textMuted : MorpheTheme.textPrimary)
                 .frame(width: 44, height: 44)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(MorpheTheme.stroke, lineWidth: 1)
-                )
-                .contentShape(Rectangle())
+                .background(Circle().fill(MorpheTheme.panelStrong))
         }
         .buttonStyle(.plain)
         .disabled(disabled)
@@ -1151,7 +1189,388 @@ struct FuelLogCard: View {
     }
 }
 
-/// One line of the fuel log: label, logged of target, and a thin bar.
+/// Search first, recents on top, two sources side by side, a portion
+/// before anything lands in the log.
+struct FoodSearchSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var libraryHits: [FoodLibraryItem] = []
+    @State private var productHits: [FoodSearchResult] = []
+    @State private var searching = false
+    @State private var searchTask: Task<Void, Never>?
+    @State private var chosen: FoodSearchResult?
+    @State private var showManual = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        TextField("Chicken breast, oats, Greek yogurt…", text: $query)
+                            .textFieldStyle(.plain)
+                            .focused($focused)
+                            .autocorrectionDisabled()
+                            .submitLabel(.search)
+                        if !query.isEmpty {
+                            Button { query = "" } label: {
+                                Image(systemName: "xmark.circle.fill").foregroundStyle(MorpheTheme.textMuted)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Clear search")
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 48)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(MorpheTheme.panelStrong))
+
+                    if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                        if store.recentFoods.isEmpty {
+                            Text("Your recent foods will sit here. The library holds 1,195 whole foods from USDA; packaged products come from Open Food Facts as you type.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            section("Recent", store.recentFoods.map { ($0, $0.servingGrams.map { "\($0) g last time" } ?? $0.source) })
+                        }
+                    } else {
+                        if !libraryHits.isEmpty {
+                            section("Whole foods · USDA", libraryHits.map { (FoodSearchResult(library: $0), $0.cat) })
+                        }
+                        if searching {
+                            HStack(spacing: 8) { ProgressView(); Text("Searching products…").font(.caption).foregroundStyle(MorpheTheme.textMuted) }
+                        } else if !productHits.isEmpty {
+                            section("Products · Open Food Facts", productHits.map { ($0, $0.brand.isEmpty ? "Packaged" : $0.brand) })
+                        }
+                        if !searching, libraryHits.isEmpty, productHits.isEmpty, query.count >= 2 {
+                            Text("Nothing by that name in the library or the product database.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                    }
+
+                    Button("Can't find it? Enter the label by hand") { showManual = true }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .frame(minHeight: 44)
+                }
+                .padding(20)
+                .padding(.bottom, 40)
+            }
+            .background(PremiumBackground())
+            .navigationTitle("Log food")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
+            .navigationDestination(item: $chosen) { food in
+                FoodPortionView(food: food) { dismiss() }
+                    .environment(store)
+            }
+            .sheet(isPresented: $showManual) {
+                ManualMealSheet()
+                    .environment(store)
+                    .presentationDetents([.medium, .large])
+            }
+        }
+        .onAppear { focused = true }
+        .onChange(of: query) { _, text in
+            let q = text.trimmingCharacters(in: .whitespaces)
+            libraryHits = FoodLibrary.search(q)
+            searchTask?.cancel()
+            productHits = []
+            guard q.count >= 2 else { searching = false; return }
+            searching = true
+            searchTask = Task {
+                // Debounce: products are a network call; the library is not.
+                try? await Task.sleep(for: .milliseconds(450))
+                guard !Task.isCancelled else { return }
+                let hits = await FoodCheckService.searchProducts(q)
+                guard !Task.isCancelled else { return }
+                productHits = hits
+                searching = false
+            }
+        }
+    }
+
+    private func section(_ title: String, _ rows: [(FoodSearchResult, String)]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.uppercased())
+                .font(MorpheTheme.microLabel(10))
+                .tracking(1.2)
+                .foregroundStyle(MorpheTheme.textMuted)
+            ForEach(rows, id: \.0.id) { food, detail in
+                Button { chosen = food } label: {
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(food.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .lineLimit(2)
+                            Text(detail)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        Text("\(Int(food.kcal100.rounded())) cal · \(Int(food.protein100.rounded()))g P")
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    .frame(minHeight: 48)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(food.displayName), \(Int(food.kcal100.rounded())) calories per 100 grams")
+            }
+        }
+    }
+}
+
+/// The hardest screen in food logging: the portion. Grams, quick chips,
+/// the product's listed serving, the meal slot, and the totals live.
+struct FoodPortionView: View {
+    @Environment(MorpheAppStore.self) private var store
+    let food: FoodSearchResult
+    let onLogged: () -> Void
+    @State private var grams: Int
+    @State private var slot: MealSlot = .suggested
+
+    init(food: FoodSearchResult, onLogged: @escaping () -> Void) {
+        self.food = food
+        self.onLogged = onLogged
+        _grams = State(initialValue: food.servingGrams ?? 100)
+    }
+
+    var body: some View {
+        let t = food.totals(grams: grams)
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(food.name)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text(food.brand.isEmpty ? food.source : "\(food.brand) · \(food.source)")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+                Picker("Meal", selection: $slot) {
+                    ForEach(MealSlot.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                GlassCard(.quiet) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Portion")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Spacer()
+                            Stepper("\(grams) g", value: $grams, in: 5...2000, step: 5)
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .fixedSize()
+                        }
+                        WrapStack(spacing: 8) {
+                            ForEach([50, 100, 150, 200, 250], id: \.self) { g in
+                                Button("\(g) g") { grams = g; Haptics.selection() }
+                                    .buttonStyle(FilterChipStyle(isSelected: grams == g))
+                            }
+                            if let serving = food.servingGrams {
+                                Button(food.servingLabel ?? "Serving \(serving) g") { grams = serving; Haptics.selection() }
+                                    .buttonStyle(FilterChipStyle(isSelected: grams == serving))
+                            }
+                        }
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    MetricPill(label: "Calories", value: "\(t.calories)")
+                    MetricPill(label: "Protein", value: "\(t.protein)g")
+                    MetricPill(label: "Carbs", value: "\(t.carbs)g")
+                    MetricPill(label: "Fat", value: "\(t.fat)g")
+                }
+                Text("Per 100 g: \(Int(food.kcal100.rounded())) cal · \(food.protein100.formatted(.number.precision(.fractionLength(0...1))))g P · \(food.carbs100.formatted(.number.precision(.fractionLength(0...1))))g C · \(food.fat100.formatted(.number.precision(.fractionLength(0...1))))g F — \(food.source).")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button("Add \(grams) g to \(slot.rawValue.lowercased())") {
+                    if store.logFood(food, grams: grams, slot: slot) {
+                        Haptics.success()
+                        onLogged()
+                    }
+                }
+                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+            }
+            .padding(20)
+            .padding(.bottom, 40)
+        }
+        .background(PremiumBackground())
+        .navigationTitle("Portion")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// A label typed by hand — the honest fallback when neither source has it.
+struct ManualMealSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var calories = ""
+    @State private var protein = ""
+    @State private var carbs = ""
+    @State private var fat = ""
+    @State private var slot: MealSlot = .suggested
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 12) {
+                    Picker("Meal", selection: $slot) {
+                        ForEach(MealSlot.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    TextField("What you ate", text: $name)
+                        .textFieldStyle(MorpheFieldStyle())
+                        .focused($focused)
+                    HStack(spacing: 8) {
+                        TextField("Calories", text: $calories).textFieldStyle(MorpheFieldStyle()).keyboardType(.numberPad)
+                        TextField("Protein g", text: $protein).textFieldStyle(MorpheFieldStyle()).keyboardType(.numberPad)
+                    }
+                    HStack(spacing: 8) {
+                        TextField("Carbs g", text: $carbs).textFieldStyle(MorpheFieldStyle()).keyboardType(.numberPad)
+                        TextField("Fat g", text: $fat).textFieldStyle(MorpheFieldStyle()).keyboardType(.numberPad)
+                    }
+                    Button("Add to \(slot.rawValue.lowercased())") {
+                        if store.addManualMeal(name: name, slot: slot, calories: Int(calories) ?? 0, protein: Int(protein) ?? 0,
+                                               carbs: Int(carbs) ?? 0, fat: Int(fat) ?? 0) {
+                            Haptics.success()
+                            dismiss()
+                        }
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    Text("Copy the numbers from the label. Morphe doesn't fill in what you don't type.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(20)
+            }
+            .background(PremiumBackground())
+            .navigationTitle("Enter a label")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Cancel") { dismiss() } } }
+        }
+        .onAppear { focused = true }
+    }
+}
+
+/// A photo's numbers, as a draft: labelled estimate, scaled by the
+/// user, one tap from the full origin/processing report.
+struct FuelEstimateSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let record: FoodCheckRecord
+    @State private var multiplier = 1.0
+    @State private var slot: MealSlot = .suggested
+    @State private var showReport = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(record.displayName.isEmpty ? "Your plate" : record.displayName)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        HStack(spacing: 8) {
+                            FoodProcessingBadge(processing: record.processing)
+                            Text("ESTIMATE")
+                                .font(MorpheTheme.microLabel(11).weight(.bold)).tracking(1.0)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(Capsule().fill(MorpheTheme.panelStrong))
+                        }
+                        Text("Photo estimates tend to run low on mixed and fatty plates — in a controlled-kitchen test the leading apps missed about a third of the calories. Adjust the portion if the plate was bigger than it looks.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Picker("Meal", selection: $slot) {
+                        ForEach(MealSlot.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    GlassCard(.quiet) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Portion")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Spacer()
+                                Stepper("×\(multiplier.formatted(.number.precision(.fractionLength(0...2))))", value: $multiplier, in: 0.25...4, step: 0.25)
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                    .fixedSize()
+                            }
+                            HStack(spacing: 8) {
+                                MetricPill(label: "Calories", value: scaled(record.calories))
+                                MetricPill(label: "Protein", value: scaled(record.protein) + "g")
+                                MetricPill(label: "Carbs", value: scaled(record.carbs) + "g")
+                                MetricPill(label: "Fat", value: scaled(record.fat) + "g")
+                            }
+                            if !record.servingNote.isEmpty {
+                                Text(record.servingNote)
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+
+                    Button("Add to \(slot.rawValue.lowercased())") {
+                        if store.logFoodCheckToFuel(record, multiplier: multiplier, slot: slot) {
+                            Haptics.success()
+                            dismiss()
+                        }
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(record.calories == nil && record.protein == nil)
+
+                    Button("Full report — origin, processing, additives") { showReport = true }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                }
+                .padding(20)
+                .padding(.bottom, 40)
+            }
+            .background(PremiumBackground())
+            .navigationTitle("From the photo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() } } }
+            .sheet(isPresented: $showReport) {
+                FoodCheckReportSheet(record: record)
+                    .environment(store)
+                    .presentationDetents([.large])
+            }
+        }
+    }
+
+    private func scaled(_ value: Int?) -> String {
+        guard let value else { return "—" }
+        return "\(Int((Double(value) * multiplier).rounded()))"
+    }
+}
+
 private struct FuelMeter: View {
     let label: String
     let value: Int

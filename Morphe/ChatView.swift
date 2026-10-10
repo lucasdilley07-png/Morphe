@@ -93,10 +93,10 @@ struct CommunityView: View {
         HStack(alignment: .bottom, spacing: FeatureFlags.socialFeedEnabled ? 28 : 18) {
             sectionTab("CHATS", .contact, showsBadge: store.unreadThreadCount > 0)
             if FeatureFlags.socialFeedEnabled {
-                sectionTab("FOR YOU", .forYou)
+                sectionTab("FEED", .forYou)
             } else {
                 // Launch shape: people, the coaches' feed, standings, schedule.
-                sectionTab("FOR YOU", .forYou)
+                sectionTab("FEED", .forYou)
                 sectionTab("BOARD", .board)
                 sectionTab("CALENDAR", .calendar)
             }
@@ -769,7 +769,7 @@ private struct AthleteContactInbox: View {
 
                     Spacer()
 
-                    Button("For You") {
+                    Button("Feed") {
                         store.selectedCommunitySection = .forYou
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
@@ -1052,7 +1052,7 @@ struct CommunityNetworkFeed: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("For You")
+                        Text("Feed")
                             .font(.headline)
                             .foregroundStyle(MorpheTheme.textPrimary)
                         Text(perspective == .coach
@@ -4164,7 +4164,7 @@ struct CreatorFeed: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Rectangle().fill(MorpheTheme.stroke).frame(width: 3, height: 14)
-                Text("FOR YOU")
+                Text("FEED")
                     .scaledFont(size: 14, weight: .bold, design: .monospaced)
                     .tracking(2)
                     .foregroundStyle(MorpheTheme.textPrimary)

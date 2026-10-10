@@ -955,3 +955,97 @@ enum FoodCheckService {
         return r
     }
 }
+
+
+// MARK: - Food library (fuel rebuild 2026-10-10)
+
+/// The bundled USDA SR Legacy set: 1,195 common whole foods, per 100 g,
+/// public domain. Loaded once, searched in memory — instant and offline,
+/// and the verified-source choice the accuracy benchmarks reward.
+enum FoodLibrary {
+    private static var cache: [FoodLibraryItem]?
+
+    static var all: [FoodLibraryItem] {
+        if let cache { return cache }
+        guard let url = Bundle.main.url(forResource: "FoodLibrary", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let foods = json["foods"],
+              let foodData = try? JSONSerialization.data(withJSONObject: foods),
+              let items = try? JSONDecoder().decode([FoodLibraryItem].self, from: foodData) else {
+            cache = []
+            return []
+        }
+        cache = items
+        return items
+    }
+
+    /// Ranked: every query word must match; names that START with the
+    /// query win, then shorter (plainer) names.
+    static func search(_ query: String, limit: Int = 25) -> [FoodLibraryItem] {
+        let words = query.lowercased().split(separator: " ").map(String.init).filter { !$0.isEmpty }
+        guard !words.isEmpty else { return [] }
+        let scored: [(FoodLibraryItem, Int)] = all.compactMap { item in
+            let name = item.name.lowercased()
+            guard words.allSatisfy({ name.contains($0) }) else { return nil }
+            var score = 0
+            if name.hasPrefix(words[0]) { score += 100 }
+            if let first = name.split(separator: ",").first, words.allSatisfy({ first.contains($0) }) { score += 40 }
+            score -= min(name.count, 60)
+            return (item, score)
+        }
+        return scored.sorted { $0.1 > $1.1 }.prefix(limit).map(\.0)
+    }
+}
+
+extension FoodCheckService {
+    /// Packaged products by name from Open Food Facts text search — the
+    /// same public database the barcode check reads. Per 100 g, with the
+    /// listed serving when the product states one in grams.
+    static func searchProducts(_ query: String, limit: Int = 15) async -> [FoodSearchResult] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard q.count >= 2,
+              let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://world.openfoodfacts.org/cgi/search.pl?search_terms=\(encoded)&search_simple=1&action=process&json=1&page_size=\(limit)&fields=code,product_name,brands,nutriments,serving_size")
+        else { return [] }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 12
+        request.setValue("Morphe iOS (https://lucasdilley07-png.github.io/Morphe/)", forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let products = json["products"] as? [[String: Any]] else { return [] }
+        return products.compactMap { p in
+            let name = (p["product_name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let n = p["nutriments"] as? [String: Any] ?? [:]
+            func number(_ key: String) -> Double? {
+                if let d = n[key] as? Double { return d }
+                if let i = n[key] as? Int { return Double(i) }
+                if let s = n[key] as? String { return Double(s) }
+                return nil
+            }
+            guard !name.isEmpty, let kcal = number("energy-kcal_100g") else { return nil }
+            let serving = servingGrams(from: p["serving_size"] as? String)
+            return FoodSearchResult(
+                name: name,
+                brand: (p["brands"] as? String ?? "").components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? "",
+                source: "Open Food Facts",
+                kcal100: kcal, protein100: number("proteins_100g") ?? 0,
+                carbs100: number("carbohydrates_100g") ?? 0, fat100: number("fat_100g") ?? 0,
+                servingGrams: serving, servingLabel: serving.map { "Listed serving · \($0) g" },
+                barcode: p["code"] as? String)
+        }
+    }
+
+    /// "1 portion (100 g)", "200 g", "30g", "1 cup (240 ml)" → grams/ml.
+    static func servingGrams(from text: String?) -> Int? {
+        guard let text else { return nil }
+        let pattern = #"(\d+(?:[.,]\d+)?)\s*(g|ml)\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(match.range(at: 1), in: text),
+              let value = Double(text[range].replacingOccurrences(of: ",", with: ".")) else { return nil }
+        let grams = Int(value.rounded())
+        return grams > 0 && grams <= 2_000 ? grams : nil
+    }
+}

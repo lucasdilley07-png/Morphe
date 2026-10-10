@@ -19,6 +19,11 @@ struct MealSnapshot: Codable, Equatable {
     var name: String
     var calories: Int
     var protein: Int
+    // Optional so a day saved before the fuel rebuild still decodes.
+    var carbs: Int? = nil
+    var fat: Int? = nil
+    var grams: Int? = nil
+    var source: String? = nil
 }
 
 /// One calendar day's task results — the difficulty engine's raw signal.

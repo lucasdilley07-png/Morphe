@@ -143,7 +143,7 @@ enum ClientTab: String, CaseIterable, MorpheTabItem {
 }
 
 enum ClientCommunitySection: String, CaseIterable, Identifiable {
-    case forYou = "For You"
+    case forYou = "Feed"
     case contact = "Contact"
     case board = "Board"
     case calendar = "Calendar"
@@ -1705,6 +1705,78 @@ struct MealLogEntry: Identifiable, Hashable {
     var calories: Int
     var protein: Int
     var logged: Bool
+    /// Macros and provenance (fuel rebuild 2026-10-10). Older entries
+    /// carry zeros and an empty source.
+    var carbs: Int = 0
+    var fat: Int = 0
+    var grams: Int? = nil
+    var source: String = ""
+}
+
+/// The order the day reads in.
+enum MealSlot: String, CaseIterable, Identifiable {
+    case breakfast = "Breakfast", lunch = "Lunch", dinner = "Dinner", snack = "Snack"
+    var id: String { rawValue }
+
+    /// The slot the clock suggests.
+    static var suggested: MealSlot {
+        switch Calendar.current.component(.hour, from: .now) {
+        case ..<11: return .breakfast
+        case 11..<15: return .lunch
+        case 17..<22: return .dinner
+        default: return .snack
+        }
+    }
+}
+
+/// One food in the bundled USDA library (per 100 g).
+struct FoodLibraryItem: Codable, Identifiable, Hashable {
+    var id: Int
+    var name: String
+    var cat: String
+    var kcal: Int
+    var protein: Double
+    var carbs: Double
+    var fat: Double
+    var fiber: Double
+    var sugar: Double
+    var sodium: Double
+}
+
+/// A food the user can log: from the library, a packaged product, or
+/// their own recents. Numbers are per 100 g; a listed serving rides
+/// along when the product has one.
+struct FoodSearchResult: Codable, Identifiable, Hashable {
+    var name: String
+    var brand: String = ""
+    var source: String
+    var kcal100: Double
+    var protein100: Double
+    var carbs100: Double
+    var fat100: Double
+    var servingGrams: Int? = nil
+    var servingLabel: String? = nil
+    var barcode: String? = nil
+
+    var id: String { "\(source)|\(brand)|\(name)|\(barcode ?? "")" }
+    var displayName: String { brand.isEmpty ? name : "\(name) · \(brand)" }
+
+    init(name: String, brand: String = "", source: String, kcal100: Double, protein100: Double, carbs100: Double, fat100: Double,
+         servingGrams: Int? = nil, servingLabel: String? = nil, barcode: String? = nil) {
+        self.name = name; self.brand = brand; self.source = source
+        self.kcal100 = kcal100; self.protein100 = protein100; self.carbs100 = carbs100; self.fat100 = fat100
+        self.servingGrams = servingGrams; self.servingLabel = servingLabel; self.barcode = barcode
+    }
+
+    init(library item: FoodLibraryItem) {
+        self.init(name: item.name, source: "USDA", kcal100: Double(item.kcal), protein100: item.protein,
+                  carbs100: item.carbs, fat100: item.fat)
+    }
+
+    func totals(grams: Int) -> (calories: Int, protein: Int, carbs: Int, fat: Int) {
+        let f = Double(grams) / 100
+        return (Int((kcal100 * f).rounded()), Int((protein100 * f).rounded()), Int((carbs100 * f).rounded()), Int((fat100 * f).rounded()))
+    }
 }
 
 struct QuickMeal: Identifiable, Hashable {

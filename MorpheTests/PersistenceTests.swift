@@ -5125,6 +5125,38 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertEqual(sparse.processing, .unknown)
     }
 
+    /// The fuel log (2026-10-10): library search ranks plain names first,
+    /// a logged portion scales the per-100 g numbers, recents remember,
+    /// and the product serving parser reads real label strings.
+    func testFuelLogLibrarySearchAndPortionMath() {
+        let hits = FoodLibrary.search("chicken breast")
+        XCTAssertFalse(hits.isEmpty, "the library must hold chicken breast")
+        XCTAssertTrue(hits.contains { $0.name.lowercased().contains("cooked") }, "cooked staples made the cut")
+        XCTAssertTrue(hits.allSatisfy { $0.name.lowercased().contains("chicken") && $0.name.lowercased().contains("breast") })
+        XCTAssertGreaterThan(FoodLibrary.all.count, 1_000)
+        XCTAssertTrue(FoodLibrary.search("").isEmpty)
+
+        let food = FoodSearchResult(name: "Rolled oats", source: "USDA", kcal100: 379, protein100: 13.2, carbs100: 67.7, fat100: 6.5)
+        let t = food.totals(grams: 50)
+        XCTAssertEqual(t.calories, 190); XCTAssertEqual(t.protein, 7); XCTAssertEqual(t.carbs, 34); XCTAssertEqual(t.fat, 3)
+
+        let store = freshStore()
+        let before = store.nutrition.caloriesConsumed
+        XCTAssertTrue(store.logFood(food, grams: 50, slot: .breakfast))
+        XCTAssertEqual(store.nutrition.caloriesConsumed, before + 190)
+        XCTAssertEqual(store.carbsConsumedToday, 34)
+        XCTAssertEqual(store.nutrition.meals.last?.mealType, "Breakfast")
+        XCTAssertEqual(store.nutrition.meals.last?.source, "USDA")
+        XCTAssertEqual(store.recentFoods.first?.name, "Rolled oats")
+        XCTAssertFalse(store.logFood(food, grams: 0, slot: .snack))
+
+        XCTAssertEqual(FoodCheckService.servingGrams(from: "1 portion (100 g)"), 100)
+        XCTAssertEqual(FoodCheckService.servingGrams(from: "30g"), 30)
+        XCTAssertEqual(FoodCheckService.servingGrams(from: "1 cup (240 ml)"), 240)
+        XCTAssertNil(FoodCheckService.servingGrams(from: "1 slice"))
+        XCTAssertNil(FoodCheckService.servingGrams(from: nil))
+    }
+
     func testNutritionTargetsFallBackToLabeledStartersWithoutWeight() {
         let store = freshStore()
         let targets = store.nutritionTargets
