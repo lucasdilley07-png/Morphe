@@ -5084,11 +5084,28 @@ final class PersonalizationEngineTests: XCTestCase {
         let oats = FoodCheckService.record(from: p)
         XCTAssertEqual(oats.gmoLikelihood, .low)
         XCTAssertEqual(oats.processing, .wholeFood, "one ingredient, no additives, no NOVA on file")
+
+        // Without a NOVA group the inference never flatters (audit 2026-10-10).
+        XCTAssertEqual(FoodCheckService.inferProcessing(ingredients: "sugar", additives: 0).0, .kitchenIngredient)
+        XCTAssertEqual(FoodCheckService.inferProcessing(ingredients: "peanuts, salt", additives: 0).0, .unknown)
+        XCTAssertEqual(FoodCheckService.inferProcessing(ingredients: "wheat flour; water; yeast; salt; sugar", additives: 0).0, .unknown, "semicolons count")
+        XCTAssertEqual(FoodCheckService.inferProcessing(ingredients: "milk, natural flavour", additives: 0).0, .ultraProcessed)
+        // Allergen notes are not ingredients.
+        XCTAssertEqual(FoodCheckService.gmCrops(in: "rolled oats. may contain traces of soy and corn"), [])
+        // Database sub-variants hit the table.
+        XCTAssertEqual(FoodCheckService.additive(forTag: "e500ii").name, "Sodium bicarbonate")
+        XCTAssertEqual(FoodCheckService.additive(forTag: "e322i").name, "Lecithins")
+        XCTAssertEqual(FoodCheckService.additive(forTag: "e160ai").name, "Carotenes")
+        // Scanner payloads: UPC-E expands, a URL is refused, a UPC-A passes.
+        XCTAssertEqual(FoodCheckService.expandUPCE("04252614"), "042100005264")
+        XCTAssertEqual(FoodCheckService.lookupCode(from: "04252614"), "042100005264")
+        XCTAssertNil(FoodCheckService.lookupCode(from: "https://morphe.app/invite/20261010"))
+        XCTAssertEqual(FoodCheckService.lookupCode(from: "049000006346"), "049000006346")
     }
 
     func testFoodCheckParsesClaudeReportAndSurvivesRelaunch() throws {
         let reply = """
-        Here is the report:
+        Here is the report {with a brace in the prose}:
         {"name":"Greek yogurt","brand":"Fage","processing":"wholeFood","processingReason":"Milk and cultures.","origin":"Made in Johnstown, New York from US milk","originConfidence":"high","healthRead":"High protein.","nutriScore":"A","additives":[],"gmoRead":"No GM crops.","gmoLikelihood":"low","ingredients":"milk, cultures","calories":97,"protein":18,"carbs":4,"fat":0,"sugar":4,"fiber":0,"sodiumMg":60,"servingNote":"Per 170 g cup, estimate","sources":[{"title":"Fage","url":"https://usa.fage/"},{"title":"bad","url":"not a url"}],"verdict":"Real food."}
         """
         let object = try XCTUnwrap(FoodCheckService.extractJSONObject(from: reply))

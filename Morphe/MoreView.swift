@@ -1409,7 +1409,9 @@ struct FoodCheckCard: View {
     @State private var showScanner = false
     @State private var showCamera = false
     @State private var selected: FoodCheckRecord?
-    @State private var pendingImage: UIImage?
+    /// A report found while a scanner/camera sheet is still dismissing
+    /// waits here and presents from onDismiss (audit 2026-10-10).
+    @State private var pendingReport: FoodCheckRecord?
 
     var body: some View {
         GlassCard {
@@ -1499,23 +1501,20 @@ struct FoodCheckCard: View {
                 }
             }
         }
-        .sheet(isPresented: $showScanner) {
+        .sheet(isPresented: $showScanner, onDismiss: presentPending) {
             FoodBarcodeSheet { code in
+                guard FoodCheckService.lookupCode(from: code) != nil else { return }
                 showScanner = false
-                Task {
-                    if let record = await store.runFoodCheck(image: nil, barcode: code) { selected = record }
-                }
+                Task { pendingReport = await store.runFoodCheck(image: nil, barcode: code); presentPending() }
             }
             .environment(store)
             .presentationDetents([.medium, .large])
         }
-        .fullScreenCover(isPresented: $showCamera) {
+        .fullScreenCover(isPresented: $showCamera, onDismiss: presentPending) {
             FoodPhotoCamera { image in
                 showCamera = false
                 guard let image else { return }
-                Task {
-                    if let record = await store.runFoodCheck(image: image, barcode: nil) { selected = record }
-                }
+                Task { pendingReport = await store.runFoodCheck(image: image, barcode: nil); presentPending() }
             }
             .ignoresSafeArea()
         }
@@ -1524,6 +1523,14 @@ struct FoodCheckCard: View {
                 .environment(store)
                 .presentationDetents([.large])
         }
+    }
+
+    /// Presents once nothing else is presented: the check can finish
+    /// before the scanner's dismiss animation does.
+    private func presentPending() {
+        guard let record = pendingReport, !showScanner, !showCamera else { return }
+        pendingReport = nil
+        selected = record
     }
 }
 
@@ -1584,7 +1591,9 @@ private struct FoodBarcodeSheet: View {
             VStack(spacing: 12) {
                 QRScannerView(onScan: onScan, symbologies: [.ean13, .ean8, .upce, .code128, .qr])
                     .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
-                Text("Point at the barcode on the package. Only the number is sent — to Open Food Facts, a public product database.")
+                Text(MorpheIntelligence.apiKey == nil
+                     ? "Point at the barcode on the package. Only the number is sent — to Open Food Facts, a public product database."
+                     : "Point at the barcode on the package. The number goes to Open Food Facts, and with your key the label facts go to Anthropic for the web read.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -1629,6 +1638,8 @@ struct FoodCheckReportSheet: View {
     @Environment(\.dismiss) private var dismiss
     let record: FoodCheckRecord
     @State private var logged = false
+    /// Portion for per-100 g label numbers.
+    @State private var grams = 100
 
     static func scoreColor(_ score: String) -> Color {
         switch score {
@@ -1769,8 +1780,26 @@ struct FoodCheckReportSheet: View {
                         }
                     }
 
-                    Button(current.isLogged || logged ? "In today's fuel" : "Add to today's fuel") {
-                        if store.logFoodCheckToFuel(current) {
+                    if current.isPer100g, !(current.isLogged || logged), current.calories != nil || current.protein != nil {
+                        // Label numbers are per 100 g — the portion is the
+                        // user's call, never Morphe's guess.
+                        HStack {
+                            Text("Portion")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Spacer()
+                            Stepper("\(grams) g", value: $grams, in: 10...1000, step: 10)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .fixedSize()
+                        }
+                        Text("That's about \(Int((Double(current.calories ?? 0) * Double(grams) / 100).rounded())) calories and \(Int((Double(current.protein ?? 0) * Double(grams) / 100).rounded())) g protein.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+
+                    Button(current.isLogged || logged ? "In today's fuel" : (current.isPer100g ? "Add \(grams) g to today's fuel" : "Add to today's fuel")) {
+                        if store.logFoodCheckToFuel(current, grams: current.isPer100g ? grams : nil) {
                             logged = true
                             Haptics.success()
                         }

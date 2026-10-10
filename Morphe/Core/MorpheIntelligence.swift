@@ -481,19 +481,58 @@ enum FoodCheckService {
 
     private static let fields = "product_name,brands,ingredients_text,additives_tags,nova_group,nutriscore_grade,nutriments,origins,manufacturing_places,labels_tags,countries_tags,ingredients_analysis_tags,allergens_tags"
 
-    static func lookup(barcode raw: String) async -> OpenFoodFactsProduct? {
-        let code = raw.filter(\.isNumber)
-        guard code.count >= 8, code.count <= 14,
+    enum LookupResult {
+        case found(OpenFoodFactsProduct)
+        case notFound
+        case unreachable
+    }
+
+    /// A scanned payload as a lookup code: ASCII digits only, 8–14 of
+    /// them, and a zero-suppressed UPC-E expanded to the UPC-A the
+    /// database keys on. QR/Code-128 payloads that aren't a bare number
+    /// are refused (audit 2026-10-10: a URL with a date in it looked up a
+    /// random product).
+    static func lookupCode(from raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+        let code = trimmed.count == 8 && (trimmed.first == "0" || trimmed.first == "1") ? expandUPCE(trimmed) : trimmed
+        guard code.count >= 8, code.count <= 14 else { return nil }
+        return code
+    }
+
+    /// UPC-E → UPC-A, the standard expansion by the sixth digit.
+    static func expandUPCE(_ upce: String) -> String {
+        let d = Array(upce)
+        guard d.count == 8 else { return upce }
+        let ns = String(d[0]); let m = d[1...6].map(String.init); let check = String(d[7])
+        let body: String
+        switch m[5] {
+        case "0", "1", "2": body = m[0] + m[1] + m[5] + "0000" + m[2] + m[3] + m[4]
+        case "3": body = m[0] + m[1] + m[2] + "00000" + m[3] + m[4]
+        case "4": body = m[0] + m[1] + m[2] + m[3] + "00000" + m[4]
+        default: body = m[0] + m[1] + m[2] + m[3] + m[4] + "0000" + m[5]
+        }
+        return ns + body + check
+    }
+
+    static func lookup(barcode raw: String) async -> LookupResult {
+        guard let code = lookupCode(from: raw),
               let url = URL(string: "https://world.openfoodfacts.org/api/v2/product/\(code).json?fields=\(fields)")
-        else { return nil }
+        else { return .notFound }
         var request = URLRequest(url: url)
         request.timeoutInterval = 15
         request.setValue("Morphe iOS (https://lucasdilley07-png.github.io/Morphe/)", forHTTPHeaderField: "User-Agent")
         guard let (data, response) = try? await URLSession.shared.data(for: request),
-              (response as? HTTPURLResponse)?.statusCode == 200,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              json["status"] as? Int == 1,
-              let product = json["product"] as? [String: Any] else { return nil }
+              let http = response as? HTTPURLResponse else { return .unreachable }
+        if http.statusCode == 404 { return .notFound }
+        guard http.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return .unreachable }
+        let status = (json["status"] as? Int) ?? Int((json["status"] as? String) ?? "") ?? 0
+        guard status == 1, let product = json["product"] as? [String: Any] else { return .notFound }
+        return .found(parse(product, code: code))
+    }
+
+    private static func parse(_ product: [String: Any], code: String) -> OpenFoodFactsProduct {
         let nutriments = product["nutriments"] as? [String: Any] ?? [:]
         func number(_ key: String) -> Double? {
             if let d = nutriments[key] as? Double { return d }
@@ -530,6 +569,32 @@ enum FoodCheckService {
 
     // MARK: Deterministic report from the database alone
 
+    /// Pure culinary ingredients — a one-ingredient jar of these is NOVA
+    /// group 2, not "real food".
+    private static let culinaryWords = ["sugar", "oil", "salt", "syrup", "flour", "starch", "honey", "butter", "lard", "vinegar", "cream", "molasses"]
+
+    /// Processing when the database has no NOVA group: only what the
+    /// ingredient list can honestly support.
+    static func inferProcessing(ingredients: String, additives: Int) -> (FoodProcessingClass, String) {
+        let markers = ultraProcessingMarkers(in: ingredients)
+        if !markers.isEmpty {
+            return (.ultraProcessed, "No NOVA group on file; the ingredient list carries ultra-processing markers: \(markers.joined(separator: ", ")).")
+        }
+        if additives > 0 {
+            return (.processed, "No NOVA group on file; \(additives) additive\(additives == 1 ? "" : "s") listed.")
+        }
+        let parts = ingredients.lowercased()
+            .components(separatedBy: CharacterSet(charactersIn: ",;.")).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        if parts.isEmpty { return (.unknown, "No NOVA group and no ingredient list on file.") }
+        if parts.count == 1 {
+            if culinaryWords.contains(where: { parts[0].contains($0) }) {
+                return (.kitchenIngredient, "One ingredient, and it's a cooking ingredient (NOVA group 2).")
+            }
+            return (.wholeFood, "One ingredient, no additives.")
+        }
+        return (.unknown, "No NOVA group on file and \(parts.count) ingredients — not enough to classify without guessing.")
+    }
+
     static func record(from p: OpenFoodFactsProduct, usedPhoto: Bool = false) -> FoodCheckRecord {
         var r = FoodCheckRecord()
         r.method = usedPhoto ? .photoAndBarcode : .barcode
@@ -541,26 +606,13 @@ enum FoodCheckService {
         r.additives = p.additiveTags.map { additive(forTag: $0) }
         r.nutriScore = p.nutriScore
 
-        // Processing: the database's NOVA group when it has one, else the
-        // ingredient list's own markers.
+        // Processing: the database's NOVA group when it has one, else only
+        // what the ingredient list can honestly support.
         if let nova = p.nova {
             r.processing = FoodProcessingClass(nova: nova)
             r.processingReason = "NOVA group \(nova), from Open Food Facts."
         } else {
-            let markers = ultraProcessingMarkers(in: p.ingredientsText)
-            if !markers.isEmpty {
-                r.processing = .ultraProcessed
-                r.processingReason = "No NOVA group on file; the ingredient list carries ultra-processing markers: \(markers.joined(separator: ", "))."
-            } else if !r.additives.isEmpty {
-                r.processing = .processed
-                r.processingReason = "No NOVA group on file; \(r.additives.count) additive\(r.additives.count == 1 ? "" : "s") listed."
-            } else if !p.ingredientsText.isEmpty {
-                let count = p.ingredientsText.split(separator: ",").count
-                r.processing = count <= 2 ? .wholeFood : .unknown
-                r.processingReason = count <= 2 ? "\(count) ingredient\(count == 1 ? "" : "s"), no additives." : "No NOVA group on file and \(count) ingredients — not enough to classify."
-            } else {
-                r.processingReason = "No NOVA group and no ingredient list on file."
-            }
+            (r.processing, r.processingReason) = inferProcessing(ingredients: p.ingredientsText, additives: r.additives.count)
         }
 
         // Origin: the label's own words, else only where it's sold.
@@ -645,7 +697,12 @@ enum FoodCheckService {
     ]
 
     static func gmCrops(in ingredients: String) -> [String] {
-        let lower = ingredients.lowercased()
+        // "May contain traces of soy" is an allergen note, not an
+        // ingredient (audit 2026-10-10) — stop reading there.
+        var lower = ingredients.lowercased()
+        for stop in ["may contain", "traces of", "produced in a facility"] {
+            if let range = lower.range(of: stop) { lower = String(lower[..<range.lowerBound]) }
+        }
         var found: [String] = []
         for pair in gmCropWords where lower.contains(pair.word) && !found.contains(pair.crop) { found.append(pair.crop) }
         return found
@@ -695,9 +752,21 @@ enum FoodCheckService {
         "e1422": ("Acetylated distarch adipate", "Modified starch.", .low), "e1442": ("Hydroxypropyl distarch phosphate", "Modified starch.", .low), "e1510": ("Ethanol", "Carrier.", .none)
     ]
 
+    /// "e322i", "e500ii", "e160ai" are the database's sub-variants of
+    /// E322, E500, E160a — same substance family, same note.
+    static func additiveTableKey(_ code: String) -> String {
+        let key = code.lowercased().replacingOccurrences(of: "en:", with: "").replacingOccurrences(of: " ", with: "")
+        if additiveTable[key] != nil { return key }
+        for suffix in ["iv", "iii", "ii", "i"] where key.hasSuffix(suffix) {
+            let base = String(key.dropLast(suffix.count))
+            if additiveTable[base] != nil { return base }
+        }
+        return key
+    }
+
     static func additive(forTag tag: String) -> FoodAdditive {
         let code = tag.lowercased().replacingOccurrences(of: "en:", with: "")
-        if let hit = additiveTable[code] {
+        if let hit = additiveTable[additiveTableKey(code)] {
             return FoodAdditive(code: code.uppercased(), name: hit.name, note: hit.note, concern: hit.concern)
         }
         // A code we don't carry a note for — say so, never guess.
@@ -720,7 +789,7 @@ enum FoodCheckService {
     Numbers are integers; use null for any you cannot support.
     """
 
-    static func analyze(imageJPEG: Data?, product: OpenFoodFactsProduct?, apiKey: String) async throws -> FoodCheckRecord {
+    static func analyze(imageJPEG: Data?, product: OpenFoodFactsProduct?, barcode: String? = nil, apiKey: String) async throws -> FoodCheckRecord {
         var content: [[String: Any]] = []
         if let imageJPEG {
             content.append(["type": "image", "source": ["type": "base64", "media_type": "image/jpeg",
@@ -741,6 +810,9 @@ enum FoodCheckService {
                 ask += "Open Food Facts has these facts for its barcode (treat as the label, cite the source URL): \(text). "
             }
         }
+        if product == nil, let barcode {
+            ask += "The scanned barcode is \(barcode) and it is not in Open Food Facts; identify the product by searching the web for that number, and if nothing identifies it set name to \"unknown\" and every field to unknown. "
+        }
         ask += imageJPEG != nil
             ? "Identify what is in the photo. Search the web for the brand or food's origin, production and supply chain, and for any additive or GMO facts you state."
             : "Search the web for the brand's origin, production and supply chain, and for any additive or GMO facts you state."
@@ -752,33 +824,66 @@ enum FoodCheckService {
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        let body: [String: Any] = [
-            "model": "claude-opus-5",
-            "max_tokens": 6000,
-            "system": reportSystem,
-            "tools": [["type": "web_search_20250305", "name": "web_search", "max_uses": 5]],
-            "messages": [["role": "user", "content": content]]
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let data: Data
-        let response: URLResponse
-        do { (data, response) = try await URLSession.shared.data(for: request) } catch { throw MorpheIntelligence.IntelligenceError.network }
-        guard let http = response as? HTTPURLResponse else { throw MorpheIntelligence.IntelligenceError.network }
-        switch http.statusCode {
-        case 200: break
-        case 401, 403: throw MorpheIntelligence.IntelligenceError.badKey
-        case 429: throw MorpheIntelligence.IntelligenceError.rateLimited
-        case 500...: throw MorpheIntelligence.IntelligenceError.overloaded
-        default: throw MorpheIntelligence.IntelligenceError.badRequest
+        // The server tool can pause a long search loop (stop_reason
+        // pause_turn): resend with the assistant's content appended, up to
+        // three times. max_tokens caps thinking + text together, so
+        // thinking stays low and the cap generous (audit 2026-10-10).
+        var messages: [[String: Any]] = [["role": "user", "content": content]]
+        var blocks: [[String: Any]] = []
+        var searched = false
+        var visited = Set<String>()
+        for _ in 0..<4 {
+            let body: [String: Any] = [
+                "model": "claude-opus-5",
+                "max_tokens": 8000,
+                "system": reportSystem,
+                "output_config": ["effort": "low"],
+                "tools": [["type": "web_search_20250305", "name": "web_search", "max_uses": 5]],
+                "messages": messages
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            let data: Data
+            let response: URLResponse
+            do { (data, response) = try await URLSession.shared.data(for: request) } catch { throw MorpheIntelligence.IntelligenceError.network }
+            guard let http = response as? HTTPURLResponse else { throw MorpheIntelligence.IntelligenceError.network }
+            switch http.statusCode {
+            case 200: break
+            case 401, 403: throw MorpheIntelligence.IntelligenceError.badKey
+            case 429: throw MorpheIntelligence.IntelligenceError.rateLimited
+            case 500...: throw MorpheIntelligence.IntelligenceError.overloaded
+            default: throw MorpheIntelligence.IntelligenceError.badRequest
+            }
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw MorpheIntelligence.IntelligenceError.malformed }
+            let stop = json["stop_reason"] as? String
+            if stop == "refusal" { throw MorpheIntelligence.IntelligenceError.declined }
+            guard let turn = json["content"] as? [[String: Any]] else { throw MorpheIntelligence.IntelligenceError.malformed }
+            blocks += turn
+            if turn.contains(where: { $0["type"] as? String == "server_tool_use" }) { searched = true }
+            // The pages actually read: tool results and citations.
+            for block in turn {
+                if block["type"] as? String == "web_search_tool_result", let results = block["content"] as? [[String: Any]] {
+                    for hit in results { if let url = hit["url"] as? String { visited.insert(url) } }
+                }
+                if let citations = block["citations"] as? [[String: Any]] {
+                    for citation in citations { if let url = citation["url"] as? String { visited.insert(url) } }
+                }
+            }
+            if stop == "pause_turn" {
+                messages.append(["role": "assistant", "content": turn])
+                continue
+            }
+            if stop == "max_tokens" { throw MorpheIntelligence.IntelligenceError.ranLong }
+            break
         }
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw MorpheIntelligence.IntelligenceError.malformed }
-        if json["stop_reason"] as? String == "refusal" { throw MorpheIntelligence.IntelligenceError.declined }
-        guard let blocks = json["content"] as? [[String: Any]] else { throw MorpheIntelligence.IntelligenceError.malformed }
-        let searched = blocks.contains { $0["type"] as? String == "server_tool_use" }
         let text = blocks.filter { $0["type"] as? String == "text" }.compactMap { $0["text"] as? String }.joined()
         guard let object = extractJSONObject(from: text) else { throw MorpheIntelligence.IntelligenceError.malformed }
         var record = record(fromReport: object)
+        // A source Claude names but never read is not a source (audit
+        // 2026-10-10): keep only pages the search actually returned.
+        if !visited.isEmpty {
+            let visitedHosts = Set(visited.compactMap { URL(string: $0)?.host })
+            record.sources = record.sources.filter { visited.contains($0.url) || (URL(string: $0.url)?.host).map(visitedHosts.contains) == true }
+        }
         record.method = imageJPEG != nil ? (product != nil ? .photoAndBarcode : .photo) : .barcode
         record.usedPhoto = imageJPEG != nil
         record.usedWebSearch = searched
@@ -797,10 +902,18 @@ enum FoodCheckService {
         return record
     }
 
+    /// The report object inside prose: try each "{" until one parses.
     static func extractJSONObject(from text: String) -> [String: Any]? {
-        guard let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}"), start < end else { return nil }
-        let slice = String(text[start...end])
-        return (try? JSONSerialization.jsonObject(with: Data(slice.utf8))) as? [String: Any]
+        guard let end = text.lastIndex(of: "}") else { return nil }
+        var searchFrom = text.startIndex
+        while let start = text[searchFrom...].firstIndex(of: "{"), start < end {
+            let slice = String(text[start...end])
+            if let object = (try? JSONSerialization.jsonObject(with: Data(slice.utf8))) as? [String: Any], object["name"] != nil || object["verdict"] != nil {
+                return object
+            }
+            searchFrom = text.index(after: start)
+        }
+        return nil
     }
 
     static func record(fromReport o: [String: Any]) -> FoodCheckRecord {
@@ -822,7 +935,7 @@ enum FoodCheckService {
             let code = (a["code"] as? String ?? "").trimmingCharacters(in: .whitespaces)
             let name = (a["name"] as? String ?? "").trimmingCharacters(in: .whitespaces)
             guard !code.isEmpty || !name.isEmpty else { return nil }
-            let key = code.lowercased().replacingOccurrences(of: " ", with: "")
+            let key = additiveTableKey(code)
             if let known = additiveTable[key] {
                 return FoodAdditive(code: code.uppercased(), name: known.name, note: known.note, concern: known.concern)
             }

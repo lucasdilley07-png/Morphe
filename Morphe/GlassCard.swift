@@ -245,12 +245,28 @@ struct MorpheOrbView: View {
             ZStack {
                 glass(size)
                 bloom(size)
+                // The orb without its helmet, then the ribbons, then a glow
+                // traced from the helmet's own shape, then the helmet —
+                // orb, glow, mask (Lucas 2026-10-10).
+                Image("MorpheAIOrbBase")
+                    .resizable()
+                    .scaledToFit()
                 if live { ribbons(size).clipShape(Circle().inset(by: size * 0.045)) }
-                Image("MorpheAIMark")
+                Image("MorpheAIHelmet")
+                    .resizable()
+                    .scaledToFit()
+                    .colorMultiply(Color(red: 0.75, green: 0.9, blue: 1.0))
+                    .blur(radius: size * 0.05)
+                    .opacity(0.95)
+                    .scaleEffect(1.06)
+                Image("MorpheAIHelmet")
                     .resizable()
                     .scaledToFit()
                 if live { rimLight(size) }
             }
+            // One compositing group: the ribbons' screen blend stays
+            // inside the orb instead of bleeding into the page.
+            .compositingGroup()
             .frame(width: size, height: size)
             .scaleEffect(reduceMotion ? 1 : 1 + level * 0.06)
             .animation(.easeOut(duration: 0.1), value: level)

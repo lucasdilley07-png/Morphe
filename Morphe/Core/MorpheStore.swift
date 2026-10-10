@@ -1685,6 +1685,8 @@ final class MorpheAppStore {
         hasCompletedOnboarding = false
         // AFTER the flag flip so the didSet mirror is a guarded no-op.
         workoutLogs = []
+        // Food checks are this account's diet (audit 2026-10-10).
+        foodChecks = []
         // The library file is already gone; the in-memory copy was the
         // leak (audit 2026-10-07, P1): the next account on this phone saw
         // this one's custom and saved workouts and persisted them as its own.
@@ -1714,7 +1716,7 @@ final class MorpheAppStore {
                     // (launch audit P2-18). Cosmetic to lose on a device
                     // switch, wrong to share across accounts.
                     threadReadKey, activitySeenKey, storySeenKey,
-                    lastKnownStreakKey, comebackPendingKey,
+                    lastKnownStreakKey, comebackPendingKey, foodChecksKey,
                     // The welcome debt is this account's, not the device's.
                     Self.welcomePendingKey] {
             UserDefaults.standard.removeObject(forKey: key)
@@ -2760,6 +2762,7 @@ final class MorpheAppStore {
     private(set) var creatorNotes: [CreatorNote] = []
     private(set) var openChallenges: [OpenChallengeListing] = []
     private var creatorContentFetchedAt: Date?
+    private var creatorContentInFlight = false
 
     var myCreatorWorkouts: [CreatorWorkout] {
         guard let uid = authUser?.id else { return [] }
@@ -2794,8 +2797,10 @@ final class MorpheAppStore {
     /// Pulls the shelves everyone sees. Five-minute cache; forced after a
     /// creator's own publish so their work shows at once.
     func refreshCreatorContent(force: Bool = false) async {
-        guard authUser != nil else { return }
+        guard authUser != nil, !creatorContentInFlight else { return }
         if !force, let last = creatorContentFetchedAt, Date.now.timeIntervalSince(last) < 300 { return }
+        creatorContentInFlight = true
+        defer { creatorContentInFlight = false }
         async let workouts = creatorService.fetchPublishedWorkouts(limit: 100)
         async let notes = creatorService.fetchNotes(limit: 100)
         async let open = creatorService.fetchOpenChallenges()
@@ -5173,12 +5178,29 @@ final class MorpheAppStore {
         foodCheckBusy = true
         defer { foodCheckBusy = false }
         var product: FoodCheckService.OpenFoodFactsProduct?
-        if let barcode { product = await FoodCheckService.lookup(barcode: barcode) }
+        if let barcode {
+            switch await FoodCheckService.lookup(barcode: barcode) {
+            case .found(let p): product = p
+            case .notFound: break
+            case .unreachable:
+                // A dead connection is not "not in the database" (audit
+                // 2026-10-10): say which it was.
+                showToast("Couldn't reach Open Food Facts — check your connection and try again.", isError: true)
+                return nil
+            }
+        }
         let jpeg = image.flatMap { FoodCheckService.jpeg(from: $0) }
         var record: FoodCheckRecord?
         if let key = MorpheIntelligence.apiKey {
             do {
-                record = try await FoodCheckService.analyze(imageJPEG: jpeg, product: product, apiKey: key)
+                record = try await FoodCheckService.analyze(imageJPEG: jpeg, product: product, barcode: barcode, apiKey: key)
+                // A barcode the database doesn't know and Claude couldn't
+                // identify either is a miss, not a report.
+                if product == nil, jpeg == nil,
+                   let name = record?.name.lowercased(), name.isEmpty || name == "unknown" || name.hasPrefix("product ") {
+                    showToast("That barcode isn't in Open Food Facts and the web didn't identify it. Photograph the package instead.")
+                    return nil
+                }
             } catch {
                 if let product {
                     record = FoodCheckService.record(from: product, usedPhoto: jpeg != nil)
@@ -5211,10 +5233,20 @@ final class MorpheAppStore {
     /// The checked food lands in today's fuel with its own numbers; the
     /// record remembers which meal so it never double-logs.
     @discardableResult
-    func logFoodCheckToFuel(_ record: FoodCheckRecord) -> Bool {
+    func logFoodCheckToFuel(_ record: FoodCheckRecord, grams: Int? = nil) -> Bool {
         guard let index = foodChecks.firstIndex(where: { $0.id == record.id }), !record.isLogged else { return false }
-        let name = record.displayName.isEmpty ? "Checked food" : record.displayName
-        guard addCustomMeal(name: name, calories: record.calories ?? 0, protein: record.protein ?? 0) else { return false }
+        var name = record.displayName.isEmpty ? "Checked food" : record.displayName
+        var calories = record.calories ?? 0
+        var protein = record.protein ?? 0
+        // Label numbers are per 100 g (audit 2026-10-10): scale to the
+        // portion the user actually ate, and say so in the entry.
+        if record.isPer100g, let grams, grams > 0 {
+            let factor = Double(grams) / 100
+            calories = Int((Double(calories) * factor).rounded())
+            protein = Int((Double(protein) * factor).rounded())
+            name += " · \(grams) g"
+        }
+        guard addCustomMeal(name: name, calories: calories, protein: protein) else { return false }
         foodChecks[index].loggedMealID = nutrition.meals.last?.id
         saveSeries(foodChecks, key: foodChecksKey, cap: 300)
         mirrorExtrasToCloud()
@@ -10559,12 +10591,16 @@ final class MorpheAppStore {
         // restart used to arm the mic on the auth wall and the terms gate.
         guard heyMorpheEnabled, hasCompletedOnboarding, !needsTermsAcceptance,
               (!FeatureFlags.accountsEnabled || authUser != nil) else { return }
-        heyMorphe.onWake = {
+        heyMorphe.onWake = { [weak self] in
             // The gym is eyes-free (Siri audit): every wake gets a felt
             // AND heard confirmation — haptic plus a soft two-note cue in
             // the same Milestone voice as the rest of the app.
             Haptics.wake()
             SoundEffects.play(.wake)
+            // A fresh wake is a fresh stage (audit 2026-10-10): the last
+            // answer must not sit above the orb while Morphe asks anew.
+            self?.voiceExchangeClearTask?.cancel()
+            self?.lastVoiceExchange = nil
         }
         heyMorphe.onCommand = { [weak self] command, isFollowUp in
             self?.handleVoiceCommand(command, isFollowUp: isFollowUp)

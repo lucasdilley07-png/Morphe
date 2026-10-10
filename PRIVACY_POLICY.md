@@ -99,12 +99,14 @@ and are off until you turn them on.
   training data under your own account.
 - **Food check** — scanning a product's barcode sends only that number to
   Open Food Facts, a public product database (no account, no personal
-  data). Photographing a meal or package sends that photo to Anthropic
-  **only if you have added your own API key** and tapped Check; Morphe
+  data). **With your own Anthropic key added**, every check — barcode or
+  photo — also sends Anthropic the label facts (product name, ingredients,
+  origins, countries sold in) and, for a photo, the photo itself, and
+  Claude runs up to five web searches for the brand's supply chain. Morphe
   does not keep the photo. The resulting report (origin, processing,
   additives, numbers, the web sources read) is saved with your training
   data so the assistant can remember what you eat; delete any report from
-  the app.
+  the app. Without a key, nothing but the barcode leaves the phone.
 - **Microphone & speech recognition** — recording audio for clips you
   capture in video mode, dictating messages to the in-app assistant, and
   the optional "Hey Morphe" wake phrase. While Hey Morphe is on and the

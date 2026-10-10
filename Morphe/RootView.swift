@@ -1738,7 +1738,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
             }
         }
         task = startedTask
-        armCommandTimer(after: heard.isEmpty ? 2.5 : 1.8)
+        armCommandTimer(after: heard.isEmpty ? (pendingPromptWindow ?? 2.5) : 1.8)
     }
 
     /// One tap for every stream. Refuses a route that has no input format
@@ -1955,6 +1955,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
             speechQueue = []
             speechStreamOpen = false
             chunkInFlight = false
+            promptFollowUpPending = false
+            promptLine = nil
             // The capture that led here claimed the stage — hand the
             // music back before re-arming (audit 24, P1).
             restoreMixSession()
@@ -1980,6 +1982,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         speechQueue = []
         speechStreamOpen = true
         currentlySpeakingText = ""
+        lastBargeCandidate = ""
         spokeFirstChunk = false
         tearDownRecognition()
         // .voiceChat = system echo cancellation: the mic stays hot while
@@ -2211,18 +2214,22 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         if promptFollowUpPending {
             // "How may I assist you?" was the question — now the answer:
             // straight back into active capture, whole-stream, no re-wake,
-            // six seconds to say it. The stage was never released.
+            // six seconds to say it. The stage was never released. The
+            // barge mic dies BEFORE the category flip (audit 24's rule),
+            // and anything short said over the prompt seeds the capture.
             promptFollowUpPending = false
+            tearDownRecognition()
             state = .active
             activeSince = nil
-            liveTranscript = ""
+            liveTranscript = lastBargeCandidate
+            lastBargeCandidate = ""
             capturePrefix = ""
             activeIsFollowUp = true
             directCaptureSession = true
             followUpCaptureStart = Date()
+            pendingPromptWindow = 6
             claimStageForActiveCapture()
             resumeActiveCapture()
-            if state == .active { armCommandTimer(after: 6) }
             return
         }
         restoreMixSession()
@@ -2277,6 +2284,13 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         isBargeCapture = true
         activeIsFollowUp = !viaWake
         followUpCaptureStart = viaWake ? nil : Date()
+        // Speech over "How may I assist you?" IS the answer (audit
+        // 2026-10-10): full routing, and the prompt's own follow-up window
+        // must not re-open the mic after this command's answer.
+        if promptFollowUpPending {
+            promptFollowUpPending = false
+            if !viaWake { directCaptureSession = true }
+        }
         activeSince = viaWake ? Date() : nil
         liveTranscript = text
         if viaWake { promptedThisWake = false; promptLine = nil }
@@ -2608,6 +2622,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     bargeIn(with: strippingSpokenEcho(from: command), viaWake: true)
                 } else {
                     let candidate = strippingSpokenEcho(from: trimmed)
+                    if !candidate.isEmpty { lastBargeCandidate = candidate }
                     if candidate.split(separator: " ").count >= 4,
                        !Self.normalizedForEcho(currentlySpeakingText)
                            .contains(Self.normalizedForEcho(candidate)) {
@@ -2672,6 +2687,13 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// Set while the prompt is being spoken: when it ends, the mic opens
     /// for the request instead of the exchange closing.
     private var promptFollowUpPending = false
+    /// The last thing heard over Morphe's own voice that was too short to
+    /// barge — seeded into the capture that follows the prompt so "open
+    /// train" said at the tail of "How may I assist you?" is not lost.
+    private var lastBargeCandidate = ""
+    /// The window the post-prompt capture gets (6s), kept through mic-tap
+    /// retries so a retry can't shrink it to the default.
+    private var pendingPromptWindow: TimeInterval?
 
     private func armCommandTimer(after interval: TimeInterval) {
         commandTimer?.invalidate()
@@ -2728,6 +2750,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         directCaptureSession = true   // …with full routing on fire
         followUpCaptureStart = Date()
         liveTranscript = ""
+        promptedThisWake = false
+        promptLine = nil
         onWake?()
         armCommandTimer(after: 2.5)
         return true
@@ -2736,6 +2760,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     private func fireCommand() {
         guard state == .active else { return }
         activeSince = nil
+        pendingPromptWindow = nil
         let command = liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
         let wasFollowUp = activeIsFollowUp && !directCaptureSession
         directCaptureSession = false
@@ -2759,6 +2784,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         if !command.isEmpty { promptLine = nil }
         if command.isEmpty || Self.isCancelPhrase(command) {
             promptLine = nil
+            promptFollowUpPending = false
             // Woke then silence, or an explicit retraction ("never mind")
             // — back to scanning, no charge, no spoken reply (a misfire
             // must cost nothing: rebuild 2026-08). Hand the music back
@@ -4225,8 +4251,9 @@ private struct HeyMorpheStage: View {
 
     /// Morphe's line: the answer once there is one, else the assist prompt.
     private var morpheLine: String? {
+        if let prompt = engine.promptLine { return prompt }
         if let answer = store.lastVoiceExchange?.answer, !answer.isEmpty { return answer }
-        return engine.promptLine
+        return nil
     }
 
     /// The user's line: the live transcript while capturing, else what
@@ -4250,7 +4277,7 @@ private struct HeyMorpheStage: View {
                 .accessibilityLabel("Hey Morphe is listening. Tap anywhere to stop.")
                 .accessibilityAddTraits(.isButton)
 
-            VoiceEdgeGlow(level: engine.state == .active || engine.state == .speaking ? engine.voiceLevel : 0.2)
+            VoiceEdgeGlowHost()
                 .allowsHitTesting(false)
 
             column
@@ -4307,7 +4334,7 @@ private struct HeyMorpheStage: View {
                         Image(systemName: "waveform")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.brandBlueText)
-                            .symbolEffect(.variableColor.iterative, options: .repeating)
+                            .symbolEffect(.variableColor.iterative, options: .repeating, isActive: !reduceMotion)
                     }
                     Text(line)
                         .font(.subheadline.weight(.semibold))
@@ -4326,6 +4353,17 @@ private struct HeyMorpheStage: View {
         .padding(.horizontal, 24)
         .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85), value: morpheLine)
         .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85), value: userLine)
+    }
+}
+
+/// Leaf for the glow: the only stage view that reads the ~46/s mic
+/// level, so each sample redraws the glow, not the text panels.
+private struct VoiceEdgeGlowHost: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    var body: some View {
+        let engine = store.heyMorphe
+        VoiceEdgeGlow(level: engine.state == .active || engine.state == .speaking ? engine.voiceLevel : 0.2)
     }
 }
 

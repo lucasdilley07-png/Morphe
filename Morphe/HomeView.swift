@@ -1281,10 +1281,11 @@ struct MorpheDayPopup: View {
             // Morphe's face: the frequency ring, breathing at a gentle
             // idle level and rising when it speaks.
             // The waves follow the user's own voice whenever Hey Morphe
-            // is live (Lucas 2026-10-09), else the popup's own breath.
-            MorpheOrbView(level: store.heyMorphe.state == .active || store.heyMorphe.state == .speaking
-                              ? max(ringLevel, store.heyMorphe.voiceLevel) : ringLevel,
-                          speaking: ringSpeaking || store.heyMorphe.state == .speaking)
+            // is live (Lucas 2026-10-09), else the popup's own breath. A
+            // leaf view reads the ~46/s mic level so the popup itself
+            // doesn't re-render per sample; it steps aside under the stage
+            // so there is one orb on screen, not two.
+            PopupOrbHost(ringLevel: ringLevel, ringSpeaking: ringSpeaking)
                 .frame(width: 170, height: 170)
                 .scaleEffect(ringPulse ? 1.07 : (ringIn || reduceMotion ? 1 : 0.55))
                 .opacity(ringIn || reduceMotion ? 1 : 0)
@@ -1381,6 +1382,23 @@ struct MorpheDayPopup: View {
             }
             _ = await flare
         }
+    }
+}
+
+/// The popup's orb: the only view in the popup that reads the voice
+/// level, so mic samples invalidate 170pt, not the whole takeover.
+private struct PopupOrbHost: View {
+    @Environment(MorpheAppStore.self) private var store
+    var ringLevel: Double
+    var ringSpeaking: Bool
+
+    var body: some View {
+        let engine = store.heyMorphe
+        let live = engine.state == .active || engine.state == .speaking || engine.state == .thinking
+        MorpheOrbView(level: live ? max(ringLevel, engine.voiceLevel) : ringLevel,
+                      speaking: ringSpeaking || engine.state == .speaking)
+            .opacity(live ? 0 : 1)
+            .animation(.easeInOut(duration: 0.2), value: live)
     }
 }
 

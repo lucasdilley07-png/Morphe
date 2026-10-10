@@ -4197,7 +4197,9 @@ struct CreatorFeed: View {
                 }
             }
         }
-        .task { await store.refreshCreatorContent() }
+        // No .task here (audit 2026-10-10): panes stay mounted, so it
+        // fetched three collections the moment Network appeared. The
+        // For You tab's selection refreshes instead.
         .confirmationDialog("Report this note?", isPresented: Binding(get: { reporting != nil }, set: { if !$0 { reporting = nil } }),
                             titleVisibility: .visible, presenting: reporting) { note in
             ForEach(["Spam", "Harassment", "Unsafe advice", "Other"], id: \.self) { reason in

@@ -3479,4 +3479,6 @@ struct FoodCheckRecord: Codable, Equatable, Identifiable {
 
     var displayName: String { brand.isEmpty ? name : "\(brand) \(name)" }
     var isLogged: Bool { loggedMealID != nil }
+    /// Label numbers from the database are per 100 g, not a portion.
+    var isPer100g: Bool { servingNote.lowercased().hasPrefix("per 100 g") }
 }
