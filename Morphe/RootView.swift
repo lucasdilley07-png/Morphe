@@ -214,6 +214,9 @@ struct RootView: View {
             }
         }
         .preferredColorScheme(store.selectedAppearance)
+        // The app icon badge follows the Network count.
+        .onChange(of: store.networkBadgeCount) { _, _ in store.syncAppIconBadge() }
+        .onAppear { store.syncAppIconBadge() }
         // Anyone's account page, from any surface (feed, chats, board).
         .sheet(item: $store.viewingPerson) { card in
             PersonAccountSheet(card: card)
@@ -4313,7 +4316,7 @@ private struct WelcomeExperienceView: View {
             VStack(alignment: .leading, spacing: 16) {
                 kicker("Train Together")
                 title("Hold the line with someone.")
-                body("Start a live session and a training partner runs the same workout with you in real time, set for set. Weekly boards, code-joinable challenges, and one-tap Respect on a partner's week. Real scores only, opt-in always.")
+                body("Start a live session and a training partner runs the same workout with you in real time, set for set. Boards and challenges you join with a code, and one-tap Respect on a partner's week. Real scores only, nothing posts without a code you entered.")
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 8) {
                         rule("Live sessions", "Train → Train Together → share the code.")

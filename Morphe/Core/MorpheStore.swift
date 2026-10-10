@@ -1615,6 +1615,7 @@ final class MorpheAppStore {
         myBoards = []
         boardStandings = [:]
         boardSelfEntries = [:]
+        UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
         // One account's appointments, streak and sayings must not ring
         // after sign-out or under the next account (audit 31).
         if !(appointmentService is NoOpAppointmentService) {
@@ -1746,7 +1747,7 @@ final class MorpheAppStore {
                     threadReadKey, activitySeenKey, storySeenKey,
                     lastKnownStreakKey, comebackPendingKey, foodChecksKey, recentFoodsKey,
                     savedExercisesKey, savedLessonsKey, savedDietPlansKey, hiddenPeopleKey, knownNamesKey,
-                    morpheInboxKey, morpheInboxReadKey, boardsKey,
+                    morpheInboxKey, morpheInboxReadKey, deliveredNewsKey, boardsKey,
                     dailyStreakCountKey, dailyStreakLastDayKey, dailyStreakBestKey, dailyStreakFreezeDayKey,
                     // An invite link opened before sign-out must not credit
                     // the next account's recruiter (audit 2026-10-10, P2).
@@ -4817,6 +4818,7 @@ final class MorpheAppStore {
             "knownNames": knownNamesKey,
             "morpheInbox": morpheInboxKey,
             "morpheInboxRead": morpheInboxReadKey,
+            "morpheInboxNews": deliveredNewsKey,
             "boards": boardsKey,
             "dailyStreakCount": dailyStreakCountKey,
             "dailyStreakLastDay": dailyStreakLastDayKey,
@@ -5018,7 +5020,9 @@ final class MorpheAppStore {
             joinedChallengeCodes = []
             return
         }
-        leaderboardOptIn = snapshot.optIn
+        // The open global board left the UI (boards with codes, 2026-10-10):
+        // a stored opt-in must not keep posting a name to it.
+        leaderboardOptIn = false
         joinedChallengeCodes = snapshot.challengeCodes
         // Joined challenges refresh from Firestore — the codes are the only
         // locally-persisted fact; every score/member shown is fetched real.
@@ -5209,6 +5213,7 @@ final class MorpheAppStore {
     var myBoardRespect: [String: Set<String>] = [:]
     var boardsFetchFailed: Set<String> = []
     private var lastBoardsRefreshAt: Date?
+    private var boardsRefreshInFlight = false
 
     func loadBoards() { myBoards = loadSeries(boardsKey) }
     private func saveBoards() {
@@ -5231,9 +5236,15 @@ final class MorpheAppStore {
         if ContentModeration.containsBlockedTerm(clean) || ContentModeration.humanityRefusal(for: clean, kind: .comment) != nil {
             showToast("Pick a plain name for the board.", isError: true); return nil
         }
-        let board = BoardGroup(code: Self.makePartyCode(), name: clean, hostUid: me.uid, hostName: me.name, createdAt: .now)
-        guard await leaderboardService.createBoard(board) else {
-            showToast("Couldn't create the board — check your connection.", isError: true); return nil
+        var board = BoardGroup(code: Self.makePartyCode(), name: clean, hostUid: me.uid, hostName: me.name, createdAt: .now)
+        var created = await leaderboardService.createBoard(board)
+        if !created {
+            // A code collision reads as a denied update — one fresh code.
+            board.code = Self.makePartyCode()
+            created = await leaderboardService.createBoard(board)
+        }
+        guard created else {
+            showToast("Couldn't create the board — check your connection and try again.", isError: true); return nil
         }
         rememberBoard(board)
         postBoardScores()
@@ -5285,8 +5296,10 @@ final class MorpheAppStore {
     }
 
     func refreshBoards(force: Bool = false) async {
-        guard !myBoards.isEmpty else { return }
+        guard !myBoards.isEmpty, !boardsRefreshInFlight else { return }
         if !force, let last = lastBoardsRefreshAt, Date.now.timeIntervalSince(last) < Self.boardStalenessWindow { return }
+        boardsRefreshInFlight = true
+        defer { boardsRefreshInFlight = false }
         let weekKey = LeaderboardWeek.key()
         for board in myBoards {
             if let top = await leaderboardService.fetchBoardTop(code: board.code, weekKey: weekKey, limit: 50) {
@@ -5295,8 +5308,9 @@ final class MorpheAppStore {
             } else if boardStandings[board.code] == nil {
                 boardsFetchFailed.insert(board.code)
             }
-            if let me = competitionSelf {
-                boardSelfEntries[board.code] = await leaderboardService.fetchBoardEntry(code: board.code, weekKey: weekKey, uid: me.uid)
+            if let me = competitionSelf,
+               let mine = await leaderboardService.fetchBoardEntry(code: board.code, weekKey: weekKey, uid: me.uid) {
+                boardSelfEntries[board.code] = mine
             }
             var uids = (boardStandings[board.code] ?? []).map(\.uid)
             if let mine = boardSelfEntries[board.code]?.uid, !uids.contains(mine) { uids.append(mine) }
@@ -5333,7 +5347,8 @@ final class MorpheAppStore {
         if let me = authUser?.id, let index = rows.firstIndex(where: { $0.uid == me }) {
             return "You're #\(index + 1) on \(board.name) this week"
         }
-        return "\(board.name) — \(rows.first?.name ?? "nobody") leads this week"
+        guard let leader = rows.first else { return "\(board.name) — no scores yet this week" }
+        return "\(board.name) — \(leader.name) leads this week"
     }
 
     // MARK: Weekly board actions
@@ -5626,6 +5641,7 @@ final class MorpheAppStore {
     /// only the user's own logs — the score IS the training, nothing else.
     func publishCompetitionScores() {
         postWeeklyBoardScore()
+        postBoardScores()
         guard competitionSelf != nil else { return }
         for challenge in activeChallenges where !challenge.isExpired {
             guard let member = challengeSelfMember(for: challenge) else { continue }
@@ -9470,17 +9486,27 @@ final class MorpheAppStore {
     private var morpheInboxReadKey: String { "morphe.inbox.read.\(clientProfile.id.uuidString)" }
     var morpheInbox: [MorpheInboxItem] = []
     var morpheInboxReadAt: Date = .distantPast
+    /// News ids ever delivered — survives the inbox cap so nothing re-sends.
+    private var deliveredNewsIDs: Set<String> = []
+    private var deliveredNewsKey: String { "morphe.inbox.news.\(clientProfile.id.uuidString)" }
     var morpheReplyInFlight = false
 
     func loadMorpheInbox() {
         morpheInbox = loadSeries(morpheInboxKey)
+        deliveredNewsIDs = Set(UserDefaults.standard.stringArray(forKey: deliveredNewsKey) ?? [])
         let t = UserDefaults.standard.double(forKey: morpheInboxReadKey)
         morpheInboxReadAt = t > 0 ? Date(timeIntervalSince1970: t) : .distantPast
     }
 
     private func saveMorpheInbox() {
         morpheInbox.sort { $0.date < $1.date }
+        // The cap drops the oldest questions/answers first; reports and
+        // news stay.
+        while morpheInbox.count > 400, let index = morpheInbox.firstIndex(where: { $0.kind == .question || $0.kind == .answer }) {
+            morpheInbox.remove(at: index)
+        }
         saveSeries(morpheInbox, key: morpheInboxKey, cap: 400)
+        UserDefaults.standard.set(Array(deliveredNewsIDs).sorted(), forKey: deliveredNewsKey)
         mirrorExtrasToCloud()
     }
 
@@ -9501,11 +9527,12 @@ final class MorpheAppStore {
         // News: first ever open delivers the whole set so a new member
         // sees what Morphe does; afterwards only entries newer than the
         // last delivered one.
-        let delivered = Set(morpheInbox.filter { $0.kind == .news }.map(\.id))
-        for entry in MorpheNews.entries.reversed() where !delivered.contains(entry.id) && entry.date <= now {
+        let delivered = Set(morpheInbox.filter { $0.kind == .news }.map(\.id)).union(deliveredNewsIDs)
+        let fresh = morpheInbox.isEmpty
+        for (offset, entry) in MorpheNews.entries.reversed().enumerated() where !delivered.contains(entry.id) && entry.date <= now {
             var item = entry
-            if morpheInbox.isEmpty { item.date = now.addingTimeInterval(-60) }   // lands "just now" on a fresh account
-            morpheInbox.append(item); changed = true
+            if fresh { item.date = now.addingTimeInterval(-60 + Double(offset)) }   // lands "just now", in order
+            morpheInbox.append(item); deliveredNewsIDs.insert(entry.id); changed = true
         }
         // The week that just ended.
         let thisWeekStart = LeaderboardWeek.start()
@@ -9513,7 +9540,7 @@ final class MorpheAppStore {
         if !morpheInbox.contains(where: { $0.id == weekId }),
            let lastWeekStart = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: thisWeekStart),
            hasAnyLogsBefore(thisWeekStart) {
-            morpheInbox.append(MorpheInboxItem(id: weekId, kind: .weeklyReport, date: max(thisWeekStart.addingTimeInterval(9 * 3600), min(now, thisWeekStart.addingTimeInterval(9 * 3600))),
+            morpheInbox.append(MorpheInboxItem(id: weekId, kind: .weeklyReport, date: min(now, thisWeekStart.addingTimeInterval(9 * 3600)),
                                                title: "Your week in review",
                                                body: weeklyReportBody(weekStart: lastWeekStart, weekEnd: thisWeekStart)))
             changed = true
@@ -9543,7 +9570,7 @@ final class MorpheAppStore {
         if logs.isEmpty {
             lines.append("No sessions logged. Nothing to dress up — the plan is still there when you are.")
         } else {
-            let sets = logs.reduce(0) { $0 + $1.exercises.reduce(0) { $0 + ($1.repsPerSet?.count ?? 0) } }
+            let sets = logs.reduce(0) { $0 + Self.loggedSetCount(of: $1) }
             let minutes = logs.reduce(0) { $0 + $1.durationMinutes }
             let target = max(1, clientProfile.trainingDaysPerWeek)
             var line = "\(logs.count) session\(logs.count == 1 ? "" : "s") of your \(target)-a-week target"
@@ -9580,8 +9607,10 @@ final class MorpheAppStore {
     func askMorpheInThread(_ text: String) async {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, !morpheReplyInFlight else { return }
-        if let refusal = ContentModeration.humanityRefusal(for: clean, kind: .message) {
-            showToast(refusal.message, isError: true); return
+        // No human reads this — a question is never "spam". Only the
+        // abuse list applies.
+        if ContentModeration.containsBlockedTerm(clean) {
+            showToast(ContentModeration.refusalMessage, isError: true); return
         }
         morpheInbox.append(MorpheInboxItem(id: UUID().uuidString, kind: .question, date: .now, title: "", body: String(clean.prefix(1000))))
         saveMorpheInbox()
@@ -13782,6 +13811,7 @@ final class MorpheAppStore {
 
     func noteBackgrounded() {
         wasBackgrounded = true
+        syncAppIconBadge()
         // A backgrounded app must not keep a voice stream generating and
         // then start speaking on return (audit 24, P2).
         voiceStreamTask?.cancel()
@@ -14329,6 +14359,14 @@ final class MorpheAppStore {
     /// news, and connect requests to answer. Shown on the Chats tab label
     /// and the dock (Lucas 2026-10-10).
     var networkBadgeCount: Int { unreadThreadCount + morpheInboxUnreadCount + incomingConnectRequests.count }
+
+    /// The app icon wears the same number (Lucas 2026-10-10). Called
+    /// whenever the count changes and when the app goes to the background;
+    /// iOS shows it only if the user granted badges.
+    func syncAppIconBadge() {
+        let count = authUser == nil ? 0 : networkBadgeCount
+        UNUserNotificationCenter.current().setBadgeCount(count) { _ in }
+    }
 
     /// Sends one immutable message into the open thread. The listener streams
     /// it back into `activeThreadMessages`; the local inbox preview rolls
@@ -15509,7 +15547,7 @@ final class MorpheAppStore {
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             guard settings.authorizationStatus == .notDetermined else { return }
-            center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
                 guard granted else { return }
                 Task { @MainActor [weak self] in
                     guard let self else { return }
@@ -15590,7 +15628,7 @@ final class MorpheAppStore {
         let center = UNUserNotificationCenter.current()
         // Safe to call every time — after the first prompt it just reports
         // the existing decision.
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
             guard granted else { return }   // denied: silent, the list is the truth
             Self.addAppointmentRequests(for: appointment, to: center)
         }

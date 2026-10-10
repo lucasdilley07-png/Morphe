@@ -141,10 +141,13 @@ struct CommunityView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                         .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
+                }
+                .overlay(alignment: .topTrailing) {
                     if showsBadge {
-                        // The count sits top-right of the title (Lucas 2026-10-10).
+                        // The count sits top-right of the title (Lucas 2026-10-10),
+                        // as an overlay so the title never shifts.
                         CountBadge(count: badgeCount)
-                            .offset(y: -6)
+                            .offset(x: 14, y: -8)
                     }
                 }
                 Rectangle()
@@ -210,7 +213,7 @@ struct CommunityView: View {
             // pull is the user asking for fresh. The board + challenges
             // render on this page too, so they refresh with it.
             await store.refreshFeed(force: true)
-            await store.refreshLeaderboard(force: true)
+            await store.refreshBoards(force: true)
             await store.refreshChallenges(force: true)
         }
     }
@@ -1787,7 +1790,7 @@ private struct RealFeedSection: View {
         })
         .task {
             await store.refreshFeed()
-            await store.refreshLeaderboard()
+            await store.refreshBoards()
             await store.refreshChallenges()
         }
     }
@@ -3894,20 +3897,9 @@ struct AthleteInboxView: View {
                         Task { await store.refreshThreads(force: true) }
                     }
                     .padding(.horizontal, 16)
-                } else if store.liveThreads.isEmpty {
-                    // The pane's only empty state now lives WITH the search
-                    // that cures it.
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("No conversations yet")
-                            .font(.headline)
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                        Text("Search a username above to start a chat — new conversations appear here.")
-                            .font(.subheadline)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
                 }
+                // (No "no conversations yet" card — the Morphe chat is
+                // always here, Lucas 2026-10-10.)
             }
             .padding(.vertical, 4)
         }

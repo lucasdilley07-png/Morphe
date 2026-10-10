@@ -277,7 +277,7 @@ struct ProgressScreenView: View {
         // Board + challenges are the fetched pieces of this page. Pull is
         // the explicit ask — it always hits the network.
         .refreshable {
-            await store.refreshLeaderboard(force: true)
+            await store.refreshBoards(force: true)
             await store.refreshChallenges(force: true)
         }
         // A PR-row tap: bring the strength chart into view while it
@@ -414,7 +414,7 @@ struct ProgressScreenView: View {
             if store.todayExperienceTier >= 1 {
                 ProgressExpandableSection(
                     title: "Compete",
-                    subtitle: "The weekly board and code-joinable challenges — every score is a real athlete's logged sets.",
+                    subtitle: "Boards and challenges you join with a code — every score is a real athlete's logged sets.",
                     isExpanded: $showCompete
                 ) {
                     WeeklyBoardCard()

@@ -807,7 +807,11 @@ struct ProfileView: View {
                 creatorSection
             }
         }
-        .sheet(isPresented: $showIdentitySheet, onDismiss: { isEditingBio = false }) {
+        .sheet(isPresented: $showIdentitySheet, onDismiss: {
+            // A swipe-down with a typed bio saves it — never drops it.
+            if isEditingBio, bioDraft.trimmingCharacters(in: .whitespacesAndNewlines) != store.profileCustomBio { saveBio() }
+            isEditingBio = false
+        }) {
             identitySheet
         }
         .onChange(of: photoPickerItem) {
@@ -1247,7 +1251,7 @@ struct ProfileView: View {
         "Voice": ("waveform", "Hey Morphe, hands-free"),
         "Morphe Intelligence": ("sparkles", "Claude key, neural voice"),
         "Notifications": ("bell", "Reminders"),
-        "Who can see you": ("eye", FeatureFlags.socialFeedEnabled ? "Board, feed, blocked accounts" : "Weekly board, blocked accounts"),
+        "Who can see you": ("eye", FeatureFlags.socialFeedEnabled ? "Boards, feed, blocked accounts" : "Boards, blocked accounts"),
         "Health": ("heart", "Apple Health"),
         "Your app": ("paintpalette", "Accent color"),
         "Your data": ("externaldrive", PremiumGate.storefrontEnabled ? "Export, import, backup, Pro" : "Export, import, backup"),
@@ -1836,14 +1840,13 @@ struct ProfileView: View {
                     // The board publishes your real name — and scores post on
                     // every log in EITHER role, so the off-switch renders for
                     // both (audit 5, P1-4: a coach could never leave).
-                    preferenceToggleRow(
-                        title: "Weekly board",
-                        caption: "Ranks your logged sessions against other athletes under your name. Leaving stops your updates \u{2014} this week's posted entry stands until Monday.",
-                        isOn: Binding(
-                            get: { store.leaderboardOptIn },
-                            set: { $0 ? store.joinWeeklyBoard() : store.leaveWeeklyBoard() }
-                        )
-                    )
+                    // Boards are groups with codes now (2026-10-10): join and
+                    // leave them in Network → Board; nothing posts anywhere
+                    // without a code you entered.
+                    Text("Boards: your logged sets post only to boards you joined with a code (Network → Board). Leave a board there to stop.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
 
                 // Athlete-only network identity, dark with the feed. The
