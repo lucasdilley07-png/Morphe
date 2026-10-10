@@ -1,6 +1,28 @@
 import Combine
 import SwiftUI
 import FirebaseCore
+import FirebaseAppCheck
+
+/// Human-traffic-only (Lucas 2026-10-10): every Firestore request carries
+/// an App Check token proving it came from the genuine Morphe app on a
+/// real Apple device (App Attest; DeviceCheck on older iOS). A script with
+/// a stolen login has no token. Enforcement is switched on in the Firebase
+/// console (App Check → Firestore → Enforce) once tokens are flowing;
+/// until then the SDK only reports.
+///
+/// GATED ON THE $99 PROGRAM: App Attest needs the
+/// `com.apple.developer.devicecheck.appattest-environment` entitlement,
+/// which a personal team cannot sign (Xcode refuses the profile). After
+/// enrolment: add that key (value `production`) to Morphe.entitlements,
+/// upload the DeviceCheck key in Firebase → App Check, then enforce.
+final class MorpheAppCheckProviderFactory: NSObject, AppCheckProviderFactory {
+    func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
+        if #available(iOS 14.0, *) {
+            return AppAttestProvider(app: app)
+        }
+        return DeviceCheckProvider(app: app)
+    }
+}
 
 @main
 struct MorpheApp: App {
@@ -10,7 +32,15 @@ struct MorpheApp: App {
     init() {
         // Firebase must be configured before anything touches Auth/Firestore —
         // assigning the store explicitly here (instead of a property default)
-        // guarantees configure() runs first.
+        // guarantees configure() runs first. The App Check factory goes in
+        // BEFORE configure (the SDK reads it there); debug builds use the
+        // debug provider (the simulator can't attest) — its token prints to
+        // the console and is registered in Firebase for test devices.
+        #if DEBUG
+        AppCheck.setAppCheckProviderFactory(AppCheckDebugProviderFactory())
+        #else
+        AppCheck.setAppCheckProviderFactory(MorpheAppCheckProviderFactory())
+        #endif
         FirebaseApp.configure()
         let auth = FirebaseAuthService()
         let store = MorpheAppStore(

@@ -39,6 +39,7 @@
 		1B20F6002C4000010010FA01 /* FirebaseAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FA02 /* FirebaseAuthService.swift */; };
 		1B20F6002C4000010010FB01 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB02 /* FirebaseAuth */; };
 		1B20F6002C4000010010FB03 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB04 /* FirebaseFirestore */; };
+		1B20F6002C4000010010FB05 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 1B20F6002C4000010010FB06 /* FirebaseAppCheck */; };
 		1B20F6002C4000010010FC01 /* CloudBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FC02 /* CloudBackup.swift */; };
 		1B20F6002C4000010010FD01 /* QRConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FD02 /* QRConnectView.swift */; };
 		1B20F6002C4000010010FF01 /* WorkoutParty.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B20F6002C4000010010FF02 /* WorkoutParty.swift */; };
@@ -170,6 +171,7 @@
 			files = (
 				1B20F6002C4000010010FB01 /* FirebaseAuth in Frameworks */,
 				1B20F6002C4000010010FB03 /* FirebaseFirestore in Frameworks */,
+				1B20F6002C4000010010FB05 /* FirebaseAppCheck in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -375,6 +377,7 @@
 			packageProductDependencies = (
 				1B20F6002C4000010010FB02 /* FirebaseAuth */,
 				1B20F6002C4000010010FB04 /* FirebaseFirestore */,
+				1B20F6002C4000010010FB06 /* FirebaseAppCheck */,
 			);
 			productName = Morphe;
 			productReference = 1B20F6002C40000100100010 /* Morphe.app */;
@@ -1011,6 +1014,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A0F9E0943000C27F00DAC2F6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		1B20F6002C4000010010FB06 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A0F9E0943000C27F00DAC2F6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
