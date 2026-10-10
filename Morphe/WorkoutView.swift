@@ -1659,19 +1659,21 @@ struct DiscoverScreenView: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
-                    SectionTitleView(
-                        title: "Discover",
-                        subtitle: store.selectedDiscoverSection == .feed
-                            ? "What the Creator Coaches published — under their names, every post reportable."
-                            : (store.discoverWorkouts.isEmpty
-                                ? "A new workout library is on the way."
-                                : "\(store.discoverWorkouts.count) workouts and \(store.exerciseDatabase.count) exercises. Pick a style."),
-                        titleSize: 16
-                    )
-
-                    // Workouts | Feed (Lucas 2026-10-10): the Feed moved here
-                    // from Network.
+                    // Workouts | Feed lead the page (Lucas 2026-10-10: no
+                    // Discover title) — the tabs ARE the header, same as
+                    // Network's.
                     DiscoverSectionTabs()
+                        .padding(.top, -8)
+
+                    Text(store.selectedDiscoverSection == .feed
+                         ? "What the Creator Coaches published — under their names, every post reportable."
+                         : (store.discoverWorkouts.isEmpty
+                             ? "A new workout library is on the way."
+                             : "\(store.discoverWorkouts.count) workouts and \(store.exerciseDatabase.count) exercises. Pick a style."))
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
 
                     if store.selectedDiscoverSection == .feed {
                         CreatorFeed()
