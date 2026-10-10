@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""PRIVACY_POLICY.md → docs/privacy.html, in the Spartan page style.
+"""PRIVACY_POLICY.md → docs/privacy.html and TERMS_OF_USE.md →
+docs/terms.html, in the Spartan page style.
 
-The policy's markdown is the source of truth; the web page is generated,
-never hand-edited. Supports what the policy uses: #/## headings, bold,
-links, bullet lists, paragraphs. Run after every policy change:
+The markdown is the source of truth; the web pages are generated, never
+hand-edited. Supports what the documents use: #/## headings, bold, links,
+bullet lists, paragraphs. Run after every change:
 
     python3 Tools/build_privacy_page.py
 """
@@ -11,8 +12,12 @@ import html, re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "PRIVACY_POLICY.md"
-OUT = ROOT / "docs/privacy.html"
+PAGES = [
+    (ROOT / "PRIVACY_POLICY.md", ROOT / "docs/privacy.html", "Morphe Privacy Policy",
+     "What Morphe collects, where it lives, and the controls you have — export and delete are both in the app."),
+    (ROOT / "TERMS_OF_USE.md", ROOT / "docs/terms.html", "Morphe Terms of Use",
+     "The terms you accept in the app — including the human-only policy: no bots, no spam, no AI-generated content."),
+]
 
 def inline(text):
     text = html.escape(text, quote=False)
@@ -48,26 +53,27 @@ def convert(md):
     flush_para(); flush_list()
     return "\n".join(out)
 
-body = convert(SRC.read_text(encoding="utf-8"))
-page = f"""<!DOCTYPE html>
+for src, out, title, desc in PAGES:
+    body = convert(src.read_text(encoding="utf-8"))
+    page = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Morphe Privacy Policy</title>
-<meta name="description" content="What Morphe collects, where it lives, and the controls you have — export and delete are both in the app.">
-<link rel="canonical" href="https://lucasdilley07-png.github.io/Morphe/privacy.html">
+<title>{title}</title>
+<meta name="description" content="{desc}">
+<link rel="canonical" href="https://lucasdilley07-png.github.io/Morphe/{out.name}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Morphe">
-<meta property="og:title" content="Morphe Privacy Policy">
-<meta property="og:description" content="What Morphe collects, where it lives, and the controls you have — export and delete are both in the app.">
-<meta property="og:url" content="https://lucasdilley07-png.github.io/Morphe/privacy.html">
+<meta property="og:title" content="{title}">
+<meta property="og:description" content="{desc}">
+<meta property="og:url" content="https://lucasdilley07-png.github.io/Morphe/{out.name}">
 <meta property="og:image" content="https://lucasdilley07-png.github.io/Morphe/assets/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Morphe Privacy Policy">
-<meta name="twitter:description" content="What Morphe collects, where it lives, and the controls you have — export and delete are both in the app.">
+<meta name="twitter:title" content="{title}">
+<meta name="twitter:description" content="{desc}">
 <meta name="twitter:image" content="https://lucasdilley07-png.github.io/Morphe/assets/og-card.png">
 <meta name="theme-color" content="#121214">
 <link rel="icon" href="assets/icon.png">
@@ -98,10 +104,10 @@ li {{ margin-bottom:6px; }}
 <div class="wrap">
   <a class="brand" href="index.html" aria-label="Morphe home"><img src="assets/helmet.png" alt=""><span>MORPHE</span></a>
 {body}
-  <div class="foot"><a href="index.html">Morphe</a><a href="support.html">Support</a><span>TRAIN SMARTER</span></div>
+  <div class="foot"><a href="index.html">Morphe</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms of use</a><a href="support.html">Support</a><span>TRAIN SMARTER</span></div>
 </div>
 </body>
 </html>
 """
-OUT.write_text(page, encoding="utf-8")
-print("wrote", OUT)
+    out.write_text(page, encoding="utf-8")
+    print("wrote", out)

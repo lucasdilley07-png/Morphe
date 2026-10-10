@@ -90,6 +90,34 @@ def fs_call(user: dict, method: str, path: str, payload=None, params="") -> int:
     return response.status_code
 
 
+def fs_commit(user: dict, writes: list) -> int:
+    """Batched write (the :commit endpoint) as this user."""
+    response = requests.post(
+        f"{FS.rsplit('/documents', 1)[0]}/documents:commit",
+        json={"writes": writes},
+        headers={"Authorization": f"Bearer {user['token']}"}, timeout=30)
+    return response.status_code
+
+
+def doc_name(path: str) -> str:
+    return f"projects/{PROJECT}/databases/(default)/documents/{path}"
+
+
+def stamp_write(user: dict, field: str) -> dict:
+    """users/{uid}.{field} = request.time, merged — the human-pace stamp."""
+    return {"update": {"name": doc_name(f"users/{user['uid']}"), "fields": {}},
+            "updateMask": {"fieldPaths": []},
+            "updateTransforms": [{"fieldPath": field, "setToServerValue": "REQUEST_TIME"}]}
+
+
+def paced_create(user: dict, path: str, fields: dict, field: str) -> int:
+    """Create `path` with `fields` + the pace stamp in one batch (the app's shape)."""
+    return fs_commit(user, [
+        {"update": {"name": doc_name(path), "fields": fields},
+         "currentDocument": {"exists": False}},
+        stamp_write(user, field)])
+
+
 def s(value): return {"stringValue": value}
 def b(value): return {"booleanValue": value}
 def i(value): return {"integerValue": str(value)}
@@ -122,11 +150,23 @@ try:
           fs_call(B, "PATCH", f"usernames/{username}", {"fields": {"uid": s(B["uid"])}}))
 
     print("\n— Posts (honest shapes) —")
-    check("A publishes a valid post", True,
-          fs_call(A, "PATCH", f"posts/{post_id}",
+    check("A publishes a valid post (stamped batch)", True,
+          paced_create(A, f"posts/{post_id}",
+                       {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                        "verified": b(False), "text": s("live rules test"),
+                        "setCount": i(12)}, "lastPostAt"))
+    check("A posts again inside 45 s (human pace)", False,
+          paced_create(A, f"posts/{post_id}-fast",
+                       {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                        "verified": b(False), "text": s("too fast")}, "lastPostAt"))
+    check("A posts without the pace stamp (bot shape)", False,
+          fs_call(A, "PATCH", f"posts/{post_id}-nostamp",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                              "verified": b(False), "text": s("live rules test"),
-                              "setCount": i(12)}}))
+                              "verified": b(False), "text": s("no stamp")}}))
+    # The remaining shape checks are DENY cases or need the pace window;
+    # B is a fresh account with no stamp, A waits out the window once.
+    print("  … waiting 46 s for A's post window")
+    time.sleep(46)
     check("A self-mints verified:true on a post", False,
           fs_call(A, "PATCH", f"posts/{post_id}-v",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
@@ -140,11 +180,11 @@ try:
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Fake A"),
                               "verified": b(False), "text": s("impostor")}}))
     check("A posts with accent + headline identity", True,
-          fs_call(A, "PATCH", f"posts/{post_id}-a",
-                  {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                              "verified": b(False), "text": s("accent test"),
-                              "authorAccent": s("Electric Blue"),
-                              "authorHeadline": s("Strength · 12-day streak")}}))
+          paced_create(A, f"posts/{post_id}-a",
+                       {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                        "verified": b(False), "text": s("accent test"),
+                        "authorAccent": s("Electric Blue"),
+                        "authorHeadline": s("Strength · 12-day streak")}, "lastPostAt"))
     check("A posts an oversized headline", False,
           fs_call(A, "PATCH", f"posts/{post_id}-h",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
@@ -155,11 +195,13 @@ try:
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
                               "verified": b(False), "text": s("accent abuse"),
                               "authorAccent": s("x" * 60)}}))
+    print("  … waiting 46 s for A's post window")
+    time.sleep(46)
     check("A posts a photo within the image cap", True,
-          fs_call(A, "PATCH", f"posts/{post_id}-i",
-                  {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                              "verified": b(False), "text": s(" "),
-                              "imageB64": s("QUJD" * 1000)}}))
+          paced_create(A, f"posts/{post_id}-i",
+                       {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                        "verified": b(False), "text": s(" "),
+                        "imageB64": s("QUJD" * 1000)}, "lastPostAt"))
     check("A posts an over-cap image blob", False,
           fs_call(A, "PATCH", f"posts/{post_id}-i2",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
@@ -182,10 +224,18 @@ try:
 
     print("\n— Comments —")
     comment_id = f"c-{RUN_ID}"
-    check("B comments on A's post", True,
-          fs_call(B, "PATCH", f"posts/{post_id}/comments/{comment_id}",
+    check("B comments on A's post (stamped batch)", True,
+          paced_create(B, f"posts/{post_id}/comments/{comment_id}",
+                       {"authorUid": s(B["uid"]), "authorName": s("Rules B"),
+                        "text": s("solid session")}, "lastCommentAt"))
+    check("B comments again inside 8 s (human pace)", False,
+          paced_create(B, f"posts/{post_id}/comments/{comment_id}-fast",
+                       {"authorUid": s(B["uid"]), "authorName": s("Rules B"),
+                        "text": s("too fast")}, "lastCommentAt"))
+    check("B comments without the pace stamp", False,
+          fs_call(B, "PATCH", f"posts/{post_id}/comments/{comment_id}-nostamp",
                   {"fields": {"authorUid": s(B["uid"]), "authorName": s("Rules B"),
-                              "text": s("solid session")}}))
+                              "text": s("no stamp")}}))
     check("A deletes B's comment (not the author)", False,
           fs_call(A, "DELETE", f"posts/{post_id}/comments/{comment_id}"))
     check("B edits their published comment (immutable)", False,

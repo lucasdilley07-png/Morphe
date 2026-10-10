@@ -143,6 +143,7 @@ struct LocalProfileSnapshot: Codable, Equatable {
     var taskHistory: [TaskDayRecord] = []
     // Terms of use: accepted once, never asked again.
     var hasAcceptedTerms: Bool = false
+    var acceptedTermsVersion: Int = 0
     // Rename rate limiting (epoch seconds; 0 = never changed).
     var nameChangedAtEpoch: Double = 0
     var usernameChangedAtEpoch: Double = 0
@@ -246,6 +247,9 @@ extension LocalProfileSnapshot {
         scannedConnections = ((try? c.decodeIfPresent([ScannedConnection].self, forKey: .scannedConnections)) ?? nil) ?? []
         taskHistory = ((try? c.decodeIfPresent([TaskDayRecord].self, forKey: .taskHistory)) ?? nil) ?? []
         hasAcceptedTerms = ((try? c.decodeIfPresent(Bool.self, forKey: .hasAcceptedTerms)) ?? nil) ?? false
+        // Pre-v2 blobs accepted v1 — "1" keeps the old acceptance honest
+        // and re-gates them on the human-only terms.
+        acceptedTermsVersion = ((try? c.decodeIfPresent(Int.self, forKey: .acceptedTermsVersion)) ?? nil) ?? (hasAcceptedTerms ? 1 : 0)
         profileBio = str(.profileBio)
         profilePhotoBase64 = str(.profilePhotoBase64)
         mealPrepHabit = str(.mealPrepHabit)

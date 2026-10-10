@@ -6598,6 +6598,71 @@ final class ModerationTests: XCTestCase {
         XCTAssertFalse(ContentModeration.containsBlockedTerm("Completed Push Day — 18 sets, 42 min."), "recaps sail through")
     }
 
+    // MARK: Human-only policy (2026-10-10)
+
+    func testHumanOnlyPolicyRefusesSpamAndAITellsAndPassesHumans() {
+        func reason(_ text: String, _ kind: ContentModeration.Kind = .post) -> String? {
+            ContentModeration.humanityRefusal(for: text, kind: kind)?.reason
+        }
+        XCTAssertEqual(reason("Follow for follow, link in bio"), "spam-phrase")
+        XCTAssertEqual(reason("check https://a.com and https://b.com"), "links", "two links in a post")
+        XCTAssertEqual(reason("see https://a.com", .comment), "links", "no links in comments")
+        XCTAssertNil(reason("my log is at https://a.com this week"), "one link in a post is fine")
+        XCTAssertEqual(reason("LET'S GOOOOOOOOOO!!!!!!!!!!!"), "repetition")
+        XCTAssertEqual(reason("buy now\nbuy now\nbuy now"), "repetition")
+        XCTAssertEqual(reason("I HIT A NEW SQUAT PR TODAY AND I AM SO HAPPY"), "caps")
+        XCTAssertEqual(reason("As an AI language model I can't log workouts"), "ai-tells")
+        XCTAssertEqual(reason("## Push day\n- bench\n- fly\n- dips\n**done**"), "ai-tells", "markdown is an assistant tell")
+        XCTAssertEqual(reason("Certainly! I hope this helps you unlock your potential"), "ai-tells", "weak tells stack")
+        XCTAssertNil(reason("Feel free to join Saturday's run"), "one weak tell alone passes")
+        XCTAssertNil(reason("New PR: Squat 315. Legs are gone, feeling great."))
+        XCTAssertNil(reason("Completed Push Day — 18 sets, 42 min. New PR: Bench 225 lb."), "recaps pass")
+        XCTAssertNil(reason("ok", .message))
+    }
+
+    func testContentPacerGapsCapsAndDuplicates() {
+        var pacer = ContentPacer()
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+        XCTAssertNil(pacer.refusal(for: .post, text: "first", now: t0))
+        pacer.record(.post, text: "first", now: t0)
+        XCTAssertNotNil(pacer.refusal(for: .post, text: "second", now: t0.addingTimeInterval(10)), "45 s gap")
+        XCTAssertNil(pacer.refusal(for: .post, text: "second", now: t0.addingTimeInterval(50)))
+        XCTAssertNotNil(pacer.refusal(for: .post, text: "FIRST ", now: t0.addingTimeInterval(50)), "duplicate within a day, case/space-insensitive")
+        XCTAssertNil(pacer.refusal(for: .post, text: "first", now: t0.addingTimeInterval(90_000)), "a day later it's new again")
+        // Hourly cap.
+        var t = t0.addingTimeInterval(100_000)
+        for n in 0..<12 {
+            XCTAssertNil(pacer.refusal(for: .post, text: "p\(n)", now: t))
+            pacer.record(.post, text: "p\(n)", now: t)
+            t = t.addingTimeInterval(60)
+        }
+        XCTAssertNotNil(pacer.refusal(for: .post, text: "p13", now: t), "13th post in the hour")
+        // Messages: "ok" twice is fine, three times in two minutes is a script.
+        var m = ContentPacer()
+        for n in 0..<2 {
+            XCTAssertNil(m.refusal(for: .message, text: "ok", now: t0.addingTimeInterval(Double(n) * 5)))
+            m.record(.message, text: "ok", now: t0.addingTimeInterval(Double(n) * 5))
+        }
+        XCTAssertNotNil(m.refusal(for: .message, text: "ok", now: t0.addingTimeInterval(10)))
+    }
+
+    func testTermsVersionBumpRegatesOldAcceptances() {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.acceptTerms()
+        XCTAssertEqual(store.acceptedTermsVersion, MorpheAppStore.currentTermsVersion)
+        XCTAssertFalse(store.termsChangedSinceAcceptance)
+        // A v1 acceptance (pre-2026-10-10 blob) re-gates on the human-only terms.
+        store.acceptedTermsVersion = 1
+        XCTAssertTrue(store.termsChangedSinceAcceptance)
+        XCTAssertTrue(store.hasCompletedOnboarding && (!store.hasAcceptedTerms || store.acceptedTermsVersion < MorpheAppStore.currentTermsVersion),
+                      "the gate's terms clause fires (the auth clause is the signed-in check)")
+        store.acceptTerms()
+        XCTAssertFalse(store.termsChangedSinceAcceptance)
+        XCTAssertEqual(store.acceptedTermsVersion, MorpheAppStore.currentTermsVersion)
+    }
+
     func testBlockingRemovesContentAndSeversFollow() {
         let store = signedInStore()
         store.followedUids = ["bad-actor"]

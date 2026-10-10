@@ -563,6 +563,10 @@ final class FirebaseMessagingService: MessagingSyncing {
             "lastSender": senderUid,
             "updatedAt": FieldValue.serverTimestamp()
         ], forDocument: threadDoc(threadId))
+        // Server-side pace (human-only policy 2026-10-10): the rules need
+        // lastMessageAt == request.time and the prior stamp ≥1 s old.
+        batch.setData(["lastMessageAt": FieldValue.serverTimestamp()],
+                      forDocument: db.collection("users").document(senderUid), merge: true)
         do {
             try await batch.commit()
             return true
@@ -795,7 +799,14 @@ final class FirebaseFeedService: FeedSyncing {
             data["imageB64"] = post.imageB64
         }
         do {
-            try await posts.document(post.id).setData(data)
+            // The post and the author's lastPostAt land in ONE batch: the
+            // rules require the stamp to equal request.time and the prior
+            // stamp to be ≥45 s old — a server-side pace no client can skip.
+            let batch = db.batch()
+            batch.setData(data, forDocument: posts.document(post.id))
+            batch.setData(["lastPostAt": FieldValue.serverTimestamp()],
+                          forDocument: db.collection("users").document(post.authorUid), merge: true)
+            try await batch.commit()
             return true
         } catch {
             return false
@@ -872,7 +883,11 @@ final class FirebaseFeedService: FeedSyncing {
             "createdAt": FieldValue.serverTimestamp()
         ]
         do {
-            try await comments(comment.postId).document(comment.id).setData(data)
+            let batch = db.batch()
+            batch.setData(data, forDocument: comments(comment.postId).document(comment.id))
+            batch.setData(["lastCommentAt": FieldValue.serverTimestamp()],
+                          forDocument: db.collection("users").document(comment.authorUid), merge: true)
+            try await batch.commit()
             return true
         } catch {
             return false

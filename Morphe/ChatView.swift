@@ -1447,6 +1447,9 @@ private struct RealFeedSection: View {
     /// Blocks double-submit and shows a spinner while the post is in flight
     /// (feedback P1 2026-09).
     @State private var isPosting = false
+    /// A jump of 120+ characters in one change is a paste — the human-only
+    /// notice shows (Lucas 2026-10-10); the publish checks run regardless.
+    @State private var showPasteNotice = false
     @State private var filter: FeedFilter = .ranked
     @State private var repostTarget: FeedPost?
     /// The post whose author view is pushed (a real push, swipe-back works).
@@ -1820,9 +1823,32 @@ private struct RealFeedSection: View {
                         .lineLimit(isActive ? 2...5 : 1...1)
                         .textFieldStyle(MorpheFieldStyle())
                         .focused($composerFocused)
+                        .onChange(of: draft) { old, new in
+                            if new.count - old.count >= 120 { showPasteNotice = true }
+                            if new.isEmpty { showPasteNotice = false }
+                        }
                 }
 
                 if isActive {
+                    // The human-only policy, once: the pledge gates the
+                    // first post and is remembered on this phone.
+                    if !store.humanPledgeAccepted {
+                        Toggle(isOn: Binding(
+                            get: { store.humanPledgeAccepted },
+                            set: { if $0 { store.acceptHumanPledge() } }
+                        )) {
+                            Text("These are my own words and photos — no AI, no bots. Morphe is human-only.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                        .tint(MorpheTheme.accent)
+                    }
+                    if showPasteNotice {
+                        Label("Pasted text — Morphe only takes your own writing. AI-written posts are removed; repeat offenders lose the account.", systemImage: "person.fill.checkmark")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.warning)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     HStack {
                         Text("\(draft.count)/\(Self.postLimit)")
                             .font(.caption2.weight(.semibold))
@@ -1853,7 +1879,7 @@ private struct RealFeedSection: View {
                         // Same send control as the chat composer (ThreadChatView):
                         // 84x44 primary CTA next to a MorpheFieldStyle field.
                         .frame(width: 96)
-                        .disabled(cleanDraft.isEmpty || draft.count > Self.postLimit)
+                        .disabled(cleanDraft.isEmpty || draft.count > Self.postLimit || !store.humanPledgeAccepted)
                     }
                 }
             }

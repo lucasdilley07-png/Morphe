@@ -35,6 +35,23 @@ service cloud.firestore {
         && request.resource.data.get('creator', false) != true;
     }
 
+    // Human-only policy (2026-10-10): every post, comment and message
+    // carries a server-time stamp on the writer's own users/{uid} doc,
+    // written in the SAME batch (lastPostAt / lastCommentAt /
+    // lastMessageAt). The content write is allowed only when the stamp
+    // after the batch equals request.time AND the stamp before it is at
+    // least `seconds` old — a pace enforced where no client can skip it.
+    function priorStamp(field) {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get(field, null)
+        : null;
+    }
+    function humanPaced(field, seconds) {
+      return getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get(field, null) == request.time
+        && (priorStamp(field) == null
+            || priorStamp(field) <= request.time - duration.value(seconds, 's'));
+    }
+
     // Creator Coach (2026-10-05): a role granted ONLY by the admin tool
     // (users/{uid}.creator). The application is filed on the website; the
     // app reads its status and, once approved, publishes under this check.
@@ -604,7 +621,9 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['senderUid', 'text', 'sentAt'])
           && request.resource.data.text is string
           && request.resource.data.text.size() >= 1
-          && request.resource.data.text.size() <= 2000;
+          && request.resource.data.text.size() <= 2000
+          // Human pace: one message a second, stamped in the same batch.
+          && humanPaced('lastMessageAt', 1);
 
         // Messages are immutable — sent means sent.
         allow update, delete: if false;
@@ -683,7 +702,10 @@ service cloud.firestore {
             || (request.resource.data.authorHeadline is string
                 && request.resource.data.authorHeadline.size() <= 80))
         && (request.resource.data.get('verified', false) != true
-            || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('verified', false) == true);
+            || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('verified', false) == true)
+        // Human pace (human-only policy): 45 s between posts, stamped in
+        // the same batch as the post.
+        && humanPaced('lastPostAt', 45);
 
       // Posts are immutable — published means published.
       allow update: if false;
@@ -718,7 +740,9 @@ service cloud.firestore {
           && request.resource.data.authorName.size() >= 1
           && request.resource.data.text is string
           && request.resource.data.text.size() >= 1
-          && request.resource.data.text.size() <= 300;
+          && request.resource.data.text.size() <= 300
+          // Human pace: 8 s between comments.
+          && humanPaced('lastCommentAt', 8);
         allow update: if false;
         allow delete: if isSignedIn() && request.auth.uid == resource.data.authorUid;
       }

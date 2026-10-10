@@ -1993,6 +1993,19 @@ final class MorpheAppStore {
 
     /// Terms of use: accepted once, remembered forever (locally + cloud).
     var hasAcceptedTerms = false
+    /// Which terms they accepted. Bumped when the terms change in a way
+    /// that needs a fresh "I agree" (v2, 2026-10-10: the human-only,
+    /// anti-spam, anti-AI-content policy). Older acceptances re-gate.
+    static let currentTermsVersion = 2
+    var acceptedTermsVersion = 0
+    /// The one-time pledge in the composer: "these are my own words".
+    var humanPledgeAccepted: Bool = UserDefaults.standard.bool(forKey: "morphe.humanPledge")
+    func acceptHumanPledge() {
+        humanPledgeAccepted = true
+        UserDefaults.standard.set(true, forKey: "morphe.humanPledge")
+    }
+    /// Gaps, hourly caps and duplicates for posts, comments and messages.
+    private var contentPacer = ContentPacer()
     /// The welcome celebration queued by onboarding waits behind the terms
     /// gate instead of racing it.
     private var welcomeAwaitsTermsAcceptance = false
@@ -2005,12 +2018,17 @@ final class MorpheAppStore {
     /// The terms gate shows for any signed-in, onboarded account that hasn't
     /// accepted yet — including every reopen until they do.
     var needsTermsAcceptance: Bool {
-        hasCompletedOnboarding && !hasAcceptedTerms
+        hasCompletedOnboarding && (!hasAcceptedTerms || acceptedTermsVersion < Self.currentTermsVersion)
             && (!FeatureFlags.accountsEnabled || authUser != nil)
+    }
+    /// True when they accepted an older version — the gate says what changed.
+    var termsChangedSinceAcceptance: Bool {
+        hasAcceptedTerms && acceptedTermsVersion < Self.currentTermsVersion
     }
 
     func acceptTerms() {
         hasAcceptedTerms = true
+            acceptedTermsVersion = Self.currentTermsVersion
         // The persisted debt covers a relaunch between onboarding and this
         // acceptance — the in-memory flag alone died with the process.
         if welcomeAwaitsTermsAcceptance
@@ -2625,6 +2643,7 @@ final class MorpheAppStore {
         // drop them once; the window refills from honest days.
         taskCompletionHistory.removeAll { $0.total > Self.autoDerivedTaskTitles.count }
         hasAcceptedTerms = snapshot.hasAcceptedTerms
+        acceptedTermsVersion = snapshot.acceptedTermsVersion
         nameChangedAtEpoch = snapshot.nameChangedAtEpoch
         usernameChangedAtEpoch = snapshot.usernameChangedAtEpoch
         lastDailyResetDay = snapshot.dailyStateDay
@@ -3204,6 +3223,7 @@ final class MorpheAppStore {
                 scannedConnections: scannedConnections,
                 taskHistory: taskCompletionHistory,
                 hasAcceptedTerms: hasAcceptedTerms,
+                acceptedTermsVersion: acceptedTermsVersion,
                 nameChangedAtEpoch: nameChangedAtEpoch,
                 usernameChangedAtEpoch: usernameChangedAtEpoch
         )
@@ -6267,6 +6287,7 @@ final class MorpheAppStore {
         // gate only appears for accounts that predate the in-flow consent.
         if onboardingDraft.agreedToTerms {
             hasAcceptedTerms = true
+            acceptedTermsVersion = Self.currentTermsVersion
         }
         rebuildPersonalRules()
         // Nutrition goals framed by the goals just chosen (weight arrives
@@ -6300,6 +6321,7 @@ final class MorpheAppStore {
         UserDefaults.standard.set(true, forKey: Self.welcomePendingKey)
         if onboardingDraft.agreedToTerms {
             hasAcceptedTerms = true
+            acceptedTermsVersion = Self.currentTermsVersion
             // The hello beat plays FIRST (audit 11, P0-1): the welcome
             // sheet presents above every overlay, so raising both at once
             // hid the hello behind it forever. HelloBeatOverlay's
@@ -13356,6 +13378,16 @@ final class MorpheAppStore {
             showToast("That message can't be sent — keep it respectful.", isError: true)
             return
         }
+        // Human-only policy (Lucas 2026-10-10): spam shapes, AI tells,
+        // then the per-account pace.
+        if let refusal = ContentModeration.humanityRefusal(for: clean, kind: .message) {
+            showToast(refusal.message, isError: true)
+            return
+        }
+        if let paced = contentPacer.refusal(for: .message, text: clean) {
+            showToast(paced, isError: true)
+            return
+        }
         guard let uid = authUser?.id, let threadId = activeThreadId else { return }
         // Optimistic echo (speed audit S0-4): the bubble renders NOW; the
         // listener's server copy replaces it on arrival.
@@ -13369,6 +13401,7 @@ final class MorpheAppStore {
             showToast("Message didn't send — check your connection.", isError: true)
             return
         }
+        contentPacer.record(.message, text: clean)
         if let index = liveThreads.firstIndex(where: { $0.id == threadId }) {
             liveThreads[index].lastMessage = String(clean.prefix(300))
             liveThreads[index].lastSender = uid
@@ -13692,7 +13725,7 @@ final class MorpheAppStore {
 
     // MARK: Report + block (App Store 1.2: report, block, filter)
 
-    static let reportReasons = ["Spam", "Abuse or hate", "Nudity or sexual content", "Dangerous advice", "Other"]
+    static let reportReasons = ["Spam or bot", "AI-generated content", "Abuse or hate", "Nudity or sexual content", "Dangerous advice", "Other"]
 
     func reportPost(_ post: FeedPost, reason: String) {
         guard let uid = authUser?.id else { return }
@@ -13836,6 +13869,14 @@ final class MorpheAppStore {
             showToast(ContentModeration.refusalMessage)
             return false
         }
+        if let refusal = ContentModeration.humanityRefusal(for: clean, kind: .comment) {
+            showToast(refusal.message, isError: true)
+            return false
+        }
+        if let paced = contentPacer.refusal(for: .comment, text: clean) {
+            showToast(paced, isError: true)
+            return false
+        }
         let comment = PostComment(
             id: UUID().uuidString,
             postId: post.id,
@@ -13847,6 +13888,7 @@ final class MorpheAppStore {
             showToast("Comment didn't send — check your connection.", isError: true)
             return false
         }
+        contentPacer.record(.comment, text: clean)
         postComments[post.id, default: []].append(comment)
         Haptics.impact(.light)
         return true
@@ -13880,6 +13922,17 @@ final class MorpheAppStore {
             showToast(ContentModeration.refusalMessage)
             return false
         }
+        // Human-only policy (Lucas 2026-10-10). Auto-share recaps are
+        // template text from logged sets and pass the text checks; the
+        // pace applies to every post alike.
+        if !clean.isEmpty, let refusal = ContentModeration.humanityRefusal(for: clean, kind: .post) {
+            showToast(refusal.message, isError: true)
+            return false
+        }
+        if let paced = contentPacer.refusal(for: .post, text: clean.isEmpty ? imageB64.prefix(64).description : clean) {
+            showToast(paced, isError: true)
+            return false
+        }
         let post = FeedPost(
             id: UUID().uuidString,
             authorUid: uid,
@@ -13902,6 +13955,7 @@ final class MorpheAppStore {
             imageB64: imageB64
         )
         guard await feedService.publish(post: post) else { return false }
+        contentPacer.record(.post, text: clean.isEmpty ? imageB64.prefix(64).description : clean)
         feedPosts.insert(post, at: 0)
         feedReactionCounts[post.id] = 0
         track("post_published")

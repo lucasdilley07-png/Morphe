@@ -25,7 +25,12 @@ stored on your device and backed up to your account in Google Firebase
 who you block, challenge and leaderboard entries (opt-in), Train Together
 party participation, and photos you choose to post, and private messages (with a connected coach or any member you start a chat with). Posts and
 comments are visible to other signed-in users; messages are visible only to
-the two people in the conversation.
+the two people in the conversation. To enforce the human-only policy in the
+[terms](terms.html), Morphe stores the time of your last post, comment and
+message on your account record and refuses writes that arrive faster than
+a person types; new text is also screened on your phone for spam shapes and
+AI-written patterns before it is sent. Nothing is sent to an AI service for
+this screening.
 
 **Coach sharing (optional).** If you turn on "Share with coach," a summary
 of your real training progress (streak, weekly volume, recent sessions,
