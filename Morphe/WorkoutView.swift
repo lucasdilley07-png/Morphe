@@ -364,6 +364,17 @@ struct WorkoutView: View {
                                 }
                             }
                         },
+                        onLogHold: { seconds in
+                            // Seconds ride the reps slot with an honest
+                            // label (2026-10-10) — history reads "Hold 45s",
+                            // never "45 reps".
+                            if store.completeTrackedSet(reps: seconds, weight: pendingWeight, rpe: pendingRPE, label: "Hold \(seconds)s") {
+                                pendingRPE = nil
+                                if !store.hopToSupersetPartnerIfNeeded(after: activeExercise) {
+                                    autoStartRest(after: activeExercise)
+                                }
+                            }
+                        },
                         onOpenCustomRepLogger: {
                             // A saved draft wins — whatever was typed last time
                             // comes back exactly. Otherwise suggest, clamped
@@ -2485,6 +2496,8 @@ private struct ActiveWorkoutTrackerCard: View {
     let weightUnit: WeightUnit
     let onPrevious: () -> Void
     let onQuickLogSet: (Int) -> Void
+    /// A timed move logs seconds held, labelled as a hold (2026-10-10).
+    let onLogHold: (Int) -> Void
     let onOpenCustomRepLogger: () -> Void
     let onEditSet: (Int) -> Void
     let onDeleteSet: (Int) -> Void
@@ -2492,9 +2505,78 @@ private struct ActiveWorkoutTrackerCard: View {
     let onStartRest: () -> Void
     let onOpenFormCheck: () -> Void
     let canGoPrevious: Bool
+    /// Bodyweight moves hide the load controls until asked (2026-10-10:
+    /// the single most confusing number a beginner saw was "135 lb" on a
+    /// push-up). Reset by the owner on every exercise change.
+    @State private var showsLoadForBodyweight = false
+    @State private var holdTarget = 30
+    @State private var holdElapsed = 0
+    @State private var holdRunning = false
+    @State private var holdTicker: Timer?
 
     private var isExerciseComplete: Bool {
         completedSets >= totalSets
+    }
+
+    /// The library's own equipment line decides: none, a mat, a bar to
+    /// hang from — plus the names that say it themselves.
+    private var isBodyweightMove: Bool {
+        let reference = store.exerciseDatabase.first { $0.id == exercise.exerciseLibraryID }
+            ?? store.exerciseDatabase.first { $0.name == exercise.name }
+        let equipment = (reference?.equipment ?? "").lowercased()
+        let name = exercise.name.lowercased()
+        if ["dumbbell", "barbell", "kettlebell", "cable", "machine", "band", "weighted", "loaded", "goblet"].contains(where: name.contains) { return false }
+        if ["none", "mat", "bodyweight", "pull-up bar", "pullup bar", "chin-up bar", "floor", "wall"].contains(where: equipment.contains) { return true }
+        return ["push-up", "pushup", "pull-up", "pullup", "chin-up", "dip", "plank", "squat jump", "burpee", "lunge", "sit-up",
+                "crunch", "mountain climber", "glute bridge", "bird dog", "dead bug", "superman", "hollow", "wall sit",
+                "jumping jack", "high knees", "bear crawl", "inchworm", "handstand", "pistol"].contains(where: name.contains)
+            && !name.contains("weighted")
+    }
+
+    /// Load controls stay hidden for a bodyweight move with no load on
+    /// it; one tap brings them back for weighted variations.
+    private var hidesLoad: Bool { isBodyweightMove && weight == 0 && !showsLoadForBodyweight }
+
+    /// Seconds-based moves get a timer, not a rep stepper.
+    private var isTimedMove: Bool {
+        let name = exercise.name.lowercased()
+        let reps = exercise.reps.lowercased()
+        if reps.contains("sec") || reps.contains("min") || reps.range(of: #"\d+\s*s\b"#, options: .regularExpression) != nil { return true }
+        // "Hang clean" and "hanging leg raise" count reps — only a real
+        // hang/hold/carry is timed.
+        if ["clean", "snatch", "hanging", "raise", "jerk"].contains(where: name.contains) { return false }
+        return ["plank", "hold", "wall sit", "dead hang", "grip hang", "carry", "hollow", "l-sit", "l sit", "isometric",
+                "handstand", "chair pose", "superman"].contains(where: name.contains)
+    }
+
+    /// The prescribed hold, parsed from the reps text ("30-45s", "1 min");
+    /// 30 s when the plan doesn't say.
+    private var prescribedHoldSeconds: Int {
+        let text = exercise.reps.lowercased()
+        if let range = text.range(of: #"(\d+)\s*min"#, options: .regularExpression),
+           let minutes = Int(text[range].filter(\.isNumber)) { return min(max(minutes * 60, 5), 600) }
+        let numbers = text.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+        if let last = numbers.last, last >= 5 { return min(last, 600) }
+        return 30
+    }
+
+    private func stopHold() {
+        holdTicker?.invalidate()
+        holdTicker = nil
+        holdRunning = false
+    }
+
+    private func startHold() {
+        holdElapsed = 0
+        holdRunning = true
+        Haptics.impact(.light)
+        holdTicker?.invalidate()
+        holdTicker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            MainActor.assumeIsolated {
+                holdElapsed += 1
+                if holdElapsed == holdTarget { Haptics.success() }
+            }
+        }
     }
 
     private var setProgress: Double {
@@ -2695,28 +2777,89 @@ private struct ActiveWorkoutTrackerCard: View {
                             .accessibilityLabel("Log set \(completedSets + 1) same as last session: \(last.reps) reps at \(last.weight > 0 ? weightUnit.format(last.weight) : "bodyweight")")
                         }
 
-                        SetConsoleRow(
-                            label: "Reps",
-                            value: "\(repsToLog)",
-                            onCoarseDown: nil,
-                            onDown: { repsToLog = max(1, repsToLog - 1) },
-                            onUp: { repsToLog = min(50, repsToLog + 1) },
-                            onCoarseUp: nil,
-                            onDirectEntry: { repsToLog = max(1, min(50, Int($0))) }
-                        )
+                        if isTimedMove {
+                            // A hold is timed, not counted (2026-10-10): the
+                            // clock runs, the end of it logs one set.
+                            VStack(spacing: 10) {
+                                Text(holdRunning || holdElapsed > 0 ? "\(holdElapsed)s" : "\(holdTarget)s")
+                                    .font(.system(size: 44, weight: .bold, design: .monospaced))
+                                    .monospacedDigit()
+                                    .contentTransition(.numericText(value: Double(holdElapsed)))
+                                    .foregroundStyle(holdRunning && holdElapsed >= holdTarget ? MorpheTheme.accentText : MorpheTheme.textPrimary)
+                                    .frame(maxWidth: .infinity)
+                                    .accessibilityLabel(holdRunning ? "Held \(holdElapsed) seconds" : "Target \(holdTarget) seconds")
+                                HStack(spacing: 8) {
+                                    Text("TARGET")
+                                        .font(MorpheTheme.microLabel(10)).tracking(1.2)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                    Stepper("\(holdTarget)s", value: $holdTarget, in: 5...600, step: 5)
+                                        .font(.subheadline.monospacedDigit())
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                        .fixedSize()
+                                        .disabled(holdRunning)
+                                    Spacer()
+                                }
+                                if holdRunning {
+                                    Button("Stop · log \(holdElapsed)s") {
+                                        stopHold()
+                                        if holdElapsed > 0 { onLogHold(holdElapsed); holdElapsed = 0 }
+                                    }
+                                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                                } else if holdElapsed > 0 {
+                                    HStack(spacing: 8) {
+                                        Button("Log \(holdElapsed)s") { onLogHold(holdElapsed); holdElapsed = 0 }
+                                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                                        Button("Redo") { holdElapsed = 0 }
+                                            .buttonStyle(SecondaryCTAButtonStyle())
+                                            .frame(width: 88)
+                                    }
+                                } else {
+                                    Button("Start hold") { startHold() }
+                                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                                }
+                            }
+                            .onAppear { holdTarget = prescribedHoldSeconds }
+                            .onDisappear { stopHold() }
+                        } else {
+                            SetConsoleRow(
+                                label: "Reps",
+                                value: "\(repsToLog)",
+                                onCoarseDown: nil,
+                                onDown: { repsToLog = max(1, repsToLog - 1) },
+                                onUp: { repsToLog = min(50, repsToLog + 1) },
+                                onCoarseUp: nil,
+                                onDirectEntry: { repsToLog = max(1, min(50, Int($0))) }
+                            )
+                        }
 
-                        SetConsoleRow(
-                            label: "Weight",
-                            value: weight > 0 ? weightUnit.format(weight) : "BW",
-                            coarseStep: weightUnit == .kilograms ? "10" : "25",
-                            onCoarseDown: { weight = max(0, weight - coarseWeightStep) },
-                            onDown: { weight = max(0, weight - weightStep) },
-                            onUp: { weight += weightStep },
-                            onCoarseUp: { weight += coarseWeightStep },
-                            onDirectEntry: { weight = max(0, $0) }
-                        )
+                        if hidesLoad {
+                            // Bodyweight: no stepper, no plate math, one
+                            // honest line and a door for the weighted version.
+                            HStack {
+                                Text("BODYWEIGHT")
+                                    .font(MorpheTheme.microLabel(10)).tracking(1.2)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                Spacer()
+                                Button("Add load") { showsLoadForBodyweight = true }
+                                    .buttonStyle(.plain)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.accentText)
+                                    .frame(minHeight: 32)
+                            }
+                        } else {
+                            SetConsoleRow(
+                                label: "Weight",
+                                value: weight > 0 ? weightUnit.format(weight) : "BW",
+                                coarseStep: isBodyweightMove ? nil : (weightUnit == .kilograms ? "10" : "25"),
+                                onCoarseDown: isBodyweightMove ? nil : { weight = max(0, weight - coarseWeightStep) },
+                                onDown: { weight = max(0, weight - weightStep) },
+                                onUp: { weight += weightStep },
+                                onCoarseUp: isBodyweightMove ? nil : { weight += coarseWeightStep },
+                                onDirectEntry: { weight = max(0, $0) }
+                            )
+                        }
 
-                        if let plateBreakdown {
+                        if let plateBreakdown, !isBodyweightMove {
                             Text(plateBreakdown)
                                 .font(MorpheTheme.microLabel(9))
                                 .tracking(0.8)
@@ -2727,14 +2870,16 @@ private struct ActiveWorkoutTrackerCard: View {
                         // RPE and the warm-up flag both live in the More
                         // sheet now (Lucas 2026-09-30) — the console stays
                         // two steppers and one button.
-                        Button(logButtonTitle) {
-                            onQuickLogSet(repsToLog)
+                        if !isTimedMove {
+                            Button(logButtonTitle) {
+                                onQuickLogSet(repsToLog)
+                            }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                            .accessibilityLabel(
+                                "Log set: \(repsToLog) reps at \(weightDisplay)"
+                                    + (rpe.map { ", effort \($0) of 10" } ?? "")
+                            )
                         }
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        .accessibilityLabel(
-                            "Log set: \(repsToLog) reps at \(weightDisplay)"
-                                + (rpe.map { ", effort \($0) of 10" } ?? "")
-                        )
                     }
                 }
 

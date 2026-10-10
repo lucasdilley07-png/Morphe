@@ -19,12 +19,24 @@ import FirebaseFirestore
 final class FirebaseAuthService: AuthService {
     private let cache: SignedInUserCache
     private(set) var currentUser: AppUser?
+    /// Fires on the main queue when Firebase drops the session underneath
+    /// us (password reset on the web, account disabled in the console):
+    /// the app used to stay "signed in" while every write was denied
+    /// (audit 2026-10-10).
+    var onSessionLost: (() -> Void)?
+    private var authListener: AuthStateDidChangeListenerHandle?
 
     private var db: Firestore { Firestore.firestore() }
     private var usersCollection: CollectionReference { db.collection("users") }
 
     init() {
         cache = SignedInUserCache()
+        authListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            guard let self, user == nil, self.currentUser != nil else { return }
+            self.currentUser = nil
+            self.cache.clear()
+            DispatchQueue.main.async { self.onSessionLost?() }
+        }
         // Only trust the cache when Firebase still holds a live session for the
         // same uid — otherwise a stale cache could "sign in" a signed-out user.
         if let firebaseUser = Auth.auth().currentUser,

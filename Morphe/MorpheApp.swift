@@ -12,8 +12,9 @@ struct MorpheApp: App {
         // assigning the store explicitly here (instead of a property default)
         // guarantees configure() runs first.
         FirebaseApp.configure()
-        _store = State(initialValue: MorpheAppStore(
-            authService: FirebaseAuthService(),
+        let auth = FirebaseAuthService()
+        let store = MorpheAppStore(
+            authService: auth,
             cloudBackup: FirebaseCloudBackup(),
             partyService: FirebasePartyService(),
             managedClientService: FirebaseManagedClientService(),
@@ -21,7 +22,14 @@ struct MorpheApp: App {
             verificationService: FirebaseVerificationService(),
             creatorService: FirebaseCreatorService(),
             appointmentService: FirebaseAppointmentService()
-        ))
+        )
+        // A session Firebase dropped signs the app out too (audit 2026-10-10).
+        auth.onSessionLost = { [weak store] in
+            guard let store, store.authUser != nil else { return }
+            store.signOut()
+            store.showToast("You were signed out — sign in again to keep backing up.")
+        }
+        _store = State(initialValue: store)
     }
 
     var body: some Scene {
@@ -48,6 +56,12 @@ struct MorpheApp: App {
                     // Intent fired while the app was already frontmost —
                     // no scene-phase change to piggyback on.
                     store.consumePendingIntentActions()
+                }
+                // Midnight while the app stays open (audit 2026-10-10): the
+                // Today board and the fuel log used to wait for the next
+                // foreground to roll over.
+                .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged).receive(on: RunLoop.main)) { _ in
+                    store.handleDayRolloverIfNeeded()
                 }
                 .onChange(of: scenePhase) { _, phase in
                     // A calendar day can pass while the app sits suspended in

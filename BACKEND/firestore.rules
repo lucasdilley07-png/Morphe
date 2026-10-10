@@ -589,10 +589,18 @@ service cloud.firestore {
           && (request.auth.uid == parentData().coachUid
               || request.auth.uid == parentData().athleteUid);
 
+        // The other participant, for the block check below.
+        function recipientUid() {
+          return request.auth.uid == parentData().coachUid ? parentData().athleteUid : parentData().coachUid;
+        }
+
         allow create: if isSignedIn()
           && request.resource.data.senderUid == request.auth.uid
           && (request.auth.uid == parentData().coachUid
               || request.auth.uid == parentData().athleteUid)
+          // Blocked means blocked (audit 2026-10-10): a sender the
+          // recipient blocked can't write, not just hidden client-side.
+          && !exists(/databases/$(database)/documents/users/$(recipientUid())/blocked/$(request.auth.uid))
           && request.resource.data.keys().hasOnly(['senderUid', 'text', 'sentAt'])
           && request.resource.data.text is string
           && request.resource.data.text.size() >= 1

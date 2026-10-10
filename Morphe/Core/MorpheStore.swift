@@ -12349,6 +12349,29 @@ final class MorpheAppStore {
     /// without a session. Nil unless there's a streak of 2+ days, today is
     /// a training day, and nothing is logged yet — losing beats gaining in
     /// the brain, but only when the thing at stake actually exists.
+    /// The streak's deadline when it is NOT today: the calm counterpart
+    /// to the warning (2026-10-10) — "safe until Thursday" teaches the
+    /// schedule rule instead of threatening daily. Nil when there is no
+    /// streak, the session is logged, or the deadline is today (the
+    /// warning's turn).
+    var streakSafeUntil: (days: Int, deadline: Date)? {
+        let streak = currentAthleteWorkoutSummary.currentStreakDays
+        guard streak >= 2 else { return nil }
+        let calendar = Calendar.current
+        let logs = currentAthleteWorkoutLogs
+        guard !logs.contains(where: { calendar.isDateInToday($0.completedAt) }) else { return nil }
+        var activeDays = Set(logs.map { calendar.startOfDay(for: $0.completedAt) })
+        for key in protectedDayKeys {
+            if let day = Self.date(fromDayKey: key) { activeDays.insert(calendar.startOfDay(for: day)) }
+        }
+        guard let latestDay = activeDays.max() else { return nil }
+        let daysPerWeek = max(1, min(7, clientProfile.trainingDaysPerWeek))
+        let allowedGap = max(1, 8 - daysPerWeek)
+        guard let deadline = calendar.date(byAdding: .day, value: allowedGap, to: latestDay),
+              deadline > calendar.startOfDay(for: .now), !calendar.isDateInToday(deadline) else { return nil }
+        return (streak, deadline)
+    }
+
     var streakOnTheLineDays: Int? {
         let streak = currentAthleteWorkoutSummary.currentStreakDays
         guard streak >= 2 else { return nil }

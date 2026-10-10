@@ -214,6 +214,22 @@ struct HomeView: View {
                         )
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Your \(atRisk) day streak ends tonight without a session")
+                    } else if let safe = store.streakSafeUntil {
+                        // The calm line (2026-10-10): the number teaches the
+                        // rule — a 3-day/week lifter sees "safe until Thu",
+                        // not a threat five days straight.
+                        HStack(spacing: 8) {
+                            Image(systemName: "flame.fill")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(MorpheTheme.accentText)
+                            Text("\(safe.days)-day streak · safe until \(safe.deadline.formatted(.dateTime.weekday(.abbreviated)))")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 32)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Your \(safe.days) day streak is safe until \(safe.deadline.formatted(.dateTime.weekday(.wide)))")
                     }
 
                     // Week-one compromise (audit 9, P0-1 + Lucas's call):
