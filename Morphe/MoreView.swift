@@ -11,6 +11,14 @@ struct MoreView: View {
     @State private var showWhyMorphe = false
     @State private var showChart = false
     @State private var showBasics = false
+    /// Which block of ten quizzes is open (nil = the one holding today's).
+    @State private var quizPage: Int?
+    private static let quizPageSize = 10
+
+    private var defaultQuizPage: Int {
+        let todayIndex = store.quizzes.firstIndex { !store.completedQuizIDs.contains($0.id) } ?? max(0, store.quizzes.count - 1)
+        return todayIndex / Self.quizPageSize
+    }
     @State private var openedLibraryPage: LearnLibraryPageKind?
     @State private var pendingExerciseOpen: ExerciseReference?
     @State private var pendingSavedWorkoutStart: SavedWorkoutLibraryItem?
@@ -389,8 +397,31 @@ struct MoreView: View {
                     .frame(maxWidth: .infinity)
                     .multilineTextAlignment(.center)
 
+                // Ten at a time (Lucas 2026-10-10): pages of 1–10, 11–20, …
+                // sized to the real quiz count; the page holding today's
+                // quiz opens first.
+                let pageCount = max(1, (store.quizzes.count + Self.quizPageSize - 1) / Self.quizPageSize)
+                let page = min(quizPage ?? defaultQuizPage, pageCount - 1)
+                if pageCount > 1 {
+                    HStack(spacing: 8) {
+                        ForEach(0..<pageCount, id: \.self) { index in
+                            let first = index * Self.quizPageSize + 1
+                            let last = min((index + 1) * Self.quizPageSize, store.quizzes.count)
+                            Button("\(first)–\(last)") {
+                                withAnimation(.easeInOut(duration: 0.2)) { quizPage = index }
+                                Haptics.selection()
+                            }
+                            .buttonStyle(FilterChipStyle(isSelected: page == index))
+                            .accessibilityLabel("Quizzes \(first) to \(last)")
+                            .accessibilityAddTraits(page == index ? .isSelected : [])
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                let shown = Array(store.quizzes.enumerated()).dropFirst(page * Self.quizPageSize).prefix(Self.quizPageSize)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
-                    ForEach(Array(store.quizzes.enumerated()), id: \.element.id) { index, quiz in
+                    ForEach(Array(shown), id: \.element.id) { index, quiz in
                         QuizCallingCard(
                             quiz: quiz,
                             index: index,
