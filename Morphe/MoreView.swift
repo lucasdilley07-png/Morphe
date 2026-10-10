@@ -371,7 +371,7 @@ struct MoreView: View {
             // stay behind the rank row on Profile.
             .sheet(item: $openedSaying) { saying in
                 DailySayingSheet(saying: saying)
-                    .presentationDetents([.medium])
+                    .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
                     .presentationCornerRadius(28)
             }
@@ -502,6 +502,7 @@ struct MoreView: View {
                 Spacer(minLength: 0)
                 Button {
                     store.toggleSavedLesson(lesson)
+                    Haptics.impact(.light)
                 } label: {
                     Image(systemName: store.savedLessonIDs.contains(lesson.id) ? "bookmark.fill" : "bookmark")
                         .font(.subheadline)
@@ -1049,6 +1050,7 @@ struct DailySayingSheet: View {
     let saying: LaconicSaying
 
     var body: some View {
+        ScrollView(showsIndicators: false) {
         VStack(alignment: .leading, spacing: 18) {
             CodeLabel(text: "From the record · today", color: MorpheTheme.accentText)
             Text("\u{201C}\(saying.text)\u{201D}")
@@ -1070,12 +1072,12 @@ struct DailySayingSheet: View {
             Text("A new line every day.")
                 .font(.caption2)
                 .foregroundStyle(MorpheTheme.textMuted)
-            Spacer(minLength: 0)
             Button("Done") { dismiss() }
                 .buttonStyle(SecondaryCTAButtonStyle())
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
+        }
         .background(PremiumBackground().ignoresSafeArea())
     }
 }

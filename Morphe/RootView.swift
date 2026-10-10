@@ -393,17 +393,13 @@ struct RootView: View {
                 .environment(store)
                 // Stamp every showing so the hour gap counts from the
                 // last time it was actually on screen.
-                .onAppear {
-                    if store.shouldShowDayPopup {
-                        store.noteDayPopupShown()
-                        store.selectedClientTab = .today   // the popup always opens on Today
-                    }
-                }
-                .onChange(of: store.shouldShowDayPopup) { _, showing in
-                    if showing {
-                        store.noteDayPopupShown()
-                        store.selectedClientTab = .today
-                    }
+                // Stamp only when it is actually on screen (launch beat
+                // done); the hour gap is decided when the open is armed,
+                // so this stamp can't hide a showing popup. The Today
+                // landing happens in the store at arming time.
+                .onAppear { if store.isDayPopupVisible { store.noteDayPopupShown() } }
+                .onChange(of: store.isDayPopupVisible) { _, visible in
+                    if visible { store.noteDayPopupShown() }
                 }
         }
         .animation(.easeInOut(duration: 0.3), value: store.shouldShowDayPopup)
@@ -4062,57 +4058,6 @@ struct PersonAccountSheet: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Their posts, comments and messages disappear for you, and they can't message you.")
-        }
-    }
-}
-
-private struct QuickAddItem: Identifiable {
-    let id = UUID()
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let action: () -> Void
-}
-
-private struct QuickAddGridCard: View {
-    let items: [QuickAddItem]
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
-    ]
-
-    var body: some View {
-        GlassCard {
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(items) { item in
-                    Button(action: item.action) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Image(systemName: item.systemImage)
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.accentText)
-                            Text(item.title)
-                                .font(.subheadline.weight(.bold))
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            Text(item.subtitle)
-                                .font(.caption)
-                                .foregroundStyle(MorpheTheme.textSecondary)
-                                .multilineTextAlignment(.leading)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                .fill(MorpheTheme.panelInteractive)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
-                                        .stroke(MorpheTheme.stroke, lineWidth: 1)
-                                )
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
         }
     }
 }

@@ -211,7 +211,7 @@ private struct SystemAppearanceMirror<Content: View>: View {
     /// A sheet or cover in flight: the theme remount would tear it down
     /// mid-edit (audit 33 — iOS flips appearance at sunset on its own).
     private var somethingPresented: Bool {
-        store.showClientProfile || store.showAIAgent || store.showQuickAdd
+        store.showClientProfile || store.showAIAgent || store.showQuickAdd || store.viewingPerson != nil
             || store.showUniversalSearch || store.showProgressSheet
             || store.isWorkoutSessionActive
     }

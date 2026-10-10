@@ -1610,6 +1610,7 @@ final class MorpheAppStore {
         connectRequests = []
         directoryPeople = []
         hiddenPeopleUids = []
+        viewingPerson = nil
         // One account's appointments, streak and sayings must not ring
         // after sign-out or under the next account (audit 31).
         if !(appointmentService is NoOpAppointmentService) {
@@ -3336,7 +3337,7 @@ final class MorpheAppStore {
     }
 
     @discardableResult
-    func createCustomWorkout(name: String, sport: SportFocus, items: [CustomWorkoutItem]) -> WorkoutTemplate {
+    func createCustomWorkout(name: String, sport: SportFocus, items: [CustomWorkoutItem], stage: Bool = true) -> WorkoutTemplate {
         let trimmed = uniqueWorkoutName(name.trimmingCharacters(in: .whitespacesAndNewlines))
         let exercises = items.map { item in
             WorkoutExercise(
@@ -3370,7 +3371,11 @@ final class MorpheAppStore {
         // silently drop that recap — and the confirm dialog can't present from
         // the builder sheet anyway. So the build just lands in Your workouts
         // and the user starts it when the current session is closed.
-        if hasUnsavedSessionWork {
+        if !stage {
+            // "Save to My Library" means exactly that (audit 2026-10-10,
+            // P1: staging ended a live zero-set session and swapped Today).
+            showToast("\(template.name) saved to My Library.")
+        } else if hasUnsavedSessionWork {
             showToast("\(template.name) saved to Your workouts.")
         } else {
             setCurrentWorkout(template)
@@ -3496,7 +3501,11 @@ final class MorpheAppStore {
         }
         let count = max(4, min(10, request.minutes / 7))
         var groups = Self.targetGroups(for: request.split)
-        for focus in request.focus.sorted(by: { $0.rawValue < $1.rawValue }) { groups.insert(focus, at: min(1, groups.count)) }
+        // Focus groups slot in after the split's lead, in order, so a
+        // three-group focus doesn't displace the split itself.
+        for (offset, focus) in request.focus.sorted(by: { $0.rawValue < $1.rawValue }).enumerated() {
+            groups.insert(focus, at: min(1 + offset, groups.count))
+        }
         var chosen: [ExerciseReference] = []
         var notes: [String] = []
         var cursor = seed
@@ -3518,6 +3527,8 @@ final class MorpheAppStore {
         let name = "\(request.split) \(request.style)"
         let summary = "\(items.count) exercises, \(p.sets)×\(p.reps), about \(request.minutes) min. Picked by Morphe's rules from the library for \(request.goal.lowercased()) at \(request.intensity.lowercased()) intensity."
         if request.equipment.isEmpty { notes.append("No equipment chosen, so this is bodyweight only.") }
+        if !avoidWords.isEmpty { notes.append("Skipped anything mentioning: \(avoidWords.joined(separator: ", ")).") }
+        if items.isEmpty { notes.insert("Nothing in the library fits those answers — loosen the equipment, level or avoid list.", at: 0) }
         return BuiltWorkoutDraft(name: name, summary: summary, items: items, source: "Morphe's rules", notes: notes)
     }
 
@@ -3532,10 +3543,20 @@ final class MorpheAppStore {
         }
         let levelRank: [DemoDifficulty: Int] = [.recovery: 0, .beginner: 1, .moderate: 2, .advanced: 3]
         let maxRank = levelRank[request.level] ?? 2
+        // The whole eligible library, most relevant first (the split's
+        // muscle groups and the chosen style lead) — a cap used to drop
+        // whole disciplines at the tail.
+        let groups = Set(Self.targetGroups(for: request.split))
+        let styleWord = request.style.lowercased()
         let pool = allExercises.filter {
             Self.exerciseFitsEquipment($0, owned: request.equipment) && (levelRank[$0.difficulty] ?? 2) <= maxRank
+        }.sorted { a, b in
+            func score(_ e: ExerciseReference) -> Int {
+                (groups.contains(e.muscleGroup) ? 2 : 0) + (e.discipline.lowercased().contains(styleWord) ? 1 : 0)
+            }
+            return (score(a), a.name) > (score(b), b.name)
         }
-        let library = pool.prefix(400).map { "\($0.name) | \($0.muscleGroup.rawValue) | \($0.equipment.isEmpty ? "none" : $0.equipment) | \($0.difficulty.rawValue)" }.joined(separator: "\n")
+        let library = pool.prefix(700).map { "\($0.name) | \($0.muscleGroup.rawValue) | \($0.equipment.isEmpty ? "none" : $0.equipment) | \($0.difficulty.rawValue)" }.joined(separator: "\n")
         var details: [String] = []
         if clientProfile.age > 0 { details.append("age \(clientProfile.age)") }
         if !clientProfile.fitnessLevel.isEmpty { details.append("experience \(clientProfile.fitnessLevel)") }
@@ -3559,18 +3580,38 @@ final class MorpheAppStore {
             }
             var items: [CustomWorkoutItem] = []
             var notes: [String] = []
+            func number(_ value: Any?, fallback: Int) -> Int {
+                if let i = value as? Int { return i }
+                if let d = value as? Double { return Int(d.rounded()) }
+                if let s = value as? String, let i = Int(s.trimmingCharacters(in: .whitespaces)) { return i }
+                return fallback
+            }
             for row in rows {
                 let name = ((row["name"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-                guard let match = allExercises.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame })
-                        ?? allExercises.first(where: { $0.name.lowercased().contains(name.lowercased()) && name.count >= 5 }) else {
+                let lowered = name.lowercased()
+                // Exact, then the model's name containing a library name
+                // (longest wins), then a library name containing the
+                // model's (shortest wins) — "Squat" lands on the plainest
+                // squat, not whichever variant sits first.
+                let exact = pool.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+                let within = pool.filter { lowered.contains($0.name.lowercased()) && $0.name.count >= 5 }.max { $0.name.count < $1.name.count }
+                let around = pool.filter { $0.name.lowercased().contains(lowered) && lowered.count >= 5 }.min { $0.name.count < $1.name.count }
+                guard let match = exact ?? within ?? around else {
                     if !name.isEmpty { notes.append("\(name) isn't in the library, so it was left out.") }
                     continue
                 }
-                let sets = min(max((row["sets"] as? Int) ?? Int((row["sets"] as? Double) ?? 3), 1), 10)
-                let reps = min(max((row["reps"] as? Int) ?? Int((row["reps"] as? Double) ?? 10), 1), 50)
-                items.append(CustomWorkoutItem(exercise: match, sets: sets, reps: reps))
+                if exact == nil { notes.append("\(name) → \(match.name) (closest library match).") }
+                let sets = min(max(number(row["sets"], fallback: 3), 1), 10)
+                let reps = min(max(number(row["reps"], fallback: 10), 1), 50)
+                if !items.contains(where: { $0.exercise.id == match.id }) {
+                    items.append(CustomWorkoutItem(exercise: match, sets: sets, reps: reps))
+                }
             }
-            guard items.count >= 3 else { throw MorpheIntelligence.IntelligenceError.malformed }
+            guard items.count >= 3 else {
+                var draft = buildWorkoutWithRules(request)
+                draft.notes.insert("Morphe AI named movements that aren't in the library, so this one is Morphe's rules instead.", at: 0)
+                return draft
+            }
             let name = ((object["name"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let summary = ((object["summary"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             return BuiltWorkoutDraft(name: name.isEmpty ? "\(request.split) \(request.style)" : String(name.prefix(60)),
@@ -3587,8 +3628,7 @@ final class MorpheAppStore {
     /// the caller can start it once its sheet is gone.
     @discardableResult
     func saveBuiltWorkout(_ draft: BuiltWorkoutDraft) -> WorkoutTemplate {
-        let sport: SportFocus = clientProfile.sportMode
-        return createCustomWorkout(name: draft.name, sport: sport, items: draft.items)
+        createCustomWorkout(name: draft.name, sport: clientProfile.sportMode, items: draft.items, stage: false)
     }
 
     /// "Choose Next" after a finished program sends the user to Train's
@@ -4483,12 +4523,11 @@ final class MorpheAppStore {
     /// One-shot: Discover expands its Programs section on next appear.
     /// "Choose Next" on a finished program used to flip this card to the
     /// browse list in place — the list lives on Discover now (audit 18, P1).
-    var pendingDiscoverProgramsReveal = false
-
+    /// "Choose Next" after a finished program: Train opens its Build
+    /// Workout chooser (the programs shelf left Discover, 2026-10-10).
     func revealDiscoverPrograms() {
         pendingBuildWorkoutReveal = true
-        pendingDiscoverProgramsReveal = true
-        showDiscoverTab()
+        showTrainTab()
     }
 
     func leaveProgram() {
@@ -6422,6 +6461,7 @@ final class MorpheAppStore {
     private(set) var launchSettled = false
 
     func finishLaunchSequence() {
+        armDayPopupForThisOpen()
         withAnimation(.easeInOut(duration: 0.3)) {
             isShowingLaunchSequence = false
         }
@@ -9497,16 +9537,24 @@ final class MorpheAppStore {
 
     enum ConnectionState { case none, requested, incoming, connected }
 
+    /// The request that matters between me and `uid`: a pending/accepted
+    /// one beats a dead one (both directions can exist over time).
+    func connectRecord(with uid: String) -> ConnectRequest? {
+        guard let me = authUser?.id else { return nil }
+        let matches = connectRequests.filter { ($0.fromUid == me && $0.toUid == uid) || ($0.fromUid == uid && $0.toUid == me) }
+        return matches.first { $0.status == "accepted" } ?? matches.first { $0.status == "pending" } ?? matches.first
+    }
+
     func connectionState(with uid: String) -> ConnectionState {
-        guard let me = authUser?.id else { return .none }
-        if let live = connectRequests.first(where: { ($0.fromUid == me && $0.toUid == uid) || ($0.fromUid == uid && $0.toUid == me) }) {
-            switch live.status {
-            case "accepted": return .connected
-            case "pending": return live.fromUid == me ? .requested : .incoming
-            default: return .none
-            }
+        guard let me = authUser?.id, let live = connectRecord(with: uid) else { return .none }
+        switch live.status {
+        case "accepted": return .connected
+        case "pending": return live.fromUid == me ? .requested : .incoming
+        // A decline stays "Requested" for the sender (LinkedIn's quiet
+        // no): no nagging, no hurt feelings. "removed" is honest .none.
+        case "declined": return live.fromUid == me ? .requested : .none
+        default: return .none
         }
-        return .none
     }
 
     var incomingConnectRequests: [ConnectRequest] {
@@ -9560,6 +9608,9 @@ final class MorpheAppStore {
     var viewingPerson: PersonCard?
 
     func viewPerson(uid: String, name: String = "", username: String = "", headline: String = "", accentId: String = "", verified: Bool = false) {
+        // Quick Add presents its own account sheet; the root one would be
+        // refused while that sheet is up.
+        guard !showQuickAdd else { return }
         var card = person(for: uid) ?? PersonCard(uid: uid, name: "", username: "", headline: "", accentId: "", verified: false, isCoach: false)
         if card.name.isEmpty { card.name = name }
         if card.username.isEmpty { card.username = username }
@@ -9606,23 +9657,30 @@ final class MorpheAppStore {
 
     func sendConnectRequest(to person: PersonCard) async {
         guard let me = authUser?.id, person.uid != me, connectionState(with: person.uid) == .none else { return }
-        if let paced = contentPacer.refusal(for: .message, text: "connect:\(person.uid)") {
+        if let paced = contentPacer.refusal(for: .connect, text: "connect:\(person.uid)") {
             showToast(paced, isError: true); return
         }
         let myName = clientProfile.name.isEmpty ? (authUser?.displayName ?? "A Morphe member") : clientProfile.name
         let request = ConnectRequest(id: "\(me)_\(person.uid)", fromUid: me, toUid: person.uid,
                                      fromName: String(myName.prefix(60)), toName: String(person.displayName.prefix(60)),
                                      status: "pending", createdAt: .now)
+        // A withdrawn request of mine is re-sent in place (the doc is
+        // immutable, so it moves back to pending); anything else creates.
+        let previous = connectRequests.first { $0.id == request.id }
         connectRequests.removeAll { $0.id == request.id }
         connectRequests.append(request)
-        guard await feedService.sendConnectRequest(request) else {
+        let sent = previous != nil
+            ? await feedService.resendConnectRequest(id: request.id)
+            : await feedService.sendConnectRequest(request)
+        guard sent else {
             connectRequests.removeAll { $0.id == request.id }
+            if let previous { connectRequests.append(previous) }
             showToast(CloudWriteDiagnostics.consumeDenied()
                       ? "Couldn't send — either they've blocked you, a request already exists, or you're sending too fast."
                       : "Request didn't send — check your connection.", isError: true)
             return
         }
-        contentPacer.record(.message, text: "connect:\(person.uid)")
+        contentPacer.record(.connect, text: "connect:\(person.uid)")
         Haptics.impact(.light)
         showToast("Request sent to \(person.displayName).")
     }
@@ -9639,8 +9697,7 @@ final class MorpheAppStore {
     }
 
     func removeConnection(with uid: String) async {
-        guard let me = authUser?.id,
-              let live = connectRequests.first(where: { ($0.fromUid == me && $0.toUid == uid) || ($0.fromUid == uid && $0.toUid == me) }),
+        guard let live = connectRecord(with: uid),
               live.status == "pending" || live.status == "accepted" else { return }
         guard await feedService.updateConnectRequest(id: live.id, status: "removed") else {
             showToast("Couldn't remove — check your connection.", isError: true)
@@ -10816,6 +10873,7 @@ final class MorpheAppStore {
     var pendingProgressOpen = false
 
     func openProgress() {
+        viewingPerson = nil
         // Sheet-over-dismissing-presentation races (audit 15, P1): every
         // covering surface queues instead of racing — its onDismiss raises
         // the Progress sheet exactly when the transition has room.
@@ -10850,8 +10908,16 @@ final class MorpheAppStore {
     /// auto-open-once flag can't re-fire for later deep links).
     var pendingThreadOpenID: String?
 
+    /// Connections only (not the whole directory) — cheap enough for every
+    /// Chats open, so "Connected" is never stale there.
+    func refreshConnectRequests() async {
+        guard let uid = authUser?.id, let live = await feedService.fetchConnectRequests(uid: uid) else { return }
+        connectRequests = live
+    }
+
     func openCommunity(_ section: ClientCommunitySection = .contact) {
         showProgressSheet = false
+        Task { await refreshConnectRequests() }
         // Both Network sections are REAL in v1: For You is the Firestore
         // feed, Contact is the coach-thread inbox (with an honest empty
         // state naming the coach-link unlock). Contact is THE messaging
@@ -12024,6 +12090,7 @@ final class MorpheAppStore {
     /// opens (audit 13, P1) — sheets, the AI cover, and the day takeover.
     private func clearVoiceNavigationObstructions(preservingConversation: Bool = false) {
         showQuickAdd = false
+        viewingPerson = nil
         showUniversalSearch = false
         showClientProfile = false
         if !preservingConversation, showAIAgent { closeAIAgent() }
@@ -13340,6 +13407,21 @@ final class MorpheAppStore {
     func noteDayPopupShown(at date: Date = .now) {
         UserDefaults.standard.set(date.timeIntervalSince1970, forKey: Self.dayPopupShownKey)
     }
+    /// Decided once per app open (launch, foreground return): a popup
+    /// that is showing must not vanish the moment it stamps itself
+    /// (audit 2026-10-10, P0 — the live gate read the stamp).
+    private(set) var dayPopupThrottledThisOpen = false
+    /// The popup is on screen: the gate passed and the launch beat is done.
+    var isDayPopupVisible: Bool { shouldShowDayPopup && launchSettled }
+
+    /// Arms the popup for this open: honors the hour gap and, when it will
+    /// show, lands the user on Today BEFORE deep-link consumers run.
+    private func armDayPopupForThisOpen() {
+        dayPopupThrottledThisOpen = isDayPopupThrottled
+        if !dayPopupThrottledThisOpen, !dayPopupSessionDismissed, hasCompletedOnboarding {
+            selectedClientTab = .today
+        }
+    }
 
     var shouldShowDayPopup: Bool {
         // Every app open (Lucas 2026-08-18): answering or dismissing parks
@@ -13357,7 +13439,7 @@ final class MorpheAppStore {
               !isWorkoutSessionActive, !hasUnsavedSessionWork,
               !minimumWinModeEnabled, comebackLapsedStreak == nil,
               !dayPopupSessionDismissed,
-              !isDayPopupThrottled
+              !dayPopupThrottledThisOpen
         else { return false }
         return true
     }
@@ -13381,6 +13463,7 @@ final class MorpheAppStore {
         guard wasBackgrounded else { return }
         wasBackgrounded = false
         dayPopupSessionDismissed = false
+        armDayPopupForThisOpen()
         morpheAskRefresh += 1
     }
 
@@ -14116,6 +14199,9 @@ final class MorpheAppStore {
             if let following = await feedService.fetchFollowing(uid: uid) {
                 followedUids = following
             }
+            if let live = await feedService.fetchConnectRequests(uid: uid) {
+                connectRequests = live
+            }
             membershipSetsFetched = true
         }
         // Referral consume/count moved to the launch path (audit 6, P1-3):
@@ -14620,8 +14706,13 @@ final class MorpheAppStore {
         // Forced: this call just CHANGED the inbox on the server.
         await refreshThreads(force: true)
         // The inbox owns navigation — the pending id is the same door every
-        // deep link already walks through (consumePendingThreadOpen).
+        // deep link already walks through (consumePendingThreadOpen). Any
+        // sheet that asked (Quick Add, an account page) comes down and the
+        // Network tab opens on Chats (audit 2026-10-10, P1).
         pendingThreadOpenID = threadId
+        showQuickAdd = false
+        viewingPerson = nil
+        openCommunity(.contact)
         return true
     }
 

@@ -33,7 +33,15 @@ AI-written patterns before it is sent. Nothing is sent to an AI service for
 this screening.
 
 The pace timestamps live on your account record, which a coach you have
-linked can also read.
+linked can also read. Connect requests you send or receive (the two names
+and the status) are stored under your account.
+
+**Build with Morphe AI (optional, your own key).** When you build a workout
+with Morphe AI, your answers to the questionnaire and the profile facts the
+app holds for you (age, experience, self-reported weakness, injury note)
+are sent to Anthropic with your key, along with the exercise names in the
+library. Without a key nothing leaves the phone — Morphe's own rules build
+the session.
 
 **Coach sharing (optional).** If you turn on "Share with coach," a summary
 of your real training progress (streak, weekly volume, recent sessions,

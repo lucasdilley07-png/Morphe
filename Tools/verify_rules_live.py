@@ -294,6 +294,17 @@ try:
     check("A removes the connection", True,
           fs_call(A, "PATCH", f"connectRequests/{conn_id}", {"fields": {"status": s("removed")}},
                   "?updateMask.fieldPaths=status"))
+    print("  … waiting 11 s for A's connect window")
+    time.sleep(11)
+    check("A re-sends after removing (paced, in place)", True,
+          fs_commit(A, [{"update": {"name": doc_name(f"connectRequests/{conn_id}"), "fields": {"status": s("pending")}},
+                         "updateMask": {"fieldPaths": ["status"]}},
+                        stamp_write(A, "lastConnectAt")]))
+    check("C lists A's requests", False, run_query(C, "connectRequests", "fromUid", A["uid"]))
+    check("A lists own requests", True, run_query(A, "connectRequests", "fromUid", A["uid"]))
+    check("A removes it again (cleanup)", True,
+          fs_call(A, "PATCH", f"connectRequests/{conn_id}", {"fields": {"status": s("removed")}},
+                  "?updateMask.fieldPaths=status"))
 
     print("\n— Follow + block —")
     check("A follows B", True,

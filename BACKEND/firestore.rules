@@ -307,13 +307,19 @@ service cloud.firestore {
         return isSignedIn()
           && (request.auth.uid == resource.data.fromUid || request.auth.uid == resource.data.toUid);
       }
+      function reversePath() {
+        return /databases/$(database)/documents/connectRequests/$(request.resource.data.toUid + '_' + request.resource.data.fromUid);
+      }
       allow get: if isParty();
-      allow list: if isSignedIn() && request.query.limit <= 200;
+      // Only your own rows, in either direction — never the whole graph.
+      allow list: if isSignedIn() && request.query.limit <= 200
+        && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
       allow create: if isSignedIn()
         && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.toUid != request.auth.uid
         && reqId == request.resource.data.fromUid + '_' + request.resource.data.toUid
-        && !exists(/databases/$(database)/documents/connectRequests/$(request.resource.data.toUid + '_' + request.resource.data.fromUid))
+        // The other direction may exist only as a dead request.
+        && (!exists(reversePath()) || get(reversePath()).data.status in ['declined', 'removed'])
         && request.resource.data.keys().hasOnly(['fromUid', 'toUid', 'fromName', 'toName', 'status', 'createdAt', 'updatedAt'])
         && request.resource.data.status == 'pending'
         && request.resource.data.fromName is string && request.resource.data.fromName.size() <= 60
@@ -327,6 +333,11 @@ service cloud.firestore {
             && resource.data.status == 'pending'
             && request.resource.data.status in ['accepted', 'declined'])
           || request.resource.data.status == 'removed'
+          // The sender may re-send a dead request (paced like a new one).
+          || (request.auth.uid == resource.data.fromUid
+              && resource.data.status in ['declined', 'removed']
+              && request.resource.data.status == 'pending'
+              && humanPaced('lastConnectAt', 10))
         );
       allow delete: if false;
     }

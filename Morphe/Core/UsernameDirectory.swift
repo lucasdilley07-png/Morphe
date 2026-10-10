@@ -93,8 +93,10 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
     /// (audit 13, P2): "no accounts match" was a lie with no network, and
     /// the referral consumer needs the same distinction to keep retrying.
     func list(limit: Int) async -> [(username: String, uid: String)]? {
+        // Newest members first (claimedAt is written by every claim) — an
+        // alphabetical first-50 would have hidden everyone past "D".
         guard let snapshot = try? await db.collection("usernames")
-            .order(by: FieldPath.documentID())
+            .order(by: "claimedAt", descending: true)
             .limit(to: max(1, min(limit, 50)))
             .getDocuments()
         else { return nil }

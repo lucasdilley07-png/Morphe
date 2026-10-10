@@ -11,7 +11,7 @@ struct WorkoutView: View {
     private var anyLocalSheetUp: Bool {
         swapTarget != nil || repLoggerContext != nil || showBuilder
             || showTrainTogether || showAddExercise || editingWorkout != nil
-            || showFormCheck
+            || showFormCheck || showBuildChooser || showAIBuilder || showPlanBuilderDoor
     }
     @Environment(\.scenePhase) private var scenePhase
 
@@ -201,8 +201,18 @@ struct WorkoutView: View {
             }
         )
         .background(
-            EmptyView().sheet(isPresented: $showPlanBuilderDoor) {
-                PlanBuilderSheet()
+            EmptyView().sheet(isPresented: $showPlanBuilderDoor, onDismiss: {
+                let action = pendingBuildAction
+                pendingBuildAction = nil
+                action?()
+            }) {
+                PlanBuilderSheet(onStartProgram: { program in
+                    pendingBuildAction = {
+                        isShowingPainFlow = false
+                        store.startProgram(program)
+                    }
+                    showPlanBuilderDoor = false
+                })
                     .environment(store)
                     .presentationDetents([.large])
                     .presentationCornerRadius(28)
@@ -214,6 +224,13 @@ struct WorkoutView: View {
             guard reveal else { return }
             store.pendingBuildWorkoutReveal = false
             showBuildChooser = true
+        }
+        .onAppear {
+            // Set while Train wasn't mounted: consume on arrival.
+            if store.pendingBuildWorkoutReveal {
+                store.pendingBuildWorkoutReveal = false
+                showBuildChooser = true
+            }
         }
         .background(
             EmptyView().sheet(isPresented: $showTrainTogether) {
@@ -1280,6 +1297,9 @@ struct WorkoutView: View {
 struct PlanBuilderSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    /// Train hosts the session start (root confirm dialog) after this
+    /// sheet is gone; nil = start in place (the Discover-era behavior).
+    var onStartProgram: ((TrainingProgram) -> Void)? = nil
     @State private var request = MorpheAppStore.PlanRequest()
     @State private var seeded = false
 
@@ -1399,7 +1419,7 @@ struct PlanBuilderSheet: View {
                 // Morphe's ready programs ride here now (Lucas 2026-10-10:
                 // the shelf left Discover).
                 if store.programProgress == nil {
-                    ProgramSectionCard(showsLibraryHeader: true)
+                    ProgramSectionCard(showsLibraryHeader: true, onStartProgram: onStartProgram)
                 }
             }
             .padding(20)
@@ -1533,7 +1553,7 @@ struct AIWorkoutBuilderSheet: View {
                             .foregroundStyle(MorpheTheme.textPrimary)
                         Text(MorpheIntelligence.apiKey == nil
                              ? "Answer, then Morphe builds it from the library by its rules (add your key for a bespoke build)."
-                             : "Answer, then Morphe AI builds the session with you from the library.")
+                             : "Answer, then Morphe AI builds the session with you from the library. Your answers and the profile facts below (age, experience, weakness, injury note) go to Anthropic with your key.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1668,13 +1688,16 @@ struct AIWorkoutBuilderSheet: View {
                             dismiss()
                         }
                         .buttonStyle(SecondaryCTAButtonStyle())
+                        .disabled(draft.items.isEmpty)
                         Button("Save & Start") {
                             let template = store.saveBuiltWorkout(draft)
                             Haptics.success()
                             onStart(template)
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                        .disabled(draft.items.isEmpty)
                     }
+                    .opacity(draft.items.isEmpty ? 0.5 : 1)
                 }
             }
             .padding(20)
@@ -2414,6 +2437,9 @@ private struct ProgramSectionCard: View {
     /// title and one-liner — repeating them read as a stutter
     /// (audit 18, P2).
     var showsLibraryHeader = true
+    /// When set, Start Program is routed to the host (a sheet dismisses
+    /// first) instead of starting under it.
+    var onStartProgram: ((TrainingProgram) -> Void)? = nil
 
     var body: some View {
         GlassCard {
@@ -2526,7 +2552,7 @@ private struct ProgramSectionCard: View {
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Button("Start Program") {
-                    store.startProgram(program)
+                    if let onStartProgram { onStartProgram(program) } else { store.startProgram(program) }
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
                 .accessibilityLabel("Start \(program.name), \(program.weeks) weeks")

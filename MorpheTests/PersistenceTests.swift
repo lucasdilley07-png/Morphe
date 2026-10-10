@@ -6664,7 +6664,28 @@ final class ModerationTests: XCTestCase {
         XCTAssertTrue(store.isDayPopupThrottled, "just shown: throttled")
         store.noteDayPopupShown(at: .now.addingTimeInterval(-3601))
         XCTAssertFalse(store.isDayPopupThrottled, "an hour later it can show again")
+        // The gate is decided at arming time: stamping a popup that is
+        // showing must not hide it (audit 2026-10-10, P0).
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.acceptTerms()
+        store.finishLaunchSequence()
+        let before = store.shouldShowDayPopup
+        store.noteDayPopupShown()
+        XCTAssertEqual(store.shouldShowDayPopup, before, "a stamp mid-show changes nothing until the next open")
         UserDefaults.standard.removeObject(forKey: "morphe.daypopup.lastShown")
+    }
+
+    func testConnectionStatePrefersTheLiveRequestAndHidesDeclines() {
+        let store = MorpheAppStore()
+        store.connectRequests = [
+            ConnectRequest(id: "me_u1", fromUid: "me", toUid: "u1", fromName: "Me", toName: "A", status: "removed", createdAt: .now),
+            ConnectRequest(id: "u1_me", fromUid: "u1", toUid: "me", fromName: "A", toName: "Me", status: "pending", createdAt: .now),
+            ConnectRequest(id: "me_u2", fromUid: "me", toUid: "u2", fromName: "Me", toName: "B", status: "declined", createdAt: .now)
+        ]
+        // No auth user → .none everywhere; the record picker still works.
+        XCTAssertEqual(store.connectionState(with: "u1"), .none)
+        XCTAssertNil(store.authUser)
     }
 
     func testQuickAddMergesPeopleAndHidesTheRightOnes() {

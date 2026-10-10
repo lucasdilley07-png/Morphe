@@ -5926,7 +5926,7 @@ enum ContentModeration {
     // heuristics can't — AI text is not reliably detectable, so this
     // list refuses the obvious and the terms carry the rest.
 
-    enum Kind { case post, comment, message }
+    enum Kind { case post, comment, message, connect }
 
     /// Engagement-bait and scam shapes no gym post needs. Any one refuses.
     private static let spamPhrases: [String] = [
@@ -6076,7 +6076,9 @@ struct ContentPacer {
         .comment: Rule(minGap: 8, maxPerWindow: 40, window: 3600, duplicateWindow: 86_400, duplicateAllowance: 0),
         // "ok" twice in a chat is human; the same line three times in two
         // minutes is a script.
-        .message: Rule(minGap: 1, maxPerWindow: 80, window: 600, duplicateWindow: 120, duplicateAllowance: 1)
+        .message: Rule(minGap: 1, maxPerWindow: 80, window: 600, duplicateWindow: 120, duplicateAllowance: 1),
+        // Matches the server (10 s); thirty an hour is a person, not a script.
+        .connect: Rule(minGap: 10, maxPerWindow: 30, window: 3600, duplicateWindow: 86_400, duplicateAllowance: 0)
     ]
 
     private var stamps: [ContentModeration.Kind: [Date]] = [:]
@@ -6116,7 +6118,7 @@ struct ContentPacer {
     }
 
     private static func noun(_ kind: ContentModeration.Kind) -> String {
-        switch kind { case .post: return "post"; case .comment: return "comment"; case .message: return "message" }
+        switch kind { case .post: return "post"; case .comment: return "comment"; case .message: return "message"; case .connect: return "request" }
     }
 }
 

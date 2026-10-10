@@ -752,6 +752,8 @@ protocol FeedSyncing: AnyObject {
     func delete(postId: String)
     /// Connect requests (2026-10-10): create pending, move status, list mine.
     func sendConnectRequest(_ request: ConnectRequest) async -> Bool
+    /// A withdrawn/declined request of mine, back to pending (paced).
+    func resendConnectRequest(id: String) async -> Bool
     func updateConnectRequest(id: String, status: String) async -> Bool
     func fetchConnectRequests(uid: String) async -> [ConnectRequest]?
 }
@@ -759,6 +761,7 @@ protocol FeedSyncing: AnyObject {
 /// Defaults so stubs and previews compile; Firebase overrides them.
 extension FeedSyncing {
     func sendConnectRequest(_ request: ConnectRequest) async -> Bool { false }
+    func resendConnectRequest(id: String) async -> Bool { false }
     func updateConnectRequest(id: String, status: String) async -> Bool { false }
     func fetchConnectRequests(uid: String) async -> [ConnectRequest]? { nil }
 }
@@ -988,6 +991,22 @@ final class FirebaseFeedService: FeedSyncing {
             batch.setData(data, forDocument: connectRequests.document(request.id))
             batch.setData(["lastConnectAt": FieldValue.serverTimestamp()],
                           forDocument: db.collection("users").document(request.fromUid), merge: true)
+            try await batch.commit()
+            return true
+        } catch {
+            CloudWriteDiagnostics.note(error)
+            return false
+        }
+    }
+
+    func resendConnectRequest(id: String) async -> Bool {
+        guard let fromUid = id.components(separatedBy: "_").first else { return false }
+        do {
+            let batch = db.batch()
+            batch.updateData(["status": "pending", "updatedAt": FieldValue.serverTimestamp()],
+                             forDocument: connectRequests.document(id))
+            batch.setData(["lastConnectAt": FieldValue.serverTimestamp()],
+                          forDocument: db.collection("users").document(fromUid), merge: true)
             try await batch.commit()
             return true
         } catch {
