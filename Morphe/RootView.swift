@@ -382,50 +382,16 @@ struct RootView: View {
         // (audit 12, P2-1): voice works during it, so it must be visible
         // during it.
         .overlay {
+            // Hey Morphe LIGHTS the stage (Lucas 2026-10-09: "instead of
+            // darkening the screen, brighten it"): a white wash, a blue
+            // edge glow riding the voice, and the Spartan in a glass orb
+            // with Morphe's words above it and the user's below. Any
+            // touch ends the exchange (Lucas 2026-10-05).
             if store.heyMorphe.state == .active || store.heyMorphe.state == .speaking
                 || store.heyMorphe.state == .thinking {
-                // Hey Morphe dims the stage (Lucas 2026-09; 60% since
-                // 2026-10-03 so the white helmet reads on the light field):
-                // the app recedes under the ring while the exchange is
-                // live. Black in both appearances — a dim, not a theme
-                // surface. Taps still pass through; the exchange is
-                // hands-free.
-                // Any touch ends the exchange (Lucas 2026-10-05): the dim
-                // takes the touch, cancels the sequence, and the app is
-                // back as it was — the tap itself is spent on leaving.
-                Color.black.opacity(0.6)
-                    .ignoresSafeArea()
-                    .contentShape(Rectangle())
-                    .gesture(DragGesture(minimumDistance: 0).onChanged { _ in
-                        store.cancelVoiceExchange()
-                    })
-                    .accessibilityLabel("Hey Morphe is listening. Tap anywhere to stop.")
-                    .accessibilityAddTraits(.isButton)
+                HeyMorpheStage()
+                    .environment(store)
                     .transition(.opacity)
-                // The Jarvis wave: centered, non-blocking, moving with the
-                // real audio (Lucas 2026-09). A LEAF view — it reads
-                // voiceLevel in its own body so the ~46/sec level writes
-                // invalidate 240pt of Canvas, not the whole root shell
-                // (audit 22, P1).
-                MorpheVoiceRingHost()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .allowsHitTesting(false)
-                .transition(.opacity)
-            }
-        }
-        .overlay(alignment: .top) {
-            // Live transcript leads while capturing (rebuild 2026-08);
-            // the heard/answer chip takes over once the command fires.
-            if store.heyMorphe.state == .active, !store.heyMorphe.liveTranscript.isEmpty {
-                VoiceTranscriptPill(text: store.heyMorphe.liveTranscript)
-                    .padding(.top, 118)
-                    .padding(.horizontal, 24)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            } else if let exchange = store.lastVoiceExchange {
-                VoiceExchangeChip(heard: exchange.heard, answer: exchange.answer)
-                    .padding(.top, 118)
-                    .padding(.horizontal, 24)
-                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: store.heyMorphe.state)
@@ -826,11 +792,9 @@ private struct FloatingAIAgentButton: View {
                     // bubble with the helmet IS the button — no plate
                     // behind it, just the lift that keeps it readable
                     // over any scroll content.
-                    Image("MorpheAIMark")
-                        .resizable()
-                        .scaledToFit()
-                        // 30% smaller (Lucas 2026-10-02): 56 → 40pt. The
-                        // tap target stays a full 44pt around it.
+                    // The orb, one still frame (Lucas 2026-10-09: the
+                    // final mark) — the tap target stays a full 44pt.
+                    MorpheOrbView(level: 0.2, animates: false)
                         .frame(width: 40, height: 40)
                         .shadow(color: .black.opacity(0.22), radius: 6, y: 3)
                         .shadow(color: MorpheTheme.brandBlue.opacity(0.25), radius: 12, y: 0)
@@ -1893,6 +1857,9 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
 
     func stop() {
         state = .off
+        promptLine = nil
+        promptFollowUpPending = false
+        promptedThisWake = false
         stopMusicWatch()
         interrupted = false
         resumeRetries = 0
@@ -2051,6 +2018,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// epoch changes: new chat, sign-out).
     func cancelStreamedSpeech() {
         guard state == .speaking || state == .thinking else { return }
+        promptFollowUpPending = false
+        promptLine = nil
         speechQueue = []
         speechStreamOpen = false
         chunkInFlight = false
@@ -2236,6 +2205,23 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         stopNeuralPlayback()
         chunkInFlight = false
         endSpeakingLevel()
+        if promptFollowUpPending {
+            // "How may I assist you?" was the question — now the answer:
+            // straight back into active capture, whole-stream, no re-wake,
+            // six seconds to say it. The stage was never released.
+            promptFollowUpPending = false
+            state = .active
+            activeSince = nil
+            liveTranscript = ""
+            capturePrefix = ""
+            activeIsFollowUp = true
+            directCaptureSession = true
+            followUpCaptureStart = Date()
+            claimStageForActiveCapture()
+            resumeActiveCapture()
+            if state == .active { armCommandTimer(after: 6) }
+            return
+        }
         restoreMixSession()
         followUpDeadline = Date().addingTimeInterval(10)
         state = .passive
@@ -2290,10 +2276,11 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         followUpCaptureStart = viaWake ? nil : Date()
         activeSince = viaWake ? Date() : nil
         liveTranscript = text
+        if viaWake { promptedThisWake = false; promptLine = nil }
         onWake?()
         // A wake with a natural pause earns the breath window, same as a
         // normal wake (audit 24, P1).
-        armCommandTimer(after: text.isEmpty ? 2.5 : 1.4)
+        armCommandTimer(after: text.isEmpty ? Self.emptyWakeWindow : 1.4)
     }
 
     /// Minimal recognition re-arm for barge-in: the full beginListening
@@ -2517,10 +2504,12 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     claimStageForActiveCapture()
                     activeIsFollowUp = false
                     liveTranscript = command
+                    promptedThisWake = false
+                    promptLine = nil
                     onWake?()
                     // A longer first window (audit 14): the user just said
                     // the name — give them a breath before the command.
-                    armCommandTimer(after: command.isEmpty ? 2.5 : 1.4)
+                    armCommandTimer(after: command.isEmpty ? Self.emptyWakeWindow : 1.4)
                 } else if let deadline = followUpDeadline, Date() < deadline,
                           !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     // Follow-up window (rebuild 2026-08): the breath after
@@ -2547,8 +2536,10 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                     capturePrefix = ""
                     activeSince = Date()
                     liveTranscript = command
+                    promptedThisWake = false
+                    promptLine = nil
                     onWake?()
-                    armCommandTimer(after: command.isEmpty ? 2.5 : 1.4)
+                    armCommandTimer(after: command.isEmpty ? Self.emptyWakeWindow : 1.4)
                 } else if !isBargeCapture, let began = followUpCaptureStart,
                           Date().timeIntervalSince(began) > 8
                             || text.split(separator: " ").count > 12 {
@@ -2587,7 +2578,7 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
                         liveTranscript = command
                         // A retraction back to the bare wake re-earns the
                         // breath window (audit 14, P3).
-                        armCommandTimer(after: command.isEmpty ? 2.5 : 1.4)
+                        armCommandTimer(after: command.isEmpty ? Self.emptyWakeWindow : 1.4)
                     }
                 } else {
                     // The recognizer retro-corrected the wake phrase AWAY —
@@ -2665,6 +2656,19 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// after activating to listen") — the chime, the breath, the ask.
     private var activeSince: Date?
     private static let listenWindow: TimeInterval = 2.5
+    /// A bare "Hey Morphe" with nothing after it waits this long before
+    /// Morphe asks (Lucas 2026-10-09: "wait 3–4 seconds and have the AI
+    /// say 'How may I assist you?'").
+    private static let emptyWakeWindow: TimeInterval = 3.5
+    static let assistPrompt = "How may I assist you?"
+    /// Morphe's line on the stage when it spoke without a command to
+    /// answer — the assist prompt. Cleared by the next command or exit.
+    private(set) var promptLine: String?
+    /// One prompt per wake: a second silence goes back to scanning quietly.
+    private var promptedThisWake = false
+    /// Set while the prompt is being spoken: when it ends, the mic opens
+    /// for the request instead of the exchange closing.
+    private var promptFollowUpPending = false
 
     private func armCommandTimer(after interval: TimeInterval) {
         commandTimer?.invalidate()
@@ -2686,6 +2690,8 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
     /// the stage is released, music comes back, nothing fires, and
     /// passive listening resumes.
     func cancelExchange() {
+        promptLine = nil
+        promptFollowUpPending = false
         switch state {
         case .active:
             commandTimer?.invalidate()
@@ -2737,7 +2743,19 @@ final class HeyMorpheEngine: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlaye
         // empty or cancelled capture left it set for the next window).
         isBargeCapture = false
         resumeRetries = 0
+        if command.isEmpty, !wasFollowUp, !promptedThisWake {
+            // Woke, then nothing for 3.5s (Lucas 2026-10-09): Morphe asks
+            // once, then the mic opens for the request. The stage stays
+            // lit the whole time.
+            promptedThisWake = true
+            promptFollowUpPending = true
+            promptLine = Self.assistPrompt
+            speak(Self.assistPrompt)
+            return
+        }
+        if !command.isEmpty { promptLine = nil }
         if command.isEmpty || Self.isCancelPhrase(command) {
+            promptLine = nil
             // Woke then silence, or an explicit retraction ("never mind")
             // — back to scanning, no charge, no spoken reply (a misfire
             // must cost nothing: rebuild 2026-08). Hand the music back
@@ -4164,5 +4182,173 @@ private struct SessionWorkGateDialog: ViewModifier {
 extension View {
     func sessionWorkGateDialog() -> some View {
         modifier(SessionWorkGateDialog())
+    }
+}
+
+
+// MARK: - The lit stage (Hey Morphe, Lucas 2026-10-09)
+
+/// Glass for the voice surfaces: Liquid Glass on iOS 26, the material
+/// capsule everywhere else. One modifier so the orb, the answer panel and
+/// the transcript pill share a look and a fallback.
+private struct VoiceGlass<S: InsettableShape>: ViewModifier {
+    let shape: S
+    var tint: Color? = nil
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(tint.map { Glass.regular.tint($0) } ?? Glass.regular, in: shape)
+        } else {
+            content.background(
+                shape.fill(.ultraThinMaterial)
+                    .overlay(shape.fill(tint ?? .clear))
+                    .overlay(shape.strokeBorder(MorpheTheme.stroke, lineWidth: 1))
+                    .shadow(color: .black.opacity(0.10), radius: 3, y: 2)
+                    .shadow(color: .black.opacity(0.10), radius: 18, y: 10)
+            )
+        }
+    }
+}
+
+/// The screen lights up around the exchange: a white wash (never a dim),
+/// a brand-blue edge glow riding the voice, and the Spartan in a glass
+/// orb — Morphe's words above it, the user's below.
+private struct HeyMorpheStage: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var arrived = false
+
+    private var engine: HeyMorpheEngine { store.heyMorphe }
+
+    /// Morphe's line: the answer once there is one, else the assist prompt.
+    private var morpheLine: String? {
+        if let answer = store.lastVoiceExchange?.answer, !answer.isEmpty { return answer }
+        return engine.promptLine
+    }
+
+    /// The user's line: the live transcript while capturing, else what
+    /// the answer was for.
+    private var userLine: String? {
+        if engine.state == .active, !engine.liveTranscript.isEmpty { return engine.liveTranscript }
+        if let heard = store.lastVoiceExchange?.heard, !heard.isEmpty { return heard }
+        return nil
+    }
+
+    var body: some View {
+        ZStack {
+            // The wash: brighter, not darker. Takes the touch that ends
+            // the exchange (Lucas 2026-10-05).
+            Color.white.opacity(MorpheTheme.isLight ? 0.5 : 0.24)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .gesture(DragGesture(minimumDistance: 0).onChanged { _ in
+                    store.cancelVoiceExchange()
+                })
+                .accessibilityLabel("Hey Morphe is listening. Tap anywhere to stop.")
+                .accessibilityAddTraits(.isButton)
+
+            VoiceEdgeGlow(level: engine.state == .active || engine.state == .speaking ? engine.voiceLevel : 0.2)
+                .allowsHitTesting(false)
+
+            column
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Rides a little high, like the day popup: the eye lands
+                // on the orb, not the dock.
+                .padding(.bottom, 48)
+                .allowsHitTesting(false)
+                .scaleEffect(arrived || reduceMotion ? 1 : 0.92)
+                .opacity(arrived || reduceMotion ? 1 : 0)
+        }
+        .onAppear {
+            guard !arrived else { return }
+            if reduceMotion { arrived = true; return }
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) { arrived = true }
+        }
+        .onDisappear { arrived = false }
+        .accessibilityAddTraits(.isModal)
+    }
+
+    @ViewBuilder
+    private var column: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: 24) { stack }
+        } else {
+            stack
+        }
+    }
+
+    private var stack: some View {
+        VStack(spacing: 18) {
+            // Morphe, above.
+            if let line = morpheLine {
+                Text(line)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(5)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: 340)
+                    .modifier(VoiceGlass(shape: RoundedRectangle(cornerRadius: 20, style: .continuous)))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .accessibilityLabel("Morphe: \(line)")
+            }
+
+            // The Spartan: the waveform behind, the orb in front, breathing
+            // with the real mic level while listening.
+            MorpheVoiceRingHost(size: 170)
+                .frame(width: 170, height: 170)
+
+            // The user, below.
+            if let line = userLine {
+                HStack(spacing: 8) {
+                    if engine.state == .active {
+                        Image(systemName: "waveform")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.brandBlueText)
+                            .symbolEffect(.variableColor.iterative, options: .repeating)
+                    }
+                    Text(line)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(engine.state == .active ? MorpheTheme.textPrimary : MorpheTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(maxWidth: 340)
+                .modifier(VoiceGlass(shape: Capsule(style: .continuous)))
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .accessibilityLabel("You said: \(line)")
+            }
+        }
+        .padding(.horizontal, 24)
+        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85), value: morpheLine)
+        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85), value: userLine)
+    }
+}
+
+/// The edge glow (the iOS 26 Siri cue, in brand blue instead of rainbow):
+/// a thin stroke and its blurred twin around the screen, brightening with
+/// the voice. Static gradient — the motion is the audio, not a loop.
+private struct VoiceEdgeGlow: View {
+    var level: Double
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 54, style: .continuous)
+        let gradient = AngularGradient(
+            colors: [MorpheTheme.brandBlue, Color(red: 0.49, green: 0.83, blue: 1.0), .white,
+                     Color(red: 0.49, green: 0.83, blue: 1.0), MorpheTheme.brandBlue],
+            center: .center)
+        ZStack {
+            shape.strokeBorder(gradient, lineWidth: 3)
+            shape.strokeBorder(gradient, lineWidth: 12).blur(radius: 16)
+        }
+        .padding(1)
+        .ignoresSafeArea()
+        .opacity(reduceMotion ? 0.55 : 0.4 + level * 0.5)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.1), value: level)
+        .accessibilityHidden(true)
     }
 }

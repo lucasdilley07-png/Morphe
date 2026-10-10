@@ -40,6 +40,9 @@ struct CommunityView: View {
                         }
                     }
                 } else {
+                    // For You is its own tab (Lucas 2026-10-09): what the
+                    // Creator Coaches published, between Chats and Board.
+                    pane(.forYou) { creatorForYouScreen }
                     pane(.board) { boardScreen }
                     pane(.calendar) { calendarScreen }
                 }
@@ -59,6 +62,7 @@ struct CommunityView: View {
             if section == .contact {
                 Task { await store.refreshThreads() }
             } else {
+                if section == .forYou { Task { await store.refreshCreatorContent() } }
                 // The paged shell keeps panes mounted, so onDisappear never
                 // fires — swiping away is the close (launch audit P2-20).
                 store.closeThread()
@@ -86,12 +90,13 @@ struct CommunityView: View {
         // on the center line, matching Train's header. The camera door
         // rides a trailing overlay so it never pushes the tabs off-center
         // when the feed relights.
-        HStack(alignment: .bottom, spacing: 28) {
+        HStack(alignment: .bottom, spacing: FeatureFlags.socialFeedEnabled ? 28 : 18) {
             sectionTab("CHATS", .contact, showsBadge: store.unreadThreadCount > 0)
             if FeatureFlags.socialFeedEnabled {
                 sectionTab("FOR YOU", .forYou)
             } else {
-                // Launch shape (product audit): people, standings, schedule.
+                // Launch shape: people, the coaches' feed, standings, schedule.
+                sectionTab("FOR YOU", .forYou)
                 sectionTab("BOARD", .board)
                 sectionTab("CALENDAR", .calendar)
             }
@@ -132,6 +137,8 @@ struct CommunityView: View {
                     Text(label)
                         .font(MorpheTheme.microLabel(16))
                         .tracking(1.6)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                         .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
                     if showsBadge {
                         Circle()
@@ -214,9 +221,6 @@ struct CommunityView: View {
             VStack(alignment: .leading, spacing: 16) {
                 networkHeader.padding(.horizontal, -20)
                 WeeklyBoardCard()
-                // Under the board: a For You feed of what Creator Coaches
-                // have published (Lucas 2026-10-05).
-                CreatorFeed()
             }
             .padding(.horizontal, 20)
             .padding(.top, 6)
@@ -224,6 +228,23 @@ struct CommunityView: View {
         }
         .refreshable {
             await store.refreshLeaderboard(force: true)
+        }
+    }
+
+    /// FOR YOU pane (Lucas 2026-10-09): what the Creator Coaches
+    /// published — workouts, notes, open challenges — each under the
+    /// author's name, each reportable.
+    private var creatorForYouScreen: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                networkHeader.padding(.horizontal, -20)
+                CreatorFeed()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+            .padding(.bottom, 120)
+        }
+        .refreshable {
             await store.refreshCreatorContent(force: true)
         }
     }

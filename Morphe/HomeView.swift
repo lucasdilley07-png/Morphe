@@ -1280,7 +1280,7 @@ struct MorpheDayPopup: View {
         VStack(spacing: 0) {
             // Morphe's face: the frequency ring, breathing at a gentle
             // idle level and rising when it speaks.
-            MorpheFrequencyRing(level: ringLevel, speaking: ringSpeaking)
+            MorpheOrbView(level: ringLevel, speaking: ringSpeaking)
                 .frame(width: 170, height: 170)
                 .scaleEffect(ringPulse ? 1.07 : (ringIn || reduceMotion ? 1 : 0.55))
                 .opacity(ringIn || reduceMotion ? 1 : 0)

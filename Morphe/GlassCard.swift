@@ -197,17 +197,174 @@ struct MorpheHelmetMark: View {
 
 struct MorpheVoiceRingHost: View {
     @Environment(MorpheAppStore.self) private var store
+    var size: CGFloat = 170
 
     var body: some View {
         // Thinking (luxury audit): a tight, steady presence — working,
-        // not performing.
+        // not performing. The orb is the only shape on the stage (Lucas
+        // 2026-10-09: "only use the circle/ball/orb").
         let thinking = store.heyMorphe.state == .thinking
-        MorpheFrequencyRing(
+        MorpheOrbView(
             level: thinking ? 0.45 : store.heyMorphe.voiceLevel,
-            speaking: store.heyMorphe.state == .speaking
+            speaking: store.heyMorphe.state == .speaking,
+            thinking: thinking
         )
-        .frame(width: 240, height: 240)
+        .frame(width: size, height: size)
     }
+}
+
+/// The Morphe AI mark, alive (Lucas 2026-10-09, the final logo): a dark
+/// glass sphere, blue frequency ribbons flowing underneath the white
+/// Spartan helmet, a bright rim. `level` is real voice energy on the
+/// stage and a slow idle breath on the day popup; the ribbons move at the
+/// voice's own pace, so silence slows them rather than looping a canned
+/// animation. Reduce Motion renders one still frame.
+struct MorpheOrbView: View {
+    /// 0…1 voice energy; the idle breath lives above 0.
+    var level: Double
+    var speaking: Bool = false
+    var thinking: Bool = false
+    /// False draws one still frame (buttons, list rows).
+    var animates: Bool = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private final class PhaseBox {
+        var phase: Double = 0
+        var lastTime: Double?
+    }
+    @State private var phaseBox = PhaseBox()
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            ZStack {
+                sphere(size)
+                ribbons(size)
+                    .clipShape(Circle())
+                // The Spartan, always white, lit from behind — on top of
+                // the ribbons so they flow underneath it.
+                MorpheHelmetMark(glowRadius: size * 0.05, onBrandField: true)
+                    .frame(width: size * 0.46, height: size * 0.46)
+                    .offset(y: -size * 0.03)
+                rim(size)
+            }
+            .frame(width: size, height: size)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .accessibilityHidden(true)
+    }
+
+    // MARK: Layers
+
+    private static let navy = Color(red: 0.03, green: 0.07, blue: 0.20)
+    private static let glassBlue = Color(red: 0.49, green: 0.83, blue: 1.0)
+
+    private func sphere(_ size: CGFloat) -> some View {
+        ZStack {
+            // The body: deep navy, lit toward the upper left like glass.
+            Circle()
+                .fill(RadialGradient(
+                    colors: [Color(red: 0.10, green: 0.22, blue: 0.52), Self.navy, Color(red: 0.01, green: 0.03, blue: 0.10)],
+                    center: UnitPoint(x: 0.42, y: 0.36),
+                    startRadius: 0, endRadius: size * 0.62))
+            // Inner blue bloom that swells with the voice.
+            Circle()
+                .fill(RadialGradient(
+                    colors: [MorpheTheme.brandBlue.opacity(0.35 + level * 0.3), .clear],
+                    center: .center, startRadius: 0, endRadius: size * 0.5))
+                .animation(.easeOut(duration: 0.12), value: level)
+            // Specular: the soft window light on the upper left.
+            Ellipse()
+                .fill(LinearGradient(colors: [Color.white.opacity(0.42), .clear], startPoint: .top, endPoint: .bottom))
+                .frame(width: size * 0.52, height: size * 0.26)
+                .offset(x: -size * 0.12, y: -size * 0.33)
+                .blur(radius: size * 0.02)
+        }
+    }
+
+    private func rim(_ size: CGFloat) -> some View {
+        ZStack {
+            // Bright glass edge — brighter where the light hits.
+            Circle()
+                .strokeBorder(AngularGradient(
+                    colors: [Color.white.opacity(0.95), Self.glassBlue.opacity(0.5), Color.white.opacity(0.25),
+                             Self.glassBlue.opacity(0.9), Color.white.opacity(0.95)],
+                    center: .center, angle: .degrees(-40)), lineWidth: max(1.5, size * 0.012))
+            // Outer blue halo on the field.
+            Circle()
+                .stroke(MorpheTheme.brandBlue.opacity(0.35 + level * 0.25), lineWidth: size * 0.04)
+                .blur(radius: size * 0.05)
+                .animation(.easeOut(duration: 0.12), value: level)
+        }
+    }
+
+    @ViewBuilder
+    private func ribbons(_ size: CGFloat) -> some View {
+        if reduceMotion || !animates {
+            Canvas { context, canvasSize in
+                Self.drawRibbons(context: context, size: canvasSize, time: 1.7, level: level)
+            }
+        } else {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                Canvas { context, canvasSize in
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                    let dt = min(max(t - (phaseBox.lastTime ?? t), 0), 0.2)
+                    phaseBox.lastTime = t
+                    // Idle breath + the voice's own pace: speech makes the
+                    // ribbons run, silence lets them drift.
+                    let speed = (speaking ? 1.6 : 0.9) * (0.35 + level * 1.6)
+                    phaseBox.phase += dt * speed
+                    Self.drawRibbons(context: context, size: canvasSize, time: phaseBox.phase, level: level)
+                }
+            }
+        }
+    }
+
+    /// Three blue ribbons crossing the lower half of the sphere, each a
+    /// soft band plus a dotted trace along its crest — the frequency
+    /// design under the Spartan.
+    private static func drawRibbons(context: GraphicsContext, size: CGSize, time: Double, level: Double) {
+        let w = size.width, h = size.height
+        let bands: [(y: CGFloat, amp: CGFloat, waves: Double, phase: Double, width: CGFloat, alpha: Double)] = [
+            (0.66, 0.085, 1.6, 0.0, 0.085, 0.55),
+            (0.58, 0.07, 2.1, 1.9, 0.06, 0.42),
+            (0.74, 0.06, 1.3, 3.7, 0.05, 0.38)
+        ]
+        let energy = 0.6 + level * 0.9
+        for band in bands {
+            var path = Path()
+            var crest: [CGPoint] = []
+            let steps = 72
+            for step in 0...steps {
+                let x = CGFloat(step) / CGFloat(steps) * w
+                let theta = Double(x / w) * .pi * 2 * band.waves + time + band.phase
+                let y = h * band.y + h * band.amp * CGFloat(energy) * CGFloat(sin(theta) + 0.35 * sin(theta * 2.3 - time * 0.7))
+                let point = CGPoint(x: x, y: y)
+                if step == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                if step % 4 == 0 { crest.append(point) }
+            }
+            let gradient = Gradient(colors: [
+                brandBlueDeep.opacity(0.0), MorpheTheme.brandBlue.opacity(band.alpha),
+                glassBlue.opacity(band.alpha + 0.25), Color.white.opacity(band.alpha + 0.2),
+                MorpheTheme.brandBlue.opacity(band.alpha), brandBlueDeep.opacity(0.0)
+            ])
+            let shading = GraphicsContext.Shading.linearGradient(
+                gradient, startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: w, y: 0))
+            // The soft band.
+            context.stroke(path, with: shading, style: StrokeStyle(lineWidth: h * band.width, lineCap: .round))
+            // A sharper core line.
+            context.stroke(path, with: shading, style: StrokeStyle(lineWidth: max(1, h * 0.012), lineCap: .round))
+            // The dotted trace riding the crest.
+            for (index, point) in crest.enumerated() {
+                let r = max(0.8, h * 0.009) * (index % 2 == 0 ? 1 : 0.7)
+                context.fill(Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r - h * band.width * 0.55,
+                                                    width: r * 2, height: r * 2)),
+                             with: .color(Color.white.opacity(0.65)))
+            }
+        }
+    }
+
+    private static let brandBlueDeep = Color(red: 0.10, green: 0.23, blue: 0.64)
 }
 
 struct MorpheFrequencyRing: View {
