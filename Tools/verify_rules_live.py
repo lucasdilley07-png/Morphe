@@ -263,8 +263,37 @@ try:
                        {"senderUid": s(A["uid"]), "text": s("impostor")}, "lastMessageAt"))
     # (A second message inside 1 s can't be timed reliably over REST —
     # the gap rule is the same humanPaced() the post/comment checks prove.)
-    # Threads and messages are immutable by design: this run leaves one
-    # thread doc + one message (~300 bytes). Known, accepted.
+    # Threads, messages and connect requests are immutable by design: this
+    # run leaves one thread doc, one message and one request. Known, accepted.
+
+    print("\n— Connect requests (Quick Add) —")
+    conn_id = f"{A['uid']}_{B['uid']}"
+    conn_fields = {"fromUid": s(A["uid"]), "toUid": s(B["uid"]), "fromName": s("Rules A"),
+                   "toName": s("Rules B"), "status": s("pending")}
+    check("A sends B a connect request (stamped batch)", True,
+          paced_create(A, f"connectRequests/{conn_id}", conn_fields, "lastConnectAt"))
+    check("A sends a request without the pace stamp (bot shape)", False,
+          fs_call(A, "PATCH", f"connectRequests/{A['uid']}_{C['uid']}",
+                  {"fields": {"fromUid": s(A["uid"]), "toUid": s(C["uid"]), "fromName": s("Rules A"),
+                              "toName": s("Rules C"), "status": s("pending")}}))
+    check("C forges a request AS A", False,
+          paced_create(C, f"connectRequests/{A['uid']}_{C['uid']}",
+                       {"fromUid": s(A["uid"]), "toUid": s(C["uid"]), "fromName": s("A"),
+                        "toName": s("C"), "status": s("pending")}, "lastConnectAt"))
+    check("B sends A the reverse request while A→B exists", False,
+          paced_create(B, f"connectRequests/{B['uid']}_{A['uid']}",
+                       {"fromUid": s(B["uid"]), "toUid": s(A["uid"]), "fromName": s("B"),
+                        "toName": s("A"), "status": s("pending")}, "lastConnectAt"))
+    check("C reads A→B", False, fs_call(C, "GET", f"connectRequests/{conn_id}"))
+    check("A accepts their own request (only B may)", False,
+          fs_call(A, "PATCH", f"connectRequests/{conn_id}", {"fields": {"status": s("accepted")}},
+                  "?updateMask.fieldPaths=status"))
+    check("B accepts", True,
+          fs_call(B, "PATCH", f"connectRequests/{conn_id}", {"fields": {"status": s("accepted")}},
+                  "?updateMask.fieldPaths=status"))
+    check("A removes the connection", True,
+          fs_call(A, "PATCH", f"connectRequests/{conn_id}", {"fields": {"status": s("removed")}},
+                  "?updateMask.fieldPaths=status"))
 
     print("\n— Follow + block —")
     check("A follows B", True,

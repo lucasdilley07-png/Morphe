@@ -296,6 +296,41 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Member↔member connect requests (Quick Add, 2026-10-10). Deterministic
+    // id "{fromUid}_{toUid}". The sender creates it pending (human-paced:
+    // one every 10 s, stamped in the same batch; never to themself; never
+    // while the reverse request exists; never to someone who blocked them);
+    // the receiver accepts or declines; either side removes. Names are
+    // display text, bounded, never trusted.
+    match /connectRequests/{reqId} {
+      function isParty() {
+        return isSignedIn()
+          && (request.auth.uid == resource.data.fromUid || request.auth.uid == resource.data.toUid);
+      }
+      allow get: if isParty();
+      allow list: if isSignedIn() && request.query.limit <= 200;
+      allow create: if isSignedIn()
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid != request.auth.uid
+        && reqId == request.resource.data.fromUid + '_' + request.resource.data.toUid
+        && !exists(/databases/$(database)/documents/connectRequests/$(request.resource.data.toUid + '_' + request.resource.data.fromUid))
+        && request.resource.data.keys().hasOnly(['fromUid', 'toUid', 'fromName', 'toName', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.fromName is string && request.resource.data.fromName.size() <= 60
+        && request.resource.data.toName is string && request.resource.data.toName.size() <= 60
+        && !exists(/databases/$(database)/documents/users/$(request.resource.data.toUid)/blocked/$(request.auth.uid))
+        && humanPaced('lastConnectAt', 10);
+      allow update: if isParty()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && (
+          (request.auth.uid == resource.data.toUid
+            && resource.data.status == 'pending'
+            && request.resource.data.status in ['accepted', 'declined'])
+          || request.resource.data.status == 'removed'
+        );
+      allow delete: if false;
+    }
+
     // Train Together parties. The 6-char doc id is the join code — knowing it
     // is the invite (read by code; no listing). Hosts create/steer the party;
     // every member owns exactly their own member doc.

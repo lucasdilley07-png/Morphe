@@ -3192,6 +3192,39 @@ struct CoachShareSummary: Codable, Hashable {
 
 /// One row of the Find Athletes username search — a directory hit, nothing
 /// more (profiles stay private until people choose to post).
+/// A connect request between two members (LinkedIn shape, Lucas
+/// 2026-10-10): connectRequests/{fromUid_toUid}. Accepted = connected.
+struct ConnectRequest: Identifiable, Hashable {
+    var id: String
+    var fromUid: String
+    var toUid: String
+    var fromName: String
+    var toName: String
+    /// pending · accepted · declined · removed
+    var status: String
+    var createdAt: Date
+
+    func other(than uid: String) -> (uid: String, name: String) {
+        uid == fromUid ? (toUid, toName) : (fromUid, fromName)
+    }
+}
+
+/// One person on Quick Add: what the app really knows about them, merged
+/// from the username directory, feed posts and creator content.
+struct PersonCard: Identifiable, Hashable {
+    var uid: String
+    var name: String
+    var username: String
+    var headline: String
+    var accentId: String
+    var verified: Bool
+    var isCoach: Bool
+    var id: String { uid }
+
+    var displayName: String { name.isEmpty ? (username.isEmpty ? "Member" : "@\(username)") : name }
+    var initial: String { String(displayName.trimmingCharacters(in: CharacterSet(charactersIn: "@")).prefix(1)).uppercased() }
+}
+
 struct AthleteSearchResult: Identifiable, Hashable {
     var username: String
     var uid: String

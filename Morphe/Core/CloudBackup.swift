@@ -750,6 +750,17 @@ protocol FeedSyncing: AnyObject {
     func fetchBlocked(uid: String) async -> [String: String]?
     /// Removes one post (rules enforce author-only).
     func delete(postId: String)
+    /// Connect requests (2026-10-10): create pending, move status, list mine.
+    func sendConnectRequest(_ request: ConnectRequest) async -> Bool
+    func updateConnectRequest(id: String, status: String) async -> Bool
+    func fetchConnectRequests(uid: String) async -> [ConnectRequest]?
+}
+
+/// Defaults so stubs and previews compile; Firebase overrides them.
+extension FeedSyncing {
+    func sendConnectRequest(_ request: ConnectRequest) async -> Bool { false }
+    func updateConnectRequest(id: String, status: String) async -> Bool { false }
+    func fetchConnectRequests(uid: String) async -> [ConnectRequest]? { nil }
 }
 
 final class NoOpFeedService: FeedSyncing {
@@ -955,6 +966,62 @@ final class FirebaseFeedService: FeedSyncing {
 
     private func blocked(_ uid: String) -> CollectionReference {
         db.collection("users").document(uid).collection("blocked")
+    }
+
+    // MARK: Connect requests (connectRequests/{fromUid_toUid})
+
+    private var connectRequests: CollectionReference { db.collection("connectRequests") }
+
+    func sendConnectRequest(_ request: ConnectRequest) async -> Bool {
+        let data: [String: Any] = [
+            "fromUid": request.fromUid,
+            "toUid": request.toUid,
+            "fromName": request.fromName.wireClamped(60),
+            "toName": request.toName.wireClamped(60),
+            "status": "pending",
+            "createdAt": FieldValue.serverTimestamp(),
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        do {
+            // Paced like every other social write (human-only policy).
+            let batch = db.batch()
+            batch.setData(data, forDocument: connectRequests.document(request.id))
+            batch.setData(["lastConnectAt": FieldValue.serverTimestamp()],
+                          forDocument: db.collection("users").document(request.fromUid), merge: true)
+            try await batch.commit()
+            return true
+        } catch {
+            CloudWriteDiagnostics.note(error)
+            return false
+        }
+    }
+
+    func updateConnectRequest(id: String, status: String) async -> Bool {
+        do {
+            try await connectRequests.document(id).updateData([
+                "status": status, "updatedAt": FieldValue.serverTimestamp()])
+            return true
+        } catch {
+            CloudWriteDiagnostics.note(error)
+            return false
+        }
+    }
+
+    func fetchConnectRequests(uid: String) async -> [ConnectRequest]? {
+        func parse(_ document: QueryDocumentSnapshot) -> ConnectRequest? {
+            let d = document.data()
+            guard let from = d["fromUid"] as? String, let to = d["toUid"] as? String else { return nil }
+            return ConnectRequest(
+                id: document.documentID, fromUid: from, toUid: to,
+                fromName: d["fromName"] as? String ?? "", toName: d["toName"] as? String ?? "",
+                status: d["status"] as? String ?? "pending",
+                createdAt: (d["createdAt"] as? Timestamp)?.dateValue() ?? .now)
+        }
+        guard let sent = try? await connectRequests.whereField("fromUid", isEqualTo: uid).limit(to: 200).getDocuments(),
+              let received = try? await connectRequests.whereField("toUid", isEqualTo: uid).limit(to: 200).getDocuments()
+        else { return nil }
+        var seen = Set<String>()
+        return (sent.documents + received.documents).compactMap(parse).filter { seen.insert($0.id).inserted }
     }
 
     func setBlocked(uid: String, targetUid: String, name: String, on: Bool) {

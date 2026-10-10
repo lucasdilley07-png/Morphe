@@ -57,6 +57,13 @@ protocol UsernameDirectoryService: AnyObject {
     /// Releases a claim on account deletion so the name frees up. Rules
     /// enforce owner-only; a mismatched uid write is simply denied.
     func release(_ username: String, for uid: String) async
+    /// Up to `limit` members, name-ordered — Quick Add's "people on
+    /// Morphe" (the directory is the only public list of accounts).
+    func list(limit: Int) async -> [(username: String, uid: String)]?
+}
+
+extension UsernameDirectoryService {
+    func list(limit: Int) async -> [(username: String, uid: String)]? { [] }
 }
 
 /// Offline default for tests/previews: everything is available and every
@@ -85,6 +92,18 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
     /// nil = the query FAILED (offline) — distinct from an empty answer
     /// (audit 13, P2): "no accounts match" was a lie with no network, and
     /// the referral consumer needs the same distinction to keep retrying.
+    func list(limit: Int) async -> [(username: String, uid: String)]? {
+        guard let snapshot = try? await db.collection("usernames")
+            .order(by: FieldPath.documentID())
+            .limit(to: max(1, min(limit, 50)))
+            .getDocuments()
+        else { return nil }
+        return snapshot.documents.compactMap { document in
+            guard let uid = document.data()["uid"] as? String else { return nil }
+            return (username: document.documentID, uid: uid)
+        }
+    }
+
     func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]? {
         let clean = UsernameRules.normalize(prefix)
         guard !clean.isEmpty else { return [] }

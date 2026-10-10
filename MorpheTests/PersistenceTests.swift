@@ -6656,6 +6656,21 @@ final class ModerationTests: XCTestCase {
         XCTAssertNotNil(m.refusal(for: .message, text: "ok", now: t0.addingTimeInterval(10)))
     }
 
+    func testQuickAddMergesPeopleAndHidesTheRightOnes() {
+        let store = MorpheAppStore()
+        store.directoryPeople = [AthleteSearchResult(username: "ava", uid: "u1"),
+                                 AthleteSearchResult(username: "ben", uid: "u2"),
+                                 AthleteSearchResult(username: "cal", uid: "u3")]
+        store.feedPosts = [FeedPost(id: "p", authorUid: "u1", authorName: "Ava Stone", text: "Leg day")]
+        store.hidePerson("u3")
+        let people = store.quickAddPeople
+        XCTAssertEqual(people.map(\.uid), ["u1", "u2"], "hidden people drop; feed facts merge onto the directory")
+        XCTAssertEqual(people.first?.displayName, "Ava Stone")
+        XCTAssertEqual(people.last?.displayName, "@ben", "a bare directory entry shows its handle")
+        store.unhideAllPeople()
+        XCTAssertEqual(store.quickAddPeople.count, 3)
+    }
+
     func testTrainCardOrderInsertsNewCardsWhereTheDefaultPutsThem() {
         // A saved order from before the builder existed.
         let order = TrainCardID.resolvedOrder(from: ["library", "program", "progress", "partner"])

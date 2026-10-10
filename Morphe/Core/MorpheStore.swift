@@ -1607,6 +1607,9 @@ final class MorpheAppStore {
         // its own pledge (human-only policy audit 2026-10-10).
         contentPacer = ContentPacer()
         humanPledgeAccepted = false
+        connectRequests = []
+        directoryPeople = []
+        hiddenPeopleUids = []
         // One account's appointments, streak and sayings must not ring
         // after sign-out or under the next account (audit 31).
         if !(appointmentService is NoOpAppointmentService) {
@@ -1737,7 +1740,7 @@ final class MorpheAppStore {
                     // switch, wrong to share across accounts.
                     threadReadKey, activitySeenKey, storySeenKey,
                     lastKnownStreakKey, comebackPendingKey, foodChecksKey, recentFoodsKey,
-                    savedExercisesKey, savedLessonsKey, savedDietPlansKey,
+                    savedExercisesKey, savedLessonsKey, savedDietPlansKey, hiddenPeopleKey,
                     dailyStreakCountKey, dailyStreakLastDayKey, dailyStreakBestKey, dailyStreakFreezeDayKey,
                     // An invite link opened before sign-out must not credit
                     // the next account's recruiter (audit 2026-10-10, P2).
@@ -4764,6 +4767,7 @@ final class MorpheAppStore {
             "savedExercises": savedExercisesKey,
             "savedLessons": savedLessonsKey,
             "savedDietPlans": savedDietPlansKey,
+            "hiddenPeople": hiddenPeopleKey,
             "dailyStreakCount": dailyStreakCountKey,
             "dailyStreakLastDay": dailyStreakLastDayKey,
             "dailyStreakBest": dailyStreakBestKey,
@@ -4858,6 +4862,7 @@ final class MorpheAppStore {
         loadLibraryFolders()
         loadRecentFoods()
         loadSavedThings()
+        loadHiddenPeople()
     }
 
     /// Called from `submitRecoveryCheckIn` — records today's real inputs.
@@ -9471,6 +9476,162 @@ final class MorpheAppStore {
     func openQuickAdd() {
         showQuickAdd = true
         Haptics.impact(.light)
+    }
+
+    // MARK: - Quick Add: people + connect requests (Lucas 2026-10-10)
+    //
+    // Snapchat's shape (people, coaches first), LinkedIn's verbs (view the
+    // account, request to connect, hide). What the app knows about a
+    // person is only what they published: the username directory, their
+    // feed posts (name, byline, accent, verified) and creator content.
+
+    var connectRequests: [ConnectRequest] = []
+    var directoryPeople: [AthleteSearchResult] = []
+    var hiddenPeopleUids: Set<String> = []
+    private(set) var quickAddFetchFailed = false
+    private var hiddenPeopleKey: String { "morphe.hidden.people.\(clientProfile.id.uuidString)" }
+
+    func loadHiddenPeople() {
+        hiddenPeopleUids = Set(UserDefaults.standard.stringArray(forKey: hiddenPeopleKey) ?? [])
+    }
+
+    enum ConnectionState { case none, requested, incoming, connected }
+
+    func connectionState(with uid: String) -> ConnectionState {
+        guard let me = authUser?.id else { return .none }
+        if let live = connectRequests.first(where: { ($0.fromUid == me && $0.toUid == uid) || ($0.fromUid == uid && $0.toUid == me) }) {
+            switch live.status {
+            case "accepted": return .connected
+            case "pending": return live.fromUid == me ? .requested : .incoming
+            default: return .none
+            }
+        }
+        return .none
+    }
+
+    var incomingConnectRequests: [ConnectRequest] {
+        guard let me = authUser?.id else { return [] }
+        return connectRequests.filter { $0.toUid == me && $0.status == "pending" && !blockedUids.contains($0.fromUid) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    var connectedUids: Set<String> {
+        guard let me = authUser?.id else { return [] }
+        return Set(connectRequests.filter { $0.status == "accepted" }.map { $0.other(than: me).uid })
+    }
+
+    /// Everyone the app can name, merged by uid; feed and creator facts
+    /// beat the bare directory entry.
+    var knownPeople: [PersonCard] {
+        var cards: [String: PersonCard] = [:]
+        for hit in directoryPeople {
+            cards[hit.uid] = PersonCard(uid: hit.uid, name: "", username: hit.username, headline: "", accentId: "", verified: false, isCoach: false)
+        }
+        for post in feedPosts {
+            var card = cards[post.authorUid] ?? PersonCard(uid: post.authorUid, name: "", username: "", headline: "", accentId: "", verified: false, isCoach: false)
+            if card.name.isEmpty { card.name = post.authorName }
+            if card.headline.isEmpty { card.headline = post.authorHeadline }
+            if card.accentId.isEmpty { card.accentId = post.authorAccent }
+            card.verified = card.verified || post.verified
+            cards[post.authorUid] = card
+        }
+        for (uid, name, handle) in creatorWorkouts.map({ ($0.authorUid, $0.authorName, $0.authorHandle) }) + creatorNotes.map({ ($0.authorUid, $0.authorName, $0.authorHandle) }) {
+            var card = cards[uid] ?? PersonCard(uid: uid, name: "", username: "", headline: "", accentId: "", verified: false, isCoach: false)
+            if card.name.isEmpty { card.name = name }
+            if card.username.isEmpty { card.username = handle.trimmingCharacters(in: CharacterSet(charactersIn: "@")) }
+            if card.headline.isEmpty { card.headline = "Creator Coach" }
+            card.isCoach = true
+            cards[uid] = card
+        }
+        for request in connectRequests {
+            let other = request.other(than: authUser?.id ?? "")
+            if var card = cards[other.uid] { if card.name.isEmpty { card.name = other.name }; cards[other.uid] = card }
+            else if !other.name.isEmpty { cards[other.uid] = PersonCard(uid: other.uid, name: other.name, username: "", headline: "", accentId: "", verified: false, isCoach: false) }
+        }
+        func key(_ card: PersonCard) -> String { (card.name.isEmpty ? card.username : card.name).lowercased() }
+        return cards.values.sorted { ($0.isCoach ? 0 : 1, key($0)) < ($1.isCoach ? 0 : 1, key($1)) }
+    }
+
+    func person(for uid: String) -> PersonCard? { knownPeople.first { $0.uid == uid } }
+
+    /// Quick Add's list: not me, not blocked, not hidden, not already
+    /// connected or asked; coaches first.
+    var quickAddPeople: [PersonCard] {
+        let me = authUser?.id ?? ""
+        return knownPeople.filter { card in
+            card.uid != me && !blockedUids.contains(card.uid) && !hiddenPeopleUids.contains(card.uid)
+                && connectionState(with: card.uid) == .none
+        }
+    }
+
+    func refreshQuickAdd() async {
+        guard let uid = authUser?.id else { return }
+        loadHiddenPeople()
+        async let people = usernameDirectory.list(limit: 50)
+        async let requests = feedService.fetchConnectRequests(uid: uid)
+        let (hits, live) = await (people, requests)
+        if let hits { directoryPeople = hits.map { AthleteSearchResult(username: $0.username, uid: $0.uid) } }
+        if let live { connectRequests = live }
+        quickAddFetchFailed = hits == nil && live == nil
+        if feedPosts.isEmpty { await refreshFeed() }
+    }
+
+    func sendConnectRequest(to person: PersonCard) async {
+        guard let me = authUser?.id, person.uid != me, connectionState(with: person.uid) == .none else { return }
+        if let paced = contentPacer.refusal(for: .message, text: "connect:\(person.uid)") {
+            showToast(paced, isError: true); return
+        }
+        let myName = clientProfile.name.isEmpty ? (authUser?.displayName ?? "A Morphe member") : clientProfile.name
+        let request = ConnectRequest(id: "\(me)_\(person.uid)", fromUid: me, toUid: person.uid,
+                                     fromName: String(myName.prefix(60)), toName: String(person.displayName.prefix(60)),
+                                     status: "pending", createdAt: .now)
+        connectRequests.removeAll { $0.id == request.id }
+        connectRequests.append(request)
+        guard await feedService.sendConnectRequest(request) else {
+            connectRequests.removeAll { $0.id == request.id }
+            showToast(CloudWriteDiagnostics.consumeDenied()
+                      ? "Couldn't send — either they've blocked you, a request already exists, or you're sending too fast."
+                      : "Request didn't send — check your connection.", isError: true)
+            return
+        }
+        contentPacer.record(.message, text: "connect:\(person.uid)")
+        Haptics.impact(.light)
+        showToast("Request sent to \(person.displayName).")
+    }
+
+    func respondToConnectRequest(_ request: ConnectRequest, accept: Bool) async {
+        let status = accept ? "accepted" : "declined"
+        guard await feedService.updateConnectRequest(id: request.id, status: status) else {
+            showToast("Couldn't update that request — check your connection.", isError: true)
+            return
+        }
+        if let index = connectRequests.firstIndex(where: { $0.id == request.id }) { connectRequests[index].status = status }
+        if accept { Haptics.success() }
+        showToast(accept ? "Connected with \(request.fromName)." : "Request declined.")
+    }
+
+    func removeConnection(with uid: String) async {
+        guard let me = authUser?.id,
+              let live = connectRequests.first(where: { ($0.fromUid == me && $0.toUid == uid) || ($0.fromUid == uid && $0.toUid == me) }),
+              live.status == "pending" || live.status == "accepted" else { return }
+        guard await feedService.updateConnectRequest(id: live.id, status: "removed") else {
+            showToast("Couldn't remove — check your connection.", isError: true)
+            return
+        }
+        if let index = connectRequests.firstIndex(where: { $0.id == live.id }) { connectRequests[index].status = "removed" }
+        showToast(live.status == "accepted" ? "Connection removed." : "Request withdrawn.")
+    }
+
+    func hidePerson(_ uid: String) {
+        hiddenPeopleUids.insert(uid)
+        UserDefaults.standard.set(Array(hiddenPeopleUids).sorted(), forKey: hiddenPeopleKey)
+        mirrorExtrasToCloud()
+    }
+
+    func unhideAllPeople() {
+        hiddenPeopleUids = []
+        UserDefaults.standard.removeObject(forKey: hiddenPeopleKey)
+        mirrorExtrasToCloud()
     }
 
     func closeQuickAdd() {

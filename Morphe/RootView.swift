@@ -733,7 +733,7 @@ private struct ClientPinnedHeader: View {
                 store.openUniversalSearch()
             }
 
-            HeaderCircleButton(systemImage: "plus", label: "Quick add") {
+            HeaderCircleButton(systemImage: "person.badge.plus", label: "Quick add — people") {
                 store.openQuickAdd()
             }
 
@@ -3541,142 +3541,394 @@ private struct UniversalSearchSheet: View {
 
 }
 
+/// Quick Add (Lucas 2026-10-10): people, Snapchat-shaped — requests at
+/// the top, coaches, then everyone the app can name — with LinkedIn's
+/// verbs: open the account, request to connect, hide. Nothing here is
+/// invented: a card shows only what that person published.
 private struct QuickAddSheet: View {
     @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @State private var quickNote = ""
+    @State private var viewing: PersonCard?
+    @State private var loaded = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                SectionTitleView(
-                    title: "Quick Add",
-                    subtitle: "Log the moment, ask for help, or keep momentum moving."
-                )
+                HStack(alignment: .firstTextBaseline) {
+                    SectionTitleView(
+                        title: "Quick Add",
+                        subtitle: "People on Morphe. Tap a card to see the account; connect, or hide."
+                    )
+                    Spacer(minLength: 8)
+                    Button("Done") { dismissQuickAdd() }
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
 
-                QuickAddGridCard(items: [
-                    QuickAddItem(
-                        title: store.hasCompletedWorkoutFlow
-                            ? "Finish in Train"
-                            : (store.isWorkoutSessionActive
-                                ? "Resume Workout"
-                                : (store.isWorkoutLoggedToday ? "New Workout" : "Open Workout")),
-                        subtitle: store.hasCompletedWorkoutFlow
-                            ? "Your session is waiting to be logged"
-                            : (store.isWorkoutSessionActive
-                                ? "Jump back into Train"
-                                : (store.isWorkoutLoggedToday ? "Today's done — browse Discover" : "Start today's plan in Train")),
-                        systemImage: store.hasCompletedWorkoutFlow
-                            ? "checkmark.circle.fill"
-                            : (store.isWorkoutLoggedToday && !store.isWorkoutSessionActive ? "square.grid.2x2.fill" : "figure.run")
-                    ) {
-                        if store.hasCompletedWorkoutFlow {
-                            // ONE canonical Log button (audit E8): Train's
-                            // review flow owns the commit — this door
-                            // walks there instead of triple-wiring it.
-                            store.selectedClientTab = .train
-                        } else if store.isWorkoutSessionActive {
-                            // Resume = return to the live console. The old
-                            // path restarted the session and wiped every
-                            // logged set.
-                            store.selectedClientTab = .train
-                        } else if store.isWorkoutLoggedToday {
-                            // Today's workout is already in the books —
-                            // offer something new instead of a re-run.
-                            store.showDiscoverTab()
-                        } else {
-                            // Dismiss FIRST (audit 9, P2): the session-
-                            // work gate dialog is hosted at the root,
-                            // under this sheet.
-                            dismissQuickAdd()
-                            store.startTodayWorkout()
-                            return
+                if !store.incomingConnectRequests.isEmpty {
+                    peopleSection("Requests", count: store.incomingConnectRequests.count) {
+                        ForEach(store.incomingConnectRequests) { request in
+                            let card = store.person(for: request.fromUid)
+                                ?? PersonCard(uid: request.fromUid, name: request.fromName, username: "", headline: "", accentId: "", verified: false, isCoach: false)
+                            PersonRow(card: card, trailing: {
+                                HStack(spacing: 6) {
+                                    Button("Accept") { Task { await store.respondToConnectRequest(request, accept: true) } }
+                                        .buttonStyle(QuickAddPillStyle(filled: true))
+                                    Button {
+                                        Task { await store.respondToConnectRequest(request, accept: false) }
+                                    } label: {
+                                        Image(systemName: "xmark").font(.caption.weight(.bold))
+                                    }
+                                    .buttonStyle(QuickAddPillStyle(filled: false))
+                                    .accessibilityLabel("Decline")
+                                }
+                            }, onOpen: { viewing = card })
                         }
-                        dismissQuickAdd()
-                    },
-                    // Named for where it actually lands (audit E9):
-                    // "Browse" implied Discover; this opens the library.
-                    QuickAddItem(title: "Exercise Library", subtitle: "Form guides by muscle group", systemImage: "books.vertical.fill") {
-                        // openMore selects the library panel — setting the
-                        // tab alone landed on whatever panel was last open.
-                        store.openMore(.library)
-                        dismissQuickAdd()
-                    },
-                    QuickAddItem(title: "Food & Water", subtitle: "Log a meal or a cup", systemImage: "fork.knife") {
-                        store.openMore(.nutrition)
-                        dismissQuickAdd()
-                    },
-                    QuickAddItem(title: "Join a Board", subtitle: "Face the weekly leaderboard", systemImage: "trophy.fill") {
-                        // The BOARD pane owns the opt-in flow — this is
-                        // the door, not a silent join.
-                        store.openCommunity(.board)
-                        dismissQuickAdd()
-                    },
-                    QuickAddItem(title: "Ask Morphe", subtitle: "Quick tips and answers", systemImage: "sparkles") {
-                        // Two sheets can't co-present: queue the AI
-                        // cover, dismiss this one, and the sheet's
-                        // onDismiss opens it — no guessed delay.
-                        store.pendingAIAgentOpen = true
-                        dismissQuickAdd()
-                    }
-                ])
-
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Quick Note")
-                            .font(.headline)
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                        // Honest copy: notes save to YOUR list (nothing is
-                        // "attached to an athlete" — that claim was false),
-                        // and an empty save no longer invents canned text.
-                        Text("Capture how you feel, what worked, or what to note for later.")
-                            .foregroundStyle(MorpheTheme.textSecondary)
-
-                        TextField("Type a quick note...", text: $quickNote)
-                            .textFieldStyle(MorpheFieldStyle())
-
-                        Button("Save Note") {
-                            store.saveQuickNote(quickNote)
-                            quickNote = ""
-                            dismissQuickAdd()
-                        }
-                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        .disabled(quickNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
 
-                if !store.quickCaptureNotes.isEmpty {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Recent Notes")
-                                .font(.headline)
-                                .foregroundStyle(MorpheTheme.textPrimary)
+                let coaches = store.quickAddPeople.filter(\.isCoach)
+                let people = store.quickAddPeople.filter { !$0.isCoach }
 
-                            ForEach(Array(store.quickCaptureNotes.prefix(3)), id: \.self) { note in
-                                Text("• \(note)")
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                            }
-                        }
+                if !coaches.isEmpty {
+                    peopleSection("Coaches", count: coaches.count) {
+                        ForEach(coaches) { card in personRow(card) }
                     }
                 }
+
+                peopleSection(coaches.isEmpty ? "People on Morphe" : "People you may know", count: people.count) {
+                    if people.isEmpty {
+                        GlassCard(.quiet) {
+                            Text(store.quickAddFetchFailed
+                                 ? "Couldn't reach the directory — pull to try again."
+                                 : (loaded ? "Nobody new right now. Search by @username from the magnifier, or share your invite link." : "Loading people…"))
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        ForEach(people) { card in personRow(card) }
+                    }
+                }
+
+                if !store.hiddenPeopleUids.isEmpty {
+                    Button("Show \(store.hiddenPeopleUids.count) hidden") { store.unhideAllPeople() }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .frame(minHeight: 44)
+                }
+
+                ShareLink(item: store.networkInviteMessage) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "square.and.arrow.up")
+                        Text("Share your invite link")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 48)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
-            .padding(.bottom, 120)
+            .padding(.bottom, 40)
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") {
-                    dismissQuickAdd()
+        .refreshable { await store.refreshQuickAdd() }
+        .task {
+            await store.refreshQuickAdd()
+            loaded = true
+        }
+        .sheet(item: $viewing) { card in
+            PersonAccountSheet(card: card)
+                .environment(store)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(28)
+                .sheetToastSurface()
+        }
+    }
+
+    private func personRow(_ card: PersonCard) -> some View {
+        PersonRow(card: card, trailing: {
+            HStack(spacing: 6) {
+                Button {
+                    Task { await store.sendConnectRequest(to: card) }
+                } label: {
+                    Label("Connect", systemImage: "person.badge.plus").font(.caption.weight(.bold))
                 }
-                .foregroundStyle(MorpheTheme.textPrimary)
+                .buttonStyle(QuickAddPillStyle(filled: true))
+                .accessibilityLabel("Request to connect with \(card.displayName)")
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { store.hidePerson(card.uid) }
+                } label: {
+                    Image(systemName: "xmark").font(.caption.weight(.bold))
+                }
+                .buttonStyle(QuickAddPillStyle(filled: false))
+                .accessibilityLabel("Hide \(card.displayName)")
             }
+        }, onOpen: { viewing = card })
+    }
+
+    private func peopleSection(_ title: String, count: Int, @ViewBuilder rows: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title.uppercased())
+                    .font(MorpheTheme.microLabel(11))
+                    .tracking(1.4)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Spacer()
+                Text("\(count)")
+                    .font(MorpheTheme.microLabel(11))
+                    .monospacedDigit()
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            rows()
         }
     }
 
     private func dismissQuickAdd() {
         store.closeQuickAdd()
         dismiss()
+    }
+}
+
+/// One person: accent-colored initial, name, @username, byline, verified
+/// seal; the trailing controls are the caller's.
+private struct PersonRow<Trailing: View>: View {
+    let card: PersonCard
+    @ViewBuilder let trailing: () -> Trailing
+    let onOpen: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: onOpen) {
+                HStack(spacing: 12) {
+                    PersonAvatar(card: card, size: 44)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text(card.displayName)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .lineLimit(1)
+                            if card.verified {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.brandBlueText)
+                                    .accessibilityLabel("Verified")
+                            }
+                        }
+                        if !card.username.isEmpty, !card.name.isEmpty {
+                            Text("@\(card.username)")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                                .lineLimit(1)
+                        }
+                        if !card.headline.isEmpty {
+                            Text(card.headline)
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(card.displayName)\(card.headline.isEmpty ? "" : ", \(card.headline)")")
+            .accessibilityHint("Opens the account")
+            trailing()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panel)
+        )
+    }
+}
+
+private struct PersonAvatar: View {
+    let card: PersonCard
+    var size: CGFloat = 44
+
+    var body: some View {
+        let accent = card.accentId.isEmpty ? MorpheTheme.accent : MorpheTheme.accentColor(forPaletteId: card.accentId)
+        ZStack {
+            Circle().fill(accent.opacity(0.18))
+            Circle().stroke(accent.opacity(0.6), lineWidth: 1.5)
+            Text(card.initial)
+                .font(.system(size: size * 0.42, weight: .bold))
+                .foregroundStyle(MorpheTheme.asText(accent))
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct QuickAddPillStyle: ButtonStyle {
+    let filled: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, filled ? 12 : 10)
+            .frame(minHeight: 34)
+            .foregroundStyle(filled ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textSecondary)
+            .background(Capsule().fill(filled ? MorpheTheme.accent : MorpheTheme.panelStrong))
+            .opacity(configuration.isPressed ? 0.75 : 1)
+    }
+}
+
+/// The account page behind a Quick Add card: what they published, plus
+/// connect / message / follow / hide / block / report.
+private struct PersonAccountSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let card: PersonCard
+    @State private var showBlockConfirm = false
+
+    private var posts: [FeedPost] { store.feedPosts.filter { $0.authorUid == card.uid } }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Spacer()
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                HStack(spacing: 14) {
+                    PersonAvatar(card: card, size: 72)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(card.displayName)
+                                .font(.title2.weight(.bold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            if card.verified {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .foregroundStyle(MorpheTheme.brandBlueText)
+                                    .accessibilityLabel("Verified")
+                            }
+                        }
+                        if !card.username.isEmpty {
+                            Text("@\(card.username)")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                        if !card.headline.isEmpty {
+                            Text(card.headline)
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                        if card.isCoach {
+                            Text("CREATOR COACH")
+                                .font(MorpheTheme.microLabel(9))
+                                .tracking(1.2)
+                                .foregroundStyle(MorpheTheme.accentText)
+                        }
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    switch store.connectionState(with: card.uid) {
+                    case .none:
+                        Button {
+                            Task { await store.sendConnectRequest(to: card) }
+                        } label: { Label("Connect", systemImage: "person.badge.plus") }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    case .requested:
+                        Button("Requested · withdraw") { Task { await store.removeConnection(with: card.uid) } }
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                    case .incoming:
+                        if let request = store.incomingConnectRequests.first(where: { $0.fromUid == card.uid }) {
+                            Button("Accept") { Task { await store.respondToConnectRequest(request, accept: true) } }
+                                .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                            Button("Decline") { Task { await store.respondToConnectRequest(request, accept: false) } }
+                                .buttonStyle(SecondaryCTAButtonStyle())
+                        }
+                    case .connected:
+                        Button {
+                            Task {
+                                if await store.startDirectChat(with: card.uid, name: card.displayName) { dismiss() }
+                            }
+                        } label: { Label("Message", systemImage: "bubble.left.fill") }
+                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    }
+                    Button(store.followedUids.contains(card.uid) ? "Following" : "Follow") {
+                        store.toggleFollow(uid: card.uid, name: card.displayName)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .frame(width: 110)
+                }
+
+                if store.connectionState(with: card.uid) == .connected {
+                    Text("Connected. You can message each other.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+
+                GlassCard(.quiet) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("WHAT THEY'VE POSTED")
+                            .font(MorpheTheme.microLabel())
+                            .tracking(1.4)
+                            .foregroundStyle(MorpheTheme.accentText)
+                        if posts.isEmpty {
+                            Text(store.feedPosts.isEmpty
+                                 ? "The feed hasn't loaded yet."
+                                 : "Nothing from \(card.displayName) in the feed you've loaded.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        } else {
+                            ForEach(posts.prefix(8)) { post in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(post.text)
+                                        .font(.subheadline)
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Text(post.createdAt.formatted(.relative(presentation: .named)))
+                                        .font(.caption2)
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(spacing: 16) {
+                    if store.connectionState(with: card.uid) == .connected {
+                        Button("Remove connection") { Task { await store.removeConnection(with: card.uid) } }
+                    } else {
+                        Button("Hide") { store.hidePerson(card.uid); dismiss() }
+                    }
+                    Menu("Report") {
+                        ForEach(MorpheAppStore.reportReasons, id: \.self) { reason in
+                            Button(reason) { store.reportUser(uid: card.uid, name: card.displayName, reason: reason) }
+                        }
+                    }
+                    Button("Block", role: .destructive) { showBlockConfirm = true }
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textMuted)
+                .buttonStyle(.plain)
+                .frame(minHeight: 44)
+            }
+            .padding(20)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
+        .confirmationDialog("Block \(card.displayName)?", isPresented: $showBlockConfirm, titleVisibility: .visible) {
+            Button("Block", role: .destructive) {
+                store.blockAccount(uid: card.uid, name: card.displayName)
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Their posts, comments and messages disappear for you, and they can't message you.")
+        }
     }
 }
 
