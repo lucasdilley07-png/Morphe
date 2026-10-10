@@ -4271,14 +4271,12 @@ private struct HeyMorpheStage: View {
         .accessibilityAddTraits(.isModal)
     }
 
-    @ViewBuilder
-    private var column: some View {
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: 24) { stack }
-        } else {
-            stack
-        }
-    }
+    /// No GlassEffectContainer here (Lucas 2026-10-10: the orb rendered
+    /// as a solid blue ball on the stage): the container hoists every
+    /// glass shape into one merged layer, which put the orb's tinted
+    /// glass OVER its own image. Three separate glass views cost nothing
+    /// measurable, and the orb draws exactly as it does on the popup.
+    private var column: some View { stack }
 
     private var stack: some View {
         VStack(spacing: 18) {
