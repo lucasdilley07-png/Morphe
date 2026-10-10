@@ -2093,7 +2093,7 @@ struct MorpheTabBar<Item: MorpheTabItem & CaseIterable>: View where Item.AllCase
         .padding(.vertical, 2)
         // Floating glass bubble (Lucas 2026-08-19): the dock lifts off the
         // bottom and sides in a material capsule — the Liquid Glass
-        // floating-capsule pattern from docs/UI-AUDIT-APPLE.md, scoped to
+        // floating-capsule pattern from docs/archive/UI-AUDIT-APPLE.md, scoped to
         // chrome exactly as the benchmark prescribes. Same height as the
         // full-width strip it replaces.
         .background(

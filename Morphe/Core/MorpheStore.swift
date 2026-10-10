@@ -9471,7 +9471,7 @@ final class MorpheAppStore {
         }
     }
 
-    // sendClientPrompt is GONE (AI-2 in docs/READINESS-300.md): it was a
+    // sendClientPrompt is GONE (AI-2 in docs/archive/READINESS-300.md): it was a
     // second, dumber "Morphe AI" pipeline with zero callers, feeding the
     // demo inbox thread with no actions and no context. The pill/cover
     // action layer (sendAIAgentPrompt) is the one brain.
@@ -12129,7 +12129,7 @@ final class MorpheAppStore {
         if shouldShowDayPopup { dismissDayPopupForSession() }
     }
 
-    // MARK: - Apple-benchmark moments (docs/UI-AUDIT-APPLE.md)
+    // MARK: - Apple-benchmark moments (docs/archive/UI-AUDIT-APPLE.md)
 
     /// A6: the once-ever hello — set by completeOnboarding exactly once
     /// per account lifetime, cleared by the overlay when the beat ends.
@@ -15852,7 +15852,7 @@ final class MorpheAppStore {
         showToast("Coach workout log saved.")
     }
 
-    // The "AI photo parse" pair is GONE (AI-1 in docs/READINESS-300.md):
+    // The "AI photo parse" pair is GONE (AI-1 in docs/archive/READINESS-300.md):
     // it never parsed anything — it copied a template and stamped the log
     // "Morphe AI parsed a workout photo". Fabricated provenance violates
     // the house rule. Coach manual entry above is the honest path; a real

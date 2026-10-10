@@ -1,138 +1,142 @@
 # Morphe — Launch checklist
 
-What's ready in this repo, and the exact steps that need your Apple/GitHub
-accounts. Refreshed 2026-10-07 after the launch audits (1.0, build 2, abe28bf).
+What's ready in this repo, and the exact steps that need your Apple,
+GitHub and business accounts. **Refreshed 2026-10-10** (build 8b06450 on
+the phone, 391 tests, rules 99/99 live). The Friday 10-09 target passed;
+the gate is still the Apple Developer Program.
 
-## Next steps — 2026-10-07 → Friday 2026-10-09 (in order)
+## ✅ Ready in the repo
 
-**Tonight (Tue 10-07)**
-- [ ] Pay the Apple Developer Program ($99) — developer.apple.com/programs/enroll. Everything below waits on approval (usually 24–48h).
-- [ ] Test on the phone (build abe28bf is installed): open/close the app with music playing — does it still dip? Day popup entrance. Onboard a throwaway account and confirm the @name you type is the one you get.
-- [ ] Firebase console → upgrade `morphe-3c5c2` to Blaze, set a $10 budget alert.
-- [ ] Google Cloud → Credentials → restrict the web API key to the referrer `https://lucasdilley07-png.github.io/*`.
-- [ ] Firebase Auth → Settings → confirm "Email enumeration protection" is on.
+- App: every feature in `docs/HANDOFF.md`, Release build clean, 391 tests.
+- Listing: `AppStore/metadata.md` (name, subtitle, keywords, description,
+  what's new, App Privacy answers, three URLs).
+- Site: `docs/index.html` (marketing), `docs/privacy.html`,
+  `docs/terms.html` (generated from the `.md` sources by
+  `Tools/build_privacy_page.py`), `docs/support.html`, `docs/coach.html`.
+- Policy: Terms of Use v2 (human-only), privacy policy current, in-app
+  report/block/filter, human review tools.
+- Compliance: `PrivacyInfo.xcprivacy` (app + widget), usage strings
+  (camera, microphone, speech, Photos add-only, Health), encryption
+  exemption, Live Activities, iPhone-only portrait, app icon + launch
+  screen.
+- Backend: rules published and verified; admin tools.
 
-**Wed 10-08 (while enrollment processes)**
-- [ ] Create the reviewer account in the app: sign up, accept terms, log 2–3 sessions, join the weekly board. Keep the email + password for App Review Information.
-- [ ] Decide the store name: `Morphe` first, `Morphe: Workout Tracker` as the fallback (cosmetics brand conflict).
-- [ ] Decide whether the website Store section ships hidden or as "coming soon" (currently placeholder prices).
-- [ ] Sign in on the Pro Max simulator, then say "take the screenshots" — capture is automated.
+## ⏳ Needs you — in order
 
-**When Apple approves the program**
-- [ ] Xcode → Signing: switch the four targets to the paid team (new Team ID likely). Reinstall on the phone.
-- [ ] App Store Connect → new app record: name, bundle `com.morpheapp.Morphe`, the three URLs (privacy/support/marketing), App Privacy per `metadata.md` table, age rating 12+.
-- [ ] Archive (Release, Any iOS Device) → Distribute → TestFlight. Build 2 is set.
-- [ ] TestFlight internal group: add your own Apple ID; install from TestFlight on the phone; run one full session + a Form Check.
-- [ ] App Review Information: Sign-in required = YES with the reviewer account; paste the review notes from step 7 below.
-- [ ] Submit for review (expect 24–72h; a Friday public listing is a stretch — TestFlight Friday is the realistic target).
+**1. Apple Developer Program ($99)** — developer.apple.com/programs/enroll.
+Everything below waits on approval (24–48 h). Individual enrolment is
+fine now; it can move to the LLC later.
 
-**After the links exist**
-- [ ] Paste the App Store / TestFlight URLs into `APP_STORE_URL` / `TESTFLIGHT_URL` at the bottom of `docs/index.html`, push — the buttons go live by themselves.
-- [ ] If the app name changed, update `AppStore/metadata.md` and the site's `<title>`.
+**2. While it processes**
+- [ ] Firebase console → upgrade `morphe-3c5c2` to Blaze, $10 budget alert.
+- [ ] Google Cloud → Credentials → restrict the web API key to
+      `https://lucasdilley07-png.github.io/*`.
+- [ ] Firebase Auth → Settings → "Email enumeration protection" on.
+- [ ] GitHub: sign in once in the Terminal tab so the ~30 local commits
+      push (git asks for username + a personal access token).
+- [ ] Create the reviewer account in the app: sign up, accept the terms,
+      log 2–3 sessions, join the weekly board; keep the email + password
+      for App Review Information.
+- [ ] Decide the store name: `Morphe` first, `Morphe: Workout Tracker`
+      fallback (cosmetics brand conflict — see Trademark below).
+- [ ] Decide whether the website Store section ships hidden or "coming
+      soon" (placeholder prices today).
+- [ ] Sign in on the Pro Max simulator, then say "take the screenshots"
+      (1320×2868: Today, Train, Form Check, Morphe AI, Progress, Learn).
 
-**Open code items (not blockers)**
-- [ ] Four hard-width buttons may clip at accessibility text sizes (Train Anyway 150, Open 88, Join 80, picker 110).
-- [ ] If the music dip persists with Hey Morphe on: decide whether to arm the mic only when nothing is playing (reverses the 10-05 "always listen" call).
-- [ ] Deferred by order: AI without a user key + full-history AI, then the coach layer; Spanish; form diagrams for the 401 bundled exercises; push notifications (needs the paid program).
+**3. When Apple approves**
+- [ ] Xcode → Signing: switch the four targets to the paid team; add the
+      App Attest entitlement back (`Morphe/Morphe.entitlements`,
+      `com.apple.developer.devicecheck.appattest-environment` =
+      `production`); reinstall on the phone.
+- [ ] Firebase → App Check: register the app, upload the DeviceCheck key,
+      watch tokens flow, then enforce for Firestore.
+- [ ] App Store Connect → new app record: name, bundle
+      `com.morpheapp.Morphe`, SKU `morphe-001`, the three URLs, App
+      Privacy per `metadata.md` (Data IS collected), age rating 12+.
+- [ ] Archive (Release, Any iOS Device) → Distribute → TestFlight.
+- [ ] TestFlight internal group = your Apple ID; install; run one full
+      session + a Form Check + a food check with your key.
+- [ ] App Review Information: Sign-in required = YES with the reviewer
+      account; review notes below.
+- [ ] Submit for review (24–72 h).
 
-## ✅ Done (in the repo, verified 2026-10-03)
-- `AppStore/metadata.md` — name, subtitle, keywords, description (Spartan
-  voice; Form Check and Morphe AI included; feed bullets held out while
-  `FeatureFlags.socialFeedEnabled` is off), what's-new, the honest App
-  Privacy declaration, and the three URLs (privacy, support, marketing).
-- `PRIVACY_POLICY.md` → `docs/privacy.html` (generated by
-  `Tools/build_privacy_page.py`; covers camera/Form Check, Photos add-only,
-  microphone/speech). `docs/support.html` is the Support URL page.
-  `docs/index.html` is the marketing site. All three share the brand style.
-- The in-app Privacy Policy link points at `/privacy.html`.
-- Compiles clean in **Release** (DEBUG-only AI reviewer stripped) — see
-  the 2026-10-03 verification below.
-- `PrivacyInfo.xcprivacy` declares UserDefaults + file-timestamp reasons
-  and the collected data types (the widget extension carries its own
-  manifest, UserDefaults only, added 2026-10-07); `ITSAppUsesNonExemptEncryption = NO`;
-  usage strings for camera, microphone, speech, Photos (add-only), Health
-  read/write; Live Activities on; iPhone-only, portrait.
-- App icon: Lucas's glass-tile helmet, 1024 RGB, no alpha. Launch screen:
-  brand-blue field + helmet (`LaunchHelmet`/`LaunchField`).
-- 363 automated tests green; audits 29 + 30 applied (`docs/AUDIT-2026-10.md`).
+**4. After the links exist**
+- [ ] Paste the App Store / TestFlight URLs into `APP_STORE_URL` /
+      `TESTFLIGHT_URL` at the bottom of `docs/index.html`, push.
+- [ ] If the name changed: `AppStore/metadata.md` + the site `<title>`.
 
-## ⏳ Needs you before upload (in order)
+## Review notes (paste into App Review Information)
 
-### 1. GitHub Pages — DONE 2026-10-05 (site live at the three URLs below)
-Repo → **Settings → Pages** → Source **Deploy from a branch**, Branch
-`main`, Folder `/docs` → Save. In a minute:
-- Privacy: https://lucasdilley07-png.github.io/Morphe/privacy.html
-- Support: https://lucasdilley07-png.github.io/Morphe/support.html
-- Site: https://lucasdilley07-png.github.io/Morphe/
-Open each once; App Review follows them.
+Every feature is tied to a synced account, so there is no account-free
+mode. Form Check runs entirely on-device; video never leaves the phone.
+Morphe AI answers from the user's own logs without any key; with the
+user's own Anthropic key it can also read a food photo or build a
+workout. To try Train Together with one device: Train → Train Together,
+host a session and note the code; a second account joins by typing it.
+Community content is human-only by policy: posts, comments and messages
+are screened and paced; anyone can report; a human reviews every report.
+Account deletion is Profile → Login → Delete Account; export is Profile →
+Your data.
 
-### 2. Screenshots (15 min, with Claude)
-`AppStore/screenshots/` is the GOLD app with a demo user — it must not
-ship. New set needed at 1320×2868 (6.9"): Today, Train (live session),
-Form Check, Morphe AI, Progress, Learn/The Code. Sign in on the booted
-simulator yourself (Claude does not enter your credentials), then say
-"take the screenshots" — the capture is automated from there.
+## Open code items (not blockers)
 
-### 3. Apple Developer Program ($99/yr) — THE gate
-Enroll at developer.apple.com, then Xcode → Settings → Accounts → add the
-Apple ID, and confirm the Morphe target's team (preset `8P47H3XRN3`).
-Everything below waits on this.
+- Four hard-width buttons may clip at accessibility text sizes.
+- Public profile document (names/bylines for members who haven't posted).
+- Video posts (storage), push notifications, Spanish, form diagrams for
+  every exercise, a strike ledger for repeat policy breaches.
 
-### 4. App Store Connect record (10 min)
-My Apps → + → iOS · **Morphe** · English · Bundle ID
-`com.morpheapp.Morphe` · SKU `morphe-001`. Paste the listing from
-`AppStore/metadata.md`; set the three URLs; App Privacy → **Data is
-collected** per the metadata table (never "Not Collected"). Age rating:
-answer honestly; expect 12+ with UGC.
+## Business side (researched 2026-10-08; (est.) = verify at checkout)
 
-### 5. Archive & upload (Xcode)
-Device target **Any iOS Device (arm64)** → **Product → Archive** →
-Organizer → **Distribute App → App Store Connect → Upload**. The watch app
-and widgets ride along; auto-signing provisions them the first time.
+**Entity — do first, the rest attach to it**
+- [ ] California LLC with a neutral holdco name (Morphe becomes a DBA):
+      Articles online $70 → Statement of Information (90 days) $20 → EIN
+      free → calendar the $800 franchise tax (15th day of the 4th month,
+      yearly) → county fictitious business name ~$30–60 + publication
+      ~$40–100 (est.) → business bank account; Apple + Firebase on the
+      LLC card.
 
-### 6. TestFlight
-Build appears after processing (~10–30 min). Test Information → beta
-description + your email. Internal testers first (no review), then
-external (quick Beta App Review). Your 7-day free-team installs stop
-mattering the moment this exists.
+**Trademark — after the LLC**
+- [ ] Knockout search (tmsearch.uspto.gov): Morphe LLC (cosmetics) holds
+      Reg. 4967948 + 5756672 in Class 3/35 — different classes, but a
+      known brand; pick the fallback name before filing.
+- [ ] Word mark MORPHE, Class 9 + Class 41, $350/class DIY ($700);
+      optional attorney ~$500–1,500 (est.); 12–18 months; ™ now.
+- [ ] Claim one handle everywhere (@trainmorphe / @morpheapp).
 
-### 7. Submit for review
-Screenshots from step 2, description from `metadata.md`, category Health &
-Fitness, price Free. **App Review Information → Sign-in required: YES**,
-with the reviewer account's email + password (create it in Firebase
-first, sign in once on a device, accept the terms, and log two or three
-sessions so Progress, the board and the score aren't empty). Review notes
-to include: every feature is tied to a synced account, so there is no
-account-free mode; Form Check runs entirely on-device and video never
-leaves the phone; the Morphe AI chat answers from the user's own logs
-(no key needed); to try Train Together with one device, open Train →
-Train Together, host a session and note the code — a second account can
-join by typing it; account deletion is Profile → Login → Delete Account,
-export is Profile → Your data.
+**Domain + footprint**
+- [ ] Buy trainmorphe.com (~$12–20/yr est.; morphe.fit second); point at
+      GitHub Pages (docs/CNAME + DNS); hello@ via Cloudflare Email
+      Routing; update the three App Store URLs before submitting; SEO
+      basics on the site; Search Console + Bing.
 
-## Verification record
-- 2026-10-03: `xcodebuild -configuration Release` for iOS Simulator
-  succeeded (DEBUG gates clean); device Debug build installs and launches
-  on Lucas's iPhone 17 Pro Max.
+**Products (website store)**
+- [ ] Gear only for launch (print-on-demand: Fourthwall or Printful +
+      Shopify); 2 SKUs max (Helmet Tee, Field Cap), one sample each;
+      real prices; seller's permit before the first sale. Supplements
+      stay "coming soon".
 
-## Known follow-ups worth fixing before public release (not blockers for TestFlight)
-- Store section on the website is a labeled placeholder; no checkout.
-- Micro-label/typography system pass, pressed states on plain rows, sheet
-  corner radii — listed in `docs/AUDIT-2026-10.md`.
-- Form Check thresholds are tuned on paper until real sets on a phone.
+**Content** — sourcing law: every post cites a real artifact
+(`docs/LAUNCH-CONTENT-CALENDAR.md`): the audits, the $99 gate, the
+human-only policy, the 595-exercise library, the rank ladder.
 
-## 5. The 90-day proof window (the investor-audit milestone sheet)
+**Posters / flyers** — one design (helmet + TRAIN HONEST + QR); 100
+flyers ~$25–50, 50–100 posters ~$36–85; ask the gym owner, pitch the
+coach pilot (`docs/COACH-PITCH.md`) in the same conversation.
 
-The clock starts the day the app is live on TestFlight. All measurement is
-first-party (telemetry collection + Tools/metrics_report.py) — run the
-report weekly, same day, and log the table in a spreadsheet.
+**Budget, first 30 days (DIY)**: Apple $99 · LLC $90 · EIN $0 · FBN
+$70–160 · trademark $700 · domain $15–60 · email $0–96 · Firebase ~$0–25/mo
+· store $0–39/mo · samples $50–80 · print $60–135 · ads $0 · content $0 →
+**~$1,100–1,400** (franchise tax $800 lands month 4). With an attorney
+~$2,400–3,700. Order of spend: Apple → LLC → domain → trademark → print.
 
-- Week 0: pay the $99, upload the build, invite 10 internal testers.
-- Weeks 1-2: fix what the first 25 strangers hit; App Store submission.
-- Weeks 1-12: coach pilot per docs/COACH-PILOT.md (10-25 paying coaches,
-  attach ≥60%).
-- The consumer bar that changes conversations: D30 ≥ 10-12% (3x the 3-4%
-  category average), organic k measurably > 0 (share_card_shared +
-  referral_consumed events), activation (first log) ≥ 40% of sign-ups.
-- Week 12 decision point: coach wedge proven → raise or keep bootstrapping
-  with revenue; disproven → consumer bootstrap path, no raise.
+## The 90-day proof window (investor-audit milestones)
+
+Clock starts on TestFlight. First-party measurement only
+(`Tools/metrics_report.py`, weekly, same day).
+- Week 0: pay the $99, upload, invite 10 testers.
+- Weeks 1–2: fix what the first 25 strangers hit; App Store submission.
+- Weeks 1–12: coach pilot (`docs/COACH-PILOT.md`, 10–25 paying coaches).
+- Bars: D30 ≥ 10–12 %, organic k > 0, activation (first log) ≥ 40 %.
+- Week 12: coach wedge proven → raise or bootstrap on revenue; disproven
+  → consumer bootstrap, no raise.

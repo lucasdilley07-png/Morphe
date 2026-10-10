@@ -1,113 +1,76 @@
-# Morphe backend — build plan (Firebase)
+# Morphe backend — current state (Firebase)
 
-Decision: **Firebase** (Auth + Firestore + later Cloud Functions/Storage), chosen for
-best-in-class offline support (gym wifi), fastest path to real-time coach↔client, and
-least backend code for a solo developer.
+Refreshed 2026-10-10. Firebase project **morphe-3c5c2** (Spark plan):
+Auth (email/password; Sign in with Apple waits on the paid program) +
+Cloud Firestore with offline persistence. No Cloud Functions, no Storage.
+The app talks to Firestore directly under security rules; every honesty
+guarantee that matters is enforced **in the rules**, not in the client.
 
-## Architecture
-- **Auth:** Firebase Auth — Sign in with Apple + email/password. The signed-in `uid` is
-  the user's identity (replaces the on-device minted UUID).
-- **Database:** Cloud Firestore, with **offline persistence ON** — writes save locally
-  and sync when back online. This is how a gym app stays usable without wifi.
-- **Client architecture:** a thin repository/service layer (`AuthService`, `ProfileRepository`,
-  `WorkoutRepository`) sits between the store and Firestore. The on-device JSON persistence
-  we built becomes the **offline cache**; Firestore is the source of truth. This is also the
-  moment we split the 5.8k-line `MorpheAppStore` into async domain stores.
-- **Privacy:** data now leaves the device, so the privacy policy + App Store "App Privacy"
-  label MUST be rewritten before release (currently "Data Not Collected" — no longer true).
+## Collections (as the live rules define them)
 
-## Phases
-1. **Accounts** ← we are here. Auth (Apple/email), a real cloud user doc, the on-device
-   profile becomes cloud-backed, and the athlete-vs-coach choice returns at sign-up.
-2. **Cloud workout data.** Logs/workouts/custom library sync per user, offline-first.
-3. **Coach ↔ client.** Reusable coach codes, coach-approved link requests, full-profile
-   read access for linked coaches. Designed 2026-07-06 — see the Phase 3 section below.
-4. **Networking.** Real user discovery, connections/follows, an activity feed.
-5. **Payments + scheduling.** Coach payments (Stripe) and appointment booking.
-
-## Phase 1 — Firestore data model
 ```
-users/{uid}
-  role: "athlete" | "coach"
-  name, displayName, username, gender
-  createdAt
-  athlete: { sportMode, selectedSports[], selectedGoals[], goal, fitnessLevel,
-             equipment, injuries, weightUnit, currentProgram, currentPhase }   // when athlete
-  coach:   { headline, bio, specialties[] }                                    // when coach
-
-usernames/{username}  -> { uid }        // uniqueness check
-
-// Phase 2+ (placed now so the model is coherent):
-users/{uid}/workoutLogs/{logId}         // the user's own logs
-users/{uid}/customWorkouts/{id}
-connections/{connId}  { coachUid, clientUid, status: pending|active, createdAt }
+users/{uid}                     private: owner + an ACTIVE linked coach
+  verified / creator / coach.verified    server-granted flags (clients may carry, never mint)
+  lastPostAt, lastCommentAt, lastMessageAt, lastConnectAt   human-pace stamps
+  workoutLogs/{id}, customWorkouts/{id}, state/{profile|logs|weightHistory|extras}
+  debriefs/{id}, savedPosts/{postId}, following/{uid}, blocked/{uid}
+  referrals/{uid}  (the referred user writes their own receipt)
+  coachShare/summary  (athlete-consented progress for one named coach)
+usernames/{username}  { uid, claimedAt }      directory: get/list (≤50) signed-in
+coachCodes/{code}                              resolve a coach code
+connections/{coachUid_athleteUid}              coach↔client: pending → active/declined/revoked
+connectRequests/{fromUid_toUid}  (2026-10-10)  member↔member: pending → accepted/declined/removed
+parties/{code}  (+ nudges)                     Train Together
+verificationRequests/{uid}                     selfie → human review
+coachApplications/{uid}                        website form → review tool
+creatorWorkouts/{id}, creatorNotes/{id}, openChallenges/{code}   Creator Coach content
+managedClients/{code}                          coach-created clients + claim codes
+leaderboards/{week}/entries/{uid}, challenges/{code}
+threads/{a_b} + messages/{id}                  direct chats; messages immutable
+posts/{id} + reactions/{uid} + comments/{id}   the feed; posts immutable
+reports/{id}                                   write-only from clients
+telemetry/{id}                                 first-party milestone events
 ```
 
-## Phase 3 — Coach ↔ client design (decided 2026-07-06)
+## Rules principles
 
-**Product decisions (Lucas):**
-- **Access scope:** a linked coach sees the athlete's **full profile** — logs, streak,
-  readiness, goals, injury notes, body metrics. Chosen for coaching quality; the athlete's
-  consent moment is the link itself, and revoking kills access instantly.
-- **Linking:** every coach gets **one reusable shareable code** (e.g. `MORPHE-4X2K9`).
-  An athlete enters the code → a **pending request** is created → **the coach approves**
-  (or declines) in the Athletes tab. Either side can revoke later.
-- **Coach signup:** **open** — anyone can pick Coach at sign-up. The schema reserves
-  `users/{uid}.coach.verified` (never client-settable to true) so credential checks or
-  manual approval can be added later without a migration.
+- **Honest flags**: `verified`, `creator`, `coach.verified` are granted only
+  by the admin tools (service account); a client write may carry an
+  existing `true`, never set one.
+- **Human pace (2026-10-10)**: posts, comments, messages and connect
+  requests are written in the same batch as a server timestamp on the
+  writer's `users/{uid}`; `humanPaced(field, seconds)` requires the stamp
+  to equal `request.time` and the previous one to be old enough (45 s /
+  8 s / 1 s / 10 s). A client that skips the stamp is denied.
+- **Owner-scoped lists**: every `list` is bounded and, where rows belong
+  to people, constrained to the caller's own rows (connect requests,
+  claimed docs, threads).
+- **Immutable history**: messages, posts, comments, requests are never
+  edited or deleted by clients (edit = delete + repost for posts; only the
+  author deletes).
+- **Blocks bite server-side**: a blocked sender cannot message or
+  connect-request the blocker.
 
-**Firestore additions:**
-```
-users/{uid}
-  coach: { headline, bio, specialties[], code, verified: false }   // when coach
+## Tooling
 
-coachCodes/{code}        -> { coachUid, createdAt }    // resolve code → coach; immutable
-connections/{coachUid}_{athleteUid}
-  { coachUid, athleteUid, status: "pending"|"active"|"declined"|"revoked",
-    createdAt, respondedAt }
-```
-Deterministic connection ids make the rules check (`isActiveCoachOf`) a single doc
-lookup and prevent duplicate requests for the same pair.
+- `Tools/publish_rules.py` — compiles, releases, byte-verifies
+  `BACKEND/firestore.rules` (needs `BACKEND/serviceAccount.json`,
+  gitignored).
+- `Tools/verify_rules_live.py` — 99 behavioral checks against production
+  with throwaway accounts (allow cases prove features, deny cases prove
+  strangers can't). Run after every publish. Leaves a few immutable docs
+  per run by design (thread, message, request).
+- `Tools/review_verifications.py`, `review_reports.py`,
+  `review_coach_applications.py` — local admin pages on the service
+  account.
 
-**Client flows:**
-- *Athlete:* Profile → "Link with a coach" → enter code → resolves via `coachCodes` →
-  writes pending connection → sees "Request sent to <coach>" → can revoke any time from
-  the same place.
-- *Coach:* Athletes tab leads with pending requests (approve/decline). Approving flips
-  `status: active`; the client list is a query on
-  `connections where coachUid == me && status == active`, and each row hydrates from the
-  athlete's now-readable user doc + logs.
-- *Revoke:* either side sets `status: revoked`; the coach's read access dies with it.
+## Gates that need Lucas
 
-**Coach v1 scope (keep the surface uncluttered):**
-- Tabs: **Home (dashboard) · Athletes · Inbox** — `CoachTab.visibleCases` is trimmed to
-  these three. Build (programs) and Network stay in code but hidden until coach v2;
-  booking/payments remain in Phase 5.
-- The existing `CoachDashboardView` runs on seeded demo data; before launch it needs the
-  same honesty pass the athlete side got (real data or empty states — "Share your code
-  to add your first client" — plus full HUD styling).
-
-## Security rules (Phase 1 shape)
-- A user can read/write **only their own** `users/{uid}` doc.
-- `usernames/*` readable by all (for uniqueness), writable only via a transaction that
-  claims an unused handle.
-- (Phase 3) a coach can read a client's data only when an `active` connection exists — enforced
-  in rules + Cloud Functions.
-
-## What needs YOU (one-time, ~15 min) vs me
-**You (Firebase console + Apple):**
-1. Create a Firebase project, add an **iOS app** with bundle id `com.morpheapp.Morphe`.
-2. Download **`GoogleService-Info.plist`** and hand it to me (drop it in `Morphe/`).
-3. In Firebase → Authentication, enable **Apple** and **Email/Password** providers.
-4. (For Sign in with Apple) in the Apple Developer portal, enable the *Sign in with Apple*
-   capability for the app id — I'll add the capability in Xcode; you approve in the portal.
-
-**Me (once I have the plist):**
-- Add the Firebase SDK (Swift Package Manager), `FirebaseApp.configure()`.
-- Build Sign in with Apple + email auth UI and the `AuthService`.
-- Migrate the profile to the cloud user doc (with the offline cache as fallback).
-- Re-introduce the athlete/coach choice at sign-up and wire the role through.
-- Firestore security rules for Phase 1.
-
-Until the plist exists I can't compile/verify Firebase code, so step 1–2 above is the gate
-(same situation as TestFlight signing).
+- **App Check** is wired in the app (App Attest, DeviceCheck fallback) but
+  the entitlement can't be signed on a personal team → add
+  `com.apple.developer.devicecheck.appattest-environment` after the $99
+  enrolment, upload the DeviceCheck key in Firebase, then enforce.
+- Blaze plan + $10 budget alert before launch traffic; restrict the web
+  API key to the GitHub Pages referrer; email-enumeration protection on.
+- Push notifications (needs the paid program) — none today; all reminders
+  are local.
