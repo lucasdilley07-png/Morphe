@@ -979,9 +979,17 @@ struct ProfileView: View {
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.warning)
                     }
-                    Text("Get the blue check: take a quick selfie and the Morphe team confirms you're a real person — not a bot.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textSecondary)
+                    // How verification actually works (Lucas 2026-10-10):
+                    // the steps, honestly — a live selfie, a human review.
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("How to get verified")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        verificationStep(1, "Tap Get Verified and take a live selfie in the app — the camera only, no uploads from your library.")
+                        verificationStep(2, "Face clear and well lit, no sunglasses or mask. The photo is used only to confirm you are a real person and is seen only by the Morphe team.")
+                        verificationStep(3, "A human reviews it. Your profile shows \u{201C}under review\u{201D} until then.")
+                        verificationStep(4, "Approved: the blue check appears on your profile and your posts. Declined: take a clearer selfie and try again.")
+                    }
                     Button {
                         // Live capture only — without a camera the system
                         // picker silently falls back to the photo library,
@@ -1003,6 +1011,20 @@ struct ProfileView: View {
                     .disabled(store.isSubmittingVerification)
                 }
             }
+        }
+    }
+
+    private func verificationStep(_ n: Int, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("\(n)")
+                .font(.caption2.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(Color(red: 0.25, green: 0.56, blue: 0.96))
+                .frame(width: 14, alignment: .trailing)
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -1121,7 +1143,7 @@ struct ProfileView: View {
     /// Shared keyword strings (audit 15, P2: "auto" couldn't find "Auto
     /// rest timer"; the feed-identity rows were unfindable by their names).
     private static let makeItYoursKeywords =
-        "personalization character persona sound effects pack customize voice accent communication style delivery guide tour replay tutorial walkthrough"
+        "personalization character persona sound effects pack customize voice accent communication style delivery hey morphe speech microphone hands free wake headphones airpods"
     private static let howYouTrainKeywords =
         "training days week injuries limits auto rest timer effort rpe rir weight unit kg lb pounds kilograms"
     private static let whoCanSeeYouKeywords =
@@ -1501,6 +1523,29 @@ struct ProfileView: View {
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
 
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    // Hey Morphe lives here now (Lucas 2026-10-10): the
+                    // voice is part of making it yours, not a training setting.
+                    preferenceToggleRow(
+                        title: "\u{201C}Hey Morphe\u{201D}",
+                        caption: "Hands-free while the app is open: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud. Speech stays on this iPhone. It listens over your music too; music pauses only while Morphe is taking a request and comes back when it's done. Tap anywhere to end an exchange. Listening uses extra battery, and iOS doesn't allow it from the background or lock screen.",
+                        isOn: Binding(
+                            get: { store.heyMorpheEnabled },
+                            set: { store.setHeyMorphe(enabled: $0) }
+                        )
+                    )
+                    if store.heyMorpheEnabled {
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+                        preferenceToggleRow(
+                            title: "Listen through headphones",
+                            caption: "With AirPods or a Bluetooth headset connected, Morphe hears you through their microphone when nothing else is playing. While music or other audio plays, it listens through the phone instead, so your music keeps its full quality.",
+                            isOn: Binding(
+                                get: { store.heyMorpheHeadsetMic },
+                                set: { store.setHeyMorpheHeadsetMic($0) }
+                            )
+                        )
+                    }
                 }
             }
 
@@ -1656,31 +1701,6 @@ struct ProfileView: View {
                     .pickerStyle(.segmented)
                     .frame(width: 110)
                 }
-
-            }
-
-            settingsSection("Voice", keywords: "hey morphe voice speech microphone hands free wake") {
-                    // Foreground-only is an iOS rule, not a choice — the
-                    // caption says so instead of overpromising Siri parity.
-                    preferenceToggleRow(
-                        title: "\u{201C}Hey Morphe\u{201D}",
-                        caption: "Hands-free while the app is open: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud. Speech stays on this iPhone. It listens over your music too; music pauses only while Morphe is taking a request and comes back when it's done. Tap anywhere to end an exchange. Listening uses extra battery, and iOS doesn't allow it from the background or lock screen.",
-                        isOn: Binding(
-                            get: { store.heyMorpheEnabled },
-                            set: { store.setHeyMorphe(enabled: $0) }
-                        )
-                    )
-                    if store.heyMorpheEnabled {
-                        Divider().overlay(MorpheTheme.strokeSubtle)
-                        preferenceToggleRow(
-                            title: "Listen through headphones",
-                            caption: "With AirPods or a Bluetooth headset connected, Morphe hears you through their microphone when nothing else is playing. While music or other audio plays, it listens through the phone instead, so your music keeps its full quality.",
-                            isOn: Binding(
-                                get: { store.heyMorpheHeadsetMic },
-                                set: { store.setHeyMorpheHeadsetMic($0) }
-                            )
-                        )
-                    }
 
             }
 

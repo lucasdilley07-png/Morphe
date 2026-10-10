@@ -3930,7 +3930,7 @@ private struct WelcomeExperienceView: View {
                     .accessibilityHidden(true)
                 kicker("Morphe AI")
                 title("Talk to it. Out loud.")
-                body("Tap the helmet at the bottom right, or turn on Hey Morphe in Profile → Voice and say it with the app open — the Spartan orb lights the screen in your rank's color and listens. Ask what's next, log a set by voice, ask about your readiness or what to eat. It answers from your own logs and your details, never invents a number, and it is the only AI in Morphe.")
+                body("Tap the helmet at the bottom right, or turn on Hey Morphe in Profile → Make it yours and say it with the app open — the Spartan orb lights the screen in your rank's color and listens. Ask what's next, log a set by voice, ask about your readiness or what to eat. It answers from your own logs and your details, never invents a number, and it is the only AI in Morphe.")
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 12) {
                         TourExchange(you: "Log 3 by 10 at 135.", morphe: "Logged 3×10 at 135 lb on Bench Press. It's in the console.")

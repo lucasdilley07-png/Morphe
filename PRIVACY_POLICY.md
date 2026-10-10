@@ -124,7 +124,7 @@ and are off until you turn them on.
   on-device speech recognition; nothing is stored or sent anywhere until
   you say the phrase and make a request. Audio is processed for
   transcription only. Hey Morphe is off until you turn it on in Profile →
-  Voice.
+  Make it yours.
 - **Notifications** — local reminders you control (appointments, daily
   session, streak risk, comeback, weekly leaderboard and recap). Morphe
   currently sends no remote push notifications.
