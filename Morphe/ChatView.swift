@@ -40,9 +40,7 @@ struct CommunityView: View {
                         }
                     }
                 } else {
-                    // For You is its own tab (Lucas 2026-10-09): what the
-                    // Creator Coaches published, between Chats and Board.
-                    pane(.forYou) { creatorForYouScreen }
+                    // The coaches' Feed moved to Discover (Lucas 2026-10-10).
                     pane(.board) { boardScreen }
                     pane(.calendar) { calendarScreen }
                 }
@@ -90,13 +88,13 @@ struct CommunityView: View {
         // on the center line, matching Train's header. The camera door
         // rides a trailing overlay so it never pushes the tabs off-center
         // when the feed relights.
-        HStack(alignment: .bottom, spacing: FeatureFlags.socialFeedEnabled ? 28 : 18) {
+        HStack(alignment: .bottom, spacing: 28) {
             sectionTab("CHATS", .contact, showsBadge: store.unreadThreadCount > 0)
             if FeatureFlags.socialFeedEnabled {
                 sectionTab("FEED", .forYou)
             } else {
-                // Launch shape: people, the coaches' feed, standings, schedule.
-                sectionTab("FEED", .forYou)
+                // Launch shape: people, standings, schedule. The Feed is in
+                // Discover (Lucas 2026-10-10).
                 sectionTab("BOARD", .board)
                 sectionTab("CALENDAR", .calendar)
             }
@@ -228,24 +226,6 @@ struct CommunityView: View {
         }
         .refreshable {
             await store.refreshLeaderboard(force: true)
-        }
-    }
-
-    /// FOR YOU pane (Lucas 2026-10-09): what the Creator Coaches
-    /// published — workouts, notes, open challenges — each under the
-    /// author's name, each reportable.
-    private var creatorForYouScreen: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                networkHeader.padding(.horizontal, -20)
-                CreatorFeed()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 6)
-            .padding(.bottom, 120)
-        }
-        .refreshable {
-            await store.refreshCreatorContent(force: true)
         }
     }
 
@@ -770,7 +750,7 @@ private struct AthleteContactInbox: View {
                     Spacer()
 
                     Button("Feed") {
-                        store.selectedCommunitySection = .forYou
+                        store.openFeed()
                     }
                     .buttonStyle(SecondaryCTAButtonStyle())
                     .frame(width: 100)

@@ -142,6 +142,14 @@ enum ClientTab: String, CaseIterable, MorpheTabItem {
     }
 }
 
+/// Discover's two halves (Lucas 2026-10-10): the workout catalog, and
+/// the Feed of what Creator Coaches published.
+enum DiscoverSection: String, CaseIterable, Identifiable {
+    case workouts = "Workouts"
+    case feed = "Feed"
+    var id: String { rawValue }
+}
+
 enum ClientCommunitySection: String, CaseIterable, Identifiable {
     case forYou = "Feed"
     case contact = "Contact"

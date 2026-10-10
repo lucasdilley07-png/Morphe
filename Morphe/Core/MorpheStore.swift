@@ -178,6 +178,15 @@ final class MorpheAppStore {
     // A tab named "Learn" opens to learning, not to a scoreboard.
     var selectedHubFeature: ClientHubFeature? = .learn
     var selectedCommunitySection: ClientCommunitySection = FeatureFlags.socialFeedEnabled ? .forYou : .contact
+    var selectedDiscoverSection: DiscoverSection = .workouts
+
+    /// The Feed lives in Discover (Lucas 2026-10-10).
+    func openFeed() {
+        showProgressSheet = false
+        selectedDiscoverSection = .feed
+        selectedClientTab = .discover
+        Haptics.impact(.light)
+    }
     var quickCaptureNotes: [String] = []
 
     var clientProfile: ClientProfile

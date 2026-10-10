@@ -1627,28 +1627,38 @@ struct DiscoverScreenView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     SectionTitleView(
                         title: "Discover",
-                        subtitle: store.discoverWorkouts.isEmpty
-                            ? "A new workout library is on the way."
-                            : "\(store.discoverWorkouts.count) workouts and \(store.exerciseDatabase.count) exercises. Pick a style.",
+                        subtitle: store.selectedDiscoverSection == .feed
+                            ? "What the Creator Coaches published — under their names, every post reportable."
+                            : (store.discoverWorkouts.isEmpty
+                                ? "A new workout library is on the way."
+                                : "\(store.discoverWorkouts.count) workouts and \(store.exerciseDatabase.count) exercises. Pick a style."),
                         titleSize: 16
                     )
 
-                    DiscoverCatalogSection(
-                        onStart: { template in
-                            store.startCatalogWorkout(template)
-                        }
-                    )
+                    // Workouts | Feed (Lucas 2026-10-10): the Feed moved here
+                    // from Network.
+                    DiscoverSectionTabs()
 
-                    // Morphe's programs live with the rest of the catalog
-                    // now (Lucas 2026-08-28) — collapsed by default so the
-                    // workout grid keeps the spotlight. The card shows your
-                    // active program's arc here too if one is running.
-                    TrainExpandableSection(
-                        title: "Programs",
-                        subtitle: "Multi-week plans — sessions in order, progression built in, one deload before the end.",
-                        isExpanded: $showPrograms
-                    ) {
-                        ProgramSectionCard(showsLibraryHeader: false)
+                    if store.selectedDiscoverSection == .feed {
+                        CreatorFeed()
+                    } else {
+                        DiscoverCatalogSection(
+                            onStart: { template in
+                                store.startCatalogWorkout(template)
+                            }
+                        )
+
+                        // Morphe's programs live with the rest of the catalog
+                        // now (Lucas 2026-08-28) — collapsed by default so the
+                        // workout grid keeps the spotlight. The card shows your
+                        // active program's arc here too if one is running.
+                        TrainExpandableSection(
+                            title: "Programs",
+                            subtitle: "Multi-week plans — sessions in order, progression built in, one deload before the end.",
+                            isExpanded: $showPrograms
+                        ) {
+                            ProgramSectionCard(showsLibraryHeader: false)
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -1659,7 +1669,13 @@ struct DiscoverScreenView: View {
                 .padding(.bottom, 120)
             }
             .toolbar(.hidden, for: .navigationBar)
+            .refreshable {
+                if store.selectedDiscoverSection == .feed { await store.refreshCreatorContent(force: true) }
+            }
             .task { await store.refreshCreatorContent() }
+            .onChange(of: store.selectedDiscoverSection) { _, section in
+                if section == .feed { Task { await store.refreshCreatorContent() } }
+            }
             .onAppear { consumeProgramsReveal() }
             .onChange(of: store.pendingDiscoverProgramsReveal) { _, _ in
                 consumeProgramsReveal()
@@ -1673,6 +1689,39 @@ struct DiscoverScreenView: View {
         guard store.pendingDiscoverProgramsReveal else { return }
         store.pendingDiscoverProgramsReveal = false
         showPrograms = true
+    }
+}
+
+/// Discover's two mono tabs, in the same grammar as Network's header.
+private struct DiscoverSectionTabs: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 28) {
+            ForEach(DiscoverSection.allCases) { section in
+                let isActive = store.selectedDiscoverSection == section
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { store.selectedDiscoverSection = section }
+                    Haptics.selection()
+                } label: {
+                    VStack(alignment: .center, spacing: 5) {
+                        Text(section.rawValue.uppercased())
+                            .font(MorpheTheme.microLabel(16))
+                            .tracking(1.6)
+                            .foregroundStyle(isActive ? MorpheTheme.textPrimary : MorpheTheme.textMuted)
+                        Rectangle()
+                            .fill(isActive ? MorpheTheme.accent : .clear)
+                            .frame(width: 34, height: 3)
+                    }
+                    .frame(minHeight: 44, alignment: .bottom)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(section.rawValue)
+                .accessibilityAddTraits(isActive ? .isSelected : [])
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
