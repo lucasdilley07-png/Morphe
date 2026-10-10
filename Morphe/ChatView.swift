@@ -304,11 +304,7 @@ struct CommunityView: View {
         AthleteInboxView(autoOpenOnlyThread: true, topContent: AnyView(
             VStack(spacing: 10) {
                 networkHeader
-                // Connect lives with the people (Lucas 2026-10-04): show
-                // your Morphe code or scan a training partner's, right
-                // above chats.
-                QRConnectRow()
-                    .padding(.horizontal, 20)
+                // (My Code / Scan moved to Quick Add, Lucas 2026-10-10.)
             }
             .padding(.bottom, 10)
         ))

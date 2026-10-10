@@ -315,10 +315,8 @@ struct RootView: View {
             .presentationDragIndicator(.visible)
             .preferredColorScheme(store.selectedAppearance)
         }
-        .sheet(isPresented: $store.showQuickAdd, onDismiss: {
-            // Retires the 0.6s guess-timer: if Ask Morphe queued the AI
-            // cover, open it the moment THIS sheet has actually gone —
-            // the completion fires exactly when the transition has room.
+        // Full screen (Lucas 2026-10-10): people deserve the whole page.
+        .fullScreenCover(isPresented: $store.showQuickAdd, onDismiss: {
             if store.pendingAIAgentOpen {
                 store.pendingAIAgentOpen = false
                 store.openAIAgent()
@@ -331,11 +329,6 @@ struct RootView: View {
                     .environment(store)
             }
             .background(PremiumBackground())
-            // Quick actions get a quick sheet (HIG): medium detent first,
-            // expandable when the note editor needs room.
-            .presentationDetents([.medium, .large])
-            .presentationCornerRadius(28)
-            .presentationDragIndicator(.visible)
             .preferredColorScheme(store.selectedAppearance)
         }
         .fullScreenCover(isPresented: $store.showAIAgent, onDismiss: {
@@ -3377,8 +3370,9 @@ private struct UniversalSearchSheet: View {
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.top, 40)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
+                    Spacer(minLength: 0)
                 }
         }
         .padding(.horizontal, 20)
@@ -3550,6 +3544,26 @@ private struct QuickAddSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewing: PersonCard?
     @State private var loaded = false
+    @State private var query = ""
+    @State private var searchDebounce: Task<Void, Never>?
+    @State private var codeMode: QRConnectSheet.Mode?
+
+    private var normalizedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+
+    /// Search: the people the app knows, plus live directory hits for the
+    /// typed prefix (merged by uid, never duplicated).
+    private var searchResults: [PersonCard] {
+        let q = normalizedQuery
+        let me = store.authUser?.id ?? ""
+        var cards = store.knownPeople.filter { card in
+            card.uid != me && !store.blockedUids.contains(card.uid)
+                && (card.name.lowercased().contains(q) || card.username.lowercased().contains(q) || card.headline.lowercased().contains(q))
+        }
+        for hit in store.athleteSearchResults where hit.uid != me && !cards.contains(where: { $0.uid == hit.uid }) {
+            cards.append(PersonCard(uid: hit.uid, name: "", username: hit.username, headline: "", accentId: "", verified: false, isCoach: false))
+        }
+        return cards
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -3564,6 +3578,64 @@ private struct QuickAddSheet: View {
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .frame(minWidth: 44, minHeight: 44)
                 }
+
+                TextField("Search people by name or @username", text: $query)
+                    .textFieldStyle(MorpheFieldStyle())
+                    .submitLabel(.search)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .onChange(of: query) { _, newValue in
+                        searchDebounce?.cancel()
+                        searchDebounce = Task {
+                            try? await Task.sleep(nanoseconds: 350_000_000)
+                            guard !Task.isCancelled else { return }
+                            await store.searchAthletes(query: newValue)
+                        }
+                    }
+
+                HStack(spacing: 10) {
+                    Button {
+                        codeMode = .show
+                    } label: {
+                        Label("My Code", systemImage: "qrcode").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityHint("Shows your Morphe code for someone to scan")
+                    Button {
+                        codeMode = .scan
+                    } label: {
+                        Label("Scan", systemImage: "qrcode.viewfinder").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                    .accessibilityHint("Scans a coach's or training partner's Morphe code")
+                }
+
+                if !normalizedQuery.isEmpty {
+                    peopleSection("Results", count: searchResults.count) {
+                        if searchResults.isEmpty {
+                            GlassCard(.quiet) {
+                                Text(store.athleteSearchFailed
+                                     ? "Couldn't reach the directory — check your connection."
+                                     : (normalizedQuery.count < 2 ? "Keep typing…" : "No one matches \u{201C}\(query.trimmingCharacters(in: .whitespacesAndNewlines))\u{201D}."))
+                                    .font(.subheadline)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        } else {
+                            ForEach(searchResults) { card in
+                                if store.connectionState(with: card.uid) == .none {
+                                    personRow(card)
+                                } else {
+                                    PersonRow(card: card, trailing: {
+                                        Text(store.connectionState(with: card.uid) == .connected ? "Connected" : "Requested")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(MorpheTheme.textMuted)
+                                    }, onOpen: { viewing = card })
+                                }
+                            }
+                        }
+                    }
+                } else {
 
                 if !store.incomingConnectRequests.isEmpty {
                     peopleSection("Requests", count: store.incomingConnectRequests.count) {
@@ -3630,10 +3702,16 @@ private struct QuickAddSheet: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 40)
+        }
+        .sheet(item: $codeMode) { mode in
+            QRConnectSheet(mode: mode)
+                .environment(store)
+                .sheetToastSurface()
         }
         .refreshable { await store.refreshQuickAdd() }
         .task {
