@@ -1610,6 +1610,7 @@ final class MorpheAppStore {
         connectRequests = []
         directoryPeople = []
         hiddenPeopleUids = []
+        knownNames = [:]
         viewingPerson = nil
         // One account's appointments, streak and sayings must not ring
         // after sign-out or under the next account (audit 31).
@@ -1741,7 +1742,7 @@ final class MorpheAppStore {
                     // switch, wrong to share across accounts.
                     threadReadKey, activitySeenKey, storySeenKey,
                     lastKnownStreakKey, comebackPendingKey, foodChecksKey, recentFoodsKey,
-                    savedExercisesKey, savedLessonsKey, savedDietPlansKey, hiddenPeopleKey,
+                    savedExercisesKey, savedLessonsKey, savedDietPlansKey, hiddenPeopleKey, knownNamesKey,
                     dailyStreakCountKey, dailyStreakLastDayKey, dailyStreakBestKey, dailyStreakFreezeDayKey,
                     // An invite link opened before sign-out must not credit
                     // the next account's recruiter (audit 2026-10-10, P2).
@@ -3432,7 +3433,9 @@ final class MorpheAppStore {
             ("kettlebells", ["kettlebell"]),
             ("resistance bands", ["band"]),
             ("pull-up bar", ["pull-up bar", "rings", "parallettes", "dip bar"]),
-            ("cardio machines", ["rowing", "bike", "treadmill", "machine", "step platform", "rope"]),
+            // Cardio only: "machine" alone unlocked leg press and lat
+            // pulldown (audit 2026-10-10) — those need Full gym.
+            ("cardio machines", ["rowing", "bike", "treadmill", "elliptical", "stair", "step platform", "rope", "ski erg", "assault"]),
             ("pool", ["pool"])
         ]
         for (item, keys) in needs where ownedLower.contains(item) {
@@ -4807,6 +4810,7 @@ final class MorpheAppStore {
             "savedLessons": savedLessonsKey,
             "savedDietPlans": savedDietPlansKey,
             "hiddenPeople": hiddenPeopleKey,
+            "knownNames": knownNamesKey,
             "dailyStreakCount": dailyStreakCountKey,
             "dailyStreakLastDay": dailyStreakLastDayKey,
             "dailyStreakBest": dailyStreakBestKey,
@@ -9528,11 +9532,34 @@ final class MorpheAppStore {
     var connectRequests: [ConnectRequest] = []
     var directoryPeople: [AthleteSearchResult] = []
     var hiddenPeopleUids: Set<String> = []
+    /// Display names the app has seen for a uid (follow, chat, connect,
+    /// block) — per profile, cloud-backed — so a followed person with no
+    /// posts still has a name in pickers.
+    var knownNames: [String: String] = [:]
+    private var knownNamesKey: String { "morphe.known.names.\(clientProfile.id.uuidString)" }
+
+    func loadKnownNames() {
+        knownNames = UserDefaults.standard.dictionary(forKey: knownNamesKey) as? [String: String] ?? [:]
+    }
+
+    func forgetKnownNames() {
+        knownNames = [:]
+        UserDefaults.standard.removeObject(forKey: knownNamesKey)
+    }
+
+    func rememberName(_ name: String, for uid: String) {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, !clean.hasPrefix("@"), knownNames[uid] != clean else { return }
+        knownNames[uid] = String(clean.prefix(60))
+        UserDefaults.standard.set(knownNames, forKey: knownNamesKey)
+        mirrorExtrasToCloud()
+    }
     private(set) var quickAddFetchFailed = false
     private var hiddenPeopleKey: String { "morphe.hidden.people.\(clientProfile.id.uuidString)" }
 
     func loadHiddenPeople() {
         hiddenPeopleUids = Set(UserDefaults.standard.stringArray(forKey: hiddenPeopleKey) ?? [])
+        loadKnownNames()
     }
 
     enum ConnectionState { case none, requested, incoming, connected }
@@ -9595,6 +9622,10 @@ final class MorpheAppStore {
             let other = request.other(than: authUser?.id ?? "")
             if var card = cards[other.uid] { if card.name.isEmpty { card.name = other.name }; cards[other.uid] = card }
             else if !other.name.isEmpty { cards[other.uid] = PersonCard(uid: other.uid, name: other.name, username: "", headline: "", accentId: "", verified: false, isCoach: false) }
+        }
+        for (uid, name) in knownNames {
+            if var card = cards[uid] { if card.name.isEmpty { card.name = name }; cards[uid] = card }
+            else { cards[uid] = PersonCard(uid: uid, name: name, username: "", headline: "", accentId: "", verified: false, isCoach: false) }
         }
         func key(_ card: PersonCard) -> String { (card.name.isEmpty ? card.username : card.name).lowercased() }
         return cards.values.sorted { ($0.isCoach ? 0 : 1, key($0)) < ($1.isCoach ? 0 : 1, key($1)) }
@@ -9660,6 +9691,7 @@ final class MorpheAppStore {
         if let paced = contentPacer.refusal(for: .connect, text: "connect:\(person.uid)") {
             showToast(paced, isError: true); return
         }
+        rememberName(person.name, for: person.uid)
         let myName = clientProfile.name.isEmpty ? (authUser?.displayName ?? "A Morphe member") : clientProfile.name
         let request = ConnectRequest(id: "\(me)_\(person.uid)", fromUid: me, toUid: person.uid,
                                      fromName: String(myName.prefix(60)), toName: String(person.displayName.prefix(60)),
@@ -14403,6 +14435,7 @@ final class MorpheAppStore {
 
     func blockAccount(uid targetUid: String, name: String) {
         guard let uid = authUser?.id, targetUid != uid else { return }
+        rememberName(name, for: targetUid)
         blockedAccounts[targetUid] = name
         feedService.setBlocked(uid: uid, targetUid: targetUid, name: name, on: true)
         if followedUids.contains(targetUid) {
@@ -14444,6 +14477,7 @@ final class MorpheAppStore {
     /// queues offline and the owner-only doc can't lie about anyone else.
     func toggleFollow(uid targetUid: String, name: String) {
         guard let uid = authUser?.id, targetUid != uid else { return }
+        rememberName(name, for: targetUid)
         let on = !followedUids.contains(targetUid)
         if on {
             followedUids.insert(targetUid)
@@ -14687,6 +14721,7 @@ final class MorpheAppStore {
     @discardableResult
     func startDirectChat(with otherUid: String, name otherName: String) async -> Bool {
         guard let myUid = authUser?.id, myUid != otherUid else { return false }
+        rememberName(otherName, for: otherUid)
         guard blockedAccounts[otherUid] == nil else {
             showToast("You've blocked this account — unblock them in Profile to message.")
             return false

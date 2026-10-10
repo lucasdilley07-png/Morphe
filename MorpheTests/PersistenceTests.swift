@@ -6688,8 +6688,31 @@ final class ModerationTests: XCTestCase {
         XCTAssertNil(store.authUser)
     }
 
+    func testKnownNamesGiveFollowedPeopleANameInPickers() {
+        let store = MorpheAppStore()
+        store.rememberName("Dana Cole", for: "u9")
+        XCTAssertEqual(store.person(for: "u9")?.displayName, "Dana Cole", "a name seen once is kept for the uid")
+        store.rememberName("@handle", for: "u8")
+        XCTAssertNil(store.knownNames["u8"], "handles aren't names")
+        let reloaded = MorpheAppStore()
+        XCTAssertEqual(reloaded.knownNames["u9"], "Dana Cole", "persists per profile")
+        reloaded.forgetKnownNames()
+    }
+
+    func testCardioMachinesDoNotUnlockStrengthMachines() {
+        func ex(_ gear: String) -> ExerciseReference {
+            ExerciseReference(id: gear, name: gear, muscleGroup: .legs, movementPattern: "", musclesWorked: "", equipment: gear,
+                              difficulty: .beginner, videoPlaceholder: "", instructions: [], formCue: "", commonMistakes: "",
+                              beginnerModification: "", alternatives: [], whyThisMatters: "")
+        }
+        XCTAssertTrue(MorpheAppStore.exerciseFitsEquipment(ex("Rowing machine"), owned: ["Cardio machines"]))
+        XCTAssertFalse(MorpheAppStore.exerciseFitsEquipment(ex("Leg press machine"), owned: ["Cardio machines"]))
+        XCTAssertTrue(MorpheAppStore.exerciseFitsEquipment(ex("Leg press machine"), owned: ["Full gym"]))
+    }
+
     func testQuickAddMergesPeopleAndHidesTheRightOnes() {
         let store = MorpheAppStore()
+        store.forgetKnownNames()
         store.directoryPeople = [AthleteSearchResult(username: "ava", uid: "u1"),
                                  AthleteSearchResult(username: "ben", uid: "u2"),
                                  AthleteSearchResult(username: "cal", uid: "u3")]
