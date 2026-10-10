@@ -792,9 +792,12 @@ private struct FloatingAIAgentButton: View {
                     // bubble with the helmet IS the button — no plate
                     // behind it, just the lift that keeps it readable
                     // over any scroll content.
-                    // The orb, one still frame (Lucas 2026-10-09: the
-                    // final mark) — the tap target stays a full 44pt.
-                    MorpheOrbView(level: 0.2, animates: false)
+                    // The side-view helmet bubble (Lucas 2026-10-09: back
+                    // to the original for the chat door; the live orb
+                    // belongs to Hey Morphe and the popup). 44pt target.
+                    Image("MorpheAIButtonMark")
+                        .resizable()
+                        .scaledToFit()
                         .frame(width: 40, height: 40)
                         .shadow(color: .black.opacity(0.22), radius: 6, y: 3)
                         .shadow(color: MorpheTheme.brandBlue.opacity(0.25), radius: 12, y: 0)
@@ -802,7 +805,7 @@ private struct FloatingAIAgentButton: View {
                         .contentShape(Circle())
                 } else {
                     HStack(spacing: 8) {
-                        Image("MorpheAIMark")
+                        Image("MorpheAIButtonMark")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 20, height: 20)

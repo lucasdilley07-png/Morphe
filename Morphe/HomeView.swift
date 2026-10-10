@@ -1280,7 +1280,11 @@ struct MorpheDayPopup: View {
         VStack(spacing: 0) {
             // Morphe's face: the frequency ring, breathing at a gentle
             // idle level and rising when it speaks.
-            MorpheOrbView(level: ringLevel, speaking: ringSpeaking)
+            // The waves follow the user's own voice whenever Hey Morphe
+            // is live (Lucas 2026-10-09), else the popup's own breath.
+            MorpheOrbView(level: store.heyMorphe.state == .active || store.heyMorphe.state == .speaking
+                              ? max(ringLevel, store.heyMorphe.voiceLevel) : ringLevel,
+                          speaking: ringSpeaking || store.heyMorphe.state == .speaking)
                 .frame(width: 170, height: 170)
                 .scaleEffect(ringPulse ? 1.07 : (ringIn || reduceMotion ? 1 : 0.55))
                 .opacity(ringIn || reduceMotion ? 1 : 0)

@@ -261,6 +261,44 @@ struct MorpheOrbView: View {
 
     // MARK: Layers
 
+    /// The liquid: two translucent glass-blue bodies sloshing under the
+    /// helmet in opposite directions, their surface rising with the voice.
+    private static func drawLiquid(context: GraphicsContext, size: CGSize, time: Double, level: Double) {
+        let w = size.width, h = size.height
+        let rise = CGFloat(level) * h * 0.14
+        let layers: [(base: CGFloat, amp: CGFloat, waves: Double, dir: Double, phase: Double, top: Color, bottom: Color)] = [
+            (0.70, 0.045, 1.2, 1.0, 0.0, glassBlue.opacity(0.42), electric.opacity(0.10)),
+            (0.76, 0.035, 1.7, -1.0, 2.1, Color.white.opacity(0.28), electric.opacity(0.06))
+        ]
+        for layer in layers {
+            var path = Path()
+            let steps = 64
+            let surface = h * layer.base - rise
+            path.move(to: CGPoint(x: 0, y: h))
+            for step in 0...steps {
+                let x = CGFloat(step) / CGFloat(steps) * w
+                let theta = Double(x / w) * .pi * 2 * layer.waves + time * layer.dir + layer.phase
+                let y = surface + h * layer.amp * (1 + CGFloat(level) * 0.8) * CGFloat(sin(theta) + 0.4 * sin(theta * 2.2 + time * 0.6 * layer.dir))
+                path.addLine(to: CGPoint(x: x, y: y))
+            }
+            path.addLine(to: CGPoint(x: w, y: h))
+            path.closeSubpath()
+            context.fill(path, with: .linearGradient(
+                Gradient(colors: [layer.top, layer.bottom, .clear]),
+                startPoint: CGPoint(x: 0, y: surface - h * 0.05), endPoint: CGPoint(x: 0, y: h)))
+            // The surface line catches the light.
+            var crest = Path()
+            for step in 0...steps {
+                let x = CGFloat(step) / CGFloat(steps) * w
+                let theta = Double(x / w) * .pi * 2 * layer.waves + time * layer.dir + layer.phase
+                let y = surface + h * layer.amp * (1 + CGFloat(level) * 0.8) * CGFloat(sin(theta) + 0.4 * sin(theta * 2.2 + time * 0.6 * layer.dir))
+                if step == 0 { crest.move(to: CGPoint(x: x, y: y)) } else { crest.addLine(to: CGPoint(x: x, y: y)) }
+            }
+            context.stroke(crest, with: .color(Color.white.opacity(0.35 + level * 0.3)),
+                           style: StrokeStyle(lineWidth: max(0.8, h * 0.006), lineCap: .round))
+        }
+    }
+
     private static let navy = Color(red: 0.02, green: 0.06, blue: 0.18)
     private static let glassBlue = Color(red: 0.49, green: 0.83, blue: 1.0)
     private static let electric = Color(red: 0.25, green: 0.55, blue: 1.0)
@@ -310,7 +348,10 @@ struct MorpheOrbView: View {
                 phaseBox.lastTime = t
                 // Idle breath + the voice's own pace: speech makes the
                 // ribbons run, silence lets them drift.
-                let speed = (speaking ? 1.6 : 0.9) * (0.3 + level * 1.6)
+                // Visible at rest, running with the voice: idle drifts at
+                // ~1.3 rad/s, full voice runs past 4 (Lucas 2026-10-09:
+                // "moves like waves… in sync with the user's voice").
+                let speed = (speaking ? 1.5 : 1.0) * (1.1 + level * 3.2)
                 phaseBox.phase += dt * speed
                 Self.drawRibbons(context: context, size: canvasSize, time: phaseBox.phase, level: level)
             }
@@ -323,6 +364,7 @@ struct MorpheOrbView: View {
     /// image's frequency design, moving.
     private static func drawRibbons(context: GraphicsContext, size: CGSize, time: Double, level: Double) {
         let w = size.width, h = size.height
+        drawLiquid(context: context, size: size, time: time, level: level)
         let bands: [(y: CGFloat, amp: CGFloat, waves: Double, phase: Double, width: CGFloat, alpha: Double)] = [
             (0.64, 0.10, 1.4, 0.0, 0.07, 0.75),
             (0.72, 0.07, 1.9, 2.4, 0.05, 0.6)
