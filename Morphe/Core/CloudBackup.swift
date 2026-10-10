@@ -1,6 +1,20 @@
 import Foundation
 import FirebaseFirestore
 
+/// A permission denial from the rules (the server-side pace, a block) is
+/// not a network fault — the store reads this to word the toast. Set by
+/// the three paced writers, consumed once by whoever toasts.
+enum CloudWriteDiagnostics {
+    private static var denied = false
+    static func note(_ error: Error) {
+        denied = (error as NSError).code == FirestoreErrorCode.permissionDenied.rawValue
+    }
+    static func consumeDenied() -> Bool {
+        defer { denied = false }
+        return denied
+    }
+}
+
 // MARK: - Cloud backup (profile + workout logs)
 //
 // Mirrors the two on-device persistence snapshots (LocalProfileSnapshot and the
@@ -571,6 +585,7 @@ final class FirebaseMessagingService: MessagingSyncing {
             try await batch.commit()
             return true
         } catch {
+            CloudWriteDiagnostics.note(error)
             return false
         }
     }
@@ -809,6 +824,7 @@ final class FirebaseFeedService: FeedSyncing {
             try await batch.commit()
             return true
         } catch {
+            CloudWriteDiagnostics.note(error)
             return false
         }
     }
@@ -890,6 +906,7 @@ final class FirebaseFeedService: FeedSyncing {
             try await batch.commit()
             return true
         } catch {
+            CloudWriteDiagnostics.note(error)
             return false
         }
     }

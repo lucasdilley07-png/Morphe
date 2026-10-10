@@ -778,7 +778,7 @@ struct WorkoutView: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                     }
-                    .foregroundStyle(.white)  // audit 28, P0: black fails on the blue fills
+                    .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))  // ink chosen per palette (gold/silver take black)
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
@@ -1874,7 +1874,7 @@ private struct WorkoutDebriefSheet: View {
                                                       ? MorpheTheme.accent
                                                       : MorpheTheme.panelStrong.opacity(0.6))
                                         )
-                                        .foregroundStyle(intensity == option ? .white : MorpheTheme.textPrimary)
+                                        .foregroundStyle(intensity == option ? MorpheTheme.onFill(MorpheTheme.accent) : MorpheTheme.textPrimary)
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityLabel("\(option.label) intensity")
@@ -4066,7 +4066,7 @@ struct DiscoverCatalogSection: View {
     private var peopleResults: [PersonResult] {
         let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return [] }
-        var results: [PersonResult] = store.scannedConnections
+        let results: [PersonResult] = store.scannedConnections
             .filter { $0.name.localizedCaseInsensitiveContains(q) || $0.handle.localizedCaseInsensitiveContains(q) }
             .map {
                 PersonResult(

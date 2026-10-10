@@ -1982,7 +1982,7 @@ private struct TrainedTodayRow: View {
                             initial: String(entry.name.prefix(1)).uppercased(),
                             name: entry.id == myUid ? "You" : entry.name,
                             ringState: entry.hasUnseen ? .unseen : .seen,
-                            accent: accentId.isEmpty ? MorpheTheme.textPrimary : MorpheTheme.accentColor(forPaletteId: accentId),
+                            accent: accentId.isEmpty ? MorpheTheme.textPrimary : MorpheTheme.accentInk(forPaletteId: accentId),
                             duoStreak: duo
                         ) {
                             onOpen(entry)
@@ -2059,7 +2059,7 @@ private struct StoryBubble: View {
                                 Text("\(duoStreak)")
                                     .font(MorpheTheme.microLabel(9))
                             }
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
                             .padding(.horizontal, 4)
                             .padding(.vertical, 2)
                             .background(
@@ -2128,7 +2128,7 @@ private struct StorySessionViewer: View {
                         .tracking(1.4)
                         .foregroundStyle(post.authorAccent.isEmpty
                             ? MorpheTheme.textPrimary
-                            : MorpheTheme.accentColor(forPaletteId: post.authorAccent))
+                            : MorpheTheme.accentInk(forPaletteId: post.authorAccent))
                     if entry.verified {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.caption)
@@ -2246,6 +2246,8 @@ private struct StorySessionViewer: View {
         Task {
             if await store.addComment(to: target, text: text) {
                 store.noteStoryReplySent()
+            } else if replyDraft.isEmpty {
+                replyDraft = text   // refused or offline: the words come back
             }
         }
     }
@@ -2466,7 +2468,7 @@ struct FeedGridTile: View {
     let post: FeedPost
 
     private var accent: Color {
-        MorpheTheme.accentColor(forPaletteId: post.authorAccent)
+        MorpheTheme.accentInk(forPaletteId: post.authorAccent)
     }
 
     var body: some View {
@@ -2715,7 +2717,7 @@ private struct FeedAuthorView: View {
                                     .font(.title2.weight(.bold))
                                     .foregroundStyle(accentId.isEmpty
                                         ? MorpheTheme.textPrimary
-                                        : MorpheTheme.accentColor(forPaletteId: accentId))
+                                        : MorpheTheme.accentInk(forPaletteId: accentId))
                             )
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(spacing: 6) {
@@ -2839,7 +2841,7 @@ private struct FeedPostCard: View {
                                         .font(.headline)
                                         .foregroundStyle(post.authorAccent.isEmpty
                                             ? MorpheTheme.textPrimary
-                                            : MorpheTheme.accentColor(forPaletteId: post.authorAccent))
+                                            : MorpheTheme.accentInk(forPaletteId: post.authorAccent))
                                 )
 
                             VStack(alignment: .leading, spacing: 2) {
@@ -3641,15 +3643,16 @@ struct ThreadChatView: View {
                     .onSubmit {
                         let text = draft
                         draft = ""
-                        Task { await store.sendMessage(text) }
+                        Task { if await !store.sendMessage(text), draft.isEmpty { draft = text } }
                     }
                     .textFieldStyle(MorpheFieldStyle())
 
                 Button("Send") {
-                    // Clear first so a slow network never eats a retype.
+                    // Clear first so a slow network never eats a retype; a
+                    // refusal (pace, policy, offline) hands the words back.
                     let text = draft
                     draft = ""
-                    Task { await store.sendMessage(text) }
+                    Task { if await !store.sendMessage(text), draft.isEmpty { draft = text } }
                 }
                 .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                 .frame(width: 96)
@@ -3952,14 +3955,14 @@ struct AthleteInboxView: View {
                     } label: {
                         Group {
                             if startingChatUid == hit.uid {
-                                ProgressView().tint(.white)
+                                ProgressView().tint(MorpheTheme.onFill(MorpheTheme.accent))
                             } else {
                                 Text("CHAT")
                                     .font(MorpheTheme.microLabel(10))
                                     .tracking(1.4)
                             }
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))
                         .padding(.horizontal, 16)
                         .frame(height: 34)
                         .background(Capsule().fill(MorpheTheme.accent))

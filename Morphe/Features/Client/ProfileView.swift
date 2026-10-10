@@ -47,6 +47,9 @@ struct ProfileView: View {
     /// unsaved-edit guard couldn't see a typed-but-unsaved weight, so Done
     /// or a swipe-down silently dropped it.
     @State private var weightDraft = ""
+    @State private var goalWeightDraft = ""
+    @State private var ageDraft = ""
+    @State private var showWeightWarning = false
     /// Instagram-style settings search: filters the grouped sections.
     @State private var settingsQuery = ""
 
@@ -59,9 +62,10 @@ struct ProfileView: View {
                     weightDraft: $weightDraft,
                     onOpenProgress: { requestOpenProgress() }
                 ) {
-                    // Level and rank sit under the weight and above the
-                    // history door (Lucas 2026-10-06).
+                    // Level and rank, then the guide replay, above the
+                    // history door (Lucas 2026-10-06 / 2026-10-10).
                     levelCard
+                    replayGuideRow
                 }
                 detailsCard
                 targetsCard
@@ -155,6 +159,42 @@ struct ProfileView: View {
         }
     }
 
+    /// The guide, on demand: the same nine-stop tour a new account gets,
+    /// every stop still optional. Sits under the level card.
+    private var replayGuideRow: some View {
+        Button {
+            requestReplayGuide()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "map")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.accentText)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Replay the guide")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text("Two minutes: Form Check, Morphe AI, Train Together, fuel, the ladder.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                    .fill(MorpheTheme.panel)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Replay the guide")
+        .accessibilityHint("Closes Profile and opens the tour")
+    }
+
     /// Replaying the guide closes the profile — an unsaved draft gets the
     /// same save/discard ask Done gives it (audit 30).
     private func requestReplayGuide() {
@@ -195,7 +235,19 @@ struct ProfileView: View {
         if MorpheAppStore.parsedBodyWeightLb(weightDraft, assumedUnit: store.weightUnit) != nil {
             return true
         }
+        if goalWeightChanged || ageChanged { return true }
         return false
+    }
+
+    private var goalWeightChanged: Bool {
+        let clean = goalWeightDraft.trimmingCharacters(in: .whitespaces)
+        return !clean.isEmpty && clean != store.clientProfile.goalWeight
+            && MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) != nil
+    }
+
+    private var ageChanged: Bool {
+        guard let years = Int(ageDraft.trimmingCharacters(in: .whitespaces)), years > 0 else { return false }
+        return years != store.clientProfile.age
     }
 
     private var targetsChanged: Bool {
@@ -218,6 +270,14 @@ struct ProfileView: View {
             store.updateBodyMetrics(height: store.clientProfile.height, weight: weight)
             weightDraft = ""
         }
+        if goalWeightChanged {
+            store.updateGoalWeight(goalWeightDraft)
+            goalWeightDraft = ""
+        }
+        if ageChanged, let years = Int(ageDraft.trimmingCharacters(in: .whitespaces)) {
+            store.updateAge(years)
+            ageDraft = ""
+        }
     }
 
     private func discardAllEdits() {
@@ -227,6 +287,8 @@ struct ProfileView: View {
         isEditingBio = false
         isEditingTargets = false
         weightDraft = ""
+        goalWeightDraft = ""
+        ageDraft = ""
     }
 
     /// Everything about the user's training identity, editable in place —
@@ -245,7 +307,9 @@ struct ProfileView: View {
             items.isEmpty ? none : items.prefix(3).joined(separator: ", ") + (items.count > 3 ? " +\(items.count - 3)" : "")
         }
         return [
+            ("Age", store.clientProfile.age > 0 ? "\(store.clientProfile.age)" : "Not set"),
             ("Experience", store.clientProfile.fitnessLevel.isEmpty ? "Not set" : store.clientProfile.fitnessLevel),
+            ("Weight", store.weightJourneyLine),
             ("Goals", line(goals, none: "Not set")),
             ("Diet", line(diet, none: "Not set")),
             ("Styles", line(styles, none: "Not set")),
@@ -288,6 +352,32 @@ struct ProfileView: View {
                     }
                 } else {
                 VStack(alignment: .leading, spacing: 8) {
+                    Text("Age")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    HStack(spacing: 10) {
+                        TextField(store.clientProfile.age > 0 ? "\(store.clientProfile.age)" : "Years", text: $ageDraft)
+                            .textFieldStyle(MorpheFieldStyle())
+                            .keyboardType(.numberPad)
+                            .frame(maxWidth: 120)
+                        if ageChanged {
+                            Button("Save") {
+                                if let years = Int(ageDraft.trimmingCharacters(in: .whitespaces)) { store.updateAge(years) }
+                                ageDraft = ""
+                            }
+                            .buttonStyle(.plain)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .frame(minHeight: 44)
+                            .accessibilityLabel("Save age")
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
+                VStack(alignment: .leading, spacing: 8) {
                     Text("Experience")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textMuted)
@@ -298,6 +388,77 @@ struct ProfileView: View {
                             }
                             .buttonStyle(FilterChipStyle(isSelected: store.clientProfile.fitnessLevel == level.rawValue))
                         }
+                    }
+                }
+
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
+                // Weight: current → goal (Lucas 2026-10-10). The current
+                // weight is the app's only weight-entry point — it feeds the
+                // Progress chart and the nutrition targets.
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Weight")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    HStack(alignment: .center, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("CURRENT")
+                                .font(MorpheTheme.microLabel(9)).tracking(1.2)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            TextField(store.clientProfile.bodyWeight.isEmpty
+                                      ? (store.weightUnit == .kilograms ? "e.g. 77" : "e.g. 170")
+                                      : store.clientProfile.bodyWeight, text: $weightDraft)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .keyboardType(.decimalPad)
+                                .onChange(of: weightDraft) { _, newValue in
+                                    let clean = newValue.trimmingCharacters(in: .whitespaces)
+                                    showWeightWarning = clean.count > 2
+                                        && MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) == nil
+                                }
+                        }
+                        Image(systemName: "arrow.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .padding(.top, 14)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("GOAL")
+                                .font(MorpheTheme.microLabel(9)).tracking(1.2)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            TextField(store.clientProfile.goalWeight.isEmpty
+                                      ? (store.weightUnit == .kilograms ? "e.g. 72" : "e.g. 160")
+                                      : store.clientProfile.goalWeight, text: $goalWeightDraft)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .keyboardType(.decimalPad)
+                        }
+                    }
+                    if let last = store.bodyWeightHistory.last {
+                        Text("Logged \(last.date.formatted(.relative(presentation: .named))) · unit in Settings")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    } else {
+                        Text("Log it once and the Progress chart + nutrition targets personalize from it.")
+                            .font(.caption2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    if showWeightWarning {
+                        Text("Enter a number — like \(store.weightUnit == .kilograms ? "77" : "170").")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.warning)
+                    }
+                    if MorpheAppStore.parsedBodyWeightLb(weightDraft, assumedUnit: store.weightUnit) != nil || goalWeightChanged {
+                        Button("Save Weight") {
+                            let clean = weightDraft.trimmingCharacters(in: .whitespaces)
+                            if MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) != nil {
+                                store.updateBodyMetrics(height: store.clientProfile.height, weight: clean)
+                                weightDraft = ""
+                            }
+                            if goalWeightChanged {
+                                store.updateGoalWeight(goalWeightDraft)
+                                goalWeightDraft = ""
+                            }
+                            showWeightWarning = false
+                        }
+                        .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     }
                 }
 
@@ -417,24 +578,24 @@ struct ProfileView: View {
     private var targetsCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Your Targets")
+                Text("Your Milestones")
                     .font(.headline)
                     .foregroundStyle(MorpheTheme.textPrimary)
 
                 if isEditingTargets {
                     VStack(alignment: .leading, spacing: 10) {
-                        targetField("30-day", placeholder: "Your 30-day goal", text: $physicalTargetDraft)
-                        targetField("60-day", placeholder: "Your 60-day goal", text: $weightTargetDraft)
-                        targetField("90-day", placeholder: "Your 90-day goal", text: $deadlineTargetDraft)
+                        targetField("30-day", placeholder: "Your 30-day milestone", text: $physicalTargetDraft)
+                        targetField("60-day", placeholder: "Your 60-day milestone", text: $weightTargetDraft)
+                        targetField("90-day", placeholder: "Your 90-day milestone", text: $deadlineTargetDraft)
                         HStack(spacing: 12) {
                             Button("Save") { saveTargets() }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(MorpheTheme.accentText)
-                                .accessibilityLabel("Save targets")
+                                .accessibilityLabel("Save milestones")
                             Button("Cancel") { isEditingTargets = false }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(MorpheTheme.textMuted)
-                                .accessibilityLabel("Cancel target edits")
+                                .accessibilityLabel("Cancel milestone edits")
                             Spacer()
                         }
                     }
@@ -442,7 +603,7 @@ struct ProfileView: View {
                     targetRow("30-day", value: store.clientProfile.physicalGoalTarget)
                     targetRow("60-day", value: store.clientProfile.weightGoalTarget)
                     targetRow("90-day", value: store.clientProfile.goalDeadline)
-                    Button("Edit Targets") {
+                    Button("Edit Milestones") {
                         physicalTargetDraft = store.clientProfile.physicalGoalTarget
                         weightTargetDraft = store.clientProfile.weightGoalTarget
                         deadlineTargetDraft = store.clientProfile.goalDeadline
@@ -594,7 +755,7 @@ struct ProfileView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Rank: \(rank.title), \(rank.gloss)\(rank.next.map { ". Next: \($0.title) at level \($0.firstLevel)" } ?? "")")
+        .accessibilityLabel("Rank: \(rank.title). \(rank.gloss) Wears \(rank.palette.rawValue).\(rank.next.map { " Next: \($0.title) at level \($0.firstLevel)." } ?? "")")
         .accessibilityHint("Opens The Code")
     }
 
@@ -1163,132 +1324,7 @@ struct ProfileView: View {
 
             settingsGroupLabel("Profile")
 
-            // Identity customization (personalization phase 2): pick
-            // Morphe's persona and the app's sound voice. Writes go through
-            // setStyleChoice so recomputes never clobber them.
-            settingsSection("Make it yours", keywords: Self.makeItYoursKeywords) {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Sound voice")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    HStack(spacing: 10) {
-                        ForEach(SoundPack.allCases) { pack in
-                            soundPackChoice(pack)
-                        }
-                    }
-                    Text("Same cues, different voice — the PR sound still means a PR.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    Text("Morphe's voice")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    HStack(spacing: 10) {
-                        ForEach(MorpheVoiceOption.all) { option in
-                            styleChip(
-                                title: option.title, detail: option.detail,
-                                selected: MorpheVoiceOption.spec(for: store.styleProfile.voiceStyle).id == option.id,
-                                accessibility: "\(option.title) voice — \(option.detail)"
-                            ) {
-                                store.setStyleChoice(voiceStyle: option.id)
-                                Haptics.selection()
-                            }
-                        }
-                    }
-                    Text("The accent Morphe answers in — applies from the next spoken reply.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    Text("Communication style")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    HStack(spacing: 10) {
-                        ForEach(MorpheCommunicationStyle.all) { style in
-                            styleChip(
-                                title: style.title, detail: style.detail,
-                                selected: MorpheCommunicationStyle.spec(for: store.styleProfile.communicationStyle).id == style.id,
-                                accessibility: "\(style.title) style — \(style.detail)"
-                            ) {
-                                store.setStyleChoice(communicationStyle: style.id)
-                                Haptics.selection()
-                            }
-                        }
-                    }
-                    Text("How Morphe talks in chat and voice — delivery changes, the numbers never do.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-
-                    Divider().overlay(MorpheTheme.strokeSubtle)
-
-                    // The guide, on demand: the same eight-stop tour a new
-                    // account gets, every stop still optional.
-                    Button {
-                        requestReplayGuide()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "map")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(MorpheTheme.accentText)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Replay the guide")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(MorpheTheme.textPrimary)
-                                Text("The two-minute tour of Form Check, Morphe AI, Train Together and the rest.")
-                                    .font(.caption)
-                                    .foregroundStyle(MorpheTheme.textMuted)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(MorpheTheme.textMuted)
-                        }
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Replay the guide")
-                    .accessibilityHint("Closes Profile and opens the tour")
-                }
-            }
-
-            // The learning loop, visible (personalization spine 2026-09):
-            // Morphe says exactly what it has derived from real logs — and
-            // says "still learning" instead of inventing patterns.
-            settingsSection("What Morphe has learned", keywords: "personalization learned patterns ai adapt") {
-                if store.styleProfile.hasLearnedAnything {
-                    VStack(alignment: .leading, spacing: 8) {
-                        if let intensity = store.styleProfile.preferredIntensity {
-                            learnedRow("gauge.with.needle", "You usually rate sessions \u{201C}\((WorkoutIntensity(rawValue: intensity)?.label ?? intensity).lowercased())\u{201D}")
-                        }
-                        if let rating = store.styleProfile.averageRating {
-                            learnedRow("star.fill", "Average session rating \(rating.formatted(.number.precision(.fractionLength(1))))/10")
-                        }
-                        if !store.styleProfile.favoriteExercises.isEmpty {
-                            learnedRow("dumbbell.fill", "Most-trained: \(store.styleProfile.favoriteExercises.prefix(3).joined(separator: ", "))")
-                        }
-                        if let hour = store.styleProfile.preferredTrainingHour {
-                            learnedRow("clock.fill", "You usually train around \(MorpheAppStore.formattedHour(hour))")
-                        }
-                        if let cadence = store.styleProfile.weeklyCadence, cadence > 0 {
-                            learnedRow("calendar", "About \(cadence.formatted(.number.precision(.fractionLength(1)))) sessions a week lately")
-                        }
-                        Text("Derived from your real logs and debriefs — it sharpens Morphe's answers and suggestions. Nothing here is invented.")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                            .padding(.top, 2)
-                    }
-                } else {
-                    Text("Still learning you. Log a few sessions and answer the post-workout debriefs — patterns show up here as they become real.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
-                }
-            }
-
+            // Your account leads the Profile group (Lucas 2026-10-10).
             settingsSection("Your account", keywords: "name username handle referrals invite share") {
                 if isEditingName {
                     VStack(alignment: .leading, spacing: 8) {
@@ -1404,6 +1440,101 @@ struct ProfileView: View {
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
 
+            }
+
+            // Identity customization (personalization phase 2): pick
+            // Morphe's persona and the app's sound voice. Writes go through
+            // setStyleChoice so recomputes never clobber them.
+            settingsSection("Make it yours", keywords: Self.makeItYoursKeywords) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Sound voice")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    HStack(spacing: 10) {
+                        ForEach(SoundPack.allCases) { pack in
+                            soundPackChoice(pack)
+                        }
+                    }
+                    Text("Same cues, different voice — the PR sound still means a PR.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    Text("Morphe's voice")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    HStack(spacing: 10) {
+                        ForEach(MorpheVoiceOption.all) { option in
+                            styleChip(
+                                title: option.title, detail: option.detail,
+                                selected: MorpheVoiceOption.spec(for: store.styleProfile.voiceStyle).id == option.id,
+                                accessibility: "\(option.title) voice — \(option.detail)"
+                            ) {
+                                store.setStyleChoice(voiceStyle: option.id)
+                                Haptics.selection()
+                            }
+                        }
+                    }
+                    Text("The accent Morphe answers in — applies from the next spoken reply.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
+                    Text("Communication style")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    HStack(spacing: 10) {
+                        ForEach(MorpheCommunicationStyle.all) { style in
+                            styleChip(
+                                title: style.title, detail: style.detail,
+                                selected: MorpheCommunicationStyle.spec(for: store.styleProfile.communicationStyle).id == style.id,
+                                accessibility: "\(style.title) style — \(style.detail)"
+                            ) {
+                                store.setStyleChoice(communicationStyle: style.id)
+                                Haptics.selection()
+                            }
+                        }
+                    }
+                    Text("How Morphe talks in chat and voice — delivery changes, the numbers never do.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+
+                }
+            }
+
+            // The learning loop, visible (personalization spine 2026-09):
+            // Morphe says exactly what it has derived from real logs — and
+            // says "still learning" instead of inventing patterns.
+            settingsSection("What Morphe has learned", keywords: "personalization learned patterns ai adapt") {
+                if store.styleProfile.hasLearnedAnything {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let intensity = store.styleProfile.preferredIntensity {
+                            learnedRow("gauge.with.needle", "You usually rate sessions \u{201C}\((WorkoutIntensity(rawValue: intensity)?.label ?? intensity).lowercased())\u{201D}")
+                        }
+                        if let rating = store.styleProfile.averageRating {
+                            learnedRow("star.fill", "Average session rating \(rating.formatted(.number.precision(.fractionLength(1))))/10")
+                        }
+                        if !store.styleProfile.favoriteExercises.isEmpty {
+                            learnedRow("dumbbell.fill", "Most-trained: \(store.styleProfile.favoriteExercises.prefix(3).joined(separator: ", "))")
+                        }
+                        if let hour = store.styleProfile.preferredTrainingHour {
+                            learnedRow("clock.fill", "You usually train around \(MorpheAppStore.formattedHour(hour))")
+                        }
+                        if let cadence = store.styleProfile.weeklyCadence, cadence > 0 {
+                            learnedRow("calendar", "About \(cadence.formatted(.number.precision(.fractionLength(1)))) sessions a week lately")
+                        }
+                        Text("Derived from your real logs and debriefs — it sharpens Morphe's answers and suggestions. Nothing here is invented.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .padding(.top, 2)
+                    }
+                } else {
+                    Text("Still learning you. Log a few sessions and answer the post-workout debriefs — patterns show up here as they become real.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
             }
 
             settingsGroupLabel("Training")
@@ -1987,6 +2118,7 @@ struct ProfileView: View {
                 Circle()
                     .fill(MorpheTheme.swatchStyle(for: palette))
                     .frame(width: 28, height: 28)
+                    .overlay(Circle().stroke(MorpheTheme.strokeSubtle, lineWidth: 1))
                     .opacity(isUnlocked ? 1 : 0.35)
                 if isSelected {
                     Circle()
@@ -2048,56 +2180,10 @@ private struct AthleteProfileBody<Between: View>: View {
     let onOpenProgress: () -> Void
     /// Rendered between the weight card and the history door.
     @ViewBuilder let between: () -> Between
-    @State private var showWeightWarning = false
-
     var body: some View {
         Group {
-            // WEIGHT leads (profile audit): the app's only weight-entry
-            // point, feeding the Progress chart and nutrition targets — it
-            // was a bare unlabeled field six cards down.
-            GlassCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Weight")
-                        .font(.headline)
-                        .foregroundStyle(MorpheTheme.textPrimary)
-                    if let last = store.bodyWeightHistory.last {
-                        Text("\(store.weightUnit.format(store.weightUnit == .kilograms ? last.weightLb * 0.45359237 : last.weightLb)) · logged \(last.date.formatted(.relative(presentation: .named)))")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    } else {
-                        Text("Log it once and the Progress chart + nutrition targets personalize from it.")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textSecondary)
-                    }
-                    TextField(store.weightUnit == .kilograms ? "e.g. 77" : "e.g. 170", text: $weightDraft)
-                        .textFieldStyle(MorpheFieldStyle())
-                        .keyboardType(.decimalPad)
-                        .submitLabel(.done)
-                        .onSubmit { saveWeight() }
-                        .onChange(of: weightDraft) { _, newValue in
-                            // The decimal pad has no return key, so onSubmit
-                            // never fires (audit 9, P1-5) — validate live,
-                            // but only once the draft is long enough that
-                            // it can't just be mid-typing.
-                            let clean = newValue.trimmingCharacters(in: .whitespaces)
-                            showWeightWarning = clean.count > 2
-                                && MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) == nil
-                        }
-                    // Inline validation, on SUBMIT only (audit 8, P2): the
-                    // mid-typing version scolded "1" and "17" on the way to
-                    // "170". The warning clears the moment typing resumes.
-                    if showWeightWarning {
-                        Text("Enter a number — like \(store.weightUnit == .kilograms ? "77" : "170").")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.warning)
-                    }
-                    if MorpheAppStore.parsedBodyWeightLb(weightDraft, assumedUnit: store.weightUnit) != nil {
-                        Button("Save Weight") { saveWeight() }
-                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                    }
-                }
-            }
-
+            // Weight moved into Your Details (Lucas 2026-10-10): current →
+            // goal, under Experience.
             between()
 
             // Training history lives in Progress — one door, not four
@@ -2127,19 +2213,6 @@ private struct AthleteProfileBody<Between: View>: View {
         }
     }
 
-    private func saveWeight() {
-        let clean = weightDraft.trimmingCharacters(in: .whitespaces)
-        guard !clean.isEmpty else { return }
-        // Parse gate (audit 6, P2-10): the submit-time caption does the
-        // explaining — this guard just refuses the write.
-        guard MorpheAppStore.parsedBodyWeightLb(clean, assumedUnit: store.weightUnit) != nil else {
-            showWeightWarning = true
-            return
-        }
-        showWeightWarning = false
-        store.updateBodyMetrics(height: store.clientProfile.height, weight: clean)
-        weightDraft = ""
-    }
 }
 
 /// Coach profile = coaching identity + a snapshot of the REAL roster

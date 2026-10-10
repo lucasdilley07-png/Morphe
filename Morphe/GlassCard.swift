@@ -2502,7 +2502,7 @@ private struct ShareCardFrame<Content: View>: View {
                     Text("MORPHE")
                         .font(.system(size: 22, design: .monospaced).weight(.black))
                         .tracking(6)
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentOnInk)
                     Spacer()
                     Text(dateLabel.uppercased())
                         .font(.system(size: 11, design: .monospaced).weight(.semibold))
@@ -2597,7 +2597,7 @@ struct ShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "trophy.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentOnInk)
                         Text("NEW PR · \(name.uppercased())")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
@@ -2611,7 +2611,7 @@ struct ShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "flame.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentOnInk)
                         Text("\(data.streak)-DAY STREAK")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
@@ -2635,7 +2635,7 @@ struct PRShareCardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "trophy.fill")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentOnInk)
                     ShareCardKicker(text: "NEW RECORD")
                 }
                 .padding(.bottom, 10)
@@ -2649,7 +2649,7 @@ struct PRShareCardView: View {
 
                 Text(data.weightLabel.uppercased())
                     .font(.system(size: 34, design: .monospaced).weight(.bold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentOnInk)
 
                 if !data.previousLabel.isEmpty {
                     Text("UP FROM \(data.previousLabel.uppercased())")
@@ -2673,14 +2673,14 @@ struct StreakShareCardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(MorpheTheme.accent)
+                        .foregroundStyle(MorpheTheme.accentOnInk)
                     ShareCardKicker(text: "CONSISTENCY")
                 }
                 .padding(.bottom, 14)
 
                 Text("\(data.streak)")
                     .font(.system(size: 96, design: .monospaced).weight(.bold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentOnInk)
 
                 Text("DAY STREAK")
                     .font(.system(size: 18, design: .monospaced).weight(.bold))
@@ -2709,7 +2709,7 @@ struct RecapShareCardView: View {
 
                 Text("\(data.sessions)")
                     .font(.system(size: 96, design: .monospaced).weight(.bold))
-                    .foregroundStyle(MorpheTheme.accent)
+                    .foregroundStyle(MorpheTheme.accentOnInk)
 
                 Text(data.sessions == 1 ? "SESSION" : "SESSIONS")
                     .font(.system(size: 18, design: .monospaced).weight(.bold))
@@ -2726,7 +2726,7 @@ struct RecapShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "trophy.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentOnInk)
                         Text("\(data.prCount) NEW PR\(data.prCount == 1 ? "" : "S")")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)
@@ -2739,7 +2739,7 @@ struct RecapShareCardView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "flame.fill")
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(MorpheTheme.accent)
+                            .foregroundStyle(MorpheTheme.accentOnInk)
                         Text("\(data.streak)-DAY STREAK")
                             .font(.system(size: 13, design: .monospaced).weight(.bold))
                             .tracking(1.2)

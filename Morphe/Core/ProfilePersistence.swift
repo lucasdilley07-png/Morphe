@@ -91,6 +91,8 @@ struct LocalProfileSnapshot: Codable, Equatable {
     // Body metrics, editable from Profile.
     var height: String = ""
     var bodyWeight: String = ""
+    var goalWeight: String = ""
+    var age: Int = 0
     // Daily state — which calendar day the daily surfaces belong to, and which
     // tasks were completed that day (so a same-day relaunch can't re-offer
     // already-earned task XP).
@@ -214,6 +216,8 @@ extension LocalProfileSnapshot {
         completedQuizIDs = arr(.completedQuizIDs)
         height = str(.height)
         bodyWeight = str(.bodyWeight)
+        goalWeight = str(.goalWeight)
+        age = ((try? c.decodeIfPresent(Int.self, forKey: .age)) ?? nil) ?? 0
         dailyStateDay = str(.dailyStateDay)
         // Written since audit 8 but never decoded until audit 9 (P0-3) —
         // the tolerant decoder pattern silently swallows missing lines.

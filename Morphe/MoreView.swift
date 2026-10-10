@@ -492,7 +492,7 @@ private struct QuizCallingCard: View {
     private var plate: (fill: LinearGradient, text: Color) {
         switch index % 4 {
         case 0:
-            return (LinearGradient(colors: [MorpheTheme.accent, MorpheTheme.accentAlt],
+            return (LinearGradient(colors: [MorpheTheme.brandBlue, MorpheTheme.brandBlueDeep],
                                    startPoint: .topLeading, endPoint: .bottomTrailing), .white)
         case 1:
             return (LinearGradient(colors: [Color(red: 0.10, green: 0.10, blue: 0.12),
@@ -500,7 +500,7 @@ private struct QuizCallingCard: View {
                                    startPoint: .topLeading, endPoint: .bottomTrailing), .white)
         case 2:
             // Deep blue, not the gold-era bronze (audit 30).
-            return (LinearGradient(colors: [MorpheTheme.accentAlt,
+            return (LinearGradient(colors: [MorpheTheme.brandBlueDeep,
                                             Color(red: 0.102, green: 0.153, blue: 0.40)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing), .white)
         default:
@@ -959,7 +959,7 @@ struct SpartanCodeContent: View {
             .padding(.bottom, 12)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(rung.title), \(rung.gloss), from level \(rung.firstLevel), unlocks the \(rung.palette.rawValue) accent. \(isCurrent ? "Your rank, level \(store.currentLevelNumber)" : (reached ? "Reached" : "Not reached yet"))")
+        .accessibilityLabel("\(rung.title). \(rung.gloss) From level \(rung.firstLevel), unlocks the \(rung.palette.rawValue) accent. \(isCurrent ? "Your rank, level \(store.currentLevelNumber)" : (reached ? "Reached" : "Not reached yet"))")
     }
 
     private func ladderTitle(_ rung: MorpheRank, isCurrent: Bool) -> some View {

@@ -2660,6 +2660,11 @@ struct ClientProfile: Hashable {
     /// Free-text body metrics, user-editable from Profile ("5'10\"", "178 cm").
     var height: String = ""
     var bodyWeight: String = ""
+    /// Goal body weight, free text like bodyWeight ("175", "80 kg"); and
+    /// age in years (0 = not set). Both edited in Profile → Your Details
+    /// (Lucas 2026-10-10), never defaulted.
+    var goalWeight: String = ""
+    var age: Int = 0
     var currentProgram: String
     // "Morphe", not "Morphe AI": the starting plan comes from deterministic
     // onboarding heuristics — calling it AI was an overclaim.

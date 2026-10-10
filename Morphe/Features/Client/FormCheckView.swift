@@ -2030,7 +2030,7 @@ struct FormCheckView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("FORM CHECK · \(spec.label.uppercased())")
                     .font(MorpheTheme.microLabel(10)).tracking(1.6)
-                    .foregroundStyle(MorpheTheme.accentText)
+                    .foregroundStyle(MorpheTheme.accentOnInk)
                 Text(session.exerciseName.uppercased())
                     .scaledFont(size: 22, weight: .bold, design: .monospaced).tracking(2)
                     .foregroundStyle(.white)
@@ -2233,7 +2233,7 @@ struct FormCheckView: View {
     private func messageState(title: String, detail: String) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "camera.metering.unknown")
-                .font(.system(size: 40)).foregroundStyle(MorpheTheme.accentText)
+                .font(.system(size: 40)).foregroundStyle(MorpheTheme.accentOnInk)
             Text(title).font(.title3.weight(.bold)).foregroundStyle(.white)
             Text(detail)
                 .font(.subheadline).foregroundStyle(.white.opacity(0.7))

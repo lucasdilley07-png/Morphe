@@ -32,7 +32,7 @@ pitch use; they are the parts that go stale.
 | **Four lore quizzes** | Mantinea pipes, "add a step", the mess of fifteen, Aristodemus | Thuc. 5.70; Plut. Lyc. 12; Hdt. 9.71 |
 | **Rebrand backlog** | Dedicated launch splash; Gold→Spartan Blue migration carried in the profile snapshot (`paletteEpoch`); watch icon; contrast fixes across every palette | audit 28 + 29 |
 
-Code: `SpartanLore`, `AgogeRank`, `LaconicSaying` in `Core/MorpheModels.swift`;
+Code: `SpartanLore`, `MorpheRank`, `LaconicSaying` in `Core/MorpheModels.swift`;
 `SpartanCodeSheet` in `MoreView.swift`; tests in `SpartanLoreTests`.
 
 ---

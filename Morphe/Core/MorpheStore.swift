@@ -1603,6 +1603,10 @@ final class MorpheAppStore {
         // without consent. setHeyMorphe(false) stops the engine, hands the
         // audio session back, and clears the persisted toggle.
         setHeyMorphe(enabled: false)
+        // The next account on this phone starts with its own pace and
+        // its own pledge (human-only policy audit 2026-10-10).
+        contentPacer = ContentPacer()
+        humanPledgeAccepted = false
         // One account's appointments, streak and sayings must not ring
         // after sign-out or under the next account (audit 31).
         if !(appointmentService is NoOpAppointmentService) {
@@ -1998,14 +2002,22 @@ final class MorpheAppStore {
     /// anti-spam, anti-AI-content policy). Older acceptances re-gate.
     static let currentTermsVersion = 2
     var acceptedTermsVersion = 0
-    /// The one-time pledge in the composer: "these are my own words".
-    var humanPledgeAccepted: Bool = UserDefaults.standard.bool(forKey: "morphe.humanPledge")
+    /// The one-time pledge in the composers: "these are my own words".
+    /// Per profile (keyed by the profile id), reloaded with the profile.
+    var humanPledgeAccepted = false
+    private var humanPledgeKey: String { "morphe.humanPledge.\(clientProfile.id.uuidString)" }
+    func loadHumanPledge() {
+        humanPledgeAccepted = UserDefaults.standard.bool(forKey: humanPledgeKey)
+    }
     func acceptHumanPledge() {
         humanPledgeAccepted = true
-        UserDefaults.standard.set(true, forKey: "morphe.humanPledge")
+        UserDefaults.standard.set(true, forKey: humanPledgeKey)
     }
     /// Gaps, hourly caps and duplicates for posts, comments and messages.
     private var contentPacer = ContentPacer()
+    /// Set by publishToRealFeed when the text/pace checks refused (their
+    /// toast already explained) so callers don't add a connection toast.
+    private var lastPublishWasRefused = false
     /// The welcome celebration queued by onboarding waits behind the terms
     /// gate instead of racing it.
     private var welcomeAwaitsTermsAcceptance = false
@@ -2028,7 +2040,10 @@ final class MorpheAppStore {
 
     func acceptTerms() {
         hasAcceptedTerms = true
-            acceptedTermsVersion = Self.currentTermsVersion
+        acceptedTermsVersion = Self.currentTermsVersion
+        // Consent must reach the cloud now, not after the 30 s push
+        // window — a kill in between re-gated the next sign-in.
+        forceNextProfileCloudPush = true
         // The persisted debt covers a relaunch between onboarding and this
         // acceptance — the in-memory flag alone died with the process.
         if welcomeAwaitsTermsAcceptance
@@ -2597,6 +2612,8 @@ final class MorpheAppStore {
         clientProfile.weaknesses = snapshot.weaknesses
         clientProfile.height = snapshot.height
         clientProfile.bodyWeight = snapshot.bodyWeight
+        clientProfile.goalWeight = snapshot.goalWeight
+        clientProfile.age = snapshot.age
 
         // Durable extras that used to be memory-only: pain flags are safety
         // data, the nutrition mode and view density are lasting preferences.
@@ -2644,6 +2661,7 @@ final class MorpheAppStore {
         taskCompletionHistory.removeAll { $0.total > Self.autoDerivedTaskTitles.count }
         hasAcceptedTerms = snapshot.hasAcceptedTerms
         acceptedTermsVersion = snapshot.acceptedTermsVersion
+        loadHumanPledge()
         nameChangedAtEpoch = snapshot.nameChangedAtEpoch
         usernameChangedAtEpoch = snapshot.usernameChangedAtEpoch
         lastDailyResetDay = snapshot.dailyStateDay
@@ -3190,6 +3208,8 @@ final class MorpheAppStore {
                 completedQuizIDs: Array(completedQuizIDs),
                 height: clientProfile.height,
                 bodyWeight: clientProfile.bodyWeight,
+                goalWeight: clientProfile.goalWeight,
+                age: clientProfile.age,
                 dailyStateDay: lastDailyResetDay,
                 completedTaskTitlesToday: todayTasks.filter(\.isCompleted).map(\.title),
                 protectedDayKeys: Array(protectedDayKeys),
@@ -3832,6 +3852,32 @@ final class MorpheAppStore {
         applyNutritionTargets()
         persistLocalProfile()
         showToast("Details saved.")
+    }
+
+    /// Goal weight and age, from Profile → Your Details. Free text for the
+    /// weight (same parser as bodyWeight); age 0 clears.
+    func updateGoalWeight(_ text: String) {
+        clientProfile.goalWeight = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
+        persistLocalProfile()
+        showToast(clientProfile.goalWeight.isEmpty ? "Goal weight cleared." : "Goal weight saved.")
+    }
+
+    func updateAge(_ years: Int) {
+        clientProfile.age = max(0, min(120, years))
+        persistLocalProfile()
+        showToast(clientProfile.age == 0 ? "Age cleared." : "Age saved.")
+    }
+
+    /// "182 lb → 175 lb" for the details row; nil parts read "Not set".
+    var weightJourneyLine: String {
+        let current = clientProfile.bodyWeight.trimmingCharacters(in: .whitespaces)
+        let goal = clientProfile.goalWeight.trimmingCharacters(in: .whitespaces)
+        func shown(_ raw: String) -> String {
+            guard let lb = Self.parsedBodyWeightLb(raw, assumedUnit: weightUnit) else { return raw.isEmpty ? "Not set" : raw }
+            return weightUnit.format(weightUnit == .kilograms ? lb * 0.45359237 : lb)
+        }
+        if current.isEmpty && goal.isEmpty { return "Not set" }
+        return "\(shown(current)) → \(shown(goal)) goal"
     }
 
     // MARK: - Body weight history
@@ -6190,7 +6236,7 @@ final class MorpheAppStore {
         flushProfilePersistIfNeeded()
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.2))
-            self?.showToast("New colors: Spartan Blue is the brand now. Gold is still yours in Profile.")
+            self?.showToast("New colors: Morphe Dark Blue is your starter. Gold is General's now — level 60 earns it back.")
         }
     }
 
@@ -8807,13 +8853,20 @@ final class MorpheAppStore {
             let sharedExerciseCount = loggedExercises.count
             let sharedPRNames = newPRs.prefix(3).map(\.name)
             Task {
+                // Nobody tapped Post here: a pace refusal waits out the
+                // 45 s gap once instead of toasting, and stays quiet.
+                var pacer = contentPacer
+                if pacer.refusal(for: .post, text: text) != nil {
+                    try? await Task.sleep(for: .seconds(46))
+                }
                 await publishToRealFeed(
                     text: text,
                     workoutName: workoutName,
                     durationMinutes: sharedMinutes > 0 ? sharedMinutes : nil,
                     setCount: sharedSetCount > 0 ? sharedSetCount : nil,
                     exerciseCount: sharedExerciseCount > 0 ? sharedExerciseCount : nil,
-                    prNames: Array(sharedPRNames)
+                    prNames: Array(sharedPRNames),
+                    silent: true
                 )
             }
         }
@@ -9851,7 +9904,11 @@ final class MorpheAppStore {
             prompt.range(of: "\\b\(word)\\b", options: .regularExpression) != nil
         }
         if prompt.contains("who are you") { return .identity }
-        if hasWord("agoge") || prompt.contains("my agoge rank") { return .rank }
+        // "my rank" is the ladder; "my rank on the board" / "my ranking" are
+        // the leaderboard (audit 29) and stay out.
+        if hasWord("agoge") || ((prompt.range(of: "\\bmy rank\\b", options: .regularExpression) != nil
+                                 || prompt.range(of: "\\bwhat rank\\b", options: .regularExpression) != nil)
+                                && !prompt.contains("board")) { return .rank }
         let namesSparta = hasWord("spartan") || hasWord("spartans") || hasWord("sparta") || hasWord("laconic")
         let asksForLine = hasWord("saying") || hasWord("sayings") || hasWord("quote")
             || hasWord("lore") || hasWord("code")
@@ -9945,7 +10002,9 @@ final class MorpheAppStore {
             // weakness belong in the brain).
             do {
                 var details: [String] = []
+                if clientProfile.age > 0 { details.append("age \(clientProfile.age)") }
                 if !clientProfile.fitnessLevel.isEmpty { details.append("experience \(clientProfile.fitnessLevel.lowercased())") }
+                if !clientProfile.goalWeight.isEmpty { details.append("goal weight \(clientProfile.goalWeight) (current \(clientProfile.bodyWeight.isEmpty ? "not logged" : clientProfile.bodyWeight))") }
                 if !clientProfile.selectedGoals.isEmpty { details.append("goals: \(clientProfile.selectedGoals.joined(separator: ", ").lowercased())") }
                 if !clientProfile.diet.isEmpty { details.append("diet: \(clientProfile.diet.lowercased()) — respect it in every food suggestion") }
                 if !clientProfile.equipment.isEmpty { details.append("equipment: \(clientProfile.equipment.lowercased())") }
@@ -12313,16 +12372,21 @@ final class MorpheAppStore {
             commentHighlights: []
         )
 
-        communityPosts.insert(post, at: 0)
-        SoundEffects.play(.ding)
-        showCelebration(title: "Post shared", detail: role == .coach ? "Coach network updated" : "Athlete network updated", symbol: "bubble.left.and.exclamationmark.bubble.right.fill")
-
-        // When the REAL feed is live for this signed-in account, a shared win
-        // ALSO publishes to Firestore (quiet path — the celebration above
-        // already fired). The demo insert stays untouched for every other
-        // caller (previews, tests, the flag-gated surfaces).
+        let celebrate = { [weak self] in
+            guard let self else { return }
+            self.communityPosts.insert(post, at: 0)
+            SoundEffects.play(.ding)
+            self.showCelebration(title: "Post shared", detail: role == .coach ? "Coach network updated" : "Athlete network updated", symbol: "bubble.left.and.exclamationmark.bubble.right.fill")
+        }
+        // When the REAL feed is live for this signed-in account the win
+        // publishes to Firestore FIRST and celebrates only on success — a
+        // refused post (policy, pace, offline) must not read "Post shared".
+        // The demo insert stays for every other caller (previews, tests,
+        // the flag-gated surfaces).
         if isRealFeedActive {
-            Task { await publishToRealFeed(text: cleanText) }
+            Task { if await publishToRealFeed(text: cleanText) { celebrate() } }
+        } else {
+            celebrate()
         }
     }
 
@@ -13369,26 +13433,27 @@ final class MorpheAppStore {
     /// Sends one immutable message into the open thread. The listener streams
     /// it back into `activeThreadMessages`; the local inbox preview rolls
     /// forward immediately so the list is honest without a refetch.
-    func sendMessage(_ text: String) async {
+    @discardableResult
+    func sendMessage(_ text: String) async -> Bool {
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty else { return }
+        guard !clean.isEmpty else { return false }
         // Same term filter as posts and creator content (App Review 1.2):
         // private messages are user-generated content too.
         guard !ContentModeration.containsBlockedTerm(clean) else {
             showToast("That message can't be sent — keep it respectful.", isError: true)
-            return
+            return false
         }
         // Human-only policy (Lucas 2026-10-10): spam shapes, AI tells,
         // then the per-account pace.
         if let refusal = ContentModeration.humanityRefusal(for: clean, kind: .message) {
             showToast(refusal.message, isError: true)
-            return
+            return false
         }
         if let paced = contentPacer.refusal(for: .message, text: clean) {
             showToast(paced, isError: true)
-            return
+            return false
         }
-        guard let uid = authUser?.id, let threadId = activeThreadId else { return }
+        guard let uid = authUser?.id, let threadId = activeThreadId else { return false }
         // Optimistic echo (speed audit S0-4): the bubble renders NOW; the
         // listener's server copy replaces it on arrival.
         let pending = ChatMessage(id: "pending-\(UUID().uuidString)",
@@ -13398,8 +13463,10 @@ final class MorpheAppStore {
         guard await messagingService.send(threadId: threadId, senderUid: uid,
                                           text: String(clean.prefix(2000))) else {
             pendingOutgoingMessages.removeAll { $0.id == pending.id }
-            showToast("Message didn't send — check your connection.", isError: true)
-            return
+            showToast(CloudWriteDiagnostics.consumeDenied()
+                      ? "Slow down — the server paces messages. Try again in a moment."
+                      : "Message didn't send — check your connection.", isError: true)
+            return false
         }
         contentPacer.record(.message, text: clean)
         if let index = liveThreads.firstIndex(where: { $0.id == threadId }) {
@@ -13408,6 +13475,7 @@ final class MorpheAppStore {
             liveThreads[index].updatedAt = .now
             liveThreads.sort { $0.updatedAt > $1.updatedAt }
         }
+        return true
     }
 
 
@@ -13885,7 +13953,9 @@ final class MorpheAppStore {
             text: clean.wireClamped(300)
         )
         guard await feedService.addComment(comment) else {
-            showToast("Comment didn't send — check your connection.", isError: true)
+            showToast(CloudWriteDiagnostics.consumeDenied()
+                      ? "Slow down — the server paces comments. Try again in a moment."
+                      : "Comment didn't send — check your connection.", isError: true)
             return false
         }
         contentPacer.record(.comment, text: clean)
@@ -13908,7 +13978,8 @@ final class MorpheAppStore {
                                    repostOfId: String = "", repostOfAuthor: String = "",
                                    durationMinutes: Int? = nil, setCount: Int? = nil,
                                    exerciseCount: Int? = nil, prNames: [String] = [],
-                                   imageB64: String = "") async -> Bool {
+                                   imageB64: String = "", silent: Bool = false) async -> Bool {
+        lastPublishWasRefused = false
         guard let uid = authUser?.id else { return false }
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // A photo IS content — captionless photo posts pass with the
@@ -13919,6 +13990,7 @@ final class MorpheAppStore {
         // name, which renders as a pill on every client) gets checked.
         guard !ContentModeration.containsBlockedTerm(clean),
               !ContentModeration.containsBlockedTerm(workoutName) else {
+            lastPublishWasRefused = true
             showToast(ContentModeration.refusalMessage)
             return false
         }
@@ -13926,11 +13998,18 @@ final class MorpheAppStore {
         // template text from logged sets and pass the text checks; the
         // pace applies to every post alike.
         if !clean.isEmpty, let refusal = ContentModeration.humanityRefusal(for: clean, kind: .post) {
-            showToast(refusal.message, isError: true)
+            lastPublishWasRefused = true
+            if !silent { showToast(refusal.message, isError: true) }
             return false
         }
-        if let paced = contentPacer.refusal(for: .post, text: clean.isEmpty ? imageB64.prefix(64).description : clean) {
-            showToast(paced, isError: true)
+        // Pace key: the words, plus the repost target (two reposts of the
+        // same author read identical otherwise) or the whole photo (its
+        // first 64 base64 chars are the JPEG header every photo shares).
+        let paceKey = (clean.isEmpty ? "img:\(imageB64.count):\(imageB64.hashValue)" : clean)
+            + (repostOfId.isEmpty ? "" : "|repost:\(repostOfId)")
+        if let paced = contentPacer.refusal(for: .post, text: paceKey) {
+            lastPublishWasRefused = true
+            if !silent { showToast(paced, isError: true) }
             return false
         }
         let post = FeedPost(
@@ -13955,7 +14034,7 @@ final class MorpheAppStore {
             imageB64: imageB64
         )
         guard await feedService.publish(post: post) else { return false }
-        contentPacer.record(.post, text: clean.isEmpty ? imageB64.prefix(64).description : clean)
+        contentPacer.record(.post, text: paceKey)
         feedPosts.insert(post, at: 0)
         feedReactionCounts[post.id] = 0
         track("post_published")
@@ -13994,7 +14073,12 @@ final class MorpheAppStore {
         guard await publishToRealFeed(text: text, workoutName: workoutName) else {
             // Failure is felt, and the composer restores the draft
             // (feedback P1 2026-09) — the typed post must never vanish.
-            showToast("Post didn't publish — check your connection.", isError: true)
+            // A policy/pace refusal already toasted its own reason.
+            if CloudWriteDiagnostics.consumeDenied() {
+                showToast("Slow down — the server paces posts. Try again in a moment.", isError: true)
+            } else if !lastPublishWasRefused {
+                showToast("Post didn't publish — check your connection.", isError: true)
+            }
             return false
         }
         SoundEffects.play(.ding)
@@ -14016,7 +14100,9 @@ final class MorpheAppStore {
         if published {
             SoundEffects.play(.ding)
             showCelebration(title: "Posted", detail: "Your photo is live on the feed.", symbol: "camera.fill")
-        } else {
+        } else if CloudWriteDiagnostics.consumeDenied() {
+            showToast("Slow down — the server paces posts. Try again in a moment.", isError: true)
+        } else if !lastPublishWasRefused {
             showToast("Post didn't publish — check your connection.", isError: true)
         }
         return published
@@ -15491,19 +15577,13 @@ final class MorpheAppStore {
                 clientProfile.level.targetXP = Self.xpTarget(forLevel: nextLevel)
                 // Name what this level actually unlocked — a level that
                 // opens something lands harder than a bare number.
-                let unlockedNames = Self.paletteUnlockLevels
-                    .filter { $0.value == nextLevel }
-                    .keys.map(\.rawValue).sorted()
-                var levelDetail = unlockedNames.isEmpty
-                    ? "Keep stacking the work."
-                    : "\(unlockedNames.joined(separator: " + ")) accent unlocked — it's in Profile."
-                // A rung of the agoge ladder outranks a bare number: the
-                // level that crosses into a new rank names it.
+                // A new rank outranks a bare number: the level that crosses
+                // into one names it and the color it brings (every unlock
+                // level IS a rank boundary since 2026-10-10).
                 let rank = MorpheRank.rank(forLevel: nextLevel)
-                if rank.firstLevel == nextLevel, rank != .rookie {
-                    levelDetail = "Rank: \(rank.title). \(rank.gloss)."
-                        + (unlockedNames.isEmpty ? "" : " \(unlockedNames.joined(separator: " + ")) accent unlocked.")
-                }
+                let levelDetail = rank.firstLevel == nextLevel
+                    ? "Rank: \(rank.title). \(rank.gloss) \(rank.palette.rawValue) accent unlocked — it's in Profile."
+                    : "Keep stacking the work."
                 // Every XP source fires its own banner right after this
                 // returns ("+50 XP", "Quiz complete"), and the banner is
                 // last-writer-wins — the level-up was replaced before it

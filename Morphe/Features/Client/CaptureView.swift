@@ -478,8 +478,20 @@ struct CaptureView: View {
                             .fill(MorpheTheme.panelStrong)
                     )
 
+                if !store.humanPledgeAccepted {
+                    Toggle(isOn: Binding(
+                        get: { store.humanPledgeAccepted },
+                        set: { if $0 { store.acceptHumanPledge() } }
+                    )) {
+                        Text("My own photo and words — no AI, no bots. Morphe is human-only.")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                    .tint(MorpheTheme.accent)
+                }
+
                 Button {
-                    guard !isPosting else { return }
+                    guard !isPosting, store.humanPledgeAccepted else { return }
                     isPosting = true
                     // Optimistic close (speed audit S2-7): the camera
                     // dismisses NOW; publish continues in the background and
@@ -500,7 +512,7 @@ struct CaptureView: View {
                 } label: {
                     HStack(spacing: 8) {
                         if isPosting {
-                            ProgressView().tint(.white)
+                            ProgressView().tint(MorpheTheme.onFill(MorpheTheme.accent))
                         } else {
                             Image(systemName: "paperplane.fill")
                                 .font(.subheadline.weight(.bold))
@@ -509,7 +521,7 @@ struct CaptureView: View {
                             .font(MorpheTheme.microLabel(12))
                             .tracking(1.6)
                     }
-                    .foregroundStyle(.white)  // audit 28, P0: black fails on the blue fills
+                    .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))  // ink per palette
                     .frame(maxWidth: .infinity, minHeight: 52)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
@@ -517,7 +529,7 @@ struct CaptureView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .disabled(isPosting)
+                .disabled(isPosting || !store.humanPledgeAccepted)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
@@ -562,7 +574,7 @@ struct CaptureView: View {
                     HStack(spacing: 8) {
                         switch clipSaveState {
                         case .saving:
-                            ProgressView().tint(.white)
+                            ProgressView().tint(MorpheTheme.onFill(MorpheTheme.accent))
                         case .saved:
                             Image(systemName: "checkmark")
                                 .font(.subheadline.weight(.bold))
@@ -574,7 +586,7 @@ struct CaptureView: View {
                             .font(MorpheTheme.microLabel(12))
                             .tracking(1.6)
                     }
-                    .foregroundStyle(.white)  // audit 28, P0: black fails on the blue fills
+                    .foregroundStyle(MorpheTheme.onFill(MorpheTheme.accent))  // ink per palette
                     .frame(maxWidth: .infinity, minHeight: 52)
                     .background(
                         RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)

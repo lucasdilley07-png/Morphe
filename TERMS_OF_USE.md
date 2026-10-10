@@ -63,16 +63,17 @@ by generative tools.
 
 Morphe screens new text for AI-written patterns and refuses what it catches;
 anyone can report content as AI-generated, and a human reviews every report.
-Confirmed AI content is removed. The account is warned once, then closed.
+Confirmed AI content is removed. The account may be warned, limited or
+closed.
 
 ## No spam
 
 No promotion, referral or affiliate links, giveaways, repeated or copied
 posts, mass comments, mass messages, or anything sent to many people that
 wasn't written for them. Morphe paces posts, comments and messages per
-account (a short gap between each, an hourly cap, no duplicates) and
-enforces that pace on its servers. Spam is removed; repeat spam ends the
-account.
+account: the gap between writes is enforced on Morphe's servers; the
+hourly caps and duplicate checks run in the app. Spam is removed; repeat
+spam ends the account.
 
 ## Community conduct
 

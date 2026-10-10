@@ -131,7 +131,7 @@ enum MorpheIntelligence {
     static func streamReply(system: String, turns: [Turn], apiKey: String,
                             timeout: TimeInterval = 30,
                             onDelta: @MainActor @escaping (String) -> Void) async throws -> String {
-        var request = try makeRequest(system: system, turns: turns, apiKey: apiKey,
+        let request = try makeRequest(system: system, turns: turns, apiKey: apiKey,
                                       timeout: timeout, stream: true)
         let (bytes, response) = try await URLSession.shared.bytes(for: request)
         guard let http = response as? HTTPURLResponse else { throw IntelligenceError.network }

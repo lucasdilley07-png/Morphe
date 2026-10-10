@@ -245,6 +245,27 @@ try:
     check("B deletes their own comment", True,
           fs_call(B, "DELETE", f"posts/{post_id}/comments/{comment_id}"))
 
+    print("\n— Messages (human pace) —")
+    thread_id = f"{A['uid']}_{B['uid']}"
+    check("A opens a thread with B", True,
+          fs_call(A, "PATCH", f"threads/{thread_id}",
+                  {"fields": {"coachUid": s(A["uid"]), "athleteUid": s(B["uid"]),
+                              "coachName": s("Rules A"), "athleteName": s("Rules B"),
+                              "lastMessage": s(""), "lastSender": s(A["uid"])}}))
+    check("A sends a message (stamped batch)", True,
+          paced_create(A, f"threads/{thread_id}/messages/m-{RUN_ID}",
+                       {"senderUid": s(A["uid"]), "text": s("live rules test")}, "lastMessageAt"))
+    check("A sends a message without the pace stamp (bot shape)", False,
+          fs_call(A, "PATCH", f"threads/{thread_id}/messages/m-{RUN_ID}-nostamp",
+                  {"fields": {"senderUid": s(A["uid"]), "text": s("no stamp")}}))
+    check("B forges a message AS A", False,
+          paced_create(B, f"threads/{thread_id}/messages/m-{RUN_ID}-forged",
+                       {"senderUid": s(A["uid"]), "text": s("impostor")}, "lastMessageAt"))
+    # (A second message inside 1 s can't be timed reliably over REST —
+    # the gap rule is the same humanPaced() the post/comment checks prove.)
+    # Threads and messages are immutable by design: this run leaves one
+    # thread doc + one message (~300 bytes). Known, accepted.
+
     print("\n— Follow + block —")
     check("A follows B", True,
           fs_call(A, "PATCH", f"users/{A['uid']}/following/{B['uid']}", {"fields": {}}))

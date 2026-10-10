@@ -181,7 +181,7 @@ enum MorpheTheme {
     static let morpheDarkBlue = Color(red: 0.118, green: 0.267, blue: 0.722)  // #1E44B8
     static let morpheNavy = Color(red: 0.039, green: 0.102, blue: 0.227)      // #0A1A3A
     /// Metallic pairs: General's gold and Colonel's silver. The flat
-    /// color is the accent; the sheen lives in metallicSheen(for:).
+    /// color is the accent; the sheen lives in swatchStyle(for:).
     static let metalGold = Color(red: 0.851, green: 0.678, blue: 0.259)       // #D9AD42
     static let metalGoldDeep = Color(red: 0.549, green: 0.420, blue: 0.102)   // #8C6B1A
     static let metalSilver = Color(red: 0.788, green: 0.808, blue: 0.839)     // #C9CED6
@@ -242,10 +242,28 @@ enum MorpheTheme {
             return LinearGradient(colors: [Color(red: 0.165, green: 0.333, blue: 0.820), morpheDarkBlue, morpheNavy],
                                   startPoint: .top, endPoint: .bottom)
         default:
+            // White type and the white helmet sit on this field, so every
+            // stop is clamped dark enough for white ink (audit 2026-10-10:
+            // silver's top stop was #F2F4F5 — white on white).
             let pair = colors(for: currentAccentPalette)
-            return LinearGradient(colors: [shaded(pair.primary, saturation: 0.9, brightness: 0.96), pair.primary, pair.secondary],
+            return LinearGradient(colors: [shaded(pair.primary, saturation: 1.1, brightness: 0.55),
+                                           shaded(pair.primary, saturation: 1.1, brightness: 0.46),
+                                           shaded(pair.secondary, saturation: 1.1, brightness: 0.28)],
                                   startPoint: .top, endPoint: .bottom)
         }
+    }
+
+    /// The accent as INK on a black or camera surface regardless of
+    /// appearance (share cards, Form Check overlay): the dark-mode lift
+    /// whenever the color is too deep for black (audit 2026-10-10: Morphe
+    /// Dark Blue on black was 2.6:1).
+    static var accentOnInk: Color {
+        let color = accent
+        guard relativeLuminance(color) < 0.25 else { return color }
+        if color == brandBlue || color == morpheDarkBlue { return Color(red: 0.478, green: 0.635, blue: 1.0) }
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard UIColor(color).getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return color }
+        return Color(hue: h, saturation: s * 0.6, brightness: 1.0, opacity: a)
     }
 
     /// The Morphe AI orb's three colors, in the accent: the deep tint
@@ -257,11 +275,20 @@ enum MorpheTheme {
             return (Color(red: 0.02, green: 0.06, blue: 0.18),
                     Color(red: 0.49, green: 0.83, blue: 1.0),
                     Color(red: 0.25, green: 0.55, blue: 1.0))
+        case .silver:
+            // Near-zero saturation would wash the glass to plain white
+            // (audit 2026-10-10) — silver gets its own cool steel trio.
+            return (Color(red: 0.10, green: 0.11, blue: 0.14), metalSilver, metalSilverDeep)
+        case .gold:
+            return (Color(red: 0.16, green: 0.12, blue: 0.03), Color(red: 0.97, green: 0.88, blue: 0.60), metalGold)
         default:
             let primary = colors(for: currentAccentPalette).primary
-            return (shaded(primary, saturation: 0.95, brightness: 0.18),
-                    shaded(primary, saturation: 0.45, brightness: 1.0),
-                    shaded(primary, saturation: 1.0, brightness: 0.95))
+            var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            UIColor(primary).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+            let sat = max(s, 0.35)
+            return (Color(hue: h, saturation: sat, brightness: 0.18),
+                    Color(hue: h, saturation: sat * 0.5, brightness: 1.0),
+                    Color(hue: h, saturation: sat, brightness: 0.95))
         }
     }
 
@@ -289,6 +316,10 @@ enum MorpheTheme {
             // #1E44B8 ~7:1) and stay themselves.
             if currentAccentPalette == .spartan && color == brandBlue { return brandBlue }
             if currentAccentPalette == .morpheDark && color == morpheDarkBlue { return morpheDarkBlue }
+            // The metallics darkened generically went muddy (silver ≈
+            // textMuted, 4.1:1): slate for silver, the deep gold for gold.
+            if color == metalSilver { return Color(red: 0.31, green: 0.345, blue: 0.39) }   // #4F5863
+            if color == metalGold { return metalGoldDeep }
             return darkenedForLightText(color)
         }
         // Gate on LUMINANCE, not HSB brightness (audit 29, P1): brand
@@ -401,6 +432,13 @@ enum MorpheTheme {
         if let hexColor = color(fromHex: id) { return hexColor }
         guard let palette = AccentPalette(rawValue: id), palette != .custom else { return brandBlue }
         return colors(for: palette).primary
+    }
+
+    /// The same author accent as INK (initials, names, rings): the deep
+    /// palettes get the lift the user's own accent gets (audit 2026-10-10:
+    /// Morphe Dark Blue initials on the dark panel were 2:1).
+    static func accentInk(forPaletteId id: String) -> Color {
+        asText(accentColor(forPaletteId: id))
     }
 
     static func colors(for accentPalette: AccentPalette) -> (primary: Color, secondary: Color) {

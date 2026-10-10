@@ -32,6 +32,9 @@ a person types; new text is also screened on your phone for spam shapes and
 AI-written patterns before it is sent. Nothing is sent to an AI service for
 this screening.
 
+The pace timestamps live on your account record, which a coach you have
+linked can also read.
+
 **Coach sharing (optional).** If you turn on "Share with coach," a summary
 of your real training progress (streak, weekly volume, recent sessions,
 PRs, and — only on days you check in — your readiness) is shared with the
