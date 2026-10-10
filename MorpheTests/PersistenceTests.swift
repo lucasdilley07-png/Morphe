@@ -5052,6 +5052,62 @@ final class PersonalizationEngineTests: XCTestCase {
         XCTAssertTrue(store.nutritionKnowledgeForPrompt.contains("Chicken breast"))
     }
 
+    /// The food check's database path is deterministic and honest: NOVA
+    /// drives the processing class, labels settle GMO, thresholds flag
+    /// sugar/fat/salt, and an unknown additive says so.
+    func testFoodCheckRecordFromDatabaseFacts() {
+        var p = FoodCheckService.OpenFoodFactsProduct(
+            barcode: "3017624010701", name: "Nutella", brand: "Ferrero",
+            ingredientsText: "sugar, palm oil, hazelnuts, skimmed milk powder, fat reduced cocoa, emulsifier: lecithins (soya), vanillin",
+            additiveTags: ["e322", "e999x"], nova: 4, nutriScore: "E", origins: "", manufacturingPlaces: "",
+            countries: ["united-states", "france"], labels: [], analysis: [], allergens: ["nuts"],
+            kcal100: 539, protein100: 6.3, carbs100: 57.5, fat100: 30.9, sugar100: 56.3, fiber100: nil, salt100: 0.1075)
+        let r = FoodCheckService.record(from: p)
+        XCTAssertEqual(r.processing, .ultraProcessed)
+        XCTAssertTrue(r.processingReason.contains("NOVA group 4"))
+        XCTAssertEqual(r.nutriScore, "E")
+        XCTAssertTrue(r.healthRead.contains("High sugar (56 g/100 g)"), r.healthRead)
+        XCTAssertTrue(r.healthRead.contains("high fat"), r.healthRead)
+        XCTAssertEqual(r.additives.count, 2)
+        XCTAssertEqual(r.additives[0].name, "Lecithins")
+        XCTAssertEqual(r.additives[1].concern, .unknown, "an additive outside the table is flagged, never guessed")
+        XCTAssertEqual(r.gmoLikelihood, .high, "soy + sold in the US = likely, stated as such")
+        XCTAssertTrue(r.gmoRead.contains("Not confirmed"))
+        XCTAssertEqual(r.originConfidence, .low, "only the countries sold in are known")
+        XCTAssertEqual(r.calories, 539)
+        XCTAssertEqual(r.sodiumMg, 43)
+        XCTAssertEqual(r.sources.first?.url, "https://world.openfoodfacts.org/product/3017624010701")
+
+        // An organic label settles the GMO question the other way.
+        p.labels = ["organic"]; p.nova = nil; p.additiveTags = []
+        p.ingredientsText = "organic rolled oats"
+        let oats = FoodCheckService.record(from: p)
+        XCTAssertEqual(oats.gmoLikelihood, .low)
+        XCTAssertEqual(oats.processing, .wholeFood, "one ingredient, no additives, no NOVA on file")
+    }
+
+    func testFoodCheckParsesClaudeReportAndSurvivesRelaunch() throws {
+        let reply = """
+        Here is the report:
+        {"name":"Greek yogurt","brand":"Fage","processing":"wholeFood","processingReason":"Milk and cultures.","origin":"Made in Johnstown, New York from US milk","originConfidence":"high","healthRead":"High protein.","nutriScore":"A","additives":[],"gmoRead":"No GM crops.","gmoLikelihood":"low","ingredients":"milk, cultures","calories":97,"protein":18,"carbs":4,"fat":0,"sugar":4,"fiber":0,"sodiumMg":60,"servingNote":"Per 170 g cup, estimate","sources":[{"title":"Fage","url":"https://usa.fage/"},{"title":"bad","url":"not a url"}],"verdict":"Real food."}
+        """
+        let object = try XCTUnwrap(FoodCheckService.extractJSONObject(from: reply))
+        var r = FoodCheckService.record(fromReport: object)
+        r.date = Date(timeIntervalSince1970: 1_760_000_000) // whole seconds: ISO 8601 drops the fraction
+        XCTAssertEqual(r.name, "Greek yogurt")
+        XCTAssertEqual(r.processing, .wholeFood)
+        XCTAssertEqual(r.protein, 18)
+        XCTAssertEqual(r.sources.count, 1, "only real URLs survive")
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let again = try decoder.decode(FoodCheckRecord.self, from: encoder.encode(r))
+        XCTAssertEqual(again, r)
+        // An older record missing new keys still decodes.
+        let sparse = try decoder.decode(FoodCheckRecord.self, from: Data(#"{"name":"Apple"}"#.utf8))
+        XCTAssertEqual(sparse.name, "Apple")
+        XCTAssertEqual(sparse.processing, .unknown)
+    }
+
     func testNutritionTargetsFallBackToLabeledStartersWithoutWeight() {
         let store = freshStore()
         let targets = store.nutritionTargets

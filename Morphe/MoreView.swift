@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 struct MoreView: View {
     @Environment(MorpheAppStore.self) private var store
@@ -213,6 +214,8 @@ struct MoreView: View {
 
     private var nutritionPanel: some View {
         Group {
+            FoodCheckCard()
+
             FuelLogCard()
 
             GlassCard {
@@ -1392,6 +1395,464 @@ struct NutritionChartCard: View {
                 .font(.caption)
                 .foregroundStyle(MorpheTheme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+
+// MARK: - Food check (Lucas 2026-10-10)
+
+/// Scan a barcode or photograph a meal; the report says where it comes
+/// from, how it's processed, what's in it, and how sure each line is.
+struct FoodCheckCard: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var showScanner = false
+    @State private var showCamera = false
+    @State private var selected: FoodCheckRecord?
+    @State private var pendingImage: UIImage?
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Check a Food")
+                        .font(.headline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text(MorpheIntelligence.apiKey == nil
+                         ? "Scan a barcode for the label facts: origin, processing, additives, GMO read. Add your own key in Profile → Morphe Intelligence and Morphe reads a meal from a photo and searches the web for the supply chain."
+                         : "Scan a barcode or photograph a meal. Morphe reads the label, searches the web for the brand's supply chain, and reports with sources. The photo leaves the phone only for this check.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        showScanner = true
+                    } label: {
+                        Label("Scan barcode", systemImage: "barcode.viewfinder").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Label("Photo", systemImage: "camera.fill").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryCTAButtonStyle())
+                }
+                .disabled(store.foodCheckBusy)
+
+                if store.foodCheckBusy {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text(MorpheIntelligence.apiKey == nil ? "Reading the database…" : "Reading the label and searching the web…")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                    }
+                }
+
+                if !store.foodChecks.isEmpty {
+                    Rectangle().fill(MorpheTheme.strokeSubtle).frame(height: 1)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("RECENT")
+                            .font(MorpheTheme.microLabel(10))
+                            .tracking(1.2)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        ForEach(store.foodChecks.prefix(6)) { record in
+                            Button { selected = record } label: {
+                                HStack(spacing: 10) {
+                                    FoodProcessingBadge(processing: record.processing, compact: true)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(record.displayName)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(MorpheTheme.textPrimary)
+                                            .lineLimit(1)
+                                        Text(record.verdict.isEmpty ? record.origin : record.verdict)
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.textSecondary)
+                                            .lineLimit(1)
+                                    }
+                                    Spacer()
+                                    if let score = record.nutriScore {
+                                        Text(score)
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(MorpheTheme.textPrimary)
+                                            .frame(width: 24, height: 24)
+                                            .background(Circle().fill(FoodCheckReportSheet.scoreColor(score).opacity(0.25)))
+                                    }
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(MorpheTheme.textMuted)
+                                }
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    if let memory = store.foodMemorySummary {
+                        Text(memory)
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showScanner) {
+            FoodBarcodeSheet { code in
+                showScanner = false
+                Task {
+                    if let record = await store.runFoodCheck(image: nil, barcode: code) { selected = record }
+                }
+            }
+            .environment(store)
+            .presentationDetents([.medium, .large])
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            FoodPhotoCamera { image in
+                showCamera = false
+                guard let image else { return }
+                Task {
+                    if let record = await store.runFoodCheck(image: image, barcode: nil) { selected = record }
+                }
+            }
+            .ignoresSafeArea()
+        }
+        .sheet(item: $selected) { record in
+            FoodCheckReportSheet(record: record)
+                .environment(store)
+                .presentationDetents([.large])
+        }
+    }
+}
+
+struct FoodProcessingBadge: View {
+    let processing: FoodProcessingClass
+    var compact = false
+
+    private var color: Color {
+        switch processing {
+        case .wholeFood: return Color(red: 0.20, green: 0.70, blue: 0.40)
+        case .kitchenIngredient: return MorpheTheme.accent
+        case .processed: return Color(red: 0.95, green: 0.65, blue: 0.20)
+        case .ultraProcessed: return MorpheTheme.danger
+        case .unknown: return MorpheTheme.textMuted
+        }
+    }
+
+    private var symbol: String {
+        switch processing {
+        case .wholeFood: return "leaf.fill"
+        case .kitchenIngredient: return "drop.fill"
+        case .processed: return "square.stack.3d.up.fill"
+        case .ultraProcessed: return "exclamationmark.triangle.fill"
+        case .unknown: return "questionmark"
+        }
+    }
+
+    var body: some View {
+        if compact {
+            Image(systemName: symbol)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(color)
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(color.opacity(0.15)))
+                .accessibilityLabel(processing.title)
+        } else {
+            HStack(spacing: 6) {
+                Image(systemName: symbol)
+                Text(processing.title.uppercased())
+                    .tracking(1.0)
+            }
+            .font(MorpheTheme.microLabel(11).weight(.bold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(color.opacity(0.14)))
+        }
+    }
+}
+
+/// Retail barcodes (EAN-13/8, UPC-E, Code 128) plus QR for the camera.
+private struct FoodBarcodeSheet: View {
+    let onScan: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 12) {
+                QRScannerView(onScan: onScan, symbologies: [.ean13, .ean8, .upce, .code128, .qr])
+                    .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
+                Text("Point at the barcode on the package. Only the number is sent — to Open Food Facts, a public product database.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(16)
+            .background(PremiumBackground())
+            .navigationTitle("Scan a barcode")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Close") { dismiss() } } }
+        }
+    }
+}
+
+private struct FoodPhotoCamera: UIViewControllerRepresentable {
+    let onCapture: (UIImage?) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        if UIImagePickerController.isSourceTypeAvailable(.camera) { picker.sourceType = .camera }
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+    func makeCoordinator() -> Coordinator { Coordinator(onCapture: onCapture) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onCapture: (UIImage?) -> Void
+        init(onCapture: @escaping (UIImage?) -> Void) { self.onCapture = onCapture }
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            onCapture(info[.originalImage] as? UIImage)
+        }
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { onCapture(nil) }
+    }
+}
+
+/// The report: every section says how sure it is and where it came from.
+struct FoodCheckReportSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let record: FoodCheckRecord
+    @State private var logged = false
+
+    static func scoreColor(_ score: String) -> Color {
+        switch score {
+        case "A": return Color(red: 0.05, green: 0.60, blue: 0.30)
+        case "B": return Color(red: 0.45, green: 0.72, blue: 0.20)
+        case "C": return Color(red: 0.95, green: 0.75, blue: 0.10)
+        case "D": return Color(red: 0.95, green: 0.50, blue: 0.15)
+        default: return MorpheTheme.danger
+        }
+    }
+
+    private var current: FoodCheckRecord {
+        store.foodChecks.first { $0.id == record.id } ?? record
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Headline
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(current.displayName)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        HStack(spacing: 8) {
+                            FoodProcessingBadge(processing: current.processing)
+                            if let score = current.nutriScore {
+                                Text("NUTRI-SCORE \(score)")
+                                    .font(MorpheTheme.microLabel(11).weight(.bold))
+                                    .tracking(1.0)
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(Capsule().fill(Self.scoreColor(score)))
+                            }
+                        }
+                        if !current.verdict.isEmpty {
+                            Text(current.verdict)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Text(methodLine)
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    section("Real or processed", current.processingReason.isEmpty ? current.processing.title : current.processingReason)
+                    section("Where it comes from", current.origin, confidence: current.originConfidence)
+                    section("How healthy", current.healthRead)
+                    section("GMO", current.gmoRead, confidence: current.gmoLikelihood, confidenceLabel: gmoLabel)
+
+                    // Additives
+                    GlassCard(.quiet) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("ADDITIVES")
+                                .font(MorpheTheme.microLabel(10)).tracking(1.2)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            if current.additives.isEmpty {
+                                Text(current.ingredients.isEmpty ? "No ingredient list on file." : "None listed.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            } else {
+                                ForEach(current.additives) { additive in
+                                    HStack(alignment: .top, spacing: 10) {
+                                        Circle().fill(concernColor(additive.concern)).frame(width: 8, height: 8).padding(.top, 6)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("\(additive.name)  ·  \(additive.code)")
+                                                .font(.subheadline.weight(.semibold))
+                                                .foregroundStyle(MorpheTheme.textPrimary)
+                                            Text(additive.note)
+                                                .font(.caption)
+                                                .foregroundStyle(MorpheTheme.textSecondary)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Numbers
+                    GlassCard(.quiet) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("NUMBERS")
+                                .font(MorpheTheme.microLabel(10)).tracking(1.2)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            if current.calories == nil && current.protein == nil {
+                                Text("No numbers on file for this one.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(MorpheTheme.textSecondary)
+                            } else {
+                                HStack(spacing: 8) {
+                                    MetricPill(label: "Calories", value: current.calories.map { "\($0)" } ?? "—")
+                                    MetricPill(label: "Protein", value: current.protein.map { "\($0)g" } ?? "—")
+                                    MetricPill(label: "Carbs", value: current.carbs.map { "\($0)g" } ?? "—")
+                                    MetricPill(label: "Fat", value: current.fat.map { "\($0)g" } ?? "—")
+                                }
+                                HStack(spacing: 8) {
+                                    MetricPill(label: "Sugar", value: current.sugar.map { "\($0)g" } ?? "—")
+                                    MetricPill(label: "Fibre", value: current.fiber.map { "\($0)g" } ?? "—")
+                                    MetricPill(label: "Sodium", value: current.sodiumMg.map { "\($0)mg" } ?? "—")
+                                }
+                            }
+                            if !current.servingNote.isEmpty {
+                                Text(current.servingNote)
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+
+                    if !current.ingredients.isEmpty {
+                        section("Ingredients", current.ingredients)
+                    }
+
+                    if !current.sources.isEmpty {
+                        GlassCard(.quiet) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("SOURCES")
+                                    .font(MorpheTheme.microLabel(10)).tracking(1.2)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                                ForEach(current.sources) { source in
+                                    if let url = URL(string: source.url) {
+                                        Link(destination: url) {
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "link")
+                                                Text(source.title).lineLimit(2)
+                                            }
+                                            .font(.caption)
+                                            .foregroundStyle(MorpheTheme.accentText)
+                                            .frame(minHeight: 32, alignment: .leading)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Button(current.isLogged || logged ? "In today's fuel" : "Add to today's fuel") {
+                        if store.logFoodCheckToFuel(current) {
+                            logged = true
+                            Haptics.success()
+                        }
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+                    .disabled(current.isLogged || logged || (current.calories == nil && current.protein == nil))
+
+                    Button("Delete this check", role: .destructive) {
+                        store.deleteFoodCheck(current)
+                        dismiss()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.danger)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+
+                    Text("A read, not medical advice. Numbers from a photo are estimates; numbers from a barcode are the label as recorded by Open Food Facts.")
+                        .font(.caption2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(20)
+                .padding(.bottom, 40)
+            }
+            .background(PremiumBackground())
+            .navigationTitle("Food check")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
+        }
+    }
+
+    private var methodLine: String {
+        var parts: [String] = []
+        switch current.method {
+        case .barcode: parts.append("From the barcode")
+        case .photo: parts.append("From a photo")
+        case .photoAndBarcode: parts.append("From a photo and the barcode")
+        }
+        if current.usedWebSearch { parts.append("web sources read") }
+        parts.append(current.date.formatted(date: .abbreviated, time: .shortened))
+        return parts.joined(separator: " · ")
+    }
+
+    private var gmoLabel: String {
+        switch current.gmoLikelihood {
+        case .high: return "LIKELY"
+        case .medium: return "POSSIBLE"
+        case .low: return "UNLIKELY"
+        case .unknown: return "UNKNOWN"
+        }
+    }
+
+    private func concernColor(_ concern: FoodAdditiveConcern) -> Color {
+        switch concern {
+        case .none: return Color(red: 0.20, green: 0.70, blue: 0.40)
+        case .low: return MorpheTheme.accent
+        case .moderate: return Color(red: 0.95, green: 0.65, blue: 0.20)
+        case .high: return MorpheTheme.danger
+        case .unknown: return MorpheTheme.textMuted
+        }
+    }
+
+    private func section(_ title: String, _ body: String, confidence: FoodConfidence? = nil, confidenceLabel: String? = nil) -> some View {
+        GlassCard(.quiet) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(title.uppercased())
+                        .font(MorpheTheme.microLabel(10)).tracking(1.2)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    Spacer()
+                    if let confidence {
+                        Text(confidenceLabel ?? "\(confidence.rawValue.uppercased()) CONFIDENCE")
+                            .font(MorpheTheme.microLabel(9)).tracking(1.0)
+                            .foregroundStyle(confidence == .high ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                    }
+                }
+                Text(body.isEmpty ? "Unknown." : body)
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

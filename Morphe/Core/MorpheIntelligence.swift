@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Security
 
 // MARK: - Morphe Intelligence (rebuild wave, Lucas 2026-08-27)
@@ -434,5 +435,410 @@ enum MorpheNeuralVoice {
             throw URLError(.badServerResponse)
         }
         return data
+    }
+}
+
+// MARK: - Food check (Lucas 2026-10-10)
+
+/// Where a checked food's facts come from, in order of honesty:
+///  1. Open Food Facts — a public, volunteer-built product database read
+///     by barcode (ingredients, additives, NOVA group, Nutri-Score,
+///     origins, labels, nutrition per 100 g). No key, no personal data:
+///     the barcode is the whole request.
+///  2. Claude with the user's OWN key — reads the photo and/or the
+///     database facts, searches the web for the brand's supply chain,
+///     and returns a strict JSON report with the URLs it actually read.
+///     The photo leaves the phone only on this path, and only when the
+///     user tapped Check.
+/// Everything the report says carries a confidence and a source. When a
+/// fact isn't found the field says "unknown" — never a guess dressed up
+/// as a finding.
+enum FoodCheckService {
+
+    struct OpenFoodFactsProduct {
+        var barcode: String
+        var name: String
+        var brand: String
+        var ingredientsText: String
+        var additiveTags: [String]
+        var nova: Int?
+        var nutriScore: String?
+        var origins: String
+        var manufacturingPlaces: String
+        var countries: [String]
+        var labels: [String]
+        var analysis: [String]
+        var allergens: [String]
+        var kcal100: Double?
+        var protein100: Double?
+        var carbs100: Double?
+        var fat100: Double?
+        var sugar100: Double?
+        var fiber100: Double?
+        var salt100: Double?
+        var url: String { "https://world.openfoodfacts.org/product/\(barcode)" }
+    }
+
+    private static let fields = "product_name,brands,ingredients_text,additives_tags,nova_group,nutriscore_grade,nutriments,origins,manufacturing_places,labels_tags,countries_tags,ingredients_analysis_tags,allergens_tags"
+
+    static func lookup(barcode raw: String) async -> OpenFoodFactsProduct? {
+        let code = raw.filter(\.isNumber)
+        guard code.count >= 8, code.count <= 14,
+              let url = URL(string: "https://world.openfoodfacts.org/api/v2/product/\(code).json?fields=\(fields)")
+        else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        request.setValue("Morphe iOS (https://lucasdilley07-png.github.io/Morphe/)", forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              json["status"] as? Int == 1,
+              let product = json["product"] as? [String: Any] else { return nil }
+        let nutriments = product["nutriments"] as? [String: Any] ?? [:]
+        func number(_ key: String) -> Double? {
+            if let d = nutriments[key] as? Double { return d }
+            if let i = nutriments[key] as? Int { return Double(i) }
+            if let s = nutriments[key] as? String { return Double(s) }
+            return nil
+        }
+        func tags(_ key: String) -> [String] {
+            (product[key] as? [String] ?? []).map { $0.replacingOccurrences(of: "en:", with: "") }
+        }
+        let novaValue: Int? = (product["nova_group"] as? Int) ?? Int((product["nova_group"] as? String) ?? "")
+        return OpenFoodFactsProduct(
+            barcode: code,
+            name: (product["product_name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+            brand: (product["brands"] as? String ?? "").components(separatedBy: ",").first?.trimmingCharacters(in: .whitespaces) ?? "",
+            ingredientsText: (product["ingredients_text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+            additiveTags: tags("additives_tags"),
+            nova: novaValue,
+            nutriScore: (product["nutriscore_grade"] as? String).flatMap { ["a", "b", "c", "d", "e"].contains($0) ? $0.uppercased() : nil },
+            origins: product["origins"] as? String ?? "",
+            manufacturingPlaces: product["manufacturing_places"] as? String ?? "",
+            countries: tags("countries_tags"),
+            labels: tags("labels_tags"),
+            analysis: tags("ingredients_analysis_tags"),
+            allergens: tags("allergens_tags"),
+            kcal100: number("energy-kcal_100g"),
+            protein100: number("proteins_100g"),
+            carbs100: number("carbohydrates_100g"),
+            fat100: number("fat_100g"),
+            sugar100: number("sugars_100g"),
+            fiber100: number("fiber_100g"),
+            salt100: number("salt_100g"))
+    }
+
+    // MARK: Deterministic report from the database alone
+
+    static func record(from p: OpenFoodFactsProduct, usedPhoto: Bool = false) -> FoodCheckRecord {
+        var r = FoodCheckRecord()
+        r.method = usedPhoto ? .photoAndBarcode : .barcode
+        r.usedPhoto = usedPhoto
+        r.name = p.name.isEmpty ? "Product \(p.barcode)" : p.name
+        r.brand = p.brand
+        r.barcode = p.barcode
+        r.ingredients = p.ingredientsText
+        r.additives = p.additiveTags.map { additive(forTag: $0) }
+        r.nutriScore = p.nutriScore
+
+        // Processing: the database's NOVA group when it has one, else the
+        // ingredient list's own markers.
+        if let nova = p.nova {
+            r.processing = FoodProcessingClass(nova: nova)
+            r.processingReason = "NOVA group \(nova), from Open Food Facts."
+        } else {
+            let markers = ultraProcessingMarkers(in: p.ingredientsText)
+            if !markers.isEmpty {
+                r.processing = .ultraProcessed
+                r.processingReason = "No NOVA group on file; the ingredient list carries ultra-processing markers: \(markers.joined(separator: ", "))."
+            } else if !r.additives.isEmpty {
+                r.processing = .processed
+                r.processingReason = "No NOVA group on file; \(r.additives.count) additive\(r.additives.count == 1 ? "" : "s") listed."
+            } else if !p.ingredientsText.isEmpty {
+                let count = p.ingredientsText.split(separator: ",").count
+                r.processing = count <= 2 ? .wholeFood : .unknown
+                r.processingReason = count <= 2 ? "\(count) ingredient\(count == 1 ? "" : "s"), no additives." : "No NOVA group on file and \(count) ingredients — not enough to classify."
+            } else {
+                r.processingReason = "No NOVA group and no ingredient list on file."
+            }
+        }
+
+        // Origin: the label's own words, else only where it's sold.
+        let originBits = [p.origins, p.manufacturingPlaces].filter { !$0.isEmpty }
+        if !originBits.isEmpty {
+            r.origin = originBits.joined(separator: " · ")
+            r.originConfidence = .high
+        } else if !p.countries.isEmpty {
+            r.origin = "Not stated on the label. Sold in \(p.countries.map(pretty).prefix(3).joined(separator: ", "))."
+            r.originConfidence = .low
+        } else {
+            r.origin = "Not on file."
+            r.originConfidence = .unknown
+        }
+
+        // Health: Nutri-Score plus the per-100 g thresholds (UK FSA:
+        // sugar >22.5 g, fat >17.5 g, salt >1.5 g per 100 g is "high").
+        var flags: [String] = []
+        if let s = p.sugar100, s > 22.5 { flags.append("high sugar (\(Int(s.rounded())) g/100 g)") }
+        if let f = p.fat100, f > 17.5 { flags.append("high fat (\(Int(f.rounded())) g/100 g)") }
+        if let salt = p.salt100, salt > 1.5 { flags.append("high salt (\(salt.formatted(.number.precision(.fractionLength(1)))) g/100 g)") }
+        var good: [String] = []
+        if let pr = p.protein100, pr >= 12 { good.append("protein-dense (\(Int(pr.rounded())) g/100 g)") }
+        if let fb = p.fiber100, fb >= 6 { good.append("high fibre (\(Int(fb.rounded())) g/100 g)") }
+        var health = p.nutriScore.map { "Nutri-Score \($0)." } ?? "No Nutri-Score on file."
+        if !flags.isEmpty { health += " " + flags.joined(separator: ", ").prefix(1).uppercased() + flags.joined(separator: ", ").dropFirst() + "." }
+        if !good.isEmpty { health += " " + good.joined(separator: ", ").prefix(1).uppercased() + good.joined(separator: ", ").dropFirst() + "." }
+        if !p.allergens.isEmpty { health += " Allergens: \(p.allergens.map(pretty).joined(separator: ", "))." }
+        r.healthRead = health
+
+        // GMO: a label settles it; otherwise the crop logic, stated as such.
+        let labels = p.labels.joined(separator: " ")
+        if labels.contains("organic") || labels.contains("non-gmo") || labels.contains("no-gmo") {
+            r.gmoLikelihood = .low
+            r.gmoRead = "Labelled \(labels.contains("organic") ? "organic" : "non-GMO") — GM ingredients are not permitted under that label."
+        } else {
+            let crops = gmCrops(in: p.ingredientsText)
+            let northAmerica = p.countries.contains { $0.contains("united-states") || $0.contains("canada") }
+            if !crops.isEmpty && northAmerica {
+                r.gmoLikelihood = .high
+                r.gmoRead = "Contains \(crops.joined(separator: ", ")) and is sold in North America, where most of those crops are genetically modified unless labelled organic or Non-GMO Project. Not confirmed for this product."
+            } else if !crops.isEmpty {
+                r.gmoLikelihood = .medium
+                r.gmoRead = "Contains \(crops.joined(separator: ", ")) — crops that are often GM depending on the country of origin. No label either way."
+            } else {
+                r.gmoLikelihood = .unknown
+                r.gmoRead = p.ingredientsText.isEmpty ? "No ingredient list on file." : "No common GM crops in the ingredient list and no label either way."
+            }
+        }
+
+        r.calories = p.kcal100.map { Int($0.rounded()) }
+        r.protein = p.protein100.map { Int($0.rounded()) }
+        r.carbs = p.carbs100.map { Int($0.rounded()) }
+        r.fat = p.fat100.map { Int($0.rounded()) }
+        r.sugar = p.sugar100.map { Int($0.rounded()) }
+        r.fiber = p.fiber100.map { Int($0.rounded()) }
+        r.sodiumMg = p.salt100.map { Int(($0 * 400).rounded()) }
+        r.servingNote = "Per 100 g, from the label as recorded on Open Food Facts."
+        r.sources = [FoodSourceLink(title: "Open Food Facts — \(r.name)", url: p.url)]
+        r.verdict = "\(r.processing.title)." + (p.nutriScore.map { " Nutri-Score \($0)." } ?? "") + (flags.isEmpty ? "" : " " + flags.joined(separator: ", ").prefix(1).uppercased() + flags.joined(separator: ", ").dropFirst() + ".")
+        return r
+    }
+
+    private static func pretty(_ tag: String) -> String {
+        tag.replacingOccurrences(of: "-", with: " ").capitalized
+    }
+
+    private static let ultraMarkers = ["high fructose", "corn syrup", "glucose syrup", "glucose-fructose", "hydrogenated", "interesterified",
+                                       "maltodextrin", "dextrose", "invert sugar", "flavouring", "flavoring", "natural flavour", "natural flavor",
+                                       "artificial flavour", "artificial flavor", "emulsifier", "stabiliser", "stabilizer", "thickener",
+                                       "colour", "color (", "protein isolate", "isolate", "hydrolysed", "hydrolyzed", "sweetener",
+                                       "aspartame", "sucralose", "acesulfame", "carrageenan", "modified starch", "monosodium glutamate", "msg"]
+
+    static func ultraProcessingMarkers(in ingredients: String) -> [String] {
+        let lower = ingredients.lowercased()
+        return ultraMarkers.filter { lower.contains($0) }.map { $0.replacingOccurrences(of: " (", with: "") }
+    }
+
+    private static let gmCropWords: [(word: String, crop: String)] = [
+        ("corn", "corn"), ("maize", "corn"), ("soy", "soy"), ("soja", "soy"), ("canola", "canola"), ("rapeseed", "canola"),
+        ("sugar beet", "sugar beet"), ("beet sugar", "sugar beet"), ("cottonseed", "cottonseed"), ("papaya", "papaya")
+    ]
+
+    static func gmCrops(in ingredients: String) -> [String] {
+        let lower = ingredients.lowercased()
+        var found: [String] = []
+        for pair in gmCropWords where lower.contains(pair.word) && !found.contains(pair.crop) { found.append(pair.crop) }
+        return found
+    }
+
+    // MARK: Additives — the common E-numbers in plain words
+
+    private static let additiveTable: [String: (name: String, note: String, concern: FoodAdditiveConcern)] = [
+        "e100": ("Curcumin", "Turmeric colour.", .none), "e101": ("Riboflavin", "Vitamin B2 as colour.", .none),
+        "e102": ("Tartrazine", "Synthetic yellow; carries an EU hyperactivity warning for children.", .moderate),
+        "e104": ("Quinoline yellow", "Synthetic yellow; EU hyperactivity warning.", .moderate),
+        "e110": ("Sunset yellow", "Synthetic orange; EU hyperactivity warning.", .moderate),
+        "e120": ("Cochineal", "Red from insects; rare allergen.", .low),
+        "e122": ("Carmoisine", "Synthetic red; EU hyperactivity warning.", .moderate),
+        "e124": ("Ponceau 4R", "Synthetic red; EU hyperactivity warning.", .moderate),
+        "e129": ("Allura red", "Synthetic red; EU hyperactivity warning.", .moderate),
+        "e133": ("Brilliant blue", "Synthetic blue.", .low), "e150a": ("Plain caramel", "Burnt-sugar colour.", .none),
+        "e150c": ("Ammonia caramel", "Caramel colour; can carry 4-MEI.", .moderate), "e150d": ("Sulphite ammonia caramel", "Cola colour; can carry 4-MEI.", .moderate),
+        "e160a": ("Carotenes", "Carrot-type colour.", .none), "e160c": ("Paprika extract", "Colour.", .none), "e162": ("Beet red", "Colour.", .none),
+        "e171": ("Titanium dioxide", "Whitener; banned as a food additive in the EU since 2022.", .high),
+        "e200": ("Sorbic acid", "Preservative.", .low), "e202": ("Potassium sorbate", "Preservative.", .low),
+        "e211": ("Sodium benzoate", "Preservative; forms traces of benzene with vitamin C.", .moderate),
+        "e220": ("Sulphur dioxide", "Preservative; sulphite allergen.", .moderate), "e223": ("Sodium metabisulphite", "Sulphite preservative.", .moderate),
+        "e224": ("Potassium metabisulphite", "Sulphite preservative.", .moderate),
+        "e250": ("Sodium nitrite", "Cured-meat preservative; forms nitrosamines when cooked hot.", .high),
+        "e251": ("Sodium nitrate", "Cured-meat preservative.", .high), "e252": ("Potassium nitrate", "Cured-meat preservative.", .high),
+        "e260": ("Acetic acid", "Vinegar.", .none), "e270": ("Lactic acid", "Acidity regulator.", .none), "e296": ("Malic acid", "Fruit acid.", .none),
+        "e300": ("Ascorbic acid", "Vitamin C.", .none), "e306": ("Tocopherols", "Vitamin E.", .none), "e322": ("Lecithins", "Emulsifier from soy or sunflower.", .none),
+        "e325": ("Sodium lactate", "Acidity regulator.", .none), "e330": ("Citric acid", "Acidity regulator.", .none), "e331": ("Sodium citrates", "Acidity regulator.", .none),
+        "e338": ("Phosphoric acid", "Cola acid; a phosphate.", .moderate), "e339": ("Sodium phosphates", "Phosphate.", .moderate), "e340": ("Potassium phosphates", "Phosphate.", .moderate),
+        "e341": ("Calcium phosphates", "Phosphate.", .moderate), "e407": ("Carrageenan", "Seaweed thickener; gut-irritation debate.", .moderate),
+        "e410": ("Locust bean gum", "Thickener.", .none), "e412": ("Guar gum", "Thickener.", .none), "e414": ("Gum arabic", "Thickener.", .none),
+        "e415": ("Xanthan gum", "Thickener.", .none), "e420": ("Sorbitol", "Sugar alcohol; laxative in quantity.", .low), "e421": ("Mannitol", "Sugar alcohol.", .low),
+        "e422": ("Glycerol", "Humectant.", .none), "e440": ("Pectin", "Fruit thickener.", .none),
+        "e450": ("Diphosphates", "Phosphate.", .moderate), "e451": ("Triphosphates", "Phosphate.", .moderate), "e452": ("Polyphosphates", "Phosphate.", .moderate),
+        "e460": ("Cellulose", "Bulking agent.", .low), "e461": ("Methyl cellulose", "Thickener.", .low), "e464": ("Hypromellose", "Thickener.", .low), "e466": ("CMC", "Thickener.", .low),
+        "e471": ("Mono- and diglycerides", "Emulsifier from fats.", .low), "e472e": ("DATEM", "Bread emulsifier.", .low), "e473": ("Sucrose esters", "Emulsifier.", .low),
+        "e481": ("Sodium stearoyl lactylate", "Emulsifier.", .low), "e500": ("Sodium bicarbonate", "Baking soda.", .none), "e501": ("Potassium carbonates", "Raising agent.", .none),
+        "e503": ("Ammonium carbonates", "Raising agent.", .none), "e508": ("Potassium chloride", "Salt substitute.", .none), "e509": ("Calcium chloride", "Firming agent.", .none),
+        "e551": ("Silicon dioxide", "Anti-caking.", .low), "e570": ("Fatty acids", "Anti-caking.", .none), "e621": ("Monosodium glutamate", "Flavour enhancer.", .low),
+        "e627": ("Disodium guanylate", "Flavour enhancer.", .low), "e631": ("Disodium inosinate", "Flavour enhancer.", .low), "e635": ("Ribonucleotides", "Flavour enhancer.", .low),
+        "e900": ("Dimethylpolysiloxane", "Anti-foam.", .low), "e950": ("Acesulfame K", "Artificial sweetener.", .moderate), "e951": ("Aspartame", "Artificial sweetener.", .moderate),
+        "e952": ("Cyclamate", "Artificial sweetener; not permitted in the US.", .moderate), "e954": ("Saccharin", "Artificial sweetener.", .moderate),
+        "e955": ("Sucralose", "Artificial sweetener.", .moderate), "e960": ("Steviol glycosides", "Stevia sweetener.", .none), "e965": ("Maltitol", "Sugar alcohol.", .low),
+        "e967": ("Xylitol", "Sugar alcohol; toxic to dogs.", .low), "e968": ("Erythritol", "Sugar alcohol.", .low), "e1400": ("Dextrin", "Modified starch.", .low),
+        "e1404": ("Oxidised starch", "Modified starch.", .low), "e1412": ("Distarch phosphate", "Modified starch.", .low), "e1414": ("Acetylated distarch phosphate", "Modified starch.", .low),
+        "e1422": ("Acetylated distarch adipate", "Modified starch.", .low), "e1442": ("Hydroxypropyl distarch phosphate", "Modified starch.", .low), "e1510": ("Ethanol", "Carrier.", .none)
+    ]
+
+    static func additive(forTag tag: String) -> FoodAdditive {
+        let code = tag.lowercased().replacingOccurrences(of: "en:", with: "")
+        if let hit = additiveTable[code] {
+            return FoodAdditive(code: code.uppercased(), name: hit.name, note: hit.note, concern: hit.concern)
+        }
+        // A code we don't carry a note for — say so, never guess.
+        return FoodAdditive(code: code.uppercased(), name: "Additive \(code.uppercased())", note: "Not in Morphe's table — look it up before trusting it.", concern: .unknown)
+    }
+
+    // MARK: Claude: photo + facts + the web, as strict JSON
+
+    static func jpeg(from image: UIImage, maxSide: CGFloat = 1024) -> Data? {
+        let scale = min(1, maxSide / max(image.size.width, image.size.height))
+        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }.jpegData(compressionQuality: 0.72)
+    }
+
+    private static let reportSystem = """
+    You are Morphe's food checker: disciplined, direct, honest to the last digit. You read a photo of a food, meal or package and/or product facts from Open Food Facts, you search the web for the brand's production and supply chain, and you report. Rules: never invent a fact; when something is not found, write "unknown" and say why; cite only pages you actually read; nutrition for a plate is an estimate and must say so; say "likely" and "possible" only with the reason; no medical claims; plain words, no hype. GMO: a GM ingredient is likely only when a GM crop (corn, soy, canola, sugar beet, cottonseed, papaya) is present AND the product is sold where that crop is mostly GM and no organic/non-GMO label exists. Processing uses the NOVA groups: 1 whole or minimally processed, 2 kitchen ingredient, 3 processed, 4 ultra-processed.
+    Reply with ONE JSON object and nothing else, no code fences:
+    {"name":"","brand":"","processing":"wholeFood|kitchenIngredient|processed|ultraProcessed|unknown","processingReason":"","origin":"where it comes from: country/region, grower or factory if known, how it reached the shelf","originConfidence":"high|medium|low|unknown","healthRead":"2-4 sentences on how healthy it is and why","nutriScore":"A-E or null","additives":[{"code":"E322 or name","name":"","note":"","concern":"none|low|moderate|high|unknown"}],"gmoRead":"","gmoLikelihood":"high|medium|low|unknown","ingredients":"as read, or unknown","calories":0,"protein":0,"carbs":0,"fat":0,"sugar":0,"fiber":0,"sodiumMg":0,"servingNote":"what the numbers are for and whether estimated","sources":[{"title":"","url":""}],"verdict":"one laconic line"}
+    Numbers are integers; use null for any you cannot support.
+    """
+
+    static func analyze(imageJPEG: Data?, product: OpenFoodFactsProduct?, apiKey: String) async throws -> FoodCheckRecord {
+        var content: [[String: Any]] = []
+        if let imageJPEG {
+            content.append(["type": "image", "source": ["type": "base64", "media_type": "image/jpeg",
+                                                         "data": imageJPEG.base64EncodedString()]])
+        }
+        var ask = "Check this food. "
+        if let p = product {
+            let facts: [String: Any] = [
+                "barcode": p.barcode, "name": p.name, "brand": p.brand, "ingredients": p.ingredientsText,
+                "additives": p.additiveTags, "nova": p.nova as Any, "nutriScore": p.nutriScore as Any,
+                "origins": p.origins, "manufacturingPlaces": p.manufacturingPlaces, "countriesSold": p.countries,
+                "labels": p.labels, "allergens": p.allergens,
+                "per100g": ["kcal": p.kcal100 as Any, "protein": p.protein100 as Any, "carbs": p.carbs100 as Any,
+                            "fat": p.fat100 as Any, "sugar": p.sugar100 as Any, "fiber": p.fiber100 as Any, "salt": p.salt100 as Any],
+                "source": p.url
+            ]
+            if let data = try? JSONSerialization.data(withJSONObject: facts), let text = String(data: data, encoding: .utf8) {
+                ask += "Open Food Facts has these facts for its barcode (treat as the label, cite the source URL): \(text). "
+            }
+        }
+        ask += imageJPEG != nil
+            ? "Identify what is in the photo. Search the web for the brand or food's origin, production and supply chain, and for any additive or GMO facts you state."
+            : "Search the web for the brand's origin, production and supply chain, and for any additive or GMO facts you state."
+        content.append(["type": "text", "text": ask])
+
+        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 90
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        let body: [String: Any] = [
+            "model": "claude-opus-5",
+            "max_tokens": 6000,
+            "system": reportSystem,
+            "tools": [["type": "web_search_20250305", "name": "web_search", "max_uses": 5]],
+            "messages": [["role": "user", "content": content]]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let data: Data
+        let response: URLResponse
+        do { (data, response) = try await URLSession.shared.data(for: request) } catch { throw MorpheIntelligence.IntelligenceError.network }
+        guard let http = response as? HTTPURLResponse else { throw MorpheIntelligence.IntelligenceError.network }
+        switch http.statusCode {
+        case 200: break
+        case 401, 403: throw MorpheIntelligence.IntelligenceError.badKey
+        case 429: throw MorpheIntelligence.IntelligenceError.rateLimited
+        case 500...: throw MorpheIntelligence.IntelligenceError.overloaded
+        default: throw MorpheIntelligence.IntelligenceError.badRequest
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw MorpheIntelligence.IntelligenceError.malformed }
+        if json["stop_reason"] as? String == "refusal" { throw MorpheIntelligence.IntelligenceError.declined }
+        guard let blocks = json["content"] as? [[String: Any]] else { throw MorpheIntelligence.IntelligenceError.malformed }
+        let searched = blocks.contains { $0["type"] as? String == "server_tool_use" }
+        let text = blocks.filter { $0["type"] as? String == "text" }.compactMap { $0["text"] as? String }.joined()
+        guard let object = extractJSONObject(from: text) else { throw MorpheIntelligence.IntelligenceError.malformed }
+        var record = record(fromReport: object)
+        record.method = imageJPEG != nil ? (product != nil ? .photoAndBarcode : .photo) : .barcode
+        record.usedPhoto = imageJPEG != nil
+        record.usedWebSearch = searched
+        record.barcode = product?.barcode
+        if let p = product {
+            // The database is the label; Claude fills what it can't.
+            if record.name.isEmpty { record.name = p.name }
+            if record.brand.isEmpty { record.brand = p.brand }
+            if record.ingredients.isEmpty || record.ingredients.lowercased() == "unknown" { record.ingredients = p.ingredientsText }
+            if record.nutriScore == nil { record.nutriScore = p.nutriScore }
+            if record.additives.isEmpty { record.additives = p.additiveTags.map { additive(forTag: $0) } }
+            if !record.sources.contains(where: { $0.url == p.url }) {
+                record.sources.insert(FoodSourceLink(title: "Open Food Facts — \(p.name)", url: p.url), at: 0)
+            }
+        }
+        return record
+    }
+
+    static func extractJSONObject(from text: String) -> [String: Any]? {
+        guard let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}"), start < end else { return nil }
+        let slice = String(text[start...end])
+        return (try? JSONSerialization.jsonObject(with: Data(slice.utf8))) as? [String: Any]
+    }
+
+    static func record(fromReport o: [String: Any]) -> FoodCheckRecord {
+        func str(_ k: String) -> String { ((o[k] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines) }
+        func int(_ k: String) -> Int? {
+            if let i = o[k] as? Int { return i }
+            if let d = o[k] as? Double { return Int(d.rounded()) }
+            return nil
+        }
+        var r = FoodCheckRecord()
+        r.name = str("name"); r.brand = str("brand")
+        r.processing = FoodProcessingClass(rawValue: str("processing")) ?? .unknown
+        r.processingReason = str("processingReason")
+        r.origin = str("origin"); r.originConfidence = FoodConfidence(rawValue: str("originConfidence")) ?? .unknown
+        r.healthRead = str("healthRead")
+        let score = str("nutriScore").uppercased()
+        r.nutriScore = ["A", "B", "C", "D", "E"].contains(score) ? score : nil
+        r.additives = (o["additives"] as? [[String: Any]] ?? []).compactMap { a in
+            let code = (a["code"] as? String ?? "").trimmingCharacters(in: .whitespaces)
+            let name = (a["name"] as? String ?? "").trimmingCharacters(in: .whitespaces)
+            guard !code.isEmpty || !name.isEmpty else { return nil }
+            let key = code.lowercased().replacingOccurrences(of: " ", with: "")
+            if let known = additiveTable[key] {
+                return FoodAdditive(code: code.uppercased(), name: known.name, note: known.note, concern: known.concern)
+            }
+            return FoodAdditive(code: code.isEmpty ? name : code, name: name.isEmpty ? code : name,
+                                note: a["note"] as? String ?? "", concern: FoodAdditiveConcern(rawValue: a["concern"] as? String ?? "") ?? .unknown)
+        }
+        r.gmoRead = str("gmoRead"); r.gmoLikelihood = FoodConfidence(rawValue: str("gmoLikelihood")) ?? .unknown
+        r.ingredients = str("ingredients")
+        r.calories = int("calories"); r.protein = int("protein"); r.carbs = int("carbs"); r.fat = int("fat")
+        r.sugar = int("sugar"); r.fiber = int("fiber"); r.sodiumMg = int("sodiumMg")
+        r.servingNote = str("servingNote")
+        r.sources = (o["sources"] as? [[String: Any]] ?? []).compactMap { s in
+            guard let url = s["url"] as? String, url.hasPrefix("http") else { return nil }
+            return FoodSourceLink(title: (s["title"] as? String ?? url), url: url)
+        }
+        r.verdict = str("verdict")
+        return r
     }
 }

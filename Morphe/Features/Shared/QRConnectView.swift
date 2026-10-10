@@ -171,6 +171,8 @@ enum QRCodeRenderer {
 /// it shows an honest placeholder instead of a black box.
 struct QRScannerView: View {
     let onScan: (String) -> Void
+    /// QR by default; the food check passes retail barcodes too.
+    var symbologies: [AVMetadataObject.ObjectType] = [.qr]
 
     var body: some View {
         if AVCaptureDevice.default(for: .video) == nil {
@@ -186,17 +188,19 @@ struct QRScannerView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(MorpheTheme.panelStrong)
         } else {
-            QRCameraRepresentable(onScan: onScan)
+            QRCameraRepresentable(onScan: onScan, symbologies: symbologies)
         }
     }
 }
 
 private struct QRCameraRepresentable: UIViewControllerRepresentable {
     let onScan: (String) -> Void
+    var symbologies: [AVMetadataObject.ObjectType] = [.qr]
 
     func makeUIViewController(context: Context) -> QRScannerController {
         let controller = QRScannerController()
         controller.onScan = onScan
+        controller.symbologies = symbologies
         return controller
     }
 
@@ -205,6 +209,7 @@ private struct QRCameraRepresentable: UIViewControllerRepresentable {
 
 final class QRScannerController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     var onScan: ((String) -> Void)?
+    var symbologies: [AVMetadataObject.ObjectType] = [.qr]
 
     private let session = AVCaptureSession()
     private var previewLayer: AVCaptureVideoPreviewLayer?
@@ -225,7 +230,7 @@ final class QRScannerController: UIViewController, AVCaptureMetadataOutputObject
         guard session.canAddOutput(output) else { return }
         session.addOutput(output)
         output.setMetadataObjectsDelegate(self, queue: .main)
-        output.metadataObjectTypes = [.qr]
+        output.metadataObjectTypes = symbologies.filter { output.availableMetadataObjectTypes.contains($0) }
 
         let preview = AVCaptureVideoPreviewLayer(session: session)
         preview.videoGravity = .resizeAspectFill
@@ -258,7 +263,7 @@ final class QRScannerController: UIViewController, AVCaptureMetadataOutputObject
                         didOutput metadataObjects: [AVMetadataObject],
                         from connection: AVCaptureConnection) {
         guard let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
-              object.type == .qr,
+              symbologies.contains(object.type),
               let payload = object.stringValue else { return }
         // Ignore repeat reads of the same code within a couple of seconds.
         if payload == lastPayload, Date().timeIntervalSince(lastScanAt) < 2 { return }

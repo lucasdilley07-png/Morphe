@@ -1,6 +1,6 @@
 # Morphe Privacy Policy
 
-**Effective date:** October 7, 2026
+**Effective date:** October 10, 2026
 **Developer:** Lucas Dilley
 **Contact:** lucasdilley.07@gmail.com
 
@@ -97,6 +97,14 @@ and are off until you turn them on.
 - **Food and water log, imported history** — what you log, and any workout
   file you import from another app, is saved with the rest of your
   training data under your own account.
+- **Food check** — scanning a product's barcode sends only that number to
+  Open Food Facts, a public product database (no account, no personal
+  data). Photographing a meal or package sends that photo to Anthropic
+  **only if you have added your own API key** and tapped Check; Morphe
+  does not keep the photo. The resulting report (origin, processing,
+  additives, numbers, the web sources read) is saved with your training
+  data so the assistant can remember what you eat; delete any report from
+  the app.
 - **Microphone & speech recognition** — recording audio for clips you
   capture in video mode, dictating messages to the in-app assistant, and
   the optional "Hey Morphe" wake phrase. While Hey Morphe is on and the

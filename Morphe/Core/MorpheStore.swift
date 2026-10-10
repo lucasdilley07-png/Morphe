@@ -4413,6 +4413,7 @@ final class MorpheAppStore {
             "customProgram": customProgramDefaultsKey,
             "programCompletions": programCompletionsDefaultsKey,
             "libraryFolders": libraryFoldersKey,
+            "foodChecks": foodChecksKey,
         ]
     }
 
@@ -4494,6 +4495,7 @@ final class MorpheAppStore {
         // The read-stamp cache is keyed by profile id — drop it with every
         // identity change, not just sign-out (post-revamp audit P2-7).
         threadReadCache = nil
+        foodChecks = loadSeries(foodChecksKey)
         recoverySeries = loadSeries(recoverySeriesDefaultsKey)
         nutritionSeries = loadSeries(nutritionSeriesDefaultsKey)
         customProgram = loadCustomProgram()
@@ -5155,6 +5157,88 @@ final class MorpheAppStore {
         )
     }
 
+    // MARK: - Food check (Lucas 2026-10-10)
+
+    /// Every food the user checked, newest first, per profile; rides the
+    /// cloud backup through the extras bag like the other series.
+    private(set) var foodChecks: [FoodCheckRecord] = []
+    private(set) var foodCheckBusy = false
+    private var foodChecksKey: String { "morphe.foodchecks.\(clientProfile.id.uuidString)" }
+
+    /// Barcode → the database; photo → Claude with the user's key (and
+    /// the database facts when a barcode came too). Returns nil, with an
+    /// honest toast, when neither path can say anything real.
+    func runFoodCheck(image: UIImage?, barcode: String?) async -> FoodCheckRecord? {
+        guard !foodCheckBusy else { return nil }
+        foodCheckBusy = true
+        defer { foodCheckBusy = false }
+        var product: FoodCheckService.OpenFoodFactsProduct?
+        if let barcode { product = await FoodCheckService.lookup(barcode: barcode) }
+        let jpeg = image.flatMap { FoodCheckService.jpeg(from: $0) }
+        var record: FoodCheckRecord?
+        if let key = MorpheIntelligence.apiKey {
+            do {
+                record = try await FoodCheckService.analyze(imageJPEG: jpeg, product: product, apiKey: key)
+            } catch {
+                if let product {
+                    record = FoodCheckService.record(from: product, usedPhoto: jpeg != nil)
+                    showToast("Claude couldn't add to this one — showing the database facts.")
+                } else {
+                    showToast((error as? MorpheIntelligence.IntelligenceError)?.errorDescription
+                              ?? "Couldn't check that — try again.", isError: true)
+                    return nil
+                }
+            }
+        } else if let product {
+            record = FoodCheckService.record(from: product, usedPhoto: jpeg != nil)
+        } else if barcode != nil {
+            showToast("That barcode isn't in Open Food Facts yet. With your own key in Profile → Morphe Intelligence, Morphe can read the package from a photo instead.")
+            return nil
+        } else {
+            showToast("To check a meal from a photo, add your Anthropic key in Profile → Morphe Intelligence — or scan the product's barcode.")
+            return nil
+        }
+        guard var result = record else { return nil }
+        if result.name.isEmpty { result.name = barcode.map { "Product \($0)" } ?? "Unnamed food" }
+        foodChecks.insert(result, at: 0)
+        if foodChecks.count > 300 { foodChecks.removeLast(foodChecks.count - 300) }
+        saveSeries(foodChecks, key: foodChecksKey, cap: 300)
+        mirrorExtrasToCloud()
+        track("food_check")
+        return result
+    }
+
+    /// The checked food lands in today's fuel with its own numbers; the
+    /// record remembers which meal so it never double-logs.
+    @discardableResult
+    func logFoodCheckToFuel(_ record: FoodCheckRecord) -> Bool {
+        guard let index = foodChecks.firstIndex(where: { $0.id == record.id }), !record.isLogged else { return false }
+        let name = record.displayName.isEmpty ? "Checked food" : record.displayName
+        guard addCustomMeal(name: name, calories: record.calories ?? 0, protein: record.protein ?? 0) else { return false }
+        foodChecks[index].loggedMealID = nutrition.meals.last?.id
+        saveSeries(foodChecks, key: foodChecksKey, cap: 300)
+        mirrorExtrasToCloud()
+        return true
+    }
+
+    func deleteFoodCheck(_ record: FoodCheckRecord) {
+        foodChecks.removeAll { $0.id == record.id }
+        saveSeries(foodChecks, key: foodChecksKey, cap: 300)
+        mirrorExtrasToCloud()
+    }
+
+    /// What the AI remembers about the user's food: the last two weeks of
+    /// checks, counted honestly — for the prompt and the offline answer.
+    var foodMemorySummary: String? {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -14, to: .now) ?? .distantPast
+        let recent = foodChecks.filter { $0.date >= cutoff }
+        guard !recent.isEmpty else { return nil }
+        let ultra = recent.filter { $0.processing == .ultraProcessed }.count
+        let whole = recent.filter { $0.processing == .wholeFood }.count
+        let last = recent.prefix(3).map { "\($0.displayName) (\($0.processing.title.lowercased())\($0.nutriScore.map { ", Nutri-Score \($0)" } ?? ""))" }
+        return "Food checks in the last 14 days: \(recent.count) — \(whole) real food, \(ultra) ultra-processed. Latest: \(last.joined(separator: "; "))."
+    }
+
     /// Lean out / maintain / bulk, read from the user's own goal words.
     var nutritionGoalMode: NutritionGoalMode {
         NutritionGoalMode.infer(fromGoalText: (clientProfile.selectedGoals + [clientProfile.goal]).joined(separator: " "))
@@ -5193,6 +5277,7 @@ final class MorpheAppStore {
         for group in NutritionFoodGroup.allCases {
             lines.append("\(group.title) (\(group.caloriesPerGram) cal/g; \(group.whenToUse.lowercased())): \(group.foods.joined(separator: ", ")).")
         }
+        if let memory = foodMemorySummary { lines.append(memory) }
         if let plan = nutritionPlan {
             lines.append("This user's plan, from their logged weight and goal: \(plan.summary) Lean on, in order: \(plan.goal.leanOn.map(\.title).joined(separator: ", ")).")
         } else {
@@ -5217,7 +5302,8 @@ final class MorpheAppStore {
             return "\(goal.rawValue) runs body weight × \(goal.caloriesPerLb.formatted()) calories at a \(goal.splitLabel) carb/protein/fat split, protein never under \(NutritionPlan.proteinFloorPerLb) g per pound. Log your weight in Profile and I'll give you the grams. \(plate) The full chart is in Learn → Nutrition."
         }
         let floorNote = plan.proteinFloorApplied ? " Protein sits above the split's share because the \(NutritionPlan.proteinFloorPerLb) g/lb floor wins." : ""
-        return "\(plan.summary)\(floorNote) \(plate) The full chart is in Learn → Nutrition."
+        let memory = foodMemorySummary.map { " \($0)" } ?? ""
+        return "\(plan.summary)\(floorNote) \(plate)\(memory) The full chart is in Learn → Nutrition."
     }
 
     /// Pushes the computed targets into the nutrition card's goal fields.

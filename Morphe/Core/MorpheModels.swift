@@ -3341,3 +3341,142 @@ struct OpenChallengeListing: Identifiable, Hashable {
     var id: String { code }
     var isExpired: Bool { Date.now > endsAt }
 }
+
+// MARK: - Food check (Lucas 2026-10-10)
+
+/// NOVA processing groups, in the user's words. Group 2 is "culinary
+/// ingredients" (oil, sugar, salt) — a kitchen ingredient, not a meal.
+enum FoodProcessingClass: String, Codable, CaseIterable {
+    case wholeFood, kitchenIngredient, processed, ultraProcessed, unknown
+
+    init(nova: Int?) {
+        switch nova {
+        case 1: self = .wholeFood
+        case 2: self = .kitchenIngredient
+        case 3: self = .processed
+        case 4: self = .ultraProcessed
+        default: self = .unknown
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .wholeFood: return "Real food"
+        case .kitchenIngredient: return "Kitchen ingredient"
+        case .processed: return "Processed"
+        case .ultraProcessed: return "Ultra-processed"
+        case .unknown: return "Unknown"
+        }
+    }
+
+    var novaGroup: Int? {
+        switch self {
+        case .wholeFood: return 1
+        case .kitchenIngredient: return 2
+        case .processed: return 3
+        case .ultraProcessed: return 4
+        case .unknown: return nil
+        }
+    }
+}
+
+enum FoodConfidence: String, Codable {
+    case high, medium, low, unknown
+}
+
+enum FoodAdditiveConcern: String, Codable {
+    case none, low, moderate, high, unknown
+}
+
+struct FoodAdditive: Codable, Equatable, Identifiable {
+    var code: String
+    var name: String
+    var note: String
+    var concern: FoodAdditiveConcern
+    var id: String { code }
+}
+
+struct FoodSourceLink: Codable, Equatable, Identifiable {
+    var title: String
+    var url: String
+    var id: String { url }
+}
+
+enum FoodCheckMethod: String, Codable {
+    case barcode, photo, photoAndBarcode
+}
+
+/// One checked food: where it comes from, what's in it, how it's
+/// processed, and the numbers — every field says how sure it is and
+/// where it came from. Tolerant decoding so an older record never
+/// breaks a newer build.
+struct FoodCheckRecord: Codable, Equatable, Identifiable {
+    var id = UUID()
+    var date = Date()
+    var method: FoodCheckMethod = .barcode
+    var name = ""
+    var brand = ""
+    var barcode: String?
+    var processing: FoodProcessingClass = .unknown
+    var processingReason = ""
+    var origin = ""
+    var originConfidence: FoodConfidence = .unknown
+    var healthRead = ""
+    var nutriScore: String?
+    var additives: [FoodAdditive] = []
+    var gmoRead = ""
+    /// high = likely GM-derived, low = unlikely, unknown = no basis.
+    var gmoLikelihood: FoodConfidence = .unknown
+    var ingredients = ""
+    var calories: Int?
+    var protein: Int?
+    var carbs: Int?
+    var fat: Int?
+    var sugar: Int?
+    var fiber: Int?
+    var sodiumMg: Int?
+    var servingNote = ""
+    var sources: [FoodSourceLink] = []
+    var verdict = ""
+    var usedWebSearch = false
+    var usedPhoto = false
+    var loggedMealID: UUID?
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decodeIfPresent(UUID.self, forKey: .id)) ?? UUID()
+        date = (try? c.decodeIfPresent(Date.self, forKey: .date)) ?? Date()
+        method = (try? c.decodeIfPresent(FoodCheckMethod.self, forKey: .method)) ?? .barcode
+        name = (try? c.decodeIfPresent(String.self, forKey: .name)) ?? ""
+        brand = (try? c.decodeIfPresent(String.self, forKey: .brand)) ?? ""
+        barcode = try? c.decodeIfPresent(String.self, forKey: .barcode)
+        processing = (try? c.decodeIfPresent(FoodProcessingClass.self, forKey: .processing)) ?? .unknown
+        processingReason = (try? c.decodeIfPresent(String.self, forKey: .processingReason)) ?? ""
+        origin = (try? c.decodeIfPresent(String.self, forKey: .origin)) ?? ""
+        originConfidence = (try? c.decodeIfPresent(FoodConfidence.self, forKey: .originConfidence)) ?? .unknown
+        healthRead = (try? c.decodeIfPresent(String.self, forKey: .healthRead)) ?? ""
+        nutriScore = try? c.decodeIfPresent(String.self, forKey: .nutriScore)
+        additives = (try? c.decodeIfPresent([FoodAdditive].self, forKey: .additives)) ?? []
+        gmoRead = (try? c.decodeIfPresent(String.self, forKey: .gmoRead)) ?? ""
+        gmoLikelihood = (try? c.decodeIfPresent(FoodConfidence.self, forKey: .gmoLikelihood)) ?? .unknown
+        ingredients = (try? c.decodeIfPresent(String.self, forKey: .ingredients)) ?? ""
+        calories = try? c.decodeIfPresent(Int.self, forKey: .calories)
+        protein = try? c.decodeIfPresent(Int.self, forKey: .protein)
+        carbs = try? c.decodeIfPresent(Int.self, forKey: .carbs)
+        fat = try? c.decodeIfPresent(Int.self, forKey: .fat)
+        sugar = try? c.decodeIfPresent(Int.self, forKey: .sugar)
+        fiber = try? c.decodeIfPresent(Int.self, forKey: .fiber)
+        sodiumMg = try? c.decodeIfPresent(Int.self, forKey: .sodiumMg)
+        servingNote = (try? c.decodeIfPresent(String.self, forKey: .servingNote)) ?? ""
+        sources = (try? c.decodeIfPresent([FoodSourceLink].self, forKey: .sources)) ?? []
+        verdict = (try? c.decodeIfPresent(String.self, forKey: .verdict)) ?? ""
+        usedWebSearch = (try? c.decodeIfPresent(Bool.self, forKey: .usedWebSearch)) ?? false
+        usedPhoto = (try? c.decodeIfPresent(Bool.self, forKey: .usedPhoto)) ?? false
+        loggedMealID = try? c.decodeIfPresent(UUID.self, forKey: .loggedMealID)
+    }
+
+    var displayName: String { brand.isEmpty ? name : "\(brand) \(name)" }
+    var isLogged: Bool { loggedMealID != nil }
+}
