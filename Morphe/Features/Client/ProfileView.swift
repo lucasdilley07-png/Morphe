@@ -13,6 +13,7 @@ struct ProfileView: View {
     @State private var isEditingUsername = false
     @State private var usernameDraft = ""
     @State private var isEditingBio = false
+    @State private var showIdentitySheet = false
     @State private var bioDraft = ""
     @State private var isEditingTargets = false
     @State private var physicalTargetDraft = ""
@@ -101,17 +102,8 @@ struct ProfileView: View {
         // A swipe-down can't silently eat unsaved edits either — with edits
         // pending the sheet stays put, and Done raises the save/discard ask.
         .interactiveDismissDisabled(hasUnsavedEdits)
-        // Live capture only (no library) — the selfie the Morphe team reviews
-        // must come from THIS camera, not the photo roll.
-        .fullScreenCover(isPresented: $showVerificationCamera) {
-            VerificationSelfieCamera { image in
-                showVerificationCamera = false
-                guard let image,
-                      let jpeg = Self.processedVerificationSelfie(image) else { return }
-                Task { await store.submitVerificationRequest(selfieJPEG: jpeg, note: "") }
-            }
-            .ignoresSafeArea()
-        }
+        // (The verification camera presents from the identity page, which
+        // hosts Get Verified now — a cover from here couldn't rise over it.)
         .confirmationDialog(
             "Save your profile changes?",
             isPresented: $showUnsavedPrompt,
@@ -766,36 +758,57 @@ struct ProfileView: View {
                 HStack(spacing: 14) {
                     profilePhotoView
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            Text(store.profileShowcase.displayName)
-                                .font(.title2.weight(.bold))
-                                .foregroundStyle(MorpheTheme.textPrimary)
-                            if store.isVerifiedUser {
-                                // Verification blue — a universal trust signal,
-                                // deliberately outside the yellow palette.
-                                Image(systemName: "checkmark.seal.fill")
-                                    .font(.subheadline)
-                                    .foregroundStyle(MorpheTheme.brandBlueText)
-                                    .accessibilityLabel("Verified")
+                    // Name block + chevron open the identity page (Lucas
+                    // 2026-10-10): bio editing and verification live there.
+                    Button {
+                        showIdentitySheet = true
+                    } label: {
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 6) {
+                                    Text(store.profileShowcase.displayName)
+                                        .font(.title2.weight(.bold))
+                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                    if store.isVerifiedUser {
+                                        // Verification blue — a universal trust signal,
+                                        // deliberately outside the yellow palette.
+                                        Image(systemName: "checkmark.seal.fill")
+                                            .font(.subheadline)
+                                            .foregroundStyle(MorpheTheme.brandBlueText)
+                                            .accessibilityLabel("Verified")
+                                    }
+                                }
+                                Text("@\(store.profileShowcase.username)")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(MorpheTheme.accentText)
+                                Text("\(store.clientProfile.sportMode.rawValue)\(store.clientProfile.fitnessLevel.isEmpty ? "" : " • \(store.clientProfile.fitnessLevel)")")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
                             }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(MorpheTheme.textMuted)
                         }
-                        Text("@\(store.profileShowcase.username)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.accentText)
-                        Text("\(store.clientProfile.sportMode.rawValue)\(store.clientProfile.fitnessLevel.isEmpty ? "" : " • \(store.clientProfile.fitnessLevel)")")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textMuted)
+                        .contentShape(Rectangle())
                     }
-                    Spacer()
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(store.profileShowcase.displayName), @\(store.profileShowcase.username)")
+                    .accessibilityHint("Opens your bio and verification")
                 }
 
-                bioSection
-
-                verificationSection
+                if !store.profileShowcase.bio.isEmpty {
+                    Text(store.profileShowcase.bio)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 creatorSection
             }
+        }
+        .sheet(isPresented: $showIdentitySheet, onDismiss: { isEditingBio = false }) {
+            identitySheet
         }
         .onChange(of: photoPickerItem) {
             guard let item = photoPickerItem else { return }
@@ -807,6 +820,69 @@ struct ProfileView: View {
                 photoPickerItem = nil
             }
         }
+    }
+
+    /// Bio + verification, on their own page (Lucas 2026-10-10). Same
+    /// state as the card, so the unsaved-edit guard still sees the draft.
+    private var identitySheet: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(store.profileShowcase.displayName)
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text("@\(store.profileShowcase.username)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.accentText)
+                    }
+                    Spacer(minLength: 8)
+                    Button("Done") {
+                        if isEditingBio { saveBio() }
+                        showIdentitySheet = false
+                    }
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .frame(minWidth: 44, minHeight: 44)
+                }
+
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Bio")
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        bioSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Verification")
+                            .font(.headline)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        verificationSection
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(20)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
+        // Live capture only (no library) — the selfie the Morphe team reviews
+        // must come from THIS camera, not the photo roll.
+        .fullScreenCover(isPresented: $showVerificationCamera) {
+            VerificationSelfieCamera { image in
+                showVerificationCamera = false
+                guard let image,
+                      let jpeg = Self.processedVerificationSelfie(image) else { return }
+                Task { await store.submitVerificationRequest(selfieJPEG: jpeg, note: "") }
+            }
+            .ignoresSafeArea()
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(28)
+        .sheetToastSurface()
     }
 
     /// The photo circle: real photo when set, initials art otherwise. Tapping
