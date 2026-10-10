@@ -2509,6 +2509,11 @@ private struct ActiveWorkoutTrackerCard: View {
     /// the single most confusing number a beginner saw was "135 lb" on a
     /// push-up). Reset by the owner on every exercise change.
     @State private var showsLoadForBodyweight = false
+    /// First sessions (2026-10-10): until three workouts are logged the
+    /// console shows Reps · Weight · Log · Rest · Next and folds the rest
+    /// behind one door — eleven controls on set one was the drop-off point.
+    @State private var unlockedFullConsole = false
+    private var simpleConsole: Bool { store.loggedWorkoutCount < 3 && !unlockedFullConsole }
     @State private var holdTarget = 30
     @State private var holdElapsed = 0
     @State private var holdRunning = false
@@ -2665,6 +2670,7 @@ private struct ActiveWorkoutTrackerCard: View {
                         // Form check rides the ACTIVE exercise — it was
                         // parked next to "Up next", which read as form help
                         // for the wrong movement.
+                        if !simpleConsole {
                         Button(action: onOpenFormCheck) {
                             VStack(spacing: 3) {
                                 Image(systemName: "camera.viewfinder")
@@ -2683,6 +2689,7 @@ private struct ActiveWorkoutTrackerCard: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Open Form Check for \(exercise.name)")
+                        }
                     }
                     Text("\(exercise.sets) • \(exercise.reps) • \(exercise.difficulty.rawValue)")
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -2699,9 +2706,32 @@ private struct ActiveWorkoutTrackerCard: View {
                             .font(MorpheTheme.microLabel(10)).tracking(1.0)
                             .foregroundStyle(MorpheTheme.accentText)
                     }
+                    // The suggestion as one tap (2026-10-10): pre-fills the
+                    // bumped weight — progressive overload without the
+                    // reading, remembering and dialing.
+                    if !isTimedMove, let chip = store.progressionChip(for: exercise), abs(weight - chip.weight) >= 0.01 {
+                        Button {
+                            weight = chip.weight
+                            showsLoadForBodyweight = true
+                            Haptics.selection()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: chip.weight > (store.lastSessionWeight(for: exercise.id) ?? weight) ? "arrow.up.right" : "arrow.down.right")
+                                    .font(.caption.weight(.bold))
+                                Text(chip.label)
+                                    .font(.footnote.weight(.semibold))
+                            }
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(MorpheTheme.accent.opacity(0.14)))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Use \(chip.label)")
+                    }
                     // Moments engine phase 3: how close this exercise is to
                     // new territory — live sessions only, derived from logs.
-                    if store.isWorkoutSessionActive,
+                    if !simpleConsole, store.isWorkoutSessionActive,
                        let prLine = store.prProximityLine(for: exercise) {
                         Text(prLine)
                             .font(MorpheTheme.microLabel(10)).tracking(1.0)
@@ -2886,7 +2916,23 @@ private struct ActiveWorkoutTrackerCard: View {
                 // The same four controls for EVERY exercise — More always
                 // opens the custom set logger (as an extra set once the
                 // planned sets are done), and Prev disables instead of hiding
-                // so the row never reshuffles.
+                // so the row never reshuffles. First sessions see Rest and
+                // Next only, with one door to the rest (2026-10-10).
+                if simpleConsole {
+                    HStack(spacing: 8) {
+                        Button("Rest", action: onStartRest)
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                            .accessibilityLabel("Start rest timer")
+                        Button("Next", action: onNext)
+                            .buttonStyle(SecondaryCTAButtonStyle())
+                    }
+                    Button("More options") { withAnimation(.easeOut(duration: 0.2)) { unlockedFullConsole = true } }
+                        .buttonStyle(.plain)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .frame(maxWidth: .infinity, minHeight: 32)
+                        .accessibilityLabel("Show the full console: custom sets, Form Check, previous exercise")
+                } else {
                 HStack(spacing: 8) {
                     Button("More") {
                         onOpenCustomRepLogger()
@@ -2905,6 +2951,7 @@ private struct ActiveWorkoutTrackerCard: View {
 
                     Button("Next", action: onNext)
                         .buttonStyle(SecondaryCTAButtonStyle())
+                }
                 }
                 // Logged sets live BELOW the controls (UX test
                 // 2026-09-30): each row used to push Log Set down a
@@ -5572,9 +5619,16 @@ private struct WorkoutRestControlBar: View {
                     .contentTransition(.numericText(countsDown: true))
             }
 
+            // The exercise's own prescribed rest leads the row, labelled
+            // (2026-10-10); the generic presets follow. Deduped, five max.
+            let presets: [Int] = {
+                var list = [defaultSeconds]
+                for p in [30, 60, 90, 120, 180] where !list.contains(p) { list.append(p) }
+                return Array(list.prefix(5)).sorted()
+            }()
             HStack(spacing: 8) {
-                ForEach([30, 60, 120, 180], id: \.self) { preset in
-                    Button("\(preset)s") {
+                ForEach(presets, id: \.self) { preset in
+                    Button(preset == defaultSeconds ? "\(preset)s · plan" : "\(preset)s") {
                         seconds = preset
                         // A mid-countdown change moves the lock-screen timer too.
                         if isRunning {

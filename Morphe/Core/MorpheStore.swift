@@ -7827,6 +7827,20 @@ final class MorpheAppStore {
         return last.weight
     }
 
+    /// The suggestion as a one-tap chip (2026-10-10): the bumped (or
+    /// deloaded) working weight when it differs from last time, with a
+    /// label that says which way and why. Nil = nothing to pre-fill.
+    func progressionChip(for exercise: WorkoutExercise) -> (label: String, weight: Double)? {
+        guard let last = lastLoggedTopWeight(forExerciseNamed: exercise.name),
+              last.unit == weightUnit, last.weight > 0,
+              let suggested = suggestedWorkingWeight(for: exercise),
+              abs(suggested - last.weight) >= 0.01 else { return nil }
+        if suggested > last.weight {
+            return ("Last time +\(weightUnit.format(suggested - last.weight)) → \(weightUnit.format(suggested))", suggested)
+        }
+        return ("Deload → \(weightUnit.format(suggested))", suggested)
+    }
+
     /// A short, honest note for the tracker citing the real signal (session
     /// rating or top-set RPE) behind the suggestion; nil when there's nothing
     /// to say.
