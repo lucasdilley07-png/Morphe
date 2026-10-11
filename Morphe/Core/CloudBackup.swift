@@ -715,6 +715,10 @@ protocol FeedSyncing: AnyObject {
     /// Posts newer than `date` (presence window) — independent of the
     /// paginated feed so "Trained Today" can't shrink with page size.
     func fetchSince(date: Date, limit: Int) async -> [FeedPost]?
+    /// Private/public switch (2026-10-10): re-stamps `authorPrivate` on the
+    /// author's own posts so the feed filter follows the live setting.
+    /// Returns how many posts were touched; nil when the query failed.
+    func setAuthorPrivate(uid: String, isPrivate: Bool) async -> Int?
     /// Writes this uid's single reaction doc with `type` ("heart"/"fire"/
     /// "power"/"clap"), or removes it when type is nil. Still one doc per
     /// uid, so counts stay honest whatever the type.
@@ -760,6 +764,8 @@ protocol FeedSyncing: AnyObject {
 
 /// Defaults so stubs and previews compile; Firebase overrides them.
 extension FeedSyncing {
+    /// Default for stubs: nothing to re-stamp.
+    func setAuthorPrivate(uid: String, isPrivate: Bool) async -> Int? { nil }
     func sendConnectRequest(_ request: ConnectRequest) async -> Bool { false }
     func resendConnectRequest(id: String) async -> Bool { false }
     func updateConnectRequest(id: String, status: String) async -> Bool { false }
@@ -770,6 +776,7 @@ final class NoOpFeedService: FeedSyncing {
     func publish(post: FeedPost) async -> Bool { false }
     func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]? { nil }
     func fetchSince(date: Date, limit: Int) async -> [FeedPost]? { nil }
+    func setAuthorPrivate(uid: String, isPrivate: Bool) async -> Int? { nil }
     func react(postId: String, uid: String, type: String?) {}
     func fetchReactionCounts(postIds: [String]) async -> [String: Int] { [:] }
     func fetchMyReactions(uid: String, postIds: [String]) async -> [String: String]? { nil }
@@ -821,6 +828,7 @@ final class FirebaseFeedService: FeedSyncing {
         if !post.prNames.isEmpty { data["prNames"] = Array(post.prNames.prefix(3)) }
         if !post.authorAccent.isEmpty { data["authorAccent"] = String(post.authorAccent.prefix(24)) }
         if !post.authorHeadline.isEmpty { data["authorHeadline"] = String(post.authorHeadline.prefix(80)) }
+        if post.authorPrivate { data["authorPrivate"] = true }
         // Mirror of the rules cap (90k chars). Clamping here would corrupt
         // the JPEG — an over-budget image is the encoder's bug to fix, so
         // it's dropped whole rather than truncated into garbage.
@@ -841,6 +849,22 @@ final class FirebaseFeedService: FeedSyncing {
             CloudWriteDiagnostics.note(error)
             return false
         }
+    }
+
+    func setAuthorPrivate(uid: String, isPrivate: Bool) async -> Int? {
+        guard let snapshot = try? await posts
+            .whereField("authorUid", isEqualTo: uid)
+            .limit(to: 300)
+            .getDocuments()
+        else { return nil }
+        let batch = db.batch()
+        var touched = 0
+        for document in snapshot.documents where (document.data()["authorPrivate"] as? Bool ?? false) != isPrivate {
+            batch.updateData(["authorPrivate": isPrivate], forDocument: document.reference)
+            touched += 1
+        }
+        if touched > 0 { try? await batch.commit() }
+        return touched
     }
 
     func fetchSince(date: Date, limit: Int) async -> [FeedPost]? {
@@ -1135,6 +1159,7 @@ final class FirebaseFeedService: FeedSyncing {
             prNames: data["prNames"] as? [String] ?? [],
             authorAccent: data["authorAccent"] as? String ?? "",
             authorHeadline: data["authorHeadline"] as? String ?? "",
+            authorPrivate: data["authorPrivate"] as? Bool ?? false,
             imageB64: data["imageB64"] as? String ?? ""
         )
     }

@@ -5793,8 +5793,8 @@ final class IdentityAndTermsTests: XCTestCase {
             if let previous { taken.remove(previous) }
             return .claimed
         }
-        func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]? {
-            taken.filter { $0.hasPrefix(prefix) }.sorted().prefix(limit).map { ($0, "uid-\($0)") }
+        func search(prefix: String, limit: Int) async -> [(username: String, uid: String, isPrivate: Bool)]? {
+            taken.filter { $0.hasPrefix(prefix) }.sorted().prefix(limit).map { ($0, "uid-\($0)", false) }
         }
         func release(_ username: String, for uid: String) async {
             taken.remove(username)
@@ -6093,8 +6093,8 @@ final class SocialFeedTests: XCTestCase {
         var entries: [(username: String, uid: String)] = []
         func isAvailable(_ username: String, for uid: String) async -> Bool { true }
         func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult { .claimed }
-        func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]? {
-            entries.filter { $0.username.hasPrefix(prefix) }
+        func search(prefix: String, limit: Int) async -> [(username: String, uid: String, isPrivate: Bool)]? {
+            entries.filter { $0.username.hasPrefix(prefix) }.map { ($0.username, $0.uid, false) }
         }
         func release(_ username: String, for uid: String) async {}
     }

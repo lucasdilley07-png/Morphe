@@ -53,17 +53,21 @@ protocol UsernameDirectoryService: AnyObject {
     /// Prefix search over the directory for user discovery — (username, uid)
     /// pairs, name-ordered. Empty for an empty prefix or a genuine no-match;
     /// nil when the query itself failed (offline), so callers can be honest.
-    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]?
+    func search(prefix: String, limit: Int) async -> [(username: String, uid: String, isPrivate: Bool)]?
     /// Releases a claim on account deletion so the name frees up. Rules
     /// enforce owner-only; a mismatched uid write is simply denied.
     func release(_ username: String, for uid: String) async
+    /// Marks the directory entry private/public (2026-10-10) so Quick Add
+    /// and search can leave private members out for strangers.
+    func setPrivate(_ username: String, for uid: String, isPrivate: Bool) async
     /// Up to `limit` members, name-ordered — Quick Add's "people on
     /// Morphe" (the directory is the only public list of accounts).
-    func list(limit: Int) async -> [(username: String, uid: String)]?
+    func list(limit: Int) async -> [(username: String, uid: String, isPrivate: Bool)]?
 }
 
 extension UsernameDirectoryService {
-    func list(limit: Int) async -> [(username: String, uid: String)]? { [] }
+    func list(limit: Int) async -> [(username: String, uid: String, isPrivate: Bool)]? { [] }
+    func setPrivate(_ username: String, for uid: String, isPrivate: Bool) async {}
 }
 
 /// Offline default for tests/previews: everything is available and every
@@ -72,7 +76,7 @@ final class NoOpUsernameDirectory: UsernameDirectoryService {
     func isAvailable(_ username: String, for uid: String) async -> Bool { true }
     func claim(_ username: String, for uid: String, releasing previous: String?) async -> UsernameClaimResult { .claimed }
     // NoOp is 'accounts are off', not 'offline' — an empty definitive answer.
-    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]? { [] }
+    func search(prefix: String, limit: Int) async -> [(username: String, uid: String, isPrivate: Bool)]? { [] }
     func release(_ username: String, for uid: String) async {}
 }
 
@@ -92,7 +96,7 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
     /// nil = the query FAILED (offline) — distinct from an empty answer
     /// (audit 13, P2): "no accounts match" was a lie with no network, and
     /// the referral consumer needs the same distinction to keep retrying.
-    func list(limit: Int) async -> [(username: String, uid: String)]? {
+    func list(limit: Int) async -> [(username: String, uid: String, isPrivate: Bool)]? {
         // Newest members first (claimedAt is written by every claim) — an
         // alphabetical first-50 would have hidden everyone past "D".
         guard let snapshot = try? await db.collection("usernames")
@@ -102,11 +106,11 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
         else { return nil }
         return snapshot.documents.compactMap { document in
             guard let uid = document.data()["uid"] as? String else { return nil }
-            return (username: document.documentID, uid: uid)
+            return (username: document.documentID, uid: uid, isPrivate: document.data()["private"] as? Bool ?? false)
         }
     }
 
-    func search(prefix: String, limit: Int) async -> [(username: String, uid: String)]? {
+    func search(prefix: String, limit: Int) async -> [(username: String, uid: String, isPrivate: Bool)]? {
         let clean = UsernameRules.normalize(prefix)
         guard !clean.isEmpty else { return [] }
         // Doc-id range scan: the doc id IS the lowercased username, so
@@ -119,8 +123,15 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
         else { return nil }
         return snapshot.documents.compactMap { document in
             guard let uid = document.data()["uid"] as? String else { return nil }
-            return (username: document.documentID, uid: uid)
+            return (username: document.documentID, uid: uid, isPrivate: document.data()["private"] as? Bool ?? false)
         }
+    }
+
+    func setPrivate(_ username: String, for uid: String, isPrivate: Bool) async {
+        let clean = UsernameRules.normalize(username)
+        guard !clean.isEmpty else { return }
+        // Owner-only update is enforced by the rules (uid must match).
+        try? await nameDoc(clean).setData(["private": isPrivate], merge: true)
     }
 
     func release(_ username: String, for uid: String) async {

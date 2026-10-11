@@ -3058,6 +3058,9 @@ struct FeedPost: Identifiable, Hashable {
     /// facts (sport focus, live workout streak) — "Strength · 12-day
     /// streak". Derived, never typed, so it can't claim what wasn't logged.
     var authorHeadline: String = ""
+    /// Written while the author's account was private — only their
+    /// connections render it (2026-10-10).
+    var authorPrivate: Bool = false
     /// Base64 JPEG attached from the capture camera ("" = text post).
     /// Kept small on purpose — the rules cap it at 90k characters (~64KB)
     /// so photo posts stay inside Spark's document and egress budgets.
@@ -3213,6 +3216,9 @@ struct MorpheInboxItem: Identifiable, Hashable, Codable {
 /// (sourcing law). Newest first. Delivered once per entry.
 enum MorpheNews {
     static let entries: [MorpheInboxItem] = [
+        MorpheInboxItem(id: "news-2026-10-10-private", kind: .news, date: day(2026, 10, 10),
+                        title: "Private or public — your call",
+                        body: "Profile → Who can see you now has a private switch. Private means only your connections see your posts and can message you; on boards and challenges you keep your place and score, shown as \u{201C}Private athlete\u{201D}. Nothing is deleted or recomputed when you switch either way."),
         MorpheInboxItem(id: "news-2026-10-10-chat", kind: .news, date: day(2026, 10, 10),
                         title: "This chat",
                         body: "Every account has this conversation with me now. Each Monday I send your week in review from your own logs. I'll tell you here when something new ships. And you can ask me anything, any time."),
@@ -3262,6 +3268,8 @@ struct PersonCard: Identifiable, Hashable {
     var accentId: String
     var verified: Bool
     var isCoach: Bool
+    /// Private account: only connections see posts, boards show no name.
+    var isPrivate: Bool = false
     var id: String { uid }
 
     var displayName: String { name.isEmpty ? (username.isEmpty ? "Member" : "@\(username)") : name }
@@ -3271,6 +3279,7 @@ struct PersonCard: Identifiable, Hashable {
 struct AthleteSearchResult: Identifiable, Hashable {
     var username: String
     var uid: String
+    var isPrivate: Bool = false
 
     var id: String { uid }
 }
@@ -3519,8 +3528,13 @@ struct WeeklyLeaderboardEntry: Identifiable, Hashable, Codable {
     /// Workouts logged this ISO week.
     var workouts: Int
     var updatedAt: Date?
+    /// Private account (2026-10-10): the row keeps its place and score;
+    /// other members see "Private athlete" instead of the name. Optional
+    /// so cached rows from before the flag still decode.
+    var privateFlag: Bool? = nil
 
     var id: String { uid }
+    var isPrivate: Bool { privateFlag ?? false }
 }
 
 /// What a challenge counts. Raw values are the Firestore wire strings.
@@ -3548,8 +3562,10 @@ struct ChallengeMember: Identifiable, Hashable, Codable {
     var verified: Bool
     var score: Int
     var updatedAt: Date?
+    var privateFlag: Bool? = nil
 
     var id: String { uid }
+    var isPrivate: Bool { privateFlag ?? false }
 }
 
 /// A code-joinable challenge — challenges/{code} plus its members

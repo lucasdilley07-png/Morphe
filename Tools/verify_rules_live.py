@@ -185,6 +185,22 @@ try:
                         "verified": b(False), "text": s("accent test"),
                         "authorAccent": s("Electric Blue"),
                         "authorHeadline": s("Strength · 12-day streak")}, "lastPostAt"))
+    print("  … waiting 46 s for A's post window (private flag)")
+    time.sleep(46)
+    check("A posts with the private flag", True,
+          paced_create(A, f"posts/{post_id}-p",
+                       {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                        "verified": b(False), "text": s("private test"),
+                        "authorPrivate": b(True)}, "lastPostAt"))
+    check("A flips only the private flag on own post", True,
+          fs_call(A, "PATCH", f"posts/{post_id}-p",
+                  {"fields": {"authorPrivate": b(False)}}, "?updateMask.fieldPaths=authorPrivate"))
+    check("A cannot edit the text of a published post", False,
+          fs_call(A, "PATCH", f"posts/{post_id}-p",
+                  {"fields": {"text": s("edited")}}, "?updateMask.fieldPaths=text"))
+    check("B cannot flip A's private flag", False,
+          fs_call(B, "PATCH", f"posts/{post_id}-p",
+                  {"fields": {"authorPrivate": b(True)}}, "?updateMask.fieldPaths=authorPrivate"))
     check("A posts an oversized headline", False,
           fs_call(A, "PATCH", f"posts/{post_id}-h",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
@@ -521,6 +537,7 @@ finally:
         (B, f"posts/{post_id}/reactions/{B['uid']}"),
         (A, f"posts/{post_id}"),
         (A, f"posts/{post_id}-a"),
+        (A, f"posts/{post_id}-p"),
         (A, f"posts/{post_id}-i"),
         # Claimed docs are undeletable by design (the athlete's history) —
         # this 403s and leaves one ~1KB doc per run. Known, accepted.

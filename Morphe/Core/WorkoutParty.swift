@@ -516,7 +516,7 @@ final class FirebaseLeaderboardService: LeaderboardSyncing {
     func postBoardScore(code: String, weekKey: String, entry: WeeklyLeaderboardEntry) {
         boardEntries(code, weekKey).document(entry.uid).setData([
             "uid": entry.uid, "name": entry.name, "verified": entry.verified,
-            "score": entry.score, "workouts": entry.workouts,
+            "score": entry.score, "workouts": entry.workouts, "private": entry.isPrivate,
             "updatedAt": FieldValue.serverTimestamp()
         ], merge: true)
     }
@@ -618,6 +618,7 @@ final class FirebaseLeaderboardService: LeaderboardSyncing {
             "verified": entry.verified,
             "score": entry.score,
             "workouts": entry.workouts,
+            "private": entry.isPrivate,
             "updatedAt": FieldValue.serverTimestamp()
         ], merge: true)
     }
@@ -683,6 +684,7 @@ final class FirebaseLeaderboardService: LeaderboardSyncing {
             "name": member.name,
             "verified": member.verified,
             "score": member.score,
+            "private": member.isPrivate,
             "updatedAt": FieldValue.serverTimestamp()
         ], merge: true)
     }
@@ -712,7 +714,8 @@ final class FirebaseLeaderboardService: LeaderboardSyncing {
             verified: data["verified"] as? Bool ?? false,
             score: data["score"] as? Int ?? 0,
             workouts: data["workouts"] as? Int ?? 0,
-            updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue()
+            updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue(),
+            privateFlag: data["private"] as? Bool
         )
     }
 
@@ -723,7 +726,8 @@ final class FirebaseLeaderboardService: LeaderboardSyncing {
             name: name,
             verified: data["verified"] as? Bool ?? false,
             score: data["score"] as? Int ?? 0,
-            updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue()
+            updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue(),
+            privateFlag: data["private"] as? Bool
         )
     }
 

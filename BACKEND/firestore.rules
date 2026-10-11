@@ -739,7 +739,11 @@ service cloud.firestore {
              ['authorUid', 'authorName', 'verified', 'text', 'workoutName',
               'repostOfId', 'repostOfAuthor', 'createdAt',
               'durationMinutes', 'setCount', 'exerciseCount', 'prNames',
-              'authorAccent', 'authorHeadline', 'imageB64'])
+              'authorAccent', 'authorHeadline', 'imageB64', 'authorPrivate'])
+        // Private account (2026-10-10): a bool the author's clients read
+        // to show the post only to connections.
+        && (!('authorPrivate' in request.resource.data)
+            || request.resource.data.authorPrivate is bool)
         // Capture-camera photo (base64 JPEG). 90k chars ≈ 64KB — big enough
         // for a 720px feed image, small enough that a 20-post page stays
         // within Spark's egress budget.
@@ -795,8 +799,13 @@ service cloud.firestore {
         // the same batch as the post.
         && humanPaced('lastPostAt', 45);
 
-      // Posts are immutable — published means published.
-      allow update: if false;
+      // Posts are immutable — published means published. The one
+      // exception is the author's own private/public flag (2026-10-10):
+      // flipping the account re-stamps old posts, nothing else changes.
+      allow update: if isSignedIn()
+        && request.auth.uid == resource.data.authorUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authorPrivate'])
+        && request.resource.data.authorPrivate is bool;
       allow delete: if isSignedIn() && request.auth.uid == resource.data.authorUid;
 
       // Reactions: one doc per user per post ({ value: true, type?,

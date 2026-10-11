@@ -1753,7 +1753,7 @@ final class MorpheAppStore {
                     threadReadKey, activitySeenKey, storySeenKey,
                     lastKnownStreakKey, comebackPendingKey, foodChecksKey, recentFoodsKey,
                     savedExercisesKey, savedLessonsKey, savedDietPlansKey, hiddenPeopleKey, knownNamesKey,
-                    morpheInboxKey, morpheInboxReadKey, deliveredNewsKey, boardsKey, championKey,
+                    morpheInboxKey, morpheInboxReadKey, deliveredNewsKey, boardsKey, championKey, privateAccountKey,
                     dailyStreakCountKey, dailyStreakLastDayKey, dailyStreakBestKey, dailyStreakFreezeDayKey,
                     // An invite link opened before sign-out must not credit
                     // the next account's recruiter (audit 2026-10-10, P2).
@@ -4828,6 +4828,7 @@ final class MorpheAppStore {
             "morpheInboxNews": deliveredNewsKey,
             "boards": boardsKey,
             "champion": championKey,
+            "privateAccount": privateAccountKey,
             "dailyStreakCount": dailyStreakCountKey,
             "dailyStreakLastDay": dailyStreakLastDayKey,
             "dailyStreakBest": dailyStreakBestKey,
@@ -5300,7 +5301,7 @@ final class MorpheAppStore {
         guard let me = competitionSelf, !myBoards.isEmpty else { return }
         let totals = competitionTotals(in: currentBoardWeekInterval)
         let entry = WeeklyLeaderboardEntry(uid: me.uid, name: me.name, verified: isVerifiedUser,
-                                           score: totals.sets, workouts: totals.workouts, updatedAt: nil)
+                                           score: totals.sets, workouts: totals.workouts, updatedAt: nil, privateFlag: isPrivateAccount)
         for board in myBoards {
             leaderboardService.postBoardScore(code: board.code, weekKey: LeaderboardWeek.key(), entry: entry)
         }
@@ -5502,7 +5503,7 @@ final class MorpheAppStore {
                 score: totals.sets,
                 workouts: totals.workouts,
                 updatedAt: nil
-            )
+            , privateFlag: isPrivateAccount)
         )
     }
 
@@ -5520,7 +5521,7 @@ final class MorpheAppStore {
             verified: isVerifiedUser,
             score: challenge.metric == .sets ? totals.sets : totals.workouts,
             updatedAt: nil
-        )
+        , privateFlag: isPrivateAccount)
     }
 
     /// Creates a code-joinable challenge (host is member #1) and returns it —
@@ -9958,10 +9959,11 @@ final class MorpheAppStore {
     var knownPeople: [PersonCard] {
         var cards: [String: PersonCard] = [:]
         for hit in directoryPeople {
-            cards[hit.uid] = PersonCard(uid: hit.uid, name: "", username: hit.username, headline: "", accentId: "", verified: false, isCoach: false)
+            cards[hit.uid] = PersonCard(uid: hit.uid, name: "", username: hit.username, headline: "", accentId: "", verified: false, isCoach: false, isPrivate: hit.isPrivate)
         }
         for post in feedPosts {
             var card = cards[post.authorUid] ?? PersonCard(uid: post.authorUid, name: "", username: "", headline: "", accentId: "", verified: false, isCoach: false)
+            card.isPrivate = card.isPrivate || post.authorPrivate
             if card.name.isEmpty { card.name = post.authorName }
             if card.headline.isEmpty { card.headline = post.authorHeadline }
             if card.accentId.isEmpty { card.accentId = post.authorAccent }
@@ -10029,6 +10031,7 @@ final class MorpheAppStore {
         return knownPeople.filter { card in
             card.uid != me && !blockedUids.contains(card.uid) && !hiddenPeopleUids.contains(card.uid)
                 && connectionState(with: card.uid) == .none
+                && !card.isPrivate   // private members are found by code, invite or a mutual, not browsed
         }
     }
 
@@ -10038,7 +10041,7 @@ final class MorpheAppStore {
         async let people = usernameDirectory.list(limit: 50)
         async let requests = feedService.fetchConnectRequests(uid: uid)
         let (hits, live) = await (people, requests)
-        if let hits { directoryPeople = hits.map { AthleteSearchResult(username: $0.username, uid: $0.uid) } }
+        if let hits { directoryPeople = hits.map { AthleteSearchResult(username: $0.username, uid: $0.uid, isPrivate: $0.isPrivate) } }
         if let live { connectRequests = live }
         quickAddFetchFailed = hits == nil && live == nil
         if feedPosts.isEmpty { await refreshFeed() }
@@ -13076,6 +13079,33 @@ final class MorpheAppStore {
     var championUnlocked: Bool {
         get { UserDefaults.standard.bool(forKey: championKey) }
     }
+    /// Private account (Lucas 2026-10-10): the data never changes — logs,
+    /// boards, ranks and placings stay — only whether strangers see it.
+    /// Connections keep seeing posts; boards show the row as "Private
+    /// athlete"; Quick Add and search skip the account for non-connections.
+    private var privateAccountKey: String { "morphe.privateAccount.\(clientProfile.id.uuidString)" }
+    var isPrivateAccount: Bool { UserDefaults.standard.bool(forKey: privateAccountKey) }
+    func setPrivateAccount(_ isPrivate: Bool) {
+        guard isPrivate != isPrivateAccount else { return }
+        UserDefaults.standard.set(isPrivate, forKey: privateAccountKey)
+        mirrorExtrasToCloud()
+        let handle = profileShowcase.username
+        Task {
+            if !handle.isEmpty, let uid = authUser?.id {
+                await usernameDirectory.setPrivate(handle, for: uid, isPrivate: isPrivate)
+                _ = await feedService.setAuthorPrivate(uid: uid, isPrivate: isPrivate)
+            }
+            publishCompetitionScores()
+        }
+        showToast(isPrivate
+            ? "Private: only your connections see your posts; boards show you as a private athlete. Your data and placings stay."
+            : "Public: your posts, name and boards are visible to members again.")
+    }
+    /// A post, board row or member card this account may show.
+    func visibleToMe(authorUid: String, isPrivate: Bool) -> Bool {
+        !isPrivate || authorUid == authUser?.id || connectedUids.contains(authorUid)
+    }
+
     func noteChallengeCompletedIfNeeded() {
         guard !championUnlocked, let me = authUser?.id,
               activeChallenges.contains(where: { $0.isExpired && $0.members.contains { $0.uid == me } }) else { return }
@@ -14748,8 +14778,17 @@ final class MorpheAppStore {
         return ranked
     }
 
+    /// Every post written while the account is private carries the flag
+    /// (the rules allow the author to flip it later).
+    private func stampedForPrivacy(_ post: FeedPost) -> FeedPost {
+        var stamped = post
+        stamped.authorPrivate = isPrivateAccount
+        return stamped
+    }
+
     private func renderableFeedPost(_ post: FeedPost) -> Bool {
         !blockedUids.contains(post.authorUid)
+            && visibleToMe(authorUid: post.authorUid, isPrivate: post.authorPrivate)
             && !ContentModeration.containsBlockedTerm(post.text)
             && !ContentModeration.containsBlockedTerm(post.workoutName)
     }
@@ -14898,6 +14937,7 @@ final class MorpheAppStore {
         athleteSearchFailed = false
         athleteSearchResults = hits
             .filter { $0.uid != authUser?.id && !blockedUids.contains($0.uid) }
+            .filter { visibleToMe(authorUid: $0.uid, isPrivate: $0.isPrivate) }
             .map { AthleteSearchResult(username: $0.username, uid: $0.uid) }
     }
 
@@ -15022,7 +15062,7 @@ final class MorpheAppStore {
             authorHeadline: feedAuthorHeadline,
             imageB64: imageB64
         )
-        guard await feedService.publish(post: post) else { return false }
+        guard await feedService.publish(post: stampedForPrivacy(post)) else { return false }
         contentPacer.record(.post, text: paceKey)
         feedPosts.insert(post, at: 0)
         feedReactionCounts[post.id] = 0

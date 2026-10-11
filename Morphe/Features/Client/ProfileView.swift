@@ -1913,6 +1913,22 @@ struct ProfileView: View {
             settingsGroupLabel("Privacy, data and support")
 
             settingsSection("Who can see you", keywords: Self.whoCanSeeYouKeywords) {
+                    // Private / public (Lucas 2026-10-10). Nothing is deleted
+                    // or recomputed — logs, boards, ranks and placings stay;
+                    // the switch only changes who can see them.
+                    preferenceToggleRow(
+                        title: store.isPrivateAccount ? "Private account" : "Public account",
+                        caption: store.isPrivateAccount
+                            ? "Only your connections see your posts and can message you. On boards and challenges you keep your place and score, shown as \u{201C}Private athlete\u{201D}. Quick Add and search leave you out; people still reach you by invite or code."
+                            : "Members can find you in Quick Add and search, see your posts, and see your name on boards. Switch to private any time — your data and placings stay exactly as they are.",
+                        isOn: Binding(
+                            get: { store.isPrivateAccount },
+                            set: { store.setPrivateAccount($0) }
+                        )
+                    )
+
+                    Divider().overlay(MorpheTheme.strokeSubtle)
+
                     // The board publishes your real name — and scores post on
                     // every log in EITHER role, so the off-switch renders for
                     // both (audit 5, P1-4: a coach could never leave).

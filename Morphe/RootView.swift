@@ -724,6 +724,12 @@ private extension View {
 private struct ClientPinnedHeader: View {
     @Environment(MorpheAppStore.self) private var store
 
+    private var headerInitial: String {
+        let name = store.clientProfile.name.isEmpty ? store.profileShowcase.displayName : store.clientProfile.name
+        let first = name.trimmingCharacters(in: .whitespaces).split(separator: " ").first.map(String.init) ?? ""
+        return first.isEmpty ? "M" : String(first.prefix(1)).uppercased()
+    }
+
     var body: some View {
         // Icons only — no name/handle strip. The avatar IS the profile
         // button; VoiceOver still gets the words.
@@ -731,17 +737,29 @@ private struct ClientPinnedHeader: View {
             Button {
                 store.openClientProfile()
             } label: {
-                MorpheAvatarView(avatar: store.profileShowcase.avatar, size: 40,
-                                 photoData: store.profilePhotoData)
-                    // The avatar tile's own fill is 6%-white — floating over
-                    // scrolling content it needs a truly opaque face, same
-                    // as the quick-add button.
-                    .background(
-                        RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
-                            .fill(MorpheTheme.ink)
-                    )
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+                // The user's photo, or the first letter of their first
+                // name (Lucas 2026-10-10) — no avatar art up here.
+                Group {
+                    if let data = store.profilePhotoData, let image = UIImage(data: data) {
+                        Image(uiImage: image).resizable().scaledToFill()
+                    } else {
+                        ZStack {
+                            Circle().fill(MorpheTheme.accent.opacity(0.22))
+                            Text(headerInitial)
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(MorpheTheme.accentText)
+                        }
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1))
+                .frame(width: 44, height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
+                        .fill(MorpheTheme.ink)
+                )
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Profile"))
@@ -3924,12 +3942,15 @@ struct PersonActionBar: View {
                         .foregroundStyle(MorpheTheme.accentText)
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                Button {
-                    Task {
-                        if await store.startDirectChat(with: card.uid, name: card.displayName) { onOpenedChat() }
-                    }
-                } label: { Label("Message", systemImage: "bubble.left.fill") }
-                    .buttonStyle(SecondaryCTAButtonStyle())
+                // A private account takes messages from connections only.
+                if !card.isPrivate || store.connectionState(with: card.uid) == .connected {
+                    Button {
+                        Task {
+                            if await store.startDirectChat(with: card.uid, name: card.displayName) { onOpenedChat() }
+                        }
+                    } label: { Label("Message", systemImage: "bubble.left.fill") }
+                        .buttonStyle(SecondaryCTAButtonStyle())
+                }
             }
             HStack(spacing: 8) {
                 Button(store.followedUids.contains(card.uid) ? "Following" : "Follow") {
@@ -4001,6 +4022,18 @@ struct PersonAccountSheet: View {
 
                 PersonActionBar(card: card, onOpenedChat: { dismiss() })
 
+                if card.isPrivate, store.connectionState(with: card.uid) != .connected {
+                    GlassCard(.quiet) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "lock.fill")
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            Text("Private account. Connect to see what \(card.displayName) posts.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
                 GlassCard(.quiet) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("WHAT THEY'VE POSTED")
@@ -4029,6 +4062,7 @@ struct PersonAccountSheet: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 }
 
                 HStack(spacing: 16) {
@@ -4319,6 +4353,7 @@ private struct WelcomeExperienceView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         rule("Live sessions", "Train → Train Together → share the code.")
                         rule("The board", "Network → Board, computed from logged sets, nothing else.")
+                        rule("Private or public", "Profile → Who can see you. Switch any time — your data, boards and placings stay; only who sees them changes.")
                         rule("Calendar", "Network → Calendar: sessions and appointments with the people you train with.")
                     }
                 }
@@ -4341,6 +4376,15 @@ private struct WelcomeExperienceView: View {
                 kicker("Set")
                 title("You're set.")
                 body("The rest of Morphe grows from the work you log: streaks with honest outs, PRs from real sets, ranks Rookie to General with a color for each. Replay this tour anytime from Profile, under your level.")
+                // The send-off (Lucas 2026-10-10): centered between the
+                // copy and Start training.
+                Text("Time to Morphe")
+                    .font(.largeTitle.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                    .featureGlimmer(period: 4)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 32)
+                    .accessibilityAddTraits(.isHeader)
             }
         }
     }

@@ -2372,7 +2372,7 @@ struct WeeklyBoardCard: View {
                 .font(.caption.weight(.bold))
                 .foregroundStyle(isMe ? MorpheTheme.accentText : MorpheTheme.textMuted)
                 .frame(width: 22, alignment: .leading)
-            Text(isMe ? "\(entry.name) (you)" : entry.name)
+            Text(isMe ? "\(entry.name) (you)" : (entry.isPrivate && !store.connectedUids.contains(entry.uid) ? "Private athlete" : entry.name))
                 .font(.caption.weight(isMe ? .bold : .semibold))
                 .foregroundStyle(isMe ? MorpheTheme.accentText : MorpheTheme.textPrimary)
                 .lineLimit(1)
