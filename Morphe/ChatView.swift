@@ -4136,6 +4136,7 @@ struct MorpheThreadRow: View {
                     Text("Morphe")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textPrimary)
+                        .featureGlimmer()
                     Text("GUARDIAN")
                         .font(MorpheTheme.microLabel(9))
                         .tracking(1.2)

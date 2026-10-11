@@ -3385,11 +3385,9 @@ private struct UniversalSearchSheet: View {
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .frame(maxHeight: .infinity)
                 } else {
-                    // The empty page: nothing to filter yet.
+                    // The empty page: nothing to filter yet. No icon — the
+                    // hint sits right under the bar (Lucas 2026-10-10).
                     VStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textMuted)
                         Text(normalizedQuery.isEmpty
                              ? "Type a name, @username, workout or exercise, then search."
                              : "Press search to see accounts, workouts and exercises for \u{201C}\(query.trimmingCharacters(in: .whitespacesAndNewlines))\u{201D}.")
@@ -3399,7 +3397,7 @@ private struct UniversalSearchSheet: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 4)
+                    .padding(.top, 0)
                     Spacer(minLength: 0)
                 }
         }

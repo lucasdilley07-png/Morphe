@@ -2300,6 +2300,7 @@ struct FoodCheckCard: View {
                     Text("Check a Food")
                         .font(.headline)
                         .foregroundStyle(MorpheTheme.textPrimary)
+                        .featureGlimmer()
                     Text(MorpheIntelligence.apiKey == nil
                          ? "Scan a barcode for the label facts: origin, processing, additives, GMO read. Add your own key in Profile → Morphe Intelligence and Morphe reads a meal from a photo and searches the web for the supply chain."
                          : "Scan a barcode or photograph a meal. Morphe reads the label, searches the web for the brand's supply chain, and reports with sources. The photo leaves the phone only for this check.")

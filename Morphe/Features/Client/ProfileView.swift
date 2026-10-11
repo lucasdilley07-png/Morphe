@@ -278,6 +278,7 @@ struct ProfileView: View {
         isEditingInjuries = false
         isEditingBio = false
         isEditingTargets = false
+        editingDetails = false
         weightDraft = ""
         goalWeightDraft = ""
         ageDraft = ""
@@ -319,8 +320,17 @@ struct ProfileView: View {
                         .foregroundStyle(MorpheTheme.textPrimary)
                     Spacer()
                     Button(editingDetails ? "Done" : "Edit") {
+                        if editingDetails {
+                            saveTargets()
+                        } else {
+                            physicalTargetDraft = store.clientProfile.physicalGoalTarget
+                            weightTargetDraft = store.clientProfile.weightGoalTarget
+                            deadlineTargetDraft = store.clientProfile.goalDeadline
+                            isEditingTargets = true
+                        }
                         withAnimation(.easeInOut(duration: 0.2)) { editingDetails.toggle() }
                     }
+                    .accessibilityLabel(editingDetails ? "Done editing details and milestones" : "Edit details and milestones")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(MorpheTheme.accentText)
                     .frame(minWidth: 44, minHeight: 32)
@@ -537,7 +547,13 @@ struct ProfileView: View {
                     }
                 }
                 }
+
+                // Your Milestones share the box (Lucas 2026-10-10): bold
+                // title under the details, same left edge, one Edit.
+                Divider().overlay(MorpheTheme.strokeSubtle)
+                milestonesBody
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -564,49 +580,26 @@ struct ProfileView: View {
         )
     }
 
-    /// The 30/60/90-day targets captured in onboarding, editable in place.
-    /// Drafts ride the sheet's save/discard guard so a swipe-down can't eat
-    /// half-typed goals.
-    private var targetsCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Your Milestones")
-                    .font(.headline)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+    /// The 30/60/90-day targets captured in onboarding. Edit mode rides
+    /// the Details card's Edit/Done; drafts ride the sheet's save/discard
+    /// guard so a swipe-down can't eat half-typed goals.
+    private var milestonesBody: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Your Milestones")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(MorpheTheme.textPrimary)
 
-                if isEditingTargets {
-                    VStack(alignment: .leading, spacing: 10) {
-                        targetField("30-day", placeholder: "Your 30-day milestone", text: $physicalTargetDraft)
-                        targetField("60-day", placeholder: "Your 60-day milestone", text: $weightTargetDraft)
-                        targetField("90-day", placeholder: "Your 90-day milestone", text: $deadlineTargetDraft)
-                        HStack(spacing: 12) {
-                            Button("Save") { saveTargets() }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.accentText)
-                                .accessibilityLabel("Save milestones")
-                            Button("Cancel") { isEditingTargets = false }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(MorpheTheme.textMuted)
-                                .accessibilityLabel("Cancel milestone edits")
-                            Spacer()
-                        }
-                    }
-                } else {
-                    targetRow("30-day", value: store.clientProfile.physicalGoalTarget)
-                    targetRow("60-day", value: store.clientProfile.weightGoalTarget)
-                    targetRow("90-day", value: store.clientProfile.goalDeadline)
-                    Button("Edit Milestones") {
-                        physicalTargetDraft = store.clientProfile.physicalGoalTarget
-                        weightTargetDraft = store.clientProfile.weightGoalTarget
-                        deadlineTargetDraft = store.clientProfile.goalDeadline
-                        isEditingTargets = true
-                    }
-                    .buttonStyle(.plain)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(MorpheTheme.accentAlt)
-                }
+            if editingDetails {
+                targetField("30-day", placeholder: "Your 30-day milestone", text: $physicalTargetDraft)
+                targetField("60-day", placeholder: "Your 60-day milestone", text: $weightTargetDraft)
+                targetField("90-day", placeholder: "Your 90-day milestone", text: $deadlineTargetDraft)
+            } else {
+                targetRow("30-day", value: store.clientProfile.physicalGoalTarget)
+                targetRow("60-day", value: store.clientProfile.weightGoalTarget)
+                targetRow("90-day", value: store.clientProfile.goalDeadline)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func targetRow(_ label: String, value: String) -> some View {
@@ -892,6 +885,7 @@ struct ProfileView: View {
                                 Text(store.profilePhotoData == nil ? "Tap the circle to add one." : "Tap the circle to change it; hold to remove.")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textMuted)
+                                verificationStatusOrButton
                             }
                         }
                         Divider().overlay(MorpheTheme.strokeSubtle)
@@ -1180,14 +1174,13 @@ struct ProfileView: View {
         }
     }
 
-    /// The verification strip under the identity: ask → pending → badge.
-    /// Honest copy throughout — a human reviews; nothing is auto-granted.
+    /// The seal lives next to the photo (Lucas 2026-10-10): the Get
+    /// Verified button or the status line sits under "Tap the circle…";
+    /// the Verification card below holds only the steps.
     @ViewBuilder
-    private var verificationSection: some View {
-        Divider().overlay(MorpheTheme.strokeSubtle)
-
+    private var verificationStatusOrButton: some View {
         if store.isVerifiedUser {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Image(systemName: "checkmark.seal.fill")
                     .foregroundStyle(Color(red: 0.25, green: 0.56, blue: 0.96))
                 Text("Verified — reviewed by the Morphe team.")
@@ -1197,21 +1190,20 @@ struct ProfileView: View {
         } else {
             switch store.verificationRequestStatus {
             case .pending:
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Image(systemName: "hourglass")
                         .foregroundStyle(MorpheTheme.warning)
-                    Text("Verification under review — your badge appears once the Morphe team approves it.")
+                    Text("Verification under review.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
                 }
             case .none, .declined:
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     if store.verificationRequestStatus == .declined {
-                        Text("Your last request wasn't approved. You can try again with a clearer selfie.")
+                        Text("Not approved last time — try a clearer selfie.")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.warning)
                     }
-                    // Get Verified first; the steps fold under it (Lucas 2026-10-10).
                     Button {
                         // Live capture only — without a camera the system
                         // picker silently falls back to the photo library,
@@ -1227,25 +1219,27 @@ struct ProfileView: View {
                             Text(store.isSubmittingVerification ? "Sending…" : "Get Verified")
                         }
                         .font(.caption.weight(.semibold))
+                        .frame(minHeight: 32)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color(red: 0.25, green: 0.56, blue: 0.96))
                     .disabled(store.isSubmittingVerification)
-
-                    // How verification actually works: the steps, honestly
-                    // — a live selfie, a human review — shown in full on
-                    // the identity page (Lucas 2026-10-10: no drop-down).
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("How to get verified")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textPrimary)
-                        verificationStep(1, "Tap Get Verified and take a live selfie in the app — the camera only, no uploads from your library.")
-                        verificationStep(2, "Face clear and well lit, no sunglasses or mask. The photo is used only to confirm you are a real person and is seen only by the Morphe team.")
-                        verificationStep(3, "A human reviews it. Your profile shows \u{201C}under review\u{201D} until then.")
-                        verificationStep(4, "Approved: the blue check appears on your profile and your posts. Declined: take a clearer selfie and try again.")
-                    }
                 }
             }
+        }
+    }
+
+    /// How verification actually works: the steps, honestly — a live
+    /// selfie, a human review — in full, straight under the card title.
+    private var verificationSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("How to get verified")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(MorpheTheme.textPrimary)
+            verificationStep(1, "Tap Get Verified next to your photo and take a live selfie in the app — the camera only, no uploads from your library.")
+            verificationStep(2, "Face clear and well lit, no sunglasses or mask. The photo is used only to confirm you are a real person and is seen only by the Morphe team.")
+            verificationStep(3, "A human reviews it. Your profile shows \u{201C}under review\u{201D} until then.")
+            verificationStep(4, "Approved: the blue check appears on your profile and your posts. Declined: take a clearer selfie and try again.")
         }
     }
 
@@ -1287,11 +1281,17 @@ struct ProfileView: View {
         return resized.jpegData(compressionQuality: 0.75)
     }
 
-    private func preferenceToggleRow(title: String, caption: String, isOn: Binding<Bool>) -> some View {
+    private func preferenceToggleRow(title: String, caption: String, glimmer: Bool = false, isOn: Binding<Bool>) -> some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .foregroundStyle(MorpheTheme.textPrimary)
+                if glimmer {
+                    Text(title)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .featureGlimmer()
+                } else {
+                    Text(title)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                }
                 Text(caption)
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
@@ -1593,9 +1593,6 @@ struct ProfileView: View {
                     accountStat("Referrals", "\(store.referralCount)", "joined through you")
                     accountStat("Joined", joined.map { $0.formatted(.dateTime.month(.abbreviated).day().year()) } ?? "—", "member since")
                 }
-                Text("Name, @username, photo and bio: tap your profile box at the top.")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textMuted)
                 // Referral loop, recruiter side: the server-backed count of
                 // athletes who joined through this user's invite. The empty
                 // state names its unlock, per the house rule.
@@ -1626,9 +1623,8 @@ struct ProfileView: View {
 
                 Divider().overlay(MorpheTheme.strokeSubtle)
 
-                // Your Details and Your Milestones (Lucas 2026-10-10).
+                // Your Details + Your Milestones, one box (Lucas 2026-10-10).
                 detailsCard
-                targetsCard
             }
 
             // Identity customization (personalization phase 2): pick
@@ -1697,6 +1693,7 @@ struct ProfileView: View {
                     preferenceToggleRow(
                         title: "\u{201C}Hey Morphe\u{201D}",
                         caption: "Hands-free while the app is open: say \u{201C}Hey Morphe\u{201D} to navigate or ask anything, and Morphe answers out loud. Speech stays on this iPhone. It listens over your music too; music pauses only while Morphe is taking a request and comes back when it's done. Tap anywhere to end an exchange. Listening uses extra battery, and iOS doesn't allow it from the background or lock screen.",
+                        glimmer: true,
                         isOn: Binding(
                             get: { store.heyMorpheEnabled },
                             set: { store.setHeyMorphe(enabled: $0) }

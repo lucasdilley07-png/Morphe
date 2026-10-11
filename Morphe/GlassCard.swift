@@ -2863,3 +2863,66 @@ struct ImageShareSheet: UIViewControllerRepresentable {
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
+
+
+// MARK: - Feature glimmer (Lucas 2026-10-10)
+
+/// A sheen that sweeps across a headline so the core features — Hey
+/// Morphe, Form Check, Check a Food, Build Workout — read as the doors
+/// they are. One pass shortly after the view appears, then one every
+/// seven seconds while it stays on screen; the band is the rank accent
+/// lifted toward white, masked to the text itself. Reduce Motion gets
+/// the static accent-lit gradient instead of the sweep.
+struct FeatureGlimmer: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = -0.6
+    var period: TimeInterval = 7
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if reduceMotion {
+                    LinearGradient(
+                        colors: [MorpheTheme.textPrimary, MorpheTheme.accentText, MorpheTheme.textPrimary],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .mask(content)
+                } else {
+                    GeometryReader { geo in
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: MorpheTheme.accentText.opacity(0.55), location: 0.35),
+                                .init(color: Color.white.opacity(0.95), location: 0.5),
+                                .init(color: MorpheTheme.accentText.opacity(0.55), location: 0.65),
+                                .init(color: .clear, location: 1)
+                            ],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                        .frame(width: max(geo.size.width * 0.55, 40))
+                        .offset(x: phase * geo.size.width)
+                        .rotationEffect(.degrees(14))
+                        .blendMode(.plusLighter)
+                    }
+                    .mask(content)
+                    .allowsHitTesting(false)
+                }
+            }
+            .task {
+                guard !reduceMotion else { return }
+                try? await Task.sleep(for: .milliseconds(500))
+                while !Task.isCancelled {
+                    phase = -0.6
+                    withAnimation(.easeInOut(duration: 1.15)) { phase = 1.1 }
+                    try? await Task.sleep(for: .seconds(period))
+                }
+            }
+    }
+}
+
+extension View {
+    /// Marks a core-feature headline with the sweeping sheen.
+    func featureGlimmer(period: TimeInterval = 7) -> some View {
+        modifier(FeatureGlimmer(period: period))
+    }
+}

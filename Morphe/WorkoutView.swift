@@ -292,7 +292,8 @@ struct WorkoutView: View {
                     title: "Build Workout",
                     detail: MorpheIntelligence.apiKey == nil
                         ? "Build one yourself, or answer a few questions and Morphe builds it from the library."
-                        : "Build one yourself, or answer a few questions and Morphe AI builds it with you."
+                        : "Build one yourself, or answer a few questions and Morphe AI builds it with you.",
+                    glimmer: true
                 ) {
                     showBuildChooser = true
                 }
@@ -1476,6 +1477,7 @@ struct BuildWorkoutChooserSheet: View {
                 Text("Build Workout")
                     .font(.title2.weight(.bold))
                     .foregroundStyle(MorpheTheme.textPrimary)
+                    .featureGlimmer()
                 Spacer(minLength: 8)
                 Button("Close") { dismiss() }
                     .foregroundStyle(MorpheTheme.textPrimary)
@@ -1488,6 +1490,7 @@ struct BuildWorkoutChooserSheet: View {
                  detail: MorpheIntelligence.apiKey == nil
                     ? "Answer a few questions — goal, split, style, intensity, time, gear — and Morphe builds the session from the library by its rules. Add your key for a bespoke build."
                     : "Answer a few questions — goal, split, style, intensity, time, gear — and Morphe AI builds the session with you from the library.",
+                 glimmer: true,
                  action: onBuildWithAI)
             door("Multi-week program", systemImage: "calendar",
                  detail: "A plan measured in weeks: sessions in order, progression from your logs, one deload before the end.",
@@ -1498,7 +1501,7 @@ struct BuildWorkoutChooserSheet: View {
         .background(PremiumBackground().ignoresSafeArea())
     }
 
-    private func door(_ title: String, systemImage: String, detail: String, action: @escaping () -> Void) -> some View {
+    private func door(_ title: String, systemImage: String, detail: String, glimmer: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             GlassCard(.quiet) {
                 HStack(alignment: .top, spacing: 12) {
@@ -1507,9 +1510,16 @@ struct BuildWorkoutChooserSheet: View {
                         .foregroundStyle(MorpheTheme.accentText)
                         .frame(width: 28)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textPrimary)
+                        if glimmer {
+                            Text(title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .featureGlimmer()
+                        } else {
+                            Text(title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                        }
                         Text(detail)
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
@@ -2714,6 +2724,8 @@ private struct TrainLinkCard: View {
     let systemImage: String
     let title: String
     let detail: String
+    /// Core features carry the sheen (Lucas 2026-10-10).
+    var glimmer: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -2726,9 +2738,16 @@ private struct TrainLinkCard: View {
                         .frame(width: 28)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(MorpheTheme.textPrimary)
+                        if glimmer {
+                            Text(title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                                .featureGlimmer()
+                        } else {
+                            Text(title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                        }
                         Text(detail)
                             .font(.caption)
                             .monospacedDigit()
@@ -3009,6 +3028,7 @@ private struct ActiveWorkoutTrackerCard: View {
                                     .tracking(0.8)
                             }
                             .foregroundStyle(MorpheTheme.accentText)
+                            .featureGlimmer()
                             .frame(width: 52, height: 48)
                             .background(
                                 RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
