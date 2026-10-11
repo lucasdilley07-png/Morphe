@@ -21,7 +21,6 @@ struct ProfileView: View {
     @State private var deadlineTargetDraft = ""
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var showVerificationCamera = false
-    @State private var showVerificationSteps = false
     @State private var showSignOutConfirm = false
     @State private var showUnsavedPrompt = false
     /// True while the unsaved-changes ask was raised BY the Progress row —
@@ -1082,21 +1081,17 @@ struct ProfileView: View {
                     .disabled(store.isSubmittingVerification)
 
                     // How verification actually works: the steps, honestly
-                    // — a live selfie, a human review — behind a drop-down.
-                    DisclosureGroup(isExpanded: $showVerificationSteps) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            verificationStep(1, "Tap Get Verified and take a live selfie in the app — the camera only, no uploads from your library.")
-                            verificationStep(2, "Face clear and well lit, no sunglasses or mask. The photo is used only to confirm you are a real person and is seen only by the Morphe team.")
-                            verificationStep(3, "A human reviews it. Your profile shows \u{201C}under review\u{201D} until then.")
-                            verificationStep(4, "Approved: the blue check appears on your profile and your posts. Declined: take a clearer selfie and try again.")
-                        }
-                        .padding(.top, 4)
-                    } label: {
+                    // — a live selfie, a human review — shown in full on
+                    // the identity page (Lucas 2026-10-10: no drop-down).
+                    VStack(alignment: .leading, spacing: 6) {
                         Text("How to get verified")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MorpheTheme.textPrimary)
+                        verificationStep(1, "Tap Get Verified and take a live selfie in the app — the camera only, no uploads from your library.")
+                        verificationStep(2, "Face clear and well lit, no sunglasses or mask. The photo is used only to confirm you are a real person and is seen only by the Morphe team.")
+                        verificationStep(3, "A human reviews it. Your profile shows \u{201C}under review\u{201D} until then.")
+                        verificationStep(4, "Approved: the blue check appears on your profile and your posts. Declined: take a clearer selfie and try again.")
                     }
-                    .disclosureGroupStyle(HUDDisclosureStyle())
                 }
             }
         }
