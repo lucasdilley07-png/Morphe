@@ -8427,7 +8427,7 @@ final class SpartanLoreTests: XCTestCase {
 
     func testLoreIntentIsPhrasesNotSubstrings() {
         for lore in ["tell me a spartan saying", "give me a saying",
-                     "what's my agoge rank", "a laconic quote please", "who are you"] {
+                     "what's the spartan code", "a laconic quote please", "who are you"] {
             XCTAssertTrue(MorpheAppStore.isLoreQuestion(lore), "\(lore) asks for the lore")
         }
         for ordinary in ["are you saying my readiness is low?", "what's my rank on the board?",

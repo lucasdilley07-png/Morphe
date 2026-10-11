@@ -492,7 +492,13 @@ enum MorpheTheme {
         case .gold:
             return (metalGold, metalGoldDeep)
         case .recruiter:
-            // The referral-earned palette: a teal no level unlocks.
+            // The referral-earned palette: burgundy (Lucas 2026-10-10).
+            return (
+                Color(red: 0.55, green: 0.12, blue: 0.22),   // #8C1F38
+                Color(red: 0.36, green: 0.06, blue: 0.14)    // #5C0F24
+            )
+        case .champion:
+            // First challenge finished: a teal no level unlocks.
             return (
                 Color(red: 0.34, green: 0.93, blue: 0.84),
                 Color(red: 0.12, green: 0.70, blue: 0.65)

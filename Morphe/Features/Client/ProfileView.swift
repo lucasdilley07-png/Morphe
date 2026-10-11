@@ -68,8 +68,8 @@ struct ProfileView: View {
                     levelCard
                     replayGuideRow
                 }
-                detailsCard
-                targetsCard
+                // Your Details + Your Milestones live in Your account now
+                // (Lucas 2026-10-10).
                 settingsSections
             }
             .padding(.horizontal, 20)
@@ -755,10 +755,10 @@ struct ProfileView: View {
         GlassCard(.hero) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 14) {
-                    profilePhotoView
+                    profilePhotoDisplay
 
-                    // Name block + chevron open the identity page (Lucas
-                    // 2026-10-10): bio editing and verification live there.
+                    // The whole box opens the identity page (Lucas
+                    // 2026-10-10): photo, name, @username, bio, verification.
                     Button {
                         showIdentitySheet = true
                     } label: {
@@ -806,10 +806,17 @@ struct ProfileView: View {
                 creatorSection
             }
         }
+        // Anywhere on the box opens the page; the buttons inside (Creator
+        // Studio) keep their own taps.
+        .contentShape(Rectangle())
+        .onTapGesture { showIdentitySheet = true }
         .sheet(isPresented: $showIdentitySheet, onDismiss: {
-            // A swipe-down with a typed bio saves it — never drops it.
+            // A swipe-down with a typed bio saves it — never drops it. Name
+            // and username edits stay drafts (they cost a 14-day window).
             if isEditingBio, bioDraft.trimmingCharacters(in: .whitespacesAndNewlines) != store.profileCustomBio { saveBio() }
             isEditingBio = false
+            isEditingName = false
+            isEditingUsername = false
         }) {
             identitySheet
         }
@@ -823,6 +830,30 @@ struct ProfileView: View {
                 photoPickerItem = nil
             }
         }
+    }
+
+    private func accountStat(_ label: String, _ value: String, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label.uppercased())
+                .font(MorpheTheme.microLabel(9))
+                .tracking(1.2)
+                .foregroundStyle(MorpheTheme.textMuted)
+            Text(value)
+                .font(.title3.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(MorpheTheme.textPrimary)
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(MorpheTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous)
+                .fill(MorpheTheme.panelStrong.opacity(0.6))
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value), \(detail)")
     }
 
     /// Bio + verification, on their own page (Lucas 2026-10-10). Same
@@ -842,10 +873,111 @@ struct ProfileView: View {
                     Spacer(minLength: 8)
                     Button("Done") {
                         if isEditingBio { saveBio() }
+                        if isEditingName { saveName() }
+                        if isEditingUsername { saveUsername() }
                         showIdentitySheet = false
                     }
                     .foregroundStyle(MorpheTheme.textPrimary)
                     .frame(minWidth: 44, minHeight: 44)
+                }
+
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(spacing: 14) {
+                            profilePhotoView
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Photo")
+                                    .font(.headline)
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                                Text(store.profilePhotoData == nil ? "Tap the circle to add one." : "Tap the circle to change it; hold to remove.")
+                                    .font(.caption)
+                                    .foregroundStyle(MorpheTheme.textMuted)
+                            }
+                        }
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+                if isEditingName {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            TextField("Your name", text: $nameDraft)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .submitLabel(.done)
+                                .onSubmit { saveName() }
+                            Button("Save") {
+                                saveName()
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .accessibilityLabel("Save name")
+                            Button("Cancel") {
+                                isEditingName = false
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .accessibilityLabel("Cancel name edit")
+                        }
+                        // The cost is disclosed BEFORE the change burns the
+                        // window, not after (launch audit).
+                        Text("Names change once every 14 days — a typo locks you in, so double-check.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                } else {
+                    settingsRow(
+                        "Name",
+                        value: store.profileShowcase.displayName
+                    ) {
+                        nameDraft = store.profileShowcase.displayName
+                        isEditingName = true
+                    }
+                    if let next = store.nextNameChangeDate {
+                        Text("Names change once every 14 days — next change \(next.formatted(date: .abbreviated, time: .omitted)).")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+
+                        Divider().overlay(MorpheTheme.strokeSubtle)
+
+                if isEditingUsername {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            TextField("username", text: $usernameDraft)
+                                .textFieldStyle(MorpheFieldStyle())
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                            Button("Save") {
+                                saveUsername()
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .accessibilityLabel("Save username")
+                            Button("Cancel") {
+                                isEditingUsername = false
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .accessibilityLabel("Cancel username edit")
+                        }
+                        Text("Usernames are unique across Morphe and change once every 14 days.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                } else {
+                    settingsRow(
+                        "Username",
+                        value: "@\(store.profileShowcase.username)"
+                    ) {
+                        usernameDraft = store.profileShowcase.username
+                        isEditingUsername = true
+                    }
+                    if let next = store.nextUsernameChangeDate {
+                        Text("Usernames change once every 14 days — next change \(next.formatted(date: .abbreviated, time: .omitted)).")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 GlassCard {
@@ -886,6 +1018,26 @@ struct ProfileView: View {
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
         .sheetToastSurface()
+    }
+
+    /// The card's photo — display only; picking happens on the identity page.
+    private var profilePhotoDisplay: some View {
+        Group {
+            if let data = store.profilePhotoData, let image = UIImage(data: data) {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                ZStack {
+                    Circle().fill(MorpheTheme.accent.opacity(0.18))
+                    Text(profileInitials)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(MorpheTheme.accentText)
+                }
+            }
+        }
+        .frame(width: 72, height: 72)
+        .clipShape(Circle())
+        .overlay(Circle().stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1.5))
+        .accessibilityHidden(true)
     }
 
     /// The photo circle: real photo when set, initials art otherwise. Tapping
@@ -1430,93 +1582,20 @@ struct ProfileView: View {
             settingsGroupLabel("Profile")
 
             // Your account leads the Profile group (Lucas 2026-10-10).
-            settingsSection("Your account", keywords: "name username handle referrals invite share") {
-                if isEditingName {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 8) {
-                            TextField("Your name", text: $nameDraft)
-                                .textFieldStyle(MorpheFieldStyle())
-                                .submitLabel(.done)
-                                .onSubmit { saveName() }
-                            Button("Save") {
-                                saveName()
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.accentText)
-                            .accessibilityLabel("Save name")
-                            Button("Cancel") {
-                                isEditingName = false
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                            .accessibilityLabel("Cancel name edit")
-                        }
-                        // The cost is disclosed BEFORE the change burns the
-                        // window, not after (launch audit).
-                        Text("Names change once every 14 days — a typo locks you in, so double-check.")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                    }
-                } else {
-                    settingsRow(
-                        "Name",
-                        value: store.profileShowcase.displayName
-                    ) {
-                        nameDraft = store.profileShowcase.displayName
-                        isEditingName = true
-                    }
-                    if let next = store.nextNameChangeDate {
-                        Text("Names change once every 14 days — next change \(next.formatted(date: .abbreviated, time: .omitted)).")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                    }
+            settingsSection("Your account", keywords: "account connections workouts referrals invite share joined details age weight goal diet equipment weakness milestones targets") {
+                // Your account at a glance (Lucas 2026-10-10): the numbers,
+                // not the editors — name, @username, photo, bio and
+                // verification live on the identity page (tap the box above).
+                let joined = store.authUser?.createdAt
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                    accountStat("Connections", "\(store.connectedUids.count)", "people you're connected with")
+                    accountStat("Workouts", "\(store.currentAthleteWorkoutSummary.totalLogs)", "sessions logged")
+                    accountStat("Referrals", "\(store.referralCount)", "joined through you")
+                    accountStat("Joined", joined.map { $0.formatted(.dateTime.month(.abbreviated).day().year()) } ?? "—", "member since")
                 }
-
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
-                if isEditingUsername {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 8) {
-                            TextField("username", text: $usernameDraft)
-                                .textFieldStyle(MorpheFieldStyle())
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                            Button("Save") {
-                                saveUsername()
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.accentText)
-                            .accessibilityLabel("Save username")
-                            Button("Cancel") {
-                                isEditingUsername = false
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                            .accessibilityLabel("Cancel username edit")
-                        }
-                        Text("Usernames are unique across Morphe and change once every 14 days.")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                    }
-                } else {
-                    settingsRow(
-                        "Username",
-                        value: "@\(store.profileShowcase.username)"
-                    ) {
-                        usernameDraft = store.profileShowcase.username
-                        isEditingUsername = true
-                    }
-                    if let next = store.nextUsernameChangeDate {
-                        Text("Usernames change once every 14 days — next change \(next.formatted(date: .abbreviated, time: .omitted)).")
-                            .font(.caption)
-                            .foregroundStyle(MorpheTheme.textMuted)
-                    }
-                }
-
-
-                Divider().overlay(MorpheTheme.strokeSubtle)
-
+                Text("Name, @username, photo and bio: tap your profile box at the top.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
                 // Referral loop, recruiter side: the server-backed count of
                 // athletes who joined through this user's invite. The empty
                 // state names its unlock, per the house rule.
@@ -1545,6 +1624,11 @@ struct ProfileView: View {
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
 
+                Divider().overlay(MorpheTheme.strokeSubtle)
+
+                // Your Details and Your Milestones (Lucas 2026-10-10).
+                detailsCard
+                targetsCard
             }
 
             // Identity customization (personalization phase 2): pick
@@ -1653,7 +1737,7 @@ struct ProfileView: View {
                     }
                     // Locks were mute until tapped (UX test 2026-09-30):
                     // a first-timer saw five padlocks with no path.
-                    Text("Every rank brings its own color, Rookie\u{2019}s dark blue through Colonel\u{2019}s platinum to General\u{2019}s gold \u{2014} tap a locked one to see its rank.")
+                    Text("Every rank brings its own color, Rookie\u{2019}s dark blue through Colonel\u{2019}s platinum to General\u{2019}s gold \u{2014} tap a locked one to see its rank. Burgundy is for recruiters; Champion comes with your first finished challenge.")
                         .font(.caption2)
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
@@ -2223,6 +2307,8 @@ struct ProfileView: View {
             ? "\(palette.rawValue) accent"
             : palette == .recruiter
                 ? "Recruiter accent, unlocks when someone joins through your invite"
+                : palette == .champion
+                ? "Champion accent, unlocks when you finish your first challenge"
                 : "\(palette.rawValue) accent, unlocks with \(palette.rank?.title ?? "rank") at level \(store.paletteUnlockLevel(palette))")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

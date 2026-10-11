@@ -97,7 +97,7 @@ enum MorpheIntelligence {
 
         var errorDescription: String? {
             switch self {
-            case .badKey: return "That API key was rejected — check it in Settings."
+            case .badKey: return "That API key was rejected — check it in Profile → Morphe Intelligence."
             case .rateLimited: return "Anthropic is rate-limiting your key right now — try again in a minute."
             case .overloaded: return "Claude is overloaded right now — try again shortly."
             case .network: return "I couldn't reach Claude — check your connection."

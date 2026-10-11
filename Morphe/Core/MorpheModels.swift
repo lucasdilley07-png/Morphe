@@ -661,6 +661,8 @@ enum AccentPalette: String, CaseIterable, Identifiable {
     /// Earned by referral, not level — unlocks when someone joins Morphe
     /// through this user's invite link (see `isPaletteUnlocked`).
     case recruiter = "Recruiter"
+    /// Earned by finishing a first challenge or board week (2026-10-10).
+    case champion = "Champion"
     /// RETIRED 2026-10-10 (Lucas: the ladder's colors are the colors).
     /// Kept so old profiles decode; hidden from the picker, never unlocks.
     case custom = "Custom"

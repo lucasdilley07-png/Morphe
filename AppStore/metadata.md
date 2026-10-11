@@ -43,7 +43,7 @@ LOG WHAT MATTERS
 • A rest timer in the Dynamic Island keeps you moving
 
 FORM CHECK
-• The camera counts your reps on your device, across thirteen movement patterns, and times holds
+• The camera counts your reps on your device, across eleven movement patterns, and times holds
 • It reads your build first, then range, tempo, symmetry, and alignment — a training aid, not a diagnosis
 • Video never leaves your phone; record a clip to your own camera roll if you want one
 

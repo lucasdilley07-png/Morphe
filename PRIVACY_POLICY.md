@@ -26,15 +26,17 @@ who you block, challenge and leaderboard entries (opt-in), Train Together
 party participation, and photos you choose to post, and private messages (with a connected coach or any member you start a chat with). Posts and
 comments are visible to other signed-in users; messages are visible only to
 the two people in the conversation. To enforce the human-only policy in the
-[terms](terms.html), Morphe stores the time of your last post, comment and
-message on your account record and refuses writes that arrive faster than
+[terms](terms.html), Morphe stores the time of your last post, comment,
+message and connect request on your account record and refuses writes that arrive faster than
 a person types; new text is also screened on your phone for spam shapes and
 AI-written patterns before it is sent. Nothing is sent to an AI service for
 this screening.
 
 The pace timestamps live on your account record, which a coach you have
 linked can also read. Connect requests you send or receive (the two names
-and the status) are stored under your account.
+and the status) are stored under your account, and so is your
+conversation with Morphe in Chats (its reports and news, your questions
+and its answers), as part of your account backup.
 
 **Build with Morphe AI (optional, your own key).** When you build a workout
 with Morphe AI, your answers to the questionnaire and the profile facts the
@@ -158,9 +160,14 @@ never breaks the rest of the app.
 The in-app assistant works offline out of the box. If you add your own
 API keys in Profile → Morphe Intelligence:
 
-- **Anthropic** — the text of your chat messages, plus a short summary of
-  your recent training that the assistant needs to answer, is sent to
-  Anthropic's API using your key, under
+- **Anthropic** — the text of your chat messages (chat, voice, and the
+  Morphe conversation in Chats), plus what the assistant needs to answer:
+  your name, today's readiness, streak, score, level and rank, today's
+  fuel numbers, your nutrition plan, the profile facts you set (age,
+  experience, goals, current and goal weight, diet, equipment,
+  self-reported weakness, injury note), your last session note, and — on
+  nutrition questions — the names of foods you checked in the last 14
+  days. This is sent to Anthropic's API using your key, under
   [Anthropic's privacy policy](https://www.anthropic.com/privacy). Usage
   is billed to your key, not to Morphe.
 - **ElevenLabs** — if you also add an ElevenLabs key, the assistant's

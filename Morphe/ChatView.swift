@@ -1842,7 +1842,7 @@ private struct RealFeedSection: View {
                         .tint(MorpheTheme.accent)
                     }
                     if showPasteNotice {
-                        Label("Pasted text — Morphe only takes your own writing. AI-written posts are removed; repeat offenders lose the account.", systemImage: "person.fill.checkmark")
+                        Label("Pasted text — Morphe only takes your own writing. AI-written posts are removed; the account may be warned, limited or closed.", systemImage: "person.fill.checkmark")
                             .font(.caption2)
                             .foregroundStyle(MorpheTheme.warning)
                             .fixedSize(horizontal: false, vertical: true)

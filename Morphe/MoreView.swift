@@ -402,6 +402,20 @@ struct MoreView: View {
                 // quiz opens first.
                 let pageCount = max(1, (store.quizzes.count + Self.quizPageSize - 1) / Self.quizPageSize)
                 let page = min(quizPage ?? defaultQuizPage, pageCount - 1)
+                let shown = Array(store.quizzes.enumerated()).dropFirst(page * Self.quizPageSize).prefix(Self.quizPageSize)
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+                    ForEach(Array(shown), id: \.element.id) { index, quiz in
+                        QuizCallingCard(
+                            quiz: quiz,
+                            index: index,
+                            state: quizTileState(for: quiz)
+                        ) {
+                            openedQuiz = quiz
+                        }
+                    }
+                }
+
+                // The 1–10 / 11–20 pager sits under the quizzes (Lucas 2026-10-10).
                 if pageCount > 1 {
                     HStack(spacing: 8) {
                         ForEach(0..<pageCount, id: \.self) { index in
@@ -419,18 +433,6 @@ struct MoreView: View {
                     .frame(maxWidth: .infinity)
                 }
 
-                let shown = Array(store.quizzes.enumerated()).dropFirst(page * Self.quizPageSize).prefix(Self.quizPageSize)
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
-                    ForEach(Array(shown), id: \.element.id) { index, quiz in
-                        QuizCallingCard(
-                            quiz: quiz,
-                            index: index,
-                            state: quizTileState(for: quiz)
-                        ) {
-                            openedQuiz = quiz
-                        }
-                    }
-                }
             }
             .sheet(item: $openedQuiz) { quiz in
                 QuizSheet(quiz: quiz)

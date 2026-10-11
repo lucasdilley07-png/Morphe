@@ -50,8 +50,10 @@ are banned:
   hands.
 
 **Morphe AI is the only AI permitted in Morphe.** It is the app's own
-guardian: it answers you, remembers your training, and never posts, follows,
-messages or reacts on anyone's behalf.
+guardian: it answers you, remembers your training, builds and names a
+workout when you ask it to (that name may appear on a session recap you
+choose to share), and never posts, follows, messages or reacts on anyone's
+behalf.
 
 ## No AI-generated content
 

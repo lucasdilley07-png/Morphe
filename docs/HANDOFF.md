@@ -131,3 +131,42 @@ gitignored).
 - **Design calls parked**: a profile wearing Custom or pre-launch Gold
   keeps it (grandfather rule); the system splash is solid brand blue, so
   non-blue ranks see a color hand-off at launch.
+
+### Audit backlog carried into the next session (2026-10-10, two reports)
+
+Fixed in the wrap-up commit: board/party codes sanitized (a "/" crashed
+the Firestore path), challenge titles screened, builder prompt frames the
+injury/avoid text as quotes, nutrition matcher word-bounded, "agoge"
+keyword retired, sign-out clears board caches + the Morphe thread, week
+rollover with the app open refreshes boards and the report, news always
+lands "just now", privacy policy lists exactly what the assistant sends
+(+ lastConnectAt, thread backup), Terms allow Morphe AI to name a workout
+that appears on a shared recap, tour/pattern-count/bad-key copy.
+
+Still open, in priority order:
+
+1. **P1 — error copy persisted as history**: a failed Claude call stores
+   the error line as an assistant turn in the chat thread and the Morphe
+   thread; next prompt sends it back as context. Drop or tag those turns.
+2. **P1 — SSE `error` events ignored** in the streaming path
+   (MorpheIntelligence) — a mid-stream error reads as a silent stop.
+3. **P1 — offline brain states non-log facts**: readiness without a
+   check-in, "This week looks steady" with no data, pain defaults
+   (Knee / Walking Lunge), streak source mismatch. Each line must come
+   from a log or say nothing.
+4. **P1 — food check hides a bad key** (shows a generic miss). Surface the
+   `.badKey` copy.
+5. **P1 — `refreshBoards` cost**: N boards × ~150 reads, also triggered
+   from the Discover feed task; add a staleness gate per board and keep it
+   off the feed path. Same gate for `refreshQuickAdd` /
+   `refreshConnectRequests`; debounce `postBoardScores`.
+6. **P1 — accessibility**: PersonRow lineLimit at AX sizes, fixed widths,
+   CountBadge contrast, bubble maxWidth 320, create/join board sheets at
+   `.medium` without a ScrollView, `.combine` over the Respect button.
+7. **P2**: `viewPerson` is dead code; NewConversationSheet torn down
+   before dismiss; popup arms under sheets; popup throttle key is
+   device-global (should be per profile); `customProgramDefaultsKey`
+   missing from the sign-out list; directory hits store the handle as a
+   name; retired global-board code + tests; `Int(d.rounded())` trap in AI
+   builder parsing; web-search count wording; `web_search_20250305` tool
+   version check; "TRAIN SMARTER" vs TRAIN HONEST in one string.
