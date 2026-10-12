@@ -112,14 +112,15 @@ gitignored).
 - The Desktop `MORPHE` folder was evicted by iCloud on 2026-10-10 (dataless
   `.git`); the repo now lives in `~/Developer/MORPHE` and
   `~/Desktop/MORPHE` is a symlink to it. Keep repos out of iCloud.
-- GitHub push needs Lucas's sign-in (keychain login gone); commits pile up
-  locally until then.
+- GitHub push works (2026-10-12): a personal access token sits in the macOS
+  keychain; when it expires, Lucas makes a new one (repo scope) and enters
+  it at the HTTPS password prompt.
 - Machine is slow: ~10 min device builds; run them in the background.
 
 ## Open items (honest list)
 
 - **Needs Lucas**: $99 Apple Developer Program (TestFlight, App Attest
-  entitlement + App Check enforcement, push); GitHub sign-in; business
+  entitlement + App Check enforcement, push); business
   items in `AppStore/LAUNCH_CHECKLIST.md` (LLC, trademark, domain, store).
 - **Unverified on hardware**: the Claude paths (food check photo, Morphe
   AI workout builder) need Lucas's key on the phone; Form Check thresholds;
