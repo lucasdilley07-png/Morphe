@@ -29,7 +29,18 @@ enum MorpheTheme {
         return UIScreen.main.traitCollection.userInterfaceStyle != .dark
     }
 
-    static var isLight = MorpheTheme.defaultIsLight()
+    /// Observable (2026-10-11): views that read a token inside `body`
+    /// now re-render when the flag flips. As a plain static, a sunset or
+    /// background appearance change repainted the field but left text in
+    /// the old color — text "matching the background" on reopen.
+    @Observable final class State {
+        static let shared = State()
+        var isLight = MorpheTheme.defaultIsLight()
+    }
+    static var isLight: Bool {
+        get { State.shared.isLight }
+        set { State.shared.isLight = newValue }
+    }
 
     static var ink: Color {
         // Dark canvas sits in the #121214 class, never true black (design

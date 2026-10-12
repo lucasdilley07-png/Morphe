@@ -1895,6 +1895,9 @@ struct TechniqueLibraryView: View {
 
         return ScrollView(showsIndicators: false) {
             LazyVStack(alignment: .leading, spacing: 12) {
+                // The header icons float over every page — the back
+                // button sat under the profile circle (Lucas 2026-10-11).
+                Color.clear.frame(height: MorpheTheme.Spacing.pageTopStacked - 12)
                 Button {
                     dismiss()
                 } label: {

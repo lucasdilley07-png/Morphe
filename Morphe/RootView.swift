@@ -751,15 +751,13 @@ private struct ClientPinnedHeader: View {
                         }
                     }
                 }
-                .frame(width: 36, height: 36)
+                .frame(width: 40, height: 40)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(MorpheTheme.accent.opacity(0.5), lineWidth: 1))
                 .frame(width: 44, height: 44)
-                .background(
-                    RoundedRectangle(cornerRadius: MorpheTheme.radiusSmall, style: .continuous)
-                        .fill(MorpheTheme.ink)
-                )
-                .contentShape(Rectangle())
+                // A circle, not the rounded square (Lucas 2026-10-11).
+                .background(Circle().fill(MorpheTheme.ink))
+                .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Profile"))

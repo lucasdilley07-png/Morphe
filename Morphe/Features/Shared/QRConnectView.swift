@@ -33,11 +33,30 @@ struct QRConnectSheet: View {
                     }
                     .pickerStyle(.segmented)
 
-                    if mode == .show {
-                        myCodeCard
-                    } else {
-                        scanCard
+                    // Swipe between the two pages (Lucas 2026-10-11):
+                    // right-to-left goes to Scan, left-to-right back to
+                    // My Code; the picker stays in sync.
+                    Group {
+                        if mode == .show {
+                            myCodeCard
+                                .transition(.asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .leading)).combined(with: .opacity))
+                        } else {
+                            scanCard
+                                .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .trailing)).combined(with: .opacity))
+                        }
                     }
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 24)
+                            .onEnded { value in
+                                guard abs(value.translation.width) > abs(value.translation.height) * 1.5,
+                                      abs(value.translation.width) > 50 else { return }
+                                withAnimation(.easeInOut(duration: 0.22)) {
+                                    mode = value.translation.width < 0 ? .scan : .show
+                                }
+                            }
+                    )
+                    .animation(.easeInOut(duration: 0.22), value: mode)
 
                     if !store.scannedConnections.isEmpty {
                         connectionsCard

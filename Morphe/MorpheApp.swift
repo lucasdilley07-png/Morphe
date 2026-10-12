@@ -227,10 +227,15 @@ private struct SystemAppearanceMirror<Content: View>: View {
 
     private func sync() {
         let light = colorScheme == .light
-        guard store.appearanceIsLight != light else { pending = false; return }
-        // Tokens follow at once (sheets read them live); the full remount
-        // waits until nothing is presented and no session is running.
+        // Tokens ALWAYS follow the live scheme first (2026-10-11): on a cold
+        // reopen the store's persisted flag could already match while the
+        // token seed (read from screen traits before a scene existed) was
+        // wrong — the early return below left text drawn in the field's
+        // own color.
         MorpheTheme.isLight = light
+        guard store.appearanceIsLight != light else { pending = false; return }
+        // The full remount waits until nothing is presented and no session
+        // is running.
         if somethingPresented { pending = true; return }
         pending = false
         store.appearanceIsLight = light
