@@ -133,6 +133,22 @@ gitignored).
   keeps it (grandfather rule); the system splash is solid brand blue, so
   non-blue ranks see a color hand-off at launch.
 
+### Private account: server enforcement owed (2026-10-12)
+
+Board and challenge rows are server-true (the name is replaced with
+"Private athlete" before it is written). Posts and the @username are only
+marked private: the rules still let any signed-in client read `posts` and
+`usernames`, and the app does the hiding. Doing it on the server needs the
+feed query split (a public query filtered on `authorPrivate == false`, with
+every post carrying the field — backfill old posts with the service account
+— plus a composite index, and a second query or per-connection path for
+private posts whose rule checks an accepted `connectRequests` doc). Thread
+creation to private accounts is gated in the client only, too. The privacy
+policy states this limit plainly; fix it before the policy can drop the
+caveat. Also open from that audit: `setAuthorPrivate` reads at most 300
+posts with full images (page by createdAt), comments carry no private mark,
+a private Creator Coach's published workouts stay public.
+
 ### Audit backlog carried into the next session (2026-10-10, two reports)
 
 Fixed in the wrap-up commit: board/party codes sanitized (a "/" crashed
