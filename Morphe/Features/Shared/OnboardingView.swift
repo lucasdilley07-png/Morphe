@@ -549,7 +549,7 @@ private struct NameStep: View {
     var body: some View {
         OnboardingCard(
             title: "What should Morphe call you?",
-            subtitle: "Your name is how Morphe greets you and signs your progress. It stays on your device."
+            subtitle: "Your name is how Morphe greets you and signs your progress. It's saved to your account, so it follows you to a new phone."
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 TextField("Your first name", text: $name)

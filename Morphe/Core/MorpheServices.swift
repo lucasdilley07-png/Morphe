@@ -1,4 +1,52 @@
 import Foundation
+#if canImport(MetricKit) && os(iOS)
+import MetricKit
+#endif
+
+/// Crash and hang reporting through Apple's MetricKit (fix wave
+/// 2026-10-13): no third-party SDK, nothing about the user. iOS hands the
+/// app its own diagnostics on the next launch; each crash or hang becomes
+/// one first-party telemetry event ("crash_sig11", "hang") so the weekly
+/// report shows them, and the full payload is kept on the device for
+/// support to read.
+final class CrashDiagnostics: NSObject {
+    static let shared = CrashDiagnostics()
+    /// Set by the store; called on the main queue with an event name.
+    var onEvent: ((String) -> Void)?
+
+    func start() {
+        #if canImport(MetricKit) && os(iOS)
+        MXMetricManager.shared.add(self)
+        #endif
+    }
+
+    /// Where the raw payloads live (Application Support/diagnostics).
+    static var folder: URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("diagnostics", isDirectory: true)
+    }
+}
+
+#if canImport(MetricKit) && os(iOS)
+extension CrashDiagnostics: MXMetricManagerSubscriber {
+    func didReceive(_ payloads: [MXDiagnosticPayload]) {
+        var events: [String] = []
+        for payload in payloads {
+            for crash in payload.crashDiagnostics ?? [] {
+                events.append("crash_sig\(crash.signal?.intValue ?? 0)")
+            }
+            for _ in payload.hangDiagnostics ?? [] { events.append("hang") }
+            if let folder = Self.folder {
+                try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                let name = "diag-\(Int(Date.now.timeIntervalSince1970))-\(UUID().uuidString.prefix(6)).json"
+                try? payload.jsonRepresentation().write(to: folder.appendingPathComponent(name))
+            }
+        }
+        guard !events.isEmpty else { return }
+        DispatchQueue.main.async { events.forEach { self.onEvent?($0) } }
+    }
+}
+#endif
 
 enum MorpheDemoContent {
     static let brandOneLiner = "Morphe helps beginners build consistency through AI guidance, coach support, and small daily wins."

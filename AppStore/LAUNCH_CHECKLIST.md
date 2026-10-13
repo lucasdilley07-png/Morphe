@@ -117,12 +117,12 @@ Your data.
       stay "coming soon".
 
 **Content** — sourcing law: every post cites a real artifact
-(`docs/LAUNCH-CONTENT-CALENDAR.md`): the audits, the $99 gate, the
+(`docs/archive/LAUNCH-CONTENT-CALENDAR.md`): the audits, the $99 gate, the
 human-only policy, the 595-exercise library, the rank ladder.
 
 **Posters / flyers** — one design (helmet + TRAIN HONEST + QR); 100
 flyers ~$25–50, 50–100 posters ~$36–85; ask the gym owner, pitch the
-coach pilot (`docs/COACH-PITCH.md`) in the same conversation.
+coach pilot (`docs/archive/COACH-PITCH.md`) in the same conversation.
 
 **Budget, first 30 days (DIY)**: Apple $99 · LLC $90 · EIN $0 · FBN
 $70–160 · trademark $700 · domain $15–60 · email $0–96 · Firebase ~$0–25/mo
@@ -136,7 +136,7 @@ Clock starts on TestFlight. First-party measurement only
 (`Tools/metrics_report.py`, weekly, same day).
 - Week 0: pay the $99, upload, invite 10 testers.
 - Weeks 1–2: fix what the first 25 strangers hit; App Store submission.
-- Weeks 1–12: coach pilot (`docs/COACH-PILOT.md`, 10–25 paying coaches).
+- Weeks 1–12: coach pilot (`docs/archive/COACH-PILOT.md`, 10–25 paying coaches).
 - Bars: D30 ≥ 10–12 %, organic k > 0, activation (first log) ≥ 40 %.
 - Week 12: coach wedge proven → raise or bootstrap on revenue; disproven
   → consumer bootstrap, no raise.

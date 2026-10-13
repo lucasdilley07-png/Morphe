@@ -558,19 +558,19 @@ struct WorkoutView: View {
                             }
                         }
                         .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                        // Finish with nothing logged asks first (audit
-                        // 2026-10-10): "as written" is a real session, XP
-                        // and a streak day — never by accident.
+                        // Finish with nothing logged (fix wave 2026-10-13):
+                        // a session only counts with real sets in it.
                         .confirmationDialog("Nothing logged yet", isPresented: Binding(
                             get: { store.pendingZeroSetFinish },
                             set: { if !$0 { store.pendingZeroSetFinish = false } }
                         ), titleVisibility: .visible) {
-                            Button("Log it as written") {
-                                if store.finishTrackedWorkoutSession(confirmedEmpty: true) { restRunning = false }
+                            Button("Discard session", role: .destructive) {
+                                store.pendingZeroSetFinish = false
+                                showDiscardConfirm = true
                             }
                             Button("Keep training", role: .cancel) {}
                         } message: {
-                            Text("No sets were logged. Logging as written records every planned set at the written reps and bodyweight.")
+                            Text("No sets were logged. A session counts once a set is in it: log what you did, or discard it.")
                         }
 
                         Button("Discard") {
@@ -3020,8 +3020,10 @@ private struct ActiveWorkoutTrackerCard: View {
 
                         // Form check rides the ACTIVE exercise — it was
                         // parked next to "Up next", which read as form help
-                        // for the wrong movement.
-                        if !simpleConsole {
+                        // for the wrong movement. Visible from session one
+                        // (fix wave 2026-10-13): the headline feature was
+                        // hidden from beginners for three workouts.
+                        if true {
                         Button(action: onOpenFormCheck) {
                             VStack(spacing: 3) {
                                 Image(systemName: "camera.viewfinder")

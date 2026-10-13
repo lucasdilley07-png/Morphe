@@ -4432,10 +4432,10 @@ private struct WelcomeExperienceView: View {
     private var primaryLabel: String {
         switch current {
         case .welcome: return "Take the tour"
-        case .formCheck, .together, .progress: return "Next"
-        case .ai: return "Ask Morphe"
-        case .workout: return "Open Train"
-        case .partner: return "Find people"
+        // Every middle page's big button is "Next" (fix wave 2026-10-13):
+        // "Ask Morphe" on stop 3 ejected beginners before their first
+        // workout page.
+        case .formCheck, .together, .progress, .ai, .workout, .partner: return "Next"
         case .profile: return bioDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Continue" : "Save and continue"
         case .done: return "Start training"
         }
@@ -4443,20 +4443,15 @@ private struct WelcomeExperienceView: View {
 
     private func primaryAction() {
         switch current {
-        case .welcome, .formCheck, .together, .progress:
+        case .welcome, .formCheck, .together, .progress, .ai, .workout, .partner:
             advance()
         case .profile:
             let clean = bioDraft.trimmingCharacters(in: .whitespacesAndNewlines)
             if !clean.isEmpty, clean != store.profileCustomBio { store.updateProfileBio(clean) }
             advance()
-        case .workout:
-            leave(.train)
-        case .partner:
-            leave(.community)
-        case .ai:
-            leave(.ai)
         case .done:
-            finish()
+            // "Start training" goes to Train (fix wave 2026-10-13).
+            leave(.train)
         }
     }
 

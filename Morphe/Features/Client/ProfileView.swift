@@ -2765,6 +2765,7 @@ private struct NeuralVoiceKeyEditor: View {
 private struct IntelligenceKeyEditor: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var draftKey = ""
+    @State private var showAIConsent = false
     @State private var showSaveError = false
 
     var body: some View {
@@ -2806,10 +2807,10 @@ private struct IntelligenceKeyEditor: View {
                     // OpenAI key "saving" fine and failing on the first
                     // billed call is the dishonest path.
                     let trimmed = draftKey.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if trimmed.hasPrefix("sk-ant-"), store.setIntelligenceKey(trimmed) {
-                        draftKey = ""
-                        showSaveError = false
-                        Haptics.success()
+                    if trimmed.hasPrefix("sk-ant-") {
+                        // Consent first (App Store 5.1.2, fix wave 2026-10-13):
+                        // name the company and the data before anything leaves.
+                        showAIConsent = true
                     } else {
                         showSaveError = true
                         Haptics.error()
@@ -2820,6 +2821,23 @@ private struct IntelligenceKeyEditor: View {
                 }
                 .buttonStyle(SecondaryCTAButtonStyle())
                 .disabled(draftKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .confirmationDialog("Send this to Anthropic?", isPresented: $showAIConsent, titleVisibility: .visible) {
+                    Button("Agree and save key") {
+                        let trimmed = draftKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if store.setIntelligenceKey(trimmed) {
+                            UserDefaults.standard.set(Date.now.timeIntervalSince1970, forKey: "morphe.aiConsentAt")
+                            draftKey = ""
+                            showSaveError = false
+                            Haptics.success()
+                        } else {
+                            showSaveError = true
+                            Haptics.error()
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("With your key, Morphe AI sends Anthropic (the company that makes Claude) what it needs to answer: your messages, your name, a summary of your logged training, the profile details you set (age, goals, current and goal weight, diet, equipment, weakness, injury note), your nutrition plan and recent food names, and a meal photo only when you take one for a food check. Calls bill to your key. Remove the key any time to stop.")
+                }
                 if showSaveError {
                     Text("Anthropic keys start with sk-ant- \u{2014} check what you pasted and try again.")
                         .font(.caption)

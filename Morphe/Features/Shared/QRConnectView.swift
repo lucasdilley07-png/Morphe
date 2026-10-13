@@ -160,7 +160,7 @@ struct QRConnectSheet: View {
                     .padding(.vertical, 2)
                 }
 
-                Text("Saved on your account. Shared rosters and messaging unlock as account linking rolls out.")
+                Text("Scanning someone sends them a connect request. Once they accept, you can message them from Chats.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
             }

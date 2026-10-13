@@ -702,6 +702,17 @@ final class MorpheAppStore {
             showToast("Noted — every debrief feeds Morphe's suggestions.")
         }
         pushDebrief(debrief)
+        // Answering the debrief saves the session (fix wave 2026-10-13):
+        // the separate "Log Workout" tap left every finished workout in
+        // limbo — live telemetry had zero logged workouts.
+        logFinishedWorkoutIfPending()
+    }
+
+    /// A finished session that hasn't been logged yet gets logged: after the
+    /// debrief (answered or skipped) and when the app leaves the foreground.
+    func logFinishedWorkoutIfPending() {
+        guard hasCompletedWorkoutFlow, !isWorkoutSessionActive else { return }
+        logWorkout()
     }
 
     #if DEBUG
@@ -720,6 +731,7 @@ final class MorpheAppStore {
         showWorkoutDebrief = false
         pendingDebriefOpen = false
         debriefContext = nil
+        logFinishedWorkoutIfPending()
     }
 
     /// Present now when Train is the visible, uncovered surface; queue
@@ -1546,6 +1558,9 @@ final class MorpheAppStore {
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
             WatchBridge.shared.activate(store: self)
             installLockScreenSessionBridge()
+            // Crash and hang reports from MetricKit (fix wave 2026-10-13).
+            CrashDiagnostics.shared.onEvent = { [weak self] name in self?.track(name) }
+            CrashDiagnostics.shared.start()
         }
 
         Self.mostRecentInstance = self
@@ -1997,7 +2012,15 @@ final class MorpheAppStore {
         scannedConnections.insert(connection, at: 0)
         persistLocalProfile()
         Haptics.impact(.medium)
-        showToast("Connected: \(connection.name)")
+        // A scan sends a real connect request (fix wave 2026-10-13); it used
+        // to toast "Connected" while nothing was linked.
+        if authUser != nil {
+            let card = PersonCard(uid: connection.id, name: connection.name == "Morphe user" ? "" : connection.name,
+                                  username: connection.handle, headline: "", accentId: "", verified: false, isCoach: connection.role == "coach")
+            Task { await sendConnectRequest(to: card) }
+        } else {
+            showToast("Sign in to connect with \(connection.name).")
+        }
         return connection
     }
 
@@ -8633,8 +8656,10 @@ final class MorpheAppStore {
             // Instant strength feedback on working sets: the same Epley
             // estimate the Progress chart uses, marked as the estimate it
             // is. Warm-ups never rate one.
-            let epley = weight * (1 + Double(min(reps, 15)) / 30)
-            showToast("Set \(updatedCount) of \(targetSets) — est. 1RM ≈ \(weightUnit.format((epley * 10).rounded() / 10)).")
+            // What was lifted, not an estimate (fix wave 2026-10-13): a
+            // first-week "est. 1RM" is a number the user never earned. The
+            // estimate stays on the Progress chart as an opt-in.
+            showToast("Set \(updatedCount) of \(targetSets) — \(reps) × \(weightUnit.format(weight)).")
         } else {
             showToast("\(reps) reps logged for set \(updatedCount) of \(targetSets).")
         }
@@ -8923,8 +8948,11 @@ final class MorpheAppStore {
     var pendingZeroSetFinish = false
 
     @discardableResult
-    func finishTrackedWorkoutSession(confirmedEmpty: Bool = false) -> Bool {
-        if !confirmedEmpty, trackedSetTotalCount == 0, isWorkoutSessionActive {
+    func finishTrackedWorkoutSession() -> Bool {
+        // A session with no logged sets never becomes a log (fix wave
+        // 2026-10-13): "log it as written" paid XP, a streak day and score
+        // for work nobody recorded.
+        if trackedSetTotalCount == 0, isWorkoutSessionActive {
             pendingZeroSetFinish = true
             return false
         }
@@ -9429,11 +9457,11 @@ final class MorpheAppStore {
                 detailLine: "Every session logged",
                 prCard: nil
             )
-        } else if let pr = newPRs.first {
-            let extraPRs = newPRs.count - 1
-            var detail = pr.previous > 0
-                ? "Up from \(weightUnit.format(pr.previous))"
-                : "Your first record"
+        } else if let pr = newPRs.first(where: { $0.previous > 0 }) {
+            // A first-ever lift is a baseline, not a record (fix wave
+            // 2026-10-13): the stamp waits for a number that beat another.
+            let extraPRs = newPRs.filter { $0.previous > 0 }.count - 1
+            var detail = "Up from \(weightUnit.format(pr.previous))"
             if extraPRs > 0 {
                 detail += " · +\(extraPRs) more PR\(extraPRs == 1 ? "" : "s")"
             }
@@ -10869,7 +10897,7 @@ final class MorpheAppStore {
         case .rank:
             let rank = MorpheRank.rank(forLevel: currentLevelNumber)
             let ahead = rank.next.map { " Next: \($0.title) at level \($0.firstLevel)." } ?? ""
-            return "Level \(currentLevelNumber). Rank: \(rank.title). \(rank.gloss)\(ahead) Levels come only from logged work."
+            return "Level \(currentLevelNumber). Rank: \(rank.title). \(rank.gloss)\(ahead) Levels come from logged work and lessons — nothing to buy, nothing to skip."
         case .saying:
             let saying = SpartanLore.saying()
             return "\u{201C}\(saying.text)\u{201D} \(saying.speaker). \(saying.context) Source: \(saying.source)."
@@ -12166,9 +12194,10 @@ final class MorpheAppStore {
     func lockScreenLogSet() {
         guard isWorkoutSessionActive, let exercise = activeWorkoutExercise else { return }
         let reps = Self.watchRepCount(exercise.reps)
-        let weight = lastSessionWeight(for: exercise.id)
-            ?? suggestedWorkingWeight(for: exercise)
-            ?? 0
+        // Only a weight lifted this session (fix wave 2026-10-13): the
+        // suggestion could be an automatic +5 nobody lifted. No set yet
+        // means bodyweight; the user corrects it in the app.
+        let weight = lastSessionWeight(for: exercise.id) ?? 0
         guard completeTrackedSet(reps: reps, weight: weight) else { return }
         // Same post-log behavior as every other logging surface
         // (2026-10-04): superset halves hop with no rest; otherwise the
@@ -17109,15 +17138,27 @@ final class MorpheAppStore {
         case .today:
             if lowercasedPrompt.contains("adjust") || lowercasedPrompt.contains("plan") || lowercasedPrompt.contains("smaller win") {
                 let fallback = selectedPlanBReason?.rawValue ?? "low readiness"
+                guard didCompleteQuickCheckIn else {
+                    return "Your plan today is \(currentWorkout.name). Without a check-in I won't guess your readiness: if you're short on time or energy, keep one main lift, cut the rest, and log what you do."
+                }
                 return "Today I'm looking at a readiness score of \(recovery.score) (\(recovery.status.rawValue)) and your plan for \(currentWorkout.name). Because \(fallback.lowercased()) is part of the picture, the clean move is to keep one main win, shorten the session, and protect momentum instead of chasing a perfect day."
             }
 
             if lowercasedPrompt.contains("readiness") || lowercasedPrompt.contains("recover") {
+                // No check-in, no number (fix wave 2026-10-13): the default
+                // recovery read was spoken as if it were the user's.
+                guard didCompleteQuickCheckIn else {
+                    return "No check-in yet today, so I have no readiness number for you. Take the 20-second check-in on Today and I'll read it back."
+                }
                 return "Your readiness is \(recovery.score), which reads as \(recovery.status.rawValue). The biggest driver is \(recovery.reason.lowercased()). Treat today like a quality day, not a max-effort day."
             }
 
             if lowercasedPrompt.contains("week") || lowercasedPrompt.contains("summary") {
-                return "This week looks steady. Your Morphe score is \(clientProfile.health.score), your streak is \(clientProfile.level.streak) days, and the best proof of progress is simple: \(firstWin)"
+                let weekLogs = workoutLogSummary(from: currentAthleteWorkoutLogs, scheduleAware: true).workoutsThisWeek
+                guard weekLogs > 0 else {
+                    return "Nothing logged this week yet, so there's nothing to sum up. Log a session and I'll read the week back from it."
+                }
+                return "\(weekLogs) session\(weekLogs == 1 ? "" : "s") logged this week. Your Morphe score is \(clientProfile.health.score), your streak is \(clientProfile.level.streak) days, and the best proof of progress is simple: \(firstWin)"
             }
         case .train:
             if lowercasedPrompt.contains("explain") || lowercasedPrompt.contains("exercise") || lowercasedPrompt.contains("form") {
@@ -17927,8 +17968,9 @@ final class MorpheAppStore {
 
         let summary = workoutLogSummary(from: logs, scheduleAware: true)
         let weekCount = summary.workoutsThisWeek
-        // Score reflects recent consistency + streak, bounded 10–100.
-        let score = min(100, max(10, 35 + weekCount * 10 + min(streak, 7) * 3))
+        // Score is sessions this week + streak and nothing else (fix wave
+        // 2026-10-13): the old 35-point floor made one session read 48.
+        let score = min(100, max(0, weekCount * 10 + min(streak, 7) * 3))
         let tier = HealthTier.from(score: score)
         clientProfile.health = HealthScoreSummary(
             score: score,

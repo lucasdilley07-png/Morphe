@@ -7,6 +7,43 @@ code and the live site; the two market lanes cite a live source for every
 number. The headline findings were re-checked against the code by hand.
 Read-only: nothing was changed by the audit.
 
+## Fix progress (updated as waves land)
+
+**Waves 1–2, 2026-10-13 (honesty + activation):**
+
+| Finding | Status |
+|---|---|
+| P0 1 pace stamps rewritable | Fixed — stamps may only stay or move to request time (live-checked) |
+| P0 2 fakeable scores | Fixed — shape, name length and ceilings on boards, the retired global board and challenges (live-checked) |
+| P0 3 fake products on the site | Fixed — removed; "Morphe gear is being made" until real products exist |
+| P0 4 35-point score floor | Fixed — score is sessions + streak only |
+| P0 5 "readiness is 60" | Fixed — no check-in, no number; "This week looks steady" now counts real sessions |
+| P0 6 "Log it as written" | Fixed — a zero-set session never logs; the choices are keep training or discard |
+| P0 7 lock-screen/Watch weight | Fixed — only weight lifted this session, else bodyweight |
+| P0 8 app-open streak as a stat | Fixed — own icon and "DAYS SHOWN UP" label (kept: Lucas's Oct 4 feature) |
+| P0 9 workouts never saved | Fixed — answering or skipping the debrief saves; leaving the app saves a finished session |
+| P0 11 AI consent | Fixed — consent sheet naming Anthropic and the data, before a key is saved |
+| P0 12 crash reporting | Fixed — MetricKit crash/hang events into first-party telemetry; payloads kept on device |
+| P0 14 tour ejects at stop 3 | Fixed — every middle page is "Next"; the last opens Train |
+| P0 15 no way to sign up | Partly — website waitlist (create-only); coach application still needs an account |
+| P1 false "stays on your device" | Fixed |
+| P1 Form Check hidden 3 sessions | Fixed — visible from session one |
+| P1 est. 1RM toast / first-record stamp | Fixed — toast shows what was lifted; a first lift is a baseline |
+| P1 rank copy | Fixed — "logged work and lessons" |
+| P1 QR scan fakes a connection | Fixed — sends a real connect request |
+| P1 food photo before key check | Fixed — asks first, offers barcode |
+| P1 blocked user can open a new chat | Fixed in rules (live-checked) |
+| P1 nav contrast, sitemap | Fixed |
+| Stale business docs | Archived to docs/archive with the reason |
+
+**Waiting on Lucas:** the tagline (incl. "TRANSFORM. EVOLVE. BECOME." on
+screen one), the brand kit and products (store, palette), Terms v3 partner
+offers, the Pro tier, a trademark attorney, who pays for the AI relay.
+
+**Next waves:** App Check enforcement + paid-team signing (with the Apple
+account), push notifications, the AI relay, data export completeness,
+deletion of name-bearing docs, backup chunking, age gate, then the hub.
+
 ## The verdict, honestly
 
 The core product works. A beginner gets from install to a logged set in

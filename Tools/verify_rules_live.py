@@ -194,6 +194,15 @@ try:
           fs_call(B, "PATCH", f"posts/{post_id}-f",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Fake A"),
                               "verified": b(False), "authorPrivate": b(False), "text": s("impostor")}}))
+    check("A resets their post pace stamp to null", False,
+          fs_call(A, "PATCH", f"users/{A['uid']}",
+                  {"fields": {"lastPostAt": {"nullValue": None}}}, "?updateMask.fieldPaths=lastPostAt"))
+    check("A backdates their post pace stamp", False,
+          fs_call(A, "PATCH", f"users/{A['uid']}",
+                  {"fields": {"lastPostAt": {"timestampValue": "2020-01-01T00:00:00Z"}}}, "?updateMask.fieldPaths=lastPostAt"))
+    check("A updates a profile field and leaves the stamps alone", True,
+          fs_call(A, "PATCH", f"users/{A['uid']}",
+                  {"fields": {"displayName": s("Rules A")}}, "?updateMask.fieldPaths=displayName"))
     check("A posts with accent + headline identity", True,
           paced_create(A, f"posts/{post_id}-a",
                        {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
@@ -383,6 +392,11 @@ try:
                   {"fields": {"name": s("Rules B")}}))
     check("B reads A's block list", False,
           fs_call(B, "GET", f"users/{A['uid']}/blocked/{B['uid']}"))
+    check("B (blocked by A) opens a new thread with A", False,
+          fs_call(B, "PATCH", f"threads/{B['uid']}_{A['uid']}",
+                  {"fields": {"coachUid": s(B["uid"]), "athleteUid": s(A["uid"]),
+                              "coachName": s("Rules B"), "athleteName": s("Rules A"),
+                              "lastMessage": s(""), "lastSender": s(B["uid"])}}))
 
     print("\n— Referral receipts (referred user writes, recruiter reads) —")
     ts = {"timestampValue": "2026-07-27T12:00:00Z"}
@@ -421,6 +435,15 @@ try:
     check("B posts own entry on the board", True,
           fs_call(B, "PATCH", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}",
                   {"fields": {"uid": s(B["uid"]), "name": s("B"), "score": i(12), "workouts": i(2)}}))
+    check("B posts an impossible week (10,000 sets)", False,
+          fs_call(B, "PATCH", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}",
+                  {"fields": {"uid": s(B["uid"]), "name": s("B"), "score": i(10000), "workouts": i(2)}}))
+    check("B smuggles an extra field into a board entry", False,
+          fs_call(B, "PATCH", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}",
+                  {"fields": {"uid": s(B["uid"]), "name": s("B"), "score": i(12), "workouts": i(2), "hax": s("y")}}))
+    check("B posts a paragraph as a board name", False,
+          fs_call(B, "PATCH", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}",
+                  {"fields": {"uid": s(B["uid"]), "name": s("x" * 200), "score": i(12), "workouts": i(2)}}))
     check("A posts an entry AS B on the board", False,
           fs_call(A, "PATCH", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}",
                   {"fields": {"uid": s(B["uid"]), "name": s("B"), "score": i(99), "workouts": i(9)}}))
@@ -457,6 +480,15 @@ try:
           fs_call(C, "DELETE", f"leaderboards/{wk}/entries/{B['uid']}/respect/{A['uid']}"))
     check("A takes back own respect", True,
           fs_call(A, "DELETE", f"leaderboards/{wk}/entries/{B['uid']}/respect/{A['uid']}"))
+
+    print("\n— Website waitlist (create-only) —")
+    check("A joins the waitlist", True,
+          fs_call(A, "POST", "waitlist", {"fields": {"email": s(f"rules-{RUN_ID}@example.com"), "source": s("rules-test")}}))
+    check("A joins with a malformed email", False,
+          fs_call(A, "POST", "waitlist", {"fields": {"email": s("not an email"), "source": s("rules-test")}}))
+    check("A smuggles a field into the waitlist", False,
+          fs_call(A, "POST", "waitlist", {"fields": {"email": s(f"x-{RUN_ID}@example.com"), "admin": b(True)}}))
+    check("A lists the waitlist", False, run_query(A, "waitlist", "source", "site"))
 
     print("\n— Telemetry (first-party, own-uid) —")
     check("A records own telemetry event", True,

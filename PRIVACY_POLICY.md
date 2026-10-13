@@ -219,6 +219,13 @@ collect data from them.
 If this policy changes, the effective date above changes with it and the
 current version ships inside the app repository and on the app's website.
 
+## The website waitlist
+
+If you join the waitlist on the Morphe website, your email address is
+stored in Morphe's database for one purpose: one email when the beta
+opens. It is never sold or shared. Email the address below to have it
+removed.
+
 ## Contact
 
 Questions, requests, or complaints: **lucasdilley.07@gmail.com**.

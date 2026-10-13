@@ -2300,14 +2300,16 @@ private struct DailyStreakRow: View {
         .animation(.easeOut(duration: 0.2), value: days)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel((days == 1
-            ? "Daily streak: day one. Open Morphe tomorrow to build it."
-            : "Daily streak: \(days) days in a row" + (best > days ? ", best \(best)" : ""))
+            ? "Shown up: day one. Open Morphe tomorrow to build it."
+            : "Shown up \(days) days in a row" + (best > days ? ", best \(best)" : ""))
             + (freezeLine.map { ". \($0)" } ?? ""))
     }
 
     private var countLine: some View {
         HStack(spacing: 10) {
-            Image(systemName: "flame.fill")
+            // Not the flame (fix wave 2026-10-13): the flame is the training
+            // streak; this row counts days the app was opened.
+            Image(systemName: "calendar.badge.checkmark")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(MorpheTheme.accentText)
                 .accessibilityHidden(true)
@@ -2316,7 +2318,7 @@ private struct DailyStreakRow: View {
                 .monospacedDigit()
                 .contentTransition(.numericText(value: Double(days)))
                 .foregroundStyle(MorpheTheme.textPrimary)
-            Text(days == 1 ? "DAY SHOWN UP" : "DAYS IN A ROW")
+            Text(days == 1 ? "DAY SHOWN UP" : "DAYS SHOWN UP")
                 .font(.caption.weight(.bold))
                 .tracking(1.2)
                 .foregroundStyle(MorpheTheme.textSecondary)

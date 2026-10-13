@@ -1296,7 +1296,7 @@ struct LoreEntry: Identifiable, Hashable {
 }
 
 /// The rank ladder (Lucas 2026-10-10): American military-style titles,
-/// climbed by level — and levels come only from logged work. Titles are
+/// climbed by level — and levels come from logged work and lessons. Titles are
 /// a familiar vocabulary for standing, not a claim about any service.
 enum MorpheRank: Int, CaseIterable, Identifiable {
     case rookie, cadet, privateFirst, corporal, sergeant, lieutenant, captain, major, colonel, general

@@ -17,7 +17,7 @@ your own words (Sourcing Law).
 - **April one-slide pitch** (_INBOX/morphe_pitch_slide.pdf): "Not a fitness
   app — the operating system for transformation."
 - Investor audit (Jul 30), market audit (Aug 26), brand audit (Jul 27), the
-  ICP you set Oct 2, and docs/COACH-PITCH.md.
+  ICP you set Oct 2, and docs/archive/COACH-PITCH.md.
 - The live metrics report, run today.
 
 ## Read this first: what has to change in any version
@@ -68,7 +68,7 @@ your own words (Sourcing Law).
    claims, and it is your line: "Morphe ai is the only good ai" (your
    message, Oct 10).
 
-5. **The demo in docs/COACH-PITCH.md is stale.** It walks through the
+5. **The demo in docs/archive/COACH-PITCH.md is stale.** It walks through the
    coach dashboard, which was deleted Sept 9. Don't rehearse from it.
 
 ---

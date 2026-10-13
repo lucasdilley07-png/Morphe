@@ -15,6 +15,28 @@ service cloud.firestore {
 
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    // Human-pace stamps (fix wave 2026-10-13): a stamp may stay as it is or
+    // move to this request's own time — never back to null or an old date,
+    // which reset the pace limit.
+    function paceStampHonest(field) {
+      return request.resource.data.get(field, null) == resource.data.get(field, null)
+        || request.resource.data.get(field, null) == request.time;
+    }
+    function paceStampsHonest() {
+      return paceStampHonest('lastPostAt') && paceStampHonest('lastCommentAt')
+        && paceStampHonest('lastMessageAt') && paceStampHonest('lastConnectAt');
+    }
+    function paceStampFresh(field) {
+      return !(field in request.resource.data) || request.resource.data[field] == request.time;
+    }
+    // Competition rows (fix wave 2026-10-13): a known shape, a short name,
+    // and a ceiling no honest week or month reaches — a REST call can no
+    // longer post 10,000 sets or a paragraph as a name.
+    function honestEntryName() {
+      return request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 60;
+    }
     // An accepted connection between the caller and `other`, either
     // direction (private accounts, 2026-10-12).
     function connectedWith(other) {
@@ -72,7 +94,9 @@ service cloud.firestore {
     // for an actively linked coach (full-profile decision above).
     match /users/{uid} {
       allow read:   if isOwner(uid) || isActiveCoachOf(uid);
-      allow create: if isOwner(uid) && keepsVerifiedHonest();
+      allow create: if isOwner(uid) && keepsVerifiedHonest()
+        && paceStampFresh('lastPostAt') && paceStampFresh('lastCommentAt')
+        && paceStampFresh('lastMessageAt') && paceStampFresh('lastConnectAt');
       // Per-flag: a client may CARRY an already-granted true, never mint one.
       allow update: if isOwner(uid)
         && (request.resource.data.get('coach', {}).get('verified', false) != true
@@ -80,7 +104,8 @@ service cloud.firestore {
         && (request.resource.data.get('verified', false) != true
             || resource.data.get('verified', false) == true)
         && (request.resource.data.get('creator', false) != true
-            || resource.data.get('creator', false) == true);
+            || resource.data.get('creator', false) == true)
+        && paceStampsHonest();
       // Account deletion is user-initiated IN the app (App Store 5.1.1(v)):
       // the owner deletes their own root doc; state/* and coachShare are
       // removed by the same flow, and the Auth user is deleted last.
@@ -195,6 +220,20 @@ service cloud.firestore {
     // app's own measurement (disclosed in the privacy policy): no third-
     // party SDK ever sees it, clients can never read it back, and the only
     // reader is the founder's service-account report tool.
+    // Website waitlist (fix wave 2026-10-13): anyone may add one email;
+    // nobody can read, change or delete entries from a client. Exported with
+    // the service account (Tools/export_waitlist.py).
+    match /waitlist/{entryId} {
+      allow create: if request.resource.data.keys().hasOnly(['email', 'source'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() >= 6
+        && request.resource.data.email.size() <= 120
+        && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+[.][^@\\s]+$')
+        && (!('source' in request.resource.data)
+            || (request.resource.data.source is string && request.resource.data.source.size() <= 24));
+      allow read, update, delete: if false;
+    }
+
     match /telemetry/{eventId} {
       // Own events readable/deletable ONLY by their author — that's what
       // makes the policy's "deleted with your account" true client-side.
@@ -549,8 +588,13 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create, update: if isOwner(uid)
         && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'verified', 'score', 'workouts', 'private', 'updatedAt'])
+        && honestEntryName()
         && request.resource.data.score is int
         && request.resource.data.score >= 0
+        && request.resource.data.score <= 600
+        && request.resource.data.get('workouts', 0) is int
+        && request.resource.data.get('workouts', 0) <= 28
         && request.resource.data.workouts is int
         && request.resource.data.workouts >= 0
         && (request.resource.data.get('verified', false) != true
@@ -596,8 +640,11 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow create, update: if isOwner(uid)
           && request.resource.data.uid == uid
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'verified', 'score', 'workouts', 'private', 'updatedAt'])
+          && honestEntryName()
           && request.resource.data.score is int
           && request.resource.data.score >= 0
+          && request.resource.data.score <= 600
           && request.resource.data.workouts is int
           && request.resource.data.workouts >= 0
           && (request.resource.data.get('verified', false) != true
@@ -638,8 +685,11 @@ service cloud.firestore {
       match /members/{uid} {
         allow read: if isSignedIn();
         allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['name', 'verified', 'score', 'private', 'updatedAt'])
+          && honestEntryName()
           && request.resource.data.score is int
           && request.resource.data.score >= 0
+          && request.resource.data.score <= 3000
           && (request.resource.data.get('verified', false) != true
               || get(/databases/$(database)/documents/users/$(uid)).data.get('verified', false) == true);
         allow delete: if false;
@@ -676,6 +726,10 @@ service cloud.firestore {
         && (request.auth.uid == request.resource.data.coachUid
             || request.auth.uid == request.resource.data.athleteUid)
         && request.resource.data.coachUid != request.resource.data.athleteUid
+        // A block stops a NEW chat too, either direction (fix wave
+        // 2026-10-13), not only messages in an existing one.
+        && !exists(/databases/$(database)/documents/users/$(request.resource.data.coachUid)/blocked/$(request.resource.data.athleteUid))
+        && !exists(/databases/$(database)/documents/users/$(request.resource.data.athleteUid)/blocked/$(request.resource.data.coachUid))
         && request.resource.data.keys().hasOnly(
              ['coachUid', 'athleteUid', 'coachName', 'athleteName',
               'lastMessage', 'lastSender', 'updatedAt'])

@@ -94,6 +94,9 @@ struct MorpheApp: App {
                     store.handleDayRolloverIfNeeded()
                 }
                 .onChange(of: scenePhase) { _, phase in
+                    // A finished session never stays unlogged because the
+                    // app was left (fix wave 2026-10-13).
+                    if phase == .background { store.logFinishedWorkoutIfPending() }
                     // A calendar day can pass while the app sits suspended in
                     // the switcher — every return to the foreground re-checks
                     // whether "today" is still today.

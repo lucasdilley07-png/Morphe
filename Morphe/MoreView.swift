@@ -1320,7 +1320,7 @@ struct SpartanCodeContent: View {
                         ladderRow(rung)
                     }
                 }
-                Text("Ten ranks, climbed by level, each with its own accent color — Rookie starts in Morphe Dark Blue, Colonel earns platinum, General wears gold. Levels come only from logged work — there is nothing to buy and nothing to skip.")
+                Text("Ten ranks, climbed by level, each with its own accent color — Rookie starts in Morphe Dark Blue, Colonel earns platinum, General wears gold. Levels come from logged work and lessons — there is nothing to buy and nothing to skip.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -2288,6 +2288,7 @@ struct FoodCheckCard: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var showScanner = false
     @State private var showCamera = false
+    @State private var showPhotoNeedsKey = false
     @State private var selected: FoodCheckRecord?
     /// A report found while a scanner/camera sheet is still dismissing
     /// waits here and presents from onDismiss (audit 2026-10-10).
@@ -2317,7 +2318,9 @@ struct FoodCheckCard: View {
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     Button {
-                        showCamera = true
+                        // Ask before the camera (fix wave 2026-10-13): the photo
+                        // path needs the user's key; shooting first wasted it.
+                        if MorpheIntelligence.apiKey == nil { showPhotoNeedsKey = true } else { showCamera = true }
                     } label: {
                         Label("Photo", systemImage: "camera.fill").frame(maxWidth: .infinity)
                     }
@@ -2381,6 +2384,12 @@ struct FoodCheckCard: View {
                     }
                 }
             }
+        }
+        .alert("Meal photos need your key", isPresented: $showPhotoNeedsKey) {
+            Button("Scan a barcode instead") { showScanner = true }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Reading a plate runs on Claude with your own Anthropic key (Profile → Morphe Intelligence). Barcodes work without one.")
         }
         .sheet(isPresented: $showScanner, onDismiss: presentPending) {
             FoodBarcodeSheet { code in

@@ -486,24 +486,16 @@ final class WorkoutSessionTests: XCTestCase {
         startedTwoExerciseSession(store)
         let firstExerciseName = store.activeWorkoutExercise!.name
 
-        // Session 1: first-ever weighted sets — a first record is a PR, and
-        // a PR gets the full-screen stamp, not the banner.
+        // Session 1: first-ever weighted sets are a BASELINE, not a record
+        // (fix wave 2026-10-13) — there was nothing to beat, so no stamp.
         store.completeTrackedSet(reps: 8, weight: 50)
         store.completeTrackedSet(reps: 8, weight: 50)
         store.completeTrackedSet(reps: 8, weight: 40)
         store.completeTrackedSet(reps: 8, weight: 40)
         store.finishTrackedWorkoutSession()
         store.logWorkout()
-        XCTAssertEqual(store.recordStamp?.kicker, "NEW RECORD",
-                       "a session that sets a record must celebrate THAT, not generic XP")
-        XCTAssertEqual(store.recordStamp?.headline, firstExerciseName)
-        // Both exercises hit first records — the detail cites the first and
-        // counts the rest.
-        XCTAssertTrue(store.recordStamp?.detailLine.contains("Your first record") == true)
-        XCTAssertNotNil(store.recordStamp?.prCard,
-                        "a PR stamp carries its share card")
-        XCTAssertNotEqual(store.celebration?.title, "+50 XP",
-                          "the stamp replaces the XP banner — never both for one log")
+        XCTAssertNil(store.recordStamp, "a first-ever lift is a baseline, not a record")
+        XCTAssertEqual(store.celebration?.title, "+50 XP")
         store.dismissRecordStamp()
 
         // Session 2: matching the record is NOT a new PR — generic banner,
@@ -1645,12 +1637,10 @@ final class WorkoutSessionTests: XCTestCase {
         store.startTodayWorkout()
         _ = store.completeTrackedSet(reps: 5, weight: 20)
         XCTAssertTrue(store.finishTrackedWorkoutSession())
+        // Answering the debrief saves the session (fix wave 2026-10-13), and
+        // the win beat speaks the user's own result.
         store.submitWorkoutDebrief(intensity: .hard, rating: 9, changeRequest: "")
-        // The "All sets logged" nudge from the final set may still be up —
-        // the contract is only that the WIN beat waits for Log Workout.
-        XCTAssertNotEqual(store.celebration?.title, "In the books",
-                          "the debrief save must not fire the win beat — nothing is in history yet")
-        store.logWorkout()
+        XCTAssertTrue(store.isWorkoutLoggedToday, "the debrief answer logs the workout")
         XCTAssertEqual(store.celebration?.title, "In the books")
         XCTAssertTrue(store.celebration?.detail.contains("Peak End Day") == true)
         XCTAssertTrue(store.celebration?.detail.contains("9/10") == true)
@@ -1718,11 +1708,12 @@ final class WorkoutSessionTests: XCTestCase {
             items: [CustomWorkoutItem(exercise: exercise, sets: 1, reps: 5)]
         )
         store.startTodayWorkout()
-        // Nothing logged → Finish asks first (audit 2026-10-10); "as
-        // written" is the explicit answer.
+        // Nothing logged → Finish refuses (fix wave 2026-10-13): a zero-set
+        // session never becomes a log, so it can't pay XP or a streak day.
         XCTAssertFalse(store.finishTrackedWorkoutSession())
         XCTAssertTrue(store.pendingZeroSetFinish)
-        XCTAssertTrue(store.finishTrackedWorkoutSession(confirmedEmpty: true))
+        XCTAssertFalse(store.finishTrackedWorkoutSession(), "still refuses on the second tap")
+        XCTAssertTrue(store.currentAthleteWorkoutLogs.isEmpty, "no log from an empty session")
         store.skipWorkoutDebrief()
         XCTAssertFalse(store.showWorkoutDebrief)
         XCTAssertTrue(store.workoutDebriefs.isEmpty, "a skip records nothing")

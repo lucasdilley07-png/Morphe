@@ -109,8 +109,9 @@ p { margin: 0; }
 .brand img { width: 22px; height: 30px; }
 .brand span { font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.32em; font-size: 14px; }
 .nav-links { display: flex; align-items: center; gap: 4px; }
-.nav-links a { text-decoration: none; padding: 10px 12px; border-radius: 10px; font-weight: 600; font-size: 14px; color: var(--fg-2); }
-.nav-links a:hover { color: var(--fg); background: var(--bg-elevated); }
+.nav-links a { text-decoration: none; padding: 10px 12px; border-radius: 10px; font-weight: 600; font-size: 14px; }
+.nav-links a:not(.btn) { color: var(--fg-2); }
+.nav-links a:not(.btn):hover { color: var(--fg); background: var(--bg-elevated); }
 .nav-links .btn { min-height: 44px; padding-inline: 16px; margin-left: 8px; }
 @media (max-width: 640px) { .nav-links a:not(.btn):not(.nav-keep) { display: none; } .nav-links .btn { margin-left: 0; } }
 
@@ -227,6 +228,13 @@ p { margin: 0; }
 .dl-actions { display: grid; gap: 12px; min-width: 260px; }
 .dl-actions .btn { width: 100%; }
 .dl-actions .fine { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: rgba(255,255,255,0.7); text-align: center; }
+.waitlist { display: grid; gap: 8px; margin-top: 8px; }
+.waitlist label { font-weight: 600; font-size: 14px; color: #fff; }
+.waitlist .row { display: flex; gap: 8px; }
+.waitlist input { flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.12); color: #fff; font: inherit; font-size: 16px; }
+.waitlist input::placeholder { color: rgba(255,255,255,0.7); }
+.waitlist button { min-height: 48px; padding: 0 18px; border-radius: 12px; border: 0; background: #fff; color: #14213D; font: inherit; font-weight: 700; cursor: pointer; }
+.waitlist .msg { font-size: 14px; color: #fff; min-height: 20px; }
 .store-btn { display: inline-flex; align-items: center; gap: 12px; text-align: left; min-height: 56px; }
 .store-btn .top { display: block; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; opacity: 0.8; }
 .store-btn .main { display: block; font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
@@ -364,20 +372,11 @@ p { margin: 0; }
 <section class="section" id="store" aria-labelledby="store-h">
   <div class="wrap">
     <div class="section-head">
-      <p class="micro">Store</p>
-      <h2 id="store-h">Fuel and gear. Honest labels only.</h2>
-      <p class="lede">Supplements that say exactly what is in them, and gear that lasts.</p>
+      <p class="micro">Gear</p>
+      <h2 id="store-h">Morphe gear is being made.</h2>
+      <p class="lede">Nothing is for sale yet. When the first pieces are real, with real photos and real prices, they go up here, and not before.</p>
     </div>
-    <div class="store-note" role="note">
-      <span class="dot" aria-hidden="true"></span>
-      <p><strong>Pre-launch preview.</strong> The products, prices, and checkout below are placeholders while the line is being finalized. Nothing is for sale yet, and no payment is taken. Save what you want; the list stays on this device.</p>
-    </div>
-    <div class="chips" role="group" aria-label="Filter products">
-      <button class="chip" type="button" data-filter="all" aria-pressed="true">All</button>
-      <button class="chip" type="button" data-filter="supplement" aria-pressed="false">Supplements</button>
-      <button class="chip" type="button" data-filter="gear" aria-pressed="false">Gear</button>
-    </div>
-    <div class="grid" id="products"></div>
+    <div class="grid" id="products" hidden></div>
   </div>
 </section>
 
@@ -396,6 +395,15 @@ p { margin: 0; }
         <span><span class="top">Join the beta on</span><span class="main">TestFlight</span></span>
       </a>
       <p class="fine" id="dl-fine">LINKS GO LIVE WITH THE RELEASE</p>
+      <form class="waitlist" id="waitlist" novalidate>
+        <label for="wl-email">Get the TestFlight invite when the beta opens</label>
+        <div class="row">
+          <input id="wl-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required maxlength="120">
+          <button type="submit">Join</button>
+        </div>
+        <p class="msg" id="wl-msg" role="status" aria-live="polite"></p>
+        <p class="fine">ONE EMAIL WHEN THE BETA OPENS · NOTHING ELSE</p>
+      </form>
     </div>
   </div>
 </section>
@@ -444,24 +452,7 @@ p { margin: 0; }
 
   // Store. Placeholder line: names, prices and copy are stand-ins until the
   // real products exist. Nothing here makes a health claim.
-  var products = [
-    { id: "whey", kind: "supplement", name: "Morphe Whey", sub: "Whey protein isolate · 25 servings", price: 44, art: "helmet",
-      copy: "One scoop, 25 g of protein, a label you can read in one breath." },
-    { id: "creatine", kind: "supplement", name: "Creatine Monohydrate", sub: "Micronized · 60 servings", price: 29, art: "helmet",
-      copy: "Five grams, no flavor, no filler." },
-    { id: "electrolytes", kind: "supplement", name: "Electrolytes", sub: "Sodium, potassium, magnesium · 30 sticks", price: 24, art: "helmet",
-      copy: "For long sessions and hot days. Salt first, sugar last." },
-    { id: "preworkout", kind: "supplement", name: "Pre-Session", sub: "Caffeine 150 mg · 30 servings", price: 34, art: "helmet",
-      copy: "Enough to show up sharp. Not enough to lie about what you lifted." },
-    { id: "tee", kind: "gear", name: "The Helmet Tee", sub: "Heavyweight cotton · Spartan blue or white", price: 32, art: "icon",
-      copy: "The mark on the chest, TRAIN SMARTER on the back. Nothing else." },
-    { id: "shaker", kind: "gear", name: "Shaker", sub: "700 ml · glass-blue tint", price: 16, art: "bubble",
-      copy: "The AI bubble on the side. Dishwasher safe." },
-    { id: "cap", kind: "gear", name: "Field Cap", sub: "Unstructured · brand blue", price: 28, art: "icon",
-      copy: "Low profile. The helmet, embroidered small." },
-    { id: "belt", kind: "gear", name: "Lever Belt", sub: "10 mm · 4 inch · sizes S–XL", price: 89, art: "icon",
-      copy: "For the sets that count. Blue stitching, steel lever." }
-  ];
+  var products = []; // no placeholder products on a page that says "Nothing fake" (fix wave 2026-10-13);
   var artFor = { helmet: "assets/helmet.png", icon: "assets/icon.png", bubble: "assets/ai-bubble.png" };
   var grid = document.getElementById("products");
   var fmt = function (n) { return "$" + n.toFixed(2); };
@@ -558,6 +549,29 @@ p { margin: 0; }
     fine.textContent = APP_STORE_URL ? "FREE · IOS 17 OR LATER" : "BETA · IOS 17 OR LATER";
   }
 })();
+
+  // Waitlist (fix wave 2026-10-13): the download buttons were dead ends.
+  // Create-only in the rules; nobody can read the list from a browser.
+  (function () {
+    var form = document.getElementById("waitlist");
+    if (!form) return;
+    var input = document.getElementById("wl-email"), msg = document.getElementById("wl-msg");
+    var KEY = "AIzaSyAcP1XXWajPFhC13b8UfiRh1XhZdrlIkhQ", PROJECT = "morphe-3c5c2";
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var email = (input.value || "").trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 120) { msg.textContent = "That email doesn't look right."; return; }
+      msg.textContent = "Adding you…";
+      fetch("https://firestore.googleapis.com/v1/projects/" + PROJECT + "/databases/(default)/documents/waitlist?key=" + KEY, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: { email: { stringValue: email }, source: { stringValue: "site" } } })
+      }).then(function (r) {
+        if (!r.ok) throw new Error(r.status);
+        msg.textContent = "You're on the list. One email when the beta opens.";
+        input.value = "";
+      }).catch(function () { msg.textContent = "Couldn't add you — check your connection and try again."; });
+    });
+  })();
 </script>
 </body>
 </html>
