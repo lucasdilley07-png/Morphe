@@ -1753,7 +1753,7 @@ final class MorpheAppStore {
                     threadReadKey, activitySeenKey, storySeenKey,
                     lastKnownStreakKey, comebackPendingKey, foodChecksKey, recentFoodsKey,
                     savedExercisesKey, savedLessonsKey, savedDietPlansKey, hiddenPeopleKey, knownNamesKey,
-                    morpheInboxKey, morpheInboxReadKey, deliveredNewsKey, boardsKey, championKey, privateAccountKey,
+                    morpheInboxKey, morpheInboxReadKey, deliveredNewsKey, boardsKey, championKey, privateAccountKey, privacyRestampKey,
                     dailyStreakCountKey, dailyStreakLastDayKey, dailyStreakBestKey, dailyStreakFreezeDayKey,
                     // An invite link opened before sign-out must not credit
                     // the next account's recruiter (audit 2026-10-10, P2).
@@ -2140,6 +2140,9 @@ final class MorpheAppStore {
         let uid = authUser?.id ?? clientProfile.id.uuidString
         switch await usernameDirectory.claim(name, for: uid, releasing: profileShowcase.username) {
         case .claimed:
+            // A claim writes a fresh doc; a private account stays private
+            // under its new handle (audit 2026-10-12, P1-2).
+            if isPrivateAccount { await usernameDirectory.setPrivate(name, for: uid, isPrivate: true) }
             profileShowcase.username = name
             usernameChangedAtEpoch = Date.now.timeIntervalSince1970
             persistLocalProfile()
@@ -4911,6 +4914,7 @@ final class MorpheAppStore {
     /// the CURRENT profile id — called at launch, on profile restore, and
     /// after the onboarding identity mint.
     private func reloadPerProfileMirrors() {
+        perProfileFlagsTick += 1
         // The read-stamp cache is keyed by profile id — drop it with every
         // identity change, not just sign-out (post-revamp audit P2-7).
         threadReadCache = nil
@@ -5172,10 +5176,19 @@ final class MorpheAppStore {
     /// signed out — no account, no board.
     private var competitionSelf: (uid: String, name: String)? {
         guard let user = authUser else { return nil }
+        // Private: the row keeps its place and score, but the real name
+        // never leaves the phone (audit 2026-10-12, P0 — the rules let any
+        // signed-in member read board rows).
+        if isPrivateAccount { return (user.id, Self.privateAthleteName) }
+        return (user.id, myCompetitionName)
+    }
+    static let privateAthleteName = "Private athlete"
+    /// The user's own name for their own row, private or not.
+    var myCompetitionName: String {
         let name = !profileShowcase.displayName.isEmpty ? profileShowcase.displayName
             : !clientProfile.name.isEmpty ? clientProfile.name
-            : user.displayName
-        return (user.id, name.isEmpty ? "Athlete" : name)
+            : (authUser?.displayName ?? "")
+        return name.isEmpty ? "Athlete" : name
     }
 
     /// Set count of one log — same derivation `weeklySetVolume` charts, so
@@ -10016,7 +10029,9 @@ final class MorpheAppStore {
     var messageablePeople: [PersonCard] {
         let me = authUser?.id ?? ""
         let threadUids = Set(liveThreads.flatMap { [$0.coachUid, $0.athleteUid] })
-        let uids = connectedUids.union(followedUids).union(threadUids).subtracting([me]).subtracting(blockedUids)
+        // Follows of a private account don't open a chat (audit 2026-10-12).
+        let follows = followedUids.filter { uid in !(person(for: uid)?.isPrivate ?? false) }
+        let uids = connectedUids.union(follows).union(threadUids).subtracting([me]).subtracting(blockedUids)
         return uids.compactMap { uid in
             person(for: uid) ?? liveThreads.first(where: { $0.coachUid == uid || $0.athleteUid == uid }).map {
                 PersonCard(uid: uid, name: $0.counterpartName(for: me), username: "", headline: "", accentId: "", verified: false, isCoach: false)
@@ -13077,29 +13092,57 @@ final class MorpheAppStore {
     /// the Champion accent. Per profile; never revoked.
     private var championKey: String { "morphe.champion.\(clientProfile.id.uuidString)" }
     var championUnlocked: Bool {
-        get { UserDefaults.standard.bool(forKey: championKey) }
+        _ = perProfileFlagsTick
+        return UserDefaults.standard.bool(forKey: championKey)
     }
     /// Private account (Lucas 2026-10-10): the data never changes — logs,
     /// boards, ranks and placings stay — only whether strangers see it.
     /// Connections keep seeing posts; boards show the row as "Private
     /// athlete"; Quick Add and search skip the account for non-connections.
     private var privateAccountKey: String { "morphe.privateAccount.\(clientProfile.id.uuidString)" }
-    var isPrivateAccount: Bool { UserDefaults.standard.bool(forKey: privateAccountKey) }
+    /// Read by the per-profile flag getters so Observation tracks them —
+    /// UserDefaults reads alone left the toggle's label stale (audit
+    /// 2026-10-12, P1). Bumped by every setter and profile reload.
+    private(set) var perProfileFlagsTick = 0
+    var isPrivateAccount: Bool {
+        _ = perProfileFlagsTick
+        return UserDefaults.standard.bool(forKey: privateAccountKey)
+    }
+    private var privacyRestampKey: String { "morphe.privacyRestampPending.\(clientProfile.id.uuidString)" }
+    private var privacyRestampTask: Task<Void, Never>?
     func setPrivateAccount(_ isPrivate: Bool) {
         guard isPrivate != isPrivateAccount else { return }
         UserDefaults.standard.set(isPrivate, forKey: privateAccountKey)
+        UserDefaults.standard.set(true, forKey: privacyRestampKey)
+        perProfileFlagsTick += 1
         mirrorExtrasToCloud()
-        let handle = profileShowcase.username
-        Task {
-            if !handle.isEmpty, let uid = authUser?.id {
-                await usernameDirectory.setPrivate(handle, for: uid, isPrivate: isPrivate)
-                _ = await feedService.setAuthorPrivate(uid: uid, isPrivate: isPrivate)
-            }
-            publishCompetitionScores()
-        }
+        // Board and challenge rows first: the masked name is what keeps the
+        // real one off the server (audit 2026-10-12, P1-12).
+        publishCompetitionScores()
+        // Rapid toggles: the newest switch wins (audit P2 race).
+        privacyRestampTask?.cancel()
+        privacyRestampTask = Task { await restampPrivacyIfPending() }
         showToast(isPrivate
-            ? "Private: only your connections see your posts; boards show you as a private athlete. Your data and placings stay."
-            : "Public: your posts, name and boards are visible to members again.")
+            ? "Private: your posts show only to your connections and boards list you as Private athlete. Your data and placings stay."
+            : "Public: your posts and your name on boards are visible to members again.")
+    }
+    /// Re-stamps old posts and the directory entry to the current setting.
+    /// Pending until both writes land; retried on the next feed refresh, so
+    /// going private offline still takes (audit 2026-10-12, P1-3).
+    func restampPrivacyIfPending() async {
+        guard UserDefaults.standard.bool(forKey: privacyRestampKey), let uid = authUser?.id else { return }
+        let target = isPrivateAccount
+        let handle = profileShowcase.username
+        if !handle.isEmpty {
+            await usernameDirectory.setPrivate(handle, for: uid, isPrivate: target)
+        }
+        guard !Task.isCancelled else { return }
+        let touched = await feedService.setAuthorPrivate(uid: uid, isPrivate: target)
+        // Only clear when the posts actually re-stamped and nobody flipped
+        // the switch meanwhile.
+        if touched != nil, target == isPrivateAccount {
+            UserDefaults.standard.removeObject(forKey: privacyRestampKey)
+        }
     }
     /// A post, board row or member card this account may show.
     func visibleToMe(authorUid: String, isPrivate: Bool) -> Bool {
@@ -13110,6 +13153,7 @@ final class MorpheAppStore {
         guard !championUnlocked, let me = authUser?.id,
               activeChallenges.contains(where: { $0.isExpired && $0.members.contains { $0.uid == me } }) else { return }
         UserDefaults.standard.set(true, forKey: championKey)
+        perProfileFlagsTick += 1
         mirrorExtrasToCloud()
         showToast("Champion accent unlocked — your first challenge is done. It's in Profile.")
     }
@@ -14595,6 +14639,10 @@ final class MorpheAppStore {
         if !membershipSetsFetched, let blocked = await feedService.fetchBlocked(uid: uid) {
             blockedAccounts = blocked
         }
+        // Connections first: private posts are filtered against them, and a
+        // cold launch had none loaded yet (audit 2026-10-12, P1-10).
+        if connectRequests.isEmpty { await refreshConnectRequests() }
+        Task { await restampPrivacyIfPending() }
         if let fetched = await feedService.fetchRecent(limit: Self.feedPageSize, before: nil) {
             feedFetchState = .loaded
             lastFeedRefreshAt = .now
@@ -14614,7 +14662,10 @@ final class MorpheAppStore {
                     // position). New posts go on top; known posts update
                     // in place; older pages stay.
                     let pageIds = Set(cleanPage.map(\.id))
-                    let kept = feedPosts.filter { !pageIds.contains($0.id) }
+                    // Kept rows go through the filter again: a post whose
+                    // author went private (or a disconnect) must not linger
+                    // for the session (audit 2026-10-12, P1-9).
+                    let kept = feedPosts.filter { !pageIds.contains($0.id) && renderableFeedPost($0) }
                     feedPosts = (cleanPage + kept).sorted { $0.createdAt > $1.createdAt }
                 }
             }
@@ -15154,6 +15205,13 @@ final class MorpheAppStore {
             showToast("You've blocked this account — unblock them in Profile to message.")
             return false
         }
+        // A private account takes new chats from connections only; an
+        // existing conversation carries on (audit 2026-10-12, P1-5).
+        let alreadyTalking = liveThreads.contains { $0.coachUid == otherUid || $0.athleteUid == otherUid }
+        if person(for: otherUid)?.isPrivate == true, !connectedUids.contains(otherUid), !alreadyTalking {
+            showToast("That account is private — connect first to message them.")
+            return false
+        }
         let myName = feedAuthorName
         let firstIsMe = myUid < otherUid
         let threadId = await messagingService.ensureThread(
@@ -15458,6 +15516,12 @@ final class MorpheAppStore {
     /// Reposts with the reposter's own commentary. Reposting a repost points
     /// at the ORIGINAL post, so attribution never chains through middlemen.
     func repost(_ post: FeedPost, commentary: String) async {
+        // A private post stays with its author's connections — a repost
+        // would carry its words and photo to everyone (audit 2026-10-12).
+        guard !post.authorPrivate else {
+            showToast("That's a private account's post — it stays with their connections.")
+            return
+        }
         let originalId = post.isRepost ? post.repostOfId : post.id
         let originalAuthor = post.isRepost ? post.repostOfAuthor : post.authorName
         let clean = commentary.trimmingCharacters(in: .whitespacesAndNewlines)

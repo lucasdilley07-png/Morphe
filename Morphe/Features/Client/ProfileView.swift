@@ -256,20 +256,25 @@ struct ProfileView: View {
             isEditingInjuries = false
         }
         if isEditingBio { saveBio() }
-        if isEditingTargets { saveTargets() }
+        if isEditingTargets {
+            if targetsChanged { saveTargets() } else { isEditingTargets = false }
+        }
+        commitDetailsDrafts()
+        editingDetails = false
+    }
+
+    /// The details box's typed-but-unsaved fields — shared by Done and the
+    /// sheet-wide save so neither can drop a weight the user typed.
+    private func commitDetailsDrafts() {
         let weight = weightDraft.trimmingCharacters(in: .whitespaces)
         if MorpheAppStore.parsedBodyWeightLb(weight, assumedUnit: store.weightUnit) != nil {
             store.updateBodyMetrics(height: store.clientProfile.height, weight: weight)
-            weightDraft = ""
         }
-        if goalWeightChanged {
-            store.updateGoalWeight(goalWeightDraft)
-            goalWeightDraft = ""
-        }
-        if ageChanged, let years = Int(ageDraft.trimmingCharacters(in: .whitespaces)) {
-            store.updateAge(years)
-            ageDraft = ""
-        }
+        weightDraft = ""
+        if goalWeightChanged { store.updateGoalWeight(goalWeightDraft) }
+        goalWeightDraft = ""
+        if ageChanged, let years = Int(ageDraft.trimmingCharacters(in: .whitespaces)) { store.updateAge(years) }
+        ageDraft = ""
     }
 
     private func discardAllEdits() {
@@ -321,7 +326,11 @@ struct ProfileView: View {
                     Spacer()
                     Button(editingDetails ? "Done" : "Edit") {
                         if editingDetails {
-                            saveTargets()
+                            // Done commits everything typed in the box
+                            // (audit 2026-10-12, P1): age, current and goal
+                            // weight, and the milestones only if they changed.
+                            commitDetailsDrafts()
+                            if targetsChanged { saveTargets() } else { isEditingTargets = false }
                         } else {
                             physicalTargetDraft = store.clientProfile.physicalGoalTarget
                             weightTargetDraft = store.clientProfile.weightGoalTarget
@@ -333,7 +342,7 @@ struct ProfileView: View {
                     .accessibilityLabel(editingDetails ? "Done editing details and milestones" : "Edit details and milestones")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(MorpheTheme.accentText)
-                    .frame(minWidth: 44, minHeight: 32)
+                    .frame(minWidth: 44, minHeight: 44)
                 }
 
                 if !editingDetails {
@@ -1219,10 +1228,11 @@ struct ProfileView: View {
                             Text(store.isSubmittingVerification ? "Sending…" : "Get Verified")
                         }
                         .font(.caption.weight(.semibold))
-                        .frame(minHeight: 32)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(Color(red: 0.25, green: 0.56, blue: 0.96))
+                    .foregroundStyle(MorpheTheme.brandBlueText)
                     .disabled(store.isSubmittingVerification)
                 }
             }
@@ -1231,7 +1241,17 @@ struct ProfileView: View {
 
     /// How verification actually works: the steps, honestly — a live
     /// selfie, a human review — in full, straight under the card title.
+    @ViewBuilder
     private var verificationSection: some View {
+        if store.isVerifiedUser {
+            Text("You're verified. The blue check shows on your profile and your posts.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+        } else if store.verificationRequestStatus == .pending {
+            Text("Your selfie is with the Morphe team. A person reviews it; the check appears once it's approved.")
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textSecondary)
+        } else {
         VStack(alignment: .leading, spacing: 6) {
             Text("How to get verified")
                 .font(.caption.weight(.semibold))
@@ -1240,6 +1260,7 @@ struct ProfileView: View {
             verificationStep(2, "Face clear and well lit, no sunglasses or mask. The photo is used only to confirm you are a real person and is seen only by the Morphe team.")
             verificationStep(3, "A human reviews it. Your profile shows \u{201C}under review\u{201D} until then.")
             verificationStep(4, "Approved: the blue check appears on your profile and your posts. Declined: take a clearer selfie and try again.")
+        }
         }
     }
 
@@ -1382,7 +1403,7 @@ struct ProfileView: View {
     private static let howYouTrainKeywords =
         "training days week injuries limits auto rest timer effort rpe rir weight unit kg lb pounds kilograms"
     private static let whoCanSeeYouKeywords =
-        "weekly board leaderboard privacy feed posts streak byline accent share blocked accounts unblock"
+        "weekly board leaderboard privacy private public account visibility feed posts streak byline accent share blocked accounts unblock"
 
     /// Collapsed by default (Lucas 2026-10-06: "text heavy and
     /// unorganized"): each section is one row — icon, title, a short line
@@ -1917,10 +1938,12 @@ struct ProfileView: View {
                     // or recomputed — logs, boards, ranks and placings stay;
                     // the switch only changes who can see them.
                     preferenceToggleRow(
-                        title: store.isPrivateAccount ? "Private account" : "Public account",
+                        // Fixed title so VoiceOver reads "Private account,
+                        // on/off" — a state-flipping title read backwards.
+                        title: "Private account",
                         caption: store.isPrivateAccount
-                            ? "Only your connections see your posts and can message you. On boards and challenges you keep your place and score, shown as \u{201C}Private athlete\u{201D}. Quick Add and search leave you out; people still reach you by invite or code."
-                            : "Members can find you in Quick Add and search, see your posts, and see your name on boards. Switch to private any time — your data and placings stay exactly as they are.",
+                            ? "On. In Morphe, your posts show only to your connections, and only connections can start a chat with you. On boards and challenges you keep your place and score as \u{201C}Private athlete\u{201D} \u{2014} your name isn't sent. Quick Add and search leave you out. Comments you leave on public posts stay visible."
+                            : "Off. Members can find you in Quick Add and search, see your posts and see your name on boards. Turn it on any time \u{2014} your data and placings stay exactly as they are.",
                         isOn: Binding(
                             get: { store.isPrivateAccount },
                             set: { store.setPrivateAccount($0) }

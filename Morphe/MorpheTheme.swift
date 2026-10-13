@@ -33,13 +33,15 @@ enum MorpheTheme {
     /// now re-render when the flag flips. As a plain static, a sunset or
     /// background appearance change repainted the field but left text in
     /// the old color — text "matching the background" on reopen.
-    @Observable final class State {
-        static let shared = State()
+    @Observable final class AppearanceState {
+        static let shared = AppearanceState()
         var isLight = MorpheTheme.defaultIsLight()
     }
     static var isLight: Bool {
-        get { State.shared.isLight }
-        set { State.shared.isLight = newValue }
+        get { AppearanceState.shared.isLight }
+        // Same-value writes skipped: every write invalidates every view
+        // that reads a token (audit 2026-10-12, P2).
+        set { if AppearanceState.shared.isLight != newValue { AppearanceState.shared.isLight = newValue } }
     }
 
     static var ink: Color {

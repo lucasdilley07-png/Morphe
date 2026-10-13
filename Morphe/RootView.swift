@@ -748,6 +748,9 @@ private struct ClientPinnedHeader: View {
                             Text(headerInitial)
                                 .font(.headline.weight(.bold))
                                 .foregroundStyle(MorpheTheme.accentText)
+                                // The circle is fixed at 40pt; the letter
+                                // must not clip at accessibility sizes.
+                                .dynamicTypeSize(...DynamicTypeSize.xLarge)
                         }
                     }
                 }
@@ -3599,6 +3602,7 @@ private struct QuickAddSheet: View {
         let me = store.authUser?.id ?? ""
         var cards = store.knownPeople.filter { card in
             card.uid != me && !store.blockedUids.contains(card.uid)
+                && (!card.isPrivate || store.connectedUids.contains(card.uid))
                 && (card.name.lowercased().contains(q) || card.username.lowercased().contains(q) || card.headline.lowercased().contains(q))
         }
         for hit in store.athleteSearchResults where hit.uid != me && !cards.contains(where: { $0.uid == hit.uid }) {
@@ -4379,6 +4383,7 @@ private struct WelcomeExperienceView: View {
                 Text("Time to Morphe")
                     .font(.largeTitle.weight(.bold))
                     .foregroundStyle(MorpheTheme.textPrimary)
+                    .multilineTextAlignment(.center)
                     .featureGlimmer(period: 4)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 32)

@@ -4365,7 +4365,9 @@ struct DiscoverCatalogSection: View {
                 ScrollView(showsIndicators: false) {
                     detailView(current)
                         .padding(.horizontal, 20)
-                        .padding(.top, 12)
+                        // Clears the floating header row, same as the
+                        // Technique Library (audit 2026-10-12).
+                        .padding(.top, MorpheTheme.Spacing.pageTopStacked)
                         .padding(.bottom, 120)
                 }
                 .background(PremiumBackground().ignoresSafeArea())

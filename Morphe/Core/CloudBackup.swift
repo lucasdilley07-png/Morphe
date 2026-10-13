@@ -863,7 +863,9 @@ final class FirebaseFeedService: FeedSyncing {
             batch.updateData(["authorPrivate": isPrivate], forDocument: document.reference)
             touched += 1
         }
-        if touched > 0 { try? await batch.commit() }
+        if touched > 0 {
+            do { try await batch.commit() } catch { return nil }   // pending, retried
+        }
         return touched
     }
 

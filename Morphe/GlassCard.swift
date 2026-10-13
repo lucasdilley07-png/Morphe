@@ -2881,38 +2881,43 @@ struct FeatureGlimmer: ViewModifier {
     func body(content: Content) -> some View {
         content
             .overlay {
-                if reduceMotion {
-                    LinearGradient(
-                        colors: [MorpheTheme.textPrimary, MorpheTheme.accentText, MorpheTheme.textPrimary],
-                        startPoint: .leading, endPoint: .trailing
-                    )
-                    .mask(content)
-                } else {
+                // Reduce Motion: nothing extra — the headline keeps its own
+                // color (audit 2026-10-12: a static gradient recolored the
+                // accent-tinted Form button).
+                if !reduceMotion {
                     GeometryReader { geo in
+                        // accentText only, never white (audit 2026-10-12,
+                        // P1): a white peak over near-black light-mode text
+                        // erased the headline mid-sweep. Same rule as the
+                        // older sheen above (audit 7, P1-2).
                         LinearGradient(
                             stops: [
                                 .init(color: .clear, location: 0),
-                                .init(color: MorpheTheme.accentText.opacity(0.55), location: 0.35),
-                                .init(color: Color.white.opacity(0.95), location: 0.5),
-                                .init(color: MorpheTheme.accentText.opacity(0.55), location: 0.65),
+                                .init(color: MorpheTheme.accentText.opacity(0.85), location: 0.5),
                                 .init(color: .clear, location: 1)
                             ],
                             startPoint: .leading, endPoint: .trailing
                         )
-                        .frame(width: max(geo.size.width * 0.55, 40))
+                        .frame(width: max(geo.size.width * 0.45, 32))
                         .offset(x: phase * geo.size.width)
                         .rotationEffect(.degrees(14))
-                        .blendMode(.plusLighter)
                     }
                     .mask(content)
                     .allowsHitTesting(false)
+                    .accessibilityHidden(true)
                 }
             }
-            .task {
+            // Restarts when Reduce Motion flips while the view is on screen.
+            .task(id: reduceMotion) {
                 guard !reduceMotion else { return }
                 try? await Task.sleep(for: .milliseconds(500))
                 while !Task.isCancelled {
-                    phase = -0.6
+                    // Reset with no animation, let a frame land, then sweep:
+                    // resetting and animating in one tick animated 1.1 → 1.1
+                    // after the first pass, so it swept once (audit P1).
+                    var reset = Transaction(); reset.disablesAnimations = true
+                    withTransaction(reset) { phase = -0.6 }
+                    try? await Task.sleep(for: .milliseconds(32))
                     withAnimation(.easeInOut(duration: 1.15)) { phase = 1.1 }
                     try? await Task.sleep(for: .seconds(period))
                 }

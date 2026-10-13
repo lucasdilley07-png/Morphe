@@ -2372,7 +2372,7 @@ struct WeeklyBoardCard: View {
                 .font(.caption.weight(.bold))
                 .foregroundStyle(isMe ? MorpheTheme.accentText : MorpheTheme.textMuted)
                 .frame(width: 22, alignment: .leading)
-            Text(isMe ? "\(entry.name) (you)" : (entry.isPrivate && !store.connectedUids.contains(entry.uid) ? "Private athlete" : entry.name))
+            Text(isMe ? "\(store.myCompetitionName) (you)" : (entry.isPrivate ? MorpheAppStore.privateAthleteName : entry.name))
                 .font(.caption.weight(isMe ? .bold : .semibold))
                 .foregroundStyle(isMe ? MorpheTheme.accentText : MorpheTheme.textPrimary)
                 .lineLimit(1)
@@ -2544,7 +2544,7 @@ private struct ChallengesCard: View {
             HStack(spacing: 8) {
                 if let top {
                     HStack(spacing: 3) {
-                        Text("Top: \(top.name)")
+                        Text("Top: \(top.uid == store.authUser?.id ? "you" : top.name)")
                             .font(.caption2)
                             .foregroundStyle(MorpheTheme.textSecondary)
                         if top.verified {

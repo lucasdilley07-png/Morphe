@@ -6688,6 +6688,33 @@ final class ModerationTests: XCTestCase {
         XCTAssertNil(store.authUser)
     }
 
+    func testPrivatePostsShowOnlyToConnectionsAndTheAuthor() {
+        let store = MorpheAppStore()
+        store.authUser = AppUser(id: "me", email: "me@morphe.app", role: .athlete, displayName: "Me", createdAt: .now)
+        store.connectRequests = [
+            ConnectRequest(id: "me_u1", fromUid: "me", toUid: "u1", fromName: "Me", toName: "A", status: "accepted", createdAt: .now),
+            ConnectRequest(id: "me_u3", fromUid: "me", toUid: "u3", fromName: "Me", toName: "C", status: "pending", createdAt: .now)
+        ]
+        XCTAssertTrue(store.visibleToMe(authorUid: "u1", isPrivate: true), "a connection sees private posts")
+        XCTAssertFalse(store.visibleToMe(authorUid: "u2", isPrivate: true), "a stranger does not")
+        XCTAssertFalse(store.visibleToMe(authorUid: "u3", isPrivate: true), "a pending request is not a connection")
+        XCTAssertTrue(store.visibleToMe(authorUid: "u2", isPrivate: false), "public posts show to everyone")
+        XCTAssertTrue(store.visibleToMe(authorUid: "me", isPrivate: true), "the author always sees their own")
+        store.authUser = nil
+    }
+
+    func testPrivateSwitchIsObservedAndKeepsTheOwnNameLocal() {
+        let store = MorpheAppStore()
+        let tick = store.perProfileFlagsTick
+        store.setPrivateAccount(true)
+        XCTAssertTrue(store.isPrivateAccount)
+        XCTAssertGreaterThan(store.perProfileFlagsTick, tick, "the toggle's label re-renders")
+        XCTAssertNotEqual(store.myCompetitionName, MorpheAppStore.privateAthleteName,
+                          "the user's own row still reads their name on their phone")
+        store.setPrivateAccount(false)
+        XCTAssertFalse(store.isPrivateAccount)
+    }
+
     func testBoardsPersistPerProfileAndLeaveForgetsThem() {
         let store = MorpheAppStore()
         store.rememberBoard(BoardGroup(code: "ABC123", name: "Tuesday crew", hostUid: "h", hostName: "Host", createdAt: .now))

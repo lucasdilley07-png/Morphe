@@ -46,7 +46,7 @@ struct QRConnectSheet: View {
                         }
                     }
                     .contentShape(Rectangle())
-                    .gesture(
+                    .simultaneousGesture(
                         DragGesture(minimumDistance: 24)
                             .onEnded { value in
                                 guard abs(value.translation.width) > abs(value.translation.height) * 1.5,
