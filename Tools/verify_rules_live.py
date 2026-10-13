@@ -62,6 +62,21 @@ def run_query(user: dict, collection: str, field: str, value: str) -> int:
     return response.status_code
 
 
+def run_struct(user: dict, query: dict) -> int:
+    """Rules-checked structured query with a hand-built body."""
+    response = requests.post(
+        f"{FS.rsplit('/documents', 1)[0]}/documents:runQuery",
+        json={"structuredQuery": query},
+        headers={"Authorization": f"Bearer {user['token']}"}, timeout=30)
+    if response.ok and any("error" in row for row in response.json()):
+        return 403
+    return response.status_code
+
+
+def eq_filter(field: str, value: dict) -> dict:
+    return {"fieldFilter": {"field": {"fieldPath": field}, "op": "EQUAL", "value": value}}
+
+
 def check(name: str, expect_allow: bool, status: int):
     allowed = 200 <= status < 300
     ok = allowed == expect_allow
@@ -153,16 +168,16 @@ try:
     check("A publishes a valid post (stamped batch)", True,
           paced_create(A, f"posts/{post_id}",
                        {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                        "verified": b(False), "text": s("live rules test"),
+                        "verified": b(False), "authorPrivate": b(False), "text": s("live rules test"),
                         "setCount": i(12)}, "lastPostAt"))
     check("A posts again inside 45 s (human pace)", False,
           paced_create(A, f"posts/{post_id}-fast",
                        {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                        "verified": b(False), "text": s("too fast")}, "lastPostAt"))
+                        "verified": b(False), "authorPrivate": b(False), "text": s("too fast")}, "lastPostAt"))
     check("A posts without the pace stamp (bot shape)", False,
           fs_call(A, "PATCH", f"posts/{post_id}-nostamp",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                              "verified": b(False), "text": s("no stamp")}}))
+                              "verified": b(False), "authorPrivate": b(False), "text": s("no stamp")}}))
     # The remaining shape checks are DENY cases or need the pace window;
     # B is a fresh account with no stamp, A waits out the window once.
     print("  … waiting 46 s for A's post window")
@@ -170,19 +185,19 @@ try:
     check("A self-mints verified:true on a post", False,
           fs_call(A, "PATCH", f"posts/{post_id}-v",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                              "verified": b(True), "text": s("forged badge")}}))
+                              "verified": b(True), "authorPrivate": b(False), "text": s("forged badge")}}))
     check("A sneaks an undeclared key into a post", False,
           fs_call(A, "PATCH", f"posts/{post_id}-x",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                              "verified": b(False), "text": s("extra"), "hax": s("y")}}))
+                              "verified": b(False), "authorPrivate": b(False), "text": s("extra"), "hax": s("y")}}))
     check("B forges a post AS A", False,
           fs_call(B, "PATCH", f"posts/{post_id}-f",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Fake A"),
-                              "verified": b(False), "text": s("impostor")}}))
+                              "verified": b(False), "authorPrivate": b(False), "text": s("impostor")}}))
     check("A posts with accent + headline identity", True,
           paced_create(A, f"posts/{post_id}-a",
                        {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                        "verified": b(False), "text": s("accent test"),
+                        "verified": b(False), "authorPrivate": b(False), "text": s("accent test"),
                         "authorAccent": s("Electric Blue"),
                         "authorHeadline": s("Strength · 12-day streak")}, "lastPostAt"))
     print("  … waiting 46 s for A's post window (private flag)")
@@ -192,6 +207,25 @@ try:
                        {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
                         "verified": b(False), "text": s("private test"),
                         "authorPrivate": b(True)}, "lastPostAt"))
+    check("B (a stranger) reads A's private post", False,
+          fs_call(B, "GET", f"posts/{post_id}-p"))
+    check("A reads their own private post", True,
+          fs_call(A, "GET", f"posts/{post_id}-p"))
+    check("B lists A's private posts", False,
+          run_struct(B, {"from": [{"collectionId": "posts"}], "limit": 5, "where": {"compositeFilter": {
+              "op": "AND", "filters": [eq_filter("authorUid", s(A["uid"])), eq_filter("authorPrivate", b(True))]}}}))
+    check("A lists their own private posts", True,
+          run_struct(A, {"from": [{"collectionId": "posts"}], "limit": 5, "where": {"compositeFilter": {
+              "op": "AND", "filters": [eq_filter("authorUid", s(A["uid"])), eq_filter("authorPrivate", b(True))]}}}))
+    check("B lists the public feed (filtered)", True,
+          run_struct(B, {"from": [{"collectionId": "posts"}], "limit": 5,
+                         "where": eq_filter("authorPrivate", b(False))}))
+    check("B lists posts with no privacy filter", False,
+          run_struct(B, {"from": [{"collectionId": "posts"}], "limit": 5}))
+    check("A posts without the privacy field", False,
+          fs_call(A, "PATCH", f"posts/{post_id}-nofield",
+                  {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
+                              "verified": b(False), "text": s("no field")}}))
     check("A flips only the private flag on own post", True,
           fs_call(A, "PATCH", f"posts/{post_id}-p",
                   {"fields": {"authorPrivate": b(False)}}, "?updateMask.fieldPaths=authorPrivate"))
@@ -204,24 +238,24 @@ try:
     check("A posts an oversized headline", False,
           fs_call(A, "PATCH", f"posts/{post_id}-h",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                              "verified": b(False), "text": s("headline abuse"),
+                              "verified": b(False), "authorPrivate": b(False), "text": s("headline abuse"),
                               "authorHeadline": s("x" * 120)}}))
     check("A posts an oversized accent value", False,
           fs_call(A, "PATCH", f"posts/{post_id}-a2",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                              "verified": b(False), "text": s("accent abuse"),
+                              "verified": b(False), "authorPrivate": b(False), "text": s("accent abuse"),
                               "authorAccent": s("x" * 60)}}))
     print("  … waiting 46 s for A's post window")
     time.sleep(46)
     check("A posts a photo within the image cap", True,
           paced_create(A, f"posts/{post_id}-i",
                        {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                        "verified": b(False), "text": s(" "),
+                        "verified": b(False), "authorPrivate": b(False), "text": s(" "),
                         "imageB64": s("QUJD" * 1000)}, "lastPostAt"))
     check("A posts an over-cap image blob", False,
           fs_call(A, "PATCH", f"posts/{post_id}-i2",
                   {"fields": {"authorUid": s(A["uid"]), "authorName": s("Rules A"),
-                              "verified": b(False), "text": s("image abuse"),
+                              "verified": b(False), "authorPrivate": b(False), "text": s("image abuse"),
                               "imageB64": s("QUJD" * 24000)}}))
 
     print("\n— Reactions (one per uid, typed) —")
@@ -307,9 +341,26 @@ try:
     check("B accepts", True,
           fs_call(B, "PATCH", f"connectRequests/{conn_id}", {"fields": {"status": s("accepted")}},
                   "?updateMask.fieldPaths=status"))
+    check("A marks the test post private again", True,
+          fs_call(A, "PATCH", f"posts/{post_id}-p",
+                  {"fields": {"authorPrivate": b(True)}}, "?updateMask.fieldPaths=authorPrivate"))
+    check("B (now connected) reads A's private post", True,
+          fs_call(B, "GET", f"posts/{post_id}-p"))
+    check("B (connected) lists A's private posts", True,
+          run_struct(B, {"from": [{"collectionId": "posts"}], "limit": 5, "where": {"compositeFilter": {
+              "op": "AND", "filters": [eq_filter("authorUid", s(A["uid"])), eq_filter("authorPrivate", b(True))]}}}))
+    check("C (not connected) still can't read it", False,
+          fs_call(C, "GET", f"posts/{post_id}-p"))
     check("A removes the connection", True,
           fs_call(A, "PATCH", f"connectRequests/{conn_id}", {"fields": {"status": s("removed")}},
                   "?updateMask.fieldPaths=status"))
+    check("B (connection removed) reads A's private post", False,
+          fs_call(B, "GET", f"posts/{post_id}-p"))
+    check("B lists public usernames (filtered)", True,
+          run_struct(B, {"from": [{"collectionId": "usernames"}], "limit": 5,
+                         "where": eq_filter("private", b(False))}))
+    check("B lists every username, private included", False,
+          run_struct(B, {"from": [{"collectionId": "usernames"}], "limit": 5}))
     print("  … waiting 11 s for A's connect window")
     time.sleep(11)
     check("A re-sends after removing (paced, in place)", True,

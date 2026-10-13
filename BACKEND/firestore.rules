@@ -15,6 +15,14 @@ service cloud.firestore {
 
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    // An accepted connection between the caller and `other`, either
+    // direction (private accounts, 2026-10-12).
+    function connectedWith(other) {
+      let ab = /databases/$(database)/documents/connectRequests/$(request.auth.uid + '_' + other);
+      let ba = /databases/$(database)/documents/connectRequests/$(other + '_' + request.auth.uid);
+      return (exists(ab) && get(ab).data.status == 'accepted')
+        || (exists(ba) && get(ba).data.status == 'accepted');
+    }
 
     // Active coach↔client link. Connection ids are deterministic —
     // "{coachUid}_{athleteUid}" — so the check is a single doc lookup.
@@ -239,7 +247,10 @@ service cloud.firestore {
       allow get:    if isSignedIn();
       // Directory search is a bounded prefix scan; an unbounded list would
       // let one client page through every member.
-      allow list:   if isSignedIn() && request.query.limit <= 50;
+      // Browsing lists public handles only (private accounts, 2026-10-12);
+      // a direct get by name stays open so claims can check availability.
+      allow list:   if isSignedIn() && request.query.limit <= 50
+        && resource.data.private == false;
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
       allow update: if isSignedIn()
         && resource.data.uid == request.auth.uid
@@ -731,7 +742,18 @@ service cloud.firestore {
     // `python3 Tools/publish_rules.py` (compiles, releases, byte-verifies),
     // then `python3 Tools/verify_rules_live.py` for behavioral proof.
     match /posts/{postId} {
-      allow read: if isSignedIn();
+      // Private account (2026-10-12): a post marked authorPrivate reads
+      // only for its author and their accepted connections. Feed queries
+      // filter authorPrivate == false, or name one author, so the rule is
+      // provable per query; an unfiltered feed query is denied.
+      allow get: if isSignedIn() && (
+        resource.data.get('authorPrivate', false) == false
+        || request.auth.uid == resource.data.authorUid
+        || connectedWith(resource.data.authorUid));
+      allow list: if isSignedIn() && (
+        resource.data.authorPrivate == false
+        || request.auth.uid == resource.data.authorUid
+        || connectedWith(resource.data.authorUid));
 
       allow create: if isSignedIn()
         && request.resource.data.authorUid == request.auth.uid
@@ -742,8 +764,9 @@ service cloud.firestore {
               'authorAccent', 'authorHeadline', 'imageB64', 'authorPrivate'])
         // Private account (2026-10-10): a bool the author's clients read
         // to show the post only to connections.
-        && (!('authorPrivate' in request.resource.data)
-            || request.resource.data.authorPrivate is bool)
+        // Every post says whether it is private — the read rules and the
+        // feed query both depend on the field being present.
+        && request.resource.data.authorPrivate is bool
         // Capture-camera photo (base64 JPEG). 90k chars ≈ 64KB — big enough
         // for a 720px feed image, small enough that a 20-post page stays
         // within Spark's egress budget.

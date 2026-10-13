@@ -25,14 +25,14 @@ stored on your device and backed up to your account in Google Firebase
 who you block, challenge and leaderboard entries (opt-in), Train Together
 party participation, and photos you choose to post, and private messages (with a connected coach or any member you start a chat with). Posts and
 comments are visible to other signed-in users. With a **private account**
-(Profile → Who can see you), your board and challenge rows are stored
-under "Private athlete" instead of your name, so the name never leaves your
-phone for them; the Morphe app shows your posts only to your connections,
-leaves you out of Quick Add and search, and lets only connections start a
-chat with you. Your posts and your @username are still stored in the
-database that signed-in members' apps read, marked private — the app
-honors that mark, but it is not yet enforced by the server itself. Comments
-you leave on public posts stay visible. Your data is unchanged either way.
+(Profile → Who can see you), Morphe's servers let only you and your
+accepted connections read your posts; your @username is left out of the
+member list anyone can browse (someone who already knows it exactly can
+still look it up); your board and challenge rows are stored under "Private
+athlete" instead of your name, so the name never leaves your phone for
+them; and the app lets only connections start a new chat with you.
+Comments you leave on public posts stay visible. Your data is unchanged
+either way.
 Messages are visible only to
 the two people in the conversation. To enforce the human-only policy in the
 [terms](terms.html), Morphe stores the time of your last post, comment,

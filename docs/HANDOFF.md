@@ -133,7 +133,16 @@ gitignored).
   keeps it (grandfather rule); the system splash is solid brand blue, so
   non-blue ranks see a color hand-off at launch.
 
-### Private account: server enforcement owed (2026-10-12)
+### Private account: server enforcement — DONE 2026-10-12 (ruleset 3df30e19, 125/125 live)
+
+Posts with `authorPrivate` read only for the author and accepted
+connections; the feed queries `authorPrivate == false` plus per-connection
+private queries; usernames list requires `private == false`. Indexes in
+BACKEND/firestore.indexes.json (create via the console — the service
+account can't). Still client-only: new-chat gating to private accounts,
+comments carry no private mark. History of the decision below.
+
+#### (original note)
 
 Board and challenge rows are server-true (the name is replaced with
 "Private athlete" before it is written). Posts and the @username are only

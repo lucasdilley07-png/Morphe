@@ -719,6 +719,8 @@ protocol FeedSyncing: AnyObject {
     /// author's own posts so the feed filter follows the live setting.
     /// Returns how many posts were touched; nil when the query failed.
     func setAuthorPrivate(uid: String, isPrivate: Bool) async -> Int?
+    /// One connection's private posts (the rules check the connection).
+    func fetchPrivatePosts(authorUid: String, limit: Int) async -> [FeedPost]?
     /// Writes this uid's single reaction doc with `type` ("heart"/"fire"/
     /// "power"/"clap"), or removes it when type is nil. Still one doc per
     /// uid, so counts stay honest whatever the type.
@@ -766,6 +768,7 @@ protocol FeedSyncing: AnyObject {
 extension FeedSyncing {
     /// Default for stubs: nothing to re-stamp.
     func setAuthorPrivate(uid: String, isPrivate: Bool) async -> Int? { nil }
+    func fetchPrivatePosts(authorUid: String, limit: Int) async -> [FeedPost]? { [] }
     func sendConnectRequest(_ request: ConnectRequest) async -> Bool { false }
     func resendConnectRequest(id: String) async -> Bool { false }
     func updateConnectRequest(id: String, status: String) async -> Bool { false }
@@ -828,7 +831,7 @@ final class FirebaseFeedService: FeedSyncing {
         if !post.prNames.isEmpty { data["prNames"] = Array(post.prNames.prefix(3)) }
         if !post.authorAccent.isEmpty { data["authorAccent"] = String(post.authorAccent.prefix(24)) }
         if !post.authorHeadline.isEmpty { data["authorHeadline"] = String(post.authorHeadline.prefix(80)) }
-        if post.authorPrivate { data["authorPrivate"] = true }
+        data["authorPrivate"] = post.authorPrivate   // always present: the read rules filter on it
         // Mirror of the rules cap (90k chars). Clamping here would corrupt
         // the JPEG — an over-budget image is the encoder's bug to fix, so
         // it's dropped whole rather than truncated into garbage.
@@ -852,26 +855,50 @@ final class FirebaseFeedService: FeedSyncing {
     }
 
     func setAuthorPrivate(uid: String, isPrivate: Bool) async -> Int? {
-        guard let snapshot = try? await posts
-            .whereField("authorUid", isEqualTo: uid)
-            .limit(to: 300)
-            .getDocuments()
-        else { return nil }
-        let batch = db.batch()
+        // Paged newest-first (audit 2026-10-12, P2): a hard 300 cap left
+        // older posts behind. Index: authorUid + createdAt desc.
         var touched = 0
-        for document in snapshot.documents where (document.data()["authorPrivate"] as? Bool ?? false) != isPrivate {
-            batch.updateData(["authorPrivate": isPrivate], forDocument: document.reference)
-            touched += 1
-        }
-        if touched > 0 {
-            do { try await batch.commit() } catch { return nil }   // pending, retried
+        var cursor: DocumentSnapshot?
+        for _ in 0..<20 {
+            var query: Query = posts
+                .whereField("authorUid", isEqualTo: uid)
+                .order(by: "createdAt", descending: true)
+                .limit(to: 100)
+            if let cursor { query = query.start(afterDocument: cursor) }
+            guard let snapshot = try? await query.getDocuments() else { return nil }
+            let batch = db.batch()
+            var changed = 0
+            for document in snapshot.documents where (document.data()["authorPrivate"] as? Bool) != isPrivate {
+                batch.updateData(["authorPrivate": isPrivate], forDocument: document.reference)
+                changed += 1
+            }
+            if changed > 0 {
+                do { try await batch.commit() } catch { return nil }   // pending, retried
+            }
+            touched += changed
+            guard snapshot.documents.count == 100, let last = snapshot.documents.last else { break }
+            cursor = last
         }
         return touched
+    }
+
+    func fetchPrivatePosts(authorUid: String, limit: Int) async -> [FeedPost]? {
+        // One author at a time: the rule can only prove a connection for a
+        // named author. Index: authorUid + authorPrivate + createdAt desc.
+        guard let snapshot = try? await posts
+            .whereField("authorUid", isEqualTo: authorUid)
+            .whereField("authorPrivate", isEqualTo: true)
+            .order(by: "createdAt", descending: true)
+            .limit(to: limit)
+            .getDocuments()
+        else { return nil }
+        return snapshot.documents.compactMap { Self.post(from: $0.documentID, data: $0.data()) }
     }
 
     func fetchSince(date: Date, limit: Int) async -> [FeedPost]? {
         // Same-field range + order — no composite index needed.
         guard let snapshot = try? await posts
+            .whereField("authorPrivate", isEqualTo: false)
             .order(by: "createdAt", descending: true)
             .whereField("createdAt", isGreaterThan: Timestamp(date: date))
             .limit(to: limit)
@@ -881,7 +908,11 @@ final class FirebaseFeedService: FeedSyncing {
     }
 
     func fetchRecent(limit: Int, before: Date?) async -> [FeedPost]? {
-        var query: Query = posts.order(by: "createdAt", descending: true)
+        // Public posts only — the rules deny an unfiltered read now that
+        // private posts exist. Index: authorPrivate + createdAt desc.
+        var query: Query = posts
+            .whereField("authorPrivate", isEqualTo: false)
+            .order(by: "createdAt", descending: true)
         if let before {
             // Same field as the ordering — no composite index needed.
             query = query.whereField("createdAt", isLessThan: Timestamp(date: before))

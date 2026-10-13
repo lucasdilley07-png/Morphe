@@ -100,6 +100,7 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
         // Newest members first (claimedAt is written by every claim) — an
         // alphabetical first-50 would have hidden everyone past "D".
         guard let snapshot = try? await db.collection("usernames")
+            .whereField("private", isEqualTo: false)   // rules: browsing lists public handles only
             .order(by: "claimedAt", descending: true)
             .limit(to: max(1, min(limit, 50)))
             .getDocuments()
@@ -116,6 +117,7 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
         // Doc-id range scan: the doc id IS the lowercased username, so
         // [prefix, prefix + U+F8FF) is every name starting with it.
         guard let snapshot = try? await db.collection("usernames")
+            .whereField("private", isEqualTo: false)
             .whereField(FieldPath.documentID(), isGreaterThanOrEqualTo: clean)
             .whereField(FieldPath.documentID(), isLessThan: clean + "\u{f8ff}")
             .limit(to: max(limit, 1))
@@ -159,6 +161,9 @@ final class FirebaseUsernameDirectory: UsernameDirectoryService {
                 }
                 transaction.setData([
                     "uid": uid,
+                    // Public until the store marks it otherwise; the list
+                    // rule filters on this field, so it is always present.
+                    "private": false,
                     "claimedAt": FieldValue.serverTimestamp()
                 ], forDocument: newDoc)
                 if let previous, previous != username, !previous.isEmpty {

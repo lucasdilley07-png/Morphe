@@ -3119,6 +3119,18 @@ final class MorpheAppStore {
     var profileCustomBio: String = ""
     /// The user's profile photo (compressed JPEG bytes). Nil = avatar art.
     var profilePhotoData: Data?
+    /// Decoded once per photo (audit 2026-10-12, P2): the header decoded
+    /// the JPEG on every render pass.
+    @ObservationIgnored private var photoImageCache: (key: Int, image: UIImage?)?
+    var profilePhotoImage: UIImage? {
+        guard let data = profilePhotoData else { return nil }
+        var hasher = Hasher(); hasher.combine(data.count); hasher.combine(data.suffix(64))
+        let key = hasher.finalize()
+        if let cache = photoImageCache, cache.key == key { return cache.image }
+        let image = UIImage(data: data)
+        photoImageCache = (key, image)
+        return image
+    }
 
     /// Saves the user's bio. Empty text hands the bio back to the generator.
     /// The coach's own words for their public headline — persisted in the
@@ -14652,7 +14664,13 @@ final class MorpheAppStore {
             // a slur in the pill is still a slur.
             // Arrivals fade in instead of popping — the shell animates,
             // the content shouldn't snap.
-            let cleanPage = fetched.filter { renderableFeedPost($0) }
+            // Private posts come by author: the server shows them only to
+            // the author and accepted connections (2026-10-12), so each one
+            // is its own query. Capped so a big network can't fan out.
+            let privatePage = await fetchConnectionsPrivatePosts(newerThan: fetched.last?.createdAt)
+            let cleanPage = (fetched + privatePage)
+                .filter { renderableFeedPost($0) }
+                .sorted { $0.createdAt > $1.createdAt }
             withAnimation(.easeInOut(duration: 0.25)) {
                 if feedPosts.isEmpty {
                     feedPosts = cleanPage
@@ -14827,6 +14845,19 @@ final class MorpheAppStore {
         )
         rankedFeedCache = (key, ranked)
         return ranked
+    }
+
+    /// Private posts from the user and their connections, newest first,
+    /// trimmed to the public page's time window so paging stays coherent.
+    private func fetchConnectionsPrivatePosts(newerThan floor: Date?) async -> [FeedPost] {
+        guard let me = authUser?.id else { return [] }
+        let authors = Array(([me] + connectedUids.sorted()).prefix(25))
+        var found: [FeedPost] = []
+        for uid in authors {
+            found += await feedService.fetchPrivatePosts(authorUid: uid, limit: 10) ?? []
+        }
+        guard let floor else { return found }
+        return found.filter { $0.createdAt >= floor }
     }
 
     /// Every post written while the account is private carries the flag

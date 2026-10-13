@@ -740,7 +740,7 @@ private struct ClientPinnedHeader: View {
                 // The user's photo, or the first letter of their first
                 // name (Lucas 2026-10-10) — no avatar art up here.
                 Group {
-                    if let data = store.profilePhotoData, let image = UIImage(data: data) {
+                    if let image = store.profilePhotoImage {
                         Image(uiImage: image).resizable().scaledToFill()
                     } else {
                         ZStack {
