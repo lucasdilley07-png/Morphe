@@ -3824,3 +3824,62 @@ struct FoodCheckRecord: Codable, Equatable, Identifiable {
     /// Label numbers from the database are per 100 g, not a portion.
     var isPer100g: Bool { servingNote.lowercased().hasPrefix("per 100 g") }
 }
+
+// MARK: - Connections (Profile → Connections, Lucas 2026-10-13)
+
+enum SupplementTiming: String, Codable, CaseIterable, Identifiable {
+    case morning = "Morning"
+    case preWorkout = "Pre-workout"
+    case postWorkout = "Post-workout"
+    case withMeals = "With meals"
+    case evening = "Evening"
+    case anytime = "Any time"
+
+    var id: String { rawValue }
+}
+
+struct SupplementItem: Codable, Identifiable, Hashable {
+    var id = UUID()
+    var name: String
+    /// Free text as the user writes it ("5 g", "2 caps"); "" = not given.
+    var dose: String
+    var timing: SupplementTiming
+
+    init(id: UUID = UUID(), name: String, dose: String, timing: SupplementTiming) {
+        self.id = id
+        self.name = name
+        self.dose = dose
+        self.timing = timing
+    }
+
+    // Tolerant decode: an unknown timing from a newer build reads as "Any time".
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(UUID.self, forKey: .id)) ?? UUID()
+        name = (try? c.decode(String.self, forKey: .name)) ?? ""
+        dose = (try? c.decode(String.self, forKey: .dose)) ?? ""
+        timing = (try? c.decode(SupplementTiming.self, forKey: .timing)) ?? .anytime
+    }
+}
+
+/// The user's stack plus which items were checked off on which day
+/// (day key "yyyy-MM-dd" → item ids).
+struct SupplementStack: Codable, Equatable {
+    var items: [SupplementItem] = []
+    var takenByDay: [String: [UUID]] = [:]
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        items = (try? c.decode([SupplementItem].self, forKey: .items)) ?? []
+        takenByDay = (try? c.decode([String: [UUID]].self, forKey: .takenByDay)) ?? [:]
+    }
+}
+
+/// A finished session's heart rate from a connected strap.
+struct SessionHeartRate: Codable, Equatable {
+    var date: Date
+    var average: Int
+    var peak: Int
+}

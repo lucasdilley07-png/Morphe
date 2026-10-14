@@ -31,6 +31,15 @@ final class WatchBridge: NSObject, WCSessionDelegate {
         session.activate()
     }
 
+    /// For Profile → Connections: what the phone knows about a watch.
+    enum WatchStatus { case unsupported, notPaired, paired, installed }
+    var status: WatchStatus {
+        guard WCSession.isSupported() else { return .unsupported }
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isPaired else { return .notPaired }
+        return session.isWatchAppInstalled ? .installed : .paired
+    }
+
     /// Called by the store (main actor) after session mutations.
     func publish() {
         // The lock-screen session card rides the same choke point as the

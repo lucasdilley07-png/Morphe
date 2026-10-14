@@ -1,6 +1,6 @@
 # Morphe Privacy Policy
 
-**Effective date:** October 10, 2026
+**Effective date:** October 13, 2026
 **Developer:** Lucas Dilley
 **Contact:** lucasdilley.07@gmail.com
 
@@ -117,6 +117,22 @@ and are off until you turn them on.
 - **Photo library (add-only)** — saving clips you record, only when you
   tap Save. Morphe cannot read your library. Photos you pick through the
   system photo picker are the only ones the app receives.
+- **Bluetooth (optional)** — only when you connect a heart-rate monitor
+  in Profile → Connections. Morphe reads beats per minute from the strap
+  during a workout and writes nothing to it. Live readings stay on your
+  phone; the average and peak of your last session are kept with your
+  training data and backed up to your account.
+- **Supplements and enhancements (optional)** — the supplement stack you
+  enter (name, dose, timing) and the days you check items off are stored
+  with your training data and backed up to your account. The optional
+  enhancements note is stored on your iPhone only — never backed up,
+  never shown to anyone. It leaves the phone only in your own data export
+  and, if you added your own Anthropic key, in what the assistant is told
+  (see below).
+- **What you open in the app** — Morphe counts, on your account, how
+  often you open each Discover category, the Feed and Workouts tabs,
+  lessons, and food checks (counts only: no times, no content). The
+  counts sort Discover for you and are backed up with your training data.
 - **Progress photos** — photos you take or pick for the Progress screen
   are stored on your iPhone only. They are never uploaded, never shown to
   anyone, and no analysis is run on them. Deleting your account or the app
@@ -173,10 +189,17 @@ API keys in Profile → Morphe Intelligence:
   Morphe conversation in Chats), plus what the assistant needs to answer:
   your name, today's readiness, streak, score, level and rank, today's
   fuel numbers, your nutrition plan, the profile facts you set (age,
-  experience, goals, current and goal weight, diet, equipment,
-  self-reported weakness, injury note), your last session note, and — on
-  nutrition questions — the names of foods you checked in the last 14
-  days. This is sent to Anthropic's API using your key, under
+  experience, goals, height, current and goal weight, diet, equipment,
+  self-reported weakness, injury note, sports, training styles, training
+  days), what Morphe learned from your logs (usual intensity, usual
+  training hour, sessions per week, most-trained exercises), your last
+  session note, your supplement stack and which items you checked off
+  today, your enhancements note if you wrote one, which devices are
+  connected (Apple Health, Apple Watch, a heart-rate monitor and its live
+  reading), your last session's average and peak heart rate, the five
+  things you open most in the app, and — on nutrition questions — the
+  names of foods you checked in the last 14 days. The workout builder
+  sends the same facts with your request. This is sent to Anthropic's API using your key, under
   [Anthropic's privacy policy](https://www.anthropic.com/privacy). Usage
   is billed to your key, not to Morphe.
 - **ElevenLabs** — if you also add an ElevenLabs key, the assistant's

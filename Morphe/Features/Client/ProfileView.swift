@@ -1388,6 +1388,7 @@ struct ProfileView: View {
             ("Notifications", "reminders nudge streak recap board updates"),
             ("Who can see you", Self.whoCanSeeYouKeywords),
             ("Health", "apple health activity rings sleep sync workouts prefill check-in"),
+            ("Connections", Self.connectionsKeywords),
             ("Your app", "theme accent color"),
             ("Your data", "export json download backup cloud morphe pro subscription plans"),
             ("More info and support", "about terms privacy policy contact support email version"),
@@ -1400,6 +1401,8 @@ struct ProfileView: View {
     /// rest timer"; the feed-identity rows were unfindable by their names).
     private static let makeItYoursKeywords =
         "personalization character persona sound effects pack customize voice accent communication style delivery hey morphe speech microphone hands free wake headphones airpods"
+    private static let connectionsKeywords =
+        "connections devices bluetooth heart rate monitor strap polar garmin wahoo apple health watch supplements stack vitamins creatine protein enhancements strava whoop oura apps"
     private static let howYouTrainKeywords =
         "training days week injuries limits auto rest timer effort rpe rir weight unit kg lb pounds kilograms"
     private static let whoCanSeeYouKeywords =
@@ -1421,6 +1424,7 @@ struct ProfileView: View {
         "Notifications": ("bell", "Reminders"),
         "Who can see you": ("eye", FeatureFlags.socialFeedEnabled ? "Boards, feed, blocked accounts" : "Boards, blocked accounts"),
         "Health": ("heart", "Apple Health"),
+        "Connections": ("antenna.radiowaves.left.and.right", "Heart-rate monitor, Health, Watch, supplements"),
         "Your app": ("paintpalette", "Accent color"),
         "Your data": ("externaldrive", PremiumGate.storefrontEnabled ? "Export, import, backup, Pro" : "Export, import, backup"),
         "More info and support": ("questionmark.circle", "About, privacy, contact"),
@@ -1914,6 +1918,10 @@ struct ProfileView: View {
 
             }
 
+            settingsSection("Connections", keywords: Self.connectionsKeywords) {
+                ConnectionsSettings()
+            }
+
             settingsSection("Morphe Intelligence", keywords: "claude ai brain api key anthropic intelligence smart answers neural voice elevenlabs speech audio") {
                     IntelligenceKeyEditor()
                     Divider().overlay(MorpheTheme.strokeSubtle)
@@ -2368,6 +2376,338 @@ struct ProfileView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(MorpheTheme.accentText)
                     .accessibilityLabel("\(actionLabel) \(title.lowercased())")
+            }
+        }
+    }
+}
+
+/// Profile → Connections (Lucas 2026-10-13): a Bluetooth heart-rate strap,
+/// Apple Health and Apple Watch status, the supplement stack with today's
+/// checks, a private enhancements note, and the apps that need a partner
+/// agreement before Morphe can honestly connect to them.
+private struct ConnectionsSettings: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var newName = ""
+    @State private var newDose = ""
+    @State private var newTiming: SupplementTiming = .morning
+    @State private var isAdding = false
+    @State private var isEditingEnhancements = false
+    @State private var enhancementsDraft = ""
+
+    private static let partnerApps = ["Strava", "Garmin Connect", "WHOOP", "Oura", "Google Health Connect"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            heartRateBlock
+            Divider().overlay(MorpheTheme.strokeSubtle)
+            statusRow("Apple Health", icon: "heart.fill",
+                      value: store.healthSyncEnabled ? "On — workouts sync to Health" : "Off — turn it on under Health")
+            statusRow("Apple Watch", icon: "applewatch", value: watchValue)
+            Divider().overlay(MorpheTheme.strokeSubtle)
+            supplementsBlock
+            Divider().overlay(MorpheTheme.strokeSubtle)
+            enhancementsBlock
+            Divider().overlay(MorpheTheme.strokeSubtle)
+            otherAppsBlock
+        }
+    }
+
+    // MARK: Heart rate
+
+    private var monitor: HeartRateMonitor { store.heartRateMonitor }
+
+    @ViewBuilder
+    private var heartRateBlock: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "heart.text.square")
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(width: 22)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Heart-rate monitor")
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text(heartRateCaption)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                if let bpm = monitor.bpm {
+                    Text("\(bpm)")
+                        .font(.title3.weight(.bold).monospacedDigit())
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                        .accessibilityLabel("\(bpm) beats per minute")
+                }
+            }
+
+            switch monitor.state {
+            case .off:
+                Text("Bluetooth is off or not allowed. Turn it on in Settings → Morphe, then try again.")
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                Button("Try again") { monitor.startScan() }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.accentText)
+            case .idle:
+                HStack(spacing: 16) {
+                    Button(monitor.rememberedName.map { "Reconnect \($0)" } ?? "Connect a monitor") {
+                        monitor.startScan()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.accentText)
+                    if monitor.rememberedName != nil {
+                        Button("Forget") { monitor.disconnect(forget: true) }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .accessibilityLabel("Forget the saved monitor")
+                    }
+                }
+            case .scanning:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Looking for straps — wear it so it wakes up.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                ForEach(monitor.found) { device in
+                    Button {
+                        monitor.connect(device)
+                    } label: {
+                        HStack {
+                            Text(device.name)
+                                .foregroundStyle(MorpheTheme.textPrimary)
+                            Spacer()
+                            Text("Connect")
+                                .foregroundStyle(MorpheTheme.accentText)
+                        }
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Connect \(device.name)")
+                }
+            case .connecting(let name):
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Connecting to \(name)…")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            case .connected:
+                Button("Disconnect") { monitor.disconnect(forget: false) }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.accentText)
+            }
+        }
+    }
+
+    private var heartRateCaption: String {
+        switch monitor.state {
+        case .connected(let name):
+            return monitor.bpm == nil ? "\(name) — waiting for a reading" : "\(name) — live during workouts"
+        default:
+            if let last = store.lastSessionHeartRate {
+                return "Any standard Bluetooth strap (Polar, Garmin, Wahoo, Coros). Last session: avg \(last.average), peak \(last.peak) bpm."
+            }
+            return "Any standard Bluetooth strap (Polar, Garmin, Wahoo, Coros). Shows live in your workout."
+        }
+    }
+
+    // MARK: Status rows
+
+    private var watchValue: String {
+        switch WatchBridge.shared.status {
+        case .unsupported: return "Not available on this device"
+        case .notPaired: return "No watch paired"
+        case .paired: return "Paired — install Morphe from the Watch app"
+        case .installed: return "Connected — log sets from your wrist"
+        }
+    }
+
+    private func statusRow(_ title: String, icon: String, value: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .foregroundStyle(MorpheTheme.accentText)
+                .frame(width: 22)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text(value)
+                    .font(.caption)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Supplements
+
+    private var supplementsBlock: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Supplements")
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text(store.supplementStack.items.isEmpty
+                         ? "Your stack, with a daily check. Morphe AI sees it when you use your key."
+                         : "\(store.supplementsTakenTodayCount) of \(store.supplementStack.items.count) taken today")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+                Spacer()
+                if !isAdding {
+                    Button("Add") { isAdding = true }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .accessibilityLabel("Add a supplement")
+                }
+            }
+
+            ForEach(store.supplementStack.items) { item in
+                let taken = store.isSupplementTakenToday(item)
+                HStack(spacing: 10) {
+                    Button {
+                        store.toggleSupplementTaken(item)
+                    } label: {
+                        Image(systemName: taken ? "checkmark.circle.fill" : "circle")
+                            .font(.title3)
+                            .foregroundStyle(taken ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(taken ? "\(item.name), taken today" : "Mark \(item.name) taken today")
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.name)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text([item.dose, item.timing.rawValue].filter { !$0.isEmpty }.joined(separator: " · "))
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                    Spacer(minLength: 0)
+                    Button {
+                        store.removeSupplement(item)
+                    } label: {
+                        Image(systemName: "minus.circle")
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Remove \(item.name)")
+                }
+            }
+
+            if isAdding {
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("Name (creatine, vitamin D…)", text: $newName)
+                        .textFieldStyle(MorpheFieldStyle())
+                    TextField("Dose (optional — 5 g, 2 caps)", text: $newDose)
+                        .textFieldStyle(MorpheFieldStyle())
+                    Picker("When", selection: $newTiming) {
+                        ForEach(SupplementTiming.allCases) { timing in
+                            Text(timing.rawValue).tag(timing)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(MorpheTheme.accentText)
+                    HStack(spacing: 16) {
+                        Button("Save") {
+                            if store.addSupplement(name: newName, dose: newDose, timing: newTiming) {
+                                newName = ""
+                                newDose = ""
+                                isAdding = false
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.accentText)
+                        .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .accessibilityLabel("Save supplement")
+                        Button("Cancel") {
+                            newName = ""
+                            newDose = ""
+                            isAdding = false
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Enhancements
+
+    private var enhancementsBlock: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if isEditingEnhancements {
+                Text("Enhancements (private)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(MorpheTheme.textMuted)
+                TextField("Anything else you take that affects training", text: $enhancementsDraft, axis: .vertical)
+                    .textFieldStyle(MorpheFieldStyle())
+                    .lineLimit(2...4)
+                HStack(spacing: 16) {
+                    Button("Save") {
+                        store.updateEnhancementsNote(enhancementsDraft)
+                        isEditingEnhancements = false
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .accessibilityLabel("Save enhancements note")
+                    Button("Cancel") { isEditingEnhancements = false }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                }
+            } else {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Enhancements (private)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                        Text(store.enhancementsNote.isEmpty ? "Not shared" : store.enhancementsNote)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .lineLimit(2)
+                    }
+                    Spacer()
+                    Button(store.enhancementsNote.isEmpty ? "Add" : "Edit") {
+                        enhancementsDraft = store.enhancementsNote
+                        isEditingEnhancements = true
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .accessibilityLabel(store.enhancementsNote.isEmpty ? "Add enhancements note" : "Edit enhancements note")
+                }
+            }
+            Text("Optional and self-reported. Stays on this iPhone — never backed up or shown to anyone. With your own Claude key, Morphe AI reads it as context only, and never gives dosing, sourcing or cycle advice; that conversation belongs with a doctor.")
+                .font(.caption2)
+                .foregroundStyle(MorpheTheme.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: Other apps
+
+    private var otherAppsBlock: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Other apps")
+                .foregroundStyle(MorpheTheme.textPrimary)
+            ForEach(Self.partnerApps, id: \.self) { app in
+                HStack {
+                    Text(app)
+                        .font(.subheadline)
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Text("Coming — needs a partner agreement")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .multilineTextAlignment(.trailing)
+                }
+                .accessibilityElement(children: .combine)
             }
         }
     }
@@ -2836,7 +3176,7 @@ private struct IntelligenceKeyEditor: View {
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: {
-                    Text("With your key, Morphe AI sends Anthropic (the company that makes Claude) what it needs to answer: your messages, your name, a summary of your logged training, the profile details you set (age, goals, current and goal weight, diet, equipment, weakness, injury note), your nutrition plan and recent food names, and a meal photo only when you take one for a food check. Calls bill to your key. Remove the key any time to stop.")
+                    Text("With your key, Morphe AI sends Anthropic (the company that makes Claude) what it needs to answer: your messages, your name, a summary of your logged training, the profile details you set (age, height, goals, current and goal weight, diet, equipment, weakness, injury note, sports, training styles and days), your supplement stack and today\u{2019}s checks, your private enhancements note if you wrote one, connected devices and your last session\u{2019}s heart rate, the five things you open most in the app, your nutrition plan and recent food names, and a meal photo only when you take one for a food check. Calls bill to your key. Remove the key any time to stop.")
                 }
                 if showSaveError {
                     Text("Anthropic keys start with sk-ant- \u{2014} check what you pasted and try again.")

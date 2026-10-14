@@ -409,6 +409,11 @@ struct WorkoutView: View {
                     PartySessionStrip()
                 }
 
+                // Connected strap (Profile → Connections): one slim line.
+                if case .connected = store.heartRateMonitor.state {
+                    LiveHeartRateStrip()
+                }
+
                 if store.isTrackedWorkoutComplete {
                     WorkoutCompleteCard(
                         workoutName: store.currentWorkout.name,
@@ -2585,6 +2590,40 @@ private struct ProgramSectionCard: View {
     }
 }
 
+/// Live beats per minute from a Bluetooth strap, plus the session's
+/// average and peak once there are enough readings.
+private struct LiveHeartRateStrip: View {
+    @Environment(MorpheAppStore.self) private var store
+
+    var body: some View {
+        let monitor = store.heartRateMonitor
+        HStack(spacing: 10) {
+            Image(systemName: "heart.fill")
+                .foregroundStyle(MorpheTheme.accentText)
+                .symbolEffect(.pulse, isActive: monitor.bpm != nil)
+                .accessibilityHidden(true)
+            Text(monitor.bpm.map { "\($0) bpm" } ?? "Waiting for a reading…")
+                .font(.subheadline.weight(.bold).monospacedDigit())
+                .foregroundStyle(MorpheTheme.textPrimary)
+                .contentTransition(.numericText())
+            Spacer(minLength: 8)
+            if let summary = monitor.sessionSummary {
+                Text("avg \(summary.average) · peak \(summary.peak)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(MorpheTheme.textMuted)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: MorpheTheme.chipRadius, style: .continuous)
+                .fill(MorpheTheme.panelStrong)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.updatesFrequently)
+    }
+}
+
 private struct LiveWorkoutConsoleCard: View {
     let workout: WorkoutTemplate
     let exerciseIndex: Int
@@ -4266,6 +4305,26 @@ struct DiscoverCatalogSection: View {
         ("Restore", ["Yoga, Mobility & Flexibility", "Pilates & Core Control", "Barre & Low-Impact", "Recovery & Longevity"])
     ]
 
+    /// Families and their tiles sorted by what this user opens most (Lucas
+    /// 2026-10-13, "social media algorithm style"); untouched ones keep
+    /// the catalog order, so a new account sees the grid as designed.
+    private var rankedFamilies: [(name: String, categories: [String])] {
+        func ranked<T>(_ items: [T], weight: (T) -> Int) -> [T] {
+            items.enumerated()
+                .sorted { a, b in
+                    let wa = weight(a.element), wb = weight(b.element)
+                    return wa == wb ? a.offset < b.offset : wa > wb
+                }
+                .map(\.element)
+        }
+        let families = Self.families.map { family in
+            (name: family.name, categories: ranked(family.categories) { store.engagementWeight(forCategory: $0) })
+        }
+        return ranked(families) { family in
+            family.categories.reduce(0) { $0 + store.engagementWeight(forCategory: $1) }
+        }
+    }
+
     /// Tile-length names for the category tags.
     static let shortCategoryNames: [String: String] = [
         "Olympic Weightlifting": "Olympic Lifting",
@@ -4678,7 +4737,7 @@ struct DiscoverCatalogSection: View {
             fromCoachesSection
             newThisWeekSection
             mostDoneSection
-            ForEach(Self.families, id: \.name) { family in
+            ForEach(rankedFamilies, id: \.name) { family in
                 let presentCategories = family.categories.filter { !(byCategory[$0] ?? []).isEmpty }
                 if !presentCategories.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -4985,6 +5044,7 @@ struct DiscoverCatalogSection: View {
     private func categoryTile(_ category: String, count: Int) -> some View {
         Button {
             // NavigationStack animates the push itself.
+            store.noteEngagement("Discover: \(category)")
             selection = .category(category)
         } label: {
             HStack(spacing: 10) {

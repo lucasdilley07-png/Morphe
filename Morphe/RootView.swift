@@ -839,8 +839,31 @@ private struct HeaderCircleButton: View {
 
 private struct FloatingAIAgentButton: View {
     @Environment(MorpheAppStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    /// The idle hop (Lucas 2026-10-13): every 3–5 minutes, at random, the
+    /// button jumps once so the app feels alive. Never under Reduce Motion,
+    /// mid "Hey Morphe" exchange, with the AI open, or in the background.
+    @State private var hop: CGFloat = 0
 
     private var label: String { "Morphe AI" }
+
+    private var mayHop: Bool {
+        !reduceMotion
+            && scenePhase == .active
+            && !store.showAIAgent
+            && store.lastVoiceExchange == nil
+    }
+
+    private func idleHops() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(Double.random(in: 180...300)))
+            guard !Task.isCancelled, mayHop else { continue }
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.55)) { hop = -16 }
+            try? await Task.sleep(for: .milliseconds(200))
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.42)) { hop = 0 }
+        }
+    }
 
     private var isCompact: Bool {
         // The wide "Morphe AI" pill exists to introduce the feature — after
@@ -890,6 +913,8 @@ private struct FloatingAIAgentButton: View {
             }
         }
         .buttonStyle(.plain)
+        .offset(y: hop)
+        .task { await idleHops() }
         .accessibilityLabel(Text("Open \(label)"))
         .contextMenu {
             ForEach(store.aiAgentQuickPrompts.prefix(4), id: \.self) { prompt in

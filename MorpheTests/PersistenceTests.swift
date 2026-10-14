@@ -8569,3 +8569,126 @@ final class MockDebriefService: DebriefSyncing {
 
     func eraseAll(uid: String) async -> Bool { true }
 }
+
+/// Profile → Connections (Lucas 2026-10-13): supplements, the private
+/// enhancements note, engagement counts, the strap parser, and what the
+/// AI prompts carry.
+@MainActor
+final class ConnectionsTests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
+        return store
+    }
+
+    private func clearConnections(_ store: MorpheAppStore) {
+        let id = store.clientProfile.id.uuidString
+        for key in ["morphe.supplements.\(id)", "morphe.enhancements.\(id)",
+                    "morphe.hr.last.\(id)", "morphe.engagement.\(id)"] {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        store.loadConnections()
+    }
+
+    func testSupplementStackAddCheckRemoveAndPersist() {
+        let store = freshStore()
+        clearConnections(store)
+        XCTAssertFalse(store.addSupplement(name: "   ", dose: "", timing: .morning), "blank names are refused")
+        XCTAssertTrue(store.addSupplement(name: "Creatine", dose: "5 g", timing: .postWorkout))
+        let item = try! XCTUnwrap(store.supplementStack.items.first)
+        XCTAssertFalse(store.isSupplementTakenToday(item))
+        store.toggleSupplementTaken(item)
+        XCTAssertTrue(store.isSupplementTakenToday(item))
+        XCTAssertEqual(store.supplementsTakenTodayCount, 1)
+
+        store.loadConnections()
+        XCTAssertEqual(store.supplementStack.items.map(\.name), ["Creatine"], "the stack survives a reload")
+        XCTAssertTrue(store.isSupplementTakenToday(item), "today's check survives a reload")
+
+        store.removeSupplement(item)
+        XCTAssertTrue(store.supplementStack.items.isEmpty)
+        XCTAssertTrue(store.supplementStack.takenByDay.values.allSatisfy { $0.isEmpty })
+        clearConnections(store)
+    }
+
+    func testSupplementsRideTheBackupButEnhancementsStayLocal() {
+        let store = freshStore()
+        clearConnections(store)
+        store.addSupplement(name: "Vitamin D", dose: "", timing: .morning)
+        store.updateEnhancementsNote("private note")
+        let blobs = store.perProfileExtrasBlobs()
+        XCTAssertNotNil(blobs["supplements"], "the stack is cloud-backed")
+        XCTAssertFalse(blobs.keys.contains { $0.lowercased().contains("enhancement") },
+                       "the enhancements note never enters the cloud bag")
+
+        clearConnections(store)
+        XCTAssertTrue(store.supplementStack.items.isEmpty)
+        store.applyRestoredExtras(blobs)
+        XCTAssertEqual(store.supplementStack.items.map(\.name), ["Vitamin D"], "a new phone restores the stack")
+        clearConnections(store)
+    }
+
+    func testExportIsReadableAndCarriesConnections() throws {
+        let store = freshStore()
+        clearConnections(store)
+        store.addSupplement(name: "Magnesium", dose: "400 mg", timing: .evening)
+        store.updateEnhancementsNote("note")
+        let url = try XCTUnwrap(store.exportDataFile())
+        let object = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let stack = try XCTUnwrap(object["supplementStack"] as? [[String: Any]])
+        XCTAssertEqual(stack.first?["name"] as? String, "Magnesium")
+        XCTAssertEqual(object["enhancementsNote"] as? String, "note")
+        let extras = try XCTUnwrap(object["accountExtras"] as? [String: Any])
+        XCTAssertFalse(extras["supplements"] is String, "extras are decoded JSON, not base64")
+        clearConnections(store)
+    }
+
+    func testEngagementRanksTopFiveAndSortsDiscover() {
+        let store = freshStore()
+        clearConnections(store)
+        for _ in 0..<3 { store.noteEngagement("Discover: Running & Cardio") }
+        store.noteEngagement("Lessons")
+        XCTAssertEqual(store.topEngagement.first?.label, "Discover: Running & Cardio")
+        XCTAssertEqual(store.engagementWeight(forCategory: "Running & Cardio"), 3)
+        XCTAssertEqual(store.engagementWeight(forCategory: "Pilates & Core Control"), 0)
+        for i in 0..<8 { store.noteEngagement("k\(i)") }
+        XCTAssertEqual(store.topEngagement.count, 5)
+        clearConnections(store)
+    }
+
+    func testPromptCarriesSignalsAndGuardsEnhancements() {
+        let store = freshStore()
+        clearConnections(store)
+        store.addSupplement(name: "Creatine", dose: "5 g", timing: .anytime)
+        store.noteEngagement("Food checks")
+        var prompt = store.intelligenceSystemPrompt(spoken: false)
+        XCTAssertTrue(prompt.contains("supplement stack: Creatine 5 g"))
+        XCTAssertTrue(prompt.contains("Food checks"))
+        XCTAssertTrue(prompt.contains("training days a week"))
+        XCTAssertFalse(prompt.lowercased().contains("gender"), "gender is never answered, so it is never sent")
+        XCTAssertFalse(prompt.contains("self-reported enhancements"), "no note, no enhancements line")
+
+        store.updateEnhancementsNote("TRT")
+        prompt = store.intelligenceSystemPrompt(spoken: false)
+        XCTAssertTrue(prompt.contains("'TRT'"))
+        XCTAssertTrue(prompt.contains("Never give dosing, sourcing"), "the no-advice rule rides with the note")
+        clearConnections(store)
+    }
+
+    func testHeartRateParserReadsBothWidths() {
+        XCTAssertEqual(HeartRateMonitor.parseBPM(Data([0x00, 72])), 72, "8-bit format")
+        XCTAssertEqual(HeartRateMonitor.parseBPM(Data([0x01, 0x2C, 0x01])), 300, "16-bit little-endian")
+        XCTAssertNil(HeartRateMonitor.parseBPM(Data([0x01, 0x2C])), "short 16-bit packet")
+        XCTAssertNil(HeartRateMonitor.parseBPM(Data()))
+    }
+}

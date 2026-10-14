@@ -494,6 +494,8 @@ struct MoreView: View {
                 .foregroundStyle(MorpheTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 4)
+                // Opening a lesson counts (engagement, Lucas 2026-10-13).
+                .onAppear { store.noteEngagement("Lessons") }
         } label: {
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
