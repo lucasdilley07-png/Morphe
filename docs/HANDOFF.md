@@ -157,6 +157,23 @@ Also fixed on the way: the data export wrote extras as base64 plists
 (unreadable) — they now decode to JSON; the builder's `Int(d.rounded())`
 trap.
 
+**Audit + fix wave (same evening)**: two fresh-eyes reviews of this
+session's diff. Fixed: deleted Health imports no longer come back
+(`healthImport.dismissed`); imports stay off boards (`competitionTotals`
+skips `isImported`); Health read permission is asked per device (restored
+"connected" shows "allow Health on this iPhone"); import uses the real
+end time and bails if the account changes mid-query; the heart-rate
+monitor rewrite (15 s scan / 12 s connect timeouts, Stop/Cancel buttons,
+no auto-connect without a tap, reconnect on a dropped link, power-off
+clears state, `bluetooth-central` background mode so the strap keeps
+reading when the phone locks); swipe-back is edge-only (first 44pt) so
+chip rows scroll; the hop loop restarts when Reduce Motion / scene phase
+change; the no-dosing rule is always in both prompts; supplement text is
+quoted in the prompt; trainingDays outside 1–7 can't trap; engagement
+isn't counted before onboarding; the export decodes the workout library;
+44pt targets, a Done button and honest copy across Connections, the
+consent sheet and the policy.
+
 **Not verified on hardware yet**: a real strap (needs one in hand), the
 bounce timing on device, a real Strava/Garmin import through Health. A phone build of this commit should be installed
 first thing.

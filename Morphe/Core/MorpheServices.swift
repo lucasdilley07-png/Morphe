@@ -6308,6 +6308,8 @@ extension HealthWorkoutSync {
         let id: UUID
         let title: String
         let start: Date
+        /// Real end (HKWorkout.duration excludes pauses).
+        let end: Date
         let minutes: Int
         let source: String
     }
@@ -6350,6 +6352,7 @@ extension HealthWorkoutSync {
                 id: workout.uuid,
                 title: activityName(workout.workoutActivityType),
                 start: workout.startDate,
+                end: workout.endDate,
                 minutes: min(minutes, 600),
                 source: source.name
             )
@@ -6449,9 +6452,8 @@ extension HealthWorkoutSync {
 /// Any chest strap or arm band that speaks the standard Bluetooth Heart
 /// Rate profile (service 0x180D, measurement 0x2A37): Polar, Garmin HRM,
 /// Wahoo TICKR, Coros and most others. Reads beats per minute only; nothing
-/// is written to the device, and readings stay on the phone unless the
-/// user's own AI key is in use (then the session's average and peak are
-/// part of what Morphe AI is told).
+/// is written to the device. Bluetooth work only ever starts from the
+/// user's own tap; scans and connects time out instead of spinning.
 @MainActor
 @Observable
 final class HeartRateMonitor: NSObject {
@@ -6477,7 +6479,14 @@ final class HeartRateMonitor: NSObject {
 
     private var central: CBCentralManager?
     private var peripherals: [UUID: CBPeripheral] = [:]
-    private var connected: CBPeripheral?
+    /// The strap being connected or connected — one at a time.
+    private var current: CBPeripheral?
+    private var currentName: String?
+    /// True between the user's tap and the end of that connection, so a
+    /// dropped link mid-workout reconnects and a Bluetooth power-cycle with
+    /// nothing asked for does nothing.
+    private var userWantsConnection = false
+    private var timeoutTask: Task<Void, Never>?
     private static let heartRateService = CBUUID(string: "180D")
     private static let measurement = CBUUID(string: "2A37")
     private static let rememberedKey = "morphe.hrMonitor.id"
@@ -6486,38 +6495,90 @@ final class HeartRateMonitor: NSObject {
     /// The monitor the user picked last time, if any.
     var rememberedName: String? { UserDefaults.standard.string(forKey: Self.rememberedNameKey) }
 
+    /// The one entry point from the UI: reconnects the remembered strap if
+    /// there is one, otherwise looks for straps.
     func startScan() {
-        if central == nil {
+        userWantsConnection = true
+        guard let central else {
             // Creating the manager is what triggers the Bluetooth prompt —
-            // only ever on the user's tap.
-            central = CBCentralManager(delegate: self, queue: .main)
+            // only ever on the user's tap. didUpdateState continues.
             state = .scanning
+            self.central = CBCentralManager(delegate: self, queue: .main)
             return
         }
-        guard central?.state == .poweredOn else { state = .off; return }
+        switch central.state {
+        case .poweredOn: begin()
+        case .unknown, .resetting: state = .scanning   // didUpdateState continues
+        default: state = .off
+        }
+    }
+
+    /// Scan for new straps even when one is remembered.
+    func scanForNew() {
+        userWantsConnection = true
+        guard central?.state == .poweredOn else { startScan(); return }
+        beginScan()
+    }
+
+    private func begin() {
+        if let raw = UserDefaults.standard.string(forKey: Self.rememberedKey),
+           let id = UUID(uuidString: raw),
+           let known = central?.retrievePeripherals(withIdentifiers: [id]).first {
+            connect(known, name: known.name ?? rememberedName ?? "Heart-rate monitor")
+        } else {
+            beginScan()
+        }
+    }
+
+    private func beginScan() {
+        guard let central else { return }
         found = []
         state = .scanning
-        central?.scanForPeripherals(withServices: [Self.heartRateService])
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(15))
-            guard let self, self.state == .scanning else { return }
-            self.central?.stopScan()
-            self.state = .idle
+        central.scanForPeripherals(withServices: [Self.heartRateService])
+        armTimeout(seconds: 15) { monitor in
+            guard monitor.state == .scanning else { return }
+            monitor.central?.stopScan()
+            monitor.state = .idle
         }
     }
 
     func connect(_ device: Found) {
         guard let peripheral = peripherals[device.id] else { return }
-        central?.stopScan()
-        state = .connecting(device.name)
-        central?.connect(peripheral)
+        userWantsConnection = true
+        connect(peripheral, name: device.name)
     }
 
+    private func connect(_ peripheral: CBPeripheral, name: String) {
+        central?.stopScan()
+        if let current, current.identifier != peripheral.identifier {
+            central?.cancelPeripheralConnection(current)
+        }
+        peripherals[peripheral.identifier] = peripheral
+        peripheral.delegate = self
+        current = peripheral
+        currentName = name
+        state = .connecting(name)
+        central?.connect(peripheral)
+        // A strap that's asleep or out of range never answers — CoreBluetooth
+        // would wait forever. Give up, and look for straps instead.
+        armTimeout(seconds: 12) { monitor in
+            guard case .connecting = monitor.state, let pending = monitor.current else { return }
+            monitor.central?.cancelPeripheralConnection(pending)
+            monitor.current = nil
+            monitor.beginScan()
+        }
+    }
+
+    /// Stops a scan, a pending connect, or a live connection.
     func disconnect(forget: Bool) {
-        if let connected { central?.cancelPeripheralConnection(connected) }
-        connected = nil
+        userWantsConnection = false
+        timeoutTask?.cancel()
+        central?.stopScan()
+        if let current { central?.cancelPeripheralConnection(current) }
+        current = nil
+        currentName = nil
         bpm = nil
-        state = .idle
+        state = (central?.state == .poweredOn || central == nil) ? .idle : .off
         if forget {
             UserDefaults.standard.removeObject(forKey: Self.rememberedKey)
             UserDefaults.standard.removeObject(forKey: Self.rememberedNameKey)
@@ -6530,6 +6591,15 @@ final class HeartRateMonitor: NSObject {
     var sessionSummary: (average: Int, peak: Int)? {
         guard sessionSamples.count >= 10 else { return nil }
         return (sessionSamples.reduce(0, +) / sessionSamples.count, sessionSamples.max() ?? 0)
+    }
+
+    private func armTimeout(seconds: Double, _ fire: @escaping (HeartRateMonitor) -> Void) {
+        timeoutTask?.cancel()
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled, let self else { return }
+            fire(self)
+        }
     }
 
     /// Standard Heart Rate Measurement: flag bit 0 picks 8- or 16-bit BPM.
@@ -6546,19 +6616,19 @@ extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
     nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
         let poweredOn = central.state == .poweredOn
         MainActor.assumeIsolated {
-            guard poweredOn else { self.state = .off; return }
-            // Reconnect to the remembered monitor first; otherwise scan
-            // (this callback follows the user's own tap).
-            if let raw = UserDefaults.standard.string(forKey: Self.rememberedKey),
-               let id = UUID(uuidString: raw),
-               let known = central.retrievePeripherals(withIdentifiers: [id]).first {
-                self.peripherals[id] = known
-                known.delegate = self
-                self.state = .connecting(known.name ?? self.rememberedName ?? "Heart-rate monitor")
-                central.connect(known)
-            } else if self.state == .scanning {
-                self.found = []
-                central.scanForPeripherals(withServices: [Self.heartRateService])
+            guard poweredOn else {
+                // Powering off drops every link without a didDisconnect.
+                self.timeoutTask?.cancel()
+                self.current = nil
+                self.bpm = nil
+                self.state = .off
+                return
+            }
+            // Only continue what the user asked for.
+            if self.userWantsConnection, self.current == nil {
+                self.begin()
+            } else if self.state == .off {
+                self.state = .idle
             }
         }
     }
@@ -6577,9 +6647,13 @@ extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
 
     nonisolated func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         MainActor.assumeIsolated {
-            let name = peripheral.name ?? "Heart-rate monitor"
-            self.connected = peripheral
-            peripheral.delegate = self
+            // A connect the user already cancelled must not resurrect.
+            guard self.userWantsConnection, self.current?.identifier == peripheral.identifier else {
+                central.cancelPeripheralConnection(peripheral)
+                return
+            }
+            self.timeoutTask?.cancel()
+            let name = self.currentName ?? peripheral.name ?? "Heart-rate monitor"
             self.state = .connected(name)
             UserDefaults.standard.set(peripheral.identifier.uuidString, forKey: Self.rememberedKey)
             UserDefaults.standard.set(name, forKey: Self.rememberedNameKey)
@@ -6588,14 +6662,27 @@ extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     nonisolated func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        MainActor.assumeIsolated { self.state = .idle }
+        MainActor.assumeIsolated {
+            guard self.current?.identifier == peripheral.identifier else { return }
+            self.timeoutTask?.cancel()
+            self.current = nil
+            self.state = .idle
+        }
     }
 
     nonisolated func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         MainActor.assumeIsolated {
+            guard self.current?.identifier == peripheral.identifier else { return }
             self.bpm = nil
-            self.connected = nil
-            self.state = .idle
+            // Dropped, not asked (out of range, strap slipped): CoreBluetooth
+            // keeps a pending connect alive and reconnects when it's back.
+            if error != nil, self.userWantsConnection {
+                self.state = .connecting(self.currentName ?? "Heart-rate monitor")
+                central.connect(peripheral)
+            } else {
+                self.current = nil
+                self.state = .idle
+            }
         }
     }
 

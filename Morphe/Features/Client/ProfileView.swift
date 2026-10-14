@@ -2401,7 +2401,7 @@ private struct ConnectionsSettings: View {
             heartRateBlock
             Divider().overlay(MorpheTheme.strokeSubtle)
             statusRow("Apple Health", icon: "heart.fill",
-                      value: store.healthSyncEnabled ? "On — workouts sync to Health" : "Off — turn it on under Health")
+                      value: store.healthSyncEnabled ? "Saving your workouts to Health" : "Saving workouts to Health: off — turn it on under Health")
             statusRow("Apple Watch", icon: "applewatch", value: watchValue)
             Divider().overlay(MorpheTheme.strokeSubtle)
             supplementsBlock
@@ -2447,19 +2447,18 @@ private struct ConnectionsSettings: View {
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
                 Button("Try again") { monitor.startScan() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(MorpheTheme.accentText)
+                    .modifier(TextActionStyle())
             case .idle:
-                HStack(spacing: 16) {
+                WrapStack(spacing: 16) {
                     Button(monitor.rememberedName.map { "Reconnect \($0)" } ?? "Connect a monitor") {
                         monitor.startScan()
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(MorpheTheme.accentText)
+                    .modifier(TextActionStyle())
                     if monitor.rememberedName != nil {
+                        Button("Find another") { monitor.scanForNew() }
+                            .modifier(TextActionStyle())
                         Button("Forget") { monitor.disconnect(forget: true) }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(MorpheTheme.textMuted)
+                            .modifier(TextActionStyle(muted: true))
                             .accessibilityLabel("Forget the saved monitor")
                     }
                 }
@@ -2469,6 +2468,10 @@ private struct ConnectionsSettings: View {
                     Text("Looking for straps — wear it so it wakes up.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
+                    Spacer(minLength: 8)
+                    Button("Stop") { monitor.disconnect(forget: false) }
+                        .modifier(TextActionStyle(muted: true))
+                        .accessibilityLabel("Stop looking for monitors")
                 }
                 ForEach(monitor.found) { device in
                     Button {
@@ -2481,7 +2484,7 @@ private struct ConnectionsSettings: View {
                             Text("Connect")
                                 .foregroundStyle(MorpheTheme.accentText)
                         }
-                        .padding(.vertical, 6)
+                        .frame(minHeight: 44)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -2493,11 +2496,14 @@ private struct ConnectionsSettings: View {
                     Text("Connecting to \(name)…")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
+                    Spacer(minLength: 8)
+                    Button("Cancel") { monitor.disconnect(forget: false) }
+                        .modifier(TextActionStyle(muted: true))
+                        .accessibilityLabel("Cancel connecting")
                 }
             case .connected:
                 Button("Disconnect") { monitor.disconnect(forget: false) }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(MorpheTheme.accentText)
+                    .modifier(TextActionStyle())
             }
         }
     }
@@ -2561,8 +2567,7 @@ private struct ConnectionsSettings: View {
                 Spacer()
                 if !isAdding {
                     Button("Add") { isAdding = true }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(MorpheTheme.accentText)
+                        .modifier(TextActionStyle())
                         .accessibilityLabel("Add a supplement")
                 }
             }
@@ -2608,13 +2613,16 @@ private struct ConnectionsSettings: View {
                         .textFieldStyle(MorpheFieldStyle())
                     TextField("Dose (optional — 5 g, 2 caps)", text: $newDose)
                         .textFieldStyle(MorpheFieldStyle())
-                    Picker("When", selection: $newTiming) {
-                        ForEach(SupplementTiming.allCases) { timing in
-                            Text(timing.rawValue).tag(timing)
+                    LabeledContent("When") {
+                        Picker("When", selection: $newTiming) {
+                            ForEach(SupplementTiming.allCases) { timing in
+                                Text(timing.rawValue).tag(timing)
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .tint(MorpheTheme.accentText)
                     }
-                    .pickerStyle(.menu)
-                    .tint(MorpheTheme.accentText)
+                    .foregroundStyle(MorpheTheme.textPrimary)
                     HStack(spacing: 16) {
                         Button("Save") {
                             if store.addSupplement(name: newName, dose: newDose, timing: newTiming) {
@@ -2623,17 +2631,15 @@ private struct ConnectionsSettings: View {
                                 isAdding = false
                             }
                         }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(MorpheTheme.accentText)
-                        .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .modifier(TextActionStyle())
+                        .disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityLabel("Save supplement")
                         Button("Cancel") {
                             newName = ""
                             newDose = ""
                             isAdding = false
                         }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(MorpheTheme.textMuted)
+                        .modifier(TextActionStyle(muted: true))
                     }
                 }
             }
@@ -2656,12 +2662,10 @@ private struct ConnectionsSettings: View {
                         store.updateEnhancementsNote(enhancementsDraft)
                         isEditingEnhancements = false
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(MorpheTheme.accentText)
+                    .modifier(TextActionStyle())
                     .accessibilityLabel("Save enhancements note")
                     Button("Cancel") { isEditingEnhancements = false }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(MorpheTheme.textMuted)
+                        .modifier(TextActionStyle(muted: true))
                 }
             } else {
                 HStack {
@@ -2678,12 +2682,11 @@ private struct ConnectionsSettings: View {
                         enhancementsDraft = store.enhancementsNote
                         isEditingEnhancements = true
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(MorpheTheme.accentText)
+                    .modifier(TextActionStyle())
                     .accessibilityLabel(store.enhancementsNote.isEmpty ? "Add enhancements note" : "Edit enhancements note")
                 }
             }
-            Text("Optional and self-reported. Stays on this iPhone — never backed up or shown to anyone. With your own Claude key, Morphe AI reads it as context only, and never gives dosing, sourcing or cycle advice; that conversation belongs with a doctor.")
+            Text("Optional and self-reported. Kept on this iPhone — never synced to your Morphe account or shown to other members — and included in your own data export. With your own Claude key, Morphe AI reads it as context and is instructed never to give dosing, sourcing or cycle advice; that conversation belongs with a doctor.")
                 .font(.caption2)
                 .foregroundStyle(MorpheTheme.textMuted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -2709,8 +2712,7 @@ private struct ConnectionsSettings: View {
                 }
                 Spacer(minLength: 8)
                 Button(store.healthImport.enabled ? "Manage" : "Add an app") { showAddApp = true }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(MorpheTheme.accentText)
+                    .modifier(TextActionStyle())
                     .accessibilityLabel(store.healthImport.enabled ? "Manage connected apps" : "Add an app")
             }
         }
@@ -2725,8 +2727,11 @@ private struct ConnectionsSettings: View {
         guard store.healthImport.enabled else {
             return "Bring in workouts from Strava, Garmin, WHOOP and more — automatically, through your iPhone."
         }
+        if store.healthImportNeedsDevicePermission {
+            return "Set up on another phone — tap Manage to allow Health on this iPhone."
+        }
         if store.healthImport.sources.isEmpty {
-            return "Connected — nothing from other apps yet."
+            return "Set up — nothing from other apps yet."
         }
         return "Syncing from \(store.healthImport.sources.joined(separator: ", "))"
     }
@@ -2742,15 +2747,20 @@ private struct AddAppSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Add an app")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(MorpheTheme.textPrimary)
-                Text("Strava, Garmin Connect, WHOOP, Oura, Peloton, Nike Run Club and most fitness apps save your workouts to Apple Health. Connect once and Morphe brings them in automatically every time you open it — they land in your history as imported sessions.")
+                HStack {
+                    Text("Add an app")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Spacer()
+                    Button("Done") { dismiss() }
+                        .modifier(TextActionStyle())
+                }
+                Text("Strava, Garmin Connect, WHOOP, Oura, Peloton, Nike Run Club and most fitness apps save your workouts to Apple Health. Connect once and Morphe checks for new ones whenever you open the app — the last 90 days land in your history as imported sessions. They count toward your streak and score like any session, but earn no XP, never post, and stay off boards.")
                     .font(.subheadline)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                if store.healthImport.enabled {
+                if store.healthImport.enabled && !store.healthImportNeedsDevicePermission {
                     if !store.healthImport.sources.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("CONNECTED")
@@ -2786,15 +2796,14 @@ private struct AddAppSheet: View {
                     Text("Don't see an app?")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(MorpheTheme.textPrimary)
-                    Text("Turn on Apple Health in that app's own settings (often under Connected apps or Health), then come back. Allow Morphe to read Workouts in the Health prompt or in Health → Sharing → Apps → Morphe.")
+                    Text("Turn on Apple Health in that app's own settings (often under Connected apps or Health), then come back. Allow Morphe to read Workouts in the Health prompt, or later in Settings → Health → Data Access & Devices → Morphe.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
                     Button("Open the Health app") {
                         if let url = URL(string: "x-apple-health://") { openURL(url) }
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(MorpheTheme.accentText)
+                    .modifier(TextActionStyle())
                 }
 
                 if store.healthImport.enabled {
@@ -2802,13 +2811,24 @@ private struct AddAppSheet: View {
                         store.disconnectAppsThroughHealth()
                         dismiss()
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(MorpheTheme.textMuted)
+                    .modifier(TextActionStyle(muted: true))
                 }
             }
             .padding(20)
         }
         .background(PremiumBackground().ignoresSafeArea())
+    }
+}
+
+/// A text button with a full 44pt tap target (Connections, audit 2026-10-13).
+private struct TextActionStyle: ViewModifier {
+    var muted = false
+    func body(content: Content) -> some View {
+        content
+            .buttonStyle(.plain)
+            .foregroundStyle(muted ? MorpheTheme.textMuted : MorpheTheme.accentText)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
     }
 }
 
@@ -3275,7 +3295,7 @@ private struct IntelligenceKeyEditor: View {
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: {
-                    Text("With your key, Morphe AI sends Anthropic (the company that makes Claude) what it needs to answer: your messages, your name, a summary of your logged training, the profile details you set (age, height, goals, current and goal weight, diet, equipment, weakness, injury note, sports, training styles and days), your supplement stack and today\u{2019}s checks, your private enhancements note if you wrote one, connected devices and your last session\u{2019}s heart rate, the five things you open most in the app, your nutrition plan and recent food names, and a meal photo only when you take one for a food check. Calls bill to your key. Remove the key any time to stop.")
+                    Text("With your key, Morphe AI sends Anthropic (the company that makes Claude) what it needs to answer: your messages, your name, a summary of your logged training, the profile details you set (age, height, goals, current and goal weight, diet, equipment, weakness, injury note, sports, training styles and days), your supplement stack and today\u{2019}s checks, your private enhancements note if you wrote one, connected devices with the live heart-rate reading, your last session\u{2019}s average and peak heart rate, which apps your imported workouts come from, the five things you open most in the app, your nutrition plan and recent food names, and a meal photo only when you take one for a food check. Calls bill to your key. Remove the key any time to stop.")
                 }
                 if showSaveError {
                     Text("Anthropic keys start with sk-ant- \u{2014} check what you pasted and try again.")

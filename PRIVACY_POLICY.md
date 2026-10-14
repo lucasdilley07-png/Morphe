@@ -96,7 +96,8 @@ remove anything you published, at any time.
   reads the workouts other apps (Strava, Garmin Connect, WHOOP and so on)
   saved to Apple Health in the last 90 days — activity type, start time,
   length and the app's name — and adds them to your history as imported
-  sessions (no XP, no streak bonus, no posts). Like the rest of your
+  sessions. They count toward your streak and Morphe Score like any
+  session, but earn no XP, never post, and stay off boards. Like the rest of your
   history, they are backed up to your account. Disconnect any time;
   sessions already added stay until you delete them.
 
@@ -106,11 +107,13 @@ remove anything you published, at any time.
   workout of its own.
 
 Health data is used only for the features above. It is **never** used for
-advertising, never sold, and never shared with third parties. The one
-value that leaves the Health framework is the sleep number you confirm in
-your morning check-in: it is stored with your training data and backed up
-to your account (Google Firebase, as the processor for your backup). Raw
-Health records are never uploaded. Both toggles live in Profile → Health
+advertising and never sold. Two kinds of Health data leave the Health
+framework: the sleep number you confirm in your morning check-in, and the
+workouts you import from other apps (activity, time, length, app name).
+Both are stored with your training data and backed up to your account
+(Google Firebase, as the processor for your backup); with your own
+Anthropic key they can be part of what the assistant is told. No other
+Health records are uploaded. Both toggles live in Profile → Health
 and are off until you turn them on; "Add an app" lives in Profile → Connections.
 
 ## Device permissions
@@ -127,17 +130,18 @@ and are off until you turn them on; "Add an app" lives in Profile → Connection
 - **Bluetooth (optional)** — only when you connect a heart-rate monitor
   in Profile → Connections. Morphe reads beats per minute from the strap
   during a workout and writes nothing to it. Live readings stay on your
-  phone; the average and peak of your last session are kept with your
+  phone (except the current reading in what the assistant is told, if you
+  use your own Anthropic key); the average and peak of your last session are kept with your
   training data and backed up to your account.
 - **Supplements and enhancements (optional)** — the supplement stack you
   enter (name, dose, timing) and the days you check items off are stored
   with your training data and backed up to your account. The optional
-  enhancements note is stored on your iPhone only — never backed up,
-  never shown to anyone. It leaves the phone only in your own data export
+  enhancements note is stored on your iPhone only — never synced to
+  your Morphe account, never shown to other members. It leaves the phone only in your own data export
   and, if you added your own Anthropic key, in what the assistant is told
   (see below).
 - **What you open in the app** — Morphe counts, on your account, how
-  often you open each Discover category, the Feed and Workouts tabs,
+  often you open each Discover category (or start a workout from it), the Feed and Workouts tabs,
   lessons, and food checks (counts only: no times, no content). The
   counts sort Discover for you and are backed up with your training data.
 - **Progress photos** — photos you take or pick for the Progress screen
@@ -206,7 +210,9 @@ API keys in Profile → Morphe Intelligence:
   come in through Health, a heart-rate monitor and its live reading), your last session's average and peak heart rate, the five
   things you open most in the app, and — on nutrition questions — the
   names of foods you checked in the last 14 days. The workout builder
-  sends the same facts with your request. This is sent to Anthropic's API using your key, under
+  sends your request with your profile facts, usual intensity and training
+  hour, supplement stack, connected devices and heart rate, and the five
+  things you open most — never your enhancements note. This is sent to Anthropic's API using your key, under
   [Anthropic's privacy policy](https://www.anthropic.com/privacy). Usage
   is billed to your key, not to Morphe.
 - **ElevenLabs** — if you also add an ElevenLabs key, the assistant's

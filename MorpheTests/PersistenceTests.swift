@@ -8672,7 +8672,8 @@ final class ConnectionsTests: XCTestCase {
         store.addSupplement(name: "Creatine", dose: "5 g", timing: .anytime)
         store.noteEngagement("Food checks")
         var prompt = store.intelligenceSystemPrompt(spoken: false)
-        XCTAssertTrue(prompt.contains("supplement stack: Creatine 5 g"))
+        XCTAssertTrue(prompt.contains("Creatine 5 g"))
+        XCTAssertTrue(prompt.contains("Never give dosing, sourcing"), "the substance rule is always on")
         XCTAssertTrue(prompt.contains("Food checks"))
         XCTAssertTrue(prompt.contains("training days a week"))
         XCTAssertFalse(prompt.lowercased().contains("gender"), "gender is never answered, so it is never sent")
@@ -8682,6 +8683,25 @@ final class ConnectionsTests: XCTestCase {
         prompt = store.intelligenceSystemPrompt(spoken: false)
         XCTAssertTrue(prompt.contains("'TRT'"))
         XCTAssertTrue(prompt.contains("Never give dosing, sourcing"), "the no-advice rule rides with the note")
+        clearConnections(store)
+    }
+
+    func testImportedWorkoutsStayOffBoardsAndDeletedHealthImportsStayDeleted() {
+        let store = freshStore()
+        clearConnections(store)
+        let log = WorkoutLog(
+            athleteID: store.clientProfile.id, athleteName: store.clientProfile.name,
+            workoutTemplateID: nil, workoutTitle: "Run", sport: .generalFitness,
+            completedAt: .now, durationMinutes: 30, exercises: [],
+            notes: "From Strava through Apple Health.", source: .athleteManual,
+            enteredByUserID: store.clientProfile.id, enteredByRole: .client,
+            enteredByName: store.clientProfile.name, verificationStatus: .athleteSubmitted,
+            importKey: "health:TEST")
+        store.workoutLogs.append(log)
+        let week = DateInterval(start: Date.now.addingTimeInterval(-3600), duration: 7200)
+        XCTAssertEqual(store.competitionTotals(in: week).workouts, 0, "imports never reach a board")
+        store.deleteOwnWorkoutLog(log)
+        XCTAssertTrue(store.healthImport.dismissed.contains("health:TEST"), "a deleted import is remembered, never re-added")
         clearConnections(store)
     }
 

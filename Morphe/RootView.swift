@@ -914,7 +914,9 @@ private struct FloatingAIAgentButton: View {
         }
         .buttonStyle(.plain)
         .offset(y: hop)
-        .task { await idleHops() }
+        // Restarts when the gates change, so the loop never reads a stale
+        // copy of Reduce Motion or the scene phase.
+        .task(id: "\(reduceMotion)-\(scenePhase == .active)") { await idleHops() }
         .accessibilityLabel(Text("Open \(label)"))
         .contextMenu {
             ForEach(store.aiAgentQuickPrompts.prefix(4), id: \.self) { prompt in
