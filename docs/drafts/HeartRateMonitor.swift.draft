@@ -1,0 +1,177 @@
+import Foundation
+import CoreBluetooth
+
+// MARK: - Bluetooth heart-rate monitors (Connections, Lucas 2026-10-13)
+
+/// Any chest strap or arm band that speaks the standard Bluetooth Heart
+/// Rate profile (service 0x180D, measurement 0x2A37): Polar, Garmin HRM,
+/// Wahoo TICKR, Coros and most others. Reads beats per minute only; nothing
+/// is written to the device, and readings stay on the phone unless the
+/// user's own AI key is in use (then the session's average and peak are
+/// part of what Morphe AI is told).
+@MainActor
+@Observable
+final class HeartRateMonitor: NSObject {
+    enum State: Equatable {
+        case off            // Bluetooth off or not allowed
+        case idle
+        case scanning
+        case connecting(String)
+        case connected(String)
+    }
+
+    struct Found: Identifiable, Hashable {
+        let id: UUID
+        let name: String
+    }
+
+    private(set) var state: State = .idle
+    private(set) var found: [Found] = []
+    /// Latest beats per minute while connected.
+    private(set) var bpm: Int?
+    /// Readings this session (cleared by the store when a session starts).
+    private(set) var sessionSamples: [Int] = []
+
+    private var central: CBCentralManager?
+    private var peripherals: [UUID: CBPeripheral] = [:]
+    private var connected: CBPeripheral?
+    private static let heartRateService = CBUUID(string: "180D")
+    private static let measurement = CBUUID(string: "2A37")
+    private static let rememberedKey = "morphe.hrMonitor.id"
+    private static let rememberedNameKey = "morphe.hrMonitor.name"
+
+    /// The monitor the user picked last time, if any.
+    var rememberedName: String? { UserDefaults.standard.string(forKey: Self.rememberedNameKey) }
+
+    func startScan() {
+        if central == nil {
+            // Creating the manager is what triggers the Bluetooth prompt —
+            // only ever on the user's tap.
+            central = CBCentralManager(delegate: self, queue: .main)
+            state = .scanning
+            return
+        }
+        guard central?.state == .poweredOn else { state = .off; return }
+        found = []
+        state = .scanning
+        central?.scanForPeripherals(withServices: [Self.heartRateService])
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(15))
+            guard let self, self.state == .scanning else { return }
+            self.central?.stopScan()
+            self.state = .idle
+        }
+    }
+
+    func connect(_ device: Found) {
+        guard let peripheral = peripherals[device.id] else { return }
+        central?.stopScan()
+        state = .connecting(device.name)
+        central?.connect(peripheral)
+    }
+
+    func disconnect(forget: Bool) {
+        if let connected { central?.cancelPeripheralConnection(connected) }
+        connected = nil
+        bpm = nil
+        state = .idle
+        if forget {
+            UserDefaults.standard.removeObject(forKey: Self.rememberedKey)
+            UserDefaults.standard.removeObject(forKey: Self.rememberedNameKey)
+        }
+    }
+
+    func resetSession() { sessionSamples = [] }
+
+    /// Average and peak of this session's readings, when there are enough.
+    var sessionSummary: (average: Int, peak: Int)? {
+        guard sessionSamples.count >= 10 else { return nil }
+        return (sessionSamples.reduce(0, +) / sessionSamples.count, sessionSamples.max() ?? 0)
+    }
+
+    /// Standard Heart Rate Measurement: flag bit 0 picks 8- or 16-bit BPM.
+    nonisolated static func parseBPM(_ data: Data) -> Int? {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 2 else { return nil }
+        if bytes[0] & 0x01 == 0 { return Int(bytes[1]) }
+        guard bytes.count >= 3 else { return nil }
+        return Int(UInt16(bytes[1]) | UInt16(bytes[2]) << 8)
+    }
+}
+
+extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
+    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        let poweredOn = central.state == .poweredOn
+        MainActor.assumeIsolated {
+            guard poweredOn else { self.state = .off; return }
+            // Reconnect to the remembered monitor first; otherwise scan
+            // (this callback follows the user's own tap).
+            if let raw = UserDefaults.standard.string(forKey: Self.rememberedKey),
+               let id = UUID(uuidString: raw),
+               let known = central.retrievePeripherals(withIdentifiers: [id]).first {
+                self.peripherals[id] = known
+                known.delegate = self
+                self.state = .connecting(known.name ?? self.rememberedName ?? "Heart-rate monitor")
+                central.connect(known)
+            } else if self.state == .scanning {
+                self.found = []
+                central.scanForPeripherals(withServices: [Self.heartRateService])
+            }
+        }
+    }
+
+    nonisolated func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
+                                    advertisementData: [String: Any], rssi RSSI: NSNumber) {
+        let name = peripheral.name ?? (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? "Heart-rate monitor"
+        let id = peripheral.identifier
+        MainActor.assumeIsolated {
+            self.peripherals[id] = peripheral
+            if !self.found.contains(where: { $0.id == id }) {
+                self.found.append(Found(id: id, name: name))
+            }
+        }
+    }
+
+    nonisolated func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        MainActor.assumeIsolated {
+            let name = peripheral.name ?? "Heart-rate monitor"
+            self.connected = peripheral
+            peripheral.delegate = self
+            self.state = .connected(name)
+            UserDefaults.standard.set(peripheral.identifier.uuidString, forKey: Self.rememberedKey)
+            UserDefaults.standard.set(name, forKey: Self.rememberedNameKey)
+            peripheral.discoverServices([Self.heartRateService])
+        }
+    }
+
+    nonisolated func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+        MainActor.assumeIsolated { self.state = .idle }
+    }
+
+    nonisolated func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+        MainActor.assumeIsolated {
+            self.bpm = nil
+            self.connected = nil
+            self.state = .idle
+        }
+    }
+
+    nonisolated func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
+        guard let service = peripheral.services?.first(where: { $0.uuid == CBUUID(string: "180D") }) else { return }
+        peripheral.discoverCharacteristics([CBUUID(string: "2A37")], for: service)
+    }
+
+    nonisolated func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+        guard let characteristic = service.characteristics?.first(where: { $0.uuid == CBUUID(string: "2A37") }) else { return }
+        peripheral.setNotifyValue(true, for: characteristic)
+    }
+
+    nonisolated func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        guard let data = characteristic.value, let value = Self.parseBPM(data), value > 25, value < 250 else { return }
+        MainActor.assumeIsolated {
+            self.bpm = value
+            self.sessionSamples.append(value)
+            if self.sessionSamples.count > 7200 { self.sessionSamples.removeFirst(1200) }
+        }
+    }
+}

@@ -117,6 +117,64 @@ gitignored).
   it at the HTTPS password prompt.
 - Machine is slow: ~10 min device builds; run them in the background.
 
+## Next session — start here (saved 2026-10-13)
+
+Last commit `ef3c563` (pushed): fix waves 1–3 from the master audit, the final
+wordmark everywhere with a blue glow, in-tab swipe (Discover / Network /
+Learn = Lessons → Nutrition → Library; main tabs switch from the dock only),
+and the "Continue your workout?" prompt. 396 tests green; rules live
+141/141. A phone build of `ef3c563` was compiling when the chat ended;
+install it on every connected phone first (`devicectl … install app`).
+
+**Lucas's queued requests, not built yet, in this order:**
+
+1. **Morphe AI button bounce** — the floating button (`FloatingAIAgentButton`,
+   RootView.swift) hops every 3–5 minutes at random to make the app feel
+   alive. Not under Reduce Motion, not while Hey Morphe is mid-exchange
+   (`store.lastVoiceExchange != nil`), not while the AI sheet is open.
+2. **Profile → Connections** (new settings section):
+   - **Bluetooth heart-rate monitor** — a full draft is in
+     `docs/drafts/HeartRateMonitor.swift.draft` (CoreBluetooth, standard
+     HR profile 0x180D/0x2A37, remembers + reconnects the last strap,
+     session average/peak). Paste into `Morphe/Core/MorpheServices.swift`
+     (no new files — pbxproj gotcha), add `import CoreBluetooth`, hold one
+     instance on the store, reset samples when a session starts, show live
+     BPM in the workout console, and add
+     `INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription` to BOTH app build
+     configs in the pbxproj (next to the camera string).
+   - **Apple Health** (existing `healthSyncEnabled`) and **Apple Watch**
+     (WatchBridge `isPaired` / `isWatchAppInstalled`) as status rows.
+   - **Supplements** — a real per-profile stack (name, dose, timing) with a
+     daily "taken" check, mirrored to cloud extras, in the export, cleared
+     on sign-out. Plus an optional, private, self-reported **enhancements**
+     field.
+   - **Other apps** — Strava, Garmin, WHOOP, Oura, Google Health listed but
+     labeled "Coming — needs a partner agreement" (no fake connect).
+3. **Morphe AI uses everything** — extend the "From their profile" block
+   in `intelligenceSystemPrompt` (MorpheStore ~11015) and the builder
+   prompt (~3626): height/weight, gender (only if answered), sports,
+   training styles, intensity, schedule (days/week, usual hour), supplement
+   stack + taken today, enhancements (context only — Morphe AI never gives
+   dosing, sourcing or cycle advice; points to a doctor), connected devices
+   + last session HR, and **engagement**: per-profile counters of what the
+   user opens and starts (Discover categories, Feed vs Workouts, lessons,
+   food checks) → the top five go in the prompt, and Discover's category
+   families sort by them ("social media algorithm style").
+   Then update the consent sheet text (ProfileView `IntelligenceKeyEditor`)
+   and PRIVACY_POLICY.md's Anthropic bullet to list every new field, and
+   rebuild docs/privacy.html.
+
+**Waiting on Lucas:** the tagline (still "TRAIN SMARTER" in app/site/store
+and "TRANSFORM. EVOLVE. BECOME." on onboarding), the palette, the real
+products/store, Terms v3 partner offers (current Terms ban affiliate links),
+the dormant Pro tier, a trademark attorney (MORPHE beauty marks; SPARTAN),
+and who pays for the AI relay. **With the Apple account:** App Check
+enforcement, paid-team signing, push notifications, TestFlight.
+
+The master audit's tracker (top of `docs/AUDIT-2026-10-13-MASTER.md`) is
+current through wave 2; wave 3 closed the AI pipeline, deletion, export,
+backup chunking, age gate, comments-on-private-posts, nudge/selfie limits.
+
 ## Open items (honest list)
 
 - **Needs Lucas**: $99 Apple Developer Program (TestFlight, App Attest
