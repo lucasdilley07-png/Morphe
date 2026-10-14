@@ -166,8 +166,9 @@ end time and bails if the account changes mid-query; the heart-rate
 monitor rewrite (15 s scan / 12 s connect timeouts, Stop/Cancel buttons,
 no auto-connect without a tap, reconnect on a dropped link, power-off
 clears state, `bluetooth-central` background mode so the strap keeps
-reading when the phone locks); swipe-back is edge-only (first 44pt) so
-chip rows scroll; the hop loop restarts when Reduce Motion / scene phase
+reading when the phone locks); swipe-back works from anywhere on the page
+(Lucas chose this over edge-only, knowing a long drag on a chip row can
+also go back); the hop loop restarts when Reduce Motion / scene phase
 change; the no-dosing rule is always in both prompts; supplement text is
 quoted in the prompt; trainingDays outside 1–7 can't trap; engagement
 isn't counted before onboarding; the export decodes the workout library;

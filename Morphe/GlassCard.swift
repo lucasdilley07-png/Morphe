@@ -2974,21 +2974,20 @@ struct InTabPageSwipe<Page: Hashable>: ViewModifier {
     }
 }
 
-/// Swipe right from the left edge of a pushed page to go back (Lucas
-/// 2026-10-13). The system bar is hidden app-wide, which also turns off
-/// iOS's own edge swipe-back, so pushed pages carry this instead: the page
-/// follows the finger and goes back past 90pt or on a flick. Edge-only
-/// (the first 44pt) so the pages' sideways chip rows keep scrolling.
+/// Swipe right anywhere on a pushed page to go back (Lucas 2026-10-13:
+/// from anywhere, not just the edge — chosen knowing a long rightward drag
+/// on a sideways chip row can also go back). The system bar is hidden
+/// app-wide, which also turns off iOS's own edge swipe-back, so pushed
+/// pages carry this instead: the page follows the finger and goes back
+/// past 90pt or on a flick.
 struct SwipeBack: ViewModifier {
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Resets on its own when the gesture ends OR is cancelled.
     @GestureState private var drag: CGFloat = 0
-    private static let edge: CGFloat = 44
-
     private static func isBackSwipe(_ value: DragGesture.Value) -> Bool {
         let dx = value.translation.width, dy = value.translation.height
-        return value.startLocation.x < edge && dx > 0 && dx > abs(dy) * 1.2
+        return dx > 0 && dx > abs(dy) * 1.6
     }
 
     func body(content: Content) -> some View {
