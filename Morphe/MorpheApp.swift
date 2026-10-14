@@ -106,6 +106,8 @@ struct MorpheApp: App {
                         store.handleDayRolloverIfNeeded()
                         // Showing up counts (daily streak, 2026-10-04).
                         store.recordAppOpen()
+                        // Other apps' workouts through Health (Connections).
+                        Task { await store.importWorkoutsFromHealth() }
                         // The day popup greets every open (Lucas 2026-08-18).
                         store.reopenDayPopup()
                         // "Hey Morphe" listens only while the app is open.

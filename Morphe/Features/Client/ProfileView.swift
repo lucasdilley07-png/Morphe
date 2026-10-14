@@ -2394,7 +2394,7 @@ private struct ConnectionsSettings: View {
     @State private var isEditingEnhancements = false
     @State private var enhancementsDraft = ""
 
-    private static let partnerApps = ["Strava", "Garmin Connect", "WHOOP", "Oura", "Google Health Connect"]
+    @State private var showAddApp = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -2690,26 +2690,125 @@ private struct ConnectionsSettings: View {
         }
     }
 
-    // MARK: Other apps
+    // MARK: Other apps (through Apple Health)
 
     private var otherAppsBlock: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Other apps")
-                .foregroundStyle(MorpheTheme.textPrimary)
-            ForEach(Self.partnerApps, id: \.self) { app in
-                HStack {
-                    Text(app)
-                        .font(.subheadline)
+            HStack(spacing: 10) {
+                Image(systemName: "square.grid.2x2")
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .frame(width: 22)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Other apps")
                         .foregroundStyle(MorpheTheme.textPrimary)
-                    Spacer()
-                    Text("Coming — needs a partner agreement")
+                    Text(otherAppsCaption)
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textMuted)
-                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .accessibilityElement(children: .combine)
+                Spacer(minLength: 8)
+                Button(store.healthImport.enabled ? "Manage" : "Add an app") { showAddApp = true }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.accentText)
+                    .accessibilityLabel(store.healthImport.enabled ? "Manage connected apps" : "Add an app")
             }
         }
+        .sheet(isPresented: $showAddApp) {
+            AddAppSheet()
+                .environment(store)
+                .presentationDetents([.medium, .large])
+        }
+    }
+
+    private var otherAppsCaption: String {
+        guard store.healthImport.enabled else {
+            return "Bring in workouts from Strava, Garmin, WHOOP and more — automatically, through your iPhone."
+        }
+        if store.healthImport.sources.isEmpty {
+            return "Connected — nothing from other apps yet."
+        }
+        return "Syncing from \(store.healthImport.sources.joined(separator: ", "))"
+    }
+}
+
+/// "Add an app": one tap connects every fitness app that shares into
+/// Apple Health on this iPhone — no logins, no partner deals.
+private struct AddAppSheet: View {
+    @Environment(MorpheAppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Add an app")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(MorpheTheme.textPrimary)
+                Text("Strava, Garmin Connect, WHOOP, Oura, Peloton, Nike Run Club and most fitness apps save your workouts to Apple Health. Connect once and Morphe brings them in automatically every time you open it — they land in your history as imported sessions.")
+                    .font(.subheadline)
+                    .foregroundStyle(MorpheTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if store.healthImport.enabled {
+                    if !store.healthImport.sources.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("CONNECTED")
+                                .font(MorpheTheme.microLabel(10))
+                                .tracking(1.4)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                            ForEach(store.healthImport.sources, id: \.self) { source in
+                                Label(source, systemImage: "checkmark.circle.fill")
+                                    .foregroundStyle(MorpheTheme.textPrimary)
+                            }
+                        }
+                    }
+                    Button {
+                        Task { await store.importWorkoutsFromHealth(force: true) }
+                    } label: {
+                        Text(store.healthImportBusy ? "Checking…" : "Check for new workouts")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle())
+                    .disabled(store.healthImportBusy)
+                } else {
+                    Button {
+                        Task { await store.connectAppsThroughHealth() }
+                    } label: {
+                        Text(store.healthImportBusy ? "Connecting…" : "Connect through Apple Health")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryCTAButtonStyle())
+                    .disabled(store.healthImportBusy)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Don't see an app?")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(MorpheTheme.textPrimary)
+                    Text("Turn on Apple Health in that app's own settings (often under Connected apps or Health), then come back. Allow Morphe to read Workouts in the Health prompt or in Health → Sharing → Apps → Morphe.")
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Open the Health app") {
+                        if let url = URL(string: "x-apple-health://") { openURL(url) }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.accentText)
+                }
+
+                if store.healthImport.enabled {
+                    Button("Disconnect other apps") {
+                        store.disconnectAppsThroughHealth()
+                        dismiss()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(MorpheTheme.textMuted)
+                }
+            }
+            .padding(20)
+        }
+        .background(PremiumBackground().ignoresSafeArea())
     }
 }
 

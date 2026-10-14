@@ -4462,12 +4462,15 @@ struct DiscoverCatalogSection: View {
                 }
                 .background(PremiumBackground().ignoresSafeArea())
                 .toolbar(.hidden, for: .navigationBar)
+                // Swipe right → back to all styles (Lucas 2026-10-13).
+                .swipeBack { selection = nil }
             }
             .navigationDestination(isPresented: $showTechniqueLibrary) {
                 // Arrives carrying the search that sent it (audit 31).
                 TechniqueLibraryView(
                     initialQuery: searchQuery.trimmingCharacters(in: .whitespacesAndNewlines))
                     .environment(store)
+                    .swipeBack { showTechniqueLibrary = false }
             }
             .sheet(item: $detailTemplate) { template in
                 DiscoverWorkoutDetailSheet(template: template, onStart: { onStart(template) })

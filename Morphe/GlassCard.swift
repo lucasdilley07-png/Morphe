@@ -2974,8 +2974,50 @@ struct InTabPageSwipe<Page: Hashable>: ViewModifier {
     }
 }
 
+/// Swipe right anywhere on a pushed page to go back (Lucas 2026-10-13).
+/// The system bar is hidden app-wide, which also turns off iOS's own
+/// edge swipe-back, so pushed pages carry this instead: the page follows
+/// the finger and goes back past 90pt or on a flick.
+struct SwipeBack: ViewModifier {
+    let action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var drag: CGFloat = 0
+    /// Decided once per drag: rightward and clearly more sideways than down.
+    @State private var tracking: Bool?
+
+    func body(content: Content) -> some View {
+        content
+            .offset(x: reduceMotion ? 0 : drag)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 20)
+                    .onChanged { value in
+                        let dx = value.translation.width, dy = value.translation.height
+                        if tracking == nil { tracking = dx > 0 && dx > abs(dy) * 1.6 }
+                        guard tracking == true else { return }
+                        drag = max(0, dx) / (1 + max(0, dx) / 600)
+                    }
+                    .onEnded { value in
+                        defer { tracking = nil }
+                        guard tracking == true else { return }
+                        if value.translation.width > 90 || value.predictedEndTranslation.width > 260 {
+                            Haptics.selection()
+                            action()
+                            // The pop's own slide takes it from here.
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { drag = 0 }
+                        } else {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { drag = 0 }
+                        }
+                    }
+            )
+    }
+}
+
 extension View {
     func inTabPageSwipe<Page: Hashable>(pages: [Page], selection: Binding<Page>) -> some View {
         modifier(InTabPageSwipe(pages: pages, selection: selection))
+    }
+
+    func swipeBack(_ action: @escaping () -> Void) -> some View {
+        modifier(SwipeBack(action: action))
     }
 }

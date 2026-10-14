@@ -6297,6 +6297,93 @@ extension HealthWorkoutSync {
     /// Asks Health for READ access to sleep. Apple deliberately hides
     /// whether a read grant succeeded — callers just query and get nothing
     /// if declined, which is exactly how the pre-fill degrades.
+    // MARK: Other apps, through Apple Health (Lucas 2026-10-13)
+    //
+    // Strava, Garmin Connect, WHOOP, Oura, Peloton, Nike Run Club and most
+    // others share their workouts into Apple Health on iPhone. Reading
+    // workouts from Health is how Morphe connects to all of them with one
+    // permission, no partner deals, and nothing the user has to sign into.
+
+    struct ExternalWorkout: Equatable {
+        let id: UUID
+        let title: String
+        let start: Date
+        let minutes: Int
+        let source: String
+    }
+
+    /// Asks to READ workouts and sleep. Apple never says whether a read was
+    /// granted, so this only reports whether the prompt itself worked.
+    static func requestOtherAppsReadAuthorization() async -> Bool {
+        guard isAvailable else { return false }
+        var types: Set<HKObjectType> = [.workoutType()]
+        if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) { types.insert(sleep) }
+        do {
+            try await healthStore.requestAuthorization(toShare: [], read: types)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Workouts other apps saved to Health since `since` — never Morphe's
+    /// own (phone or watch), which are already in the user's history.
+    static func otherAppWorkouts(since: Date) async -> [ExternalWorkout] {
+        guard isAvailable else { return [] }
+        let predicate = HKQuery.predicateForSamples(withStart: since, end: .now)
+        let workouts: [HKWorkout] = await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: .workoutType(), predicate: predicate, limit: 500,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
+            ) { _, results, _ in
+                continuation.resume(returning: (results as? [HKWorkout]) ?? [])
+            }
+            healthStore.execute(query)
+        }
+        let ownPrefix = Bundle.main.bundleIdentifier ?? "\u{0}"
+        return workouts.compactMap { workout in
+            let source = workout.sourceRevision.source
+            guard !source.bundleIdentifier.hasPrefix(ownPrefix) else { return nil }
+            let minutes = Int((workout.duration / 60).rounded())
+            guard minutes >= 1 else { return nil }
+            return ExternalWorkout(
+                id: workout.uuid,
+                title: activityName(workout.workoutActivityType),
+                start: workout.startDate,
+                minutes: min(minutes, 600),
+                source: source.name
+            )
+        }
+    }
+
+    private static func activityName(_ type: HKWorkoutActivityType) -> String {
+        switch type {
+        case .running: return "Run"
+        case .walking: return "Walk"
+        case .hiking: return "Hike"
+        case .cycling: return "Ride"
+        case .swimming: return "Swim"
+        case .rowing: return "Row"
+        case .elliptical: return "Elliptical"
+        case .stairClimbing, .stairs: return "Stairs"
+        case .traditionalStrengthTraining, .functionalStrengthTraining: return "Strength training"
+        case .highIntensityIntervalTraining: return "HIIT"
+        case .crossTraining, .mixedCardio: return "Cross training"
+        case .coreTraining: return "Core training"
+        case .yoga: return "Yoga"
+        case .pilates: return "Pilates"
+        case .boxing, .kickboxing, .martialArts: return "Combat training"
+        case .cardioDance, .socialDance: return "Dance"
+        case .flexibility, .cooldown: return "Mobility"
+        case .soccer: return "Soccer"
+        case .basketball: return "Basketball"
+        case .tennis: return "Tennis"
+        case .climbing: return "Climbing"
+        case .jumpRope: return "Jump rope"
+        default: return "Workout"
+        }
+    }
+
     static func requestSleepReadAuthorization() async -> Bool {
         guard isAvailable,
               let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)

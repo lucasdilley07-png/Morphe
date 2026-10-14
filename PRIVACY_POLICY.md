@@ -92,6 +92,13 @@ remove anything you published, at any time.
   Apple Health so it counts toward your Activity rings.
 - **Reading:** with "Sleep from Health" on, Morphe reads last night's sleep
   to pre-fill your morning check-in slider.
+- **Other apps:** if you tap "Add an app" in Profile → Connections, Morphe
+  reads the workouts other apps (Strava, Garmin Connect, WHOOP and so on)
+  saved to Apple Health in the last 90 days — activity type, start time,
+  length and the app's name — and adds them to your history as imported
+  sessions (no XP, no streak bonus, no posts). Like the rest of your
+  history, they are backed up to your account. Disconnect any time;
+  sessions already added stay until you delete them.
 
 - **Apple Watch heart rate:** during a workout, the watch app reads your
   heart rate and active energy to show them on your wrist. Morphe does
@@ -104,7 +111,7 @@ value that leaves the Health framework is the sleep number you confirm in
 your morning check-in: it is stored with your training data and backed up
 to your account (Google Firebase, as the processor for your backup). Raw
 Health records are never uploaded. Both toggles live in Profile → Health
-and are off until you turn them on.
+and are off until you turn them on; "Add an app" lives in Profile → Connections.
 
 ## Device permissions
 
@@ -195,8 +202,8 @@ API keys in Profile → Morphe Intelligence:
   training hour, sessions per week, most-trained exercises), your last
   session note, your supplement stack and which items you checked off
   today, your enhancements note if you wrote one, which devices are
-  connected (Apple Health, Apple Watch, a heart-rate monitor and its live
-  reading), your last session's average and peak heart rate, the five
+  connected (Apple Health, Apple Watch, the other apps whose workouts
+  come in through Health, a heart-rate monitor and its live reading), your last session's average and peak heart rate, the five
   things you open most in the app, and — on nutrition questions — the
   names of foods you checked in the last 14 days. The workout builder
   sends the same facts with your request. This is sent to Anthropic's API using your key, under

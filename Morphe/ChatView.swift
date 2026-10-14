@@ -1771,6 +1771,7 @@ private struct RealFeedSection: View {
             FeedAuthorView(authorUid: post.authorUid,
                            authorName: post.authorName,
                            verified: post.verified)
+                .swipeBack { authorTarget = nil }
         }
         .background(EmptyView().fullScreenCover(item: $storyTarget) { entry in
             StorySessionViewer(entry: entry)

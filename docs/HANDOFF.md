@@ -123,7 +123,7 @@ The `ef3c563` phone build is installed on Lucas's iPhone and iPhone (4).
 The three queued requests are BUILT (this commit):
 
 1. **Morphe AI button bounce** — `FloatingAIAgentButton` (RootView) hops
-   once every 3–5 min at random; skipped under Reduce Motion, in the
+   once every 2–3 min at random; skipped under Reduce Motion, in the
    background, with the AI open, or mid Hey Morphe exchange.
 2. **Profile → Connections** (Training group, `ConnectionsSettings` in
    ProfileView): Bluetooth heart-rate strap (`HeartRateMonitor`, now in
@@ -132,9 +132,13 @@ The three queued requests are BUILT (this commit):
    strip at the top of the workout console, Apple Health + Apple Watch
    status rows (`WatchBridge.status`), supplement stack with a daily check
    (extras `supplements`, export, cleared on sign-out/delete), a private
-   enhancements note (on-device only — NOT in extras), other apps labeled
-   "Coming — needs a partner agreement". Bluetooth usage string in both
-   app configs.
+   enhancements note (on-device only — NOT in extras), and **Add an app**
+   (`AddAppSheet`): one Apple Health read permission brings in other apps'
+   workouts (Strava, Garmin, WHOOP…) from the last 90 days as imported
+   logs (`importKey "health:<uuid>"`, no XP), re-run on every foreground
+   at most every 30 min; Morphe's own Health writes are skipped by bundle
+   id. Bluetooth usage string in both app configs; Health read string
+   updated.
 3. **Morphe AI uses everything** — `profileSignalsForPrompt()` feeds both
    the chat prompt and the builder: height/weight, sports, styles,
    schedule, supplements + taken today, devices + live/last HR, top-five
@@ -154,7 +158,7 @@ Also fixed on the way: the data export wrote extras as base64 plists
 trap.
 
 **Not verified on hardware yet**: a real strap (needs one in hand), the
-bounce timing on device. A phone build of this commit should be installed
+bounce timing on device, a real Strava/Garmin import through Health. A phone build of this commit should be installed
 first thing.
 
 **Waiting on Lucas:** the tagline (still "TRAIN SMARTER" in app/site/store

@@ -1770,7 +1770,7 @@ final class MorpheAppStore {
                     threadReadKey, activitySeenKey, storySeenKey,
                     lastKnownStreakKey, comebackPendingKey, foodChecksKey, recentFoodsKey,
                     savedExercisesKey, savedLessonsKey, savedDietPlansKey, hiddenPeopleKey, knownNamesKey,
-                    supplementsKey, enhancementsKey, lastSessionHeartRateKey, engagementKey,
+                    supplementsKey, enhancementsKey, lastSessionHeartRateKey, engagementKey, healthImportKey,
                     morpheInboxKey, morpheInboxReadKey, deliveredNewsKey, boardsKey, championKey, privateAccountKey, privacyRestampKey,
                     dailyStreakCountKey, dailyStreakLastDayKey, dailyStreakBestKey, dailyStreakFreezeDayKey,
                     // An invite link opened before sign-out must not credit
@@ -1912,7 +1912,7 @@ final class MorpheAppStore {
                     customProgramDefaultsKey, dailyStreakCountKey, dailyStreakLastDayKey,
                     dailyStreakBestKey, dailyStreakFreezeDayKey,
                     programCompletionsDefaultsKey, libraryFoldersKey,
-                    supplementsKey, enhancementsKey, lastSessionHeartRateKey, engagementKey,
+                    supplementsKey, enhancementsKey, lastSessionHeartRateKey, engagementKey, healthImportKey,
                     Self.pendingReferralKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
@@ -4887,6 +4887,7 @@ final class MorpheAppStore {
             "supplements": supplementsKey,
             "lastSessionHeartRate": lastSessionHeartRateKey,
             "engagement": engagementKey,
+            "healthImport": healthImportKey,
             "hiddenPeople": hiddenPeopleKey,
             "knownNames": knownNamesKey,
             "morpheInbox": morpheInboxKey,
@@ -9834,6 +9835,7 @@ final class MorpheAppStore {
             lastSessionHeartRate = nil
         }
         engagementCounts = (UserDefaults.standard.dictionary(forKey: engagementKey) as? [String: Int]) ?? [:]
+        loadHealthImport()
     }
 
     private func saveSupplementStack() {
@@ -9894,6 +9896,112 @@ final class MorpheAppStore {
         } else {
             UserDefaults.standard.set(clean, forKey: enhancementsKey)
         }
+    }
+
+    // MARK: Apps through Apple Health ("Add an app", Lucas 2026-10-13)
+
+    struct HealthImportState: Codable, Equatable {
+        var enabled = false
+        /// Names of the apps whose workouts actually came through.
+        var sources: [String] = []
+        var lastRun: Date?
+    }
+
+    private var healthImportKey: String { "morphe.healthImport.\(clientProfile.id.uuidString)" }
+    private(set) var healthImport = HealthImportState()
+    private(set) var healthImportBusy = false
+
+    private func loadHealthImport() {
+        if let data = UserDefaults.standard.data(forKey: healthImportKey),
+           let state = try? JSONDecoder().decode(HealthImportState.self, from: data) {
+            healthImport = state
+        } else {
+            healthImport = HealthImportState()
+        }
+    }
+
+    private func saveHealthImport() {
+        if let data = try? JSONEncoder().encode(healthImport) {
+            UserDefaults.standard.set(data, forKey: healthImportKey)
+        }
+        mirrorExtrasToCloud()
+    }
+
+    /// The "Add an app" button: one Health permission covers every app
+    /// that shares into Health, then the first import runs right away.
+    func connectAppsThroughHealth() async {
+        guard HealthWorkoutSync.isAvailable else {
+            showToast("Apple Health isn't available on this device.")
+            return
+        }
+        _ = await HealthWorkoutSync.requestOtherAppsReadAuthorization()
+        healthImport.enabled = true
+        saveHealthImport()
+        let added = await importWorkoutsFromHealth(force: true)
+        if added > 0 {
+            showToast("Added \(added) workout\(added == 1 ? "" : "s") from your other apps.")
+        } else if healthImport.sources.isEmpty {
+            showToast("Connected. Nothing from other apps in Health yet — turn on Health sharing in each app.")
+        } else {
+            showToast("Connected — you're up to date.")
+        }
+    }
+
+    func disconnectAppsThroughHealth() {
+        healthImport.enabled = false
+        saveHealthImport()
+        showToast("Other apps disconnected. Workouts already added stay in your history.")
+    }
+
+    /// Pulls the last 90 days of other apps' workouts into history as
+    /// imported logs: no XP, no celebrations, no board posts (same rules
+    /// as a file import). Runs on every foreground, at most every 30 min.
+    @discardableResult
+    func importWorkoutsFromHealth(force: Bool = false) async -> Int {
+        guard healthImport.enabled, hasCompletedOnboarding, !healthImportBusy else { return 0 }
+        if !force, let last = healthImport.lastRun, Date.now.timeIntervalSince(last) < 1800 { return 0 }
+        healthImportBusy = true
+        defer { healthImportBusy = false }
+        let since = Calendar.current.date(byAdding: .day, value: -90, to: .now) ?? .now
+        let found = await HealthWorkoutSync.otherAppWorkouts(since: since)
+        healthImport.lastRun = .now
+        let sources = Set(healthImport.sources).union(found.map(\.source))
+        healthImport.sources = sources.sorted()
+        let mine = currentAthleteWorkoutLogs
+        let keys = Set(workoutLogs.compactMap(\.importKey))
+        let fresh = found.filter { workout in
+            !keys.contains("health:\(workout.id.uuidString)")
+                && !mine.contains { abs($0.completedAt.timeIntervalSince(workout.start.addingTimeInterval(Double(workout.minutes) * 60))) < 120 && $0.durationMinutes == workout.minutes }
+        }
+        guard !fresh.isEmpty else { saveHealthImport(); return 0 }
+        let logs = fresh.map { workout in
+            WorkoutLog(
+                athleteID: clientProfile.id,
+                athleteName: clientProfile.name,
+                workoutTemplateID: nil,
+                workoutTitle: workout.title,
+                sport: .generalFitness,
+                completedAt: workout.start.addingTimeInterval(Double(workout.minutes) * 60),
+                durationMinutes: workout.minutes,
+                exercises: [],
+                notes: "From \(workout.source) through Apple Health.",
+                source: .athleteManual,
+                enteredByUserID: clientProfile.id,
+                enteredByRole: .client,
+                enteredByName: clientProfile.name,
+                verificationStatus: .athleteSubmitted,
+                importKey: "health:\(workout.id.uuidString)"
+            )
+        }
+        workoutLogs = (workoutLogs + logs).sorted { $0.completedAt > $1.completedAt }
+        refreshWorkoutLogDerivedState(for: clientProfile.id)
+        refreshStyleProfile()
+        refreshStreakRiskReminder()
+        refreshWeeklyRecapReminder()
+        detectStreakLapse()
+        saveHealthImport()
+        track("health_imported")
+        return logs.count
     }
 
     /// Called as a session finishes: keeps the strap's average and peak
@@ -11293,6 +11401,9 @@ final class MorpheAppStore {
         var devices: [String] = []
         if healthSyncEnabled { devices.append("Apple Health") }
         if WatchBridge.shared.status == .installed { devices.append("Apple Watch") }
+        if healthImport.enabled, !healthImport.sources.isEmpty {
+            devices.append("workouts from \(healthImport.sources.joined(separator: ", ")) through Apple Health")
+        }
         if case .connected(let name) = heartRateMonitor.state {
             devices.append(heartRateMonitor.bpm.map { "\(name) heart-rate strap (\($0) bpm now)" } ?? "\(name) heart-rate strap")
         }
