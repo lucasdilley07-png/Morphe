@@ -107,7 +107,9 @@ p { margin: 0; }
 .nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .brand img { width: 22px; height: 30px; }
-.brand span { font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.32em; font-size: 14px; }
+/* The final Morphe wordmark (Lucas 2026-10-13), drawn in the text color. */
+.brand .wordmark { display: inline-block; height: 18px; aspect-ratio: 824 / 157; color: var(--fg); background-color:currentColor; -webkit-mask:url(assets/morphe-wordmark.png) center/contain no-repeat; mask:url(assets/morphe-wordmark.png) center/contain no-repeat; }
+.wordmark-glow { display:inline-flex; filter: drop-shadow(0 3px 7px rgba(41,87,217,0.55)); } /* slight blue glow underneath (Lucas 2026-10-13); on a wrapper because a mask clips its own filter */
 .nav-links { display: flex; align-items: center; gap: 4px; }
 .nav-links a { text-decoration: none; padding: 10px 12px; border-radius: 10px; font-weight: 600; font-size: 14px; }
 .nav-links a:not(.btn) { color: var(--fg-2); }
@@ -259,7 +261,7 @@ p { margin: 0; }
   <div class="wrap">
     <a class="brand" href="#top" aria-label="Morphe home">
       <img src="assets/helmet.png" alt="">
-      <span>MORPHE</span>
+      <span class="wordmark-glow"><span class="wordmark" role="img" aria-label="Morphe"></span></span>
     </a>
     <div class="nav-links">
       <a href="#about">About</a>

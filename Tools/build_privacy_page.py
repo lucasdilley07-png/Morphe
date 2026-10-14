@@ -88,7 +88,8 @@ body {{ margin:0; background:var(--bg); color:var(--fg); font-family:"Manrope",-
 .wrap {{ max-width:720px; margin:0 auto; padding-inline:20px; padding-block:40px 96px; }}
 .brand {{ display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; margin-bottom:32px; }}
 .brand img {{ width:22px; height:30px; }}
-.brand span {{ font-family:"IBM Plex Mono",monospace; font-weight:500; letter-spacing:0.32em; font-size:14px; }}
+.brand .wordmark {{ display:inline-block; height:18px; aspect-ratio:824/157; background-color:currentColor; -webkit-mask:url(assets/morphe-wordmark.png) center/contain no-repeat; mask:url(assets/morphe-wordmark.png) center/contain no-repeat; }}
+.wordmark-glow {{ display:inline-flex; filter: drop-shadow(0 3px 7px rgba(41,87,217,0.55)); }} /* slight blue glow underneath (Lucas 2026-10-13); on a wrapper because a mask clips its own filter */
 h1 {{ font-size:clamp(2rem,1.4rem+2vw,2.6rem); letter-spacing:-0.02em; line-height:1.05; margin:0 0 8px; text-wrap:balance; }}
 h2 {{ font-size:1.35rem; letter-spacing:-0.01em; margin:40px 0 8px; }}
 h3 {{ font-size:1.1rem; margin:24px 0 6px; }}
@@ -102,7 +103,7 @@ li {{ margin-bottom:6px; }}
 </head>
 <body>
 <div class="wrap">
-  <a class="brand" href="index.html" aria-label="Morphe home"><img src="assets/helmet.png" alt=""><span>MORPHE</span></a>
+  <a class="brand" href="index.html" aria-label="Morphe home"><img src="assets/helmet.png" alt=""><span class="wordmark-glow"><span class="wordmark" role="img" aria-label="Morphe"></span></span></a>
 {body}
   <div class="foot"><a href="index.html">Morphe</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms of use</a><a href="support.html">Support</a><span>TRAIN SMARTER</span></div>
 </div>

@@ -39,7 +39,8 @@
   .tick.bl { bottom:10px; left:10px; border-width:0 0 1px 1px; }
   .tick.br { bottom:10px; right:10px; border-width:0 1px 1px 0; }
   .mono { font-family:ui-monospace, "SF Mono", Menlo, monospace; }
-  .wordmark { color:var(--yellow); font-weight:900; letter-spacing:.4em; font-size:20px; }
+  .wordmark { display:inline-block; height:22px; aspect-ratio:824/157; color:#F0F8FF; background-color:currentColor; -webkit-mask:url(assets/morphe-wordmark.png) center/contain no-repeat; mask:url(assets/morphe-wordmark.png) center/contain no-repeat; }
+  .wordmark-glow { display:inline-flex; filter: drop-shadow(0 3px 7px rgba(41,87,217,0.55)); } /* slight blue glow underneath (Lucas 2026-10-13); on a wrapper because a mask clips its own filter */
   .kicker { color:rgba(255,255,255,.55); letter-spacing:.2em; font-size:11px; font-weight:600; margin-top:28px; }
   h1 { font-size:28px; font-weight:800; margin:10px 0 8px; }
   p { color:rgba(255,255,255,.66); font-size:15px; line-height:1.5; }
@@ -61,7 +62,7 @@
     <span class="tick tl"></span><span class="tick tr"></span>
     <span class="tick bl"></span><span class="tick br"></span>
 
-    <div class="mono wordmark">MORPHE</div>
+    <div class="wordmark-glow"><div class="wordmark" role="img" aria-label="Morphe"></div></div>
     <div class="mono kicker">TRAINING INVITE</div>
     <h1 id="headline">You're invited to train on Morphe.</h1>
     <p id="sub">Log real sets, keep a real streak, and train together.</p>

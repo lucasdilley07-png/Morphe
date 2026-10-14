@@ -80,6 +80,10 @@ protocol CloudBackingUp: AnyObject {
     /// application, appointments, saved posts, follows, blocks. False
     /// aborts the deletion. Default: nothing to erase.
     func eraseAccountSideDocs(uid: String) async -> Bool
+    /// The public footprint (fix wave 2026-10-13): posts, connect requests,
+    /// board rows and challenge rows that carry the user's name. True when
+    /// everything it could reach is gone.
+    func erasePublicFootprint(uid: String, boardCodes: [String], challengeCodes: [String], weekKeys: [String]) async -> Bool
 }
 
 extension CloudBackingUp {
@@ -87,6 +91,7 @@ extension CloudBackingUp {
         await pushLogs(logs)
     }
     func eraseAccountSideDocs(uid: String) async -> Bool { true }
+    func erasePublicFootprint(uid: String, boardCodes: [String], challengeCodes: [String], weekKeys: [String]) async -> Bool { true }
 }
 
 /// Default backup that does nothing — keeps the store fully functional offline
@@ -1418,6 +1423,34 @@ final class FirebaseCloudBackup: CloudBackingUp {
         return db.collection("users").document(uid).collection("state").document(name)
     }
 
+    /// Every log stored under state/logs, whole or chunked (fix wave
+    /// 2026-10-13): one JSON blob hits Firestore's 1 MiB document cap at
+    /// roughly 350–500 workouts, so long histories split into
+    /// state/logs-part-N. A failed part fetch throws (a failed pull, never
+    /// a short history).
+    private func storedLogs(in snap: DocumentSnapshot) async throws -> [WorkoutLog] {
+        guard let data = snap.data() else { return [] }
+        var blobs: [String] = []
+        if let json = data["json"] as? String, !json.isEmpty { blobs.append(json) }
+        let parts = data["parts"] as? Int ?? 0
+        if parts > 0 {
+            for index in 1...parts {
+                guard let part = stateDoc("logs-part-\(index)") else { continue }
+                if let json = try await part.getDocument().data()?["json"] as? String { blobs.append(json) }
+            }
+        }
+        var logs: [WorkoutLog] = []
+        for blob in blobs {
+            // Same tolerant per-element decode as the file store: one bad
+            // log drops that entry, never the whole array.
+            if let bytes = blob.data(using: .utf8),
+               let elements = try? decoder.decode([FailableElement<WorkoutLog>].self, from: bytes) {
+                logs += elements.compactMap(\.value)
+            }
+        }
+        return logs
+    }
+
     func pushProfile(_ snapshot: LocalProfileSnapshot) {
         guard let doc = stateDoc("profile"),
               let data = try? encoder.encode(snapshot),
@@ -1452,28 +1485,53 @@ final class FirebaseCloudBackup: CloudBackingUp {
             if let names = data["deleted"] as? [String] {
                 deleted.formUnion(names.compactMap(UUID.init(uuidString:)))
             }
-            if let json = data["json"] as? String,
-               let bytes = json.data(using: .utf8),
-               let elements = try? decoder.decode([FailableElement<WorkoutLog>].self, from: bytes) {
-                let localIDs = Set(logs.map(\.id))
-                for log in elements.compactMap(\.value)
-                where !localIDs.contains(log.id) && !deleted.contains(log.id) {
-                    merged.append(log)
-                }
+            guard let cloudLogs = try? await storedLogs(in: snap) else { return false }
+            let localIDs = Set(logs.map(\.id))
+            for log in cloudLogs where !localIDs.contains(log.id) && !deleted.contains(log.id) {
+                merged.append(log)
             }
         }
         merged.removeAll { deleted.contains($0.id) }
         merged.sort { $0.completedAt > $1.completedAt }
-        guard let data = try? encoder.encode(merged),
-              let json = String(data: data, encoding: .utf8) else { return false }
+        guard let whole = try? encoder.encode(merged),
+              let json = String(data: whole, encoding: .utf8) else { return false }
+        let deletedNames = Array(deleted.map(\.uuidString).sorted().suffix(500))
         do {
-            try await doc.setData([
-                "schemaVersion": 1,
+            let limit = 800_000
+            if whole.count <= limit {
+                try await doc.setData([
+                    "schemaVersion": 1,
+                    "count": merged.count,
+                    "json": json,
+                    "parts": 0,
+                    "deleted": deletedNames,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ])
+                return true
+            }
+            // Chunked: about 700 KB per part, all parts and the index in one
+            // batch so a reader never sees half a history.
+            let perLog = max(1, whole.count / max(merged.count, 1))
+            let perPart = max(1, 700_000 / perLog)
+            let chunks = stride(from: 0, to: merged.count, by: perPart).map {
+                Array(merged[$0..<min($0 + perPart, merged.count)])
+            }
+            let batch = db.batch()
+            for (offset, chunk) in chunks.enumerated() {
+                guard let part = stateDoc("logs-part-\(offset + 1)"),
+                      let bytes = try? encoder.encode(chunk),
+                      let partJSON = String(data: bytes, encoding: .utf8) else { return false }
+                batch.setData(["json": partJSON, "updatedAt": FieldValue.serverTimestamp()], forDocument: part)
+            }
+            batch.setData([
+                "schemaVersion": 2,
                 "count": merged.count,
-                "json": json,
-                "deleted": Array(deleted.map(\.uuidString).sorted().suffix(500)),
+                "json": "",
+                "parts": chunks.count,
+                "deleted": deletedNames,
                 "updatedAt": FieldValue.serverTimestamp()
-            ])
+            ], forDocument: doc)
+            try await batch.commit()
             return true
         } catch {
             return false
@@ -1543,6 +1601,11 @@ final class FirebaseCloudBackup: CloudBackingUp {
     }
 
     func eraseUser() async {
+        // Every state doc, including chunked log parts (fix wave 2026-10-13).
+        if let uid, let snap = try? await db.collection("users").document(uid).collection("state").getDocuments() {
+            for doc in snap.documents { try? await doc.reference.delete() }
+            return
+        }
         for name in ["profile", "logs", "weightHistory", "extras"] {
             if let doc = stateDoc(name) {
                 try? await doc.delete()
@@ -1556,12 +1619,59 @@ final class FirebaseCloudBackup: CloudBackingUp {
                 try await db.collection(path).document(uid).delete()
             }
             for sub in ["appointments", "savedPosts", "following", "blocked"] {
-                let snap = try await db.collection("users").document(uid).collection(sub).limit(to: 500).getDocuments()
+                // Page until empty (fix wave 2026-10-13): one 500-doc pass
+                // left the rest behind.
+                while true {
+                    let snap = try await db.collection("users").document(uid).collection(sub).limit(to: 400).getDocuments()
+                    guard !snap.documents.isEmpty else { break }
+                    let batch = db.batch()
+                    for doc in snap.documents { batch.deleteDocument(doc.reference) }
+                    try await batch.commit()
+                    if snap.documents.count < 400 { break }
+                }
+            }
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    func erasePublicFootprint(uid: String, boardCodes: [String], challengeCodes: [String], weekKeys: [String]) async -> Bool {
+        do {
+            // Posts the user wrote (the author may delete; index authorUid +
+            // createdAt). Comments under them become unreadable with the post.
+            while true {
+                let snap = try await db.collection("posts").whereField("authorUid", isEqualTo: uid)
+                    .order(by: "createdAt", descending: true).limit(to: 400).getDocuments()
+                guard !snap.documents.isEmpty else { break }
+                let batch = db.batch()
+                for doc in snap.documents { batch.deleteDocument(doc.reference) }
+                try await batch.commit()
+                if snap.documents.count < 400 { break }
+            }
+            // Connect requests in either direction (they carry both names).
+            for field in ["fromUid", "toUid"] {
+                let snap = try await db.collection("connectRequests").whereField(field, isEqualTo: uid).limit(to: 200).getDocuments()
                 guard !snap.documents.isEmpty else { continue }
                 let batch = db.batch()
                 for doc in snap.documents { batch.deleteDocument(doc.reference) }
                 try await batch.commit()
             }
+            // Board rows for the weeks the app can name, and challenge rows.
+            let batch = db.batch()
+            for code in boardCodes {
+                for week in weekKeys {
+                    batch.deleteDocument(db.collection("boards").document(code).collection("weeks").document(week)
+                        .collection("entries").document(uid))
+                }
+            }
+            for week in weekKeys {
+                batch.deleteDocument(db.collection("leaderboards").document(week).collection("entries").document(uid))
+            }
+            for code in challengeCodes {
+                batch.deleteDocument(db.collection("challenges").document(code).collection("members").document(uid))
+            }
+            try await batch.commit()
             return true
         } catch {
             return false
@@ -1601,12 +1711,11 @@ final class FirebaseCloudBackup: CloudBackingUp {
                 result.fetchFailed = true
                 return result
             }
-            if let json = snap.data()?["json"] as? String,
-               let data = json.data(using: .utf8),
-               // Same tolerant per-element decode as the file store: one bad log
-               // drops that entry, never the whole array.
-               let elements = try? decoder.decode([FailableElement<WorkoutLog>].self, from: data) {
-                result.logs = elements.compactMap(\.value)
+            do {
+                result.logs = try await storedLogs(in: snap)
+            } catch {
+                result.fetchFailed = true
+                return result
             }
         }
 

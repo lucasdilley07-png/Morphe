@@ -26,7 +26,8 @@ struct MoreView: View {
     /// The three surfaces this tab actually owns. Scores/Progress duplicated
     /// the Progress tab and Quick Tools duplicated the Train tab + AI FAB, so
     /// both are gone — any stale store selection maps to Lessons.
-    private static let tabs: [ClientHubFeature] = [.library, .nutrition, .learn]
+    // Lessons first, then Nutrition, then Library (Lucas 2026-10-13).
+    private static let tabs: [ClientHubFeature] = [.learn, .nutrition, .library]
 
     private var activeFeature: ClientHubFeature {
         let selected = store.selectedHubFeature ?? .learn
@@ -71,6 +72,8 @@ struct MoreView: View {
             }
             .id(activeFeature)
         }
+        .inTabPageSwipe(pages: Self.tabs, selection: Binding(
+            get: { activeFeature }, set: { store.selectedHubFeature = $0 }))
         .padding(.top, MorpheTheme.Spacing.pageTopCompact)
     }
 

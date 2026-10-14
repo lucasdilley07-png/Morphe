@@ -6679,6 +6679,26 @@ final class ModerationTests: XCTestCase {
         XCTAssertNil(store.authUser)
     }
 
+    func testAgeGateNeedsARealYearAndThirteenPlus() {
+        let year = Calendar.current.component(.year, from: .now)
+        var draft = OnboardingDraft()
+        XCTAssertFalse(draft.meetsMinimumAge, "no answer, no pass")
+        draft.birthYear = year - 12
+        XCTAssertFalse(draft.meetsMinimumAge, "twelve is under the line")
+        draft.birthYear = year - 14
+        XCTAssertTrue(draft.meetsMinimumAge)
+        draft.birthYear = year + 1
+        XCTAssertFalse(draft.birthYearIsValid, "a future year is not a birth year")
+        draft.birthYear = 1700
+        XCTAssertFalse(draft.birthYearIsValid)
+
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Age Test"
+        store.onboardingDraft.birthYear = year - 30
+        store.completeOnboarding()
+        XCTAssertEqual(store.clientProfile.age, 30, "the answered year becomes the profile age, not a placeholder")
+    }
+
     func testPrivatePostsShowOnlyToConnectionsAndTheAuthor() {
         let store = MorpheAppStore()
         store.authUser = AppUser(id: "me", email: "me@morphe.app", role: .athlete, displayName: "Me", createdAt: .now)
@@ -7242,8 +7262,8 @@ final class MessagingDoorTests: XCTestCase {
         store.openPostWorkoutCoachThread()
         XCTAssertEqual(store.selectedClientTab, .community)
         XCTAssertEqual(store.selectedCommunitySection, .contact)
-        XCTAssertNotNil(store.athleteThreadDraftSeed,
-                        "the seed must survive routing so ThreadChatView can consume it")
+        // No pre-written words in a human DM (fix wave 2026-10-13).
+        XCTAssertNil(store.athleteThreadDraftSeed, "the app never drafts the user's message for them")
     }
 
     func testPostWorkoutMessageDoorLandsOnContactWithoutAStraySeed() {

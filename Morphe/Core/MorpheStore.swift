@@ -1852,6 +1852,19 @@ final class MorpheAppStore {
         if !username.isEmpty {
             await usernameDirectory.release(username, for: uid)
         }
+        // The public footprint goes too (fix wave 2026-10-13): posts,
+        // connect requests, board and challenge rows that carry the name.
+        // The last 26 weeks of boards are the ones the app can name.
+        let weeks = (0..<26).compactMap { back in
+            Calendar.current.date(byAdding: .weekOfYear, value: -back, to: .now).map { LeaderboardWeek.key(for: $0) }
+        }
+        guard await cloudBackup.erasePublicFootprint(
+            uid: uid, boardCodes: Array(myBoards.map(\.code).prefix(15)),   // ≤ 15 × 26 + 26 + challenges stays under one 500-write batch
+            
+            challengeCodes: activeChallenges.map(\.code), weekKeys: weeks) else {
+            showToast("Couldn't remove your posts and board rows — check your connection and try again.", isError: true)
+            return false
+        }
 
         // Recorded BEFORE the auth user disappears — churn you can't see
         // is churn you can't learn from. Then the whole event trail is
@@ -5028,7 +5041,34 @@ final class MorpheAppStore {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(payload) else { return nil }
+        guard let core = try? encoder.encode(payload),
+              var object = (try? JSONSerialization.jsonObject(with: core)) as? [String: Any] else { return nil }
+        // Everything else the account backs up (fix wave 2026-10-13): the
+        // export held only workouts and weight. Each extras blob is decoded
+        // so the file reads as JSON, not as strings of JSON.
+        func json<T: Encodable>(_ value: T) -> Any? {
+            (try? encoder.encode(value)).flatMap { try? JSONSerialization.jsonObject(with: $0) }
+        }
+        var extras: [String: Any] = [:]
+        for (name, blob) in perProfileExtrasBlobs() {
+            if let data = blob.data(using: .utf8), let parsed = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) {
+                extras[name] = parsed
+            } else {
+                extras[name] = blob
+            }
+        }
+        object["accountExtras"] = extras
+        object["recoveryHistory"] = json(recoverySeries)
+        object["nutritionHistory"] = json(nutritionSeries)
+        object["mealsToday"] = nutrition.meals.filter(\.logged).map { meal -> [String: Any] in
+            var row: [String: Any] = ["meal": meal.mealType, "name": meal.name, "calories": meal.calories,
+                                      "protein": meal.protein, "carbs": meal.carbs, "fat": meal.fat, "source": meal.source]
+            if let grams = meal.grams { row["grams"] = grams }
+            return row
+        }
+        object["morpheConversation"] = json(morpheInbox)
+        object["note"] = "Progress photos stay on this iPhone and are not included."
+        guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]) else { return nil }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("Morphe-Export.json")
         do {
             try data.write(to: url, options: .atomic)
@@ -6698,6 +6738,7 @@ final class MorpheAppStore {
     private(set) var launchSettled = false
 
     func finishLaunchSequence() {
+        armResumeWorkoutPromptIfNeeded(coldLaunch: true)
         armDayPopupForThisOpen()
         refreshMorpheInbox()
         withAnimation(.easeInOut(duration: 0.3)) {
@@ -6750,6 +6791,9 @@ final class MorpheAppStore {
 
     func completeOnboarding() {
         let generatedPlan = MorpheDemoContent.generatedPlan(from: onboardingDraft)
+        // The answered birth year is the profile age (age gate, fix wave
+        // 2026-10-13) — not the draft's placeholder 25.
+        let answeredAge = onboardingDraft.birthYear.map { OnboardingDraft.age(fromBirthYear: $0) }
         let primarySport = onboardingDraft.selectedSports.first ?? .generalFitness
         let selectedGoals = onboardingDraft.selectedGoals.map(\.rawValue)
 
@@ -6767,6 +6811,7 @@ final class MorpheAppStore {
         // here persisted it under the SEEDED demo profile id, which the
         // minted identity never reads, so the arc vanished on relaunch.)
         clientProfile.name = resolvedName
+        if let answeredAge { clientProfile.age = max(0, min(120, answeredAge)) }
         profileShowcase.displayName = resolvedName
         // The @username the user picked (and the directory reserved) during
         // onboarding. The name-derived handle survives only as the offline
@@ -9093,11 +9138,10 @@ final class MorpheAppStore {
         // Seed the draft ONLY when the inbox will auto-open the single
         // thread — with several threads the seed would survive and inject
         // into whichever unrelated chat opens next (audit 21, P1).
-        if liveThreads.count == 1 {
-            athleteThreadDraftSeed = postWorkoutCoachDraft()
-        }
+        // No pre-written words (fix wave 2026-10-13): a canned draft sent as
+        // the user's own message broke the human-only rule.
         openCommunity(.contact)
-        showToast("Message ready.")
+        showToast("Tell them how it went.")
     }
 
     func openPostWorkoutBuddyThread() {
@@ -9702,7 +9746,7 @@ final class MorpheAppStore {
         defer { morpheReplyInFlight = false }
         var answer: String
         if let key = MorpheIntelligence.apiKey {
-            let turns = morpheInbox.filter { $0.kind == .question || $0.kind == .answer }.suffix(12)
+            let turns = morpheInbox.filter { ($0.kind == .question || $0.kind == .answer) && !MorpheIntelligence.isFailureNote($0.body) }.suffix(12)
                 .map { MorpheIntelligence.Turn(isUser: $0.kind == .question, text: $0.body) }
             do {
                 answer = try await MorpheIntelligence.reply(system: intelligenceSystemPrompt(spoken: false, userText: clean), turns: turns, apiKey: key, timeout: 30)
@@ -11028,7 +11072,7 @@ final class MorpheAppStore {
 
     private func intelligenceTurns(from conversation: [ThreadMessage]) -> [MorpheIntelligence.Turn] {
         conversation.suffix(16)
-            .filter { $0.text != "\u{2026}" }
+            .filter { $0.text != "\u{2026}" && !MorpheIntelligence.isFailureNote($0.text) }
             .map { MorpheIntelligence.Turn(isUser: $0.sender == .user, text: $0.text) }
     }
 
@@ -13937,9 +13981,27 @@ final class MorpheAppStore {
 
     /// Arms the popup for this open: honors the hour gap and, when it will
     /// show, lands the user on Today BEFORE deep-link consumers run.
+    /// "Continue your workout?" (Lucas 2026-10-13): a session left running
+    /// when the app was closed asks on the next open — instead of the
+    /// welcome pop-up. Always on a cold launch; after a background return
+    /// only when away 10+ minutes, so a quick switch to music mid-set
+    /// doesn't nag.
+    var showResumeWorkoutPrompt = false
+    private var backgroundedAt: Date?
+    private func armResumeWorkoutPromptIfNeeded(coldLaunch: Bool) {
+        guard hasCompletedOnboarding, !needsTermsAcceptance, isWorkoutSessionActive else { return }
+        let awayLong = backgroundedAt.map { Date.now.timeIntervalSince($0) >= 600 } ?? false
+        if coldLaunch || awayLong { showResumeWorkoutPrompt = true }
+    }
+    func continueResumedWorkout() {
+        showResumeWorkoutPrompt = false
+        showTrainTab()
+    }
+
     private func armDayPopupForThisOpen() {
         dayPopupThrottledThisOpen = isDayPopupThrottled
-        if !dayPopupThrottledThisOpen, !dayPopupSessionDismissed, hasCompletedOnboarding {
+        // A live session owns the open: no jump to Today (Lucas 2026-10-13).
+        if !dayPopupThrottledThisOpen, !dayPopupSessionDismissed, hasCompletedOnboarding, !isWorkoutSessionActive {
             selectedClientTab = .today
         }
     }
@@ -13972,6 +14034,7 @@ final class MorpheAppStore {
 
     func noteBackgrounded() {
         wasBackgrounded = true
+        backgroundedAt = .now
         syncAppIconBadge()
         // A backgrounded app must not keep a voice stream generating and
         // then start speaking on return (audit 24, P2).
@@ -13985,6 +14048,8 @@ final class MorpheAppStore {
         guard wasBackgrounded else { return }
         wasBackgrounded = false
         dayPopupSessionDismissed = false
+        armResumeWorkoutPromptIfNeeded(coldLaunch: false)
+        backgroundedAt = nil
         armDayPopupForThisOpen()
         refreshMorpheInbox()
         morpheAskRefresh += 1
@@ -18209,18 +18274,6 @@ final class MorpheAppStore {
         case .confirmTomorrow:
             return "Tomorrow still good for \(currentWorkout.name)? I want to lock it in before the day gets crowded."
         }
-    }
-
-    private func postWorkoutCoachDraft() -> String {
-        if currentWorkout.name == clientProfile.currentProgram {
-            return "Just finished \(currentWorkout.name). I closed the loop on the assignment and I’m about to log it now."
-        }
-
-        if currentWorkout.category == .recovery || currentWorkout.name == "Low Energy Recovery Day" {
-            return "Just wrapped \(currentWorkout.name). I kept it recovery-first today and it helped me stay on track."
-        }
-
-        return "Just finished \(currentWorkout.name). I’m about to log it now and wanted to keep you in the loop."
     }
 
     private func postWorkoutBuddyDraft(for partner: WorkoutPartner) -> String {

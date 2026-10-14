@@ -2268,7 +2268,7 @@ struct ProfileView: View {
                     } message: {
                         Text(FeatureFlags.socialFeedEnabled
                              ? "This deletes your sign-in, cloud backup, weight history, and @username permanently — there is no undo. Posts and comments you shared stay on the feed unless you delete them first (long-press any of yours)."
-                             : "This deletes your sign-in, cloud backup, weight history, @username, verification selfie and coach application permanently — there is no undo. Messages you sent and board or challenge scores you posted stay where they are.")
+                             : "This permanently deletes your sign-in, cloud backup, weight history, @username, verification selfie, coach application, posts, connect requests, and your rows on boards and challenges — there is no undo. Messages you sent stay in the other person's chat, and comments you left on other people's posts stay until you delete them.")
                     }
                 }
             }

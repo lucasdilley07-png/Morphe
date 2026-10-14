@@ -11,7 +11,7 @@ import Security
 // the canned coaching replies keep running exactly as before.
 //
 // Swift has no official Anthropic SDK, so this is the raw Messages API
-// over URLSession: POST /v1/messages with model claude-opus-5, adaptive
+// over URLSession: POST /v1/messages with model claude-opus-5-5, adaptive
 // thinking left at its default, effort low so spoken answers come back
 // fast. A safety refusal (stop_reason "refusal") is surfaced honestly,
 // never papered over.
@@ -109,6 +109,15 @@ enum MorpheIntelligence {
         }
     }
 
+    /// True for the honest failure lines the app shows in place of an
+    /// answer (fix wave 2026-10-13). They stay visible in the thread but are
+    /// never sent back to Claude as if Claude had said them.
+    static func isFailureNote(_ text: String) -> Bool {
+        let notes: [IntelligenceError] = [.badKey, .rateLimited, .overloaded, .network, .declined, .malformed, .badRequest, .ranLong]
+        if notes.contains(where: { $0.errorDescription == text }) { return true }
+        return text.hasPrefix("I couldn't reach Claude.") || text.hasPrefix("I hit a snag reaching Claude")
+    }
+
     /// Error-absorbing wrapper for the store: every failure becomes an
     /// honest, speakable line instead of a thrown error.
     static func safeReply(system: String, turns: [Turn], apiKey: String,
@@ -151,6 +160,17 @@ enum MorpheIntelligence {
             let payload = line.dropFirst(6)
             guard let data = payload.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+            // A mid-stream error event (fix wave 2026-10-13) used to read
+            // as a silent stop; it throws the same honest error as HTTP.
+            if json["type"] as? String == "error" {
+                let kind = (json["error"] as? [String: Any])?["type"] as? String ?? ""
+                switch kind {
+                case "overloaded_error", "api_error": throw IntelligenceError.overloaded
+                case "rate_limit_error": throw IntelligenceError.rateLimited
+                case "authentication_error", "permission_error": throw IntelligenceError.badKey
+                default: throw IntelligenceError.network
+                }
+            }
             if json["type"] as? String == "content_block_delta",
                let delta = json["delta"] as? [String: Any],
                delta["type"] as? String == "text_delta",
@@ -191,7 +211,7 @@ enum MorpheIntelligence {
         }
         guard messages.first?["role"] as? String == "user" else { throw IntelligenceError.malformed }
         var body: [String: Any] = [
-            "model": "claude-opus-5",
+            "model": "claude-opus-5-5",
             "max_tokens": 4000,
             "system": system,
             "output_config": ["effort": "low"],
@@ -229,7 +249,7 @@ enum MorpheIntelligence {
         // error. The brevity contract lives in the system prompt, not the
         // token cap.
         let body: [String: Any] = [
-            "model": "claude-opus-5",
+            "model": "claude-opus-5-5",
             "max_tokens": 4000,
             "system": system,
             // Thinking off (luxury audit): adaptive thinking shared the
@@ -834,7 +854,7 @@ enum FoodCheckService {
         var visited = Set<String>()
         for _ in 0..<4 {
             let body: [String: Any] = [
-                "model": "claude-opus-5",
+                "model": "claude-opus-5-5",
                 "max_tokens": 8000,
                 "system": reportSystem,
                 "output_config": ["effort": "low"],

@@ -676,9 +676,7 @@ private struct MorpheAsksCard: View {
                         Image(systemName: "sparkle")
                             .font(.caption.weight(.bold))
                             .foregroundStyle(MorpheTheme.accentText)
-                        Text("MORPHE")
-                            .font(MorpheTheme.microLabel(9))
-                            .tracking(1.6)
+                        MorpheWordmark(height: 9)
                             .foregroundStyle(MorpheTheme.textMuted)
                     }
                     .glimmer()

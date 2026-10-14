@@ -389,7 +389,7 @@ service cloud.firestore {
               && request.resource.data.status == 'pending'
               && humanPaced('lastConnectAt', 10))
         );
-      allow delete: if false;
+      allow delete: if isParty();   // account deletion clears both directions (fix wave 2026-10-13)
     }
 
     // Train Together parties. The 6-char doc id is the join code — knowing it
@@ -409,7 +409,13 @@ service cloud.firestore {
 
       match /nudges/{nudgeId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.fromID == request.auth.uid;
+        // Shaped and stamped (fix wave 2026-10-13): no payloads, no
+        // backdated floods.
+        allow create: if isSignedIn() && request.resource.data.fromID == request.auth.uid
+          && request.resource.data.keys().hasOnly(['fromID', 'fromName', 'emoji', 'sentAt'])
+          && request.resource.data.fromName is string && request.resource.data.fromName.size() <= 60
+          && request.resource.data.emoji is string && request.resource.data.emoji.size() <= 8
+          && request.resource.data.sentAt == request.time;
         allow update, delete: if false;
       }
     }
@@ -425,11 +431,19 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && request.resource.data.keys().hasOnly(
              ['uid', 'name', 'username', 'role', 'note', 'selfieJPEG', 'status', 'createdAt'])
-        && request.resource.data.uid == uid;
+        && request.resource.data.uid == uid
+        // A 640px review selfie is ~100 KB; nothing bigger is a selfie
+        // (fix wave 2026-10-13).
+        && request.resource.data.selfieJPEG is bytes
+        && request.resource.data.selfieJPEG.size() <= 400000;
       allow update: if isOwner(uid)
         && resource.data.status in ['pending', 'declined']
         && request.resource.data.status == 'pending'
-        && request.resource.data.uid == uid;
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(
+             ['uid', 'name', 'username', 'role', 'note', 'selfieJPEG', 'status', 'createdAt'])
+        && request.resource.data.selfieJPEG is bytes
+        && request.resource.data.selfieJPEG.size() <= 400000;
       allow delete: if isOwner(uid);
     }
 
@@ -599,7 +613,7 @@ service cloud.firestore {
         && request.resource.data.workouts >= 0
         && (request.resource.data.get('verified', false) != true
             || get(/databases/$(database)/documents/users/$(uid)).data.get('verified', false) == true);
-      allow delete: if false;
+      allow delete: if isOwner(uid);   // account deletion (fix wave 2026-10-13)
 
       // Respect — the one-tap reaction on an athlete's WEEK (2026-09-30,
       // from the engagement research: every logged unit a friend can see
@@ -649,7 +663,7 @@ service cloud.firestore {
           && request.resource.data.workouts >= 0
           && (request.resource.data.get('verified', false) != true
               || get(/databases/$(database)/documents/users/$(uid)).data.get('verified', false) == true);
-        allow delete: if false;
+        allow delete: if isOwner(uid);   // account deletion (fix wave 2026-10-13)
 
         match /respect/{giverUid} {
           allow read: if isSignedIn();
@@ -692,7 +706,7 @@ service cloud.firestore {
           && request.resource.data.score <= 3000
           && (request.resource.data.get('verified', false) != true
               || get(/databases/$(database)/documents/users/$(uid)).data.get('verified', false) == true);
-        allow delete: if false;
+        allow delete: if isOwner(uid);   // account deletion (fix wave 2026-10-13)
       }
     }
 
@@ -905,8 +919,16 @@ service cloud.firestore {
       // author deletes it. No counters anywhere — counts come from reading
       // the docs themselves.
       match /comments/{commentId} {
-        allow read: if isSignedIn();
+        // Comments follow their post (fix wave 2026-10-13): a private post's
+        // thread reads only for the author and connections, and someone the
+        // author blocked can't comment.
+        function parentPost() { return get(/databases/$(database)/documents/posts/$(postId)).data; }
+        allow read: if isSignedIn()
+          && (parentPost().get('authorPrivate', false) == false
+              || request.auth.uid == parentPost().authorUid
+              || connectedWith(parentPost().authorUid));
         allow create: if isSignedIn()
+          && !exists(/databases/$(database)/documents/users/$(parentPost().authorUid)/blocked/$(request.auth.uid))
           && request.resource.data.authorUid == request.auth.uid
           && request.resource.data.keys().hasOnly(
                ['authorUid', 'authorName', 'text', 'createdAt'])

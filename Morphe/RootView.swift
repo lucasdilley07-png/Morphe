@@ -382,6 +382,17 @@ struct RootView: View {
                 .presentationCornerRadius(28)
         }
         .sessionWorkGateDialog()
+        // A session left running when the app closed (Lucas 2026-10-13):
+        // asked instead of the welcome pop-up.
+        .alert("Continue your workout?", isPresented: $store.showResumeWorkoutPrompt) {
+            Button("Continue") { store.continueResumedWorkout() }
+            Button("End without saving", role: .destructive) { store.cancelTrackedWorkoutSession() }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text(store.trackedSetTotalCount == 0
+                 ? "\(store.currentWorkout.name) is still open. Nothing logged yet."
+                 : "\(store.currentWorkout.name) is still open — \(store.trackedSetTotalCount) set\(store.trackedSetTotalCount == 1 ? "" : "s") logged so far.")
+        }
         .alert("Save more workouts to switch", isPresented: $store.showSwitchNeedsSavedWorkouts) {
             Button("Open Discover") {
                 store.showDiscoverTab()
@@ -681,7 +692,8 @@ private struct ClientExperienceShell: View {
                 .toolbar(.hidden, for: .tabBar)
                 .tag(ClientTab.more)
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
+        // The main tabs no longer page (Lucas 2026-10-13): the swipe belongs to
+        // the pages inside each tab; the dock switches tabs.
         .ignoresSafeArea(edges: .top)
         // The icons FLOAT over the page (Lucas 2026-10-05): no inset, no
         // band, nothing behind them but the page itself. The pager's own
@@ -1057,9 +1069,7 @@ private struct MorpheAIAgentSheet: View {
                         .fill(MorpheTheme.textMuted.opacity(0.6))
                         .frame(width: 36, height: 4)
                         .accessibilityHidden(true)
-                    Text("MORPHE")
-                        .font(MorpheTheme.microLabel(12))
-                        .tracking(2.4)
+                    MorpheWordmark(height: 14)
                         .foregroundStyle(MorpheTheme.textPrimary)
                 }
             }

@@ -28,9 +28,7 @@ struct LaunchSequenceView: View {
 
                 MorpheLoadingMark(size: 132)
 
-                Text("MORPHE")
-                    .scaledFont(size: 28, weight: .bold, design: .monospaced)
-                    .tracking(6)
+                MorpheWordmark(height: 30)
                     .foregroundStyle(.white)
 
                 // A non-empty placeholder holds the line's height on the
@@ -136,6 +134,7 @@ struct OnboardingFlowView: View {
     private var canAdvance: Bool {
         if currentStep == .name || currentStep == .identity {
             let hasName = !store.onboardingDraft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && store.onboardingDraft.meetsMinimumAge
             if currentStep == .name { return hasName }
             return hasName
                 && UsernameRules.normalize(usernameEntry).count >= UsernameRules.minLength
@@ -295,7 +294,7 @@ struct OnboardingFlowView: View {
             WelcomeLandingStep()
         case .identity:
             VStack(alignment: .leading, spacing: 16) {
-                NameStep(name: $store.onboardingDraft.name)
+                NameStep(name: $store.onboardingDraft.name, birthYear: $store.onboardingDraft.birthYear)
                 UsernameStep(
                     entry: $usernameEntry,
                     isChecking: isReservingUsername,
@@ -315,7 +314,7 @@ struct OnboardingFlowView: View {
                 ProfileReviewStep()
             }
         case .name:
-            NameStep(name: $store.onboardingDraft.name)
+            NameStep(name: $store.onboardingDraft.name, birthYear: $store.onboardingDraft.birthYear)
         case .username:
             UsernameStep(
                 entry: $usernameEntry,
@@ -545,6 +544,16 @@ private struct LandingPoint: View {
 
 private struct NameStep: View {
     @Binding var name: String
+    @Binding var birthYear: Int?
+    @State private var yearText = ""
+
+    private var yearMessage: String? {
+        guard yearText.count == 4 else { return nil }
+        var draft = OnboardingDraft(); draft.birthYear = Int(yearText)
+        if !draft.birthYearIsValid { return "Check the year." }
+        if !draft.meetsMinimumAge { return "Morphe is for people 13 and older." }
+        return nil
+    }
 
     var body: some View {
         OnboardingCard(
@@ -568,6 +577,24 @@ private struct NameStep: View {
                 Text("Example: Alex")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
+
+                // Age gate (fix wave 2026-10-13): asked neutrally, no hint
+                // at the cutoff, and it becomes the profile age.
+                TextField("Year you were born", text: $yearText)
+                    .textFieldStyle(MorpheFieldStyle())
+                    .keyboardType(.numberPad)
+                    .onAppear { if let birthYear { yearText = String(birthYear) } }
+                    .onChange(of: yearText) { _, newValue in
+                        let digits = String(newValue.filter(\.isNumber).prefix(4))
+                        if digits != newValue { yearText = digits }
+                        birthYear = digits.count == 4 ? Int(digits) : nil
+                    }
+                    .accessibilityLabel("Year you were born")
+                if let yearMessage {
+                    Text(yearMessage)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.warning)
+                }
             }
         }
     }
@@ -1055,9 +1082,7 @@ private struct PersonalizedPlanLoadingView: View {
                 size: 94
             )
 
-            Text("MORPHE")
-                .scaledFont(size: 28, weight: .bold, design: .monospaced)
-                .tracking(6)
+            MorpheWordmark(height: 30)
                 .foregroundStyle(MorpheTheme.textPrimary)
 
             Text(store.onboardingDraft.accountType == .coach ? "Building your coach workspace..." : "Building your personalized plan...")

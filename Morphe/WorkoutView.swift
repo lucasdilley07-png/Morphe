@@ -497,6 +497,10 @@ struct WorkoutView: View {
                             restRunning = true
                         },
                         onOpenFormCheck: { showFormCheck = true },
+                        onPain: {
+                            store.painTriggerExercise = activeExercise.name
+                            isShowingPainFlow = true
+                        },
                         canGoPrevious: store.activeWorkoutExerciseIndex > 0
                     )
 
@@ -2077,6 +2081,8 @@ struct DiscoverScreenView: View {
                 .padding(.bottom, 120)
             }
             .toolbar(.hidden, for: .navigationBar)
+            .inTabPageSwipe(pages: [DiscoverSection.workouts, .feed], selection: Binding(
+                get: { store.selectedDiscoverSection }, set: { store.selectedDiscoverSection = $0 }))
             .refreshable {
                 if store.selectedDiscoverSection == .feed { await store.refreshCreatorContent(force: true) }
             }
@@ -2855,6 +2861,9 @@ private struct ActiveWorkoutTrackerCard: View {
     let onNext: () -> Void
     let onStartRest: () -> Void
     let onOpenFormCheck: () -> Void
+    /// "This hurts" from the simple console (fix wave 2026-10-13): the pain
+    /// flag lived only in the collapsed Session tools.
+    var onPain: () -> Void = {}
     let canGoPrevious: Bool
     /// Bodyweight moves hide the load controls until asked (2026-10-10:
     /// the single most confusing number a beginner saw was "135 lb" on a
@@ -3280,12 +3289,32 @@ private struct ActiveWorkoutTrackerCard: View {
                         Button("Next", action: onNext)
                             .buttonStyle(SecondaryCTAButtonStyle())
                     }
-                    Button("More options") { withAnimation(.easeOut(duration: 0.2)) { unlockedFullConsole = true } }
+                    // First-weight guidance (fix wave 2026-10-13): a beginner
+                    // had no idea what to load.
+                    if store.loggedWorkoutCount == 0, !isBodyweightMove {
+                        Text("First time with this one? Pick a weight you could lift 2–3 more times than the reps asked. Too easy or too hard, change it next set.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    HStack(spacing: 8) {
+                        Button {
+                            onPain()
+                        } label: {
+                            Label("This hurts", systemImage: "bandage")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
                         .buttonStyle(.plain)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(MorpheTheme.textMuted)
-                        .frame(maxWidth: .infinity, minHeight: 32)
-                        .accessibilityLabel("Show the full console: custom sets, Form Check, previous exercise")
+                        .foregroundStyle(MorpheTheme.warning)
+                        .accessibilityHint("Flags pain on this exercise and adjusts it")
+                        Button("More options") { withAnimation(.easeOut(duration: 0.2)) { unlockedFullConsole = true } }
+                            .buttonStyle(.plain)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .accessibilityLabel("Show the full console: custom sets, Form Check, previous exercise")
+                    }
                 } else {
                 HStack(spacing: 8) {
                     Button("More") {

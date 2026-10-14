@@ -2623,6 +2623,21 @@ struct ProfileShowcase: Hashable {
 }
 
 struct OnboardingDraft: Hashable {
+    /// Morphe is for people 13 and older (privacy policy).
+    static let minimumAge = 13
+    static func age(fromBirthYear year: Int, now: Date = .now) -> Int {
+        Calendar.current.component(.year, from: now) - year
+    }
+    var birthYearIsValid: Bool {
+        guard let year = birthYear else { return false }
+        let current = Calendar.current.component(.year, from: .now)
+        return year >= current - 110 && year <= current
+    }
+    var meetsMinimumAge: Bool {
+        guard let year = birthYear, birthYearIsValid else { return false }
+        return Self.age(fromBirthYear: year) >= Self.minimumAge
+    }
+
     var accountType: AppRole = .client
     var name: String = ""
     /// The @username picked (and reserved in the directory) during onboarding.
@@ -2635,6 +2650,9 @@ struct OnboardingDraft: Hashable {
     var coachTenure: CoachTenureOption = .growing
     var coachRoster: CoachRosterOption = .justStarting
     var age: Int = 25
+    /// Asked neutrally on the first step (age gate, fix wave 2026-10-13);
+    /// becomes the profile age. Nil until answered.
+    var birthYear: Int? = nil
     var height: String = ""
     var weight: String = ""
     // Empty on purpose (UX test 2026-09-30): "1 of 5 selected" before

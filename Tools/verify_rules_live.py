@@ -98,6 +98,24 @@ def sign_up(tag: str) -> dict:
     return {"uid": data["localId"], "token": data["idToken"], "email": email}
 
 
+# A dropped connection mid-run aborted the whole verification (2026-10-13)
+# and left the throwaway accounts behind; retry the transport, not the check.
+_session_request = requests.Session.request
+
+
+def _request_with_retry(self, method, url, **kwargs):
+    for attempt in range(3):
+        try:
+            return _session_request(self, method, url, **kwargs)
+        except requests.exceptions.ConnectionError:
+            if attempt == 2:
+                raise
+            time.sleep(2 + attempt * 3)
+
+
+requests.Session.request = _request_with_retry
+
+
 def fs_call(user: dict, method: str, path: str, payload=None, params="") -> int:
     response = requests.request(
         method, f"{FS}/{path}{params}", json=payload,
@@ -360,6 +378,10 @@ try:
               "op": "AND", "filters": [eq_filter("authorUid", s(A["uid"])), eq_filter("authorPrivate", b(True))]}}}))
     check("C (not connected) still can't read it", False,
           fs_call(C, "GET", f"posts/{post_id}-p"))
+    check("B (connected) reads the private post's comments", True,
+          fs_call(B, "GET", f"posts/{post_id}-p/comments"))
+    check("C (not connected) reads the private post's comments", False,
+          fs_call(C, "GET", f"posts/{post_id}-p/comments"))
     check("A removes the connection", True,
           fs_call(A, "PATCH", f"connectRequests/{conn_id}", {"fields": {"status": s("removed")}},
                   "?updateMask.fieldPaths=status"))
@@ -381,6 +403,10 @@ try:
     check("A removes it again (cleanup)", True,
           fs_call(A, "PATCH", f"connectRequests/{conn_id}", {"fields": {"status": s("removed")}},
                   "?updateMask.fieldPaths=status"))
+    check("C deletes A and B's connect request", False,
+          fs_call(C, "DELETE", f"connectRequests/{conn_id}"))
+    check("B (a party) deletes the connect request (account deletion)", True,
+          fs_call(B, "DELETE", f"connectRequests/{conn_id}"))
 
     print("\n— Follow + block —")
     check("A follows B", True,
@@ -447,6 +473,8 @@ try:
     check("A posts an entry AS B on the board", False,
           fs_call(A, "PATCH", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}",
                   {"fields": {"uid": s(B["uid"]), "name": s("B"), "score": i(99), "workouts": i(9)}}))
+    check("A deletes B's board row", False,
+          fs_call(A, "DELETE", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}"))
     check("A respects B's week on the board", True,
           fs_call(A, "PATCH", f"boards/{board}/weeks/test-{RUN_ID}/entries/{B['uid']}/respect/{A['uid']}",
                   {"fields": {}}))

@@ -764,9 +764,7 @@ struct GuideHint: View {
                     Image(systemName: "sparkle")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(MorpheTheme.accentText)
-                    Text("MORPHE")
-                        .font(MorpheTheme.microLabel(9))
-                        .tracking(1.6)
+                    MorpheWordmark(height: 9)
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
                 Text(text)
@@ -935,9 +933,7 @@ struct CelebrationOverlay: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("MORPHE")
-                    .font(MorpheTheme.microLabel(9))
-                    .tracking(2)
+                MorpheWordmark(height: 10)
                     .foregroundStyle(MorpheTheme.accentText)
                 HStack(spacing: 6) {
                     Image(systemName: moment.symbol)
@@ -1690,9 +1686,7 @@ struct WorkoutDifficultyFeedbackCard: View {
                     Image(systemName: "sparkle")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(MorpheTheme.accentText)
-                    Text("MORPHE")
-                        .font(MorpheTheme.microLabel(9))
-                        .tracking(1.6)
+                    MorpheWordmark(height: 9)
                         .foregroundStyle(MorpheTheme.textMuted)
                 }
 
@@ -2524,9 +2518,7 @@ private struct ShareCardFrame<Content: View>: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Header: wordmark + date.
                 HStack {
-                    Text("MORPHE")
-                        .font(.system(size: 22, design: .monospaced).weight(.black))
-                        .tracking(6)
+                    MorpheWordmark(height: 22)
                         .foregroundStyle(MorpheTheme.accentOnInk)
                     Spacer()
                     Text(dateLabel.uppercased())
@@ -2929,5 +2921,61 @@ extension View {
     /// Marks a core-feature headline with the sweeping sheen.
     func featureGlimmer(period: TimeInterval = 7) -> some View {
         modifier(FeatureGlimmer(period: period))
+    }
+}
+
+// MARK: - The Morphe wordmark (final logo, Lucas 2026-10-13)
+
+/// The one Morphe logo. A template image, so it takes the color of its
+/// context (white on dark, ink on light, the rank accent where asked);
+/// sized by cap height, width follows the mark's ~5.25 : 1 proportion.
+/// Anywhere the brand NAME appears as a logo, use this — never typed text.
+struct MorpheWordmark: View {
+    var height: CGFloat
+
+    var body: some View {
+        Image("MorpheWordmark")
+            .renderingMode(.template)
+            .resizable()
+            .interpolation(.high)
+            .scaledToFit()
+            .frame(height: height)
+            // A slight blue glow underneath (Lucas 2026-10-13): Spartan
+            // blue, sitting just below the letters, scaled to the mark.
+            .shadow(color: MorpheTheme.brandBlue.opacity(0.55), radius: max(2, height * 0.35), x: 0, y: max(1, height * 0.18))
+            .accessibilityLabel("Morphe")
+    }
+}
+
+// MARK: - Page swipe inside a tab (Lucas 2026-10-13)
+
+/// Left/right swipes move between the pages INSIDE a tab (Discover:
+/// Workouts ↔ Feed; Network: Chats ↔ Board ↔ Calendar; Learn: Lessons ↔
+/// Nutrition ↔ Library). The main tabs no longer page — the dock switches
+/// them. Only a clearly horizontal drag counts, so vertical scrolling and
+/// taps are untouched.
+struct InTabPageSwipe<Page: Hashable>: ViewModifier {
+    let pages: [Page]
+    @Binding var selection: Page
+
+    func body(content: Content) -> some View {
+        content.simultaneousGesture(
+            DragGesture(minimumDistance: 30)
+                .onEnded { value in
+                    let dx = value.translation.width, dy = value.translation.height
+                    guard abs(dx) > 70, abs(dx) > abs(dy) * 1.6,
+                          let index = pages.firstIndex(of: selection) else { return }
+                    let next = dx < 0 ? index + 1 : index - 1
+                    guard pages.indices.contains(next) else { return }
+                    Haptics.selection()
+                    withAnimation(.easeInOut(duration: 0.22)) { selection = pages[next] }
+                }
+        )
+    }
+}
+
+extension View {
+    func inTabPageSwipe<Page: Hashable>(pages: [Page], selection: Binding<Page>) -> some View {
+        modifier(InTabPageSwipe(pages: pages, selection: selection))
     }
 }

@@ -18,9 +18,7 @@ struct AuthView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("MORPHE")
-                            .font(.caption.weight(.bold))
-                            .tracking(2)
+                        MorpheWordmark(height: 20)
                             .foregroundStyle(MorpheTheme.accentText)
                         Text(isSignUp ? "Create your account" : "Welcome back")
                             .font(.largeTitle.weight(.bold))

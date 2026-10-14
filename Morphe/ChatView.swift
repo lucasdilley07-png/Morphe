@@ -46,6 +46,12 @@ struct CommunityView: View {
                 }
             }
         }
+        // Chats ↔ Board ↔ Calendar by swipe (Lucas 2026-10-13).
+        .inTabPageSwipe(pages: FeatureFlags.socialFeedEnabled
+                            ? [ClientCommunitySection.contact, .forYou]
+                            : [ClientCommunitySection.contact, .board, .calendar],
+                        selection: Binding(get: { store.selectedCommunitySection },
+                                           set: { store.selectedCommunitySection = $0 }))
         // The paged panes stay mounted, so .task never re-fires on a
         // swipe — without this, the inbox (one-shot fetch) only updated
         // on cold launch and unread state froze.
