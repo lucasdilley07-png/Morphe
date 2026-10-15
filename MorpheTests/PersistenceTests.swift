@@ -9267,4 +9267,21 @@ final class MorpheRemembersTests: XCTestCase {
         XCTAssertEqual(parsed.adding.first?.kind, .goal)
         XCTAssertEqual(parsed.retiring.count, 1)
     }
+
+    // MARK: Plan promise (release audit 2026-10-15)
+
+    func testPromisedSessionsNeverOutnumberTheChosenWeek() {
+        let capped = MorpheDemoContent.capSessions(
+            ["4 strength sessions", "7,000 steps per day", "2 mobility blocks", "3 workouts per week", "Weekly progress check-in"],
+            toDays: 3)
+        XCTAssertEqual(capped, ["3 strength sessions", "7,000 steps per day", "2 mobility blocks", "3 workouts per week", "Weekly progress check-in"])
+        XCTAssertEqual(MorpheDemoContent.capSessions(["4 strength sessions"], toDays: 1), ["1 strength session"])
+        XCTAssertEqual(MorpheDemoContent.capSessions(["2 sport-specific sessions"], toDays: 5), ["2 sport-specific sessions"], "never raises a count")
+
+        var draft = OnboardingDraft()
+        draft.selectedGoals = [.gainMuscle]
+        draft.trainingDaysPerWeek = 3
+        let plan = MorpheDemoContent.generatedPlan(from: draft)
+        XCTAssertFalse(plan.goalTranslation.weeklyActions.contains("4 strength sessions"))
+    }
 }

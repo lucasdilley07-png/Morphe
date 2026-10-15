@@ -5762,7 +5762,10 @@ enum MorpheDemoContent {
     }
 
     static func generatedPlan(from draft: OnboardingDraft) -> (phase: String, goalTranslation: GoalTranslation, firstTask: String, message: String) {
-        let goal = goalTranslation(for: draft.goal.rawValue, sport: draft.sport)
+        var goal = goalTranslation(for: draft.goal.rawValue, sport: draft.sport)
+        // The week promised never outnumbers the week they chose (release
+        // audit 2026-10-15): "4 strength sessions" under a 3-day target.
+        goal.weeklyActions = capSessions(goal.weeklyActions, toDays: draft.trainingDaysPerWeek)
         let focusSummary = [
             draft.selectedSports.first.map { "\($0.rawValue) focus" },
             draft.selectedTrainingStyles.first.map { "\($0.rawValue.lowercased()) work" },
@@ -5790,6 +5793,25 @@ enum MorpheDemoContent {
             firstTask: "Log your first workout",
             message: "Your first phase is Build Consistency: \(draft.trainingDaysPerWeek) training days a week\(focusSummary.isEmpty ? "" : " built around your \(focusSummary)"). Start with one workout — everything in Morphe grows from your logs.\(targetSummary.isEmpty ? "" : " \(targetSummary)")"
         )
+    }
+
+    /// "4 strength sessions" → "3 strength sessions" when the athlete
+    /// trains 3 days. Only counted sessions/workouts are capped; steps,
+    /// logs and check-ins keep their numbers.
+    static func capSessions(_ actions: [String], toDays days: Int) -> [String] {
+        guard days > 0 else { return actions }
+        return actions.map { action in
+            let parts = action.split(separator: " ", maxSplits: 1)
+            guard parts.count == 2, let count = Int(parts[0]), count > days else { return action }
+            let rest = parts[1].lowercased()
+            guard rest.contains("session") || rest.contains("workout") else { return action }
+            var tail = String(parts[1])
+            if days == 1 {
+                tail = tail.replacingOccurrences(of: "sessions", with: "session")
+                    .replacingOccurrences(of: "workouts", with: "workout")
+            }
+            return "\(days) \(tail)"
+        }
     }
 
     static func partnerWorkoutPlan(

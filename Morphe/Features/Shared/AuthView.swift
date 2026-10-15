@@ -23,7 +23,7 @@ struct AuthView: View {
                         Text(isSignUp ? "Create your account" : "Welcome back")
                             .font(.largeTitle.weight(.bold))
                             .foregroundStyle(MorpheTheme.textPrimary)
-                        Text(isSignUp ? "Transform. Evolve. Become." : "Sign in to keep your training going.")
+                        Text(isSignUp ? MorpheTheme.tagline : "Sign in to keep your training going.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
                     }
@@ -102,6 +102,11 @@ struct AuthView: View {
                 .padding(20)
             }
         }
+        // A stale "password too short" must not sit under a field the
+        // athlete is already fixing — any edit clears the last error.
+        .onChange(of: email) { _, _ in store.authErrorMessage = nil }
+        .onChange(of: password) { _, _ in store.authErrorMessage = nil }
+        .onChange(of: name) { _, _ in store.authErrorMessage = nil }
     }
 
     private func submit() async {

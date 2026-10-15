@@ -47,6 +47,40 @@ struct MorpheApp: App {
         MorpheIntelligence.appCheckTokenProvider = {
             try? await AppCheck.appCheck().token(forcingRefresh: false).token
         }
+        #if DEBUG
+        // Verification mode (2026-10-15): `-MorpheLocalMode` runs the app on
+        // the on-device account service with no backend, so every screen can
+        // be walked in the simulator without touching the live project.
+        // Compiled out of Release; needs the launch argument.
+        if ProcessInfo.processInfo.arguments.contains("-MorpheLocalMode") {
+            let local = MorpheAppStore()
+            IntentStore.store = local
+            _store = State(initialValue: local)
+            // The simulator can't type into a "new password" field reliably,
+            // so local mode signs its own on-device test account in.
+            let skipOnboarding = ProcessInfo.processInfo.arguments.contains("-MorpheLocalOnboarded")
+            Task { @MainActor in
+                if local.authUser == nil {
+                    await local.signUp(email: "verify@morphe.test", password: "local-verify-only", role: .athlete, name: "Verify Athlete")
+                    if local.authUser == nil {
+                        await local.signIn(email: "verify@morphe.test", password: "local-verify-only")
+                    }
+                }
+                // `-MorpheLocalOnboarded`: a fixed test athlete, so the
+                // main pages can be walked without retyping onboarding.
+                if skipOnboarding, !local.hasCompletedOnboarding {
+                    local.onboardingDraft.name = "Verify"
+                    local.onboardingDraft.birthYear = 1998
+                    local.onboardingDraft.selectedGoals = [.gainMuscle, .getStronger]
+                    local.onboardingDraft.trainingDaysPerWeek = 4
+                    local.onboardingDraft.agreedToTerms = true
+                    _ = await local.checkAndReserveUsername("verifyathlete")
+                    local.completeOnboarding()
+                }
+            }
+            return
+        }
+        #endif
         let auth = FirebaseAuthService()
         let store = MorpheAppStore(
             authService: auth,

@@ -172,7 +172,8 @@ struct OnboardingFlowView: View {
     }
 
     var body: some View {
-        Group {
+        let advanceAllowed = canAdvance
+        return Group {
             if isGeneratingPlan {
                 PersonalizedPlanLoadingView()
             } else {
@@ -225,60 +226,45 @@ struct OnboardingFlowView: View {
                             .id(stepIndex)
                             .transition(.blurIn)
 
-                        HStack(spacing: 10) {
-                            if stepIndex > 0 {
-                                Button("Back") {
-                                    withAnimation(.easeInOut(duration: 0.35)) {
-                                        stepIndex -= 1
-                                    }
-                                }
-                                .buttonStyle(SecondaryCTAButtonStyle())
-                            }
-
-                            Button(nextButtonTitle) {
-                                // .identity stacks name + @name on one page
-                                // (audit 2026-10-07, P0): it must reserve
-                                // too, or the handle the user typed is
-                                // thrown away and completeOnboarding falls
-                                // back to the lowercased name — unclaimed,
-                                // and colliding with every other "Alex".
-                                if currentStep == .username || currentStep == .identity {
-                                    // Advancing IS the claim: availability check
-                                    // and reservation are one transaction, so
-                                    // two people can never pass with one name.
-                                    isReservingUsername = true
-                                    Task {
-                                        let error = await store.checkAndReserveUsername(usernameEntry)
-                                        isReservingUsername = false
-                                        usernameError = error
-                                        if error == nil {
-                                            withAnimation(.easeInOut(duration: 0.2)) {
-                                                withAnimation(.easeInOut(duration: 0.35)) { stepIndex += 1 }
-                                            }
-                                        }
-                                    }
-                                } else if stepIndex >= steps.count - 1 {
-                                    // The LAST step finishes — solo ends on
-                                    // .week, coach on .review. Keying off the
-                                    // index (not the case) means a reordered
-                                    // flow can never walk past the array again.
-                                    isGeneratingPlan = true
-                                } else {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        withAnimation(.easeInOut(duration: 0.35)) { stepIndex += 1 }
-                                    }
-                                }
-                            }
-                            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
-                            .disabled(!canAdvance)
-                            .opacity(canAdvance ? 1 : 0.5)
-                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 24)
                     .id("onboardingTop")
                 }
                 .scrollDismissesKeyboard(.immediately)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    ctaBar(canAdvance: advanceAllowed)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 14)
+                        .padding(.bottom, 6)
+                        // Solid under the buttons (a chip scrolling behind
+                        // the outlined Back showed through it), with a
+                        // short fade above so content dissolves into the bar.
+                        .background(MorpheTheme.ink.ignoresSafeArea(edges: .bottom))
+                        .overlay(alignment: .top) {
+                            LinearGradient(
+                                colors: [MorpheTheme.ink.opacity(0), MorpheTheme.ink],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                            .frame(height: 20)
+                            .offset(y: -20)
+                            .allowsHitTesting(false)
+                        }
+                }
+                // Content scrolling under the Dynamic Island fades out
+                // instead of colliding with the clock.
+                .overlay(alignment: .top) {
+                    Color.clear
+                        .frame(height: 10)
+                        .background(
+                            LinearGradient(
+                                colors: [MorpheTheme.ink, MorpheTheme.ink.opacity(0)],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                            .ignoresSafeArea(edges: .top)
+                        )
+                        .allowsHitTesting(false)
+                }
                 // A long step scrolled to its Next button must not leave the
                 // NEXT step's title off-screen.
                 .onChange(of: stepIndex) { _, _ in
@@ -286,6 +272,62 @@ struct OnboardingFlowView: View {
                 }
                 }
             }
+        }
+    }
+
+    /// Back / Next, pinned above the home indicator (release audit
+    /// 2026-10-15, P1): in the scroll the opener's Start sat under the
+    /// indicator on a Pro Max, where a tap reads as the home gesture and
+    /// nothing happens; on the long steps Next was a scroll away.
+    ///
+    /// `canAdvance` arrives as a value read in `body`: the inset's content
+    /// is built outside the body's observation scope, so a store read in
+    /// here never re-ran when the name or birth year changed — Next
+    /// stayed dead on a filled form.
+    private func ctaBar(canAdvance: Bool) -> some View {
+        HStack(spacing: 10) {
+            if stepIndex > 0 {
+                Button("Back") {
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        stepIndex -= 1
+                    }
+                }
+                .buttonStyle(SecondaryCTAButtonStyle())
+            }
+
+            Button(nextButtonTitle) {
+                // .identity stacks name + @name on one page
+                // (audit 2026-10-07, P0): it must reserve
+                // too, or the handle the user typed is
+                // thrown away and completeOnboarding falls
+                // back to the lowercased name — unclaimed,
+                // and colliding with every other "Alex".
+                if currentStep == .username || currentStep == .identity {
+                    // Advancing IS the claim: availability check
+                    // and reservation are one transaction, so
+                    // two people can never pass with one name.
+                    isReservingUsername = true
+                    Task {
+                        let error = await store.checkAndReserveUsername(usernameEntry)
+                        isReservingUsername = false
+                        usernameError = error
+                        if error == nil {
+                            withAnimation(.easeInOut(duration: 0.35)) { stepIndex += 1 }
+                        }
+                    }
+                } else if stepIndex >= steps.count - 1 {
+                    // The LAST step finishes — solo ends on
+                    // .week, coach on .review. Keying off the
+                    // index (not the case) means a reordered
+                    // flow can never walk past the array again.
+                    isGeneratingPlan = true
+                } else {
+                    withAnimation(.easeInOut(duration: 0.35)) { stepIndex += 1 }
+                }
+            }
+            .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
+            .disabled(!canAdvance)
+            .opacity(canAdvance ? 1 : 0.5)
         }
     }
 
