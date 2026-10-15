@@ -6,15 +6,19 @@ import Security
 //
 // The optional Claude-powered brain behind chat and voice. The rules
 // doors stay primary — instant, offline, free — and this layer answers
-// ONLY when no door matched AND the user has pasted their own Anthropic
-// API key in Settings. No key, no network call, no behavior change:
-// the canned coaching replies keep running exactly as before.
+// ONLY when no door matched AND the user has a way to reach Claude:
+// either Morphe AI online (Lucas 2026-10-14: Morphe's own relay, signed-in
+// members 18 and older, a daily allowance, on Morphe's key) or their own
+// Anthropic API key pasted in Settings. Neither, no network call, no
+// behavior change: the built-in replies keep running exactly as before.
 //
 // Swift has no official Anthropic SDK, so this is the raw Messages API
-// over URLSession: POST /v1/messages with model claude-opus-5-5, adaptive
-// thinking left at its default, effort low so spoken answers come back
-// fast. A safety refusal (stop_reason "refusal") is surfaced honestly,
-// never papered over.
+// over URLSession. The relay speaks the same API (same body, same
+// streaming events) behind a Firebase ID token, so one request builder
+// serves both; the relay picks the model (Claude Sonnet 5.5) and a
+// personal key runs claude-opus-5-5. Effort low so spoken answers come
+// back fast. A safety refusal (stop_reason "refusal") is surfaced
+// honestly, never papered over.
 
 enum MorpheIntelligence {
 
@@ -48,7 +52,37 @@ enum MorpheIntelligence {
         return key
     }
 
-    static var isEnabled: Bool { apiKey?.isEmpty == false }
+    // MARK: Morphe AI online (the relay)
+
+    /// Which door a request goes through. A personal key always wins:
+    /// it bills the user, not Morphe, and runs the bigger model.
+    enum Credential: Equatable {
+        case personalKey(String)
+        case relay(token: String)
+    }
+
+    /// The relay (BACKEND/functions). Same body as the Messages API,
+    /// `Authorization: Bearer <Firebase ID token>` instead of a key.
+    static let relayURL = URL(string: "https://us-central1-morphe-3c5c2.cloudfunctions.net/morpheAI")!
+
+    /// Set by the store: a fresh Firebase ID token for the signed-in
+    /// account, nil when signed out.
+    static var relayTokenProvider: (() async -> String?)?
+    /// Set by the store: the member turned Morphe AI online on, is signed
+    /// in, and is 18 or older. Checked on every request, never cached.
+    static var relayEligibility: (() -> Bool)?
+
+    static var relayAllowed: Bool { relayEligibility?() ?? false }
+
+    /// True when Claude can be reached one way or the other.
+    static var isEnabled: Bool { apiKey?.isEmpty == false || relayAllowed }
+
+    /// The door for the next request, or nil (built-in answers only).
+    static func credential() async -> Credential? {
+        if let key = apiKey, !key.isEmpty { return .personalKey(key) }
+        guard relayAllowed, let token = await relayTokenProvider?(), !token.isEmpty else { return nil }
+        return .relay(token: token)
+    }
 
     @discardableResult
     static func setAPIKey(_ key: String) -> Bool {
@@ -94,9 +128,18 @@ enum MorpheIntelligence {
         case malformed
         case badRequest
         case ranLong
+        // Morphe AI online (the relay's own refusals, each actionable).
+        case signInNeeded
+        case ageRestricted
+        case dailyLimit
+        case budget
 
         var errorDescription: String? {
             switch self {
+            case .signInNeeded: return "Sign in again to use Morphe AI online."
+            case .ageRestricted: return "Morphe AI online is for members 18 and older — your age is set in Profile → Your Details."
+            case .dailyLimit: return "You've used today's online answers — the built-in brain still works, and it resets at midnight UTC."
+            case .budget: return "Morphe's AI budget for this month is used up — the built-in answers still work until it resets."
             case .badKey: return "That API key was rejected — check it in Profile → Morphe Intelligence."
             case .rateLimited: return "Anthropic is rate-limiting your key right now — try again in a minute."
             case .overloaded: return "Claude is overloaded right now — try again shortly."
@@ -113,17 +156,18 @@ enum MorpheIntelligence {
     /// answer (fix wave 2026-10-13). They stay visible in the thread but are
     /// never sent back to Claude as if Claude had said them.
     static func isFailureNote(_ text: String) -> Bool {
-        let notes: [IntelligenceError] = [.badKey, .rateLimited, .overloaded, .network, .declined, .malformed, .badRequest, .ranLong]
+        let notes: [IntelligenceError] = [.badKey, .rateLimited, .overloaded, .network, .declined, .malformed, .badRequest, .ranLong,
+                                          .signInNeeded, .ageRestricted, .dailyLimit, .budget]
         if notes.contains(where: { $0.errorDescription == text }) { return true }
         return text.hasPrefix("I couldn't reach Claude.") || text.hasPrefix("I hit a snag reaching Claude")
     }
 
     /// Error-absorbing wrapper for the store: every failure becomes an
     /// honest, speakable line instead of a thrown error.
-    static func safeReply(system: String, turns: [Turn], apiKey: String,
+    static func safeReply(system: String, turns: [Turn], credential: Credential,
                           timeout: TimeInterval = 30) async -> String {
         do {
-            return try await reply(system: system, turns: turns, apiKey: apiKey, timeout: timeout)
+            return try await reply(system: system, turns: turns, credential: credential, timeout: timeout)
         } catch {
             return (error as? IntelligenceError)?.errorDescription
                 ?? "I hit a snag reaching Claude \u{2014} try again in a moment."
@@ -137,21 +181,26 @@ enum MorpheIntelligence {
     /// MainActor; the final full text returns (or throws — callers wrap
     /// with the same error copy as safeReply). Voice still uses safeReply:
     /// a spoken answer needs the complete utterance anyway.
-    static func streamReply(system: String, turns: [Turn], apiKey: String,
+    static func streamReply(system: String, turns: [Turn], credential: Credential,
                             timeout: TimeInterval = 30,
                             onDelta: @MainActor @escaping (String) -> Void) async throws -> String {
-        let request = try makeRequest(system: system, turns: turns, apiKey: apiKey,
+        let request = try makeRequest(system: system, turns: turns, credential: credential,
                                       timeout: timeout, stream: true)
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        let bytes: URLSession.AsyncBytes
+        let response: URLResponse
+        do {
+            (bytes, response) = try await URLSession.shared.bytes(for: request)
+        } catch {
+            throw IntelligenceError.network
+        }
         guard let http = response as? HTTPURLResponse else { throw IntelligenceError.network }
         // Same status taxonomy as the non-streaming path (audit 23, P1:
-        // a 429 told the user to "rephrase").
-        switch http.statusCode {
-        case 200: break
-        case 401, 403: throw IntelligenceError.badKey
-        case 429: throw IntelligenceError.rateLimited
-        case 500...: throw IntelligenceError.overloaded
-        default: throw IntelligenceError.badRequest
+        // a 429 told the user to "rephrase"); the relay's own refusals
+        // (age, daily allowance, budget) carry a type in the body.
+        if http.statusCode != 200 {
+            var body = Data()
+            for try await byte in bytes { body.append(byte); if body.count > 4096 { break } }
+            throw error(status: http.statusCode, body: body)
         }
         var full = ""
         var stopReason: String?
@@ -168,7 +217,7 @@ enum MorpheIntelligence {
                 case "overloaded_error", "api_error": throw IntelligenceError.overloaded
                 case "rate_limit_error": throw IntelligenceError.rateLimited
                 case "authentication_error", "permission_error": throw IntelligenceError.badKey
-                default: throw IntelligenceError.network
+                default: throw IntelligenceError.overloaded
                 }
             }
             if json["type"] as? String == "content_block_delta",
@@ -195,28 +244,65 @@ enum MorpheIntelligence {
         return trimmed
     }
 
-    /// Shared request builder for both paths.
-    private static func makeRequest(system: String, turns: [Turn], apiKey: String,
-                                    timeout: TimeInterval, stream: Bool) throws -> URLRequest {
-        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+    /// The empty POST for either door: Anthropic with the key, or the
+    /// relay with the account's token. Internal so the tests can see
+    /// where a request goes.
+    static func baseRequest(credential: Credential, timeout: TimeInterval) -> URLRequest {
+        var request: URLRequest
+        switch credential {
+        case .personalKey(let key):
+            request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+            request.setValue(key, forHTTPHeaderField: "x-api-key")
+            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        case .relay(let token):
+            request = URLRequest(url: relayURL)
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         request.httpMethod = "POST"
         request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        return request
+    }
+
+    /// Maps a non-200 to the honest line. The relay names its refusals
+    /// (`error.type`): sign_in, age, daily_limit, budget.
+    static func error(status: Int, body: Data?) -> IntelligenceError {
+        let type = body
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+            .flatMap { ($0["error"] as? [String: Any])?["type"] as? String }
+        switch (status, type ?? "") {
+        case (401, "sign_in"), (401, "app_check"): return .signInNeeded
+        case (403, "age"): return .ageRestricted
+        case (429, "daily_limit"): return .dailyLimit
+        case (429, "budget"): return .budget
+        case (401, _), (403, _): return .badKey
+        case (429, _): return .rateLimited
+        case (500..., _): return .overloaded
+        default: return .badRequest
+        }
+    }
+
+    /// Shared request builder for both paths.
+    static func makeRequest(system: String, turns: [Turn], credential: Credential,
+                            timeout: TimeInterval, stream: Bool) throws -> URLRequest {
+        var request = baseRequest(credential: credential, timeout: timeout)
         var messages: [[String: Any]] = []
         for turn in turns.drop(while: { !$0.isUser }) {
             messages.append(["role": turn.isUser ? "user" : "assistant",
                              "content": turn.text])
         }
         guard messages.first?["role"] as? String == "user" else { throw IntelligenceError.malformed }
+        // max_tokens caps thinking + visible text TOGETHER (audit 17, P1):
+        // 700 let adaptive thinking eat the whole budget. The brevity
+        // contract lives in the system prompt, not the token cap.
         var body: [String: Any] = [
-            "model": "claude-opus-5-5",
             "max_tokens": 4000,
             "system": system,
             "output_config": ["effort": "low"],
             "messages": messages
         ]
+        // The relay chooses its own model; a personal key runs Opus.
+        if case .personalKey = credential { body["model"] = "claude-opus-5-5" }
         if stream { body["stream"] = true }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
@@ -225,42 +311,10 @@ enum MorpheIntelligence {
     /// One non-streaming Messages API request. Replies are deliberately
     /// short (voice-first: the system prompt caps spoken length) — the
     /// VOICE path uses this; chat streams via streamReply.
-    static func reply(system: String, turns: [Turn], apiKey: String,
+    static func reply(system: String, turns: [Turn], credential: Credential,
                       timeout: TimeInterval = 30) async throws -> String {
-        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
-        request.httpMethod = "POST"
-        request.timeoutInterval = timeout
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-
-        // The Messages API requires the first message to be a user turn;
-        // consecutive same-role messages are legal and combined.
-        var messages: [[String: Any]] = []
-        for turn in turns.drop(while: { !$0.isUser }) {
-            messages.append(["role": turn.isUser ? "user" : "assistant",
-                             "content": turn.text])
-        }
-        guard messages.first?["role"] as? String == "user" else { throw IntelligenceError.malformed }
-
-        // max_tokens caps thinking + visible text TOGETHER on this model
-        // (audit 17, P1): 700 let adaptive thinking eat the whole budget
-        // and the truncated reply surfaced as a false "couldn't read"
-        // error. The brevity contract lives in the system prompt, not the
-        // token cap.
-        let body: [String: Any] = [
-            "model": "claude-opus-5-5",
-            "max_tokens": 4000,
-            "system": system,
-            // Thinking off (luxury audit): adaptive thinking shared the
-            // token budget with the visible text, so a long think could
-            // return an EMPTY reply as "ranLong" — the least premium
-            // outcome. The prompt already enforces brevity.
-            "output_config": ["effort": "low"],
-            "messages": messages
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
+        let request = try makeRequest(system: system, turns: turns, credential: credential,
+                                      timeout: timeout, stream: false)
         let data: Data
         let response: URLResponse
         do {
@@ -269,13 +323,7 @@ enum MorpheIntelligence {
             throw IntelligenceError.network
         }
         guard let http = response as? HTTPURLResponse else { throw IntelligenceError.network }
-        switch http.statusCode {
-        case 200: break
-        case 401, 403: throw IntelligenceError.badKey
-        case 429: throw IntelligenceError.rateLimited
-        case 500...: throw IntelligenceError.overloaded
-        default: throw IntelligenceError.badRequest
-        }
+        if http.statusCode != 200 { throw error(status: http.statusCode, body: data) }
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw IntelligenceError.malformed
@@ -809,7 +857,8 @@ enum FoodCheckService {
     Numbers are integers; use null for any you cannot support.
     """
 
-    static func analyze(imageJPEG: Data?, product: OpenFoodFactsProduct?, barcode: String? = nil, apiKey: String) async throws -> FoodCheckRecord {
+    static func analyze(imageJPEG: Data?, product: OpenFoodFactsProduct?, barcode: String? = nil,
+                        credential: MorpheIntelligence.Credential) async throws -> FoodCheckRecord {
         var content: [[String: Any]] = []
         if let imageJPEG {
             content.append(["type": "image", "source": ["type": "base64", "media_type": "image/jpeg",
@@ -838,12 +887,7 @@ enum FoodCheckService {
             : "Search the web for the brand's origin, production and supply chain, and for any additive or GMO facts you state."
         content.append(["type": "text", "text": ask])
 
-        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 90
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        var request = MorpheIntelligence.baseRequest(credential: credential, timeout: 90)
         // The server tool can pause a long search loop (stop_reason
         // pause_turn): resend with the assistant's content appended, up to
         // three times. max_tokens caps thinking + text together, so
@@ -853,26 +897,22 @@ enum FoodCheckService {
         var searched = false
         var visited = Set<String>()
         for _ in 0..<4 {
-            let body: [String: Any] = [
-                "model": "claude-opus-5-5",
+            var body: [String: Any] = [
                 "max_tokens": 8000,
                 "system": reportSystem,
                 "output_config": ["effort": "low"],
-                "tools": [["type": "web_search_20250305", "name": "web_search", "max_uses": 5]],
+                // The dynamic-filtering search (web_search_20260209) is the
+                // current tool on Opus 5.5 and Sonnet 5.5.
+                "tools": [["type": "web_search_20260209", "name": "web_search", "max_uses": 5]],
                 "messages": messages
             ]
+            if case .personalKey = credential { body["model"] = "claude-opus-5-5" }
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
             let data: Data
             let response: URLResponse
             do { (data, response) = try await URLSession.shared.data(for: request) } catch { throw MorpheIntelligence.IntelligenceError.network }
             guard let http = response as? HTTPURLResponse else { throw MorpheIntelligence.IntelligenceError.network }
-            switch http.statusCode {
-            case 200: break
-            case 401, 403: throw MorpheIntelligence.IntelligenceError.badKey
-            case 429: throw MorpheIntelligence.IntelligenceError.rateLimited
-            case 500...: throw MorpheIntelligence.IntelligenceError.overloaded
-            default: throw MorpheIntelligence.IntelligenceError.badRequest
-            }
+            if http.statusCode != 200 { throw MorpheIntelligence.error(status: http.statusCode, body: data) }
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw MorpheIntelligence.IntelligenceError.malformed }
             let stop = json["stop_reason"] as? String
             if stop == "refusal" { throw MorpheIntelligence.IntelligenceError.declined }

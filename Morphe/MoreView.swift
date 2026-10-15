@@ -1496,7 +1496,7 @@ struct FuelLogCard: View {
                     }
                     .buttonStyle(PrimaryCTAButtonStyle(accent: MorpheTheme.accent))
                     Button {
-                        if MorpheIntelligence.apiKey == nil { showNeedsKey = true } else { showCamera = true }
+                        if !store.intelligenceEnabled { showNeedsKey = true } else { showCamera = true }
                     } label: {
                         Label("Camera", systemImage: "camera.fill").frame(maxWidth: .infinity)
                     }
@@ -1545,11 +1545,11 @@ struct FuelLogCard: View {
                 .environment(store)
                 .presentationDetents([.large])
         }
-        .alert("Photo logging needs your key", isPresented: $showNeedsKey) {
+        .alert("Photo logging needs Morphe AI", isPresented: $showNeedsKey) {
             Button("Search instead") { showSearch = true }
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Reading a plate runs on Claude with your own Anthropic key (Profile → Morphe Intelligence). Morphe never guesses food on its own — search the library instead.")
+            Text("Reading a plate runs on Claude. Turn on Morphe AI online in Profile → Morphe Intelligence (18 and older), or add your own key. Morphe never guesses food on its own — search the library instead.")
         }
     }
 
@@ -2307,8 +2307,8 @@ struct FoodCheckCard: View {
                         .font(.headline)
                         .foregroundStyle(MorpheTheme.textPrimary)
                         .featureGlimmer()
-                    Text(MorpheIntelligence.apiKey == nil
-                         ? "Scan a barcode for the label facts: origin, processing, additives, GMO read. Add your own key in Profile → Morphe Intelligence and Morphe reads a meal from a photo and searches the web for the supply chain."
+                    Text(!store.intelligenceEnabled
+                         ? "Scan a barcode for the label facts: origin, processing, additives, GMO read. Turn on Morphe AI online in Profile → Morphe Intelligence and Morphe reads a meal from a photo and searches the web for the supply chain."
                          : "Scan a barcode or photograph a meal. Morphe reads the label, searches the web for the brand's supply chain, and reports with sources. The photo leaves the phone only for this check.")
                         .font(.caption)
                         .foregroundStyle(MorpheTheme.textSecondary)
@@ -2325,7 +2325,7 @@ struct FoodCheckCard: View {
                     Button {
                         // Ask before the camera (fix wave 2026-10-13): the photo
                         // path needs the user's key; shooting first wasted it.
-                        if MorpheIntelligence.apiKey == nil { showPhotoNeedsKey = true } else { showCamera = true }
+                        if !store.intelligenceEnabled { showPhotoNeedsKey = true } else { showCamera = true }
                     } label: {
                         Label("Photo", systemImage: "camera.fill").frame(maxWidth: .infinity)
                     }
@@ -2336,7 +2336,7 @@ struct FoodCheckCard: View {
                 if store.foodCheckBusy {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text(MorpheIntelligence.apiKey == nil ? "Reading the database…" : "Reading the label and searching the web…")
+                        Text(!store.intelligenceEnabled ? "Reading the database…" : "Reading the label and searching the web…")
                             .font(.caption)
                             .foregroundStyle(MorpheTheme.textSecondary)
                     }
@@ -2390,11 +2390,11 @@ struct FoodCheckCard: View {
                 }
             }
         }
-        .alert("Meal photos need your key", isPresented: $showPhotoNeedsKey) {
+        .alert("Meal photos need Morphe AI", isPresented: $showPhotoNeedsKey) {
             Button("Scan a barcode instead") { showScanner = true }
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Reading a plate runs on Claude with your own Anthropic key (Profile → Morphe Intelligence). Barcodes work without one.")
+            Text("Reading a plate runs on Claude. Turn on Morphe AI online in Profile → Morphe Intelligence (18 and older), or add your own key. Barcodes work without it.")
         }
         .sheet(isPresented: $showScanner, onDismiss: presentPending) {
             FoodBarcodeSheet { code in
@@ -2479,6 +2479,7 @@ struct FoodProcessingBadge: View {
 /// Retail barcodes (EAN-13/8, UPC-E, Code 128) plus QR for the camera.
 private struct FoodBarcodeSheet: View {
     let onScan: (String) -> Void
+    @Environment(MorpheAppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -2486,9 +2487,9 @@ private struct FoodBarcodeSheet: View {
             VStack(spacing: 12) {
                 QRScannerView(onScan: onScan, symbologies: [.ean13, .ean8, .upce, .code128, .qr])
                     .clipShape(RoundedRectangle(cornerRadius: MorpheTheme.radius, style: .continuous))
-                Text(MorpheIntelligence.apiKey == nil
+                Text(!store.intelligenceEnabled
                      ? "Point at the barcode on the package. Only the number is sent — to Open Food Facts, a public product database."
-                     : "Point at the barcode on the package. The number goes to Open Food Facts, and with your key the label facts go to Anthropic for the web read.")
+                     : "Point at the barcode on the package. The number goes to Open Food Facts, and with Morphe AI on the label facts go to Anthropic for the web read.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textSecondary)
                     .multilineTextAlignment(.center)

@@ -1384,7 +1384,7 @@ struct ProfileView: View {
             ("Your account", "name username handle referrals invite share"),
             ("How you train", Self.howYouTrainKeywords),
             ("Voice", "hey morphe voice speech microphone hands free wake"),
-            ("Morphe Intelligence", "claude ai brain api key anthropic intelligence smart answers neural voice elevenlabs speech audio"),
+            ("Morphe Intelligence", "claude ai brain api key anthropic intelligence smart answers neural voice elevenlabs speech audio online free improve feedback"),
             ("Notifications", "reminders nudge streak recap board updates"),
             ("Who can see you", Self.whoCanSeeYouKeywords),
             ("Health", "apple health activity rings sleep sync workouts prefill check-in"),
@@ -1420,7 +1420,7 @@ struct ProfileView: View {
         "Your account": ("person.crop.circle", "Name, username, invites"),
         "How you train": ("figure.strengthtraining.traditional", "Days, limits, rest timer, units"),
         "Voice": ("waveform", "Hey Morphe, hands-free"),
-        "Morphe Intelligence": ("sparkles", "Claude key, neural voice"),
+        "Morphe Intelligence": ("sparkles", "Morphe AI online, your own key, neural voice"),
         "Notifications": ("bell", "Reminders"),
         "Who can see you": ("eye", FeatureFlags.socialFeedEnabled ? "Boards, feed, blocked accounts" : "Boards, blocked accounts"),
         "Health": ("heart", "Apple Health"),
@@ -1922,7 +1922,9 @@ struct ProfileView: View {
                 ConnectionsSettings()
             }
 
-            settingsSection("Morphe Intelligence", keywords: "claude ai brain api key anthropic intelligence smart answers neural voice elevenlabs speech audio") {
+            settingsSection("Morphe Intelligence", keywords: "claude ai brain api key anthropic intelligence smart answers neural voice elevenlabs speech audio online free improve feedback") {
+                    OnlineAISettings()
+                    Divider().overlay(MorpheTheme.strokeSubtle)
                     IntelligenceKeyEditor()
                     Divider().overlay(MorpheTheme.strokeSubtle)
                     NeuralVoiceKeyEditor()
@@ -3221,9 +3223,90 @@ private struct NeuralVoiceKeyEditor: View {
     }
 }
 
+/// Morphe AI online (Lucas 2026-10-14): Morphe's own relay, no key needed.
+/// The consent sheet names the company and the data before the first
+/// request; the toggle refuses signed-out and under-18 members honestly.
+private struct OnlineAISettings: View {
+    @Environment(MorpheAppStore.self) private var store
+    @State private var showConsent = false
+
+    private var isOn: Bool { store.onlineAIEnabled }
+
+    var body: some View {
+        @Bindable var store = store
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text("Morphe AI online")
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        StatusBadge(
+                            text: store.onlineAIEligible ? "On" : (isOn ? "Paused" : "Off"),
+                            color: store.onlineAIEligible ? MorpheTheme.accent : MorpheTheme.textMuted)
+                    }
+                    Text(caption)
+                        .font(.caption)
+                        .foregroundStyle(MorpheTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Toggle("Morphe AI online", isOn: Binding(
+                    get: { isOn },
+                    set: { wanted in
+                        if wanted {
+                            if store.onlineAIBlockedReason == nil { showConsent = true } else { store.setOnlineAI(enabled: true) }
+                        } else {
+                            store.setOnlineAI(enabled: false)
+                        }
+                    }))
+                    .labelsHidden()
+                    .tint(MorpheTheme.accent)
+            }
+            .confirmationDialog("Send this to Anthropic through Morphe?", isPresented: $showConsent, titleVisibility: .visible) {
+                Button("Agree and turn on") {
+                    if store.setOnlineAI(enabled: true) {
+                        UserDefaults.standard.set(Date.now.timeIntervalSince1970, forKey: "morphe.aiConsentAt")
+                        Haptics.success()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Morphe AI online sends Anthropic (the company that makes Claude), through Morphe\u{2019}s own server, what it needs to answer: your messages, your name, a summary of your logged training, the profile details you set (age, height, goals, current and goal weight, diet, equipment, weakness, injury note, sports, training styles and days), your supplement stack and today\u{2019}s checks, your private enhancements note if you wrote one, connected devices with the live heart-rate reading, your last session\u{2019}s average and peak heart rate, which apps your imported workouts come from, the five things you open most in the app, your nutrition plan and recent food names, and a meal photo only when you take one for a food check. Morphe\u{2019}s server checks your account and counts your requests (30 a day); it keeps no messages. For members 18 and older. Free, on Morphe. Turn it off any time.")
+            }
+
+            if store.intelligenceEnabled {
+                Divider().overlay(MorpheTheme.strokeSubtle)
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Help improve Morphe AI")
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                        Text("Adds thumbs up and down under answers. A rated question and answer are kept with your account for Lucas to read and improve Morphe AI; nothing is shared or published. Deleted with your account.")
+                            .font(.caption)
+                            .foregroundStyle(MorpheTheme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    Toggle("Help improve Morphe AI", isOn: $store.aiImprovementOptIn)
+                        .labelsHidden()
+                        .tint(MorpheTheme.accent)
+                }
+            }
+        }
+    }
+
+    private var caption: String {
+        if isOn, let reason = store.onlineAIBlockedReason { return "Paused — \(reason)" }
+        if isOn { return "On — open questions go to Claude on Morphe\u{2019}s key, through Morphe\u{2019}s server. 30 a day. Everything else stays instant and on-device." }
+        if let reason = store.onlineAIBlockedReason { return reason }
+        return "Real Claude answers in chat, out loud through \u{201C}Hey Morphe\u{201D}, in the workout builder and the food check \u{2014} free, no key, 30 a day. For members 18 and older."
+    }
+}
+
 private struct IntelligenceKeyEditor: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var draftKey = ""
+
+    private var hasKey: Bool { _ = store.intelligenceEnabled; return MorpheIntelligence.apiKey?.isEmpty == false }
     @State private var showAIConsent = false
     @State private var showSaveError = false
 
@@ -3231,21 +3314,21 @@ private struct IntelligenceKeyEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
-                    Text("Claude answers")
+                    Text("Your own key")
                         .foregroundStyle(MorpheTheme.textPrimary)
                     // State a paragraph of prose used to carry, now
                     // readable at a glance (affordance audit 2026-09).
                     StatusBadge(
-                        text: store.intelligenceEnabled ? "On" : "Off",
-                        color: store.intelligenceEnabled ? MorpheTheme.accent : MorpheTheme.textMuted)
+                        text: hasKey ? "On" : "Off",
+                        color: hasKey ? MorpheTheme.accent : MorpheTheme.textMuted)
                 }
-                Text(store.intelligenceEnabled
-                     ? "On \u{2014} questions no built-in answer covers go to Claude on your own Anthropic API key. Calls bill to your key. Everything else stays instant and on-device."
-                     : "Paste your own Anthropic API key and open questions get real Claude answers \u{2014} in chat and out loud through \u{201C}Hey Morphe\u{201D}. Calls bill to your key. Without a key, Morphe\u{2019}s built-in replies run: free, instant, offline.")
+                Text(hasKey
+                     ? "On \u{2014} every Claude call runs on your own Anthropic API key and the bigger model, and bills to your key. Morphe AI online is not used while a key is set."
+                     : "Optional: paste your own Anthropic API key to run Claude on your own account instead of Morphe\u{2019}s \u{2014} no daily allowance, the bigger model, billed to you.")
                     .font(.caption)
                     .foregroundStyle(MorpheTheme.textMuted)
             }
-            if store.intelligenceEnabled {
+            if hasKey {
                 Button(role: .destructive) {
                     store.clearIntelligenceKey()
                     draftKey = ""

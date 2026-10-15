@@ -290,7 +290,7 @@ struct WorkoutView: View {
                 TrainLinkCard(
                     systemImage: "hammer.fill",
                     title: "Build Workout",
-                    detail: MorpheIntelligence.apiKey == nil
+                    detail: !store.intelligenceEnabled
                         ? "Build one yourself, or answer a few questions and Morphe builds it from the library."
                         : "Build one yourself, or answer a few questions and Morphe AI builds it with you.",
                     glimmer: true
@@ -1496,8 +1496,8 @@ struct BuildWorkoutChooserSheet: View {
                  detail: "Pick exercises from the library, set your sets and reps, name it. Yours in My Library.",
                  action: onBuildYourself)
             door("Build with Morphe AI", systemImage: "sparkles",
-                 detail: MorpheIntelligence.apiKey == nil
-                    ? "Answer a few questions — goal, split, style, intensity, time, gear — and Morphe builds the session from the library by its rules. Add your key for a bespoke build."
+                 detail: !store.intelligenceEnabled
+                    ? "Answer a few questions — goal, split, style, intensity, time, gear — and Morphe builds the session from the library by its rules. Turn on Morphe AI online for a bespoke build."
                     : "Answer a few questions — goal, split, style, intensity, time, gear — and Morphe AI builds the session with you from the library.",
                  glimmer: true,
                  action: onBuildWithAI)
@@ -1570,9 +1570,9 @@ struct AIWorkoutBuilderSheet: View {
                         Text("Build with Morphe AI")
                             .font(.title2.weight(.bold))
                             .foregroundStyle(MorpheTheme.textPrimary)
-                        Text(MorpheIntelligence.apiKey == nil
-                             ? "Answer, then Morphe builds it from the library by its rules (add your key for a bespoke build)."
-                             : "Answer, then Morphe AI builds the session with you from the library. Your answers and the profile facts below (age, experience, weakness, injury note) go to Anthropic with your key.")
+                        Text(!store.intelligenceEnabled
+                             ? "Answer, then Morphe builds it from the library by its rules (turn on Morphe AI online for a bespoke build)."
+                             : "Answer, then Morphe AI builds the session with you from the library. Your answers and your profile facts go to Anthropic — through Morphe's server, or on your own key.")
                             .font(.subheadline)
                             .foregroundStyle(MorpheTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1735,7 +1735,7 @@ struct AIWorkoutBuilderSheet: View {
         let seed = rebuildSeed
         rebuildSeed += 1
         Task {
-            let built = MorpheIntelligence.apiKey == nil
+            let built = !store.intelligenceEnabled
                 ? store.buildWorkoutWithRules(current, seed: seed)
                 : await store.buildWorkoutWithMorpheAI(current)
             withAnimation(.easeOut(duration: 0.2)) { draft = built }

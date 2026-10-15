@@ -175,6 +175,24 @@ isn't counted before onboarding; the export decodes the workout library;
 44pt targets, a Done button and honest copy across Connections, the
 consent sheet and the policy.
 
+**Morphe AI online (2026-10-14, Lucas: Sonnet 5.5, $50/month cap)**: the
+app no longer needs a per-user key. `MorpheIntelligence.credential()` picks
+a personal key first, else the relay (`BACKEND/functions`, see
+BACKEND/PLAN.md) with the Firebase ID token; `relayEligibility` /
+`relayTokenProvider` are wired by the store in `loadTrainingPreferences`.
+Store: `onlineAIEnabled` + `aiImprovementOptIn` in the training-prefs blob
+(reset on sign-out), `onlineAIBlockedReason` (signed out / no age / under
+18), `rateAIAnswer` → `aiFeedback` only when opted in. Settings: "Morphe AI
+online" toggle with its own consent sheet, "Help improve Morphe AI" toggle;
+thumbs under answers in the chat. Form Check's dev coaching note and the
+food check use the same doors; the web search tool is `web_search_20260209`.
+Rules published (aiUsage denied, aiFeedback create-only). **Not deployed
+yet**: the function needs Node 22 + the Firebase CLI on this Mac, Blaze,
+`firebase login`, and the `ANTHROPIC_API_KEY` secret — steps in
+`BACKEND/functions/README.md`. Until it is deployed, turning the toggle on
+yields the honest "hit a snag" line. Decisions taken for Lucas: 18+ only,
+30/day, $45 relay budget under the $50 key cap.
+
 **Not verified on hardware yet**: a real strap (needs one in hand), the
 bounce timing on device, a real Strava/Garmin import through Health. A phone build of this commit should be installed
 first thing.

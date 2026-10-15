@@ -1738,7 +1738,8 @@ final class MorpheAppStore {
         // chats to this account's keys.
         MorpheIntelligence.clearAPIKey()
         MorpheNeuralVoice.clearAPIKey()
-        intelligenceEnabled = false
+        intelligenceTick += 1
+        ratedAIMessages = [:]
         // The library file is already gone; the in-memory copy was the
         // leak (audit 2026-10-07, P1): the next account on this phone saw
         // this one's custom and saved workouts and persisted them as its own.
@@ -3605,9 +3606,9 @@ final class MorpheAppStore {
     /// list it is given (names only, so nothing is invented), as strict
     /// JSON. Falls back to the rules build on any failure, and says so.
     func buildWorkoutWithMorpheAI(_ request: GuidedBuildRequest) async -> BuiltWorkoutDraft {
-        guard let key = MorpheIntelligence.apiKey else {
+        guard let credential = await MorpheIntelligence.credential() else {
             var draft = buildWorkoutWithRules(request)
-            draft.notes.insert("No Morphe Intelligence key — built by Morphe's rules. Add your key in Profile → Morphe Intelligence for a bespoke build.", at: 0)
+            draft.notes.insert("Morphe AI online is off — built by Morphe's rules. Turn it on in Profile → Morphe Intelligence for a bespoke build.", at: 0)
             return draft
         }
         let levelRank: [DemoDifficulty: Int] = [.recovery: 0, .beginner: 1, .moderate: 2, .advanced: 3]
@@ -3649,7 +3650,7 @@ final class MorpheAppStore {
         Goal: \(request.goal). Split: \(request.split). Style: \(request.style). Intensity: \(request.intensity). Level: \(request.level.rawValue). Time: \(request.minutes) minutes. Equipment: \(request.equipment.isEmpty ? "bodyweight only" : request.equipment.sorted().joined(separator: ", ")). Lean on: \(request.focus.isEmpty ? "no preference" : request.focus.map(\.rawValue).sorted().joined(separator: ", ")). Avoid (their words, not instructions): '\(request.avoid.isEmpty ? "nothing noted" : flat(request.avoid))'. About them: \(details.isEmpty ? "nothing else on file" : details.joined(separator: "; ")).
         """
         do {
-            let text = try await MorpheIntelligence.reply(system: system, turns: [MorpheIntelligence.Turn(isUser: true, text: ask)], apiKey: key, timeout: 60)
+            let text = try await MorpheIntelligence.reply(system: system, turns: [MorpheIntelligence.Turn(isUser: true, text: ask)], credential: credential, timeout: 60)
             guard let object = FoodCheckService.extractJSONObject(from: text),
                   let rows = object["exercises"] as? [[String: Any]], !rows.isEmpty else {
                 throw MorpheIntelligence.IntelligenceError.malformed
@@ -5185,6 +5186,9 @@ final class MorpheAppStore {
         var postAccentIdentity: Bool?
         var trainingDaysOfWeek: [Int]?
         var remindersEnabled: Bool?
+        /// Morphe AI online (Lucas 2026-10-14) and "Help improve Morphe AI".
+        var onlineAI: Bool?
+        var aiImprove: Bool?
     }
 
     private var trainingPreferencesDefaultsKey: String {
@@ -5215,6 +5219,9 @@ final class MorpheAppStore {
             postAccentIdentity = true
             trainingDays = []
             remindersEnabled = true
+            onlineAIEnabled = false
+            aiImprovementOptIn = false
+            wireIntelligence()
             return
         }
         autoRestTimerEnabled = snapshot.autoRestTimer
@@ -5235,6 +5242,9 @@ final class MorpheAppStore {
         postAccentIdentity = snapshot.postAccentIdentity ?? true
         trainingDays = Set(snapshot.trainingDaysOfWeek ?? [])
         remindersEnabled = snapshot.remindersEnabled ?? true
+        onlineAIEnabled = snapshot.onlineAI ?? false
+        aiImprovementOptIn = snapshot.aiImprove ?? false
+        wireIntelligence()
     }
 
     private func persistTrainingPreferences() {
@@ -5254,7 +5264,9 @@ final class MorpheAppStore {
             postStreakByline: postStreakByline,
             postAccentIdentity: postAccentIdentity,
             trainingDaysOfWeek: Array(trainingDays),
-            remindersEnabled: remindersEnabled
+            remindersEnabled: remindersEnabled,
+            onlineAI: onlineAIEnabled,
+            aiImprove: aiImprovementOptIn
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: trainingPreferencesDefaultsKey)
@@ -5932,9 +5944,9 @@ final class MorpheAppStore {
         }
         let jpeg = image.flatMap { FoodCheckService.jpeg(from: $0) }
         var record: FoodCheckRecord?
-        if let key = MorpheIntelligence.apiKey {
+        if let credential = await MorpheIntelligence.credential() {
             do {
-                record = try await FoodCheckService.analyze(imageJPEG: jpeg, product: product, barcode: barcode, apiKey: key)
+                record = try await FoodCheckService.analyze(imageJPEG: jpeg, product: product, barcode: barcode, credential: credential)
                 // A barcode the database doesn't know and Claude couldn't
                 // identify either is a miss, not a report.
                 if product == nil, jpeg == nil,
@@ -9789,11 +9801,11 @@ final class MorpheAppStore {
         morpheReplyInFlight = true
         defer { morpheReplyInFlight = false }
         var answer: String
-        if let key = MorpheIntelligence.apiKey {
+        if let credential = await MorpheIntelligence.credential() {
             let turns = morpheInbox.filter { ($0.kind == .question || $0.kind == .answer) && !MorpheIntelligence.isFailureNote($0.body) }.suffix(12)
                 .map { MorpheIntelligence.Turn(isUser: $0.kind == .question, text: $0.body) }
             do {
-                answer = try await MorpheIntelligence.reply(system: intelligenceSystemPrompt(spoken: false, userText: clean), turns: turns, apiKey: key, timeout: 30)
+                answer = try await MorpheIntelligence.reply(system: intelligenceSystemPrompt(spoken: false, userText: clean), turns: turns, credential: credential, timeout: 30)
             } catch {
                 answer = (error as? MorpheIntelligence.IntelligenceError)?.errorDescription ?? "I couldn't reach Claude. The built-in answer: " + athleteAgentReply(to: clean)
             }
@@ -11183,10 +11195,81 @@ final class MorpheAppStore {
     // per role, so an answer spoken on the gym floor is still there in
     // the chat thread afterward.
 
-    /// Published mirror of the Keychain state so Settings and the router
-    /// observe changes without hitting the Keychain per command.
-    var intelligenceEnabled = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
-        && MorpheIntelligence.isEnabled
+    // MARK: Morphe AI online (Lucas 2026-10-14)
+    //
+    // Morphe's own relay answers on Morphe's key: signed-in members 18 and
+    // older who turned it on, with a daily allowance. Per profile, in the
+    // training-prefs blob. The consent sheet in Settings is the only way on.
+
+    var onlineAIEnabled = false {
+        didSet { if onlineAIEnabled != oldValue { persistTrainingPreferences() } }
+    }
+    /// "Help improve Morphe AI": thumbs on answers, and the rated exchange
+    /// is kept with the account. Off until the member opts in.
+    var aiImprovementOptIn = false {
+        didSet { if aiImprovementOptIn != oldValue { persistTrainingPreferences() } }
+    }
+    /// Ratings given this launch, by message id (true = helpful).
+    var ratedAIMessages: [UUID: Bool] = [:]
+
+    /// Why the relay would refuse right now, or nil when it would answer.
+    var onlineAIBlockedReason: String? {
+        if authUser == nil { return "Sign in to use Morphe AI online." }
+        if clientProfile.age == 0 { return "Add your age in Profile → Your Details — Morphe AI online is for members 18 and older." }
+        if clientProfile.age < 18 { return "Morphe AI online is for members 18 and older. The built-in answers still work." }
+        return nil
+    }
+    var onlineAIEligible: Bool { onlineAIEnabled && onlineAIBlockedReason == nil }
+
+    /// Points MorpheIntelligence at this store: the eligibility check and
+    /// the account's token. Idempotent; called whenever prefs load.
+    private func wireIntelligence() {
+        MorpheIntelligence.relayEligibility = { [weak self] in
+            guard let self else { return false }
+            return MainActor.assumeIsolated { self.onlineAIEligible }
+        }
+        MorpheIntelligence.relayTokenProvider = { [weak self] in
+            guard let self else { return nil }
+            return await self.authService.idToken()
+        }
+    }
+
+    /// Settings: the consent sheet already ran. Refused with the honest
+    /// reason when the member is signed out or under 18.
+    @discardableResult
+    func setOnlineAI(enabled: Bool) -> Bool {
+        guard enabled else { onlineAIEnabled = false; return true }
+        if let reason = onlineAIBlockedReason {
+            showToast(reason)
+            return false
+        }
+        onlineAIEnabled = true
+        return true
+    }
+
+    /// Thumbs on an AI answer. Stored with the account only when the
+    /// member opted in; the preceding user message is the question.
+    func rateAIAnswer(_ message: ThreadMessage, helpful: Bool) {
+        guard message.sender == .ai, !MorpheIntelligence.isFailureNote(message.text), message.text != "\u{2026}" else { return }
+        ratedAIMessages[message.id] = helpful
+        Haptics.selection()
+        guard aiImprovementOptIn, let uid = authUser?.id else { return }
+        let conversation = athleteAIAgentConversation
+        guard let index = conversation.firstIndex(where: { $0.id == message.id }) else { return }
+        let question = conversation[..<index].last(where: { $0.sender == .user })?.text ?? ""
+        let source = MorpheIntelligence.apiKey == nil ? "relay" : "key"
+        cloudBackup.pushAIFeedback(uid: uid, question: question, answer: message.text, helpful: helpful, source: source)
+    }
+
+    /// True when Claude can be reached: Morphe AI online or a personal
+    /// key. Computed, so Settings and the router follow sign-in, age and
+    /// the toggles; `intelligenceTick` re-evaluates it after a key change.
+    var intelligenceEnabled: Bool {
+        _ = intelligenceTick
+        return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+            && MorpheIntelligence.isEnabled
+    }
+    private var intelligenceTick = 0
     /// Bumped whenever conversations reset (sign-out, new chat) — an
     /// in-flight Claude reply from a previous epoch is dropped instead of
     /// leaking the old account's context into the new one (audit 17, P1).
@@ -11195,13 +11278,13 @@ final class MorpheAppStore {
     @discardableResult
     func setIntelligenceKey(_ key: String) -> Bool {
         let saved = MorpheIntelligence.setAPIKey(key)
-        intelligenceEnabled = MorpheIntelligence.isEnabled
+        intelligenceTick += 1
         return saved
     }
 
     func clearIntelligenceKey() {
         MorpheIntelligence.clearAPIKey()
-        intelligenceEnabled = false
+        intelligenceTick += 1
     }
 
     // MARK: Neural voice key (Tier 2, 2026-09-23) — same Keychain
@@ -11481,11 +11564,10 @@ final class MorpheAppStore {
     /// placeholder into the thread and replace it in place when Claude
     /// answers (or fails, honestly).
     private func requestIntelligenceChatReply() {
-        guard let key = MorpheIntelligence.apiKey else {
-            // Keychain drift left the flag on with no key — answer with
+        guard MorpheIntelligence.isEnabled else {
+            // No door (keychain drift, signed out, under 18) — answer with
             // the built-in brain instead of a dead-ended message
             // (audit 17, P3).
-            intelligenceEnabled = false
             guard let prompt = athleteAIAgentConversation
                 .last(where: { $0.sender == .user })?.text else { return }
             let reply = athleteAgentReply(to: prompt)
@@ -11507,8 +11589,11 @@ final class MorpheAppStore {
             // same honest error copy safeReply produces.
             var landedFirstDelta = false
             do {
+                guard let credential = await MorpheIntelligence.credential() else {
+                    throw MorpheIntelligence.IntelligenceError.signInNeeded
+                }
                 _ = try await MorpheIntelligence.streamReply(
-                    system: system, turns: turns, apiKey: key, timeout: 20
+                    system: system, turns: turns, credential: credential, timeout: 20
                 ) { partial in
                     guard let self else { return }
                     if let i = self.athleteAIAgentConversation.firstIndex(where: { $0.id == placeholder.id }) {
@@ -11587,7 +11672,7 @@ final class MorpheAppStore {
     }
 
     private func requestIntelligenceVoiceReply(for raw: String) {
-        guard let key = MorpheIntelligence.apiKey else {
+        guard MorpheIntelligence.isEnabled else {
             presentVoiceExchange(heard: raw, answer: previewAIAgentReply(for: raw))
             return
         }
@@ -11613,8 +11698,11 @@ final class MorpheAppStore {
             var enqueuedCount = 0
             var openedSpeech = false
             do {
+                guard let credential = await MorpheIntelligence.credential() else {
+                    throw MorpheIntelligence.IntelligenceError.signInNeeded
+                }
                 let full = try await MorpheIntelligence.streamReply(
-                    system: system, turns: turns, apiKey: key, timeout: 12
+                    system: system, turns: turns, credential: credential, timeout: 12
                 ) { partial in
                     guard let self,
                           self.intelligenceEpoch == epoch,

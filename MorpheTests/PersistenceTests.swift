@@ -8712,3 +8712,140 @@ final class ConnectionsTests: XCTestCase {
         XCTAssertNil(HeartRateMonitor.parseBPM(Data()))
     }
 }
+
+/// Morphe AI online (Lucas 2026-10-14): who the relay door opens for, where
+/// a request goes, and what the relay's refusals read as.
+@MainActor
+final class OnlineAITests: XCTestCase {
+
+    override func setUp() {
+        super.setUp()
+        WorkoutFilePersistence().clear()
+        ProfileFilePersistence().clear()
+        MorpheIntelligence.clearAPIKey()
+    }
+
+    private func freshStore() -> MorpheAppStore {
+        let store = MorpheAppStore()
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
+        store.setOnlineAI(enabled: false)
+        return store
+    }
+
+    func testOnlineAIIsOffByDefaultAndRefusesSignedOutOrUnder18() {
+        let store = freshStore()
+        XCTAssertFalse(store.onlineAIEnabled)
+        XCTAssertFalse(MorpheIntelligence.relayAllowed)
+
+        // Signed out: the toggle refuses with the reason.
+        store.authUser = nil
+        XCTAssertFalse(store.setOnlineAI(enabled: true))
+        XCTAssertFalse(store.onlineAIEnabled)
+
+        store.authUser = AppUser(id: "u1", email: "s@x.com", role: .athlete, displayName: "Sarah", createdAt: .now)
+        store.updateAge(16)
+        XCTAssertFalse(store.setOnlineAI(enabled: true), "under 18 never reaches the relay")
+        XCTAssertNotNil(store.onlineAIBlockedReason)
+
+        store.updateAge(0)
+        XCTAssertFalse(store.setOnlineAI(enabled: true), "no age on file is refused, not assumed")
+
+        store.updateAge(24)
+        XCTAssertTrue(store.setOnlineAI(enabled: true))
+        XCTAssertTrue(store.onlineAIEligible)
+        XCTAssertTrue(MorpheIntelligence.relayAllowed, "the static door reads the store live")
+
+        // Age drops (edited later) → the door closes without touching the toggle.
+        store.updateAge(17)
+        XCTAssertTrue(store.onlineAIEnabled)
+        XCTAssertFalse(MorpheIntelligence.relayAllowed)
+        store.setOnlineAI(enabled: false)
+    }
+
+    func testOnlineAIPreferencePersistsPerProfileAndClearsOnSignOut() {
+        let store = freshStore()
+        store.authUser = AppUser(id: "u1", email: "s@x.com", role: .athlete, displayName: "Sarah", createdAt: .now)
+        store.updateAge(30)
+        XCTAssertTrue(store.setOnlineAI(enabled: true))
+        store.aiImprovementOptIn = true
+        let blobs = store.perProfileExtrasBlobs()
+        XCTAssertNotNil(blobs["trainingPreferences"])
+
+        store.signOut()
+        XCTAssertFalse(store.onlineAIEnabled, "sign-out resets the toggle")
+        XCTAssertFalse(store.aiImprovementOptIn)
+        XCTAssertFalse(MorpheIntelligence.relayAllowed)
+    }
+
+    func testRequestsGoToTheRelayWithTheAccountTokenAndNoModel() throws {
+        let turns = [MorpheIntelligence.Turn(isUser: true, text: "What's next?")]
+        let relay = try MorpheIntelligence.makeRequest(system: "s", turns: turns, credential: .relay(token: "tok"), timeout: 5, stream: true)
+        XCTAssertEqual(relay.url, MorpheIntelligence.relayURL)
+        XCTAssertEqual(relay.value(forHTTPHeaderField: "Authorization"), "Bearer tok")
+        XCTAssertNil(relay.value(forHTTPHeaderField: "x-api-key"))
+        let relayBody = try XCTUnwrap(try JSONSerialization.jsonObject(with: XCTUnwrap(relay.httpBody)) as? [String: Any])
+        XCTAssertNil(relayBody["model"], "the relay picks the model")
+        XCTAssertEqual(relayBody["stream"] as? Bool, true)
+
+        let direct = try MorpheIntelligence.makeRequest(system: "s", turns: turns, credential: .personalKey("sk-ant-x"), timeout: 5, stream: false)
+        XCTAssertEqual(direct.url?.host, "api.anthropic.com")
+        XCTAssertEqual(direct.value(forHTTPHeaderField: "x-api-key"), "sk-ant-x")
+        XCTAssertNil(direct.value(forHTTPHeaderField: "Authorization"))
+        let directBody = try XCTUnwrap(try JSONSerialization.jsonObject(with: XCTUnwrap(direct.httpBody)) as? [String: Any])
+        XCTAssertEqual(directBody["model"] as? String, "claude-opus-5-5")
+    }
+
+    func testRelayRefusalsReadAsTheirOwnLines() {
+        func body(_ type: String) -> Data { try! JSONSerialization.data(withJSONObject: ["error": ["type": type, "message": "x"]]) }
+        XCTAssertEqual(MorpheIntelligence.error(status: 403, body: body("age")), .ageRestricted)
+        XCTAssertEqual(MorpheIntelligence.error(status: 429, body: body("daily_limit")), .dailyLimit)
+        XCTAssertEqual(MorpheIntelligence.error(status: 429, body: body("budget")), .budget)
+        XCTAssertEqual(MorpheIntelligence.error(status: 401, body: body("sign_in")), .signInNeeded)
+        XCTAssertEqual(MorpheIntelligence.error(status: 429, body: nil), .rateLimited)
+        XCTAssertEqual(MorpheIntelligence.error(status: 401, body: nil), .badKey)
+        XCTAssertEqual(MorpheIntelligence.error(status: 503, body: nil), .overloaded)
+        XCTAssertTrue(MorpheIntelligence.isFailureNote(MorpheIntelligence.IntelligenceError.dailyLimit.errorDescription ?? ""),
+                      "a relay refusal shown in the thread is never sent back as Claude's words")
+    }
+
+    func testRatingIsKeptOnlyWhenOptedIn() {
+        final class SpyBackup: CloudBackingUp {
+            var pushed: [(question: String, helpful: Bool)] = []
+            func setUser(_ uid: String?) {}
+            func pushProfile(_ snapshot: LocalProfileSnapshot) {}
+            func pushLogs(_ logs: [WorkoutLog]) async -> Bool { true }
+            func pushWeightHistory(_ entries: [MorpheAppStore.BodyWeightHistoryEntry]) {}
+            func pushExtras(_ blobs: [String: String]) {}
+            func pull() async -> CloudSnapshot { CloudSnapshot() }
+            func eraseUser() async {}
+            func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String) {
+                pushed.append((question, helpful))
+            }
+        }
+        let spy = SpyBackup()
+        let store = MorpheAppStore(cloudBackup: spy)
+        store.onboardingDraft.name = "Sarah"
+        store.completeOnboarding()
+        store.showHelloBeat = false
+        store.dismissWelcomeExperience()
+        store.authUser = AppUser(id: "u1", email: "s@x.com", role: .athlete, displayName: "Sarah", createdAt: .now)
+        let question = ThreadMessage(sender: .user, senderName: "Sarah", text: "How many sets?", timestamp: "Now")
+        let answer = ThreadMessage(sender: .ai, senderName: "Morphe AI", text: "Three, logged honestly.", timestamp: "Now")
+        store.athleteAIAgentConversation = [question, answer]
+
+        store.aiImprovementOptIn = false
+        store.rateAIAnswer(answer, helpful: true)
+        XCTAssertEqual(store.ratedAIMessages[answer.id], true, "the thumb shows locally")
+        XCTAssertTrue(spy.pushed.isEmpty, "nothing leaves the phone without the opt-in")
+
+        store.aiImprovementOptIn = true
+        store.rateAIAnswer(answer, helpful: false)
+        XCTAssertEqual(spy.pushed.count, 1)
+        XCTAssertEqual(spy.pushed.first?.question, "How many sets?")
+        XCTAssertEqual(spy.pushed.first?.helpful, false)
+        store.aiImprovementOptIn = false
+    }
+}

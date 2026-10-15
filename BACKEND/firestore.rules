@@ -944,6 +944,30 @@ service cloud.firestore {
       }
     }
 
+    // Morphe AI online (2026-10-14): the relay's own counters — day/count per
+    // member and the month's spend. Written by the Cloud Function only.
+    match /aiUsage/{doc} {
+      allow read, write: if false;
+    }
+
+    // "Help improve Morphe AI": one rated exchange, written only by its
+    // author after opting in; nobody reads it from a client (the founder's
+    // service account does). Deleted with the account by the author.
+    match /aiFeedback/{feedbackId} {
+      allow read, update: if false;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'helpful', 'question', 'answer', 'source', 'createdAt'])
+        && request.resource.data.helpful is bool
+        && request.resource.data.question is string
+        && request.resource.data.question.size() <= 2000
+        && request.resource.data.answer is string
+        && request.resource.data.answer.size() >= 1
+        && request.resource.data.answer.size() <= 4000
+        && request.resource.data.source in ['relay', 'key'];
+    }
+
     // Default deny for anything not matched above.
     match /{document=**} {
       allow read, write: if false;

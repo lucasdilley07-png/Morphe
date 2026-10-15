@@ -191,10 +191,24 @@ never breaks the rest of the app.
   Food Facts (food search and barcode lookups, no personal data). The AI
   providers below are reached only with a key you add yourself.
 
-## AI assistant with your own key (optional)
+## The AI assistant (optional)
 
-The in-app assistant works offline out of the box. If you add your own
-API keys in Profile → Morphe Intelligence:
+The in-app assistant works offline out of the box: Morphe's built-in
+answers come from your own logs and leave nothing. Two optional ways turn
+on real Claude answers, both in Profile → Morphe Intelligence:
+
+- **Morphe AI online** — free, on Morphe's own Anthropic key, for members
+  18 and older. Each request goes to a server Morphe runs (Google Cloud
+  Functions, as the processor) that checks you are signed in, reads the
+  age in your backed-up profile, counts the request toward your daily
+  allowance (30 a day) and Morphe's monthly budget, and passes it to
+  Anthropic. The server keeps counts and an estimated cost per month —
+  never your messages. Members under 18, or with no age on file, are
+  refused and keep the built-in answers. Turn it off any time.
+- **Your own key** — the same requests go straight from your phone to
+  Anthropic on your own key, billed to you, with no daily allowance.
+
+What is sent to Anthropic is the same either way:
 
 - **Anthropic** — the text of your chat messages (chat, voice, and the
   Morphe conversation in Chats), plus what the assistant needs to answer:
@@ -223,6 +237,14 @@ API keys in Profile → Morphe Intelligence:
 Keys are stored in the iOS Keychain on your device and are never backed
 up to your Morphe account or sent to us. Remove a key at any time to stop
 all traffic to that provider.
+
+**Help improve Morphe AI (optional, off by default).** If you turn it on,
+thumbs up and down appear under Morphe AI's answers. When you rate an
+answer, the question, the answer, your rating and your account id are
+stored with your account and read by the founder to improve Morphe AI.
+They are never shown to other members, never published, and never used to
+train a model outside Morphe. Turn it off any time; they are deleted with
+your account.
 
 ## Where your data lives
 

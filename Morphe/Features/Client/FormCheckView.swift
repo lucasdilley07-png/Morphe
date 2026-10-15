@@ -2275,8 +2275,8 @@ private struct FormSummarySheet: View {
     @State private var aiText: String?
     @State private var aiError: String?
     @State private var aiLoading = false
-    @State private var keyDraft = ""
-    @State private var hasKey = (DevAIKey.value?.isEmpty == false)
+    /// Morphe AI online or the user's own key (Lucas 2026-10-14).
+    @State private var hasKey = MorpheIntelligence.isEnabled
     #endif
 
     private func clock(_ seconds: Double) -> String {
@@ -2431,18 +2431,10 @@ private struct FormSummarySheet: View {
                     .foregroundStyle(MorpheTheme.accentText)
 
                 if !hasKey {
-                    Text("Paste an Anthropic API key to try AI coaching on this set. Dev builds only — stored on this device, never shipped.")
+                    Text("Turn on Morphe AI online (or add your key) in Profile → Morphe Intelligence to try AI coaching on this set. Dev builds only.")
                         .font(.caption).foregroundStyle(MorpheTheme.textSecondary)
-                    SecureField("sk-ant-...", text: $keyDraft)
-                        .textFieldStyle(.roundedBorder)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                    Button("Save key") {
-                        DevAIKey.value = keyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                        hasKey = (DevAIKey.value?.isEmpty == false)
-                        keyDraft = ""
-                    }
-                    .buttonStyle(SecondaryCTAButtonStyle())
+                    Button("Check again") { hasKey = MorpheIntelligence.isEnabled }
+                        .buttonStyle(SecondaryCTAButtonStyle())
                 } else if let aiText {
                     Text(aiText)
                         .font(.subheadline).foregroundStyle(MorpheTheme.textPrimary)
@@ -2502,41 +2494,23 @@ struct FormAIReviewer {
     /// returns a short coaching note. Raw HTTPS: Swift has no official
     /// Anthropic SDK.
     func review(exerciseName: String, pattern: FormMovementPattern, metrics: [FormRepMetrics]) async throws -> String {
-        guard let apiKey = DevAIKey.value, !apiKey.isEmpty else {
-            throw APIError(message: "No API key set.")
+        // Morphe AI online or the user's own key — the same doors as chat
+        // (Lucas 2026-10-14); the measured numbers go, never video.
+        guard let credential = await MorpheIntelligence.credential() else {
+            throw APIError(message: "Turn on Morphe AI online in Profile → Morphe Intelligence (or add your own key) for a coaching note.")
         }
         guard !metrics.isEmpty else {
             throw APIError(message: "No reps to review.")
         }
-
-        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
-        request.httpMethod = "POST"
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.timeoutInterval = 30
-
-        let body: [String: Any] = [
-            "model": "claude-opus-4-8",
-            "max_tokens": 320,
-            "system": Self.system,
-            "messages": [["role": "user", "content": Self.prompt(exerciseName: exerciseName, pattern: pattern, metrics: metrics)]]
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw APIError(message: "No response from the API.") }
-        guard http.statusCode == 200 else {
-            let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])
-                .flatMap { ($0?["error"] as? [String: Any])?["message"] as? String }
-            throw APIError(message: "API \(http.statusCode): \(detail ?? "request failed")")
+        do {
+            let text = try await MorpheIntelligence.reply(
+                system: Self.system,
+                turns: [MorpheIntelligence.Turn(isUser: true, text: Self.prompt(exerciseName: exerciseName, pattern: pattern, metrics: metrics))],
+                credential: credential, timeout: 30)
+            return text.isEmpty ? "No coaching came back — try again." : text
+        } catch {
+            throw APIError(message: (error as? MorpheIntelligence.IntelligenceError)?.errorDescription ?? "Couldn't reach Morphe AI.")
         }
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = json["content"] as? [[String: Any]] else {
-            throw APIError(message: "Couldn't read the response.")
-        }
-        let text = content.compactMap { $0["text"] as? String }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? "No coaching came back — try again." : text
     }
 
     private static let system = """

@@ -1219,6 +1219,7 @@ private struct MorpheAIAgentSheet: View {
 }
 
 private struct AIAgentMessageRow: View {
+    @Environment(MorpheAppStore.self) private var store
     let message: ThreadMessage
     /// True when this message starts a run from its sender. Only run leaders
     /// carry the name caption, so back-to-back replies read as one voice.
@@ -1269,6 +1270,16 @@ private struct AIAgentMessageRow: View {
                             Label("Copy", systemImage: "doc.on.doc")
                         }
                     }
+
+                // "Help improve Morphe AI" (Lucas 2026-10-14): thumbs under
+                // a real answer, only for members who opted in.
+                if !isUser, store.aiImprovementOptIn, message.text != "\u{2026}",
+                   !MorpheIntelligence.isFailureNote(message.text) {
+                    HStack(spacing: 4) {
+                        ratingButton(helpful: true)
+                        ratingButton(helpful: false)
+                    }
+                }
             }
             // Fixed cap instead of UIScreen.main (deprecated for multi-scene;
             // wrong under Stage Manager). 300pt ≈ 75% of the narrowest iPhone
@@ -1278,6 +1289,25 @@ private struct AIAgentMessageRow: View {
             if !isUser { Spacer(minLength: 0) }
         }
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+    }
+
+    private func ratingButton(helpful: Bool) -> some View {
+        let rated = store.ratedAIMessages[message.id]
+        let selected = rated == helpful
+        return Button {
+            store.rateAIAnswer(message, helpful: helpful)
+        } label: {
+            Image(systemName: helpful ? (selected ? "hand.thumbsup.fill" : "hand.thumbsup")
+                                      : (selected ? "hand.thumbsdown.fill" : "hand.thumbsdown"))
+                .font(.caption)
+                .foregroundStyle(selected ? MorpheTheme.accentText : MorpheTheme.textMuted)
+                .frame(width: 44, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(rated != nil)
+        .accessibilityLabel(helpful ? "Helpful answer" : "Not a helpful answer")
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 }
 

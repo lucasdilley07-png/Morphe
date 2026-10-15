@@ -74,3 +74,19 @@ telemetry/{id}                                 first-party milestone events
   API key to the GitHub Pages referrer; email-enumeration protection on.
 - Push notifications (needs the paid program) — none today; all reminders
   are local.
+
+## Morphe AI online — the relay (2026-10-14)
+
+`BACKEND/functions` (Cloud Functions 2nd gen, Node 22, TypeScript): one
+HTTPS function `morpheAI` that lets members use Morphe AI on Morphe's own
+Anthropic key. Firebase ID token in, Anthropic Messages API body in, the
+same streaming events out. Enforced in the function, before Claude is
+called: signed-in account, age ≥ 18 from `users/{uid}/state/profile`, 30
+requests per member per day, a $45 estimated monthly budget (Anthropic's
+own $50 cap on the key is the backstop). Model: Claude Sonnet 5.5, low
+effort, cached system prompt, server-side refusal fallback. Counters in
+`aiUsage/*` (client-denied). Opt-in ratings in `aiFeedback/*`
+(create-only by the author). Deploy and prove: `BACKEND/functions/README.md`.
+Needs Blaze and the `ANTHROPIC_API_KEY` secret. App Check verification is a
+param (`MORPHE_AI_REQUIRE_APP_CHECK`) — flip it once the paid Apple
+account lets App Check enforce.

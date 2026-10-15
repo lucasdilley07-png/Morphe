@@ -125,6 +125,12 @@ final class FirebaseAuthService: AuthService {
         currentUser = nil
     }
 
+    func idToken() async -> String? {
+        guard let user = Auth.auth().currentUser else { return nil }
+        // Firebase refreshes a token that is about to expire on its own.
+        return try? await user.getIDToken()
+    }
+
     /// Firebase refuses sensitive operations when the sign-in is older
     /// than ~5 minutes (the ID token's auth_time). Read it up front so the
     /// store can send the user to re-sign-in BEFORE anything is erased.

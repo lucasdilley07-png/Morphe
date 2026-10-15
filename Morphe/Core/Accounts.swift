@@ -68,10 +68,15 @@ protocol AuthService: AnyObject {
     /// hit requiresRecentLogin — and the recovery instruction (sign out,
     /// sign in) restored nothing, because nothing was left to restore.
     func needsFreshSignInToDelete() async -> Bool
+    /// A fresh ID token for the signed-in account (Morphe AI online sends
+    /// it to the relay instead of an API key). Nil when signed out or
+    /// when the provider has no backend.
+    func idToken() async -> String?
 }
 
 extension AuthService {
     func needsFreshSignInToDelete() async -> Bool { false }
+    func idToken() async -> String? { nil }
 
     static func validate(email: String, password: String) throws {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)

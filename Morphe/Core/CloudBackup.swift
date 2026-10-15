@@ -84,9 +84,14 @@ protocol CloudBackingUp: AnyObject {
     /// board rows and challenge rows that carry the user's name. True when
     /// everything it could reach is gone.
     func erasePublicFootprint(uid: String, boardCodes: [String], challengeCodes: [String], weekKeys: [String]) async -> Bool
+    /// "Help improve Morphe AI" (Lucas 2026-10-14): one rated exchange,
+    /// written only when the member opted in. Read by the founder's
+    /// service account to improve Morphe AI; never shown to anyone.
+    func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String)
 }
 
 extension CloudBackingUp {
+    func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String) {}
     func pushLogs(_ logs: [WorkoutLog], deletedIDs: Set<UUID>) async -> Bool {
         await pushLogs(logs)
     }
@@ -1416,6 +1421,17 @@ final class FirebaseCloudBackup: CloudBackingUp {
 
     func setUser(_ uid: String?) {
         self.uid = uid
+    }
+
+    func pushAIFeedback(uid: String, question: String, answer: String, helpful: Bool, source: String) {
+        db.collection("aiFeedback").addDocument(data: [
+            "uid": uid,
+            "helpful": helpful,
+            "question": String(question.prefix(2000)),
+            "answer": String(answer.prefix(4000)),
+            "source": source,
+            "createdAt": FieldValue.serverTimestamp()
+        ])
     }
 
     private func stateDoc(_ name: String) -> DocumentReference? {
