@@ -8,6 +8,12 @@ The pitch deck that embeds Video 1 on slide 4: https://claude.ai/artifact/UyXaF6
 
 ## Before you roll (on set, top of the Notes copy)
 
+- Build check (2026-10-15): the seal shows on the live set row, in
+  History and on Records; "what's next" before a session names the first
+  movement. Hey Morphe runs on the offline answers until the relay is
+  deployed — film on the build you rehearsed, and don't caption it as the
+  online AI.
+
 - Latest build on the phone, signed in, Do Not Disturb on, battery over
   80%, brightness up.
 - Profile → Make it yours → Hey Morphe on.
@@ -29,11 +35,11 @@ Used as the deck's slide 4, the coach-pitch demo, and the Day 0 post.
 | # | Time | Shot | What happens | Audio |
 |---|---|---|---|---|
 | A | 0–3 s | You, medium, phone in hand, gym behind | Say: "Hey Morphe, what's next?" The orb lights the screen | Your voice, room tone |
-| B | 3–12 s | Screen recording | Morphe answers out loud with today's first movement | App audio, keep it clean |
-| C | 12–40 s | Phone on a stand + camera B over the shoulder. **One take, no cut.** | The set. Form Check counts every rep on screen. The counted set gets its seal | Breathing, plates, the count |
+| B | 3–12 s | Screen recording | Morphe answers out loud: "First up: [movement], [sets] sets of [reps]…" — then say "start my workout" | App audio, keep it clean |
+| C | 12–40 s | Phone on a stand + camera B over the shoulder. **One take, no cut.** | The set. Form Check counts every rep on screen. The set row gets its seal (blue check-seal) the moment it logs | Breathing, plates, the count |
 | D | 40–50 s | Screen recording, then your face | Log the next set by voice: "log [your sets] by [your reps] at [your weight]". Use your real numbers | Your voice, Morphe's confirmation |
 | E | 50–65 s | The outcome: the only polished shot (LUT, slow push-in) | The score moves, then the share card | Music can come up here |
-| F | 65–70 s | End card | MORPHE wordmark + "Every number is earned." | — |
+| F | 65–70 s | End card | The vertical lockup (helmet · Morphe · TRAIN SMARTER), with "Every number is earned." under it — `docs/brand-kit/morphe-lockup-vertical-dark.png` | — |
 
 Edit rules:
 - No music under A–D; the voice moments are the proof.
@@ -48,7 +54,7 @@ The deck's cold open and the Lucas_Dilley post.
 
 | # | Shot | What happens |
 |---|---|---|
-| 1 | Screen recording | Open History on a **throwaway test set** you logged with the camera (seal on). Edit its reps up by hand. The seal disappears |
+| 1 | Screen recording | Progress → Workout History, a **throwaway test set** you logged with the camera ("Camera counted" seal next to the exercise). Tap EDIT, raise its reps by hand, save. The seal disappears |
 | 2 | Camera B + screen | A real set, counted by the camera. The seal stays |
 | 3 | End card | "This number cannot be typed in." |
 

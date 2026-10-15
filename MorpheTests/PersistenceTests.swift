@@ -9359,5 +9359,10 @@ final class MorpheRemembersTests: XCTestCase {
         XCTAssertEqual(MorpheAppStore.catalogGoals(for: ["Lose weight"]), ["Weight Loss", "Lean Out"])
         XCTAssertTrue(MorpheAppStore.catalogGoals(for: ["Build consistency"]).isEmpty, "no goal bias when nothing maps")
     }
+
+    func testCurlyApostrophesMatchLikeStraightOnes() {
+        XCTAssertEqual(MorpheAppStore.normalizedPrompt("What\u{2019}s next?"), "what's next?")
+        XCTAssertNotNil(MorpheAppStore.logRecallReply(to: MorpheAppStore.normalizedPrompt("What did I do today?"), logs: [], unit: .pounds))
+    }
 }
 

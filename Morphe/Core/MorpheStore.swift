@@ -11068,7 +11068,7 @@ final class MorpheAppStore {
     /// Nil when no recognizable focus is named — the caller answers with
     /// the vocabulary instead of guessing a workout the user didn't ask for.
     nonisolated static func parseWorkoutBuildRequest(_ raw: String) -> WorkoutBuildRequest? {
-        let text = raw.lowercased()
+        let text = Self.normalizedPrompt(raw)
 
         var groups: [MuscleGroup] = []
         var label: String?
@@ -11231,7 +11231,7 @@ final class MorpheAppStore {
     }
 
     nonisolated static func parseLiveSetUtterance(_ raw: String) -> LiveSetUtterance? {
-        var text = normalizedSetPhrase(raw.lowercased())
+        var text = normalizedSetPhrase(Self.normalizedPrompt(raw))
         guard !text.isEmpty else { return nil }
         // The recognizer writes "warm up"/"warm-up" as often as "warmup" —
         // normalize BEFORE the delta scan or its "up" gets consumed as a
@@ -11371,8 +11371,19 @@ final class MorpheAppStore {
     /// with text. Returns nil when nothing actionable matched. (The
     /// conversational layer stays scripted until the real model arrives with
     /// the backend.)
+    /// Lowercased, with the keyboard's and dictation's curly quotes made
+    /// straight: "What’s next?" missed every "what's" match (demo audit
+    /// 2026-10-15 — typed and spoken prompts both arrive curly).
+    nonisolated static func normalizedPrompt(_ text: String) -> String {
+        text.lowercased()
+            .replacingOccurrences(of: "\u{2019}", with: "'")
+            .replacingOccurrences(of: "\u{2018}", with: "'")
+            .replacingOccurrences(of: "\u{201C}", with: "\"")
+            .replacingOccurrences(of: "\u{201D}", with: "\"")
+    }
+
     private func assistantActionReply(for text: String) -> String? {
-        let lower = text.lowercased()
+        let lower = Self.normalizedPrompt(text)
         // Build verbs out-rank every other door (audit 14, P1): "build me
         // an easy day" flipped Minimum Win, and "make a workout and start
         // it" started the OLD plan — both wrong actions confidently taken.
@@ -18197,7 +18208,7 @@ final class MorpheAppStore {
     }
 
     private func athleteAgentReply(to prompt: String) -> String {
-        let lowercasedPrompt = prompt.lowercased()
+        let lowercasedPrompt = Self.normalizedPrompt(prompt)
         // "How many push-ups did I do today?" — answered from the log,
         // no model needed (audit 2026-10-15: the offline brain declined).
         if let recall = Self.logRecallReply(to: lowercasedPrompt, logs: currentAthleteWorkoutLogs, unit: weightUnit) {
@@ -18230,7 +18241,17 @@ final class MorpheAppStore {
            lowercasedPrompt.contains("exercise") || lowercasedPrompt.contains("what's next")
             || lowercasedPrompt.contains("whats next") || lowercasedPrompt.contains("up next") {
             guard isWorkoutSessionActive else {
-                return "No session is live. Up today: \(currentWorkout.name) — say \"start my workout\" and I'll open it."
+                // Before the session starts, "what's next" is the day's
+                // first movement (demo audit 2026-10-15: the answer was a
+                // status line, not the movement).
+                guard !isWorkoutLoggedToday else {
+                    return "Today's session is done — \(currentWorkout.name) is in the books. Say \"show my progress\" to see it."
+                }
+                guard let first = currentWorkout.exercises.first else {
+                    return "Up today: \(currentWorkout.name). Say \"start my workout\" and I'll open it."
+                }
+                let setsText = first.sets.allSatisfy(\.isNumber) ? "\(first.sets) \(first.sets == "1" ? "set" : "sets")" : first.sets
+                return "First up: \(first.name), \(setsText) of \(first.reps). That opens \(currentWorkout.name) — say \"start my workout\" and I'll set it up."
             }
             let queue = currentWorkout.exercises
             let nextIndex = activeWorkoutExerciseIndex + 1

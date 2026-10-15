@@ -2114,9 +2114,23 @@ private struct WorkoutHistoryCard: View {
 
                             ForEach(log.exercises) { exercise in
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(exercise.name)
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(MorpheTheme.textPrimary)
+                                    HStack(spacing: 6) {
+                                        Text(exercise.name)
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(MorpheTheme.textPrimary)
+                                        // The seal lives on the log too (demo audit
+                                        // 2026-10-15): a hand edit drops it here,
+                                        // in plain sight.
+                                        if let counted = exercise.cameraCountedPerSet?.filter({ $0 }).count, counted > 0 {
+                                            Label(counted == (exercise.repsPerSet?.count ?? counted)
+                                                    ? "Camera counted"
+                                                    : "\(counted) camera counted",
+                                                  systemImage: "checkmark.seal.fill")
+                                                .font(.caption2.weight(.semibold))
+                                                .foregroundStyle(MorpheTheme.accentText)
+                                                .accessibilityLabel("Reps counted by camera")
+                                        }
+                                    }
                                     Text(setLine(for: exercise))
                                         .font(.caption)
                                         .foregroundStyle(MorpheTheme.textSecondary)

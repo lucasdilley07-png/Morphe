@@ -439,6 +439,8 @@ struct WorkoutView: View {
                         repsLogged: store.trackedSetReps[activeExercise.id, default: []],
                         weightsLogged: store.trackedSetWeights[activeExercise.id, default: []],
                         warmupsLogged: store.trackedSetWarmups[activeExercise.id, default: []],
+                        cameraLogged: store.trackedSetCamera[activeExercise.id, default: []],
+                        labelsLogged: store.trackedSetLabels[activeExercise.id, default: []],
                         weight: $pendingWeight,
                         rpe: $pendingRPE,
                         weightUnit: store.weightUnit,
@@ -2900,6 +2902,11 @@ private struct ActiveWorkoutTrackerCard: View {
     let repsLogged: [Int]
     let weightsLogged: [Double]
     let warmupsLogged: [Bool]
+    /// Per-set "the camera counted these reps" — the seal shows the moment
+    /// Form Check logs a set (demo audit 2026-10-15).
+    var cameraLogged: [Bool] = []
+    /// Per-set labels ("Hold 12s") — a hold reads as seconds, not reps.
+    var labelsLogged: [String] = []
     @Binding var weight: Double
     /// Optional effort rating for the NEXT logged set — cleared by the owner
     /// after each log so a stale rating can't stick.
@@ -3404,9 +3411,19 @@ private struct ActiveWorkoutTrackerCard: View {
                                     .foregroundStyle(MorpheTheme.accentAlt)
                                     .frame(width: 44, alignment: .leading)
 
-                                Text("\(reps) reps · \(weightUnit.format(weightsLogged.indices.contains(index) ? weightsLogged[index] : 0))")
+                                Text(labelsLogged.indices.contains(index) && labelsLogged[index].hasPrefix("Hold ")
+                                     ? "\(labelsLogged[index]) · \(weightUnit.format(weightsLogged.indices.contains(index) ? weightsLogged[index] : 0))"
+                                     : "\(reps) reps · \(weightUnit.format(weightsLogged.indices.contains(index) ? weightsLogged[index] : 0))")
                                     .font(.caption)
                                     .foregroundStyle(MorpheTheme.textPrimary)
+
+                                if cameraLogged.indices.contains(index), cameraLogged[index] {
+                                    Image(systemName: "checkmark.seal.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(MorpheTheme.accentText)
+                                        .symbolEffect(.bounce, value: cameraLogged.count)
+                                        .accessibilityLabel("Reps counted by camera")
+                                }
 
                                 if warmupsLogged.indices.contains(index), warmupsLogged[index] {
                                     Text("W")
