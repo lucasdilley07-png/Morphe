@@ -98,6 +98,9 @@ struct MorpheLoadingMark: View {
 struct OnboardingFlowView: View {
     @Environment(MorpheAppStore.self) private var store
     @State private var stepIndex = 0
+    /// The helmet mark travels from the opener into the name field
+    /// (motion grammar 2026-10-15: one hero shape across the whole flow).
+    @Namespace private var brand
     @State private var isGeneratingPlan = false
     // Username step: what's typed, the round-trip state, and the last error.
     @State private var usernameEntry = ""
@@ -220,12 +223,12 @@ struct OnboardingFlowView: View {
 
                         stepView(for: currentStep)
                             .id(stepIndex)
-                            .transition(.opacity)
+                            .transition(.blurIn)
 
                         HStack(spacing: 10) {
                             if stepIndex > 0 {
                                 Button("Back") {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                    withAnimation(.easeInOut(duration: 0.35)) {
                                         stepIndex -= 1
                                     }
                                 }
@@ -250,7 +253,7 @@ struct OnboardingFlowView: View {
                                         usernameError = error
                                         if error == nil {
                                             withAnimation(.easeInOut(duration: 0.2)) {
-                                                stepIndex += 1
+                                                withAnimation(.easeInOut(duration: 0.35)) { stepIndex += 1 }
                                             }
                                         }
                                     }
@@ -262,7 +265,7 @@ struct OnboardingFlowView: View {
                                     isGeneratingPlan = true
                                 } else {
                                     withAnimation(.easeInOut(duration: 0.2)) {
-                                        stepIndex += 1
+                                        withAnimation(.easeInOut(duration: 0.35)) { stepIndex += 1 }
                                     }
                                 }
                             }
@@ -291,10 +294,10 @@ struct OnboardingFlowView: View {
         @Bindable var store = store
         switch step {
         case .welcome:
-            WelcomeLandingStep()
+            WelcomeLandingStep(namespace: brand)
         case .identity:
             VStack(alignment: .leading, spacing: 16) {
-                NameStep(name: $store.onboardingDraft.name, birthYear: $store.onboardingDraft.birthYear)
+                NameStep(name: $store.onboardingDraft.name, birthYear: $store.onboardingDraft.birthYear, namespace: brand)
                 UsernameStep(
                     entry: $usernameEntry,
                     isChecking: isReservingUsername,
@@ -314,7 +317,7 @@ struct OnboardingFlowView: View {
                 ProfileReviewStep()
             }
         case .name:
-            NameStep(name: $store.onboardingDraft.name, birthYear: $store.onboardingDraft.birthYear)
+            NameStep(name: $store.onboardingDraft.name, birthYear: $store.onboardingDraft.birthYear, namespace: brand)
         case .username:
             UsernameStep(
                 entry: $usernameEntry,
@@ -477,50 +480,95 @@ private struct UsernameStep: View {
 }
 
 
+/// The opener (reverse-engineered from the reference Shorts, 2026-10-15):
+/// the helmet mark morphs in with a ring growing past the edge, "Meet"
+/// + the wordmark + the tagline rise in one beat apart, then the honest
+/// four-step promise and the manifesto blur in. The mark itself carries
+/// on into the name field on the next step.
 private struct WelcomeLandingStep: View {
+    let namespace: Namespace.ID
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var markShown = false
+
+    static let tagline = "TRAIN HONEST"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            ProfileBannerView(
-                banner: BannerProfile(
-                    preset: .minimalPremium,
-                    title: "Build momentum, not perfection.",
-                    subtitle: "Small wins. Real transformation."
-                ),
-                theme: .morpheBlackBlue
-            )
-
-            GlassCard {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("GETTING STARTED")
-                        .font(MorpheTheme.microLabel())
-                        .tracking(1.4)
-                        .foregroundStyle(MorpheTheme.accentText)
-
-                    Text("Welcome to Morphe")
-                        .font(.title.weight(.bold))
-                        .foregroundStyle(MorpheTheme.textPrimary)
-
-                    Text("Morphe helps you know what to do today, why it matters, and how to keep going when life gets noisy.")
-                        .font(.subheadline)
-                        .foregroundStyle(MorpheTheme.textSecondary)
-
-                    // The promise matches the flow — it used to say "4 quick
-                    // things" while the flow ran 13 screens (audit finding).
-                    VStack(alignment: .leading, spacing: 10) {
-                        LandingPoint(index: 1, text: "Your name and handle")
-                        LandingPoint(index: 2, text: "Your goals, sport, and experience")
-                        LandingPoint(index: 3, text: "Your training week")
-                        LandingPoint(index: 4, text: "Morphe builds your starting plan")
+        BeatSequence(delays: [0.35, 0.65, 0.95, 1.5, 1.65, 1.8, 1.95, 2.4]) { beat in
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(spacing: 10) {
+                    ZStack {
+                        RingPulse(color: MorpheTheme.accent, from: 0.4, to: 3.2, duration: 1.3, delay: 0.1)
+                            .frame(width: 96, height: 96)
+                        MorpheHelmetMark(glowRadius: 10)
+                            .frame(width: 96, height: 96)
+                            .matchedGeometryEffect(id: "brandMark", in: namespace)
+                            .scaleEffect(markShown || reduceMotion ? 1 : 0.55)
+                            .opacity(markShown || reduceMotion ? 1 : 0)
+                            .blur(radius: markShown || reduceMotion ? 0 : 10)
+                    }
+                    .frame(height: 110)
+                    .onAppear {
+                        withAnimation(.spring(response: 0.55, dampingFraction: 0.72)) { markShown = true }
                     }
 
-                    Text("Four steps, about a minute — every answer shapes the plan.")
-                        .font(.caption)
-                        .foregroundStyle(MorpheTheme.textMuted)
+                    if beat[0] {
+                        Text("Meet")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(MorpheTheme.textSecondary)
+                            .transition(.blurIn)
+                    }
+                    if beat[1] {
+                        MorpheWordmark(height: 34)
+                            .foregroundStyle(MorpheTheme.textPrimary)
+                            .transition(.blurIn)
+                    }
+                    if beat[2] {
+                        Text(Self.tagline)
+                            .font(MorpheTheme.microLabel(13))
+                            .tracking(3)
+                            .foregroundStyle(MorpheTheme.accentText)
+                            .transition(.blurIn)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 8)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Meet Morphe. \(Self.tagline)")
+
+                if beat[3] {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("GETTING STARTED")
+                                .font(MorpheTheme.microLabel())
+                                .tracking(1.4)
+                                .foregroundStyle(MorpheTheme.accentText)
+
+                            Text("Morphe helps you know what to do today, why it matters, and how to keep going when life gets noisy.")
+                                .font(.subheadline)
+                                .foregroundStyle(MorpheTheme.textSecondary)
+
+                            // The promise matches the flow — it used to say "4 quick
+                            // things" while the flow ran 13 screens (audit finding).
+                            VStack(alignment: .leading, spacing: 10) {
+                                if beat[4] { LandingPoint(index: 1, text: "Your name and handle").transition(.blurIn) }
+                                if beat[5] { LandingPoint(index: 2, text: "Your goals, sport, and experience").transition(.blurIn) }
+                                if beat[6] { LandingPoint(index: 3, text: "Your training week").transition(.blurIn) }
+                                if beat[7] { LandingPoint(index: 4, text: "Morphe builds your starting plan").transition(.blurIn) }
+                            }
+
+                            Text("Four steps, about a minute — every answer shapes the plan.")
+                                .font(.caption)
+                                .foregroundStyle(MorpheTheme.textMuted)
+                        }
+                    }
+                    .transition(.blurIn)
+                }
+
+                if beat[7] {
+                    ManifestoCard()
+                        .transition(.blurIn)
                 }
             }
-
-            ManifestoCard()
         }
     }
 }
@@ -545,6 +593,7 @@ private struct LandingPoint: View {
 private struct NameStep: View {
     @Binding var name: String
     @Binding var birthYear: Int?
+    let namespace: Namespace.ID
     @State private var yearText = ""
 
     private var yearMessage: String? {
@@ -561,7 +610,13 @@ private struct NameStep: View {
             subtitle: "Your name is how Morphe greets you and signs your progress. It's saved to your account, so it follows you to a new phone."
         ) {
             VStack(alignment: .leading, spacing: 10) {
-                TextField("Your first name", text: $name)
+                // The opener's mark lands here, small, beside the field.
+                HStack(spacing: 10) {
+                    MorpheHelmetMark(glowRadius: 4)
+                        .frame(width: 28, height: 28)
+                        .matchedGeometryEffect(id: "brandMark", in: namespace)
+                        .accessibilityHidden(true)
+                    TextField("Your first name", text: $name)
                     .textFieldStyle(MorpheFieldStyle())
                     .textContentType(.givenName)
                     .submitLabel(.done)
@@ -573,10 +628,14 @@ private struct NameStep: View {
                             name = String(newValue.prefix(40))
                         }
                     }
+                }
 
-                Text("Example: Alex")
-                    .font(.caption)
-                    .foregroundStyle(MorpheTheme.textMuted)
+                HStack(spacing: 4) {
+                    Text("Example:")
+                    TypewriterText(text: "Alex", startDelay: 0.5)
+                }
+                .font(.caption)
+                .foregroundStyle(MorpheTheme.textMuted)
 
                 // Age gate (fix wave 2026-10-13): asked neutrally, no hint
                 // at the cutoff, and it becomes the profile age.

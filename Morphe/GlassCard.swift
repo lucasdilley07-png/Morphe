@@ -3020,3 +3020,161 @@ extension View {
         modifier(SwipeBack(action: action))
     }
 }
+
+// MARK: - Motion kit (reverse-engineered from the reference Shorts, 2026-10-15)
+//
+// The grammar both references share: every entrance and exit is blur +
+// opacity; what the user would type is typed; a tapped thing pulses a
+// ring; one word takes a colour sweep; a mode change is a circle growing
+// out of what you touched. Every piece honours Reduce Motion by falling
+// back to plain opacity. Pure SwiftUI; no timers outside `.task`.
+
+struct BlurFade: ViewModifier {
+    var blur: CGFloat
+    var opacity: Double
+    func body(content: Content) -> some View {
+        content.blur(radius: blur).opacity(opacity)
+    }
+}
+
+extension AnyTransition {
+    /// The default entrance and exit: blurred and transparent → sharp and
+    /// opaque. Under Reduce Motion the blur is skipped.
+    static var blurIn: AnyTransition {
+        if UIAccessibility.isReduceMotionEnabled { return .opacity }
+        return .modifier(active: BlurFade(blur: 12, opacity: 0), identity: BlurFade(blur: 0, opacity: 1))
+    }
+}
+
+/// Reveals text one character at a time, the way a person types (~13
+/// characters a second), with a caret while it runs. Reduce Motion shows
+/// the whole line at once.
+struct TypewriterText: View {
+    let text: String
+    var charactersPerSecond: Double = 13
+    var startDelay: TimeInterval = 0
+    var showsCaret = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown = 0
+
+    var body: some View {
+        let done = shown >= text.count
+        Text(String(text.prefix(shown)) + (showsCaret && !done ? "|" : ""))
+            .task(id: text) {
+                if reduceMotion { shown = text.count; return }
+                shown = 0
+                if startDelay > 0 { try? await Task.sleep(for: .seconds(startDelay)) }
+                for index in 1...max(1, text.count) {
+                    try? await Task.sleep(for: .seconds(1 / charactersPerSecond))
+                    guard !Task.isCancelled else { return }
+                    shown = index
+                }
+            }
+            .accessibilityLabel(text)
+    }
+}
+
+/// A thin ring that grows out past its frame and fades — the logo reveal,
+/// the send-button pulse, the "ready" radiation. Repeats when asked.
+struct RingPulse: View {
+    var color: Color = MorpheTheme.accent
+    var lineWidth: CGFloat = 1.5
+    var from: CGFloat = 0.3
+    var to: CGFloat = 2.6
+    var duration: TimeInterval = 1.1
+    var delay: TimeInterval = 0
+    var repeats = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var grown = false
+
+    var body: some View {
+        Circle()
+            .stroke(color.opacity(0.6), lineWidth: lineWidth)
+            .scaleEffect(grown ? to : from)
+            .opacity(grown ? 0 : 1)
+            .onAppear {
+                guard !reduceMotion else { return }
+                let base = Animation.easeOut(duration: duration).delay(delay)
+                withAnimation(repeats ? base.repeatForever(autoreverses: false) : base) { grown = true }
+            }
+            .accessibilityHidden(true)
+    }
+}
+
+/// One word takes a colour sweep from left to right ("Train HONEST.").
+struct SweepWord: View {
+    let word: String
+    var font: Font = .largeTitle.weight(.bold)
+    var color: Color = MorpheTheme.accent
+    var delay: TimeInterval = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = -1
+
+    var body: some View {
+        Text(word)
+            .font(font)
+            .overlay(
+                GeometryReader { geo in
+                    LinearGradient(colors: [.clear, color, color, .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: geo.size.width * 1.4)
+                        .offset(x: phase * geo.size.width * 1.2 - geo.size.width * 0.2)
+                        .mask(Text(word).font(font))
+                }
+            )
+            .onAppear {
+                if reduceMotion { phase = 0; return }
+                withAnimation(.easeInOut(duration: 1.0).delay(delay)) { phase = 1 }
+            }
+    }
+}
+
+/// A circle grows out of a point until the whole content shows — the way
+/// the dark voice stage opens from the card you tapped. `revealed` false
+/// hides the content behind a dot at `origin`.
+struct RadialReveal<Content: View>: View {
+    var origin: UnitPoint = .center
+    var revealed: Bool
+    var duration: TimeInterval = 0.6
+    @ViewBuilder var content: () -> Content
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        if reduceMotion {
+            content().opacity(revealed ? 1 : 0).animation(.easeInOut(duration: duration), value: revealed)
+        } else {
+            content()
+                .mask(
+                    GeometryReader { geo in
+                        let side = max(geo.size.width, geo.size.height) * 2.4
+                        Circle()
+                            .frame(width: side, height: side)
+                            .scaleEffect(revealed ? 1 : 0.004)
+                            .position(x: origin.x * geo.size.width, y: origin.y * geo.size.height)
+                    }
+                )
+                .animation(.easeInOut(duration: duration), value: revealed)
+        }
+    }
+}
+
+/// Runs `beats` once, each after its delay, so a sequence of blur-ins can
+/// be written as data: `[0, 0.25, 0.5]` → three `shown` flags.
+struct BeatSequence<Content: View>: View {
+    let delays: [TimeInterval]
+    @ViewBuilder let content: ([Bool]) -> Content
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown: [Bool] = []
+
+    var body: some View {
+        content(shown.count == delays.count ? shown : Array(repeating: false, count: delays.count))
+            .task {
+                if reduceMotion { shown = Array(repeating: true, count: delays.count); return }
+                shown = Array(repeating: false, count: delays.count)
+                for (index, delay) in delays.enumerated() {
+                    try? await Task.sleep(for: .seconds(max(0, delay - (index > 0 ? delays[index - 1] : 0))))
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.easeOut(duration: 0.45)) { shown[index] = true }
+                }
+            }
+    }
+}
